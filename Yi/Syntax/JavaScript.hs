@@ -33,10 +33,18 @@ class Strokable a where
 data JTree t = JFunDecl { fdres :: t, fdname :: t
                         , fdlpar :: t, fdpars :: [t], fdrpar :: t
                         , fdbody :: (JFunBody t) }
-             | JVarDecl { res :: t, vars :: [JVarDecAss t], sc :: t }
+             | JVarDecl { vdres :: t, vdvars :: [JVarDecAss t], vdsc :: t }
              | JFunCall { fcname :: t, fclpar :: t, fcargs :: [JExpr t], fcrpar :: t, fcsc :: t }
+             | JStatement (Statement t)
              | JError t
                deriving (Eq, Show)
+
+data Statement t = StmtReturn { returnres :: t, returnexpr :: (JExpr t), returnsc :: t }
+                 | StmtWhile { whileres :: t, whilelpar :: t, whileexpr :: (JExpr t), whilerpar :: t
+                             , whilebody :: (JFunBody t) }
+                 | StmtDoWhile { dwdo :: t, dwbody :: (JFunBody t), dwwhile :: t
+                               , dwlcurl :: t, dwexpr :: (JExpr t), dwrcurl :: t, dwsc :: t }
+                   deriving (Eq, Show)
 
 -- | @JOldFunBody@ represents the "standard" function body, using the curly
 --   brackets wrapped around multiple statements.  @JNewFunBody@ represents the
@@ -67,73 +75,101 @@ data JKeyValue t = JKV { key :: t, colon :: t, value :: (JExpr t) }
                    deriving (Eq, Show)
 
 $(derive makeFoldable ''JTree)
+$(derive makeFoldable ''Statement)
 $(derive makeFoldable ''JExpr)
 $(derive makeFoldable ''JKeyValue)
 $(derive makeFoldable ''JVarDecAss)
 $(derive makeFoldable ''JFunBody)
 
 instance Strokable (JVarDecAss TT) where
-    toStrokes (AssignNo x) = one (tokenToStroke x)
-    toStrokes (AssignYes x y z) = one (tokenToStroke x)
-                               <> one (tokenToStroke y)
+    toStrokes (AssignNo x) = oneStroke x
+    toStrokes (AssignYes x y z) = oneStroke x
+                               <> oneStroke y
                                <> toStrokes z
-    toStrokes (AssignErr x) = one (modStroke errorStyle (tokenToStroke x))
+    toStrokes (AssignErr x) = one (modStroke errorStyle . tokenToStroke) x
 
 instance Strokable (JFunBody TT) where
-    toStrokes (JOldFunBody l s r) = one (tokenToStroke l)
+    toStrokes (JOldFunBody l s r) = oneStroke l
                                  <> foldMap toStrokes s
-                                 <> one (tokenToStroke r)
+                                 <> oneStroke r
     toStrokes (JNewFunBody x) = toStrokes x
-    toStrokes (JErrFunBody x) = one (modStroke errorStyle (tokenToStroke x))
+    toStrokes (JErrFunBody x) = one (modStroke errorStyle . tokenToStroke) x
 
 instance Strokable (JTree TT) where
-    toStrokes f@(JFunDecl {}) = one (tokenToStroke (fdres f))
-                             <> one (tokenToStroke (fdlpar f))
+    toStrokes f@(JFunDecl {}) = oneStroke (fdres f)
+                             <> oneStroke (fdlpar f)
                              <> few tokenToStroke (fdpars f)
-                             <> one (tokenToStroke (fdrpar f))
+                             <> oneStroke (fdrpar f)
                              <> toStrokes (fdbody f)
-    toStrokes v@(JVarDecl {}) = one (tokenToStroke (res v))
-                             <> foldMap toStrokes (vars v)
-                             <> one (tokenToStroke (sc v))
-    toStrokes f@(JFunCall {}) = one (tokenToStroke (fcname f))
-                             <> one (tokenToStroke (fclpar f))
+    toStrokes v@(JVarDecl {}) = oneStroke (vdres v)
+                             <> foldMap toStrokes (vdvars v)
+                             <> oneStroke (vdsc v)
+    toStrokes f@(JFunCall {}) = oneStroke (fcname f)
+                             <> oneStroke (fclpar f)
                              <> foldMap toStrokes (fcargs f)
-                             <> one (tokenToStroke (fcrpar f))
-                             <> one (tokenToStroke (fcsc f))
-    toStrokes (JError x) = one (modStroke errorStyle (tokenToStroke x))
+                             <> oneStroke (fcrpar f)
+                             <> oneStroke (fcsc f)
+    toStrokes (JStatement x) = toStrokes x
+    toStrokes (JError x) = one (modStroke errorStyle . tokenToStroke) x
 
 instance Strokable (JExpr TT) where
-    toStrokes o@(JObj {})     = one (tokenToStroke (objlcurl o))
-    toStrokes   (JNum x)      = one (tokenToStroke x)
-    toStrokes   (JName x)     = one (tokenToStroke x)
-    toStrokes   (JStr x)      = one (tokenToStroke x)
-    toStrokes f@(JAnonFun {}) = one (tokenToStroke (afres f))
-                             <> one (tokenToStroke (aflpar f))
+    toStrokes o@(JObj {})     = oneStroke (objlcurl o)
+    toStrokes   (JNum x)      = oneStroke x
+    toStrokes   (JName x)     = oneStroke x
+    toStrokes   (JStr x)      = oneStroke x
+    toStrokes f@(JAnonFun {}) = oneStroke (afres f)
+                             <> oneStroke (aflpar f)
                              <> few tokenToStroke (afpars f)
-                             <> one (tokenToStroke (afrpar f))
+                             <> oneStroke (afrpar f)
                              <> toStrokes (afbody f)
-    toStrokes   (ExprErr x)   = one (modStroke errorStyle (tokenToStroke x))
+    toStrokes   (ExprErr x)   = one (modStroke errorStyle . tokenToStroke) x
+
+instance Strokable (Statement TT) where
+    toStrokes s@(StmtReturn {}) = oneStroke (returnres s)
+                               <> toStrokes (returnexpr s)
+                               <> oneStroke (returnsc s)
+    toStrokes s@(StmtWhile {})  = oneStroke (whileres s)
+                               <> oneStroke (whilelpar s)
+                               <> toStrokes (whileexpr s)
+                               <> oneStroke (whilerpar s)
+                               <> toStrokes (whilebody s)
+    toStrokes s@(StmtDoWhile {}) = oneStroke (dwdo s)
+                                <> toStrokes (dwbody s)
+                                <> oneStroke (dwwhile s)
+                                <> oneStroke (dwlcurl s)
+                                <> toStrokes (dwexpr s)
+                                <> oneStroke (dwrcurl s)
+                                <> oneStroke (dwsc s)
+
+-- | StmtDoWhile { dwdo :: t, dwbody :: (JFunBody t), dwwhile :: t
+--               , dwlcurl :: t, dwexpr :: (JExpr t), dwrcurl :: t, dwsc :: t }
 
 instance Strokable (JKeyValue TT) where
-    toStrokes = foldMap (one . tokenToStroke)
+    toStrokes = foldMap (oneStroke) -- TODO: What?!
 
 
 -- * Helper functions.
 
-one :: a -> Endo [a]
-one x = Endo (x :)
+one :: (t -> a) -> t -> Endo [a]
+one f x = Endo (f x :)
 
 few :: (Foldable t) => (a -> b) -> t a -> Endo [b]
-few g = foldMap (one . g)
+few f xs = foldMap (one f) xs
 
 modStroke :: StyleName -> Stroke -> Stroke
 modStroke style stroke = fmap (style <>) stroke
+
+oneStroke :: TT -> Endo [Stroke]
+oneStroke = one tokenToStroke
 
 
 -- * Stroking functions
 
 tokenToStroke :: TT -> Stroke
-tokenToStroke = fmap tokenToStyle . tokToSpan
+tokenToStroke tt = let stroker = fmap tokenToStyle . tokToSpan in
+                   case fromTT tt of
+                     Unknown -> (modStroke errorStyle . stroker) tt
+                     _       -> stroker tt
 
 getStrokes :: Point -> Point -> Point -> [JTree TT] -> [Stroke]
 getStrokes _point _begin _end t0 = trace (show t0) result
@@ -145,118 +181,148 @@ getStrokes _point _begin _end t0 = trace (show t0) result
 
 parse :: P TT [JTree TT]
 parse = pForest <* eof
+
+pForest :: P TT [JTree TT]
+pForest = many pTree
+
+pTree :: P TT (JTree TT)
+pTree = anyLevel
+    <|> (JError <$> recoverWith (symbol (const True)))
+
+
+-- * High-level stuff
+
+-- We don't have anything that's only allowed at the top level yet...  And
+-- yes, apparently function declarations inside of function declarations
+-- are okay.  TODO: Anonymous functions are syntactically valid to have at
+-- the top level, but don't make any sense on their own.
+--
+-- topLevel :: P TT (JTree TT)
+-- topLevel = undefined
+
+-- | Parser for stuff that's allowed anywhere in the program.
+anyLevel :: P TT (JTree TT)
+anyLevel = funDecl <|> varDecl <|> funCall
+       <|> JStatement <$> statements
+
+-- | Parser for statements.
+statements = StmtReturn  <$> resWord Return' <*> expression <*> plzSpc ';'
+         <|> StmtWhile   <$> resWord While' <*> plzSpc '(' <*> expression <*> plzSpc ')' <*> funBody
+         <|> StmtDoWhile <$> resWord Do' <*> funBody <*> plzTok (resWord While')
+                         <*> plzSpc '(' <*> expression <*> plzSpc ')' <*> plzSpc ';'
+
+-- | Parser for function declarations.
+funDecl :: P TT (JTree TT)
+funDecl = JFunDecl <$> resWord Function' <*> plzTok name
+                   <*> plzSpc '(' <*> parameters <*> plzSpc ')'
+                   <*> funBody
+
+-- | Parser for old-style function bodies and "lambda style" ones.
+funBody :: P TT (JFunBody TT)
+funBody = JOldFunBody <$> plzSpc '{' <*> many anyLevel <*> plzSpc '}'
+      <|> JNewFunBody <$> expression
+      <|> JErrFunBody <$> pure unknownToken
+
+-- | Parser for variable declarations.
+varDecl :: P TT (JTree TT)
+varDecl = JVarDecl <$> resWord Var'
+                   <*> pleaseSepBy1 varDecAss (spec ',') (pure []) -- TODO: Ugly recovery?
+                   <*> plzSpc ';'
     where
+      varDecAss :: P TT (JVarDecAss TT)
+      varDecAss = AssignNo  <$> name
+              <|> AssignYes <$> name <*> plzTok (oper Assign') <*> expression
+              <|> AssignErr <$> pure unknownToken
 
-      pForest :: P TT [JTree TT]
-      pForest = many pTree
-
-      pTree :: P TT (JTree TT)
-      pTree = anyLevel
-          <|> (JError <$> recoverWith (symbol (const True)))
-
-
-      -- * High-level stuff
-
-      -- We don't have anything that's only allowed at the top level yet...  And
-      -- yes, apparently function declarations inside of function declarations
-      -- are okay.
-      --
-      -- topLevel :: P TT (JTree TT)
-      -- topLevel = undefined
-
-      -- | Parser for stuff that's allowed anywhere in the program.
-      anyLevel :: P TT (JTree TT)
-      anyLevel = funDecl <|> varDecl <|> funCall
-
-      -- | Parser for function declarations.  TODO: Currently doesn't really
-      --   support the JS 1.8 "lambda" function style.
-      funDecl :: P TT (JTree TT)
-      funDecl = JFunDecl <$> resWord Function' <*> plzTok name
-                         <*> plzSpc '(' <*>  parameters   <*> plzSpc ')'
-                         <*> funBody
-
-      -- | Parser for old-style function bodies and "lambda style" ones.
-      funBody = JOldFunBody <$> plzSpc '{' <*> many anyLevel <*> plzSpc '}'
-            <|> JNewFunBody <$> expression
-            <|> JErrFunBody <$> pure unknownToken
-
-      -- | Parser for variable declarations.
-      varDecl :: P TT (JTree TT)
-      varDecl = JVarDecl <$> resWord Var'
-                         <*> pleaseSepBy1 varDecAss (spec ',') (pure []) -- TODO: Ugly recovery?
-                         <*> plzSpc ';'
-          where
-            varDecAss :: P TT (JVarDecAss TT)
-            varDecAss = AssignNo  <$> name
-                    <|> AssignYes <$> name <*> plzTok (oper Assign') <*> expression
-                    <|> AssignErr <$> pure unknownToken
-
-      -- | Parser for function calls.
-      funCall :: P TT (JTree TT)
-      funCall = JFunCall <$> name <*> plzSpc '(' <*> arguments <*> plzSpc ')' <*> plzSpc ';'
+-- | Parser for function calls.
+funCall :: P TT (JTree TT)
+funCall = JFunCall <$> name <*> plzSpc '(' <*> arguments <*> plzSpc ')' <*> plzSpc ';'
 
 
-      -- * Helper parsers
-
-      -- | Like 'sepBy1', but with recovery.
-      pleaseSepBy1 p s r  = (:) <$> p <*> (many (s *> p) <|> recoverWith r)
-
-      -- | Parser for comma-separated identifiers.
-      parameters :: P TT [TT]
-      parameters = commas (plzTok name)
-
-      -- | Parser for comma-separated expressions.
-      arguments :: P TT [JExpr TT]
-      arguments = commas expression
-
-      -- | Parser for expressions.
-      expression :: P TT (JExpr TT)
-      expression = JStr     <$> strTok
-               <|> JNum     <$> numTok
-               <|> JObj     <$> spec '{' <*> plzSpc '}' -- TODO
-               <|> JName    <$> name
-               <|> JAnonFun <$> resWord Function' <*> plzSpc '(' <*> parameters <*> plzSpc ')' <*> funBody
-               <|> ExprErr  <$> recoverWith (pure unknownToken)
+-- | Parser for expressions.
+expression :: P TT (JExpr TT)
+expression = JStr     <$> strTok
+         <|> JNum     <$> numTok
+         <|> JObj     <$> spec '{' <*> plzSpc '}' -- TODO
+         <|> JName    <$> name
+         <|> JAnonFun <$> resWord Function' <*> plzSpc '(' <*> parameters <*> plzSpc ')' <*> funBody
+         <|> ExprErr  <$> recoverWith (pure unknownToken)
 
 
-      -- * Simple parsers
+-- * Helper parsers
 
-      strTok = symbol (\t -> case tokT t of
-                               Str _ -> True
-                               _     -> False)
+-- | Like 'sepBy1', but with recovery.
+pleaseSepBy1 p s r  = (:) <$> p <*> (many (s *> p) <|> recoverWith r)
 
-      numTok = symbol (\t -> case tokT t of
-                               Number _ -> True
-                               _        -> False)
+-- | Parser for comma-separated identifiers.
+parameters = commas (plzTok name)
 
-      name = symbol (\t -> case tokT t of
-                             ValidName _ -> True
-                             _           -> False)
+-- | Parser for comma-separated expressions.
+arguments :: P TT [JExpr TT]
+arguments = commas expression
 
-      resWord x = symbol (\t -> case tokT t of
-                                  Res y -> x == y
-                                  _     -> False)
+commas x = x `sepBy` (spec ',')
 
-      spec x = symbol (\t -> case tokT t of
-                               Special y -> x == y
-                               _         -> False)
-
-      oper x = symbol (\t -> case tokT t of
-                               Op y -> y == x
-                               _    -> False)
+-- TODO: Why do these give type-errors even when they're not used?
+-- parens  x = plzSpc '(' <*> x <*> plzSpc ')'
+-- curlies x = plzSpc '{' <*> x <*> plzSpc '}'
 
 
-      -- * Recovery stuff
+-- * Simple parsers
 
-      -- | Recover operator.  Prefers RHS.
-      x <>> y = recoverWith x <|> y
+strTok :: P TT TT
+strTok = symbol (\t -> case fromTT t of
+                         Str _ -> True
+                         _     -> False)
 
-      -- | Recovery operator.  Prefers LHS.
-      x <<> y = y <>> x
+numTok :: P TT TT
+numTok = symbol (\t -> case fromTT t of
+                         Number _ -> True
+                         _        -> False)
 
-      plzTok x = x <<> (pure unknownToken)
-      plzSpc   = plzTok . spec
-      commas x = x `sepBy` (spec ',')
+name :: P TT TT
+name = symbol (\t -> case fromTT t of
+                       ValidName _ -> True
+                       _           -> False)
 
-      unknownToken = tokFromT Unknown
+resWord x = symbol (\t -> case fromTT t of
+                            Res y -> x == y
+                            _     -> False)
 
+spec x = symbol (\t -> case fromTT t of
+                         Special y -> x == y
+                         _         -> False)
+
+oper x = symbol (\t -> case fromTT t of
+                         Op y -> y == x
+                         _    -> False)
+
+
+-- * Recovery stuff
+
+-- | Recover operator.  Prefers RHS.
+(<>>) :: P s a -> P s a -> P s a
+x <>> y = recoverWith x <|> y
+
+-- | Recovery operator.  Prefers LHS.
+(<<>) :: P s a -> P s a -> P s a
+x <<> y = y <>> x
+
+-- | Expects a token x, recovers with 'unknownToken'.
+plzTok x = x <<> (pure unknownToken)
+
+-- | Expects a special token, recovers with 'unknownToken'.
+plzSpc = plzTok . spec
+
+-- | Constant 'Unknown' wrapped in a 'Tok'.
+unknownToken :: TT
+unknownToken = toTT Unknown
+
+
+-- * Utility stuff
+
+-- | Better name for 'tokFromT'.
+toTT = tokFromT
+
+-- | Better name for 'fromTT'.
+fromTT = tokT
