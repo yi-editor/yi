@@ -11,11 +11,12 @@
 module Parser.Incremental (Process, 
                           recoverWith, symbol, eof, lookNext, testNext, run,
                           mkProcess, profile, pushSyms, pushEof, evalL, evalR, feedZ,
-                           Parser(Look, Pure, Enter), countWidth
+                           Parser(Look, Pure, Enter), countWidth, fullLog
                           ) where
 
 import Control.Applicative
 import Data.List hiding (map, minimumBy)
+import Data.Tree
 
 -- Local versions of our Control.Arrow friends (also make sure they are lazy enough)
 first :: forall t t1 t2. (t -> t2) -> (t, t1) -> (t2, t1)
@@ -97,6 +98,18 @@ better lk (x:>xs) (y:>ys)
 
 (+>) :: Int -> (t, Profile) -> (t, Profile)
 x +> ~(ordering, xs) = (ordering, x :> xs)
+
+rightLog :: Steps s r -> Tree String
+rightLog (Val _ _ p) = rightLog p
+rightLog (App p) = rightLog p
+rightLog (Shift p) = rightLog p
+rightLog (Done) = Node "Done" []
+rightLog (Fail) = Node "Fail" []
+rightLog (Dislike p) = Node "Dislike" [rightLog p]
+rightLog (Log msg p) = Node msg [rightLog p]
+rightLog (Sus _ _) = Node "PSusp" []
+rightLog (Best _ _ l r) = Node "Split" ((rightLog l):[rightLog r])
+rightLog (Sh' _) = error "Sh' should be hidden by Sus"
 
 profile :: Steps s r -> Profile
 profile (Val _ _ p) = profile p
@@ -322,6 +335,9 @@ data Zip s output where
    Zip :: [String] -> RPolish mid output -> Steps s mid -> Zip s output
    -- note that the Stack produced by the Polish expression matches
    -- the stack consumed by the RP automaton.
+
+fullLog :: Zip s output -> ([String],(Tree String))
+fullLog (Zip msg _ rhs) = ((reverse msg), (rightLog rhs))
 
 instance Show (Zip s output) where
     show (Zip errs l r) = show l ++ "<>" ++ show r ++ ", errs = " ++ show errs
