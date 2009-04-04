@@ -99,8 +99,9 @@ emacsKeys univArg =
            spec KTab            ?>>! (adjIndent IncreaseCycle)
          , (shift $ spec KTab)  ?>>! (adjIndent DecreaseCycle)
          , spec KEnter          ?>>! (repeatingArg $ insertB '\n')
-         , spec KDel            ?>>! (repeatingArg deleteB')
-         , spec KBS             ?>>! (repeatingArg (adjBlock (-1) >> 
+         , spec KDel            ?>>! (repeatingArg (blockKillring >> deleteB'))
+         , spec KBS             ?>>! (repeatingArg (blockKillring >>
+                                                    adjBlock (-1) >> 
                                                     bdeleteB))
          , spec KHome           ?>>! (repeatingArg moveToSol)
          , spec KEnd            ?>>! (repeatingArg moveToEol)
@@ -129,7 +130,7 @@ emacsKeys univArg =
          , ctrlCh '_'           ?>>! repeatingArg undoB
          , ctrlCh 'a'           ?>>! (repeatingArg (maybeMoveB Line Backward))
          , ctrlCh 'b'           ?>>! (repeatingArg leftB)
-         , ctrlCh 'd'           ?>>! (repeatingArg deleteB')
+         , ctrlCh 'd'           ?>>! (repeatingArg (blockKillring >> deleteB'))
          , ctrlCh 'e'           ?>>! (repeatingArg (maybeMoveB Line Forward))
          , ctrlCh 'f'           ?>>! (repeatingArg rightB)
          , ctrlCh 'g'           ?>>! (setVisibleSelection False)               
@@ -193,6 +194,11 @@ emacsKeys univArg =
              optMod meta (char 'g') >>! (gotoLn . fromDoc :: Int ::: LineNumber -> BufferM Int)
          ]
   where
+  -- inserting the empty string prevents the deletion from appearing in the killring
+  -- which is a good thing when we are deleting individuals characters. See 
+  -- http://code.google.com/p/yi-editor/issues/detail?id=212
+  blockKillring = insertN ""
+
   withUnivArg :: YiAction (m ()) () => (Maybe Int -> m ()) -> YiM ()
   withUnivArg cmd = do runAction $ makeAction (cmd univArg)
 
