@@ -38,7 +38,7 @@ data Config = Config {startFrontEnd :: UIBoot,
                       -- ^ UI-specific configuration.
                       startActions :: [Action],
                       -- ^ Actions to run when the editor is started.
-                      defaultKm :: Keymap,
+                      defaultKm :: KeymapSet,
                       -- ^ Default keymap to use.
                       configInputPreprocess :: I.P Event Event,
                       modeTable :: [AnyMode],
@@ -56,6 +56,12 @@ data Config = Config {startFrontEnd :: UIBoot,
 
 configFundamentalMode :: Config -> AnyMode
 configFundamentalMode = last . modeTable
+
+configTopLevelKeymap :: Config -> Keymap
+configTopLevelKeymap = extractTopKeymap . defaultKm
+
+configInsertKeymap :: Config -> Keymap
+configInsertKeymap = extractInsertKeymap . defaultKm
 
 type UIBoot = Config -> (Event -> IO ()) -> ([Action] -> IO ()) ->  Editor -> IO UI
 

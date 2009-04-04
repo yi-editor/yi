@@ -4,7 +4,7 @@
 -- Copyright (c) 2008 Nicolas Pouillard
 
 -- | Vim keymap for Yi. Emulates vim :set nocompatible
-module Yi.Keymap.Vim (keymap, 
+module Yi.Keymap.Vim (keymapSet, 
                       viWrite, 
                       defKeymap, 
                       leaveInsRep,
@@ -354,11 +354,12 @@ movePercentageFile i = do let f :: Double
                           moveTo $ Point $ floor (fromIntegral max_p * f)
                           firstNonSpaceB
 
-mkKeymap :: Proto ModeMap -> VimMode
-mkKeymap = v_top_level . extractValue
+mkKeymap :: Proto ModeMap -> KeymapSet
+mkKeymap p = KeymapSet {extractTopKeymap = v_top_level v, extractInsertKeymap = v_ins_char v} 
+    where v = extractValue p
 
-keymap :: VimMode
-keymap = mkKeymap defKeymap
+keymapSet :: KeymapSet
+keymapSet = mkKeymap defKeymap
 
 nilCmd :: VimExCmd
 nilCmd = VimExCmd { cmdNames   = []

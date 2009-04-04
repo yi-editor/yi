@@ -546,6 +546,6 @@ acceptedInputs :: EditorM [String]
 acceptedInputs = do
     cfg <- askCfg
     keymap <- withBuffer0 $ gets (withMode0 modeKeymap)
-    let l = I.accepted 3 $ I.mkAutomaton $ keymap $ defaultKm cfg
+    let l = I.accepted 3 $ I.mkAutomaton $ keymap $ configTopLevelKeymap cfg
     return $ fmap (intercalate " ") l
 

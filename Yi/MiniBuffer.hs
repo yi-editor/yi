@@ -34,7 +34,8 @@ import qualified Data.Rope as R
 spawnMinibufferE :: String -> KeymapEndo -> EditorM BufferRef
 spawnMinibufferE prompt kmMod =
     do b <- stringToNewBuffer (Left prompt) (R.fromString "")
-       withGivenBuffer0 b $ modifyMode (\m -> m {modeKeymap = kmMod})
+       insKm <- configInsertKeymap <$> askCfg
+       withGivenBuffer0 b $ modifyMode (\m -> m {modeKeymap = \_topLevlKm -> kmMod insKm})
        w <- newWindowE True b
        modA windowsA (insertAtEnd w)
        return b
@@ -255,3 +256,5 @@ instance Promptable CommandArguments where
     getPromptedValue = return . CommandArguments . words
     getPrompt _ = "Command arguments"
     
+
+

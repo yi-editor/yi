@@ -54,11 +54,11 @@ data ModeMap = ModeMap { eKeymap :: Keymap
                        , completionCaseSensitive :: Bool
                        }
 
-keymap :: Keymap
+keymap :: KeymapSet
 keymap = mkKeymap defKeymap
 
-mkKeymap :: Proto ModeMap -> Keymap
-mkKeymap = eKeymap . extractValue
+mkKeymap :: Proto ModeMap -> KeymapSet
+mkKeymap = modelessKeymapSet . eKeymap . extractValue
 
 defKeymap :: Proto ModeMap
 defKeymap = Proto template

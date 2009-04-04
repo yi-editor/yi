@@ -136,7 +136,7 @@ defaultConfig =
            , configTheme = defaultLightTheme
            , configVtyEscDelay = 0
            }
-         , defaultKm        = nilKeymap
+         , defaultKm        = modelessKeymapSet nilKeymap
          , startActions     = []
          , publishedActions = defaultPublishedActions
          , modeTable = [AnyMode Haskell.cleverMode,
@@ -186,8 +186,8 @@ escToMeta = mkAutomaton $ forever $ (anyEvent >>= I.write) ||> do
     c <- printableChar
     I.write (Event (KASCII c) [MMeta])
 
-toVimStyleConfig cfg = cfg {defaultKm = Vim.keymap, configRegionStyle = Inclusive}
-toCuaStyleConfig cfg = cfg {defaultKm = Cua.keymap}
+toVimStyleConfig cfg = cfg {defaultKm = Vim.keymapSet, configRegionStyle = Inclusive}
+toCuaStyleConfig cfg = cfg {defaultKm = modelessKeymapSet Cua.keymap}
 
 -- | Open an emacs-like scratch buffer if no file is open.
 openScratchBuffer :: YiM ()
@@ -200,11 +200,12 @@ openScratchBuffer = withEditor $ do
                     "then enter the text in that file's own buffer."]
            return ()
 
+
 nilKeymap :: Keymap
 nilKeymap = choice [
              char 'c' ?>>  openCfg Cua.keymap,
-             char 'e' ?>>  openCfg Emacs.keymap,
-             char 'v' ?>>  openCfg Vim.keymap,
+             char 'e' ?>>  openCfg (extractTopKeymap Vim.keymapSet),
+             char 'v' ?>>  openCfg (extractTopKeymap Vim.keymapSet),
              char 'q' ?>>! quitEditor,
              char 'r' ?>>! reloadEditor,
              char 'h' ?>>! configHelp

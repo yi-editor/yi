@@ -149,7 +149,7 @@ dispatch ev =
        (userActions,_p') <- withBuffer $ do
          keymap <- gets (withMode0 modeKeymap)
          p0 <- getA keymapProcessA
-         let defKm = defaultKm $ yiConfig $ yi
+         let defKm = configTopLevelKeymap $ yiConfig $ yi
          let freshP = I.Chain (configInputPreprocess $ yiConfig $ yi) (I.mkAutomaton $ forever $ keymap $ defKm)
              -- Note the use of "forever": this has quite subtle implications, as it means that
              -- failures in one iteration can yield to jump to the next iteration seamlessly.

@@ -156,3 +156,8 @@ instance YiAction Action () where
 
 instance I.PEq Event where
     equiv = (==)
+
+data KeymapSet = KeymapSet{ extractTopKeymap :: Keymap,
+                            extractInsertKeymap :: Keymap }
+
+modelessKeymapSet k = KeymapSet k k

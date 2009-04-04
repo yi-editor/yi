@@ -94,8 +94,14 @@ defaultConfig :: Config
 defaultConfig = defaultEmacsConfig
 
 
-myKeymap :: Keymap
-myKeymap = mkKeymap $ override defKeymap $ \proto _self -> proto {completionCaseSensitive = True}
+myKeymap :: KeymapSet
+myKeymap = mkKeymap $ override defKeymap $ \proto _self -> 
+   proto {
+           completionCaseSensitive = True,
+           eKeymap = (adjustPriority (-1) >> choice [extraInput]) <|| eKeymap proto
+                     <|> (ctrl (char '>') ?>>! increaseIndent)
+                     <|> (ctrl (char '<') ?>>! decreaseIndent)
+         }
 
 main :: IO ()
 main = yi $ defaultConfig {
@@ -117,8 +123,6 @@ main = yi $ defaultConfig {
                                }
                               -- , configFontName = Just "Monaco"
                              },
-                           defaultKm = (adjustPriority (-1) >> choice [extraInput]) <|| myKeymap
-                              <|> (ctrl (char '>') ?>>! increaseIndent)
-                              <|> (ctrl (char '<') ?>>! decreaseIndent)
+                           defaultKm = myKeymap
                           }
 
