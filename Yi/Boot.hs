@@ -5,7 +5,6 @@ import Control.Monad.State
 import qualified Data.Binary
 import HConf (HConf(HConf), getHConf)
 import qualified HConf
-import Yi.Buffer.Basic
 import Yi.Config
 import Yi.Debug
 import Yi.Editor (newBufferE, Editor, withEditor)
