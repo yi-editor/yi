@@ -1,7 +1,7 @@
 \begin{hcarentry}[section]{yi}
 \label{yi}
 \report{Jean-Philippe Bernardy}
-\participants{Don Stewart}
+\participants{Jean-Philippe Bernardy, Nicolas Pouillard, Jeff Wheeler and many others}
 \status{active development}
 \makeheader
 
@@ -9,25 +9,27 @@ Yi is an editor written in Haskell and extensible in Haskell. We leverage the
 expressiveness of Haskell to provide an editor which is powerful and easy to
 extend.
 
-We have recently made Yi much more accessible. On unix systems, it can be
-deployed using a single \textbf{cabal install} command. We also polished the
-user interface and behaviour to facilitate the transition from emacs or vim.
+Defining characteristics:
+\begin{compactitem}
+\item A purely functional buffer representation;
+\item Powerful EDSLs to describe editor actions and keybindings;
+\item Syntax-highlighters as Alex files;
+\item XMonad-style static/dynamic configuration;
+\item UIs written as plugins.
+\end{compactitem}
 
-Yi features:
+We are currently working on making the Gtk front-end fully usable and improving
+the syntax highlighters. A lot of work is also put into making the transition
+from emacs or vim smoother.
+
+Features:
 \begin{compactitem}
-\item Key-bindings for emacs and vim, written as extensible parsers;
-\item Vty, Gtk2Hs frontends;
-\item Syntax highlighting for Haskell and other languages;
-\item XMonad-style static configuration;
-\item Support of Linux, MacOS and Windows platforms.
-\item Special support for Haskell: layout-aware edition, paren-matching, GHCi interface, Cabal build interface, ...
+\item Special support for Haskell: layout-aware edition, paren-matching, beautification of lambdas and arrows, GHCi interface, Cabal build interface, ...
+\item unix console UI;
+\item Support for Linux and MacOS platforms;
+\item Syntax highlighting for many mainstream languages beside Haskell;
 \end{compactitem}
-We are currently working on the following fronts:
-\begin{compactitem}
-\item Integration with Cabal and GHC API;
-\item Pango and Cocoa frontends;
-\item CUA key-bindings
-\end{compactitem}
+
 
 \FurtherReading
 \begin{compactitem}
