@@ -65,7 +65,7 @@ data JVarDecAss t = AssignNo  t             -- ^ No, no assignment
                   | AssignErr t             -- ^ What?!
                     deriving (Eq, Show)
 
-data JExpr t = ExprObj { objlcurl :: t, objrcurl :: t }
+data JExpr t = ExprObj { objlcurl :: t, objkv :: [JKeyValue t], objrcurl :: t }
              | ExprStr t
              | ExprNum t
              | ExprName t
@@ -74,8 +74,7 @@ data JExpr t = ExprObj { objlcurl :: t, objrcurl :: t }
              | ExprErr t
                deriving (Eq, Show)
 
-data JKeyValue t = JKV { key :: t, colon :: t, value :: (JExpr t) }
-                 | JKVErr t
+data JKeyValue t = JKeyValue { key :: t, colon :: t, value :: (JExpr t) }
                    deriving (Eq, Show)
 
 $(derive makeFoldable ''JTree)
@@ -193,11 +192,13 @@ varDecl = JVarDecl <$> resWord Var'
 expression :: P TT (JExpr TT)
 expression = ExprStr     <$> strTok
          <|> ExprNum     <$> numTok
-         <|> ExprObj     <$> spec '{' <*> plzSpc '}' -- TODO
+         <|> ExprObj     <$> spec '{' <*> keyValue `sepBy` spec ',' <*> plzSpc '}' -- TODO
          <|> ExprName    <$> name
          <|> ExprAnonFun <$> resWord Function' <*> plzSpc '(' <*> parameters <*> plzSpc ')' <*> funBody
          <|> ExprFunCall <$> name <*> plzSpc '(' <*> arguments <*> plzSpc ')' <*> plzSpc ';'
          <|> ExprErr     <$> recoverWith (pure unknownToken)
+    where
+      keyValue = JKeyValue <$> name <*> plzSpc ':' <*> expression
 
 
 -- * Parsing helpers
