@@ -1,5 +1,5 @@
 import Yi
-import Yi.Keymap.Vim (keymap)
+import Yi.Keymap.Vim (keymapSet)
 import qualified Yi.Mode.Haskell as Haskell
 import Yi.Style
 import Yi.Style.Library
@@ -35,5 +35,5 @@ main = yi $ defaultVimConfig {
     -- Uncomment for Shim support
     -- modeTable = [shimMode] <|> modeTable defaultVimConfig,
     configUI = myConfigUI,
-    defaultKm = keymap
+    defaultKm = keymapSet
  }

@@ -7,7 +7,7 @@ import Prelude ()
 -- Import the desired keymap "template":
 import Yi.Keymap.Emacs (keymap)
 import Yi.Keymap.Cua (keymap)
-import Yi.Keymap.Vim (keymap)
+import Yi.Keymap.Vim (keymapSet)
 
 -- Import the desired UI as needed. 
 -- Some are not complied in, so we import none here.
