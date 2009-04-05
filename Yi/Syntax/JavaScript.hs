@@ -69,12 +69,14 @@ data JExpr t = ExprObj { objlcurl :: t, objkv :: [JKeyValue t], objrcurl :: t }
              | ExprStr t
              | ExprNum t
              | ExprName t
+             | ExprBool t
              | ExprAnonFun { afres :: t, aflpar :: t, afpars :: [t], afrpar :: t, afbody :: (JFunBody t) }
              | ExprFunCall { fcname :: t, fclpar :: t, fcargs :: [JExpr t], fcrpar :: t, fcsc :: t }
              | ExprErr t
                deriving (Eq, Show)
 
 data JKeyValue t = JKeyValue { key :: t, colon :: t, value :: (JExpr t) }
+                 | JKVErr t
                    deriving (Eq, Show)
 
 $(derive makeFoldable ''JTree)
@@ -180,7 +182,7 @@ funBody = FunBodyOld <$> plzSpc '{' <*> many anyLevel <*> plzSpc '}'
 -- | Parser for variable declarations.
 varDecl :: P TT (JTree TT)
 varDecl = JVarDecl <$> resWord Var'
-                   <*> pleaseSepBy1 varDecAss (spec ',') (pure []) -- TODO: Ugly recovery?
+                   <*> plzSepBy1 varDecAss (spec ',') (pure []) -- TODO: Ugly recovery?
                    <*> plzSpc ';'
     where
       varDecAss :: P TT (JVarDecAss TT)
@@ -192,20 +194,22 @@ varDecl = JVarDecl <$> resWord Var'
 expression :: P TT (JExpr TT)
 expression = ExprStr     <$> strTok
          <|> ExprNum     <$> numTok
-         <|> ExprObj     <$> spec '{' <*> keyValue `sepBy` spec ',' <*> plzSpc '}' -- TODO
+         <|> ExprObj     <$> spec '{' <*> commas keyValue <*> plzSpc '}' -- TODO
          <|> ExprName    <$> name
+         <|> ExprBool    <$> boolean
          <|> ExprAnonFun <$> resWord Function' <*> plzSpc '(' <*> parameters <*> plzSpc ')' <*> funBody
          <|> ExprFunCall <$> name <*> plzSpc '(' <*> arguments <*> plzSpc ')' <*> plzSpc ';'
          <|> ExprErr     <$> recoverWith (pure unknownToken)
     where
       keyValue = JKeyValue <$> name <*> plzSpc ':' <*> expression
+             <|> JKVErr <$> pure unknownToken
 
 
 -- * Parsing helpers
 
 -- | Like 'sepBy1', but with recovery.
-pleaseSepBy1 :: P s a -> P s b -> P s [a] -> P s [a]
-pleaseSepBy1 p s r  = (:) <$> p <*> (many (s *> p) <|> recoverWith r)
+plzSepBy1 :: P s a -> P s b -> P s [a] -> P s [a]
+plzSepBy1 p s r  = (:) <$> p <*> (many (s *> p) <|> recoverWith r)
 
 -- | Parser for comma-separated identifiers.
 parameters :: P TT [TT]
@@ -216,7 +220,7 @@ arguments :: P TT [JExpr TT]
 arguments = commas expression
 
 commas :: P TT a -> P TT [a]
-commas x = x `sepBy` (spec ',')
+commas x = x `sepBy` spec ','
 
 -- TODO: Why do these give type-errors even when they're not used?
 -- parens  x = plzSpc '(' <*> x <*> plzSpc ')'
@@ -239,6 +243,11 @@ name :: P TT TT
 name = symbol (\t -> case fromTT t of
                        ValidName _ -> True
                        _           -> False)
+
+boolean :: P TT TT
+boolean = symbol (\t -> case fromTT t of
+                          Res y -> y `elem` [True', False']
+                          _     -> False)
 
 resWord :: Reserved -> P TT TT
 resWord x = symbol (\t -> case fromTT t of
