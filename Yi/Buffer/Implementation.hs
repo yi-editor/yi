@@ -19,7 +19,6 @@ module Yi.Buffer.Implementation
   , isValidUpdate
   , reverseUpdateI
   , nelemsBI
-  , nelemsBI'
   , sizeBI
   , newBI
   , solPoint
@@ -203,9 +202,6 @@ sizeBI = Point . F.length . mem
 -- | Return @n@ Chars starting at @i@ of the buffer as a list
 nelemsBI :: Int -> Point -> BufferImpl syntax -> String
 nelemsBI n i fb = readChars (mem fb) n i
-
-nelemsBI' :: Size -> Point -> BufferImpl syntax -> String
-nelemsBI' n i fb = F.toString $ readChunk (mem fb) n i
 
 getStream :: Direction -> Point -> BufferImpl syntax -> Rope
 getStream Forward  (Point i) fb =             F.drop i $ mem $ fb

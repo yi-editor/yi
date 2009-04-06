@@ -42,7 +42,7 @@ deleteRegionB r = deleteNAt (regionDirection r) (fromIntegral (regionEnd r ~- re
 
 -- | Read an arbitrary part of the buffer
 readRegionB :: Region -> BufferM String
-readRegionB r = nelemsB' (regionEnd r ~- i) i
+readRegionB r = nelemsB (fromIntegral (regionEnd r - i)) i
     where i = regionStart r
 
 -- | Replace a region with a given string.

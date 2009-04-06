@@ -46,7 +46,6 @@ module Yi.Buffer.Misc
   , insertB
   , deleteN
   , nelemsB
-  , nelemsB'
   , writeB
   , writeN
   , deleteNAt
@@ -612,10 +611,6 @@ pointB = getMarkPointB =<< getInsMark
 -- | Return @n@ elems starting at @i@ of the buffer as a list
 nelemsB :: Int -> Point -> BufferM String
 nelemsB n i = queryBuffer $ nelemsBI n i
-
--- | Return @n@ bytes starting at @i@ of the buffer as a list, and convert it to a string.
-nelemsB' :: Size -> Point -> BufferM String
-nelemsB' n i = queryBuffer $ nelemsBI' n i
 
 streamB :: Direction -> Point -> BufferM Rope
 streamB dir i = queryBuffer (getStream dir i)
