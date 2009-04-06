@@ -1,5 +1,4 @@
 {-# LANGUAGE PatternGuards, ExistentialQuantification, DeriveDataTypeable, Rank2Types, FlexibleContexts, FlexibleInstances, TemplateHaskell #-}
-
 -- Copyright (c) 2004-5 Don Stewart - http://www.cse.unsw.edu.au/~dons
 -- Copyright (c) 2007-8 JP Bernardy
 
@@ -23,8 +22,8 @@ module Yi.Buffer.Implementation
   , nelemsBI'
   , sizeBI
   , newBI
-  , solPointI
-  , gotoLnRelI
+  , solPoint
+  , solPoint'
   , charsFromSolBI
   , regexRegionBI
   , getMarkDefaultPosBI
@@ -52,11 +51,10 @@ import Data.Binary
 import Data.Rope (Rope)
 import Data.DeriveTH
 import Data.Derive.Binary
-import Data.List (groupBy, zip, filter, takeWhile, length)
+import Data.List (groupBy, zip, takeWhile)
 import Data.Maybe 
 import Data.Monoid
 import Data.Typeable
-import Data.Word
 import Prelude (take, takeWhile, dropWhile, map, reverse)
 import Yi.Buffer.Basic
 import Yi.Prelude
@@ -303,68 +301,18 @@ reverseUpdateI (Insert p dir cs) = Delete p (reverseDir dir) cs
 newLine :: Char
 newLine = '\n'
 
-count :: Char -> String -> Int
-count c = length . filter (== c)
-
+-- | Line at the given point. (Lines are indexed from 1)
 lineAt :: Point -> BufferImpl syntax -> Int
-lineAt point fb = 1 + (F.countNewLines $ F.take (fromPoint point) (mem fb))
+lineAt (Point point) fb = 1 + (F.countNewLines $ F.take point (mem fb))
 
-
-elemIndices :: Char -> Point -> Direction -> BufferImpl syntax -> [Point]
-elemIndices c p dir fb = map fst $ filter ((c ==) . snd) $ getIndexedStream dir p fb
-
+-- | Point that starts the given line (Lines are indexed from 1)
+solPoint :: Int -> BufferImpl syntax -> Point
+solPoint line fb = Point $ F.length $ fst $ F.splitAtLine (line - 1) (mem fb)
 
 -- | Get begin of the line relatively to @point@.
-solPointI :: Point -> BufferImpl syntax -> Point
-solPointI point = maybe 0 (+1) . listToMaybe . elemIndices newLine point Backward
+solPoint' :: Point -> BufferImpl syntax -> Point
+solPoint' point fb = solPoint (lineAt point fb) fb
 
--- | Get the point at line number @n@, relatively from @point@. @0@ will go to
--- the start of this line. Returns the actual line difference we went
--- to (which may be not be the requested one, if it was out of range)
--- Note that the line-difference returned will be negative if we are
--- going backwards to previous lines (that is if @n@ was negative).
-gotoLnRelI :: Int -> Point -> BufferImpl syntax -> (Point, Int)
-gotoLnRelI n point fb = (newPoint, difference)
-  where
-  -- The current point that we are at in the buffer.
-  (difference, newPoint)
-    -- Important that we go up if it is 0 since findDownLine
-    -- fails for zero.
-    | n <= 0    = findUpLine 0 n upLineStarts
-    | otherwise = findDownLine 1 n downLineStarts
-
-  -- The offsets of all line beginnings above the current point.
-  upLineStarts = map (+1) (elemIndices newLine point Backward fb) ++ [0]
-
-  -- Go up to find the line we wish for the returned value is a pair
-  -- consisting of the point of the start of the line to which we move
-  -- and the difference in lines we have moved (negative here if we move at all)
-  findUpLine :: Int -> Int -> [Point] -> (Int, Point)
-  findUpLine acc _ [x]    = (acc, x)
-  findUpLine acc 0 (x:_)  = (acc, x)
-  findUpLine acc l (_:xs) = findUpLine (acc - 1) (l + 1) xs
-  findUpLine _ _ []       =
-    error $ "we append [0] to the end of upLineStarts" ++
-            " hence this cannot happen."
-
-  -- The offsets of all the line beginnings below the current point
-  -- so we drop everything before the point, find all the indices of
-  -- the newlines from there and add the point (plus 1) to them.
-  downLineStarts = map (+1) $ elemIndices newLine point Forward fb
-
-  -- Go down to find the line we wish for, the returned value is a pair
-  -- consisting of the point of the start of the line to which we move
-  -- and the number of lines we have actually moved.
-  -- Note: that this doesn't work if the number of lines to move down
-  -- is zero. 
-  findDownLine :: Int -> Int -> [Point] -> (Int, Point)
-  -- try to go forward, but there is no such line
-  -- this cannot happen on a recursive call so it can only happen if
-  -- we started on the last line, so we return the current point.
-  findDownLine acc _ []     = (acc, point) 
-  findDownLine acc _ [x]    = (acc, x)
-  findDownLine acc 1 (x:_)  = (acc, x)
-  findDownLine acc l (_:xs) = findDownLine (acc + 1) (l - 1) xs
 
 charsFromSolBI :: Point -> BufferImpl syntax -> String
 charsFromSolBI pnt fb = reverse $ takeWhile (/= newLine) $ F.toString $ getStream Backward pnt fb

@@ -7,6 +7,13 @@
 
 -- While the representation are ByteStrings stored in a finger tree, the indices
 -- are actually in number of characters.
+
+-- This is currently based on utf8-string, but a couple of other packages might be
+-- better: text, compact-string. 
+
+-- At the moment none of them has a lazy
+-- implementation, which forces us to always export plain Strings.
+-- (Utf8-string does not have a proper newtype)
  
 module Data.Rope (
    Rope,
@@ -18,7 +25,7 @@ module Data.Rope (
    toString, toReverseString,
  
    -- * List-like functions
-   null, empty, take, drop, append, splitAt, length, reverse, countNewLines,
+   null, empty, take, drop, append, splitAt, splitAtLine, length, reverse, countNewLines,
  
    -- * IO
    readFile, writeFile
@@ -28,7 +35,7 @@ import Prelude hiding (null, head, tail, length, take, drop, splitAt, head, tail
 import qualified Data.List as L
  
 import qualified Data.ByteString.UTF8 as B
-import qualified Data.ByteString as B (null, append, concat)
+import qualified Data.ByteString as B (null, append, concat, elemIndices)
 import Data.ByteString (ByteString)
 import qualified Data.ByteString.Lazy as LB (toChunks, fromChunks, writeFile, null, readFile)
 import qualified Data.ByteString.Lazy.UTF8 as LB 
@@ -37,6 +44,7 @@ import qualified Data.FingerTree as T
 import Data.FingerTree hiding (null, empty, reverse)
  
 import Data.Binary
+import Data.Char (ord)
 import Data.Monoid
 import Data.Foldable (toList)
  
@@ -44,6 +52,7 @@ chunkSize :: Int
 chunkSize = 128 -- in chars!
  
 data Size = Indices {charIndex :: !Int, lineIndex :: Int} -- lineIndex is lazy because we do not often want the line count.
+  deriving Show
 
 instance Monoid Size where
     mempty = Indices 0 0
@@ -103,10 +112,11 @@ null (Rope a) = T.null a
 empty :: Rope
 empty = Rope T.empty
  
--- | Get the length of the standard string.
+-- | Get the length of the string. (This information cached, so O(1) amortized runtime.)
 length :: Rope -> Int
 length = charIndex . measure . fromRope
 
+-- | Count the number of newlines in the strings. (This information cached, so O(1) amortized runtime.)
 countNewLines :: Rope -> Int
 countNewLines = lineIndex . measure . fromRope
 
@@ -135,7 +145,33 @@ splitAt n (Rope t) =
    where
      (l, c) = T.split ((> n) . charIndex) t
      n' = n - charIndex (measure l)
- 
+
+-- | Split before the specified line. Lines are indexed from 0.
+splitAtLine :: Int -> Rope -> (Rope, Rope)
+splitAtLine n | n <= 0     = \r -> (empty, r)
+              | otherwise = splitAtLine' (n-1)
+
+-- | Split after the specified line. Lines are indexed from 0.
+splitAtLine' :: Int -> Rope -> (Rope, Rope)
+splitAtLine' n (Rope t) =
+   case T.viewl c of
+     x :< r ->
+       let (lx, rx) = cutExcess excess x 
+           excess = lineIndex (measure l) + lineIndex (measure x) - n - 1
+       in (Rope $ l |- lx, Rope $ rx -| r)
+     _ -> (Rope l, Rope c)
+   where
+     (l, c) = T.split ((n <) . lineIndex) t
+
+
+cutExcess :: Int -> ByteString -> (ByteString, ByteString)
+cutExcess i s = let idx = gt i $ L.reverse $ B.elemIndices (fromIntegral $ ord $ '\n') s
+                in B.splitAt (idx+1) s -- take one extra char to that the newline is found on the left.
+    where gt _ []     = B.length s
+          gt 0 (x:_ ) = x
+          gt n (_:xs) = gt (n-1) xs
+          
+
 instance Binary Rope where
      put = put . toString
      get = fromString `fmap` get

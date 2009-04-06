@@ -923,17 +923,18 @@ colMove col _    = col + 1
 solPointB :: BufferM Point
 solPointB = do
   p <- pointB
-  queryBuffer $ solPointI p
+  queryBuffer $ solPoint' p
 
 -- | Go to line indexed from current point
 -- Returns the actual moved difference which of course
 -- may be negative if the requested difference was negative.
 gotoLnFrom :: Int -> BufferM Int
 gotoLnFrom x = do
-    p <- pointB
-    (p',lineDiff) <- queryBuffer $ gotoLnRelI x p 
+    l <- curLn
+    p' <- queryBuffer $ solPoint (l + x)
     moveTo p'
-    return lineDiff
+    l' <- curLn
+    return (l' - l)
 
 -- | Access to a value into the extensible state, keyed by its type.
 --   This allows you to save or retrieve inside a 'BufferM' monad, ie:
