@@ -27,13 +27,12 @@ import Yi.UI.Utils
 import Yi.Window
 
 import Data.Maybe
+import qualified Data.Rope as R
 import qualified Data.Map as M
 import qualified Data.List as L
 
 import Foreign hiding (new)
 import Foreign.C
-
-import qualified Data.ByteString.Lazy.UTF8 as LB
 
 -- Specify Cocoa imports explicitly, to avoid name-clashes.
 -- Since the number of functions recognized by HOC varies
@@ -63,42 +62,41 @@ instance Has_characterAtIndex (NSString a)
 $(declareRenamedSelector "getCharacters:range:" "getCharactersRange" [t| Ptr Unichar -> NSRange -> IO () |])
 instance Has_getCharactersRange (NSString a)
 
--- Introduce a NSString subclass that has a lazy bytestring internally
+-- Introduce a NSString subclass that has a Data.Rope internally.
 -- A NSString subclass needs to implement length and characterAtIndex,
--- and for performance reasons getCharactersRange
--- The implementation here is a quick hack and I have no idea how it
--- works with anything except ASCII characters. Cocoa uses UTF16 to
--- store characters, and Yi uses UTF8, so supposedly some recoding
--- has to take place. For UTF8 is converted to Char's that are then
--- just dealt with as if they were in UTF16...
-
-$(declareClass "YiLBString" "NSString")
-$(exportClass "YiLBString" "yls_" [
-    InstanceVariable "str" [t| LB.ByteString |] [| LB.fromString "" |]
+-- and for performance reasons getCharactersRange.
+-- This implementation is a hack just like the old bytestring one,
+-- but less so as Rope uses character indices instead of byte indices.
+-- In theory, this should work fine for all characters in the
+-- unicode BMP. I am unsure as to what happens if any characters
+-- outside of the BMP are used.
+$(declareClass "YiRope" "NSString")
+$(exportClass "YiRope" "yirope_" [
+    InstanceVariable "str" [t| R.Rope |] [| R.fromString "" |]
   , InstanceMethod 'length -- '
   , InstanceMethod 'characterAtIndex -- '
   , InstanceMethod 'getCharactersRange -- '
   ])
 
-yls_length :: YiLBString () -> IO CUInt
-yls_length slf = do
-  -- logPutStrLn $ "Calling yls_length (gah...)"
-  slf #. _str >>= return . fromIntegral . LB.length
+yirope_length :: YiRope () -> IO CUInt
+yirope_length slf = do
+  -- logPutStrLn $ "Calling yirope_length (gah...)"
+  slf #. _str >>= return . fromIntegral . R.length
 
-yls_characterAtIndex :: CUInt -> YiLBString () -> IO Unichar
-yls_characterAtIndex i slf = do
-  -- logPutStrLn $ "Calling yls_characterAtIndex " ++ show i
-  slf #. _str >>= return . last . encodeUTF16 . fromEnum . fst . fromJust . LB.decode . LB.drop (fromIntegral i)
+yirope_characterAtIndex :: CUInt -> YiRope () -> IO Unichar
+yirope_characterAtIndex i slf = do
+  -- logPutStrLn $ "Calling yirope_characterAtIndex " ++ show i
+  slf #. _str >>= return . last . encodeUTF16 . fromEnum . head . R.toString . R.drop (fromIntegral i)
 
-yls_getCharactersRange :: Ptr Unichar -> NSRange -> YiLBString () -> IO ()
-yls_getCharactersRange p _r@(NSRange i l) slf = do
-  -- logPutStrLn $ "Calling yls_getCharactersRange " ++ show r
+yirope_getCharactersRange :: Ptr Unichar -> NSRange -> YiRope () -> IO ()
+yirope_getCharactersRange p _r@(NSRange i l) slf = do
+  -- logPutStrLn $ "Calling yirope_getCharactersRange " ++ show r
   slf #. _str >>=
     pokeArray p .
     concatMap (encodeUTF16 . fromEnum) .
-    LB.toString .
-    LB.take (fromIntegral l) . -- TODO: Is l given in bytes or characters?
-    LB.drop (fromIntegral i)
+    R.toString .
+    R.take (fromIntegral l) .
+    R.drop (fromIntegral i)
 
 encodeUTF16 :: Int -> [Unichar]
 encodeUTF16 c
@@ -194,7 +192,7 @@ $(exportClass "YiTextStorage" "yts_" [
   , InstanceVariable "uiStyle" [t| Maybe UIStyle |] [| Nothing |]
   , InstanceVariable "dictionaryCache" [t| M.Map Attributes (NSDictionary ()) |] [| M.empty |]
   , InstanceVariable "pictureCache" [t| (Picture, NSRange) |] [| emptyPicture |]
-  , InstanceVariable "stringCache" [t| Maybe (YiLBString ()) |] [| Nothing |]
+  , InstanceVariable "stringCache" [t| Maybe (YiRope ()) |] [| Nothing |]
   , InstanceMethod 'string -- '
   , InstanceMethod 'fixesAttributesLazily -- '
   , InstanceMethod 'attributeAtIndexEffectiveRange -- '
@@ -382,17 +380,17 @@ bufferPicture ed sty buf win r =
 type TextStorage = YiTextStorage ()
 initializeClass_TextStorage :: IO ()
 initializeClass_TextStorage = do
-  initializeClass_YiLBString
+  initializeClass_YiRope
   initializeClass_YiTextStorage
 
 applyUpdate :: YiTextStorage () -> FBuffer -> Update -> IO ()
 applyUpdate buf b (Insert p _ s) =
   let p' = runBufferDummyWindow b (charIndexB p) in
   buf # editedRangeChangeInLength nsTextStorageEditedCharacters
-          (NSRange (fromIntegral p') 0) (fromIntegral $ LB.length s)
+          (NSRange (fromIntegral p') 0) (fromIntegral $ R.length s)
 
 applyUpdate buf b (Delete p _ s) =
-  let (p', len) = (runBufferDummyWindow b (charIndexB p), LB.length s) in
+  let (p', len) = (runBufferDummyWindow b (charIndexB p), R.length s) in
   buf # editedRangeChangeInLength nsTextStorageEditedCharacters
           (NSRange (fromIntegral p') (fromIntegral len)) (fromIntegral (negate len))
 
@@ -402,7 +400,7 @@ newTextStorage sty b w = do
   buf # setIVar _buffer (Just b)
   buf # setIVar _window (Just w)
   buf # setIVar _uiStyle (Just sty)
-  s <- new _YiLBString
+  s <- new _YiRope
   s # setIVar _str (runBufferDummyWindow b (streamB Forward 0))
   buf # setIVar _stringCache (Just s)
   buf # setMonospaceFont
