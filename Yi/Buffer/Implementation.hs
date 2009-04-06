@@ -307,7 +307,7 @@ count :: Char -> String -> Int
 count c = length . filter (== c)
 
 lineAt :: Point -> BufferImpl syntax -> Int
-lineAt point fb = 1 + (count newLine $ F.toString $ F.take (fromPoint point) (mem fb))
+lineAt point fb = 1 + (F.countNewLines $ F.take (fromPoint point) (mem fb))
 
 
 elemIndices :: Char -> Point -> Direction -> BufferImpl syntax -> [Point]

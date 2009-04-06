@@ -18,7 +18,7 @@ module Data.Rope (
    toString, toReverseString,
  
    -- * List-like functions
-   null, empty, take, drop, append, splitAt, length, reverse,
+   null, empty, take, drop, append, splitAt, length, reverse, countNewLines,
  
    -- * IO
    readFile, writeFile
@@ -43,7 +43,11 @@ import Data.Foldable (toList)
 chunkSize :: Int
 chunkSize = 128 -- in chars!
  
-type Size = Sum Int -- use the additive monoid on Int
+data Size = Indices {charIndex :: !Int, lineIndex :: Int} -- lineIndex is lazy because we do not often want the line count.
+
+instance Monoid Size where
+    mempty = Indices 0 0
+    mappend (Indices c1 l1) (Indices c2 l2) = Indices (c1+c2) (l1+l2)
  
 newtype Rope = Rope { fromRope :: FingerTree Size ByteString }
    deriving (Eq, Show)
@@ -56,8 +60,9 @@ b -| t | B.null b  = t
 t |- b | B.null b  = t
         | otherwise = t |> b
  
-instance Measured (Sum Int) ByteString where
-   measure = Sum . B.length -- in chars!
+instance Measured Size ByteString where
+   measure s = Indices (B.length s)  -- note that this is the length in characters, not bytes.
+                       (B.foldr (\c -> if c == '\n' then (1+) else id) 0 s)
  
 toLazyByteString :: Rope -> LB.ByteString
 toLazyByteString = LB.fromChunks . toList . fromRope
@@ -100,8 +105,11 @@ empty = Rope T.empty
  
 -- | Get the length of the standard string.
 length :: Rope -> Int
-length = getSum . measure . fromRope
- 
+length = charIndex . measure . fromRope
+
+countNewLines :: Rope -> Int
+countNewLines = lineIndex . measure . fromRope
+
 -- | Append two strings by merging the two finger trees.
 append :: Rope -> Rope -> Rope
 append (Rope a) (Rope b) = Rope $
@@ -125,8 +133,8 @@ splitAt n (Rope t) =
        let (lx, rx) = B.splitAt n' x in (Rope $ l |- lx, Rope $ rx -| r)
      _ -> (Rope l, Rope c)
    where
-     (l, c) = T.split ((> n) . getSum) t
-     n' = n - getSum (measure l)
+     (l, c) = T.split ((> n) . charIndex) t
+     n' = n - charIndex (measure l)
  
 instance Binary Rope where
      put = put . toString

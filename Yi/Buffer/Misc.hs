@@ -148,8 +148,6 @@ import Data.Typeable
 import {-# source #-} Yi.Keymap
 import Yi.Monad
 import Yi.Interact as I
-import qualified Data.ByteString.Lazy.UTF8 as LazyUTF8
-import qualified Data.ByteString.Lazy as LB
 import Yi.Buffer.Basic
 import Data.Time
 
