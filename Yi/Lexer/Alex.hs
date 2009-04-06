@@ -71,9 +71,9 @@ moveStr :: Posn -> IndexedStr -> Posn
 moveStr posn str = foldl' moveCh posn (fmap snd str)
 
 moveCh :: Posn -> Char -> Posn
-moveCh (Posn o l c) '\t' = Posn (o+1)  l       (((c+8) `div` 8)*8)
-moveCh (Posn o l _) '\n' = Posn (o+1)  (l+1)   0
-moveCh (Posn o l c) chr  = Posn (o+~1) l       (c+1)
+moveCh (Posn o l c) '\t' = Posn (o+1) l       (((c+8) `div` 8)*8)
+moveCh (Posn o l _) '\n' = Posn (o+1) (l+1)   0
+moveCh (Posn o l c) _    = Posn (o+1) l       (c+1)
 
 alexGetChar :: AlexInput -> Maybe (Char, AlexInput)
 alexGetChar (_,[]) = Nothing

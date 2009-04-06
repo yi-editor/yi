@@ -160,4 +160,5 @@ instance I.PEq Event where
 data KeymapSet = KeymapSet{ extractTopKeymap :: Keymap,
                             extractInsertKeymap :: Keymap }
 
+modelessKeymapSet :: Keymap -> KeymapSet
 modelessKeymapSet k = KeymapSet k k

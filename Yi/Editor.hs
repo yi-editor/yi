@@ -27,7 +27,6 @@ import Yi.Prelude
 import Yi.Style (StyleName, defaultStyle)
 import Yi.Window
 import qualified Data.Rope as R
-import qualified Data.ByteString.Lazy.UTF8 as LazyUTF8
 import qualified Data.DelayList as DelayList
 import qualified Data.List.PointedList as PL (atEnd)
 import qualified Data.List.PointedList.Circular as PL
@@ -375,6 +374,7 @@ newBufferE f s = do
     switchToBufferE b
     return b
 
+alternateBufferE :: Int -> EditorM ()
 alternateBufferE n = do
     Window { bufAccessList = lst } <- getA currentWindowA
     if null lst || (length lst - 1) < n

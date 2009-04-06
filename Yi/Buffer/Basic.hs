@@ -5,12 +5,7 @@ module Yi.Buffer.Basic where
 import Prelude (reverse)
 import Data.Binary    
 import Yi.Prelude
-import qualified Data.ByteString.UTF8 as UTF8
-import qualified Data.ByteString.Lazy.UTF8 as LazyUTF8
-import qualified Data.ByteString as B
-import qualified Data.ByteString.Lazy as LB
 import qualified Data.Rope as R
-import Data.Char (ord)
 import Data.Typeable
 import Data.DeriveTH
 import Data.Derive.Binary

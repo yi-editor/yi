@@ -51,10 +51,9 @@ import Control.Monad
 import Data.Array
 import Data.Binary
 import Data.Rope (Rope)
-import Data.Char
 import Data.DeriveTH
 import Data.Derive.Binary
-import Data.List (groupBy, drop, zip, filter, takeWhile, length)
+import Data.List (groupBy, zip, filter, takeWhile, length)
 import Data.Maybe 
 import Data.Monoid
 import Data.Typeable
@@ -66,10 +65,7 @@ import Yi.Regex
 import Yi.Region
 import Yi.Style
 import Yi.Syntax 
-import qualified Codec.Binary.UTF8.Generic as UF8Codec
 import qualified Data.Rope as F
-import qualified Data.ByteString.Lazy as LazyB
-import qualified Data.ByteString.Lazy.UTF8 as LazyUTF8
 import qualified Data.Map as M
 import qualified Data.Set as Set
 
@@ -229,8 +225,7 @@ getStream Backward (Point i) fb = F.reverse $ F.take i $ mem $ fb
 getIndexedStream :: Direction -> Point -> BufferImpl syntax -> [(Point,Char)]
 getIndexedStream Forward  (Point p) fb = zip [Point p..]           $ F.toString        $ F.drop p $ mem $ fb
 getIndexedStream Backward (Point p) fb = zip (dF (pred (Point p))) $ F.toReverseString $ F.take p $ mem $ fb
-
-dF n = n : dF (pred n)
+    where dF n = n : dF (pred n)
 
 -- | Create an "overlay" for the style @sty@ between points @s@ and @e@
 mkOverlay :: OvlLayer -> Region -> StyleName -> Overlay
@@ -313,9 +308,6 @@ reverseUpdateI (Insert p dir cs) = Delete p (reverseDir dir) cs
 
 ------------------------------------------------------------------------
 -- Line based editing
-
-ord' :: Char -> Word8
-ord' = fromIntegral . ord
 
 newLine :: Char
 newLine = '\n'
