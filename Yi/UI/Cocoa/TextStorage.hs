@@ -368,13 +368,13 @@ byteToCharPicture o (p:ps) ((i,a):xs)
 
 bufferPicture :: Editor -> UIStyle -> FBuffer -> Window -> Region -> Picture
 bufferPicture ed sty buf win r =
-  let (r',is) = fst $ runBuffer win buf ((,) <$> byteRegionB r <*> indexStreamRegionB r)
+  let is = fst $ runBuffer win buf (indexStreamRegionB r)
   in Picture
   { picRegion = r
   , picStrokes =
       paintCocoaPicture sty (regionEnd r) $
         byteToCharPicture (regionStart r) is $
-          (fst $ runBuffer win buf (attributesPictureB sty (currentRegex ed) r' []))
+          (fst $ runBuffer win buf (attributesPictureB sty (currentRegex ed) r []))
   }
 
 type TextStorage = YiTextStorage ()
@@ -385,14 +385,13 @@ initializeClass_TextStorage = do
 
 applyUpdate :: YiTextStorage () -> FBuffer -> Update -> IO ()
 applyUpdate buf b (Insert p _ s) =
-  let p' = runBufferDummyWindow b (charIndexB p) in
   buf # editedRangeChangeInLength nsTextStorageEditedCharacters
-          (NSRange (fromIntegral p') 0) (fromIntegral $ R.length s)
+          (NSRange (fromIntegral p) 0) (fromIntegral $ R.length s)
 
 applyUpdate buf b (Delete p _ s) =
-  let (p', len) = (runBufferDummyWindow b (charIndexB p), R.length s) in
+  let len = R.length s in
   buf # editedRangeChangeInLength nsTextStorageEditedCharacters
-          (NSRange (fromIntegral p') (fromIntegral len)) (fromIntegral (negate len))
+          (NSRange (fromIntegral p) (fromIntegral len)) (fromIntegral (negate len))
 
 newTextStorage :: UIStyle -> FBuffer -> Window -> IO TextStorage
 newTextStorage sty b w = do
