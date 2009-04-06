@@ -46,7 +46,7 @@ instance Show BufferRef where
     show (BufferRef r) = "B#" ++ show r
 
 -- | A point in a buffer
-newtype Point = Point {fromPoint :: Int}           -- offset in the buffer (#bytes, NOT codepoints)
+newtype Point = Point {fromPoint :: Int}           -- offset in the buffer (#codepoints, NOT bytes)
     deriving (Eq, Ord, Enum, Bounded, Typeable, Binary)
 
 deriving instance Num Point
