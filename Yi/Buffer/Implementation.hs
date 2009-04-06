@@ -36,7 +36,6 @@ module Yi.Buffer.Implementation
   , addOverlayBI
   , delOverlayBI
   , delOverlayLayer
-  , inBounds
   , updateSyntax
   , getAst
   , strokesRangesBI
@@ -178,14 +177,6 @@ deleteChars p (Point i) (Size n) = left `F.append` right
     where (left,rest) = F.splitAt i p
           right = F.drop n rest
 {-# INLINE deleteChars #-}
-
--- | calculate whether a move is in bounds.
--- Note that one can move to 1 char past the end of the buffer.
-inBounds :: Point -> Point -> Point
-inBounds i end | i <= 0    = 0
-               | i > end   = max 0 end
-               | otherwise = i
-{-# INLINE inBounds #-}
 
 ------------------------------------------------------------------------
 -- Mid-level insert/delete
