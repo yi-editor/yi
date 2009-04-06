@@ -76,9 +76,9 @@ fwriteE = fwriteBufferE =<< gets currentBuffer
 fwriteBufferE :: BufferRef -> YiM ()
 fwriteBufferE bufferKey = 
   do nameContents <- withGivenBuffer bufferKey ((,) <$> gets file <*> streamB Forward 0)
-     now <- io getCurrentTime
      case nameContents of
-       (Just f, contents) -> do withGivenBuffer bufferKey (markSavedB now)
+       (Just f, contents) -> do now <- io getCurrentTime
+                                withGivenBuffer bufferKey (markSavedB now)
                                 liftIO $ R.writeFile f contents
        (Nothing, _c)      -> msgEditor "Buffer not associated with a file"
 
