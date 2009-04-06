@@ -54,7 +54,7 @@ import Data.List (groupBy, zip, takeWhile)
 import Data.Maybe 
 import Data.Monoid
 import Data.Typeable
-import Prelude (take, takeWhile, dropWhile, map, reverse)
+import Prelude (takeWhile, dropWhile, map)
 import Yi.Buffer.Basic
 import Yi.Prelude
 import Yi.Regex
@@ -152,11 +152,6 @@ $(derive makeBinary ''UIUpdate)
 newBI :: Rope -> BufferImpl ()
 newBI s = FBufferData s M.empty M.empty dummyHlState Set.empty 0
 
--- | read @n@ chars from buffer @b@, starting at @i@
-readChars :: Rope -> Int -> Point -> String
-readChars p n (Point i) = take n $ F.toString $ F.drop i $ p
-{-# INLINE readChars #-}
-
 -- | read @n@ bytes from buffer @b@, starting at @i@
 readChunk :: Rope -> Size -> Point -> Rope
 readChunk p (Size n) (Point i) = F.take n $ F.drop i $ p
@@ -201,7 +196,7 @@ sizeBI = Point . F.length . mem
 
 -- | Return @n@ Chars starting at @i@ of the buffer as a list
 nelemsBI :: Int -> Point -> BufferImpl syntax -> String
-nelemsBI n i fb = readChars (mem fb) n i
+nelemsBI n i fb = F.toString $ readChunk (mem fb) (Size n) i
 
 getStream :: Direction -> Point -> BufferImpl syntax -> Rope
 getStream Forward  (Point i) fb =             F.drop i $ mem $ fb
@@ -311,8 +306,8 @@ solPoint' point fb = solPoint (lineAt point fb) fb
 
 
 charsFromSolBI :: Point -> BufferImpl syntax -> String
-charsFromSolBI pnt fb = reverse $ takeWhile (/= newLine) $ F.toString $ getStream Backward pnt fb
-
+charsFromSolBI pnt fb = nelemsBI (fromIntegral $ pnt - sol) pnt fb
+    where sol = solPoint' pnt fb
 
 -- | Return indices of all strings in buffer matching regex, inside the given region.
 regexRegionBI :: SearchExp -> Region -> forall syntax. BufferImpl syntax -> [Region]
