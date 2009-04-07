@@ -107,32 +107,49 @@ oneByOne thisFar (h:rest) =
     in  ((countWidth res):i,p')
 
 -- | Dot functions
-fromTree :: Tree String ->[String]
+fromTree :: Tree (LogEntry,Int) ->[String]
 fromTree node
-    = let r = map (names) (subForest node)
+    = let r = map edge (subForest node)
           rest = (map fromTree (subForest node))
-      in (r ++ (concat rest))
- where names n = "        " ++ (show $ rootLabel node)
-                  ++ " -> " ++ (show $ rootLabel n)
+      in (name : r ++ (concat rest))
+ where edge n = "        " ++ (show $ snd $ rootLabel node)
+                 ++ " -> " ++ (show $ snd $ rootLabel n) 
+       name = (show $ snd $ rootLabel node) ++" [style=filled,color="++ toColor (fst $ rootLabel node) ++ " ,label=" ++showLog (fst $ rootLabel node) ++ " ]"
+
+-- | Replace the Shifts with the token it represents
+shift' :: [TT] -> Tree (LogEntry,Int) -> Tree (LogEntry,Int)
+shift' (x:toks) (Node (LShift,n) trees) = (Node ((LS $ show x),n) (map (shift' toks) trees))
+shift' toks (Node r trees)          = (Node r (map (shift' toks) trees))
+
+
+toColor s = case s of
+    LEmpty -> "lightgray"
+    LDislike -> "yellow"
+    LShift -> "cyan"
+    LDone -> "lightseagreen"
+    LFail -> "red"
+    LSusp -> "green"
+    (LLog str) -> "orange1"
+    (LS str) -> "cyan"
+
+showLog p = case p of
+    (LLog str) -> "\"" ++ str ++ "\""
+    (LS str)   -> "\"" ++ helper str ++ "\""
+    p          -> show p
+  where helper p = drop 2 $ filter ((/=) '\"') $ dropWhile ((/=) ':') p
 
 -- | Write the file
-writeTree :: [TT] -> String -> Tree String -> IO ()
+writeTree :: [TT] -> String -> Tree LogEntry -> IO ()
 writeTree toks fName r = writeFile fName addBegEnd
     where addBegEnd = unlines $ ["digraph G {"] 
-                         ++ take 3000 (fromTree $ (\(x,y)-> x)(numTree toks (r,0))) -- dont create too big trees
+                         ++ take 3000 (fromTree $ (shift' toks) $ (\(x,y)-> x)(numTree (r,0))) -- dont create too big trees
                          ++ ["}"]
 
 -- | Give unique number to each tree, also put the added token into the Tree
-numTree ::[TT] -> ((Tree String),Int) ->((Tree String),Int)
-numTree toks ((Node name []),n) = let (name',toks') = getTok' name toks
-                                  in ((Node (name'++(show n)) []),n+1)
-numTree toks ((Node name (x:[]),n)) = let (name',toks') = getTok' name toks
-                                          (x',n') = numTree toks' (x,n)
-                                      in ((Node (name'++(show n')) [x']),n'+1)
-numTree toks ((Node name (x:xx:[])),n) = let (name',toks') = getTok' name toks
-                                             (x',n') = numTree toks' (x,n)
-                                             (x'',n'') = numTree toks' (xx,n')
-                                          in ((Node (name'++(show n'')) (x':[x''])),n''+1)
-
-getTok' str [] = (str,[])
-getTok' str (t:toks) = ((str),(t:toks))
+numTree ::((Tree LogEntry),Int) ->((Tree (LogEntry,Int)),Int)
+numTree ((Node name []),n) = ((Node (name,n) []),n+1)
+numTree ((Node name (x:[]),n)) = let (x',n') = numTree (x,n)
+                                 in ((Node (name,n') [x']),n'+1)
+numTree ((Node name (x:xx:[])),n) = let (x',n') = numTree (x,n)
+                                        (x'',n'') = numTree (xx,n')
+                                     in ((Node (name, n'') (x':[x''])),n''+1)
