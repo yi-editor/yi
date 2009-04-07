@@ -5,13 +5,13 @@
 -- When used together, accessing the elements around the last point of modification
 -- is fast: they are at the beginning of the lists.
 
-module Yi.Syntax.BList (foldMapAfter, many, some, sepBy, BList) where
+module Yi.Syntax.BList (foldMapAfter, many, some, sepBy, BList, sepBy1) where
 
 import Data.Monoid
 import Parser.Incremental 
 import Prelude (reverse, takeWhile)
 import Yi.Prelude hiding (some, many)
-import Yi.Syntax.Tree hiding (sepBy)
+import Yi.Syntax.Tree hiding (sepBy, sepBy1)
 import Yi.Lexer.Alex
 import Yi.Buffer.Basic
 
@@ -39,7 +39,10 @@ many v = some v <|> pure nil
 some v = cons <*> v <*> many v
 
 sepBy :: Parser s a -> Parser s a1 -> Parser s (BList a)
-sepBy p q = pure nil <|> cons <*> p <*> many (q *> p)
+sepBy p q = pure nil <|> sepBy1 p q
+
+sepBy1 :: Parser s a -> Parser s a1 -> Parser s (BList a)
+sepBy1 p q = cons <*> p <*> many (q *> p)
 
 
 instance Foldable BList where
