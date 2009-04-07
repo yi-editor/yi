@@ -9,9 +9,10 @@
 -- Optimize profile info (no more Ints)
 
 module Parser.Incremental (Process, 
-                          recoverWith, symbol, eof, lookNext, testNext, run,
-                          mkProcess, profile, pushSyms, pushEof, evalL, evalR, feedZ,
-                           Parser(Look, Pure, Enter), countWidth, fullLog
+                           recoverWith, symbol, eof, lookNext, testNext, run,
+                           mkProcess, profile, pushSyms, pushEof, evalL, evalR, feedZ,
+                           Parser(Look, Pure, Enter), countWidth, fullLog, LogEntry(..),
+                           evalL'
                           ) where
 
 import Control.Applicative
@@ -99,16 +100,20 @@ better lk (x:>xs) (y:>ys)
 (+>) :: Int -> (t, Profile) -> (t, Profile)
 x +> ~(ordering, xs) = (ordering, x :> xs)
 
-rightLog :: Steps s r -> Tree String
+data LogEntry = LLog String | LEmpty | LDislike | LShift
+                | LDone | LFail | LSusp | LS String
+    deriving Show
+
+rightLog :: Steps s r -> Tree LogEntry
 rightLog (Val _ _ p) = rightLog p
 rightLog (App p) = rightLog p
-rightLog (Shift p) = rightLog p
-rightLog (Done) = Node "Done" []
-rightLog (Fail) = Node "Fail" []
-rightLog (Dislike p) = Node "Dislike" [rightLog p]
-rightLog (Log msg p) = Node msg [rightLog p]
-rightLog (Sus _ _) = Node "PSusp" []
-rightLog (Best _ _ l r) = Node "Split" ((rightLog l):[rightLog r])
+rightLog (Shift p) = Node LShift [rightLog p]
+rightLog (Done) = Node LDone []
+rightLog (Fail) = Node LFail []
+rightLog (Dislike p) = Node LDislike [rightLog p]
+rightLog (Log msg p) = Node (LLog msg) [rightLog p]
+rightLog (Sus _ _) = Node LSusp []
+rightLog (Best _ _ l r) = Node LEmpty ((rightLog l):[rightLog r])
 rightLog (Sh' _) = error "Sh' should be hidden by Sus"
 
 profile :: Steps s r -> Profile
@@ -268,6 +273,21 @@ evalL (Zip errs0 l0 r0) = help errs0 l0 r0
           _ -> reZip errs l rhs
       reZip errs l r = l `seq` Zip errs l r
 
+evalL' :: Zip s output -> Zip s output
+evalL' (Zip errs0 l0 r0) = Zip errs0 l0 (simplRhs r0)
+    where simplRhs :: Steps s a ->Steps s a
+          simplRhs rhs = case rhs of
+            (Val a b r) ->(Val a b (simplRhs r))
+            (App r)  -> (App (simplRhs r))
+            (Shift p) -> (Shift (simplRhs p))
+            (Log err p) -> Log err $ simplRhs p
+            (Dislike p) -> Dislike $ simplRhs p
+            (Best choice _ p q) -> case choice of
+                LT -> simplRhs p
+                GT -> simplRhs q
+                EQ -> iBest (simplRhs p) (simplRhs q)
+            x -> x
+
 -- | Push some symbols.
 pushSyms :: forall s r. [s] -> Zip s r -> Zip s r
 pushSyms x = feedZ (Just x)
@@ -336,7 +356,7 @@ data Zip s output where
    -- note that the Stack produced by the Polish expression matches
    -- the stack consumed by the RP automaton.
 
-fullLog :: Zip s output -> ([String],(Tree String))
+fullLog :: Zip s output -> ([String],(Tree LogEntry))
 fullLog (Zip msg _ rhs) = ((reverse msg), (rightLog rhs))
 
 instance Show (Zip s output) where
