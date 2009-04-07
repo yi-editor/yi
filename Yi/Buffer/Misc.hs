@@ -773,14 +773,14 @@ regexB dir rx = do
 
 ---------------------------------------------------------------------
 
--- | Set the given mark point.
+-- | Set the given mark's point.
 setMarkPointB :: Mark -> Point -> BufferM ()
 setMarkPointB m pos = modifyMarkB m (\v -> v {markPoint = pos})
 
 modifyMarkB :: Mark -> (MarkValue -> MarkValue) -> BufferM ()
 modifyMarkB m f = modifyBuffer $ modifyMarkBI m f
 
-
+-- | Highlight the selection
 setVisibleSelection :: Bool -> BufferM ()
 setVisibleSelection = putA highlightSelectionA
 
@@ -803,8 +803,9 @@ mayGetMarkB m = queryBuffer (getMarkBI m)
 -- | Move point by the given number of characters.
 -- A negative offset moves backwards a positive one forward.
 moveN :: Int -> BufferM ()
-moveN n = moveTo =<< (+~ Size n) <$> pointB
-
+moveN n = do
+    s <- sizeB
+    moveTo =<< min s . max 0 . (+~ Size n) <$> pointB
 
 -- | Move point -1
 leftB :: BufferM ()
