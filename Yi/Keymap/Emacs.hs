@@ -90,6 +90,9 @@ placeMark = do
   putA highlightSelectionA True
   pointB >>= setSelectionMarkPointB
 
+selectAll ::BufferM()
+selectAll =  botB >> placeMark >> topB >> setVisibleSelection True
+
 deleteB' :: BufferM ()
 deleteB' = adjBlock (-1) >> deleteN 1
 
@@ -233,6 +236,7 @@ emacsKeys univArg =
                  , char '0'      ?>>! closeWindow
                  , char '1'      ?>>! closeOtherE
                  , char '2'      ?>>! splitE
+                 , char 'h'      ?>>! selectAll
                  , char 's'      ?>>! askSaveEditor
                  , ctrlCh 'c'    ?>>! askQuitEditor
                  , ctrlCh 'f'    ?>>! findFile

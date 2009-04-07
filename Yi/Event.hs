@@ -10,6 +10,7 @@ module Yi.Event
 import Data.Bits
 import Data.Char (chr,ord)
 import Data.Monoid
+import Data.List ( (!!) )
 import Yi.Prelude
 import Prelude ()
 
@@ -35,7 +36,7 @@ prettyEvent (Event k mods) =
   where prettyKey (KFun i) = 'F' : show i
         prettyKey (KASCII c) = [c]
         prettyKey key = tail $ show key
-        prettyModifier m = [head $ show m]
+        prettyModifier m = [ show m !! 1]
       
 
 
