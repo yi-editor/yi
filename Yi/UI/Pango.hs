@@ -446,7 +446,7 @@ render e ui b w _ev = do
       (point, text)       = askBuffer win b $ do
                               numChars <- winEls (regionStart reg) winh
                               p        <- pointB
-                              content  <- nelemsB' numChars (regionStart reg)
+                              content  <- nelemsB (fromIntegral numChars) (regionStart reg)
                               return (p, content)
 
   layoutSetWidth layout (Just width'')
@@ -466,7 +466,7 @@ render e ui b w _ev = do
       let (topOfScreen, numChars, text') = askBuffer win b $ do
             top       <- indexOfSolAbove (winh `div` 2)
             charCount <- winEls top winh
-            content   <- nelemsB' numChars top
+            content   <- nelemsB (fromIntegral numChars) top
             return (top, charCount, content)
 
       layoutSetText layout text'
