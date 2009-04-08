@@ -373,11 +373,11 @@ getSelectedRegions :: BufferM [Region]
 getSelectedRegions = do
   rect <- getA rectangleSelectionA
   if (not rect)
-    then singleton <$> (getSelectRegionB >>= charRegionB)
+    then singleton <$> getSelectRegionB
     else do
       (reg, x1, x2) <- getRectangle
       ls <- fmap (fromIntegral . L.length) <$> lines' <$> readRegionB reg
-      mapM charRegionB $ catMaybes $ snd $ L.mapAccumL
+      return $ catMaybes $ snd $ L.mapAccumL
         (lineRegions (fromIntegral x1) (fromIntegral x2)) (regionStart reg) ls
   where
     lineRegions :: Size -> Size -> Point -> Size -> (Point, Maybe Region)
@@ -407,7 +407,7 @@ refresh ui e = withAutoreleasePool $ logNSException "refresh" $ do
            (storage w) # setTextStorageBuffer e buf
 
            let ((p0,txt,rs),_) = runBuffer (window w) buf $
-                 (,,) <$> (pointB >>= charIndexB) <*> getModeLine (commonNamePrefix e) <*> getSelectedRegions
+                 (,,) <$> pointB <*> getModeLine (commonNamePrefix e) <*> getSelectedRegions
            a <- castObject <$> _NSMutableArray # array :: IO (NSMutableArray ())
            mapM_ ((flip addObject a =<<) . flip valueWithRange _NSValue . mkRegionRange) rs
            (textview w) # setSelectedRanges (castObject a)

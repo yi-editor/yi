@@ -93,8 +93,8 @@ ytv_setSelectedRangesAffinityStillSelecting rs a b v = do
       runbuf <- v #. _runBuffer
       runbuf $ do
         setVisibleSelection (regionSize r /= 0)
-        byteIndexB p0 >>= setSelectionMarkPointB
-        byteIndexB (if regionStart r == p0 then regionEnd r else regionStart r) >>= moveTo
+        setSelectionMarkPointB p0
+        moveTo (if regionStart r == p0 then regionEnd r else regionStart r)
     _ -> do
       -- Ignore intermediate updates (Cocoa buffers events until selection finishes)
       -- Ignore direct updates (to avoid having to detect "our" updates)
@@ -129,15 +129,12 @@ ytv_performDragOperation dragInfo slf = do
     -- we would have to use draggingLocation to figure out where
     -- the new text should go. Which means that we need to get back
     -- our old trick for translating a mouse-position to a text-position.
-
-    -- TODO: Convert ip from a character index to a buffer position (utf8)
-    pIns' <- dragInfo # draggingLocation >>= flip charAtMouse slf
+    pIns <- dragInfo # draggingLocation >>= flip charAtMouse slf
 
     runbuf <- slf #. _runBuffer
     runbuf $ do
       hasSel <- getA highlightSelectionA
       rSel <- if hasSel && src == (castObject slf) then getSelectRegionB else return emptyRegion
-      pIns <- byteIndexB (fromIntegral pIns')
 
       moveTo $ fromIntegral pIns
       -- To not affect positions we make the "latter" modification first
