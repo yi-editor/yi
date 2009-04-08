@@ -255,41 +255,38 @@ recompile HConfParams {projectName = app, ghcFlags = flags} force = do
         base = dir </> app
         src  = base ++ ".hs"
         cabalBin = cabalBinDir </> "yi"
-    srcT <- getModTime src
     binT <- getModTime bin
     cabalBinT <- getModTime cabalBin
-    if (force || srcT > binT || cabalBinT > binT)
-      then do
-        if force
+    -- this is an attempt to detect changes in the Yi library. Ideally this should be
+    -- solved by ghc --make recompiling whenever packages change.
+    let forceRecomp = force || cabalBinT > binT
+    if forceRecomp
             then putStrLn $ "Forcing recompile of custom " ++ app
             else putStrLn $ "Recompiling custom " ++ app
-        status <- bracket (openFile err WriteMode) hClose $ \h -> do
-            -- note that since we checked for recompilation ourselves,
-            -- we disable ghc recompilaton checks.
+    status <- bracket (openFile err WriteMode) hClose $ \h -> do
             flags' <- getGhcFlags
             let allFlags = ["--make", app ++ ".hs", "-i", "-optl-s",
-                            "-fforce-recomp", "-v0", "-o",binn,"-threaded",
+                            "-v0", "-o",binn,"-threaded",
 
                             -- monads-fd collide with mtl.
                             -- Could not find module `Control.Monad.Writer':
                             --       it was found in multiple packages: monads-fd-0.0.0.0 mtl-1.1.0.2
                             "-hide-package", "mtl"
-                           ]
+                           ] ++ ["-fforce-recomp" | forceRecomp]
                             ++ flags ++ flags'
             waitForProcess =<< runProcess GHC.Paths.ghc allFlags (Just dir)
                                           Nothing Nothing Nothing (Just h)
             -- note that we use the ghc executable used to build Yi (through GHC.Paths).
 
         -- now, if GHC fails, return the error message that was written to 'err':
-        if status /= ExitSuccess
-          then do
+    if status /= ExitSuccess
+        then do
             ghcErr <- readFile err
             let msg = unlines $
                     ["Error detected while loading " ++ app ++ " configuration file: " ++ src]
                     ++ lines ghcErr ++ ["","Please check the file for errors."]
             return $ Just msg
           else return Nothing
-        else return Nothing
  where getModTime f = catch (Just <$> getModificationTime f) (const $ return Nothing)
 
 
