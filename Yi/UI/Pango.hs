@@ -116,6 +116,11 @@ startNoMsg cfg ch outCh _ed = do
 
   vb <- vBoxNew False 1  -- Top-level vbox
 
+  -- Disable the left pane (file/module browser) until Shim/Scion discussion has
+  -- concluded. Shim causes crashes, but it's not worth fixing if we'll soon
+  -- replace it.
+
+  {-
   tabs <- notebookNew
   widgetSetSizeRequest tabs 200 (-1)
   notebookSetTabPos tabs PosBottom
@@ -139,6 +144,7 @@ startNoMsg cfg ch outCh _ed = do
   scrolledWindowAddWithViewport scrlModules modulesTree
   scrolledWindowSetPolicy scrlModules PolicyAutomatic PolicyAutomatic
   notebookAppendPage tabs scrlModules "Modules"
+  -}
 
   vb' <- vBoxNew False 1
   panedAdd2 paned vb'
