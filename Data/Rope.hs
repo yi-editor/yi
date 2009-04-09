@@ -36,6 +36,7 @@ import qualified Data.List as L
  
 import qualified Data.ByteString.UTF8 as B
 import qualified Data.ByteString as B (null, append, concat, elemIndices)
+import qualified Data.ByteString as Byte 
 import Data.ByteString (ByteString)
 import qualified Data.ByteString.Lazy as LB (toChunks, fromChunks, writeFile, null, readFile)
 import qualified Data.ByteString.Lazy.UTF8 as LB 
@@ -166,7 +167,7 @@ splitAtLine' n (Rope t) =
 
 cutExcess :: Int -> ByteString -> (ByteString, ByteString)
 cutExcess i s = let idx = gt i $ L.reverse $ B.elemIndices (fromIntegral $ ord $ '\n') s
-                in B.splitAt (idx+1) s -- take one extra char to that the newline is found on the left.
+                in Byte.splitAt (idx+1) s -- take one extra byte to that the newline is found on the left.
     where gt _ []     = B.length s
           gt 0 (x:_ ) = x
           gt n (_:xs) = gt (n-1) xs
