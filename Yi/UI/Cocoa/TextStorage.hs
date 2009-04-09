@@ -359,24 +359,15 @@ storagePicture ed r slf = do
   -- logPutStrLn $ "storagePicture " ++ show i
   return $ bufferPicture ed sty buf win r
 
-byteToCharPicture :: Point -> [Point] -> [PicStroke] -> [PicStroke]
-byteToCharPicture o [] xs = [(o,a) | (_,a) <- take 1 xs]
-byteToCharPicture _ _ [] = []
-byteToCharPicture o (p:ps) ((i,a):xs)
-  | p < i = byteToCharPicture (succ o) ps ((i,a):xs)
-  | otherwise = (o,a) : byteToCharPicture o (p:ps) xs 
-
 bufferPicture :: Editor -> UIStyle -> FBuffer -> Window -> Region -> Picture
 bufferPicture ed sty buf win r =
-  let is = fst $ runBuffer win buf (indexStreamRegionB r)
-  in Picture
-  { picRegion = r
-  , picStrokes =
-      paintCocoaPicture sty (regionEnd r) $
-        byteToCharPicture (regionStart r) is $
+  Picture
+    { picRegion = r
+    , picStrokes =
+        paintCocoaPicture sty (regionEnd r) $
           (fst $ runBuffer win buf (attributesPictureB sty (currentRegex ed) r []))
-  }
-
+    }
+  
 type TextStorage = YiTextStorage ()
 initializeClass_TextStorage :: IO ()
 initializeClass_TextStorage = do

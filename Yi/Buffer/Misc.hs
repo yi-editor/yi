@@ -107,7 +107,6 @@ module Yi.Buffer.Misc
   , pointAt
   , pointDriveA
   , SearchExp
-  , indexStreamRegionB
   , lastActiveWindowA
   , bufferDynamicValueA
   , shortIdentString
@@ -963,16 +962,3 @@ pointAt f = savingPointB (f *> pointB)
 
 askWindow :: (Window -> a) -> BufferM a
 askWindow = asks
-
--------------
--- Character-positions
-
--- | Obtain an indexStreamRegion for the specified buff
-indexStreamRegionB :: Region -> BufferM [Point]
-indexStreamRegionB r =
-  take (fromIntegral (regionSize r)) <$>
-  drop (fromIntegral (regionStart r)) <$>
-  fst <$> unzip <$> indexedStreamB Forward 0
-
-
-
