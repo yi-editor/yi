@@ -107,10 +107,6 @@ module Yi.Buffer.Misc
   , pointAt
   , pointDriveA
   , SearchExp
-  , charIndexB
-  , byteIndexB
-  , charRegionB
-  , byteRegionB
   , indexStreamRegionB
   , lastActiveWindowA
   , bufferDynamicValueA
@@ -970,31 +966,6 @@ askWindow = asks
 
 -------------
 -- Character-positions
-
-{-# DEPRECATED charIndexB, byteIndexB, charRegionB, byteRegionB "The Point type was introduced to avoid confusion between byte-index and character-index, this function defeats the purpose." #-}
-
-
--- | Convert a buffer position to a character position
-charIndexB :: Point -> BufferM Point
-charIndexB p =
-  fromIntegral <$> length <$> takeWhile (< p) <$> fst <$> unzip <$> indexedStreamB Forward 0
-
--- | Convert a character position to a buffer position
-byteIndexB :: Point -> BufferM Point
-byteIndexB p =
-  fromIntegral <$> head <$> drop (fromIntegral p) <$> fst <$> unzip <$> indexedStreamB Forward 0
-
--- | Convert a character position region to a buffer position region
-charRegionB :: Region -> BufferM Region
-charRegionB r = do
-  (xs,ys) <- span (< regionStart r) <$> fst <$> unzip <$> indexedStreamB Forward 0
-  return (mkSizeRegion (fromIntegral (length xs)) (fromIntegral (length (takeWhile (< regionEnd r) ys))))
-
--- | Convert a buffer position region to  position region
-byteRegionB :: Region -> BufferM Region
-byteRegionB r = do
-  xs <- indexStreamRegionB r
-  return $ mkRegion (head xs) (1 + last xs)
 
 -- | Obtain an indexStreamRegion for the specified buff
 indexStreamRegionB :: Region -> BufferM [Point]
