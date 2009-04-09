@@ -36,8 +36,8 @@ import Yi.MiniBuffer (FilePatternTag, RegexTag, (:::), CommandArguments)
 -- | Returns an Interpreter action that loads the desired modules and interprets the expression.
 execEditorAction :: String -> YiM ()
 execEditorAction s = do
-   contextPath <- (</> ".yi" </> "Env") <$> io getHomeDirectory
-   let contextFile = contextPath </> "Main.hs"
+   contextPath <- (</> ".yi" </> "local") <$> io getHomeDirectory
+   let contextFile = contextPath </> "Env.hs"
    haveUserContext <- io $ doesFileExist contextFile
    res <- io $ LHI.runInterpreter $ do
        LHI.set [LHI.searchPath LHI.:= []]

@@ -44,6 +44,7 @@ tokenToText (Hask.ReservedOp Hask.DoubleRightArrow) = Just $ if osx then "⇒ " 
 tokenToText (Hask.ReservedOp Hask.LeftArrow) = Just $ if osx then "← " else "←"
 -- tokenToText (Hask.Operator ".") = Just "∘" -- should be · or . in types and ∘ in exprs
 tokenToText (Hask.Operator "/=") = Just "≠"
+tokenToText (Hask.Operator "==") = Just "≡"
 tokenToText (Hask.Operator ">=") = Just "≥"
 tokenToText (Hask.Operator "<=") = Just "≤"
 tokenToText (Hask.Operator "&&") = Just "∧"
