@@ -240,6 +240,7 @@ emacsKeys univArg =
                  , char 's'      ?>>! askSaveEditor
                  , ctrlCh 'c'    ?>>! askQuitEditor
                  , ctrlCh 'f'    ?>>! findFile
+                 , ctrlCh 'q'      ?>>! (withBuffer $ modA readOnlyA not)
                  , ctrlCh 's'    ?>>! fwriteE
                  , ctrlCh 'w'    ?>>! promptFile "Write file:" fwriteToE
                  , ctrlCh 'x'    ?>>! (exchangePointAndMarkB >> 

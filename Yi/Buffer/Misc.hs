@@ -83,6 +83,7 @@ module Yi.Buffer.Misc
   , pendingUpdatesA
   , highlightSelectionA
   , rectangleSelectionA
+  , readOnlyA
   , revertPendingUpdatesB
   , askWindow
   , clearSyntax
@@ -199,7 +200,6 @@ data Attributes = Attributes
                 { ident :: !BufferId
                 , bkey__   :: !BufferRef            -- ^ immutable unique key
                 , undos  :: !URList               -- ^ undo/redo list
-                -- , readOnly :: !Bool                -- ^ a read-only bit (TODO)
                 , pointDrive :: !Bool
                 , bufferDynamic :: !DynamicValues -- ^ dynamic components
                 , preferCol :: !(Maybe Int)       -- ^ prefered column to arrive at when we do a lineDown / lineUp
@@ -209,18 +209,20 @@ data Attributes = Attributes
                 , winMarks :: !(M.Map WindowRef WinMarks)
                 , lastActiveWindow :: !Window
                 , lastSyncTime :: !UTCTime -- ^ time of the last synchronization with disk
+                , readOnly :: !Bool                -- ^ read-only flag
+
                 } deriving Typeable
 
 $(nameDeriveAccessors ''Attributes (\n -> Just (n ++ "AA")))
 
 -- unfortunately the dynamic stuff can't be read.
 instance Binary Attributes where
-    put (Attributes n b u pd _bd pc pu selectionStyle_ _proc wm law lst) = do
+    put (Attributes n b u pd _bd pc pu selectionStyle_ _proc wm law lst ro) = do
           put n >> put b >> put u
           put pd >> put pc >> put pu >> put selectionStyle_ >> put wm
-          put law >> put lst
+          put law >> put lst >> put ro
     get = Attributes <$> get <*> get <*> get <*> 
-          get <*> pure emptyDV <*> get <*> get <*> get <*> pure I.End <*> get <*> get <*> get
+          get <*> pure emptyDV <*> get <*> get <*> get <*> pure I.End <*> get <*> get <*> get <*> get
 
 instance Binary UTCTime where
     put (UTCTime x y) = put (fromEnum x) >> put (fromEnum y)
@@ -302,6 +304,9 @@ pointDriveA = pointDriveAA . attrsA
 
 undosA :: Accessor FBuffer URList
 undosA = undosAA . attrsA
+
+readOnlyA :: Accessor FBuffer Bool
+readOnlyA = readOnlyAA . attrsA
 
 file :: FBuffer -> (Maybe FilePath)
 file b = case b ^. identA of
@@ -418,13 +423,16 @@ getModeLine prefix = do
     ln <- curLn
     p <- pointB
     s <- sizeB
+    ro <-getA readOnlyA
     modeNm <- gets (withMode0 modeName)
     unchanged <- gets isUnchangedBuffer
     let pct = if pos == 1 then "Top" else getPercent p s
         chg = if unchanged then "-" else "*"
+        roStr = if ro  then "%" else chg
+
     nm <- gets $ shortIdentString prefix
     return $
-           chg ++ " "
+           roStr ++ chg ++ " "
            ++ nm ++
            replicate 5 ' ' ++
            "L" ++ show ln ++ "  " ++ "C" ++ show col ++
@@ -579,7 +587,6 @@ newB unique nm s =
  Attributes { ident  = nm
             , bkey__ = unique
             , undos  = emptyU
-            -- , readOnly = False
             , pointDrive = True
             , preferCol = Nothing
             , bufferDynamic = emptyDV 
@@ -589,6 +596,7 @@ newB unique nm s =
             , winMarks = M.empty
             , lastActiveWindow = dummyWindow unique
             , lastSyncTime = epoch
+            , readOnly = False
             } }
 
 epoch :: UTCTime
@@ -630,16 +638,24 @@ moveTo x = do
 
 ------------------------------------------------------------------------
 
+checkRO :: BufferM Bool
+checkRO =  do
+   ro <- getA readOnlyA
+--   when  ro
+--     printMsg "Read Only Buffer"
+   return ro
+
 applyUpdate :: Update -> BufferM ()
 applyUpdate update = do
-  valid <- queryBuffer (isValidUpdate update)
-  when valid $ do
-       forgetPreferCol
-       let reversed = reverseUpdateI update
-       modifyBuffer (applyUpdateI update)
-       modA undosA $ addChangeU $ AtomicChange $ reversed
-       tell [update]
-  -- otherwise, just ignore.
+   ro    <- checkRO
+   valid <- queryBuffer (isValidUpdate update)
+   when  ( not ro && valid)  $ do
+        forgetPreferCol
+        let reversed = reverseUpdateI update
+        modifyBuffer (applyUpdateI update)
+        modA undosA $ addChangeU $ AtomicChange $ reversed
+        tell [update]
+   -- otherwise, just ignore.
 
 -- | Revert all the pending updates; don't touch the point.
 revertPendingUpdatesB :: BufferM ()
