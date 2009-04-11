@@ -10,13 +10,13 @@ import Yi.Misc
 import Yi.Rectangle
 import Yi.String
 
-keymap :: Keymap
+keymap :: KeymapSet
 keymap = portableKeymap ctrl
 
 -- | Introduce a keymap that is compatible with both windows and osx,
 --   by parameterising the event modifier required for commands
-portableKeymap :: (Event -> Event) -> Keymap
-portableKeymap cmd = selfInsertKeymap <|> move <|> select <|> rect <|> other cmd
+portableKeymap :: (Event -> Event) -> KeymapSet
+portableKeymap cmd = modelessKeymapSet $ selfInsertKeymap <|> move <|> select <|> rect <|> other cmd
 
 selfInsertKeymap :: Keymap
 selfInsertKeymap = do

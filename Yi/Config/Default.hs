@@ -187,7 +187,7 @@ escToMeta = mkAutomaton $ forever $ (anyEvent >>= I.write) ||> do
     I.write (Event (KASCII c) [MMeta])
 
 toVimStyleConfig cfg = cfg {defaultKm = Vim.keymapSet, configRegionStyle = Inclusive}
-toCuaStyleConfig cfg = cfg {defaultKm = modelessKeymapSet Cua.keymap}
+toCuaStyleConfig cfg = cfg {defaultKm = Cua.keymap}
 
 -- | Open an emacs-like scratch buffer if no file is open.
 openScratchBuffer :: YiM ()
@@ -203,7 +203,7 @@ openScratchBuffer = withEditor $ do
 
 nilKeymap :: Keymap
 nilKeymap = choice [
-             char 'c' ?>>  openCfg Cua.keymap,
+             char 'c' ?>>  openCfg (extractTopKeymap Cua.keymap),
              char 'e' ?>>  openCfg (extractTopKeymap Emacs.keymap),
              char 'v' ?>>  openCfg (extractTopKeymap Vim.keymapSet),
              char 'q' ?>>! quitEditor,
