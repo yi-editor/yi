@@ -120,7 +120,7 @@ module Yi.Buffer.Misc
   )
 where
 
-import Prelude (ceiling, span, unzip, take, drop)
+import Prelude (ceiling, drop)
 import Yi.Prelude
 import Yi.Region
 import System.FilePath

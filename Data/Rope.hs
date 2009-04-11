@@ -86,14 +86,6 @@ toReverseString = L.concat . map (L.reverse . B.toString) . toList . T.reverse .
 toString :: Rope -> String
 toString = LB.toString . toLazyByteString
  
- 
- 
-fromByteString :: ByteString -> Rope
-fromByteString = Rope . toTree
-   where
-     toTree b | B.null b = T.empty
-     toTree b = let (h,t) = B.splitAt chunkSize b in h <| toTree t
-
 fromLazyByteString :: LB.ByteString -> Rope
 fromLazyByteString = Rope . toTree
    where

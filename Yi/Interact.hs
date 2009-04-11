@@ -177,7 +177,7 @@ accepted _ (Write _ _) = [[]] -- this should show what action we get...
 accepted d (Prior _ p) = accepted d p
 accepted d (Best p q) = accepted d p ++ accepted d q
 accepted _ (End) = []
-accepted _ (Chain a b) = error "accepted: chain not supported"
+accepted _ (Chain _ _) = error "accepted: chain not supported"
 
 -- ---------------------------------------------------------------------------
 -- Operations over P
@@ -231,7 +231,7 @@ findWrites p (Chain a b) = case computeState a of
     Ambiguous _ -> Dead -- If ambiguity, don't try to do anything clever for now; die.
     Running w c -> findWrites p (Chain c (pushEvent b w)) -- pull as much as possible from the left automaton
     Waiting -> case findWrites p b of
-        Ambiguous choices -> Ambiguous [(p,w',Chain a c') | (p,w',c') <- choices]
+        Ambiguous choices -> Ambiguous [(p',w',Chain a c') | (p',w',c') <- choices]
         Running w' c' -> Running w' (Chain a c') -- when it has nothing more, pull from the right.
         Dead -> Dead
         Waiting -> Waiting

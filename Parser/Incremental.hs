@@ -362,9 +362,6 @@ fullLog (Zip msg _ rhs) = ((reverse msg), (rightLog rhs))
 instance Show (Zip s output) where
     show (Zip errs l r) = show l ++ "<>" ++ show r ++ ", errs = " ++ show errs
 
-onLeft :: (forall i o. RPolish i o -> RPolish i o) -> Zip s a -> Zip s a
-onLeft f (Zip errs x y) = (Zip errs (f x) y)
-
 onRight :: (forall r. Steps s r -> Steps s r) -> Zip s a -> Zip s a
 onRight f (Zip errs x y) = Zip errs x (f y)
 

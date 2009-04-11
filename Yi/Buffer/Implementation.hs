@@ -236,7 +236,7 @@ delOverlayLayer layer fb = fb{overlays = Set.filter ((/= layer) . overlayLayer) 
 --   decreasing priority: the 1st layer should be "painted" on top.
 strokesRangesBI :: (Point -> Point -> Point -> [Stroke]) -> 
   Maybe SearchExp -> Region -> Point -> BufferImpl syntax -> [[Stroke]]
-strokesRangesBI getStrokes regex rgn  point fb@(FBufferData {hlCache = HLState hl cache}) = result
+strokesRangesBI getStrokes regex rgn  point fb = result
   where
     i = regionStart rgn
     j = regionEnd rgn
@@ -288,9 +288,6 @@ reverseUpdateI (Insert p dir cs) = Delete p (reverseDir dir) cs
 
 ------------------------------------------------------------------------
 -- Line based editing
-
-newLine :: Char
-newLine = '\n'
 
 -- | Line at the given point. (Lines are indexed from 1)
 lineAt :: Point -> BufferImpl syntax -> Int
