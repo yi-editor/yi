@@ -62,6 +62,44 @@ instance Has_characterAtIndex (NSString a)
 $(declareRenamedSelector "getCharacters:range:" "getCharactersRange" [t| Ptr Unichar -> NSRange -> IO () |])
 instance Has_getCharactersRange (NSString a)
 
+
+-- | SplitRope provides means for tracking the position
+--   of Cocoa reads from the underlying rope...
+data SplitRope = SplitRope
+  R.Rope -- Cocoa has moved beyond this portion
+  R.Rope -- Cocoa is currently accessing this part
+  [Unichar] -- But in this format... =)
+
+-- | Create a new SplitRope, and initialize the encoded portion appropriately.
+mkSplitRope :: R.Rope -> R.Rope -> SplitRope
+mkSplitRope done next =
+  SplitRope done next (concatMap (encodeUTF16 . fromEnum) (R.toString next))
+
+-- | Get the length of the whole SplitRope.
+sLength :: SplitRope -> Int
+sLength (SplitRope done next _) = R.length done + R.length next
+
+-- | Ensure that the specified position is in the first chunk of
+--   the ``next'' rope.
+sSplitAtChunkBefore :: Int -> SplitRope -> SplitRope
+sSplitAtChunkBefore n s@(SplitRope done next _)
+  | n < R.length done = mkSplitRope done' (R.append renext next)
+  | R.null redone     = s
+  | otherwise         = mkSplitRope (R.append done redone) next'
+  where
+    (done', renext) = R.splitAtChunkBefore n done
+    (redone, next') = R.splitAtChunkBefore (n - R.length done) next
+
+sStringAt :: Int -> SplitRope -> [Unichar]
+sStringAt n (SplitRope done _ cs) = L.drop (n - R.length done) cs
+
+encodeUTF16 :: Int -> [Unichar]
+encodeUTF16 c
+  | c < 0x10000 = [fromIntegral c]
+  | otherwise   = let c' = c - 0x10000
+                  in [0xd800 .|. (fromIntegral $ c' `shiftR` 10),
+                      0xdc00 .|. (fromIntegral $ c' .&. 0x3ff)]
+
 -- Introduce a NSString subclass that has a Data.Rope internally.
 -- A NSString subclass needs to implement length and characterAtIndex,
 -- and for performance reasons getCharactersRange.
@@ -72,7 +110,7 @@ instance Has_getCharactersRange (NSString a)
 -- outside of the BMP are used.
 $(declareClass "YiRope" "NSString")
 $(exportClass "YiRope" "yirope_" [
-    InstanceVariable "str" [t| R.Rope |] [| R.fromString "" |]
+    InstanceVariable "str" [t| SplitRope |] [| mkSplitRope R.empty R.empty |]
   , InstanceMethod 'length -- '
   , InstanceMethod 'characterAtIndex -- '
   , InstanceMethod 'getCharactersRange -- '
@@ -81,30 +119,22 @@ $(exportClass "YiRope" "yirope_" [
 yirope_length :: YiRope () -> IO CUInt
 yirope_length slf = do
   -- logPutStrLn $ "Calling yirope_length (gah...)"
-  slf #. _str >>= return . fromIntegral . R.length
+  slf #. _str >>= return . fromIntegral . sLength
 
 yirope_characterAtIndex :: CUInt -> YiRope () -> IO Unichar
 yirope_characterAtIndex i slf = do
   -- logPutStrLn $ "Calling yirope_characterAtIndex " ++ show i
-  slf #. _str >>= return . last . encodeUTF16 . fromEnum . head . R.toString . R.drop (fromIntegral i)
+  flip (modifyIVar _str) slf $ \s -> do
+    s' <- return (sSplitAtChunkBefore (fromIntegral i) s)
+    return (s', head (sStringAt (fromIntegral i) s'))
 
 yirope_getCharactersRange :: Ptr Unichar -> NSRange -> YiRope () -> IO ()
 yirope_getCharactersRange p _r@(NSRange i l) slf = do
   -- logPutStrLn $ "Calling yirope_getCharactersRange " ++ show r
-  slf #. _str >>=
-    pokeArray p .
-    concatMap (encodeUTF16 . fromEnum) .
-    R.toString .
-    R.take (fromIntegral l) .
-    R.drop (fromIntegral i)
-
-encodeUTF16 :: Int -> [Unichar]
-encodeUTF16 c
-  | c < 0x10000 = [fromIntegral c]
-  | otherwise   = let c' = c - 0x10000
-                  in [0xd800 .|. (fromIntegral $ c' `shiftR` 10),
-                      0xdc00 .|. (fromIntegral $ c' .&. 0x3ff)]
-
+  flip (modifyIVar_ _str) slf $ \s -> do
+    s' <- return (sSplitAtChunkBefore (fromIntegral i) s)
+    pokeArray p (L.take (fromIntegral l) (sStringAt (fromIntegral i) s'))
+    return s'
 
 -- An implementation of NSTextStorage that uses Yi's FBuffer as
 -- the backing store. An implementation must at least implement
@@ -392,7 +422,7 @@ newTextStorage :: UIStyle -> FBuffer -> Window -> IO TextStorage
 newTextStorage sty b w = do
   buf <- new _YiTextStorage
   s <- new _YiRope
-  s # setIVar _str (runBufferDummyWindow b (streamB Forward 0))
+  s # setIVar _str (mkSplitRope R.empty (runBufferDummyWindow b (streamB Forward 0)))
   buf # setIVar _yiState (emptyEditor, b, w, sty, s)
   buf # setMonospaceFont
   return buf
@@ -401,7 +431,7 @@ setTextStorageBuffer :: Editor -> FBuffer -> TextStorage -> IO ()
 setTextStorageBuffer ed buf storage = do
   storage # beginEditing
   flip (modifyIVar_ _yiState) storage $ \ (_,_,w,sty,s) -> do
-    s # setIVar _str (runBufferDummyWindow buf (streamB Forward 0))
+    s # setIVar _str (mkSplitRope R.empty (runBufferDummyWindow buf (streamB Forward 0)))
     return (ed, buf, w, sty, s)
   when (not $ null $ getVal pendingUpdatesA buf) $ do
     mapM_ (applyUpdate storage buf) [u | TextUpdate u <- getVal pendingUpdatesA buf]

@@ -28,7 +28,10 @@ module Data.Rope (
    null, empty, take, drop, append, splitAt, splitAtLine, length, reverse, countNewLines,
  
    -- * IO
-   readFile, writeFile
+   readFile, writeFile,
+
+   -- * Low level functions
+   splitAtChunkBefore
   ) where
  
 import Prelude hiding (null, head, tail, length, take, drop, splitAt, head, tail, foldl, reverse, readFile, writeFile)
@@ -138,6 +141,12 @@ splitAt n (Rope t) =
    where
      (l, c) = T.split ((> n) . charIndex) t
      n' = n - charIndex (measure l)
+
+-- | Split the rope on a chunk, so that the desired
+--   position lies within the first chunk of the second rope.
+splitAtChunkBefore :: Int -> Rope -> (Rope, Rope)
+splitAtChunkBefore n (Rope t) =
+  let (l, c) = T.split ((> n) . charIndex) t in (Rope l, Rope c)
 
 -- | Split before the specified line. Lines are indexed from 0.
 splitAtLine :: Int -> Rope -> (Rope, Rope)
