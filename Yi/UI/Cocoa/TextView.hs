@@ -32,7 +32,7 @@ import Yi.UI.Cocoa.Utils
 import HOC
 import Foundation (
   NSPoint(..),NSRange(..),nsMinY,nsWidth,nsOffsetRect,NSArray,
-  addObject,haskellString,NSMutableArray,NSValue,
+  addObject,haskellString,NSMutableArray,NSValue,nsUnionRange,
   _NSMutableArray,array,addObjectsFromArray,rangeValue)
 import AppKit (
   NSSelectionAffinity,characterRangeForGlyphRangeActualGlyphRange,
@@ -71,7 +71,7 @@ _silenceWarning = undefined
 $(declareClass "YiTextView" "NSTextView")
 $(exportClass "YiTextView" "ytv_" [
     InstanceVariable "runBuffer" [t| BufferM () -> IO () |] [| const $ return () |]
-  , InstanceVariable "selectingPosition" [t| Maybe Point |] [| Nothing |]
+  , InstanceVariable "selectingPosition" [t| Maybe Int |] [| Nothing |]
   , InstanceMethod 'setSelectedRangesAffinityStillSelecting -- '
   , InstanceMethod 'acceptableDragTypes
   , InstanceMethod 'performDragOperation
@@ -82,19 +82,19 @@ $(exportClass "YiTextView" "ytv_" [
 ytv_setSelectedRangesAffinityStillSelecting :: NSArray () -> NSSelectionAffinity -> Bool -> YiTextView () -> IO ()
 ytv_setSelectedRangesAffinityStillSelecting rs a b v = do
   hrs <- fmap castObject <$> haskellList rs :: IO [NSValue ()]
-  r <- foldl1 unionRegion <$> fmap mkRangeRegion <$> mapM rangeValue hrs :: IO Region
+  r@(NSRange i len) <- foldlM nsUnionRange (NSRange 0 0) =<< mapM rangeValue hrs
   p <- v #. _selectingPosition
   case (b, p) of
     (True, Nothing) -> do
       -- Assume that the initial indication gives starting position
-      v # setIVar _selectingPosition (Just $ regionStart r)
+      v # setIVar _selectingPosition (Just $ fromIntegral i)
     (False, Just p0) -> do
       v # setIVar _selectingPosition Nothing
       runbuf <- v #. _runBuffer
       runbuf $ do
-        setVisibleSelection (regionSize r /= 0)
-        setSelectionMarkPointB p0
-        moveTo (if regionStart r == p0 then regionEnd r else regionStart r)
+        setVisibleSelection (len /= 0)
+        setSelectionMarkPointB (fromIntegral p0)
+        moveTo (fromIntegral $ if fromIntegral i == p0 then i + len else i)
     _ -> do
       -- Ignore intermediate updates (Cocoa buffers events until selection finishes)
       -- Ignore direct updates (to avoid having to detect "our" updates)
