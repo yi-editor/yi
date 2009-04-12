@@ -184,15 +184,13 @@ extendPicture desired ext cache = do
       , picStrokes = picStrokes p1 ++ picStrokes p2
       }
 
+type YiState = (Editor, FBuffer, Window, UIStyle, YiRope ())
+
 $(declareClass "YiTextStorage" "NSTextStorage")
 $(exportClass "YiTextStorage" "yts_" [
-    InstanceVariable "buffer" [t| Maybe FBuffer |] [| Nothing |]
-  , InstanceVariable "editor" [t| Editor |] [| emptyEditor |]
-  , InstanceVariable "window" [t| Maybe Window |] [| Nothing |]
-  , InstanceVariable "uiStyle" [t| Maybe UIStyle |] [| Nothing |]
+    InstanceVariable "yiState" [t| YiState |] [| error "Uninitialized" |]
   , InstanceVariable "dictionaryCache" [t| M.Map Attributes (NSDictionary ()) |] [| M.empty |]
   , InstanceVariable "pictureCache" [t| (Picture, NSRange) |] [| emptyPicture |]
-  , InstanceVariable "stringCache" [t| Maybe (YiRope ()) |] [| Nothing |]
   , InstanceMethod 'string -- '
   , InstanceMethod 'fixesAttributesLazily -- '
   , InstanceMethod 'attributeAtIndexEffectiveRange -- '
@@ -205,13 +203,24 @@ $(exportClass "YiTextStorage" "yts_" [
   , InstanceMethod 'length -- '
   ])
 
+_editor :: YiTextStorage () -> IO Editor
+_buffer :: YiTextStorage () -> IO FBuffer
+_window :: YiTextStorage () -> IO Window
+_uiStyle :: YiTextStorage () -> IO UIStyle
+_stringCache :: YiTextStorage () -> IO (YiRope ())
+_editor      o = (\ (x,_,_,_,_) -> x) <$>  o #. _yiState
+_buffer      o = (\ (_,x,_,_,_) -> x) <$>  o #. _yiState
+_window      o = (\ (_,_,x,_,_) -> x) <$>  o #. _yiState
+_uiStyle     o = (\ (_,_,_,x,_) -> x) <$>  o #. _yiState
+_stringCache o = (\ (_,_,_,_,x) -> x) <$>  o #. _yiState
+
 yts_length :: YiTextStorage () -> IO CUInt
 yts_length slf = do
   -- logPutStrLn "Calling yts_length "
-  slf #. _stringCache >>= length . fromJust
+  slf # _stringCache >>= length
 
 yts_string :: YiTextStorage () -> IO (NSString ())
-yts_string slf = castObject <$> fromJust <$> slf #. _stringCache
+yts_string slf = castObject <$> slf # _stringCache
 
 yts_fixesAttributesLazily :: YiTextStorage () -> IO Bool
 yts_fixesAttributesLazily _ = return True
@@ -230,8 +239,7 @@ yts_attributesAtIndexLongestEffectiveRangeInRange i er rl slf = do
   -- check to ensure that we do not re-read the window all the time...
   let use_rl = if prev_rl == rl then NSRange i (nsMaxRange rl) else rl
   -- logPutStrLn $ "yts_attributesAtIndexLongestEffectiveRangeInRange " ++ show i ++ " " ++ show rl
-  ed <- slf #. _editor
-  full <- extendPicture (mkRangeRegion use_rl) (flip (storagePicture ed) slf) cache
+  full <- extendPicture (mkRangeRegion use_rl) (flip storagePicture slf) cache
   -- TODO: Only merge identical strokes when "needed"?
   returnEffectiveRange full i er rl slf
 
@@ -265,13 +273,12 @@ returnEffectiveRange full i er rl slf = do
 
 cachedDictionaryFor :: Attributes -> YiTextStorage () -> IO (NSDictionary ())
 cachedDictionaryFor s slf = do
-  dicts <- slf #. _dictionaryCache
-  case M.lookup s dicts of
-    Just dict -> return dict
-    _ -> do
-      dict <- convertAttributes s
-      slf # setIVar _dictionaryCache (M.insert s dict dicts)
-      return dict
+  slf # modifyIVar _dictionaryCache (\dicts ->
+    case M.lookup s dicts of
+      Just dict -> return (dicts, dict)
+      _ -> do
+        dict <- convertAttributes s
+        return (M.insert s dict dicts, dict))
 
   
 
@@ -299,8 +306,7 @@ yts_attributeAtIndexEffectiveRange attr i er slf = do
     "NSBackgroundColor" -> do
       -- safePokeFullRange >> castObject <$> blackColor _NSColor
       len <- yts_length slf
-      ed <- slf #. _editor
-      ~((s,a):_) <- onlyBg <$> picStrokes <$> slf # storagePicture ed (mkSizeRegion (fromIntegral i) strokeRangeExtent)
+      ~((s,a):_) <- onlyBg <$> picStrokes <$> slf # storagePicture (mkSizeRegion (fromIntegral i) strokeRangeExtent)
       safePoke er (NSRange i ((min len (fromIntegral s)) - i))
       castObject <$> getColor False (background a)
     _ -> do
@@ -309,7 +315,7 @@ yts_attributeAtIndexEffectiveRange attr i er slf = do
       super slf # attributeAtIndexEffectiveRange attr i er
   where
     safePokeFullRange = do
-      Just b <- slf #. _buffer
+      b <- slf # _buffer
       safePoke er (NSRange 0 (fromIntegral $ runBufferDummyWindow b sizeB))
 
 -- These methods are used to modify the contents of the NSTextStorage.
@@ -351,11 +357,9 @@ safePoke p x = when (p /= nullPtr) (poke p x)
 --   so that we keep around cached syntax information...
 --   We assume that the incoming region provide character-indices,
 --   and we need to find out the corresponding byte-indices
-storagePicture :: Editor -> Region -> YiTextStorage () -> IO Picture
-storagePicture ed r slf = do
-  Just sty <- slf #. _uiStyle
-  Just buf <- slf #. _buffer
-  Just win <- slf #. _window
+storagePicture :: Region -> YiTextStorage () -> IO Picture
+storagePicture r slf = do
+  (ed, buf, win, sty, _) <- slf #. _yiState
   -- logPutStrLn $ "storagePicture " ++ show i
   return $ bufferPicture ed sty buf win r
 
@@ -387,22 +391,18 @@ applyUpdate buf b (Delete p _ s) =
 newTextStorage :: UIStyle -> FBuffer -> Window -> IO TextStorage
 newTextStorage sty b w = do
   buf <- new _YiTextStorage
-  buf # setIVar _buffer (Just b)
-  buf # setIVar _window (Just w)
-  buf # setIVar _uiStyle (Just sty)
   s <- new _YiRope
   s # setIVar _str (runBufferDummyWindow b (streamB Forward 0))
-  buf # setIVar _stringCache (Just s)
+  buf # setIVar _yiState (emptyEditor, b, w, sty, s)
   buf # setMonospaceFont
   return buf
 
 setTextStorageBuffer :: Editor -> FBuffer -> TextStorage -> IO ()
 setTextStorageBuffer ed buf storage = do
   storage # beginEditing
-  Just s <- storage #. _stringCache
-  s # setIVar _str (runBufferDummyWindow buf (streamB Forward 0))
-  storage # setIVar _buffer (Just buf)
-  storage # setIVar _editor ed
+  flip (modifyIVar_ _yiState) storage $ \ (_,_,w,sty,s) -> do
+    s # setIVar _str (runBufferDummyWindow buf (streamB Forward 0))
+    return (ed, buf, w, sty, s)
   when (not $ null $ getVal pendingUpdatesA buf) $ do
     mapM_ (applyUpdate storage buf) [u | TextUpdate u <- getVal pendingUpdatesA buf]
     storage # setIVar _pictureCache emptyPicture

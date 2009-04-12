@@ -13,6 +13,7 @@ import Yi.Region
 import Yi.Style
 
 import Control.Applicative
+import Control.Concurrent
 
 -- Specify Cocoa imports explicitly, to avoid name-clashes.
 -- Since the number of functions recognized by HOC varies
@@ -90,6 +91,10 @@ mkRangeRegion (NSRange i l) = mkSizeRegion (fromIntegral i) (fromIntegral l)
 
 mkRegionRange :: Region -> NSRange
 mkRegionRange r = NSRange (fromIntegral $ regionStart r) (fromIntegral $ regionSize r)
+
+-- NOTE: Should really be in HOC... we can't even give a type signature here...
+modifyIVar ivar f slf = modifyMVar (getInstanceMVar ivar slf) f
+modifyIVar_ ivar f slf = modifyMVar_ (getInstanceMVar ivar slf) f
 
 {-
 
