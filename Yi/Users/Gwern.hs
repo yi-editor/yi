@@ -8,14 +8,20 @@ import Yi.Mode.Haskell as Haskell
 import Yi.Mode.IReader as IReader
 import Yi.Mode.Shim    as Shim
 
+myKeymap :: KeymapSet
+myKeymap = mkKeymap $ override Yi.Keymap.Emacs.defKeymap $ \proto _self -> 
+   proto {
+           eKeymap = eKeymap proto
+                                ||> (metaCh 'g' ?>>! gotoLn),
+         }
+
+
 main :: IO ()
-main = yi $ defaultConfig
+main = yi $ defaultEmacsConfig
  { modeTable = AnyMode bestHaskellMode : AnyMode IReader.ireaderMode : modeTable defaultConfig,
 
    -- Keymap Configuration
-    defaultKm = Yi.Keymap.Emacs.keymap -- Override M-g g, for shorter M-g binding.
-                                <|> (metaCh 'g' ?>>! gotoLn),
-   configKillringAccumulate = True,      -- Should be True for emacs, False for others.
+    defaultKm = myKeymap
 
    configUI = defaultUIConfig {configFontSize = Nothing, configWindowFill = ' '}}
     where defaultUIConfig :: UIConfig
