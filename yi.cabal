@@ -342,7 +342,7 @@ executable yi
           -- requires an unreleased version atm.
 
         if flag (ghcAPI)
-          build-depends: ghc == 6.8.3 || == 6.10.1
+          build-depends: ghc == 6.8.3 || == 6.10.*
           build-depends: old-time
           -- Shim uses old-time
           cpp-options: -DGHC_API
