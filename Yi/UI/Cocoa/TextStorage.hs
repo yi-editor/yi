@@ -16,16 +16,18 @@ module Yi.UI.Cocoa.TextStorage
   , visibleRangeChanged
   ) where
 
-import Prelude (takeWhile, take, dropWhile, drop, span, unzip)
+import Prelude ()
 import Yi.Editor (currentRegex, emptyEditor, Editor)
 import Yi.Prelude
 import Yi.Buffer
 import Yi.Style
-import Yi.Syntax
 import Yi.UI.Cocoa.Utils
 import Yi.UI.Utils
 import Yi.Window
 
+import Control.Arrow
+
+import Data.Char
 import Data.Maybe
 import qualified Data.Rope as R
 import qualified Data.Map as M
@@ -40,11 +42,11 @@ import Foreign.C
 import HOC
 import Foundation (
   Unichar,NSString,NSStringClass,NSDictionary,NSRange(..),NSRangePointer,
-  NSStringMetaClass,
+  NSStringMetaClass,initWithString,toNSString,
   length,attributeAtIndexEffectiveRange,attributesAtIndexEffectiveRange,
   attributesAtIndexLongestEffectiveRangeInRange,nsMaxRange,
   beginEditing,endEditing,setAttributesRange,haskellString,
-  substringWithRange,initWithStringAttributes,alloc,
+  substringWithRange,alloc,
   addAttributeValueRange,addAttributesRange)
 import AppKit (
   NSTextStorage,NSTextStorageClass,string,fixesAttributesLazily,
@@ -153,71 +155,35 @@ yirope_getCharactersRange p _r@(NSRange i l) slf = do
 -- queried for the same location multiple times, and thus caching
 -- them as well also seems fruitful.
 
--- | Use this as the base length of computed stroke ranges
-strokeRangeExtent :: Num t => t
-strokeRangeExtent = 4000
+type PicStroke = (CUInt, Attributes)
+type Picture = [PicStroke]
 
-type PicStroke = (Point, Attributes)
-data Picture = Picture
-  { picRegion :: Region
-  , picStrokes :: [PicStroke]
-  }
+instance Show NSRange where
+  show (NSRange i len) = "NSRange " ++ show i ++ " " ++ show len
 
-instance Show Picture where
-  show (Picture r ss) = "{{"++show r ++": "++show (take 1 ss)++"@"++show (L.length ss)++"}}"
+emptyPicture :: (Picture,NSRange)
+emptyPicture = ([],NSRange 0 0)
 
-emptyPicture :: (Picture, NSRange)
-emptyPicture = (Picture emptyRegion [], NSRange 0 0)
+dropStrokesWhile :: (a -> Bool) -> [a] -> [a]
+dropStrokesWhile f = helper
+  where
+    helper [] = []
+    helper [_] = []
+    helper ~(x:y:zs) = if f y then helper (y:zs) else (x:y:zs)
 
-nullPicture :: Picture -> Bool
-nullPicture = null . picStrokes -- Or empty region??
-
-regionEnds :: Region -> (Point, Point)
-regionEnds r = (regionStart r, regionEnd r)
-
-dropStrokesWhile :: (PicStroke -> Bool) -> Picture -> Picture
-dropStrokesWhile f pic = pic { picRegion = mkRegion nb pe, picStrokes = strokes }
-  where 
-    (pb, pe) = regionEnds $ picRegion pic
-    (nb, strokes) = helper pb (picStrokes pic)
-    helper :: Point -> [PicStroke] -> (Point, [PicStroke])
-    helper p [] = (p,[])
-    helper p ~(x:xs)
-      | f x       = helper (fst x) xs
-      | otherwise = (p, x:xs)
+attributeIsCached :: CUInt -> [PicStroke] -> Bool
+attributeIsCached _ [] = False
+attributeIsCached i ~((j,_):_) = i >= j
 
 -- | Extend the currently cached picture, so that it at least
 --   covers the desired region. The resulting picture starts
 --   at the location of the desired region, but might extend
 --   further...
-extendPicture :: Region -> (Region -> IO Picture) -> Picture -> IO Picture
-extendPicture desired ext cache = do
-  -- All possible overlappings of desired and cache regions:
-  -- dd   dd  ddd  ddd dddd dd  dd ddd  dd   dd  dd  ddd   dd <- desired
-  --   cc  cc  ccc  cc  cc  ccc cc cc  cccc ccc cc  ccc  cc   <- cache
-  --  A    B    E   B    A   N  N   E   N    N   A   E    A   <- Get All/Begin/End/None
-  -- logPutStrLn $ "extendPicture " ++ show ((db `inRegion` (picRegion cache)), ((de `compare` cb) /= (de `compare` ce)))
-  case (
-    db `inRegion` (picRegion cache), -- Have start
-    de `compare` cb /= de `compare` ce     -- Have end
-    ) of 
-    ( True,  True) -> return $ dropJunk cache
-    ( True, False) -> append (dropJunk cache) <$> ext (mkExtentRegion ce de)
-    (False,  True) -> flip append cache       <$> ext (mkRegion db cb)
-    (False, False) -> ext (mkExtentRegion db de)
-  -- ext (mkExtentRegion db de)
-  where
-    (db, de) = regionEnds desired
-    (cb, ce) = regionEnds $ picRegion cache
-    mkExtentRegion b e = mkSizeRegion b (max (b ~- e) strokeRangeExtent)
-    dropJunk p = Picture -- Like dropStrokesWhile but always use db as starting point
-      { picRegion = mkRegion db (regionEnd $ picRegion p) 
-      , picStrokes = dropWhile ((db >=) . fst) (picStrokes p) 
-      }
-    append p1 p2 = Picture
-      { picRegion = mkRegion (regionStart $ picRegion p1) (regionEnd $ picRegion p2)
-      , picStrokes = picStrokes p1 ++ picStrokes p2
-      }
+extendPicture :: CUInt -> (CUInt -> IO Picture) -> Picture -> IO Picture
+extendPicture d f c =
+  if attributeIsCached d c
+    then return c
+    else f d
 
 type YiState = (Editor, FBuffer, Window, UIStyle, YiRope ())
 
@@ -226,6 +192,8 @@ $(exportClass "YiTextStorage" "yts_" [
     InstanceVariable "yiState" [t| YiState |] [| error "Uninitialized" |]
   , InstanceVariable "dictionaryCache" [t| M.Map Attributes (NSDictionary ()) |] [| M.empty |]
   , InstanceVariable "pictureCache" [t| (Picture, NSRange) |] [| emptyPicture |]
+  , InstanceVariable "attributeCache" [t| [PicStroke] |] [| [] |]
+  , InstanceVariable "store" [t| NSTextStorage () |] [| error "Uninitialized" |]
   , InstanceMethod 'string -- '
   , InstanceMethod 'fixesAttributesLazily -- '
   , InstanceMethod 'attributeAtIndexEffectiveRange -- '
@@ -263,48 +231,54 @@ yts_fixesAttributesLazily _ = return True
 yts_attributesAtIndexEffectiveRange :: CUInt -> NSRangePointer -> YiTextStorage () -> IO (NSDictionary ())
 yts_attributesAtIndexEffectiveRange i er slf = do
   (cache, _) <- slf #. _pictureCache
-  if (fromIntegral i `inRegion` picRegion cache)
-    then returnEffectiveRange cache i er (mkRegionRange $ picRegion cache) slf
+  if attributeIsCached i cache
+    then returnEffectiveRange cache i er (NSRange i 12345678) slf
     else yts_attributesAtIndexLongestEffectiveRangeInRange i er (NSRange i 1) slf
 
 yts_attributesAtIndexLongestEffectiveRangeInRange :: CUInt -> NSRangePointer -> NSRange -> YiTextStorage () -> IO (NSDictionary ())
-yts_attributesAtIndexLongestEffectiveRangeInRange i er rl slf = do
+yts_attributesAtIndexLongestEffectiveRangeInRange i er rl@(NSRange il _) slf = do
   (cache, prev_rl) <- slf #. _pictureCache
   -- Since we only cache the remaining part of the rl window, we must
   -- check to ensure that we do not re-read the window all the time...
-  let use_rl = if prev_rl == rl then NSRange i (nsMaxRange rl) else rl
+  let use_i = if prev_rl == rl then i else il
   -- logPutStrLn $ "yts_attributesAtIndexLongestEffectiveRangeInRange " ++ show i ++ " " ++ show rl
-  full <- extendPicture (mkRangeRegion use_rl) (flip storagePicture slf) cache
-  -- TODO: Only merge identical strokes when "needed"?
+  full <- extendPicture use_i (flip storagePicture slf) cache
   returnEffectiveRange full i er rl slf
 
 returnEffectiveRange :: Picture -> CUInt -> NSRangePointer -> NSRange -> YiTextStorage () -> IO (NSDictionary ())
-returnEffectiveRange full i er rl slf = do
+returnEffectiveRange full i er rl@(NSRange il ll) slf = do
   pic <- return $ dropStrokesWhile ((fromIntegral i >=) . fst) full
-  -- logPutStrLn $ "returnEffectiveRange " ++ show pic
   slf # setIVar _pictureCache (pic, rl)
-  if nullPicture pic
-    then error "Empty picture?"
-    else do
-      let begin = fromIntegral $ regionStart $ picRegion pic
-      let (next,s) = head $ picStrokes pic
-      let end = min (fromIntegral next) (nsMaxRange rl)
-      len <- yts_length slf
-      safePoke er (NSRange begin ((min end len) - begin))
+  case pic of
+    (before,s):(next,_):_ -> do
+      let begin = max before il
+      let len = min (il + ll - begin) (next - begin)
+      let rng = NSRange begin len
       -- Keep a cache of seen styles... usually, there should not be to many
       -- TODO: Have one centralized cache instead of one per text storage...
       dict <- slf # cachedDictionaryFor s
-      -- TODO: Introduce some sort of cache for this...
-      -- Create a new NSTextStorage to enforce Cocoa font-substitution
-      str <- yts_string slf >>= substringWithRange (NSRange begin ((min end len) - begin))
-      store <- _NSTextStorage # alloc >>= initWithStringAttributes str dict
-      -- Extract the dictionary with adjusted fonts, and new (smaller) range
-      dict2 <- store # attributesAtIndexEffectiveRange (i - begin) er
-      when (er /= nullPtr) $ do
-        -- If we got a range, we should offset it Offset the effective range accordingly
-        NSRange b2 l2 <- peek er
-        poke er (NSRange (begin + b2) l2)
-      return dict2
+      if (nsMaxRange rng == begin)
+        then return dict
+        else do
+          -- TODO: Optimize this somehow, since it seems to be the slowest part now.
+          -- Run the range through a real NSTextStorage to enforce Cocoa font-substitution
+          store <- slf #. _store
+          slen <- store # length
+          -- logPutStrLn $ "substringWithRange " ++ show (begin, len)
+          str <- yts_string slf >>= substringWithRange rng
+          store # beginEditing
+          store # replaceCharactersInRangeWithString (NSRange 0 slen) str
+          store # setAttributesRange dict (NSRange 0 len)
+          store # endEditing
+          -- Extract the dictionary with adjusted fonts, and new (smaller) range
+          dict2 <- store # attributesAtIndexEffectiveRange (i - begin) er
+          when (er /= nullPtr) $ do
+            -- If we got a range, we should offset it Offset the effective range accordingly
+            NSRange b2 l2 <- peek er
+            logPutStrLn $ "returnEffectiveRange " ++ show (begin + b2)
+            poke er (NSRange (begin + b2) l2)
+          return dict2
+    _ -> error "Empty picture?"
 
 cachedDictionaryFor :: Attributes -> YiTextStorage () -> IO (NSDictionary ())
 cachedDictionaryFor s slf = do
@@ -341,8 +315,8 @@ yts_attributeAtIndexEffectiveRange attr i er slf = do
     "NSBackgroundColor" -> do
       -- safePokeFullRange >> castObject <$> blackColor _NSColor
       len <- yts_length slf
-      ~((s,a):_) <- onlyBg <$> picStrokes <$> slf # storagePicture (mkSizeRegion (fromIntegral i) strokeRangeExtent)
-      safePoke er (NSRange i ((min len (fromIntegral s)) - i))
+      ~((s,a):xs) <- onlyBg <$> slf # storagePicture i
+      safePoke er (NSRange s ((if null xs then len else fst (head xs)) - s))
       castObject <$> getColor False (background a)
     _ -> do
       -- TODO: Optimize the other queries as well (if needed)
@@ -364,25 +338,16 @@ yts_addAttributesRange _ _ _ = return ()
 yts_addAttributeValueRange :: NSString t -> ID () -> NSRange -> YiTextStorage () -> IO ()
 yts_addAttributeValueRange _ _ _ _ = return ()
 
--- | Remove element x_i if f(x_i,x_(i+1)) is true
+-- | Remove element x_(i+1) if f(x_i,x_(i+1)) is true
 filter2 :: (a -> a -> Bool) -> [a] -> [a]
 filter2 _f [] = []
 filter2 _f [x] = [x]
 filter2 f (x1:x2:xs) =
-  (if f x1 x2 then id else (x1:)) $ filter2 f (x2:xs)
+  if f x1 x2 then filter2 f (x1:xs) else x1 : filter2 f (x2:xs)
 
 -- | Keep only the background information
 onlyBg :: [PicStroke] -> [PicStroke]
 onlyBg = filter2 ((==) `on` (background . snd))
-
--- | Get a picture where each component (p,style) means apply the style
---   up until the given point p.
-paintCocoaPicture :: UIStyle -> Point -> [PicStroke] -> [PicStroke]
-paintCocoaPicture sty end = tail . stylesift (baseAttributes sty)
-  where
-    -- Turn a picture of use style from p into a picture of use style until p
-    stylesift s [] = [(end,s)]
-    stylesift s ((p,t):xs) = (p,s):(stylesift t xs)
 
 -- | A version of poke that does nothing if p is null.
 safePoke :: (Storable a) => Ptr a -> a -> IO ()
@@ -392,21 +357,17 @@ safePoke p x = when (p /= nullPtr) (poke p x)
 --   so that we keep around cached syntax information...
 --   We assume that the incoming region provide character-indices,
 --   and we need to find out the corresponding byte-indices
-storagePicture :: Region -> YiTextStorage () -> IO Picture
-storagePicture r slf = do
+storagePicture :: CUInt -> YiTextStorage () -> IO Picture
+storagePicture i slf = do
   (ed, buf, win, sty, _) <- slf #. _yiState
   -- logPutStrLn $ "storagePicture " ++ show i
-  return $ bufferPicture ed sty buf win r
+  return $ bufferPicture ed sty buf win i
 
-bufferPicture :: Editor -> UIStyle -> FBuffer -> Window -> Region -> Picture
-bufferPicture ed sty buf win r =
-  Picture
-    { picRegion = r
-    , picStrokes =
-        paintCocoaPicture sty (regionEnd r) $
-          (fst $ runBuffer win buf (attributesPictureB sty (currentRegex ed) r []))
-    }
-  
+bufferPicture :: Editor -> UIStyle -> FBuffer -> Window -> CUInt -> Picture
+bufferPicture ed sty buf win i = fmap (first fromIntegral) $ fst $ runBuffer win buf $ do
+  e <- sizeB
+  (attributesPictureB sty (currentRegex ed) (mkRegion (fromIntegral i) e) [])
+
 type TextStorage = YiTextStorage ()
 initializeClass_TextStorage :: IO ()
 initializeClass_TextStorage = do
@@ -429,6 +390,8 @@ newTextStorage sty b w = do
   s <- new _YiRope
   s # setIVar _str (mkSplitRope R.empty (runBufferDummyWindow b (streamB Forward 0)))
   buf # setIVar _yiState (emptyEditor, b, w, sty, s)
+  store <- _NSTextStorage # alloc >>= initWithString (toNSString " ")
+  buf # setIVar _store store
   buf # setMonospaceFont
   return buf
 
