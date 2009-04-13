@@ -197,6 +197,7 @@ $(exportClass "YiTextStorage" "yts_" [
   , InstanceMethod 'string -- '
   , InstanceMethod 'fixesAttributesLazily -- '
   , InstanceMethod 'attributeAtIndexEffectiveRange -- '
+  , InstanceMethod 'attributeAtIndexLongestEffectiveRangeInRange
   , InstanceMethod 'attributesAtIndexEffectiveRange -- '
   , InstanceMethod 'attributesAtIndexLongestEffectiveRangeInRange
   , InstanceMethod 'replaceCharactersInRangeWithString -- '
@@ -289,43 +290,43 @@ cachedDictionaryFor s slf = do
         dict <- convertAttributes s
         return (M.insert s dict dicts, dict))
 
-  
+simpleAttr :: String -> IO (Either String (ID ()))
+simpleAttr "NSFont"           = Right <$> castObject <$> userFixedPitchFontOfSize 0 _NSFont
+simpleAttr "NSGlyphInfo"      = Right <$> return nil
+simpleAttr "NSAttachment"     = Right <$> return nil
+simpleAttr "NSCursor"         = Right <$> castObject <$> ibeamCursor _NSCursor
+simpleAttr "NSToolTip"        = Right <$> return nil
+simpleAttr "NSLanguage"       = Right <$> return nil
+simpleAttr "NSLink"           = Right <$> return nil
+-- TODO: Adjust line break property...
+simpleAttr "NSParagraphStyle" = Right <$> castObject <$> defaultParagraphStyle _NSParagraphStyle
+simpleAttr attr               = Left <$> return attr
+
+yts_attributeAtIndexLongestEffectiveRangeInRange :: NSString t -> CUInt -> NSRangePointer -> NSRange -> YiTextStorage () -> IO (ID ())
+yts_attributeAtIndexLongestEffectiveRangeInRange attr i er rn slf = do
+  sres <- simpleAttr =<< haskellString attr
+  case sres of
+    Right res -> safePoke er rn >> return res
+    Left "NSBackgroundColor" -> do
+      ~((s,a):xs) <- onlyBg <$> L.takeWhile ((<= nsMaxRange rn).fst) <$> slf # storagePicture i
+      safePoke er (NSRange s ((if null xs then nsMaxRange rn else fst (head xs)) - s))
+      castObject <$> getColor False (background a)
+    Left _attr' -> do
+      -- logPutStrLn $ "Unoptimized yts_attributeAtIndexLongestEffectiveRangeInRange " ++ attr' ++ " at " ++ show i
+      super slf # attributeAtIndexLongestEffectiveRangeInRange attr i er rn
 
 yts_attributeAtIndexEffectiveRange :: forall t. NSString t -> CUInt -> NSRangePointer -> YiTextStorage () -> IO (ID ())
 yts_attributeAtIndexEffectiveRange attr i er slf = do
-  attr' <- haskellString attr
-  case attr' of
-    "NSFont" -> do
-      safePokeFullRange >> castObject <$> userFixedPitchFontOfSize 0 _NSFont
-    "NSGlyphInfo" -> do
-      safePokeFullRange >> return nil
-    "NSAttachment" -> do
-      safePokeFullRange >> return nil
-    "NSCursor" -> do
-      safePokeFullRange >> castObject <$> ibeamCursor _NSCursor
-    "NSToolTip" -> do
-      safePokeFullRange >> return nil
-    "NSLanguage" -> do
-      safePokeFullRange >> return nil
-    "NSLink" -> do
-      safePokeFullRange >> return nil
-    "NSParagraphStyle" -> do
-      -- TODO: Adjust line break property...
-      safePokeFullRange >> castObject <$> defaultParagraphStyle _NSParagraphStyle
-    "NSBackgroundColor" -> do
-      -- safePokeFullRange >> castObject <$> blackColor _NSColor
-      len <- yts_length slf
-      ~((s,a):xs) <- onlyBg <$> slf # storagePicture i
-      safePoke er (NSRange s ((if null xs then len else fst (head xs)) - s))
-      castObject <$> getColor False (background a)
-    _ -> do
+  sres <- simpleAttr =<< haskellString attr
+  case sres of
+    Right res -> slf # length >>= safePoke er . NSRange 0 >> return res
+    Left "NSBackgroundColor" -> do
+      len <- slf # length
+      slf # yts_attributeAtIndexLongestEffectiveRangeInRange attr i er (NSRange i (min 100 (len - i)))
+    Left _attr' -> do
       -- TODO: Optimize the other queries as well (if needed)
       -- logPutStrLn $ "Unoptimized yts_attributeAtIndexEffectiveRange " ++ attr' ++ " at " ++ show i
       super slf # attributeAtIndexEffectiveRange attr i er
-  where
-    safePokeFullRange = do
-      b <- slf # _buffer
-      safePoke er (NSRange 0 (fromIntegral $ runBufferDummyWindow b sizeB))
 
 -- These methods are used to modify the contents of the NSTextStorage.
 -- We do not allow direct updates of the contents this way, though.
