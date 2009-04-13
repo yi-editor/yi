@@ -68,21 +68,23 @@ instance Has_getCharactersRange (NSString a)
 data SplitRope = SplitRope
   R.Rope -- Cocoa has moved beyond this portion
   R.Rope -- Cocoa is currently accessing this part
-  [Unichar] -- But in this format... =)
+  Int -- From this offset...
+  [Unichar] -- And in this format... =)
+  [Unichar] -- But we keep the whole as a backup
 
 -- | Create a new SplitRope, and initialize the encoded portion appropriately.
 mkSplitRope :: R.Rope -> R.Rope -> SplitRope
-mkSplitRope done next =
-  SplitRope done next (concatMap (encodeUTF16 . fromEnum) (R.toString next))
+mkSplitRope done next = SplitRope done next 0 acs acs
+  where acs = concatMap (encodeUTF16 . fromEnum) (R.toString next)
 
 -- | Get the length of the whole SplitRope.
 sLength :: SplitRope -> Int
-sLength (SplitRope done next _) = R.length done + R.length next
+sLength (SplitRope done next _ _ _) = R.length done + R.length next
 
 -- | Ensure that the specified position is in the first chunk of
 --   the ``next'' rope.
 sSplitAtChunkBefore :: Int -> SplitRope -> SplitRope
-sSplitAtChunkBefore n s@(SplitRope done next _)
+sSplitAtChunkBefore n s@(SplitRope done next _ _ _)
   | n < R.length done = mkSplitRope done' (R.append renext next)
   | R.null redone     = s
   | otherwise         = mkSplitRope (R.append done redone) next'
@@ -90,8 +92,11 @@ sSplitAtChunkBefore n s@(SplitRope done next _)
     (done', renext) = R.splitAtChunkBefore n done
     (redone, next') = R.splitAtChunkBefore (n - R.length done) next
 
-sStringAt :: Int -> SplitRope -> [Unichar]
-sStringAt n (SplitRope done _ cs) = L.drop (n - R.length done) cs
+sSplitAt :: Int -> SplitRope -> SplitRope
+sSplitAt n s = SplitRope done next n' (if n' >= off then L.drop (n' - off) cs else L.drop n' acs) acs
+  where
+    n' = n - R.length done
+    SplitRope done next off cs acs = sSplitAtChunkBefore n s
 
 encodeUTF16 :: Int -> [Unichar]
 encodeUTF16 c
@@ -125,15 +130,15 @@ yirope_characterAtIndex :: CUInt -> YiRope () -> IO Unichar
 yirope_characterAtIndex i slf = do
   -- logPutStrLn $ "Calling yirope_characterAtIndex " ++ show i
   flip (modifyIVar _str) slf $ \s -> do
-    s' <- return (sSplitAtChunkBefore (fromIntegral i) s)
-    return (s', head (sStringAt (fromIntegral i) s'))
+    s'@(SplitRope _ _ _ (c:_) _) <- return (sSplitAt (fromIntegral i) s)
+    return (s', c)
 
 yirope_getCharactersRange :: Ptr Unichar -> NSRange -> YiRope () -> IO ()
 yirope_getCharactersRange p _r@(NSRange i l) slf = do
   -- logPutStrLn $ "Calling yirope_getCharactersRange " ++ show r
   flip (modifyIVar_ _str) slf $ \s -> do
-    s' <- return (sSplitAtChunkBefore (fromIntegral i) s)
-    pokeArray p (L.take (fromIntegral l) (sStringAt (fromIntegral i) s'))
+    s'@(SplitRope _ _ _ cs _) <- return (sSplitAt (fromIntegral i) s)
+    pokeArray p (L.take (fromIntegral l) cs)
     return s'
 
 -- An implementation of NSTextStorage that uses Yi's FBuffer as
