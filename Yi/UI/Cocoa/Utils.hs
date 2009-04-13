@@ -25,7 +25,7 @@ import Foundation (
   haskellString,retain,setValueForKey,dictionary,init,
   objectEnumerator,nextObject,NSArray,NSRange(..))
 import AppKit (
-  Has_setFont,NSColor,_NSColor,_NSFont,blackColor,
+  Has_setFont,NSColor,_NSColor,_NSFont,blackColor,NSFont,
   colorWithDeviceRedGreenBlueAlpha,nsBackgroundColorAttributeName,
   nsFontAttributeName,nsForegroundColorAttributeName,setFont,
   userFixedPitchFontOfSize,whiteColor)
@@ -50,9 +50,11 @@ autoreleased o = do
   autorelease o
   return o
 
-setMonospaceFont :: Has_setFont v => v -> IO ()
+setMonospaceFont :: Has_setFont v => v -> IO (NSFont ())
 setMonospaceFont view = do
-  userFixedPitchFontOfSize 0 _NSFont >>= flip setFont view
+  font <- userFixedPitchFontOfSize 0 _NSFont
+  view # setFont font
+  return font
 
 -- | Convert style information into Cocoa compatible format
 convertAttributes :: Attributes -> IO (NSDictionary ())

@@ -42,15 +42,19 @@ import Foreign.C
 import HOC
 import Foundation (
   Unichar,NSString,NSStringClass,NSDictionary,NSRange(..),NSRangePointer,
-  NSStringMetaClass,initWithString,toNSString,
+  NSStringMetaClass,toNSString,NSCharacterSet,_NSCharacterSet,invertedSet,
+  _NSMutableCharacterSet,formUnionWithCharacterSet,newlineCharacterSet,
   length,attributeAtIndexEffectiveRange,attributesAtIndexEffectiveRange,
   attributesAtIndexLongestEffectiveRangeInRange,nsMaxRange,
+  rangeOfCharacterFromSetOptionsRange,nsLiteralSearch,
   beginEditing,endEditing,setAttributesRange,haskellString,
-  substringWithRange,alloc,
+  NSMutableDictionary,_NSMutableDictionary,dictionaryWithDictionary,
+  objectForKey,setObjectForKey,substringWithRange,copy,
+  attributeAtIndexLongestEffectiveRangeInRange,
   addAttributeValueRange,addAttributesRange)
 import AppKit (
   NSTextStorage,NSTextStorageClass,string,fixesAttributesLazily,
-  NSTextStorageMetaClass,
+  NSTextStorageMetaClass,NSFontClass,NSFont,coveredCharacterSet,
   _NSCursor,_NSFont,replaceCharactersInRangeWithString,
   _NSParagraphStyle,defaultParagraphStyle,ibeamCursor,_NSTextStorage,
   editedRangeChangeInLength,nsTextStorageEditedAttributes,
@@ -64,6 +68,11 @@ instance Has_characterAtIndex (NSString a)
 $(declareRenamedSelector "getCharacters:range:" "getCharactersRange" [t| Ptr Unichar -> NSRange -> IO () |])
 instance Has_getCharactersRange (NSString a)
 
+-- A (hidden) utility method for looking up font substitutions (used by WebKit)
+$(declareRenamedSelector "findFontLike:forString:withRange:inLanguage:" "findFontLikeForStringWithRangeInLanguage" [t| forall t1 t2 t3. NSFont t1 -> NSString t2 -> NSRange -> NSString t3 -> IO (NSFont ()) |])
+instance Has_findFontLikeForStringWithRangeInLanguage (NSFontClass a)
+_silence :: ImpType_findFontLikeForStringWithRangeInLanguage x y
+_silence = undefined
 
 -- | SplitRope provides means for tracking the position
 --   of Cocoa reads from the underlying rope...
@@ -193,7 +202,7 @@ $(exportClass "YiTextStorage" "yts_" [
   , InstanceVariable "dictionaryCache" [t| M.Map Attributes (NSDictionary ()) |] [| M.empty |]
   , InstanceVariable "pictureCache" [t| (Picture, NSRange) |] [| emptyPicture |]
   , InstanceVariable "attributeCache" [t| [PicStroke] |] [| [] |]
-  , InstanceVariable "store" [t| NSTextStorage () |] [| error "Uninitialized" |]
+  , InstanceVariable "covered" [t| (NSCharacterSet (), NSCharacterSet ()) |] [| error "Uninitialized" |]
   , InstanceMethod 'string -- '
   , InstanceMethod 'fixesAttributesLazily -- '
   , InstanceMethod 'attributeAtIndexEffectiveRange -- '
@@ -251,7 +260,7 @@ returnEffectiveRange full i er rl@(NSRange il ll) slf = do
   pic <- return $ dropStrokesWhile ((fromIntegral i >=) . fst) full
   slf # setIVar _pictureCache (pic, rl)
   case pic of
-    (before,s):(next,_):_ -> do
+    (before,s):rest@((next,_):_) -> do
       let begin = max before il
       let len = min (il + ll - begin) (next - begin)
       let rng = NSRange begin len
@@ -261,24 +270,31 @@ returnEffectiveRange full i er rl@(NSRange il ll) slf = do
       if (nsMaxRange rng == begin)
         then return dict
         else do
-          -- TODO: Optimize this somehow, since it seems to be the slowest part now.
-          -- Run the range through a real NSTextStorage to enforce Cocoa font-substitution
-          store <- slf #. _store
-          slen <- store # length
-          -- logPutStrLn $ "substringWithRange " ++ show (begin, len)
-          str <- yts_string slf >>= substringWithRange rng
-          store # beginEditing
-          store # replaceCharactersInRangeWithString (NSRange 0 slen) str
-          store # setAttributesRange dict (NSRange 0 len)
-          store # endEditing
-          -- Extract the dictionary with adjusted fonts, and new (smaller) range
-          dict2 <- store # attributesAtIndexEffectiveRange (i - begin) er
-          when (er /= nullPtr) $ do
-            -- If we got a range, we should offset it Offset the effective range accordingly
-            NSRange b2 l2 <- peek er
-            logPutStrLn $ "returnEffectiveRange " ++ show (begin + b2)
-            poke er (NSRange (begin + b2) l2)
-          return dict2
+          str <- yts_string slf
+          (covered, missing) <- slf #. _covered
+          NSRange b2 _ <- str # rangeOfCharacterFromSetOptionsRange missing nsLiteralSearch rng
+          if begin /= b2 -- First caracter is included in the font
+            then do
+              let corange = NSRange begin $ if b2 == 0x7fffffff then len else b2 - begin
+              -- logPutStrLn $ "Normal " ++ show i ++ show rl ++ show corange
+              when (er /= nullPtr) (poke er corange)
+              when (rng /= corange) $
+                slf # setIVar _pictureCache ((before,s):(nsMaxRange corange,s):rest, rl)
+              return dict
+            else do
+              NSRange b3 _ <- str # rangeOfCharacterFromSetOptionsRange covered nsLiteralSearch rng
+              let unrange = NSRange begin $ if b3 == 0x7fffffff then len else b3 - begin
+              rep <- str # substringWithRange unrange >>= haskellString
+              -- logPutStrLn $ "Fixing " ++ show unrange ++ ": " ++ show rep
+              font <- castObject <$> dict # objectForKey (toNSString "NSFont") :: IO (NSFont ())
+              font2 <- _NSFont # findFontLikeForStringWithRangeInLanguage font str unrange nil
+              dict2 <- castObject <$> _NSMutableDictionary # dictionaryWithDictionary dict :: IO (NSMutableDictionary ())
+              dict2 # setObjectForKey font2 (toNSString "NSFont")
+              dict2 # setObjectForKey font (toNSString "NSOriginalFont")
+              when (er /= nullPtr) (poke er unrange)
+              when (rng /= unrange) $
+                slf # setIVar _pictureCache ((before,s):(nsMaxRange unrange,s):rest, rl)
+              castObject <$> return dict2
     _ -> error "Empty picture?"
 
 cachedDictionaryFor :: Attributes -> YiTextStorage () -> IO (NSDictionary ())
@@ -391,9 +407,14 @@ newTextStorage sty b w = do
   s <- new _YiRope
   s # setIVar _str (mkSplitRope R.empty (runBufferDummyWindow b (streamB Forward 0)))
   buf # setIVar _yiState (emptyEditor, b, w, sty, s)
-  store <- _NSTextStorage # alloc >>= initWithString (toNSString " ")
-  buf # setIVar _store store
-  buf # setMonospaceFont
+  -- Determine the set of characters in the font.
+  -- Always add newlines, since they are currently not rendered anyhow...
+  allset <- new _NSMutableCharacterSet
+  buf # setMonospaceFont >>= coveredCharacterSet >>= flip formUnionWithCharacterSet allset
+  _NSCharacterSet # newlineCharacterSet >>= flip formUnionWithCharacterSet allset . castObject
+  covset <- castObject <$> copy allset
+  misset <- covset # invertedSet
+  buf # setIVar _covered (covset, misset)
   return buf
 
 setTextStorageBuffer :: Editor -> FBuffer -> TextStorage -> IO ()
