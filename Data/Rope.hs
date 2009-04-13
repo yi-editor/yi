@@ -51,10 +51,18 @@ import Data.Binary
 import Data.Char (ord)
 import Data.Monoid
 import Data.Foldable (toList)
+import Data.Int
  
-chunkSize :: Int
-chunkSize = 128 -- in chars!
- 
+defaultChunkSize :: Int
+defaultChunkSize = 128 -- in chars! (chunkSize requires this to be <= 256)
+
+-- The FingerTree does not store measurements for single chunks, which
+-- means that the length of chunks often have to be recomputed.
+mkChunk :: ByteString -> Chunk
+mkChunk s = Chunk (fromIntegral $ B.length s) s
+data Chunk = Chunk { chunkSize :: !Word8, fromChunk :: !ByteString }
+  deriving (Eq, Show)
+
 data Size = Indices {charIndex :: !Int, lineIndex :: Int} -- lineIndex is lazy because we do not often want the line count.
   deriving Show
 
@@ -62,29 +70,29 @@ instance Monoid Size where
     mempty = Indices 0 0
     mappend (Indices c1 l1) (Indices c2 l2) = Indices (c1+c2) (l1+l2)
  
-newtype Rope = Rope { fromRope :: FingerTree Size ByteString }
+newtype Rope = Rope { fromRope :: FingerTree Size Chunk }
    deriving (Eq, Show)
  
-(-|) :: ByteString -> FingerTree Size ByteString -> FingerTree Size ByteString
-b -| t | B.null b  = t
-        | otherwise = b <| t
+(-|) :: Chunk -> FingerTree Size Chunk -> FingerTree Size Chunk
+b -| t | chunkSize b == 0 = t
+       | otherwise        = b <| t
  
-(|-) :: FingerTree Size ByteString -> ByteString -> FingerTree Size ByteString
-t |- b | B.null b  = t
-        | otherwise = t |> b
+(|-) :: FingerTree Size Chunk -> Chunk -> FingerTree Size Chunk
+t |- b | chunkSize b == 0 = t
+       | otherwise        = t |> b
  
-instance Measured Size ByteString where
-   measure s = Indices (B.length s)  -- note that this is the length in characters, not bytes.
+instance Measured Size Chunk where
+   measure (Chunk l s) = Indices (fromIntegral l)  -- note that this is the length in characters, not bytes.
                        (B.foldr (\c -> if c == '\n' then (1+) else id) 0 s)
  
 toLazyByteString :: Rope -> LB.ByteString
-toLazyByteString = LB.fromChunks . toList . fromRope
+toLazyByteString = LB.fromChunks . fmap fromChunk . toList . fromRope
 
 reverse :: Rope -> Rope
-reverse = Rope . fmap' (B.fromString . L.reverse . B.toString) . T.reverse . fromRope
+reverse = Rope . fmap' (mkChunk . B.fromString . L.reverse . B.toString . fromChunk) . T.reverse . fromRope
  
 toReverseString :: Rope -> String
-toReverseString = L.concat . map (L.reverse . B.toString) . toList . T.reverse . fromRope
+toReverseString = L.concat . map (L.reverse . B.toString . fromChunk) . toList . T.reverse . fromRope
   
 toString :: Rope -> String
 toString = LB.toString . toLazyByteString
@@ -93,14 +101,14 @@ fromLazyByteString :: LB.ByteString -> Rope
 fromLazyByteString = Rope . toTree
    where
      toTree b | LB.null b = T.empty
-     toTree b = let (h,t) = LB.splitAt (fromIntegral chunkSize) b in (B.concat $ LB.toChunks $ h) <| toTree t
+     toTree b = let (h,t) = LB.splitAt (fromIntegral defaultChunkSize) b in (mkChunk $ B.concat $ LB.toChunks $ h) <| toTree t
 
  
 fromString :: String -> Rope
 fromString = Rope . toTree
    where
      toTree [] = T.empty
-     toTree b = let (h,t) = L.splitAt chunkSize b in B.fromString h <| toTree t
+     toTree b = let (h,t) = L.splitAt defaultChunkSize b in (mkChunk $ B.fromString h) <| toTree t
  
 null :: Rope -> Bool
 null (Rope a) = T.null a
@@ -121,10 +129,10 @@ append :: Rope -> Rope -> Rope
 append (Rope a) (Rope b) = Rope $
      case T.viewr a of
        EmptyR -> b
-       l :> x -> case T.viewl b of
+       l :> (Chunk len x) -> case T.viewl b of
                    EmptyL  -> a
-                   x' :< r -> if B.length x + B.length x' < chunkSize
-                                then l >< singleton (x `B.append` x') >< r
+                   (Chunk len' x') :< r -> if (fromIntegral len) + (fromIntegral len') < defaultChunkSize
+                                then l >< singleton (Chunk (len + len') (x `B.append` x')) >< r
                                 else a >< b
  
 take, drop :: Int -> Rope -> Rope
@@ -135,8 +143,8 @@ drop n = snd . splitAt n
 splitAt :: Int -> Rope -> (Rope, Rope)
 splitAt n (Rope t) =
    case T.viewl c of
-     x :< r | n' /= 0 ->
-       let (lx, rx) = B.splitAt n' x in (Rope $ l |- lx, Rope $ rx -| r)
+     (Chunk len x) :< r | n' /= 0 ->
+       let (lx, rx) = B.splitAt n' x in (Rope $ l |> (Chunk (fromIntegral n') lx), Rope $ (Chunk (len - fromIntegral n') rx) -| r)
      _ -> (Rope l, Rope c)
    where
      (l, c) = T.split ((> n) . charIndex) t
@@ -157,10 +165,10 @@ splitAtLine n | n <= 0     = \r -> (empty, r)
 splitAtLine' :: Int -> Rope -> (Rope, Rope)
 splitAtLine' n (Rope t) =
    case T.viewl c of
-     x :< r ->
+     c@(Chunk _ x) :< r ->
        let (lx, rx) = cutExcess excess x 
-           excess = lineIndex (measure l) + lineIndex (measure x) - n - 1
-       in (Rope $ l |- lx, Rope $ rx -| r)
+           excess = lineIndex (measure l) + lineIndex (measure c) - n - 1
+       in (Rope $ l |- mkChunk lx, Rope $ mkChunk rx -| r)
      _ -> (Rope l, Rope c)
    where
      (l, c) = T.split ((n <) . lineIndex) t
