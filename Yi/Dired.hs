@@ -170,15 +170,13 @@ diredKeymap = do
     (choice [
              char 'p'                   ?>>! filenameColOf lineUp,
              oneOf [char 'n', char ' ']  >>! filenameColOf lineDown,
-             char 'b'                   ?>>! leftB,
-             char 'f'                   ?>>! rightB,
-             char 'm'                   ?>>! diredMark,
              char 'd'                   ?>>! diredMarkDel,
              char 'g'                   ?>>! diredRefresh,
+             char 'm'                   ?>>! diredMark,
              char '^'                   ?>>! diredUpDir,
              char '+'                   ?>>! diredCreateDir,     
              char 'q'                   ?>>! (deleteBuffer =<< gets currentBuffer),
-             oneOf [ctrl $ char 'm', spec KEnter] >>! diredLoad,
+             oneOf [ctrl $ char 'm', spec KEnter, char 'f'] >>! diredLoad,
              spec KBS                   ?>>! diredUnmark]
      <||)
 
