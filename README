@@ -21,7 +21,7 @@ DEPENDENCIES
 * for vty frontend, vty 3.1.6
   * http://hackage.haskell.org/cgi-bin/hackage-scripts/package/vty
 
-* for gtk frontend, gtk2hs 0.10
+* for pango frontend, gtk2hs 0.10
         http://haskell.org/gtk2hs/download/
 
 * for cocoa frontend
@@ -83,7 +83,7 @@ See examples directory for files that you can use as ~/.yi/yi.hs
 
 COMPATIBILITY
 
-        |  Vty     Gtk   Cocoa
+        |  Vty    Pango  Cocoa
 --------+----------------------
 Linux   |   X       X
 OSX     |   X       X      X
@@ -154,4 +154,4 @@ PORTABILITY
 
 A porting checklist:
         * you have latest GHC release
-        * you have either gtk or vty support
+        * you have either vty or gtk support
