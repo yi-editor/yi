@@ -175,9 +175,9 @@ splitAtLine' n (Rope t) =
 
 
 cutExcess :: Int -> ByteString -> (ByteString, ByteString)
-cutExcess i s = let idx = gt i $ L.reverse $ B.elemIndices (fromIntegral $ ord $ '\n') s
+cutExcess i s = let idx = gt i $ L.reverse $ Byte.elemIndices (fromIntegral $ ord $ '\n') s
                 in Byte.splitAt (idx+1) s -- take one extra byte to that the newline is found on the left.
-    where gt _ []     = B.length s
+    where gt _ []     = Byte.length s
           gt 0 (x:_ ) = x
           gt n (_:xs) = gt (n-1) xs
           
