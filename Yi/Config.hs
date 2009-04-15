@@ -49,9 +49,10 @@ data Config = Config {startFrontEnd :: UIBoot,
                       -- ^ Produce a .yi.dbg file with a lot of debug information.
                       configRegionStyle :: RegionStyle,
                       -- ^ Set to 'Exclusive' for an emacs-like behaviour.
-                      configKillringAccumulate :: Bool
+                      configKillringAccumulate :: Bool,
                       -- ^ Set to 'True' for an emacs-like behaviour, where 
                       -- all deleted text is accumulated in a killring.
+                      bufferUpdateHandler :: [([Update] -> BufferM ())]
                      }
 
 configFundamentalMode :: Config -> AnyMode

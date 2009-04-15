@@ -161,6 +161,7 @@ defaultConfig =
          , configKillringAccumulate = False
          , configRegionStyle = Exclusive
          , configInputPreprocess = I.idAutomaton
+         , bufferUpdateHandler = []
          }
 
 defaultEmacsConfig, defaultVimConfig, defaultCuaConfig :: Config

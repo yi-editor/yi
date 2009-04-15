@@ -257,18 +257,21 @@ withGivenBuffer0 k f = do
 withGivenBufferAndWindow0 :: Window -> BufferRef -> BufferM a -> EditorM a
 withGivenBufferAndWindow0 w k f = do
   accum <- asks configKillringAccumulate
-  getsAndModify $ \e ->
-                        let b = findBufferWith k e
-                            (v, us, b') = runBufferFull w b f
-                            
-                        in (e {buffers = mapAdjust' (const b') k (buffers e),
-                               killring = (if accum && all updateIsDelete us
-                                           then foldl (.) id 
-                                                (reverse [krPut dir (R.toString s) | Delete _ dir s <- us])
-                                           else id) 
-                                          (killring e)
-                              },v)
-
+  (us, v) <- getsAndModify $ (\e ->
+                            let b = findBufferWith k e
+                                (v, us, b') = runBufferFull w b f
+                                
+                            in (e {buffers = mapAdjust' (const b') k (buffers e),
+                                   killring = (if accum && all updateIsDelete us
+                                               then foldl (.) id 
+                                                    (reverse [krPut dir (R.toString s) | Delete _ dir s <- us])
+                                               else id) 
+                                              (killring e)
+                                  }, (us, v)))
+  updHandler <- return . bufferUpdateHandler =<< ask
+  unless (null us || null updHandler) $ do
+    forM_ updHandler (\h -> withGivenBufferAndWindow0 w k (h us))
+  return v
 
 -- | Perform action with current window's buffer
 withBuffer0 :: BufferM a -> EditorM a
