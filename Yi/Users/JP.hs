@@ -94,12 +94,21 @@ isCocoa = frontendName == "cocoa"
 defaultConfig :: Config
 defaultConfig = defaultEmacsConfig
 
+deleteB' :: BufferM ()
+deleteB' = adjBlock (-1) >> deleteN 1
+
+-- restore sanity in 1-character deletes.
+fixKeymap :: Keymap
+fixKeymap =   choice [(ctrlCh 'd'           ?>>! (deleteB'))
+                     , spec KBS             ?>>! ((adjBlock (-1) >> bdeleteB))
+                     , spec KDel            ?>>! ((deleteB'))]
+                      
 
 myKeymap :: KeymapSet
 myKeymap = mkKeymap $ override defKeymap $ \proto _self -> 
    proto {
            completionCaseSensitive = True,
-           eKeymap = (adjustPriority (-1) >> choice [extraInput]) <|| eKeymap proto
+           eKeymap = (adjustPriority (-1) >> choice [extraInput]) <|| (fixKeymap <|| eKeymap proto)
                      <|> (ctrl (char '>') ?>>! increaseIndent)
                      <|> (ctrl (char '<') ?>>! decreaseIndent)
          }
