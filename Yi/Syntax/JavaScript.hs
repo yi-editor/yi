@@ -94,7 +94,8 @@ instance Strokable (Tok Token) where
     toStrokes = one tokenToStroke
 
 instance Strokable (JTree TT) where
-    toStrokes = foldMap toStrokes
+    toStrokes (JError t) = one (modStroke errorStyle) (tokenToStroke t)
+    toStrokes t = foldMap toStrokes t
 
 instance Strokable (Statement TT) where
     toStrokes = foldMap toStrokes
@@ -106,7 +107,8 @@ instance Strokable (JVarDecAss TT) where
     toStrokes = foldMap toStrokes
 
 instance Strokable (JExpr TT) where
-    toStrokes = foldMap toStrokes
+    toStrokes (ExprErr t) = one (modStroke errorStyle) (tokenToStroke t)
+    toStrokes expr = foldMap toStrokes expr
 
 instance Strokable (JKeyValue TT) where
     toStrokes = foldMap toStrokes
