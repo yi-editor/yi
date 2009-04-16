@@ -52,8 +52,8 @@ isNoise _ (Reserved Module) = False
 isNoise _ (Reserved Import) = False
 -- isNoise _ (Reserved Where) = False
 -- isNoise _ (Reserved As) = False
--- isNoise _ (Reserved Type) = False
--- isNoise _ (Reserved Data) = False
+isNoise _ (Reserved Type) = False
+isNoise _ (Reserved Data) = False
 --isNoise _ (Reserved NewType) = False
 isNoise _ (Reserved Qualified) = False
 isNoise _ (Reserved Hiding) = False
@@ -72,13 +72,13 @@ data Tree t
     | Bin (Tree t) (Tree t)
     | Error t
     | Opt (Maybe (Tree t))
-    | Opt' t [t] -- some optional stuff followed by some comments allmost like Comm
     | Comm (Tree t) [t]
     | Modid t
     | Mod t [t] t [t] (Tree t) t [t] (Tree t)
     | Imp t [t] (Tree t) t [t] (Tree t) (Tree t)
     | Typ t [t] (Tree t) (Tree t) (Tree t) (Tree t)
-    | Dat t [t] (Tree t) (Tree t) t [t] (Tree t) (Tree t)
+    | Dat t [t] (Tree t) (Tree t) (Tree t)
+    | Dat' t [t] (Tree t) (Tree t)
     | TypeSig (Tree t) [Tree t]
   deriving Show
 
@@ -125,33 +125,33 @@ parse' toTok fromT = pDecl <* eof
 
 -- | Parse Variables
 pVarId :: Parser TT TT
-pVarId = exact VarIdent
+pVarId = sym $ exact' [VarIdent, (Reserved Other), (Reserved As)]
 
 -- | Parse constructors
 pConId :: Parser TT TT
 pConId = exact ConsIdent
 
-pConsym = (Atom <$> sym isOperator)
-
 -- | Parse modules
 pModid :: Parser TT (Tree TT)
 pModid = Modid <$> pConId
 
-pQvarid :: Parser TT (Tree TT) -- exports like List.map or simply map
-pQvarid = Atom <$> sym (exact' [VarIdent, ConsIdent])
+pQvarid :: Parser TT (Tree TT) 
+pQvarid = pCom' $ Atom <$> (sym $ exact' [VarIdent, ConsIdent, (Reserved Other), (Reserved As)])
 
-pQvarsym :: Parser TT (Tree TT)
-pQvarsym = Atom <$> sym isOperator
+ppQvarsym :: Parser TT (Tree TT)
+ppQvarsym = pCom $ Atom <$> sym isOperator
 
 pQtycon :: Parser TT (Tree TT)
-pQtycon = Atom <$> pConId
+pQtycon = pCom' $ Atom <$> pConId
 
-pVars = pMany $ Atom <$> exact VarIdent
+pVars :: Parser TT (Tree TT)
+pVars = pMany $ pCom' $ Atom <$> pVarId
 
-pConop = Atom <$> sym isOperator
+pConop ::Parser TT (Tree TT)
+pConop = pCom' $ Atom <$> sym isOperator
 
 pQvar :: Parser TT (Tree TT)
-pQvar = pQvarid <|> pTup (pCom pQvarsym)
+pQvar = pQvarid <|> pTup (ppQvarsym)
 
 -- | parse a special symbol
 sym :: (Token -> Bool) ->Parser TT TT
@@ -160,6 +160,7 @@ sym f   = symbol (f . tokT)
 exact :: Token -> Parser TT TT
 exact s = sym (== s)
 
+exact' :: [Token] -> (Token ->Bool)
 exact' s = \x -> elem x s
 
 spec :: Char -> Parser TT TT
@@ -168,6 +169,7 @@ spec '=' = exact (ReservedOp Equal)
 spec c   = sym (isSpecial [c])
 
 -- | Create a special character symbol
+newT :: Char -> TT
 newT c = tokFromT (Special c)
 
 pleaseSym :: Char -> Parser TT TT
@@ -179,16 +181,16 @@ pleaseB b   = (recoverWith (pure $ newT '!')) <|> b
 pleaseC ::Parser TT (Tree TT) ->Parser TT (Tree TT)
 pleaseC  c  = (Error <$> recoverWith (pure $ newT '!')) <|> c
 
-pCppDir :: Parser TT (Tree TT)
-pCppDir    = Atom <$> exact CppDirective
+ppCons :: Parser TT (Tree TT)
+ppCons = pCom $ Atom <$> exact ConsIdent
 
-pCons :: Parser TT (Tree TT)
-pCons      = Atom <$> exact ConsIdent
+pAs :: Parser TT (Tree TT)
+pAs = Atom <$> exact (Reserved As)
 
-pOp        = Atom <$> sym   isOperator
-pAs        = Atom <$> exact (Reserved As)
-pRArrow    = Atom <$> exact (ReservedOp RightArrow)
+pRArrow :: Parser TT (Tree TT)
+pRArrow = Atom <$> exact (ReservedOp RightArrow)
 
+ppCom ::Parser TT [TT]
 ppCom = many $ sym (\x -> isComment x || (CppDirective == x))
 
 pModule :: Parser TT (Tree TT)
@@ -201,17 +203,16 @@ pModule = (b (Reserved Module) ConsIdent ((optional (spec '.')) *> pleaseB (exac
                     <*> r
           pExports = pOpt $ pTup $ Bin <$> pMany (Bin <$> pExport <*> pComma) <*> pOpt pExport -- optional trailing comma
           pExport = (optional $ spec '.') *> 
-                      ((pCom' $ Atom <$> (sym $ exact' [VarIdent, ConsIdent]))
+                      (pQvarid
                       <|> (pCom' pEModule)
-                      <|> pTup (pCom pQvarsym) 
-                      <|> (Bin <$> ((pCom' pQtycon)
-                                     <|> pTup (pCom' pOp))
+                      <|> Bin <$> pTup (ppQvarsym) <*> pOpt helper
+                      <|> (Bin <$> (pQtycon)
                             <*> pleaseC helper)
                       <|> (Error <$> recoverWith (pure $ newT '!')))
           helper = pTup ((pCom' $ Atom <$> exact (ReservedOp (OtherOp "..")))
                                <|> (Bin <$> pSome (Bin <$> 
-                                                   ((pCom' (Atom <$> (sym $ exact' [VarIdent, ConsIdent])) 
-                                                   <|> pTup (pCom pQvarsym))) <*> pComma)
+                                                   (pQvarid
+                                                   <|> pTup (ppQvarsym)) <*> pleaseC pComma)
                                     <*> pOpt pQvar) -- optional trailing comma
                                <|> (Error <$> recoverWith (pure $ newT '!')))
           pRest = (pBlockOf' (spec '.' *> pImp <|> pt)) 
@@ -219,9 +220,13 @@ pModule = (b (Reserved Module) ConsIdent ((optional (spec '.')) *> pleaseB (exac
                    <|> Expr <$> pure []
                    <|> (Error <$> recoverWith (symbol $ const True)) -- catch all errors
 
-pOpt' p  = Opt  <$> optional (Opt' <$> p <*> ppCom) -- same as pOpt $ pCom' p
+pOpt :: Parser TT (Tree TT) -> Parser TT (Tree TT)
 pOpt p   = Opt  <$> optional p
+
+pCom :: Parser TT (Tree TT) -> Parser TT (Tree TT)
 pCom b   = Comm <$> pleaseC b <*> ppCom
+
+pCom' :: Parser TT (Tree TT) -> Parser TT (Tree TT)
 pCom' b  = Comm <$> b         <*> ppCom
 
 pComment :: Parser TT TT
@@ -232,98 +237,115 @@ pTup :: Parser TT (Tree TT) -> Parser TT (Tree TT)
 pTup p = (Paren'  <$>  spec '(' <*> ppCom
           <*> p <*> pleaseSym ')' <*> ppCom)
 
+pImp :: Parser TT (Tree TT)
 pImp = Bin <$> pImp' <*> ((spec '.' *> (pImp <|> pt)) <|> (Expr <$> pure []) <|> (Error <$> recoverWith (symbol $ const True)))
 
 -- | Parse imports
 pImp' :: Parser TT (Tree TT)
-pImp' = pI (exact (Reserved Import)) (pOpt' $ exact (Reserved Qualified)) (pleaseB $ exact ConsIdent)
+pImp' = pI (exact (Reserved Import)) (pOpt (pCom' $ Atom <$> exact (Reserved Qualified))) (pleaseB $ exact ConsIdent)
     where pI na qu pId
               = Imp  <$> na       <*> ppCom
                      <*> qu
                      <*> pId      <*> ppCom
                      <*> pOpt pAs'
                      <*> pImpSpec
-          pAs'     = Bin  <$> pCom' pAs <*> pCom pCons
+          pAs'     = Bin  <$> pCom' pAs <*> ppCons
           pImpSpec = pOpt (Bin <$> (pOpt (pCom' (Atom <$> exact (Reserved Hiding)))) <*> pleaseC pImpS)
           pImpS    = pTup $ Bin <$> (pMany (Bin <$> pExp' <*>  pComma)) <*> pOpt pExp' -- trailing comma is optional
           pExp'    = Bin <$> (pCom' (Atom <$> sym (\x -> (exact' [VarIdent, ConsIdent] x) || isOperator x))
-                              <|> pTup (pCom pOp)) <*> pOpt pImpS
+                              <|> pTup ppQvarsym) <*> pOpt pImpS
 
 -- | Parse simple types
--- Does not yet parse correct!
 pSType :: Parser TT (Tree TT)
-pSType = Typ <$> (exact (Reserved Type))     <*> ppCom
-             <*> pCom pCons                  <*> pMany (Atom <$> (sym $ exact' [ConsIdent, VarIdent]))
+pSType = Typ <$> exact (Reserved Type)     <*> ppCom
+             <*> ppCons                    <*> pMany pQvarid-- (Atom <$> (sym $ exact' [ConsIdent, VarIdent]))
              <*> pCom (Atom <$> spec '=')
-             <*> pType <* ((Atom <$> spec '.') <|> (Error <$> recoverWith (symbol $ const True))) -- nothing
+             <*> pType <* ((Atom <$> spec '.') <|> (Error <$> recoverWith (symbol $ const True))) 
 
 pType :: Parser TT (Tree TT)
-pType = Bin <$> pBtype <*> pMany (Bin <$> (pCom' pRArrow) <*> pBtype)
+-- pType = (Bin <$> pBtype <*> pOpt (Bin <$> pCom' pRArrow <*> pleaseC pType)) -- pMany (Bin <$> (pCom' pRArrow) <*> pleaseC pBtype))
+pType = Block <$> some pAtype `BL.sepBy1` (pCom' pRArrow)
 
+pSData :: Parser TT (Tree TT)
 pSData = Dat <$> exact (Reserved Data)    <*> ppCom
-             <*> pOpt (Bin <$> pContext   <*> (Atom <$> exact (ReservedOp DoubleRightArrow)))
+             <*> pOpt pContext
              <*> pSimpleType
-             <*> pleaseB (sym $ exact' [(ReservedOp Equal), (Reserved Where)]) <*> ppCom
-             <*> pConstrs
-             <*> (pOpt (Bin <$> pCom' (Atom <$> exact (Reserved Deriving)) <*> 
-                        pleaseC ((pTup (pCom' (Bin <$> pleaseC pDclass <*> pMany (Bin <$> pComma <*> pDclass))))
-                                 <|> (pCom' pDclass)
-                                )))
-                  <* spec '.'
+             <*> pOpt pSData' <* pleaseSym '.'
 
-pAtype = pCom' (Atom <$> (sym $ exact' [VarIdent, ConsIdent]))
-         <|> (pTup $ pOpt ((Bin <$> pType <*> pMany (Bin <$> pComma <*> pType)) <|> (pCom' pRArrow)))
-         <|> pBrack' pType
+pSData' :: Parser TT (Tree TT)
+pSData' = (Dat' <$> (sym $ exact' [(ReservedOp Equal),(Reserved Where)]) <*> ppCom -- either we have standard data, or we have GADT:s
+             <*> (pConstrs <|> (spec '<' *> (Block <$> many pGadt `BL.sepBy1` spec '.') <* spec '>'))
+             <*> pOpt pDeriving) <|> pDeriving
+
+pGadt :: Parser TT (Tree TT)
+pGadt = Bin <$> pQtycon <*> pOpt (Bin <$> pCom (Atom <$> exact (ReservedOp (OtherOp "::")))
+                                  <*> -- (Bin <$> pOpt (Bin <$> pContext <*> (Atom <$> exact (ReservedOp DoubleRightArrow)))
+                                      (pType <|> (KW <$> exact (Operator "!") <*> pAtype) <|> (Error <$> recoverWith (symbol $ const True))))
+
+pDeriving :: Parser TT (Tree TT)
+pDeriving = Bin <$> pCom' (Atom <$> exact (Reserved Deriving)) 
+                <*> pleaseC ((pTup ((Bin <$> pleaseC pQtycon <*> pMany (Bin <$> pComma <*> pQtycon))))
+                             <|> pQtycon)
+
+pAtype :: Parser TT (Tree TT)
+pAtype = pQvarid -- (Atom <$> (sym $ exact' [VarIdent, ConsIdent]))
+         <|> (pTup $ pMany pTree) -- ((Bin <$> pType <*> pMany (Bin <$> pComma <*> pType)) <|> (pCom' pRArrow)))
+         <|> (pBrack' $ pMany pTree) -- pleaseC pAtype)
+         <|> Atom <$> exact (ReservedOp DoubleRightArrow)
 --          <|> (Error <$> recoverWith (pure $ newT '!'))
          <|> (Error <$> recoverWith (symbol $ const True))
 
-pAtype' = pCom' (Atom <$> (sym $ exact' [VarIdent]))
-         <|> (pTup $ pOpt ((Bin <$> pType <*> pMany (Bin <$> pComma <*> pType)) <|> (pCom' pRArrow)))
-         <|> pBrack' pType
---          <|> (Error <$> recoverWith (pure $ newT '!'))
-         <|> (Error <$> recoverWith (symbol $ const True))
-
+pBtype :: Parser TT (Tree TT)
 pBtype = pSome pAtype
 
-pSimpleType = Bin <$> pCom pCons <*> pMany (pCom' (Atom <$> sym (exact' [ConsIdent, VarIdent])))
+pSimpleType :: Parser TT (Tree TT)
+pSimpleType = Bin <$> ppCons <*> pMany pQvarid -- (Atom <$> sym (exact' [ConsIdent, VarIdent])))
 
-pContext = pClass <|> pTup (pSome $ pleaseC pClass)
+pContext :: Parser TT (Tree TT)
+pContext = pClass <|> pTup (pMany pClass)
 
 -- add error
-pClass = (Bin <$> pCom' (Atom <$> pConId) <*> pCom (Atom <$> pVarId)) 
-          <|> (Bin <$> (Atom <$> pConId) <*> pTup (Bin <$> pCom (Atom <$> pVarId) <*> pSome (pCom pAtype)))
+pClass :: Parser TT (Tree TT)
+pClass = (Bin <$> pQtycon <*> ((pCom (Atom <$> pVarId)) <|> pTup (Bin <$> pCom (Atom <$> pVarId) <*> pSome (pCom pAtype)))) 
 
+-- unsure if pAll and pCon is allowed together and in which order
+pConstrs :: Parser TT (Tree TT)
 pConstrs = Bin <$> (Bin <$> pOpt pAll <*> pConstr) <*> pMany (Bin <$> (Atom <$> spec '|') <*> (Bin <$> pOpt pAll <*> pConstr))
   where pAll = KW <$> exact (Reserved Forall) <*> (Bin <$> (Atom <$> pVarId) <*> (Atom <$> exact (Operator ".")))
+        pCon = Bin <$> pContext   <*> (Atom <$> exact (ReservedOp DoubleRightArrow))
+        allCon = Bin <$> pOpt pAll <*> pOpt pCon
+--         pCon = Block <$> some (pConstr) `BL.sepBy1` spec '|'
 
-pConstr = (Bin <$> pCon <*> st)
-           <|> (Bin <$> lrHs <*> sy)
---            <|> (Error <$> recoverWith (symbol $ const True))
-    where lrHs = ((pSome pAtype') <|> (KW <$> exact (Operator "!") <*> pAtype))
-          st = ((pMany $ strictF pAtype) <|> (pBrace' $ pOpt (Bin <$> pFielddecl <*> pMany (Bin <$> pComma <*> pFielddecl))))
-          sy = (Bin <$> pConop <*> lrHs)
-          pCon = (pCom' $ Atom <$> pConId) <|> pTup pConsym
+pConstr :: Parser TT (Tree TT)
+pConstr =  (Bin <$> pSome pAtype <*> pOpt st)
+           <|> Bin <$> lrHs <*> pMany (strictF pAtype) -- (Bin <$> lrHs <*> sy)
+           <|> (Error <$> recoverWith (symbol $ const True))
+    where lrHs = ((KW <$> exact (Operator "!") <*> pAtype))
+          st = ((pSome $ lrHs) <|> (pBrace' $ pOpt (Bin <$> pFielddecl <*> pMany (Bin <$> pComma <*> pFielddecl))))
+--           sy = (Bin <$> pConop <*> lrHs)
+--           pCon = pQtycon <|> pTup pConop
 
+strictF :: Parser TT (Tree TT) -> Parser TT (Tree TT)
 strictF a = Bin <$> pOpt (pCom' (Atom <$> exact (Operator "!"))) <*> a
 
+pFielddecl ::Parser TT (Tree TT)
 pFielddecl = (Bin <$> pVars <*> pOpt (Bin <$> pCom (Atom <$> exact (ReservedOp (OtherOp "::")))
-                                         <*> (pType <|> (KW <$> exact (Operator "!") <*> pAtype))))
---                  <*> (Bin <$> pCom (Atom <$> exact (Reserved Deriving)) <*> pTup (pCom' (Bin <$> pleaseC pDclass <*> pMany (Bin <$> pComma <*> pDclass)))) -- is this needed??
+                                         <*> (pType <|> (KW <$> exact (Operator "!") <*> pAtype)  <|> (Error <$> recoverWith (symbol $ const True)))))
 
-pDclass = Atom <$> pConId
-
-
+pComma ::Parser TT (Tree TT)
 pComma = (Comm <$> (Atom <$> spec ',') <*> ppCom)
 
-
+isOperator ::Token -> Bool
 isOperator (Operator _)     = True
 isOperator (ReservedOp _)   = True
 isOperator (ConsOperator _) = True
 isOperator _                = False
 
 -- | Exporting module
+pEModule ::Parser TT (Tree TT)
 pEModule = KW <$> exact (Reserved Module) <*> pleaseC pModid
 
+pDecl :: Parser TT (Tree TT)
 pDecl = Bin <$> (pMany (Atom <$> sym (exact' [(Comment Open), (Comment Close), (Comment Text), (CppDirective), (Comment Line)])))
             <*> pOpt (pBlockOf' (spec '.'
                            *> (pModule
@@ -332,10 +354,14 @@ pDecl = Bin <$> (pMany (Atom <$> sym (exact' [(Comment Open), (Comment Close), (
 
 pt  = Block <$> (pBlocks pDTree)
 
+pMany ::Parser TT (Tree TT) ->Parser TT (Tree TT)
 pMany r = Expr <$> many r
+
+pSome ::Parser TT (Tree TT) ->Parser TT (Tree TT)
 pSome r = Expr <$> some r
 
-pDTree = ((pBlockOf pDTree))
+pDTree :: Parser TT (Tree TT)
+pDTree = (pBlockOf pDTree)
            <|> (Bin <$> pTree <*> pOpt (pBrace $ pMany pDTree)) -- small hack to improve
 
 pBlocks p   = (many p) `BL.sepBy1` spec '.' -- see HACK above
@@ -354,12 +380,13 @@ pTree :: P TT (Tree TT)
 pTree = (pTuple $ pMany pDTree)
           <|> (pBrack $ pMany pDTree)
 --           <|> (pBrace $ pMany pDTree)
---           <|> pSType
---           <|> pSData
+          <|> pSType
+          <|> pSData
           <|> pDirt
       -- note that, by construction, '<' and '>' will always be matched, so
       -- we don't try to recover errors with them.
 
+pDirt :: Parser TT (Tree TT)
 pDirt = ((Error <$> recoverWith (sym (not . isNoise (\x -> not $ elem x "})]")))))
         <|> (Atom <$> sym (isNoise (\x -> elem x ";,`")))
 
@@ -403,14 +430,14 @@ getStrokes point begin _end t0 = trace (show t0) result
           getStrokes' (Typ m  c na exp w b) = one (ts m) <> (foldMap (one . ts) c) <> getStrokes' na 
                                                          <> getStrokes' exp <> getStrokes' w 
                                                          <> getStrokes' b
-          getStrokes' (Dat m c na exp eq c' b d) = one (ts m) <> (foldMap (one . ts) c) <> getStrokes' na 
-                                                              <> getStrokes' exp <> one (ts eq) 
-                                                              <> (foldMap (one . ts) c')<> getStrokes' b
-                                                              <> getStrokes' d
+          getStrokes' (Dat m c na exp eq) = one (ts m) <> (foldMap (one . ts) c) <> getStrokes' na 
+                                                        <> getStrokes' exp <> getStrokes' eq                                                        
+          getStrokes' (Dat' eq c' b d) = one (ts eq) 
+                                              <> (foldMap (one . ts) c')<> getStrokes' b
+                                              <> getStrokes' d
           getStrokes' (TypeSig e rest  ) = getStrokes' e <> getStrokesL rest
           getStrokes' (Opt (Just l)) = getStrokes' l
           getStrokes' (Opt Nothing) = getStrokesL []
-          getStrokes' (Opt' r c) = one (ts r) <> (foldMap (one . ts) c)
           getStrokes' (Comm l r) = getStrokes' l <> (foldMap (one . ts) r)
           getStrokes' (Paren l g r)
               | isErrorTok $ tokT r = one (modStroke errorStyle (ts l)) <> getStrokes' g
