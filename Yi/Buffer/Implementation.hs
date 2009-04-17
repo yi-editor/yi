@@ -303,7 +303,7 @@ solPoint' point fb = solPoint (lineAt point fb) fb
 
 
 charsFromSolBI :: Point -> BufferImpl syntax -> String
-charsFromSolBI pnt fb = nelemsBI (fromIntegral $ pnt - sol) pnt fb
+charsFromSolBI pnt fb = nelemsBI (fromIntegral $ pnt - sol) sol fb
     where sol = solPoint' pnt fb
 
 -- | Return indices of all strings in buffer matching regex, inside the given region.

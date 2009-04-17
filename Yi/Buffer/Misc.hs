@@ -918,7 +918,7 @@ curCol :: BufferM Int
 curCol = colOf =<< pointB
 
 colOf :: Point -> BufferM Int
-colOf p = foldl colMove 0 <$> queryBuffer (charsFromSolBI p)
+colOf p = foldl' colMove 0 <$> queryBuffer (charsFromSolBI p)
 
 lineOf :: Point -> BufferM Int
 lineOf p = queryBuffer $ lineAt p
