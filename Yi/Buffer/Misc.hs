@@ -60,6 +60,7 @@ module Yi.Buffer.Misc
   , setMarkPointB
   , modifyMarkB
   , newMarkB
+  , deleteMarkB
   , setVisibleSelection
   , isUnchangedBuffer
   , setAnyMode
@@ -510,6 +511,10 @@ getMarkValueB m = fromMaybe (MarkValue 0 Forward) <$> queryBuffer (getMarkValueB
 
 newMarkB :: MarkValue -> BufferM Mark
 newMarkB v = queryAndModify $ newMarkBI v
+
+deleteMarkB :: Mark -> BufferM ()
+deleteMarkB m = modifyBuffer $ deleteMarkValueBI m
+    
 
 -- | Execute a @BufferM@ value on a given buffer, using a dummy window.  The new state of
 -- the buffer is discarded.

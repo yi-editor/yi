@@ -30,6 +30,7 @@ module Yi.Buffer.Implementation
   , getMarkValueBI
   , getMarkBI
   , newMarkBI
+  , deleteMarkValueBI
   , setSyntaxBI
   , addOverlayBI
   , delOverlayBI
@@ -330,6 +331,9 @@ newMarkBI initialValue fb =
 
 getMarkValueBI :: Mark -> BufferImpl syntax -> Maybe MarkValue
 getMarkValueBI m (FBufferData { marks = marksMap } ) = M.lookup m marksMap
+
+deleteMarkValueBI :: Mark -> BufferImpl syntax -> BufferImpl syntax
+deleteMarkValueBI m fb = fb { marks = M.delete m (marks fb) }
 
 getMarkBI :: String -> BufferImpl syntax -> Maybe Mark
 getMarkBI name FBufferData {markNames = nms} = M.lookup name nms
