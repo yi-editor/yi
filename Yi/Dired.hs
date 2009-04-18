@@ -49,6 +49,7 @@ import Yi.Regex
 import Yi.MiniBuffer (withMinibufferGen, noHint)
 import Yi.Config
 import Yi.Core
+import Yi.Misc (getFolder)
 import Yi.Style
 import System.FriendlyPath
 import qualified Data.Rope as R
@@ -183,7 +184,8 @@ diredKeymap = do
 dired :: YiM ()
 dired = do
     msgEditor "Dired..."
-    dir <- io getCurrentDirectory
+    maybepath <- withBuffer $ gets file
+    dir <- io $ getFolder maybepath
     fnewE dir
 
 diredDir :: FilePath -> YiM ()
