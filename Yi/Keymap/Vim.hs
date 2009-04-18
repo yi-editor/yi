@@ -59,12 +59,13 @@ import Control.Monad.State hiding (mapM_, mapM, sequence)
 import Control.Arrow hiding (left, right)
 
 import {-# source #-} Yi.Boot
+import Yi.Command (cabalRun)
 import Yi.Core
 import Yi.Dired
 import Yi.Eval (execEditorAction, getAllNamesInScope)
 import Yi.File
 import Yi.History
-import Yi.Misc (matchingFileNames,adjBlock,adjIndent,cabalRun)
+import Yi.Misc (matchingFileNames,adjBlock,adjIndent)
 import Yi.String (dropSpace,lines')
 import Yi.MiniBuffer
 import Yi.Regex (seInput, regexEscapeString)

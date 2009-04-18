@@ -6,7 +6,7 @@ import Prelude (length, take, drop)
 import Yi.Core
 import Yi.File
 import Yi.Keymap.Emacs.Utils
-import Yi.Misc
+import Yi.Misc (adjBlock)
 import Yi.Rectangle
 import Yi.String
 

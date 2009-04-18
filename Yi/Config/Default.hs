@@ -14,12 +14,12 @@ import Prelude ()
 import System.Directory
 import System.FilePath
 import System.IO (readFile)
+import Yi.Command (cabalBuildE, cabalConfigureE, grepFind, makeBuild, reloadProjectE, searchSources, shell)
 import Yi.Config
 import Yi.Core
 import Yi.Dired
 import Yi.File
 import Yi.IReader (saveAsNewArticle)
-import Yi.Misc
 import Yi.Mode.IReader (ireaderMode, ireadMode)
 import Yi.Modes
 import Yi.Search

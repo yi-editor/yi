@@ -86,6 +86,7 @@ library
         Yi.Buffer.Misc
         Yi.Buffer.Region
         Yi.Buffer.Undo
+        Yi.Command
         Yi.Completion
         Yi.Config
         Yi.Config.Default

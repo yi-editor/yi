@@ -13,11 +13,12 @@ module Yi.Keymap.Emacs (keymap,
                         ModeMap(..)) where
 import Prelude ()
 import Data.Prototype
+import Yi.Command (shellCommandE)
 import Yi.Core
 import Yi.Dired
 import Yi.File
 import Yi.MiniBuffer
-import Yi.Misc
+import Yi.Misc (adjBlock, adjIndent)
 import Yi.Rectangle
 import Yi.TextCompletion
 import Yi.Keymap

@@ -52,12 +52,13 @@ import Control.Monad.Trans (MonadIO (..))
 {- Local (yi) module imports -}
 
 import Control.Monad (filterM, replicateM_)
+import Yi.Command (cabalConfigureE, cabalBuildE, reloadProjectE)
 import Yi.Core
 import Yi.Dired
 import Yi.Eval
 import Yi.File
 import Yi.MiniBuffer
-import Yi.Misc
+import Yi.Misc (getAppropriateFiles, getFolder, matchingFileNames)
 import Yi.Regex
 import Yi.Tag
 import Yi.Search
