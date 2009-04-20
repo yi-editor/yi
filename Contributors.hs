@@ -51,6 +51,7 @@ nickToName x = case BS.map toLower x of
             "andersk84"             -> "Anders Karlsson"
             "andrii.z"              -> "Andrii Zvorygin"
             "cgibbard"              -> "Cale Gibbard"
+            "cognominal"            -> "Stéphane Payrard"
             "coreyoconnor"          -> "Corey O'Connor"
             "deniz.a.m.dogan"       -> "Deniz Dogan"
             "dons"                  -> "Don Stewart"

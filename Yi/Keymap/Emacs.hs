@@ -23,6 +23,7 @@ import Yi.Rectangle
 import Yi.TextCompletion
 import Yi.Keymap
 import Yi.Keymap.Emacs.KillRing
+import Yi.Mode.Buffers ( listBuffers )
 import Yi.Keymap.Emacs.Utils
   ( askQuitEditor
   , evalRegionE
@@ -239,6 +240,7 @@ emacsKeys univArg =
                  , char '2'      ?>>! splitE
                  , char 'h'      ?>>! selectAll
                  , char 's'      ?>>! askSaveEditor
+                 , ctrlCh 'b'    ?>>! listBuffers
                  , ctrlCh 'c'    ?>>! askQuitEditor
                  , ctrlCh 'f'    ?>>! findFile
                  , ctrlCh 'q'      ?>>! (withBuffer $ modA readOnlyA not)

@@ -133,6 +133,7 @@ library
         Yi.MiniBuffer
         Yi.Misc
         Yi.MkTemp
+        Yi.Mode.Buffers
         Yi.Mode.Compilation
         Yi.Mode.Haskell
         Yi.Mode.IReader
