@@ -13,13 +13,14 @@ import Prelude ()
 data Attributes = Attributes
   { foreground :: !Color
   , background :: !Color
-  , reverseAttr :: !Bool 
+  , reverseAttr :: !Bool
+  , bold :: !Bool
     -- ^ The text should be show as "active" or "selected".
     -- This can be implemented by reverse video on the terminal.
   } deriving (Eq, Ord, Show)
 
 emptyAttributes :: Attributes
-emptyAttributes = Attributes { foreground = Default, background = Default, reverseAttr = False }
+emptyAttributes = Attributes { foreground = Default, background = Default, reverseAttr = False, bold = False }
 
 -- | The style is used to transform attributes by modifying
 --   one or more of the visual text attributes.
@@ -69,6 +70,9 @@ withFg, withBg :: Color -> Style
 withFg c = Endo $ \s -> s { foreground = c }
 -- | A style that sets the background.
 withBg c = Endo $ \s -> s { background = c }
+withBd :: Bool -> Style
+-- | A style that sets the font to bold
+withBd c = Endo $ \s -> s { bold = c}
 
 -- | The identity transform.
 defaultStyle :: StyleName

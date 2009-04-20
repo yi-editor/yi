@@ -428,10 +428,11 @@ colorToAttr setVivid set unknown c =
     _                 -> set      unknown -- NB
 
 attributesToAttr :: Attributes -> (Vty.Attr -> Vty.Attr)
-attributesToAttr (Attributes fg bg reverse) =
+attributesToAttr (Attributes fg bg reverse bd) =
   (if reverse then setRV else id) .
   colorToAttr setFGVivid setFG Vty.black fg .
-  colorToAttr setBGVivid setBG Vty.white bg
+  colorToAttr setBGVivid setBG Vty.white bg .
+  if bd then setBold else id
 
 
 ---------------------------------
