@@ -55,8 +55,11 @@ logPutStrLn s = liftIO $ do
                      Just h -> do
                        time <-  getCurrentTime
                        tId <- myThreadId
-                       hPutStrLn h $ formatTime defaultTimeLocale rfc822DateFormat time ++ " " ++ show tId ++ " " ++ s
+                       hPutStrLn h $ formatTime defaultTimeLocale rfc822DateFormat' time ++ " " ++ show tId ++ " " ++ s
                        hFlush h
+    where
+      -- A bug in rfc822DateFormat makes us use our own format string
+      rfc822DateFormat' = "%a, %d %b %Y %H:%M:%S %Z"
 
 logError :: (MonadIO m) => String -> m ()
 logError s = logPutStrLn $ "error: " ++ s
