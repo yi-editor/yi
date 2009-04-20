@@ -52,8 +52,8 @@ $nl        = [\n\r]
 @reservedop =
         ".." | ":" | "::" | "=" | "|" | "<-" | "->" | "@" | "~" | "=>"
 
-@varid  = $small $idchar*
-@conid  = $large $idchar*
+@varid  = $small $idchar* [\#]?
+@conid  = $large $idchar* [\#]?
 @anyid = (@varid | @conid)
 @anyTHid = [$small $large] [$alpha $digit]*
 @qual   = (@conid ".")*
