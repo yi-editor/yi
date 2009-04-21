@@ -14,13 +14,15 @@ data Attributes = Attributes
   { foreground :: !Color
   , background :: !Color
   , reverseAttr :: !Bool
-  , bold :: !Bool
     -- ^ The text should be show as "active" or "selected".
     -- This can be implemented by reverse video on the terminal.
+  , bold :: !Bool
+  , italic :: !Bool
+  , underline :: !Bool
   } deriving (Eq, Ord, Show)
 
 emptyAttributes :: Attributes
-emptyAttributes = Attributes { foreground = Default, background = Default, reverseAttr = False, bold = False }
+emptyAttributes = Attributes { foreground = Default, background = Default, reverseAttr = False, bold = False, italic = False, underline = False }
 
 -- | The style is used to transform attributes by modifying
 --   one or more of the visual text attributes.
@@ -70,9 +72,14 @@ withFg, withBg :: Color -> Style
 withFg c = Endo $ \s -> s { foreground = c }
 -- | A style that sets the background.
 withBg c = Endo $ \s -> s { background = c }
-withBd :: Bool -> Style
+
+withBd, withItlc, withUnderline :: Bool -> Style
 -- | A style that sets the font to bold
-withBd c = Endo $ \s -> s { bold = c}
+withBd c = Endo $ \s -> s { bold = c }
+-- | A style that sets the style to italics
+withItlc c = Endo $ \s -> s { italic = c }
+-- | A style that sets the style to underlined
+withUnderline c = Endo $ \s -> s { underline = c }
 
 -- | The identity transform.
 defaultStyle :: StyleName

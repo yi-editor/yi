@@ -485,10 +485,12 @@ render e ui b w _ev = do
                   s /= emptyAttributes]
       rel p = fromIntegral (p - regionStart r'')
       allAttrs = concat $ do
-        (p1, Attributes fg bg _rv bd, p2) <- strokes
+        (p1, Attributes fg bg _rv bd itlc underline, p2) <- strokes
         return $ [ AttrForeground (rel p1) (rel p2) (mkCol True fg)
                  , AttrBackground (rel p1) (rel p2) (mkCol False bg)
-                 , AttrWeight     (rel p1) (rel p2) (if bd then WeightBold else WeightNormal)
+                 , AttrStyle      (rel p1) (rel p2) (if itlc      then StyleItalic     else StyleNormal)
+                 , AttrUnderline  (rel p1) (rel p2) (if underline then UnderlineSingle else UnderlineNone)
+                 , AttrWeight     (rel p1) (rel p2) (if bd        then WeightBold      else WeightNormal)
                  ]
 
   layoutSetAttributes layout allAttrs
