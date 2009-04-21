@@ -489,7 +489,7 @@ render e ui b w _ev = do
                   s /= emptyAttributes]
       rel p = fromIntegral (p - regionStart r'')
       allAttrs = [gen (rel p1) (rel p2) (mkCol isFg col) 
-                  | (p1,Attributes fg bg _rv,p2) <- strokes, 
+                  | (p1,Attributes fg bg _rv False,p2) <- strokes, 
                   ((isFg,gen),col) <- zip [(True,AttrForeground), (False,AttrBackground)] [fg,bg],
                   col /= Default]
 
