@@ -20,8 +20,6 @@ import qualified Yi.UI.Common as Common
 import Yi.Config
 import Yi.Style
 
-import Shim.ProjectContent
-
 import Control.Applicative
 import Control.Concurrent (yield)
 import Control.Monad (ap)
@@ -36,13 +34,11 @@ import qualified Data.List.PointedList.Circular as PL
 import Data.Maybe
 import Data.Traversable
 import qualified Data.Map as M
-import System.Directory (getCurrentDirectory)
 
 import Graphics.UI.Gtk hiding (on, Region, Window, Action, Point, Style)
 import qualified Graphics.UI.Gtk.Gdk.Events as Gdk.Events
 import qualified Graphics.UI.Gtk as Gtk
 import System.Glib.GError
-import Yi.UI.Pango.ProjectTree
 import Yi.UI.Pango.Utils
 import Yi.UI.Utils
 
@@ -488,10 +484,12 @@ render e ui b w _ev = do
       strokes = [(start',s,end') | ((start', s), end') <- zip picture (drop 1 (map fst picture) ++ [regionEnd r'']),
                   s /= emptyAttributes]
       rel p = fromIntegral (p - regionStart r'')
-      allAttrs = [gen (rel p1) (rel p2) (mkCol isFg col) 
-                  | (p1,Attributes fg bg _rv False,p2) <- strokes, 
-                  ((isFg,gen),col) <- zip [(True,AttrForeground), (False,AttrBackground)] [fg,bg],
-                  col /= Default]
+      allAttrs = concat $ do
+        (p1, Attributes fg bg _rv bd, p2) <- strokes
+        return $ [ AttrForeground (rel p1) (rel p2) (mkCol True fg)
+                 , AttrBackground (rel p1) (rel p2) (mkCol False bg)
+                 , AttrWeight     (rel p1) (rel p2) (if bd then WeightBold else WeightNormal)
+                 ]
 
   layoutSetAttributes layout allAttrs
 
