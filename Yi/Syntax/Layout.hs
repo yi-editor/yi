@@ -74,10 +74,10 @@ layoutHandler isSpecial parens isIgnored [openT, closeT, nextT] isGroupOpen lexS
             | isIgnored tok
               = (st, tok) : parse (IState levels doOpen line) tokss
 
-            -- start a compound
+            -- start a compound if the rest of the line is empty then skip to it!
             | doOpen
               = case isGroupOpen tok of -- check so that the do is not followed by a {
-                  False -> (st', tt openT) : parse (IState (Indent col:levels) False lastLine) toks
+                  False -> (st', tt openT) : parse (IState (Indent col:levels) False line) toks
                   True  ->                   parse (IState levels              False lastLine) toks
                   -- if it's a block opening, we ignore the layout, and just let the "normal" rule
                   -- handle the creation of another level.
