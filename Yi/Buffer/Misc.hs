@@ -646,8 +646,7 @@ moveTo x = do
 checkRO :: BufferM Bool
 checkRO =  do
    ro <- getA readOnlyA
---   when  ro
---     printMsg "Read Only Buffer"
+   when  ro (fail "Read Only Buffer")
    return ro
 
 applyUpdate :: Update -> BufferM ()
