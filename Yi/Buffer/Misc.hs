@@ -48,6 +48,7 @@ module Yi.Buffer.Misc
   , nelemsB
   , writeB
   , writeN
+  , newlineB
   , deleteNAt
   , readB
   , elemsB
@@ -680,6 +681,10 @@ writeN cs = do
   off <- pointB
   deleteNAt Forward (length cs) off
   insertNAt cs off
+
+-- | Insert newline at current point.
+newlineB :: BufferM ()
+newlineB = insertB '\n'
 
 ------------------------------------------------------------------------
 

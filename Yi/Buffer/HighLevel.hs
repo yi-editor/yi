@@ -157,7 +157,29 @@ readRestOfLnB = readRegionB =<< regionOfPartB Line Forward
 readPreviousOfLnB :: BufferM String
 readPreviousOfLnB = readRegionB =<< regionOfPartB Line Backward
 
---------------------------
+hasWhiteSpaceBefore :: BufferM Bool
+hasWhiteSpaceBefore = prevPointB >>= readAtB >>= return . isSpace
+
+-- | Get the previous point, unless at the beginning of the file
+prevPointB :: BufferM Point
+prevPointB = do
+  sof <- atSof
+  if sof then pointB
+         else do p <- pointB
+                 return $ Point (fromPoint p - 1)
+
+-- | Get the next point, unless at the end of the file
+nextPointB :: BufferM Point
+nextPointB = do
+  eof <- atEof
+  if eof then pointB
+         else do p <- pointB
+                 return $ Point (fromPoint p + 1)
+
+readPrevWordB :: BufferM String
+readPrevWordB = readPrevUnitB unitViWordOnLine
+
+-------------------------
 -- Deletes
 
 -- | Delete one character backward
@@ -450,7 +472,6 @@ getNextLineWhichB dir cond = listToMaybe . filter cond <$> lineStreamB dir
 -}
 getNextNonBlankLineB :: Direction -> BufferM String
 getNextNonBlankLineB dir = fromMaybe "" <$> getNextLineWhichB dir (not . isBlank)
-
 
 ------------------------------------------------
 -- Some more utility functions involving

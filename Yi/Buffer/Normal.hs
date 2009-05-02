@@ -27,7 +27,7 @@ module Yi.Buffer.Normal (TextUnit(Character, Line, VLine, Document),
                          moveB, maybeMoveB,
                          transformB, transposeB,
                          regionOfB, regionOfNonEmptyB, regionOfPartB, regionOfPartNonEmptyB,
-                         readUnitB,
+                         readPrevUnitB, readUnitB,
                          untilB, doUntilB_, untilB_, whileB, doIfCharB,
                          atBoundaryB,
                          numberOfB,
@@ -379,6 +379,9 @@ regionOfPartB unit dir = mkRegion <$> pointB <*> indexAfterB (maybeMoveB unit di
 -- In fact the region can be empty if we are at the end of file.
 regionOfPartNonEmptyB :: TextUnit -> Direction -> BufferM Region
 regionOfPartNonEmptyB unit dir = mkRegion <$> pointB <*> indexAfterB (moveB unit dir)
+
+readPrevUnitB :: TextUnit -> BufferM String
+readPrevUnitB unit = readRegionB =<< regionOfPartNonEmptyB unit Backward
 
 readUnitB :: TextUnit -> BufferM String
 readUnitB = readRegionB <=< regionOfB

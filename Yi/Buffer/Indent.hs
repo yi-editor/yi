@@ -420,3 +420,13 @@ shiftIndentOfRegion shiftCount region = do
 
 deleteIndentOfRegion :: Region -> BufferM ()
 deleteIndentOfRegion = modifyRegionB (mapLines $ dropWhile isSpace)
+
+-- | Return the number of spaces at the beginning of the line, up to the point.
+indentOfCurrentPosB :: BufferM Int
+indentOfCurrentPosB = do
+    p <- pointB
+    moveToSol
+    sol <- pointB
+    moveTo p
+    let region = mkRegion p sol
+    readRegionB region >>=  spacingOfB
