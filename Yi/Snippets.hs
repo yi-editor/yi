@@ -33,7 +33,7 @@ instance Initializable BufferMarks where
   initial = BufferMarks []
 
 instance Ord MarkInfo where
-  compare = (. userIndex) . compare . userIndex
+  a `compare` b = (userIndex a) `compare` (userIndex b)
 
 cursor = SimpleMark
 cursorWith = ValuedMark
@@ -51,7 +51,9 @@ instance MkSnippetCmd (SnippetCmd a) a where
 
 -- mkSnippetCmd for 'cursor...'-functions
 instance MkSnippetCmd SnippetMark () where
-  mkSnippetCmd (SimpleMark i) = mkMark >>= tell . (:[]) . SimpleMarkInfo i
+  mkSnippetCmd (SimpleMark i) = do
+      mk <- mkMark
+      tell [SimpleMarkInfo i mk]
 
   mkSnippetCmd (ValuedMark i str) = do
       start <- mkMark 
@@ -60,7 +62,8 @@ instance MkSnippetCmd SnippetMark () where
       tell [ValuedMarkInfo i start end]
 
 -- create a mark at current position
-mkMark = lift (pointB >>= newMarkB . flip MarkValue Backward)
+mkMark = lift $ do p <- pointB
+                   newMarkB $ MarkValue p Backward
 
 -- Indentation support has been temporarily removed
 text :: String -> SnippetCmd ()
