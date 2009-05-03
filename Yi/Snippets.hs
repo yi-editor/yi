@@ -66,13 +66,21 @@ mkMark = lift (pointB >>= newMarkB . flip MarkValue Backward)
 text :: String -> SnippetCmd ()
 text txt = do
     (_, indent) <- ask
+    indentSettings <- lift indentSettingsB
     lift . foldl (>>) (return ()) . 
         intersperse (newlineB >> indentToB indent) . 
-        map insertN $ lines' txt
+        map (if expandTabs indentSettings
+             then insertN . expand indentSettings ""
+             else insertN) $ lines' txt
   where
     lines' txt = if last txt == '\n' -- TODO: not very efficient yet
                   then lines txt ++ [""]
                   else lines txt
+
+    expand _ str [] = reverse str                                                                                  
+    expand indentSettings str (s:rst)
+        | s == '\t' = expand indentSettings ((replicate (tabSize indentSettings) ' ') ++ str) rst
+        | otherwise = expand indentSettings (s:str) rst
 
 -- unfortunatelly data converted to snippets are no monads, 
 -- but & is very similar to >> abd &> is similar to >>=,
