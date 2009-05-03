@@ -92,7 +92,8 @@ cppMode = (linearSyntaxMode Cplusplus.initState Cplusplus.alexScanToken id)
 cabalMode = (linearSyntaxMode Cabal.initState Cabal.alexScanToken id)
   {
     modeName = "cabal",
-    modeApplies = anyExtension ["cabal"]
+    modeApplies = anyExtension ["cabal"],
+    modeToggleCommentSelection = toggleCommentSelectionB "-- " "--"
   }
 
 
