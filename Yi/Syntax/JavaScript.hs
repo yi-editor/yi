@@ -3,6 +3,7 @@
 
 module Yi.Syntax.JavaScript where
 
+import Parser.Incremental (Parser(Enter))
 import Data.DeriveTH
 import Data.Derive.Foldable
 import Data.Monoid (Endo(..))
@@ -13,7 +14,7 @@ import Yi.Lexer.Alex
 import Yi.Lexer.JavaScript (TT, Token(..), Reserved(..), Operator(..), tokenToStyle)
 import Yi.Prelude
 import Yi.Style (errorStyle, StyleName)
-import Yi.Syntax.Tree (sepBy)
+import Yi.Syntax.Tree (sepBy, sepBy1)
 
 
 -- * Data types, classes and instances
@@ -33,7 +34,7 @@ class Strokable a where
 
 data JTree t = JFunDecl { fdres :: t, fdname :: t
                         , fdlpar :: t, fdpars :: [t], fdrpar :: t
-                        , fdbody :: (JFunBody t) }
+                        , fdblock :: (JBlock t) }
              | JVarDecl { vdres :: t, vdvars :: [JVarDecAss t], vdsc :: t }
              | JStatement (Statement t)
              | JError t
@@ -41,21 +42,17 @@ data JTree t = JFunDecl { fdres :: t, fdname :: t
 
 data Statement t = StmtReturn { returnres :: t, returnexpr :: (JExpr t), returnsc :: t }
                  | StmtWhile { whileres :: t, whilelpar :: t, whileexpr :: (JExpr t), whilerpar :: t
-                             , whilebody :: (JFunBody t) }
-                 | StmtDoWhile { dwdo :: t, dwbody :: (JFunBody t), dwwhile :: t
+                             , whilebody :: (JBlock t) }
+                 | StmtDoWhile { dwdo :: t, dwbody :: (JBlock t), dwwhile :: t
                                , dwlcurl :: t, dwexpr :: (JExpr t), dwrcurl :: t, dwsc :: t }
                  | StmtFor { forres :: t, forlpar :: t, forinit :: (JExpr t), forsc1 :: t
                            , forcond :: (JExpr t), forsc2 :: t, forstep :: (JExpr t), forrpar :: t
-                           , forbody :: (JFunBody t) }
+                           , forbody :: (JBlock t) }
                    deriving (Eq, Show)
 
--- | @FunBodyOld@ represents the "standard" function body, using the curly
---   brackets wrapped around multiple statements.  @FunBodyNew@ represents the
---   JS 1.8 "lambda style" function body, containing only a simple expression.
-data JFunBody t = FunBodyOld { fblcurl :: t, fbbody :: [JTree t], fbrcurl :: t }
-                | FunBodyNew { expr :: (JExpr t) }
-                | FunBodyErr t
-                  deriving (Eq, Show)
+data JBlock t = JBlock { fblcurl :: t, fbbody :: [JTree t], fbrcurl :: t }
+              | JBlockErr t
+                deriving (Eq, Show)
 
 -- | Represents either a variable name or a variable name assigned to an
 --   expression.  @AssignNo@ means it's a simple declaration.  @AssignYes@ means
@@ -70,7 +67,7 @@ data JExpr t = ExprObj { objlcurl :: t, objkv :: [JKeyValue t], objrcurl :: t }
              | ExprNum t
              | ExprName t
              | ExprBool t
-             | ExprAnonFun { afres :: t, aflpar :: t, afpars :: [t], afrpar :: t, afbody :: (JFunBody t) }
+             | ExprAnonFun { afres :: t, aflpar :: t, afpars :: [t], afrpar :: t, afbody :: (JBlock t) }
              | ExprFunCall { fcname :: t, fclpar :: t, fcargs :: [JExpr t], fcrpar :: t, fcsc :: t }
              | ExprErr t
                deriving (Eq, Show)
@@ -84,23 +81,24 @@ $(derive makeFoldable ''Statement)
 $(derive makeFoldable ''JExpr)
 $(derive makeFoldable ''JKeyValue)
 $(derive makeFoldable ''JVarDecAss)
-$(derive makeFoldable ''JFunBody)
+$(derive makeFoldable ''JBlock)
 
 -- TODO: (Optimization) Only make strokes for stuff that don't have
 -- defaultStyle.  I'm not entirely sure how much this would help performance,
 -- but it should be kept in mind for the future...
-
 instance Strokable (Tok Token) where
-    toStrokes = one tokenToStroke
+    toStrokes t = if isError t
+                    then one (modStroke errorStyle . tokenToStroke) t
+                    else one tokenToStroke t
 
 instance Strokable (JTree TT) where
-    toStrokes (JError t) = one (modStroke errorStyle) (tokenToStroke t)
+    toStrokes (JError t) = one (modStroke errorStyle . tokenToStroke) t
     toStrokes t = foldMap toStrokes t
 
 instance Strokable (Statement TT) where
     toStrokes = foldMap toStrokes
 
-instance Strokable (JFunBody TT) where
+instance Strokable (JBlock TT) where
     toStrokes = foldMap toStrokes
 
 instance Strokable (JVarDecAss TT) where
@@ -132,10 +130,7 @@ oneStroke = one tokenToStroke
 -- * Stroking functions
 
 tokenToStroke :: TT -> Stroke
-tokenToStroke tt = let stroker = fmap tokenToStyle . tokToSpan in
-                   case fromTT tt of
-                     Unknown -> (modStroke errorStyle . stroker) tt
-                     _       -> stroker tt
+tokenToStroke = fmap tokenToStyle . tokToSpan
 
 getStrokes :: Point -> Point -> Point -> [JTree TT] -> [Stroke]
 getStrokes _point _begin _end t0 = trace (show t0) result
@@ -176,42 +171,37 @@ funDecl = JFunDecl <$> resWord Function' <*> plzTok name
                    <*> funBody
 
 -- | Parser for old-style function bodies and "lambda style" ones.
-funBody :: P TT (JFunBody TT)
-funBody = FunBodyOld <$> plzSpc '{' <*> many anyLevel <*> plzSpc '}'
-      <|> FunBodyNew <$> expression
-      <|> FunBodyErr <$> pure unknownToken
+funBody :: P TT (JBlock TT)
+funBody = JBlock <$> spec '{' <*> many pTree <*> plzSpc '}'
+      <|> JBlockErr <$> recoverWith (pure errorToken)
 
 -- | Parser for variable declarations.
 varDecl :: P TT (JTree TT)
 varDecl = JVarDecl <$> resWord Var'
-                   <*> plzSepBy1 varDecAss (spec ',') (pure []) -- TODO: Ugly recovery?
+                   <*> sepBy1 varDecAss (spec ',')
                    <*> plzSpc ';'
     where
       varDecAss :: P TT (JVarDecAss TT)
       varDecAss = AssignNo  <$> name
               <|> AssignYes <$> name <*> plzTok (oper Assign') <*> expression
-              <|> AssignErr <$> pure unknownToken
+              <|> AssignErr <$> recoverWith (pure errorToken)
 
 -- | Parser for expressions.
 expression :: P TT (JExpr TT)
 expression = ExprStr     <$> strTok
          <|> ExprNum     <$> numTok
-         <|> ExprObj     <$> spec '{' <*> commas keyValue <*> plzSpc '}' -- TODO
+         <|> ExprObj     <$> spec '{' <*> commas keyValue <*> plzSpc '}'
          <|> ExprName    <$> name
          <|> ExprBool    <$> boolean
          <|> ExprAnonFun <$> resWord Function' <*> plzSpc '(' <*> parameters <*> plzSpc ')' <*> funBody
          <|> ExprFunCall <$> name <*> plzSpc '(' <*> arguments <*> plzSpc ')' <*> plzSpc ';'
-         <|> ExprErr     <$> recoverWith (pure unknownToken)
+         <|> ExprErr     <$> recoverWith (pure errorToken)
     where
       keyValue = JKeyValue <$> name <*> plzSpc ':' <*> expression
-             <|> JKVErr <$> pure unknownToken
+             <|> JKVErr <$> recoverWith (pure errorToken)
 
 
 -- * Parsing helpers
-
--- | Like 'sepBy1', but with recovery.
-plzSepBy1 :: P s a -> P s b -> P s [a] -> P s [a]
-plzSepBy1 p s r  = (:) <$> p <*> (many (s *> p) <|> recoverWith r)
 
 -- | Parser for comma-separated identifiers.
 parameters :: P TT [TT]
@@ -223,10 +213,6 @@ arguments = commas expression
 
 commas :: P TT a -> P TT [a]
 commas x = x `sepBy` spec ','
-
--- TODO: Why do these give type-errors even when they're not used?
--- parens  x = plzSpc '(' <*> x <*> plzSpc ')'
--- curlies x = plzSpc '{' <*> x <*> plzSpc '}'
 
 
 -- * Simple parsers
@@ -277,20 +263,23 @@ x <>> y = recoverWith x <|> y
 (<<>) :: P s a -> P s a -> P s a
 x <<> y = y <>> x
 
--- | Expects a token x, recovers with 'unknownToken'.
+-- | Expects a token x, recovers with 'errorToken'.
 plzTok :: P s TT -> P s TT
-plzTok x = x <<> (pure unknownToken)
+plzTok x = x <<> (pure errorToken)
 
--- | Expects a special token, recovers with 'unknownToken'.
+-- | Expects a special token.
 plzSpc :: Char -> P TT TT
 plzSpc = plzTok . spec
 
 
 -- * Utility stuff
 
--- | Constant 'Unknown' wrapped in a 'Tok'.
-unknownToken :: TT
-unknownToken = toTT Unknown
+errorToken :: TT
+errorToken = toTT $ Special '!'
+
+isError :: TT -> Bool
+isError (Tok (Special '!') _ _) = True
+isError _ = False
 
 -- | Better name for 'tokFromT'.
 toTT :: t -> Tok t
