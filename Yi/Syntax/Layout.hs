@@ -89,6 +89,7 @@ layoutHandler isSpecial parens isIgnored [openT, closeT, nextT] isGroupOpen lexS
                       -- close an indent level inside the paren block
                       Paren _ :levs -> (st', tok)      : parse (IState levs False line)     tokss
                       -- same as the otherwise case below.
+                      [] -> error $ "Parse: " ++ show iSt
 
             -- pop an indent block
             | col < deepestIndent levels
@@ -128,7 +129,6 @@ layoutHandler isSpecial parens isIgnored [openT, closeT, nextT] isGroupOpen lexS
           parse (IState (Paren _:levs) doOpen posn) [] 
               = parse (IState levs doOpen posn) []
           parse (IState [] _ _) [] = []
-          parse st _ = error $ "Parse: " ++ show st
               
 
 maxPosn :: Posn
