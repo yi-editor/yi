@@ -48,6 +48,7 @@ data Statement t = StmtReturn { returnres :: t, returnexpr :: (JExpr t), returns
                            , forcond :: (JExpr t), forsc2 :: t, forstep :: (JExpr t), forrpar :: t
                            , forbody :: (JBlock t) }
                  | StmtExpr (JExpr t) t -- semi-colon
+                 | StmtEmpty t -- ;
                    deriving (Eq, Show)
 
 data JBlock t = JBlock { fblcurl :: t, fbbody :: [JTree t], fbrcurl :: t }
@@ -116,9 +117,6 @@ instance Strokable (JKeyValue TT) where
 one :: (t -> a) -> t -> Endo [a]
 one f x = Endo (f x :)
 
-few :: (Foldable t) => (a -> b) -> t a -> Endo [b]
-few f xs = foldMap (one f) xs
-
 modStroke :: StyleName -> Stroke -> Stroke
 modStroke style stroke = fmap (style <>) stroke
 
@@ -163,6 +161,7 @@ statements = StmtReturn  <$> resWord Return' <*> plzExpr <*> plzSpc ';'
          <|> StmtFor     <$> resWord For' <*> plzSpc '(' <*> plzExpr <*> plzSpc ';'
                          <*> plzExpr <*> plzSpc ';' <*> plzExpr <*> plzSpc ')' <*> block
          <|> StmtExpr    <$> expression <*> plzSpc ';'
+         <|> StmtEmpty   <$> spc ';'
 
 -- | Parser for function declarations.
 funDecl :: P TT (JTree TT)
@@ -172,13 +171,13 @@ funDecl = JFunDecl <$> resWord Function' <*> plzTok name
 
 -- | Parser for old-style function bodies and "lambda style" ones.
 block :: P TT (JBlock TT)
-block = JBlock <$> spec '{' <*> many pTree <*> plzSpc '}'
+block = JBlock <$> spc '{' <*> many pTree <*> plzSpc '}'
     <|> JBlockErr <$> recoverWith (pure errorToken)
 
 -- | Parser for variable declarations.
 varDecl :: P TT (JTree TT)
 varDecl = JVarDecl <$> resWord Var'
-                   <*> sepBy1 varDecAss (spec ',')
+                   <*> sepBy1 varDecAss (spc ',')
                    <*> plzSpc ';'
     where
       varDecAss :: P TT (JVarDecAss TT)
@@ -192,7 +191,7 @@ expression = ExprStr     <$> strTok
          <|> ExprNum     <$> numTok
          <|> ExprName    <$> name
          <|> ExprBool    <$> boolean
-         <|> ExprObj     <$> spec '{' <*> commas keyValue <*> plzSpc '}'
+         <|> ExprObj     <$> spc '{' <*> commas keyValue <*> plzSpc '}'
          <|> ExprAnonFun <$> resWord Function' <*> plzSpc '(' <*> parameters <*> plzSpc ')' <*> block
          <|> ExprFunCall <$> name <*> plzSpc '(' <*> arguments <*> plzSpc ')' <*> plzSpc ';'
     where
@@ -210,42 +209,50 @@ parameters = commas (plzTok name)
 arguments :: P TT [JExpr TT]
 arguments = commas plzExpr
 
+-- | Intersperses parses with comma parsers.
 commas :: P TT a -> P TT [a]
-commas x = x `sepBy` spec ','
+commas x = x `sepBy` spc ','
 
 
 -- * Simple parsers
 
+-- | Parses any string.
 strTok :: P TT TT
 strTok = symbol (\t -> case fromTT t of
                          Str _ -> True
                          _     -> False)
 
+-- | Parses any valid number.
 numTok :: P TT TT
 numTok = symbol (\t -> case fromTT t of
                          Number _ -> True
                          _        -> False)
 
+-- | Parses any valid identifier.
 name :: P TT TT
 name = symbol (\t -> case fromTT t of
                        ValidName _ -> True
                        _           -> False)
 
+-- | Parses any boolean.
 boolean :: P TT TT
 boolean = symbol (\t -> case fromTT t of
                           Res y -> y `elem` [True', False']
                           _     -> False)
 
+-- | Parses a reserved word.
 resWord :: Reserved -> P TT TT
 resWord x = symbol (\t -> case fromTT t of
                             Res y -> x == y
                             _     -> False)
 
-spec :: Char -> P TT TT
-spec x = symbol (\t -> case fromTT t of
-                         Special y -> x == y
-                         _         -> False)
+-- | Parses a special token.
+spc :: Char -> P TT TT
+spc x = symbol (\t -> case fromTT t of
+                        Special y -> x == y
+                        _         -> False)
 
+-- | Parses an operator.
 oper :: Operator -> P TT TT
 oper x = symbol (\t -> case fromTT t of
                          Op y -> y == x
@@ -268,7 +275,7 @@ plzTok x = x <<> (pure errorToken)
 
 -- | Expects a special token.
 plzSpc :: Char -> P TT TT
-plzSpc = plzTok . spec
+plzSpc = plzTok . spc
 
 -- | Expects an expression.
 plzExpr :: P TT (JExpr TT)
