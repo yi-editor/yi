@@ -3,7 +3,6 @@
 
 module Yi.Syntax.JavaScript where
 
-import Parser.Incremental (Parser(Enter))
 import Data.DeriveTH
 import Data.Derive.Foldable
 import Data.Monoid (Endo(..))
@@ -48,6 +47,7 @@ data Statement t = StmtReturn { returnres :: t, returnexpr :: (JExpr t), returns
                  | StmtFor { forres :: t, forlpar :: t, forinit :: (JExpr t), forsc1 :: t
                            , forcond :: (JExpr t), forsc2 :: t, forstep :: (JExpr t), forrpar :: t
                            , forbody :: (JBlock t) }
+                 | StmtExpr (JExpr t) t -- semi-colon
                    deriving (Eq, Show)
 
 data JBlock t = JBlock { fblcurl :: t, fbbody :: [JTree t], fbrcurl :: t }
@@ -105,7 +105,6 @@ instance Strokable (JVarDecAss TT) where
     toStrokes = foldMap toStrokes
 
 instance Strokable (JExpr TT) where
-    toStrokes (ExprErr t) = one (modStroke errorStyle) (tokenToStroke t)
     toStrokes expr = foldMap toStrokes expr
 
 instance Strokable (JKeyValue TT) where
@@ -157,23 +156,24 @@ anyLevel = funDecl
 
 -- | Parser for statements such as "return", "while", "do-while", "for", etc.
 statements :: P TT (Statement TT)
-statements = StmtReturn  <$> resWord Return' <*> expression <*> plzSpc ';'
-         <|> StmtWhile   <$> resWord While' <*> plzSpc '(' <*> expression <*> plzSpc ')' <*> funBody
-         <|> StmtDoWhile <$> resWord Do' <*> funBody <*> plzTok (resWord While')
-                         <*> plzSpc '(' <*> expression <*> plzSpc ')' <*> plzSpc ';'
-         <|> StmtFor     <$> resWord For' <*> plzSpc '(' <*> expression <*> plzSpc ';'
-                         <*> expression <*> plzSpc ';' <*> expression <*> plzSpc ')' <*> funBody
+statements = StmtReturn  <$> resWord Return' <*> plzExpr <*> plzSpc ';'
+         <|> StmtWhile   <$> resWord While' <*> plzSpc '(' <*> plzExpr <*> plzSpc ')' <*> block
+         <|> StmtDoWhile <$> resWord Do' <*> block <*> plzTok (resWord While')
+                         <*> plzSpc '(' <*> plzExpr <*> plzSpc ')' <*> plzSpc ';'
+         <|> StmtFor     <$> resWord For' <*> plzSpc '(' <*> plzExpr <*> plzSpc ';'
+                         <*> plzExpr <*> plzSpc ';' <*> plzExpr <*> plzSpc ')' <*> block
+         <|> StmtExpr    <$> expression <*> plzSpc ';'
 
 -- | Parser for function declarations.
 funDecl :: P TT (JTree TT)
 funDecl = JFunDecl <$> resWord Function' <*> plzTok name
                    <*> plzSpc '(' <*> parameters <*> plzSpc ')'
-                   <*> funBody
+                   <*> block
 
 -- | Parser for old-style function bodies and "lambda style" ones.
-funBody :: P TT (JBlock TT)
-funBody = JBlock <$> spec '{' <*> many pTree <*> plzSpc '}'
-      <|> JBlockErr <$> recoverWith (pure errorToken)
+block :: P TT (JBlock TT)
+block = JBlock <$> spec '{' <*> many pTree <*> plzSpc '}'
+    <|> JBlockErr <$> recoverWith (pure errorToken)
 
 -- | Parser for variable declarations.
 varDecl :: P TT (JTree TT)
@@ -183,21 +183,20 @@ varDecl = JVarDecl <$> resWord Var'
     where
       varDecAss :: P TT (JVarDecAss TT)
       varDecAss = AssignNo  <$> name
-              <|> AssignYes <$> name <*> plzTok (oper Assign') <*> expression
+              <|> AssignYes <$> name <*> plzTok (oper Assign') <*> plzExpr
               <|> AssignErr <$> recoverWith (pure errorToken)
 
 -- | Parser for expressions.
 expression :: P TT (JExpr TT)
 expression = ExprStr     <$> strTok
          <|> ExprNum     <$> numTok
-         <|> ExprObj     <$> spec '{' <*> commas keyValue <*> plzSpc '}'
          <|> ExprName    <$> name
          <|> ExprBool    <$> boolean
-         <|> ExprAnonFun <$> resWord Function' <*> plzSpc '(' <*> parameters <*> plzSpc ')' <*> funBody
+         <|> ExprObj     <$> spec '{' <*> commas keyValue <*> plzSpc '}'
+         <|> ExprAnonFun <$> resWord Function' <*> plzSpc '(' <*> parameters <*> plzSpc ')' <*> block
          <|> ExprFunCall <$> name <*> plzSpc '(' <*> arguments <*> plzSpc ')' <*> plzSpc ';'
-         <|> ExprErr     <$> recoverWith (pure errorToken)
     where
-      keyValue = JKeyValue <$> name <*> plzSpc ':' <*> expression
+      keyValue = JKeyValue <$> name <*> plzSpc ':' <*> plzExpr
              <|> JKVErr <$> recoverWith (pure errorToken)
 
 
@@ -209,7 +208,7 @@ parameters = commas (plzTok name)
 
 -- | Parser for comma-separated expressions.
 arguments :: P TT [JExpr TT]
-arguments = commas expression
+arguments = commas plzExpr
 
 commas :: P TT a -> P TT [a]
 commas x = x `sepBy` spec ','
@@ -270,6 +269,10 @@ plzTok x = x <<> (pure errorToken)
 -- | Expects a special token.
 plzSpc :: Char -> P TT TT
 plzSpc = plzTok . spec
+
+-- | Expects an expression.
+plzExpr :: P TT (JExpr TT)
+plzExpr = expression <|> (ExprErr <$> recoverWith (pure errorToken))
 
 
 -- * Utility stuff
