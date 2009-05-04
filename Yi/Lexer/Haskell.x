@@ -120,6 +120,8 @@ haskell :-
   "data"                                        { c (Reserved Data) }
   "where"                                       { c (Reserved Where) }
   "qualified"                                   { c (Reserved Qualified) }
+  "let"                                         { c (Reserved Let) }
+  "in"                                          { c (Reserved In) }
   @layoutReservedId                             { c (Reserved OtherLayout) }
   `@qual @varid`                                { cs $ Operator . init . tail }
   `@qual @conid`                                { cs $ ConsOperator . init . tail }
@@ -157,7 +159,7 @@ type HlState = Int
 data CommentType = Open | Close | Text | Line
     deriving (Eq, Show)
 
-data ReservedType = Hiding | Qualified | As | Import | Data | NewType | Type | Where | Let | OtherLayout | Deriving | Module | Forall | Other
+data ReservedType = Hiding | Qualified | As | Import | Data | NewType | Type | Where | Let | In | OtherLayout | Deriving | Module | Forall | Other
     deriving (Eq, Show)
 
 data OpType = Pipe | Equal | BackSlash | LeftArrow | RightArrow | DoubleRightArrow | OtherOp String
