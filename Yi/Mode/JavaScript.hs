@@ -19,7 +19,7 @@ javaScriptAbstract = emptyMode
     modeToggleCommentSelection = toggleCommentSelectionB "// " "//"
   }
 
-javaScriptMode :: Mode [JSSyn.JTree JSLex.TT]
+javaScriptMode :: Mode (JSSyn.Tree JSLex.TT)
 javaScriptMode = javaScriptAbstract
   {
     modeHL = ExtHL $ mkHighlighter (IncrParser.scanner JSSyn.parse . jsLexer),

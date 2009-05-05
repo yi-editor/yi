@@ -22,67 +22,57 @@ import Yi.Syntax.Tree (sepBy, sepBy1)
 class Strokable a where
     toStrokes :: a -> Endo [Stroke]
 
--- Unfortunately the selector functions for many of these datatypes have been
--- prefixed with two characters to differentiate them from selector functions of
--- other datatypes.  E.g. you can't have "body" as a selector function for
--- different datatypes, so I call them fdbody, fbbody and afbody for function
--- declarations, function bodies and anonymous function bodies respectively.  I
--- haven't been able to find any extension which automagically solves this
--- problem nicely...  But on the other hand, maybe there's no point in having
--- these in record syntax, since we never use the selector functions anyways.
+type Tree t = [Statement t]
 
-data JTree t = JFunDecl { fdres :: t, fdname :: t
-                        , fdlpar :: t, fdpars :: [t], fdrpar :: t
-                        , fdblock :: (JBlock t) }
-             | JVarDecl { vdres :: t, vdvars :: [JVarDecAss t], vdsc :: t }
-             | JStatement (Statement t)
-             | JError t
-               deriving (Eq, Show)
-
-data Statement t = StmtReturn { returnres :: t, returnexpr :: (JExpr t), returnsc :: t }
-                 | StmtWhile { whileres :: t, whilelpar :: t, whileexpr :: (JExpr t), whilerpar :: t
-                             , whilebody :: (JBlock t) }
-                 | StmtDoWhile { dwdo :: t, dwbody :: (JBlock t), dwwhile :: t
-                               , dwlcurl :: t, dwexpr :: (JExpr t), dwrcurl :: t, dwsc :: t }
-                 | StmtFor { forres :: t, forlpar :: t, forinit :: (JExpr t), forsc1 :: t
-                           , forcond :: (JExpr t), forsc2 :: t, forstep :: (JExpr t), forrpar :: t
-                           , forbody :: (JBlock t) }
-                 | StmtExpr (JExpr t) t -- semi-colon
-                 | StmtEmpty t -- ;
+data Statement t = FunDecl t t t [t] t (Block t)
+                 | VarDecl t [VarDecAss t] t
+                 | Return t (Expr t) t
+                 | While t t (Expr t) t (Block t)
+                 | DoWhile t (Block t) t t (Expr t) t t
+                 | For t t (Expr t) t (Expr t) t (Expr t) t (Block t)
+                 | Expr (Expr t) t -- semi-colon
+                 | Empty t -- ;
+                 | Err t
                    deriving (Eq, Show)
 
-data JBlock t = JBlock { fblcurl :: t, fbbody :: [JTree t], fbrcurl :: t }
-              | JBlockErr t
-                deriving (Eq, Show)
+data Block t = Block t [Statement t] t
+             | BlockErr t
+               deriving (Eq, Show)
 
 -- | Represents either a variable name or a variable name assigned to an
 --   expression.  @AssignNo@ means it's a simple declaration.  @AssignYes@ means
 --   a declaration and an assignment.  @AssignErr@ is used as a recovery.
-data JVarDecAss t = AssignNo  t             -- ^ No, no assignment
-                  | AssignYes t t (JExpr t) -- ^ Yes, an assignment
-                  | AssignErr t             -- ^ What?!
-                    deriving (Eq, Show)
-
-data JExpr t = ExprObj { objlcurl :: t, objkv :: [JKeyValue t], objrcurl :: t }
-             | ExprStr t
-             | ExprNum t
-             | ExprName t
-             | ExprBool t
-             | ExprAnonFun { afres :: t, aflpar :: t, afpars :: [t], afrpar :: t, afbody :: (JBlock t) }
-             | ExprFunCall { fcname :: t, fclpar :: t, fcargs :: [JExpr t], fcrpar :: t, fcsc :: t }
-             | ExprErr t
-               deriving (Eq, Show)
-
-data JKeyValue t = JKeyValue { key :: t, colon :: t, value :: (JExpr t) }
-                 | JKVErr t
+data VarDecAss t = AssignNo  t             -- ^ No, no assignment
+                 | AssignYes t t (Expr t) -- ^ Yes, an assignment
+                 | AssignErr t             -- ^ What?!
                    deriving (Eq, Show)
 
-$(derive makeFoldable ''JTree)
+data Expr t = ExprObj t [KeyValue t] t
+            | ExprStr t
+            | ExprNum t
+            | ExprName t
+            | ExprBool t
+            | ExprThis t (Maybe (Expr t))
+            | ExprAnonFun t t [t] t (Block t)
+            | ExprFunCall t t [Expr t] t (Maybe (Expr t))
+            | ExprAssign t t (Expr t)
+            | ExprErr t
+              deriving (Eq, Show)
+
+data Qual t = Qual t (Expr t)
+            | QErr t
+              deriving (Eq, Show)
+
+data KeyValue t = KeyValue t t (Expr t)
+                | KeyValueErr t
+                  deriving (Eq, Show)
+
+$(derive makeFoldable ''Qual)
 $(derive makeFoldable ''Statement)
-$(derive makeFoldable ''JExpr)
-$(derive makeFoldable ''JKeyValue)
-$(derive makeFoldable ''JVarDecAss)
-$(derive makeFoldable ''JBlock)
+$(derive makeFoldable ''Expr)
+$(derive makeFoldable ''KeyValue)
+$(derive makeFoldable ''VarDecAss)
+$(derive makeFoldable ''Block)
 
 -- TODO: (Optimization) Only make strokes for stuff that don't have
 -- defaultStyle.  I'm not entirely sure how much this would help performance,
@@ -92,23 +82,20 @@ instance Strokable (Tok Token) where
                     then one (modStroke errorStyle . tokenToStroke) t
                     else one tokenToStroke t
 
-instance Strokable (JTree TT) where
-    toStrokes (JError t) = one (modStroke errorStyle . tokenToStroke) t
+instance Strokable (Statement TT) where
+    toStrokes (Err t) = one (modStroke errorStyle . tokenToStroke) t
     toStrokes t = foldMap toStrokes t
 
-instance Strokable (Statement TT) where
+instance Strokable (Block TT) where
     toStrokes = foldMap toStrokes
 
-instance Strokable (JBlock TT) where
+instance Strokable (VarDecAss TT) where
     toStrokes = foldMap toStrokes
 
-instance Strokable (JVarDecAss TT) where
-    toStrokes = foldMap toStrokes
-
-instance Strokable (JExpr TT) where
+instance Strokable (Expr TT) where
     toStrokes expr = foldMap toStrokes expr
 
-instance Strokable (JKeyValue TT) where
+instance Strokable (KeyValue TT) where
     toStrokes = foldMap toStrokes
 
 
@@ -129,7 +116,7 @@ oneStroke = one tokenToStroke
 tokenToStroke :: TT -> Stroke
 tokenToStroke = fmap tokenToStyle . tokToSpan
 
-getStrokes :: Point -> Point -> Point -> [JTree TT] -> [Stroke]
+getStrokes :: Point -> Point -> Point -> Tree TT -> [Stroke]
 getStrokes _point _begin _end t0 = trace (show t0) result
     where
       result = appEndo (foldMap toStrokes t0) []
@@ -138,65 +125,52 @@ getStrokes _point _begin _end t0 = trace (show t0) result
 -- * The parser
 
 -- | Main parser.
-parse :: P TT [JTree TT]
-parse = many pTree <* eof
-
--- | Parser for a single tree.
-pTree :: P TT (JTree TT)
-pTree = anyLevel
-    <|> (JError <$> recoverWith (symbol (const True)))
-
--- | Parser for stuff that's allowed anywhere in the program.
-anyLevel :: P TT (JTree TT)
-anyLevel = funDecl
-       <|> varDecl
-       <|> JStatement <$> statements
+parse :: P TT (Tree TT)
+parse = many statement <* eof
 
 -- | Parser for statements such as "return", "while", "do-while", "for", etc.
-statements :: P TT (Statement TT)
-statements = StmtReturn  <$> resWord Return' <*> plzExpr <*> plzSpc ';'
-         <|> StmtWhile   <$> resWord While' <*> plzSpc '(' <*> plzExpr <*> plzSpc ')' <*> block
-         <|> StmtDoWhile <$> resWord Do' <*> block <*> plzTok (resWord While')
-                         <*> plzSpc '(' <*> plzExpr <*> plzSpc ')' <*> plzSpc ';'
-         <|> StmtFor     <$> resWord For' <*> plzSpc '(' <*> plzExpr <*> plzSpc ';'
-                         <*> plzExpr <*> plzSpc ';' <*> plzExpr <*> plzSpc ')' <*> block
-         <|> StmtExpr    <$> expression <*> plzSpc ';'
-         <|> StmtEmpty   <$> spc ';'
-
--- | Parser for function declarations.
-funDecl :: P TT (JTree TT)
-funDecl = JFunDecl <$> resWord Function' <*> plzTok name
-                   <*> plzSpc '(' <*> parameters <*> plzSpc ')'
-                   <*> block
-
--- | Parser for old-style function bodies and "lambda style" ones.
-block :: P TT (JBlock TT)
-block = JBlock <$> spc '{' <*> many pTree <*> plzSpc '}'
-    <|> JBlockErr <$> recoverWith (pure errorToken)
-
--- | Parser for variable declarations.
-varDecl :: P TT (JTree TT)
-varDecl = JVarDecl <$> resWord Var'
-                   <*> sepBy1 varDecAss (spc ',')
-                   <*> plzSpc ';'
+statement :: P TT (Statement TT)
+statement = FunDecl <$> resWord Function' <*> name -- no need to plz because of [1]
+                    <*> plzSpc '(' <*> parameters <*> plzSpc ')' <*> block
+        <|> VarDecl <$> resWord Var' <*> sepBy1 varDecAss (spc ',') <*> plzSpc ';'
+        <|> Return  <$> resWord Return' <*> plzExpr <*> plzSpc ';'
+        <|> While   <$> resWord While' <*> plzSpc '(' <*> plzExpr <*> plzSpc ')' <*> block
+        <|> DoWhile <$> resWord Do' <*> block <*> plzTok (resWord While')
+                    <*> plzSpc '(' <*> plzExpr <*> plzSpc ')' <*> plzSpc ';'
+        <|> For     <$> resWord For' <*> plzSpc '(' <*> plzExpr <*> plzSpc ';'
+                    <*> plzExpr <*> plzSpc ';' <*> plzExpr <*> plzSpc ')' <*> block
+        <|> Expr    <$> expression <*> plzSpc ';' -- [1]
+        <|> Empty   <$> spc ';'
+        <|> Err     <$> recoverWith (symbol $ const True)
     where
-      varDecAss :: P TT (JVarDecAss TT)
+      varDecAss :: P TT (VarDecAss TT)
       varDecAss = AssignNo  <$> name
               <|> AssignYes <$> name <*> plzTok (oper Assign') <*> plzExpr
-              <|> AssignErr <$> recoverWith (pure errorToken)
+              <|> AssignErr <$> anything
+
+-- | Parser for old-style function bodies and "lambda style" ones.
+block :: P TT (Block TT)
+block = Block    <$> spc '{' <*> many statement <*> plzSpc '}'
+    <|> BlockErr <$> anything
 
 -- | Parser for expressions.
-expression :: P TT (JExpr TT)
+expression :: P TT (Expr TT)
 expression = ExprStr     <$> strTok
          <|> ExprNum     <$> numTok
          <|> ExprName    <$> name
          <|> ExprBool    <$> boolean
+         <|> ExprThis    <$> resWord This' <*> optional qual
          <|> ExprObj     <$> spc '{' <*> commas keyValue <*> plzSpc '}'
          <|> ExprAnonFun <$> resWord Function' <*> plzSpc '(' <*> parameters <*> plzSpc ')' <*> block
-         <|> ExprFunCall <$> name <*> plzSpc '(' <*> arguments <*> plzSpc ')' <*> plzSpc ';'
+         <|> ExprFunCall <$> name <*> plzSpc '(' <*> arguments <*> plzSpc ')' <*> optional qual
+         <|> ExprAssign  <$> name <*> plzSpc '=' <*> expression
     where
-      keyValue = JKeyValue <$> name <*> plzSpc ':' <*> plzExpr
-             <|> JKVErr <$> recoverWith (pure errorToken)
+      keyValue = KeyValue    <$> name <*> plzSpc ':' <*> plzExpr
+             <|> KeyValueErr <$> anything
+
+
+qual :: P TT (Expr TT)
+qual = Qual <$> spc '.' *> (expression <|> ExprErr <$> anything)
 
 
 -- * Parsing helpers
@@ -206,7 +180,7 @@ parameters :: P TT [TT]
 parameters = commas (plzTok name)
 
 -- | Parser for comma-separated expressions.
-arguments :: P TT [JExpr TT]
+arguments :: P TT [Expr TT]
 arguments = commas plzExpr
 
 -- | Intersperses parses with comma parsers.
@@ -278,8 +252,12 @@ plzSpc :: Char -> P TT TT
 plzSpc = plzTok . spc
 
 -- | Expects an expression.
-plzExpr :: P TT (JExpr TT)
-plzExpr = expression <|> (ExprErr <$> recoverWith (pure errorToken))
+plzExpr :: P TT (Expr TT)
+plzExpr = expression <|> (ExprErr <$> anything)
+
+-- | General recovery parser, inserts an error token.
+anything :: P s TT
+anything = recoverWith (pure errorToken)
 
 
 -- * Utility stuff
