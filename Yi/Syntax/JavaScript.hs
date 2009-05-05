@@ -50,14 +50,16 @@ data VarDecAss t = AssignNo  t             -- ^ No, no assignment
 data Expr t = ExprObj t [KeyValue t] t
             | ExprStr t
             | ExprNum t
-            | ExprName t
+            | ExprName t (QualExpr t)
             | ExprBool t
-            | ExprThis t (Maybe (Expr t))
+            | ExprThis t (QualExpr t)
             | ExprAnonFun t t [t] t (Block t)
-            | ExprFunCall t t [Expr t] t (Maybe (Expr t))
+            | ExprFunCall t t [Expr t] t (QualExpr t)
             | ExprAssign t t (Expr t)
             | ExprErr t
               deriving (Eq, Show)
+
+type QualExpr t = Maybe (Expr t)
 
 data Qual t = Qual t (Expr t)
             | QErr t
@@ -157,7 +159,7 @@ block = Block    <$> spc '{' <*> many statement <*> plzSpc '}'
 expression :: P TT (Expr TT)
 expression = ExprStr     <$> strTok
          <|> ExprNum     <$> numTok
-         <|> ExprName    <$> name
+         <|> ExprName    <$> name <*> optional qual
          <|> ExprBool    <$> boolean
          <|> ExprThis    <$> resWord This' <*> optional qual
          <|> ExprObj     <$> spc '{' <*> commas keyValue <*> plzSpc '}'
@@ -169,11 +171,12 @@ expression = ExprStr     <$> strTok
              <|> KeyValueErr <$> anything
 
 
+-- * Parsing helpers
+
+-- | Parses a qualified expression.  TODO: Not all expressions can be the RHS of
+--   the qualification operator.
 qual :: P TT (Expr TT)
 qual = Qual <$> spc '.' *> (expression <|> ExprErr <$> anything)
-
-
--- * Parsing helpers
 
 -- | Parser for comma-separated identifiers.
 parameters :: P TT [TT]
