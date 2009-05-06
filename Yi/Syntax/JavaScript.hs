@@ -11,7 +11,8 @@ import Prelude (unlines, map)
 import Yi.Buffer.Basic (Point(..))
 import Yi.IncrementalParse (P, eof, symbol, recoverWith)
 import Yi.Lexer.Alex
-import Yi.Lexer.JavaScript (TT, Token(..), Reserved(..), Operator(..), tokenToStyle)
+import Yi.Lexer.JavaScript ( TT, Token(..), Reserved(..), Operator(..)
+                           , tokenToStyle, prefixOperators, infixOperators )
 import Yi.Prelude
 import Yi.Style (errorStyle, StyleName)
 import Yi.Syntax.Tree (sepBy, sepBy1)
@@ -49,25 +50,19 @@ data VarDecAss t = Ass1 t (Maybe (VarDecAss t))
                    deriving (Eq, Show)
 
 data Expr t = ExprObj t [KeyValue t] t
-            | ExprSimple t
-            | ExprParen t (Expr t) t
-            | ExprName t -- (Maybe (Expr t))
-            | ExprThis t -- (Maybe (Expr t))
+            | ExprPrefix t (Expr t)
+            | ExprSimple t (Maybe (Expr t))
+            | ExprParen t (Expr t) t (Maybe (Expr t))
             | ExprAnonFun t t [t] t (Block t)
-            | ExprFunCall t t [Expr t] t (Maybe (Expr t))
-            | ExprAssign t t (Expr t)
+            | ExprFunCall t t [Expr t] t
+            | OpExpr t (Expr t)
             | ExprErr t
-              deriving (Eq, Show)
-
-data Qual t = Qual t (Expr t)
-            | QErr t
               deriving (Eq, Show)
 
 data KeyValue t = KeyValue t t (Expr t)
                 | KeyValueErr t
                   deriving (Eq, Show)
 
-$(derive makeFoldable ''Qual)
 $(derive makeFoldable ''Statement)
 $(derive makeFoldable ''Expr)
 $(derive makeFoldable ''KeyValue)
@@ -154,25 +149,19 @@ block = Block    <$> spc '{' <*> many statement <*> plzSpc '}'
 
 -- | Parser for expressions.
 expression :: P TT (Expr TT)
-expression = ExprSimple  <$> simpleTok
-         <|> ExprName    <$> name
-         <|> ExprParen   <$> spc '(' <*> plzExpr <*> plzSpc ')'
-         <|> ExprThis    <$> resWord This'
+expression = ExprSimple  <$> simpleTok <*> optional (opExpr)
+         <|> ExprParen   <$> spc '(' <*> plzExpr <*> plzSpc ')' <*> optional (opExpr)
          <|> ExprObj     <$> spc '{' <*> commas keyValue <*> plzSpc '}'
+         <|> ExprPrefix  <$> preOp <*> plzExpr
          <|> ExprAnonFun <$> resWord Function' <*> plzSpc '(' <*> parameters <*> plzSpc ')' <*> block
-         <|> ExprFunCall <$> name <*> plzSpc '(' <*> arguments <*> plzSpc ')' <*> optional qual
-         <|> ExprAssign  <$> name <*> plzSpc '=' <*> expression
+         <|> ExprFunCall <$> name <*> plzSpc '(' <*> arguments <*> plzSpc ')'
     where
       keyValue = KeyValue    <$> name <*> plzSpc ':' <*> plzExpr
              <|> KeyValueErr <$> anything
+      opExpr = OpExpr <$> inOp <*> plzExpr
 
 
 -- * Parsing helpers
-
--- | Parses a qualified expression.  TODO: Not all expressions can be the RHS of
---   the qualification operator.
-qual :: P TT (Expr TT)
-qual = Enter "Qual" $ Qual <$> spc '.' *> (expression <|> ExprErr <$> anything)
 
 -- | Parser for comma-separated identifiers.
 parameters :: P TT [TT]
@@ -189,11 +178,27 @@ commas x = Enter "commas" $ x `sepBy` spc ','
 
 -- * Simple parsers
 
+-- | Parses a prefix operator.
+preOp = Enter "preOp" $ symbol (\t -> case fromTT t of
+                                        Op x -> x `elem` prefixOperators
+                                        _    -> False)
+
+-- | Parses a infix operator.
+inOp = Enter "inOp" $ symbol (\t -> case fromTT t of
+                                      Op x -> x `elem` infixOperators
+                                      _    -> False)
+
+-- | Parses any literal.
+opTok = Enter "opTok" $ symbol (\t -> case fromTT t of
+                         Op _ -> True
+                         _    -> False)
+
 -- | Parses any literal.
 simpleTok = Enter "simpleTok" $ symbol (\t -> case fromTT t of
                          Str _       -> True
                          Number _    -> True
-                         Res y       -> y `elem` [True', False', Undefined', Null']
+                         ValidName _ -> True
+                         Res y       -> y `elem` [True', False', Undefined', Null', This']
                          _           -> False)
 
 -- | Parses any string.

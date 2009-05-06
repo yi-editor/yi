@@ -26,7 +26,7 @@
 
 module Yi.Lexer.JavaScript ( initState, alexScanToken, tokenToStyle,
                              TT, Token(..), Reserved(..), Operator(..),
-                             HlState ) where
+                             HlState, prefixOperators, infixOperators ) where
 
 import Data.Monoid (Endo(..))
 import Yi.Lexer.Alex
@@ -45,11 +45,11 @@ $whitechar  = [\ \t\n\r\f\v]
 @ops = "+"   | "-"   | "*"   | "/"   | "%"   | "++"  | "--"  | "="   | "+="
      | "-="  | "*="  | "/="  | "%="  | "=="  | "!="  | ">"   | ">="  | "<"
      | "<="  | "===" | "!==" | "&&"  |"||"   | "!"   | "&"   | "|"   | "^"
-     | "<<"  | ">>"  | ">>>" | "~"
+     | "<<"  | ">>"  | ">>>" | "~"   | "."
 
 $large     = [A-Z \xc0-\xd6 \xd8-\xde]
 $small     = [a-z \xdf-\xf6 \xf8-\xff]
-$special   = [\(\)\,\;\[\]\{\}\.\:]
+$special   = [\(\)\,\;\[\]\{\}\:]
 
 $ascdigit  = 0-9
 $unidigit  = [] -- TODO
@@ -135,8 +135,18 @@ data Operator = Add' | Subtract' | Multiply' | Divide' | Modulo' | Increment'
               | MultiplyAssign' | DivideAssign' | ModuloAssign' | Equals'
               | NotEquals' | GT' | GTE' | LT' | LTE' | EqualsType'
               | NotEqualsType' | And' | Or' | Not' | BitAnd' | BitOr' | BitXor'
-              | LeftShift' | RightShift' | RightShiftZ' | BitNot'
+              | LeftShift' | RightShift' | RightShiftZ' | BitNot' | Qualify'
                 deriving (Show, Eq)
+
+-- | Prefix operators.
+prefixOperators = [ Add', Subtract', Increment', Decrement', BitNot', Not' ]
+
+-- | Infix operators.
+infixOperators = [ Add', Subtract', Multiply', Divide', Modulo', Assign',
+                   AddAssign', SubtractAssign', MultiplyAssign', DivideAssign',
+                   ModuloAssign', Equals', NotEquals', GT', GTE', LT', LTE',
+                   EqualsType', NotEqualsType', And', Or', BitAnd', BitOr',
+                   BitXor', LeftShift', RightShift', RightShiftZ', Qualify' ]
 
 -- | @HlState@ is 0 when outside of a multi-line comment and -1 when inside one.
 type HlState = Int
@@ -205,6 +215,7 @@ opToOp "<<"  = LeftShift'
 opToOp ">>"  = RightShift'
 opToOp ">>>" = RightShiftZ'
 opToOp "~"   = BitNot'
+opToOp "."   = Qualify'
 
 -- | Given a @String@ representing a reserved word, returns a 'Reserved' with
 --   the appropriate constructor.
