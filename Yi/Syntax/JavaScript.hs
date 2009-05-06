@@ -3,10 +3,11 @@
 
 module Yi.Syntax.JavaScript where
 
+import Parser.Incremental (Parser(..))
 import Data.DeriveTH
 import Data.Derive.Foldable
 import Data.Monoid (Endo(..))
-import Prelude ()
+import Prelude (unlines, map)
 import Yi.Buffer.Basic (Point(..))
 import Yi.IncrementalParse (P, eof, symbol, recoverWith)
 import Yi.Lexer.Alex
@@ -31,35 +32,32 @@ data Statement t = FunDecl t t t [t] t (Block t)
                  | DoWhile t (Block t) t t (Expr t) t t
                  | For t t (Expr t) t (Expr t) t (Expr t) t (Block t)
                  | Expr (Expr t) t -- semi-colon
-                 | Empty t -- ;
                  | Err t
                    deriving (Eq, Show)
 
 data Block t = Block t [Statement t] t
+             | BlockOne (Statement t)
              | BlockErr t
                deriving (Eq, Show)
 
 -- | Represents either a variable name or a variable name assigned to an
 --   expression.  @AssignNo@ means it's a simple declaration.  @AssignYes@ means
 --   a declaration and an assignment.  @AssignErr@ is used as a recovery.
-data VarDecAss t = AssignNo  t             -- ^ No, no assignment
-                 | AssignYes t t (Expr t) -- ^ Yes, an assignment
-                 | AssignErr t             -- ^ What?!
+data VarDecAss t = Ass1 t (Maybe (VarDecAss t))
+                 | Ass2 t (Expr t)
+                 | AssignErr t
                    deriving (Eq, Show)
 
 data Expr t = ExprObj t [KeyValue t] t
-            | ExprStr t
-            | ExprNum t
-            | ExprName t (QualExpr t)
-            | ExprBool t
-            | ExprThis t (QualExpr t)
+            | ExprSimple t
+            | ExprParen t (Expr t) t
+            | ExprName t -- (Maybe (Expr t))
+            | ExprThis t -- (Maybe (Expr t))
             | ExprAnonFun t t [t] t (Block t)
-            | ExprFunCall t t [Expr t] t (QualExpr t)
+            | ExprFunCall t t [Expr t] t (Maybe (Expr t))
             | ExprAssign t t (Expr t)
             | ExprErr t
               deriving (Eq, Show)
-
-type QualExpr t = Maybe (Expr t)
 
 data Qual t = Qual t (Expr t)
             | QErr t
@@ -119,7 +117,7 @@ tokenToStroke :: TT -> Stroke
 tokenToStroke = fmap tokenToStyle . tokToSpan
 
 getStrokes :: Point -> Point -> Point -> Tree TT -> [Stroke]
-getStrokes _point _begin _end t0 = trace (show t0) result
+getStrokes _point _begin _end t0 = trace (unlines $ map show t0) result
     where
       result = appEndo (foldMap toStrokes t0) []
 
@@ -132,7 +130,7 @@ parse = many statement <* eof
 
 -- | Parser for statements such as "return", "while", "do-while", "for", etc.
 statement :: P TT (Statement TT)
-statement = FunDecl <$> resWord Function' <*> name -- no need to plz because of [1]
+statement = FunDecl <$> resWord Function' <*> plzTok name -- no need to plz because of [1]
                     <*> plzSpc '(' <*> parameters <*> plzSpc ')' <*> block
         <|> VarDecl <$> resWord Var' <*> sepBy1 varDecAss (spc ',') <*> plzSpc ';'
         <|> Return  <$> resWord Return' <*> plzExpr <*> plzSpc ';'
@@ -142,26 +140,24 @@ statement = FunDecl <$> resWord Function' <*> name -- no need to plz because of 
         <|> For     <$> resWord For' <*> plzSpc '(' <*> plzExpr <*> plzSpc ';'
                     <*> plzExpr <*> plzSpc ';' <*> plzExpr <*> plzSpc ')' <*> block
         <|> Expr    <$> expression <*> plzSpc ';' -- [1]
-        <|> Empty   <$> spc ';'
         <|> Err     <$> recoverWith (symbol $ const True)
     where
       varDecAss :: P TT (VarDecAss TT)
-      varDecAss = AssignNo  <$> name
-              <|> AssignYes <$> name <*> plzTok (oper Assign') <*> plzExpr
+      varDecAss = Ass1      <$> name <*> optional (Ass2 <$> oper Assign' <*> plzExpr)
               <|> AssignErr <$> anything
 
 -- | Parser for old-style function bodies and "lambda style" ones.
 block :: P TT (Block TT)
 block = Block    <$> spc '{' <*> many statement <*> plzSpc '}'
+    <|> BlockOne <$> statement
     <|> BlockErr <$> anything
 
 -- | Parser for expressions.
 expression :: P TT (Expr TT)
-expression = ExprStr     <$> strTok
-         <|> ExprNum     <$> numTok
-         <|> ExprName    <$> name <*> optional qual
-         <|> ExprBool    <$> boolean
-         <|> ExprThis    <$> resWord This' <*> optional qual
+expression = ExprSimple  <$> simpleTok
+         <|> ExprName    <$> name
+         <|> ExprParen   <$> spc '(' <*> plzExpr <*> plzSpc ')'
+         <|> ExprThis    <$> resWord This'
          <|> ExprObj     <$> spc '{' <*> commas keyValue <*> plzSpc '}'
          <|> ExprAnonFun <$> resWord Function' <*> plzSpc '(' <*> parameters <*> plzSpc ')' <*> block
          <|> ExprFunCall <$> name <*> plzSpc '(' <*> arguments <*> plzSpc ')' <*> optional qual
@@ -176,83 +172,82 @@ expression = ExprStr     <$> strTok
 -- | Parses a qualified expression.  TODO: Not all expressions can be the RHS of
 --   the qualification operator.
 qual :: P TT (Expr TT)
-qual = Qual <$> spc '.' *> (expression <|> ExprErr <$> anything)
+qual = Enter "Qual" $ Qual <$> spc '.' *> (expression <|> ExprErr <$> anything)
 
 -- | Parser for comma-separated identifiers.
 parameters :: P TT [TT]
-parameters = commas (plzTok name)
+parameters = Enter "parameters" $ commas (plzTok name)
 
 -- | Parser for comma-separated expressions.
 arguments :: P TT [Expr TT]
-arguments = commas plzExpr
+arguments = Enter "arguments" $ commas plzExpr
 
 -- | Intersperses parses with comma parsers.
 commas :: P TT a -> P TT [a]
-commas x = x `sepBy` spc ','
+commas x = Enter "commas" $ x `sepBy` spc ','
 
 
 -- * Simple parsers
 
+-- | Parses any literal.
+simpleTok = Enter "simpleTok" $ symbol (\t -> case fromTT t of
+                         Str _       -> True
+                         Number _    -> True
+                         Res y       -> y `elem` [True', False', Undefined', Null']
+                         _           -> False)
+
 -- | Parses any string.
 strTok :: P TT TT
-strTok = symbol (\t -> case fromTT t of
+strTok = Enter "strTok" $ symbol (\t -> case fromTT t of
                          Str _ -> True
                          _     -> False)
 
 -- | Parses any valid number.
 numTok :: P TT TT
-numTok = symbol (\t -> case fromTT t of
+numTok = Enter "numTok" $ symbol (\t -> case fromTT t of
                          Number _ -> True
                          _        -> False)
 
 -- | Parses any valid identifier.
 name :: P TT TT
-name = symbol (\t -> case fromTT t of
+name = Enter "name" $ symbol (\t -> case fromTT t of
                        ValidName _ -> True
                        _           -> False)
 
 -- | Parses any boolean.
 boolean :: P TT TT
-boolean = symbol (\t -> case fromTT t of
+boolean = Enter "boolean" $ symbol (\t -> case fromTT t of
                           Res y -> y `elem` [True', False']
                           _     -> False)
 
 -- | Parses a reserved word.
 resWord :: Reserved -> P TT TT
-resWord x = symbol (\t -> case fromTT t of
+resWord x = Enter ("resWord " ++ show x) $ symbol (\t -> case fromTT t of
                             Res y -> x == y
                             _     -> False)
 
 -- | Parses a special token.
 spc :: Char -> P TT TT
-spc x = symbol (\t -> case fromTT t of
+spc x = Enter ("spc " ++ show x) $ symbol (\t -> case fromTT t of
                         Special y -> x == y
                         _         -> False)
 
 -- | Parses an operator.
 oper :: Operator -> P TT TT
-oper x = symbol (\t -> case fromTT t of
+oper x = Enter ("oper " ++ show x) $ symbol (\t -> case fromTT t of
                          Op y -> y == x
                          _    -> False)
 
 
 -- * Recovery parsers
 
--- | Recover operator.  Prefers RHS.
-(<>>) :: P s a -> P s a -> P s a
-x <>> y = recoverWith x <|> y
-
--- | Recovery operator.  Prefers LHS.
-(<<>) :: P s a -> P s a -> P s a
-x <<> y = y <>> x
-
 -- | Expects a token x, recovers with 'errorToken'.
-plzTok :: P s TT -> P s TT
-plzTok x = x <<> (pure errorToken)
+plzTok :: P TT TT -> P TT TT
+plzTok x = x <|> anything
 
 -- | Expects a special token.
 plzSpc :: Char -> P TT TT
-plzSpc = plzTok . spc
+plzSpc x = Enter ("plzSpc " ++ show x) $ plzTok (spc x)
 
 -- | Expects an expression.
 plzExpr :: P TT (Expr TT)
