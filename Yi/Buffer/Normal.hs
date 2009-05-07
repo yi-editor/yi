@@ -21,7 +21,7 @@ module Yi.Buffer.Normal (TextUnit(Character, Line, VLine, Document),
                          unitViWORDOnLine,
                          unitDelimited,
                          unitSentence, unitEmacsParagraph, unitParagraph,
-                         isAnySep, unitSep, unitSepThisLine,
+                         isAnySep, unitSep, unitSepThisLine, isWordChar,
                          -- TextUnit is exported abstract intentionally:
                          -- we'd like to move more units to the GenUnit format.
                          moveB, maybeMoveB,

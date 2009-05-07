@@ -184,7 +184,7 @@ shiftMarkValue from by (MarkValue p gravity) = MarkValue shifted gravity
                                   Forward -> p'
                   | otherwise {- p > from -} = p'
               where p' = max from (p +~ by)
-
+              
 mapOvlMarks :: (MarkValue -> MarkValue) -> Overlay -> Overlay
 mapOvlMarks f (Overlay l s e v) = Overlay l (f s) (f e) v
 

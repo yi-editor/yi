@@ -515,7 +515,6 @@ newMarkB v = queryAndModify $ newMarkBI v
 
 deleteMarkB :: Mark -> BufferM ()
 deleteMarkB m = modifyBuffer $ deleteMarkValueBI m
-    
 
 -- | Execute a @BufferM@ value on a given buffer, using a dummy window.  The new state of
 -- the buffer is discarded.
