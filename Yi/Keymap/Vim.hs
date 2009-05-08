@@ -731,14 +731,14 @@ defKeymap = Proto template
      joinLinesB :: Region -> BufferM ()
      joinLinesB =
        savingPointB .
-         (modifyRegionB $ skippingLast $
+         (modifyRegionClever $ skippingLast $
             concat . (skippingFirst $ map $ skippingNull ((' ':) . dropWhile isSpace)) . lines')
 
      concatLinesB :: Region -> BufferM ()
-     concatLinesB = savingPointB . (modifyRegionB $ skippingLast $ filter (/='\n'))
+     concatLinesB = savingPointB . (modifyRegionClever $ skippingLast $ filter (/='\n'))
 
      onCurrentWord :: (String -> String) -> BufferM ()
-     onCurrentWord f = savingPointB $ modifyRegionB f =<< regionOfNonEmptyB unitViWord
+     onCurrentWord f = savingPointB $ modifyRegionClever f =<< regionOfNonEmptyB unitViWord
 
      onNumberInString :: (Read a, Show a, Num a) => (a -> a) -> String -> String
      onNumberInString f s = case reads s2 of
