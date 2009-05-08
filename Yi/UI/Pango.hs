@@ -270,24 +270,26 @@ handleClick ui w event = do
              writeRef (winMotionSignal w) Nothing
              
 
-
-  let editorAction = do
+  let runAction = uiActionCh ui . makeAction
+  case (Gdk.Events.eventClick event, Gdk.Events.eventButton event) of
+    (Gdk.Events.SingleClick, Gdk.Events.LeftButton) -> runAction $ do
         b <- gets $ (bkey . findBufferWith (bufkey $ coreWin w))
-        case (Gdk.Events.eventClick event, Gdk.Events.eventButton event) of
-          (Gdk.Events.SingleClick, Gdk.Events.LeftButton) -> do
-              focusWindow
-              withGivenBufferAndWindow0 (coreWin w) b $ moveTo p1
-          (Gdk.Events.SingleClick, _) -> focusWindow
-          (Gdk.Events.ReleaseClick, Gdk.Events.MiddleButton) -> do
-            txt <- getRegE
-            withGivenBufferAndWindow0 (coreWin w) b $ do
-              pointB >>= setSelectionMarkPointB
-              moveTo p1
-              insertN txt
+        focusWindow
+        withGivenBufferAndWindow0 (coreWin w) b $ moveTo p1
+    (Gdk.Events.SingleClick, _) -> runAction focusWindow
+    (Gdk.Events.ReleaseClick, Gdk.Events.MiddleButton) -> do
+        disp <- widgetGetDisplay (textview w)
+        cb <- clipboardGetForDisplay disp selectionPrimary
+        let cbHandler Nothing = return ()
+            cbHandler (Just txt) = runAction $ do
+                b <- gets $ (bkey . findBufferWith (bufkey $ coreWin w))
+                withGivenBufferAndWindow0 (coreWin w) b $ do
+                pointB >>= setSelectionMarkPointB
+                moveTo p1
+                insertN txt
+        clipboardRequestText cb cbHandler
+    _ -> return ()
 
-          _ -> return ()
-
-  uiActionCh ui (makeAction editorAction)
   return True
 
 handleScroll :: UI -> WinInfo -> Gdk.Events.Event -> IO Bool
@@ -325,6 +327,21 @@ handleMove ui w p0 event = do
 
   uiActionCh ui (makeAction editorAction)
   -- drawWindowGetPointer (textview w) -- be ready for next message.
+
+  -- Relies on uiActionCh being synchronous
+  selection <- newIORef ""
+  let yiAction = do
+      txt <- withEditor (withBuffer0 (readRegionB =<< getSelectRegionB))
+             :: YiM String
+      liftIO $ writeIORef selection txt
+  uiActionCh ui (makeAction yiAction)
+  txt <- readIORef selection
+
+  disp <- widgetGetDisplay (textview w)
+  cb <- clipboardGetForDisplay disp selectionPrimary
+  clipboardSetWithData cb [(targetString,0)]
+      (\0 -> selectionDataSetText txt >> return ()) (return ())
+
   return True
 
 -- | Make A new window
