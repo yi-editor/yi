@@ -17,8 +17,15 @@ deleteSnippets = False
 
 myVimKeymap = mkKeymap $ defKeymap `override` \super self -> super {
           v_ins_char  = (v_ins_char super ||> tabKeymap)
-                          <|> (ctrlCh 's' ?>>! moveToNextBufferMark deleteSnippets)
+                       <|> (ctrlCh 's' ?>>! moveToNextBufferMark deleteSnippets)
+        , v_ex_cmds = myExCmds
         }
+        
+myExCmds = exCmds [ ("sd", const $ withEditor showDepMarks, Nothing) ]
+                  
+showDepMarks = withBuffer0 (getA bufferDynamicValueA >>= 
+                            mapM markRegion . concat . marks) >>=
+               printMsg . show
 
 tabKeymap = superTab True $ fromSnippets deleteSnippets $
     [ ("test", testSnippet)
