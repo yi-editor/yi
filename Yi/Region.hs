@@ -18,7 +18,7 @@ module Yi.Region
   , fmapRegion
   , intersectRegion
   , unionRegion
-  , regionFirst, regionLast
+  , regionFirst, regionLast, regionsOverlap
   )
 where
 import Yi.Buffer.Basic
@@ -98,3 +98,9 @@ includedRegion :: Region -> Region -> Bool
 
 regionIsEmpty :: Region -> Bool
 regionIsEmpty (Region _ start stop) = start >= stop
+
+regionsOverlap border (Region _ x1 y1) (Region _ x2 y2) =
+    cmp x2 y1 y2 || cmp x2 x1 y2 ||
+    cmp x1 y2 y1 || cmp x1 x2 y1
+  where
+    cmp a b c = a <= b && if border then b <=c  else b < c

@@ -152,38 +152,32 @@ findEditedMarks upds = sequence (map findEditedMarks' upds) >>=
         let p = updatePoint upd
         ms <- return . nub . concat . marks =<< getA bufferDynamicValueA
         ms <- forM ms $ \m ->do 
-                r <- markRegion m
+                r <- adjMarkRegion m
                 return $ if (updateIsDelete upd && p `nearRegion` r) 
                             || p `inRegion` r
                          then Just m
                          else Nothing
-                
-                                {-
-                                if p `inRegion` r
-                                         then Just m
-                                         else Nothing
-                                -}                                
         return . map fromJust . filter isJust $ ms
+        
+dependentSiblings :: MarkInfo -> [[MarkInfo]] -> [MarkInfo]
+dependentSiblings mark deps = 
+  case find (elem mark) deps of
+    Nothing -> []
+    Just lst -> filter (not . (mark==)) lst
 
 updateDependents :: MarkInfo -> BufferM ()
 updateDependents m = getA bufferDynamicValueA >>= updateDependents' m . marks
     
 updateDependents' :: MarkInfo -> [[MarkInfo]] -> BufferM ()
 updateDependents' mark deps =
-    case depSiblings of
-      Nothing -> return ()
-      Just deps -> do 
+    case dependentSiblings mark deps of
+      []   -> return ()
+      deps -> do 
           txt <- markText mark
           forM_ deps $ \d -> do
               dTxt <- markText d
               when (txt /= dTxt) $
                   setMarkText txt d
-  where
-    depSiblings = case find (elem mark) deps of
-                    Nothing  -> Nothing
-                    Just lst -> case filter (not . (mark==)) lst of
-                                  [] -> Nothing
-                                  l  -> Just l
                                   
 markText :: MarkInfo -> BufferM String
 markText (SimpleMarkInfo _ start) = do
@@ -222,21 +216,52 @@ markRegion (SimpleMarkInfo _ s) = do
       then return $ mkRegion p p
       else regionOfPartNonEmptyB unitViWordOnLine Forward
 
-markRegion (ValuedMarkInfo _ s e) = getMarkRegion s e
-markRegion (DependentMarkInfo _ s e) = getMarkRegion s e
+markRegion m = liftM2 mkRegion 
+                   (getMarkPointB $ startMark m) 
+                   (getMarkPointB $ endMark m)
 
-getMarkRegion start end = do
-    s <- getMarkPointB start
-    e <- getMarkPointB end
+adjMarkRegion s@(SimpleMarkInfo _ _) = markRegion s
+
+adjMarkRegion m = do
+    s <- getMarkPointB $ startMark m
+    e <- getMarkPointB $ endMark m
     c <- readAtB e
     if not $ isWordChar c
       then return $ mkRegion s e
-      else do oldP <- pointB
-              moveTo e
-              r' <- regionOfPartNonEmptyB unitViWordOnLine Forward
-              setMarkPointB end (regionEnd r')
-              moveTo oldP
-              return $ mkRegion s (regionEnd r')
+      else do adjustEnding e
+              repairOverlappings e
+              -- return adjusted region
+              liftM (mkRegion s) (getMarkPointB $ endMark m)
+  where
+    adjustEnding end = do oldP <- pointB
+                          moveTo end
+                          r' <- regionOfPartNonEmptyB unitViWordOnLine Forward
+                          setMarkPointB (endMark m) (regionEnd r')
+                          moveTo oldP
+                          
+    -- test if we generated overlappings and repair
+    repairOverlappings origEnd = do overlappings <- allOverlappingMarks True m
+                                    when (not $ null overlappings) $
+                                        setMarkPointB (endMark m) origEnd
+              
+overlappingMarks :: Bool -> Bool -> MarkInfo -> BufferM [MarkInfo]
+overlappingMarks border belongingTogether mark = 
+    getA bufferDynamicValueA >>= 
+    flattenMarks >>= 
+    filterM (liftM2 (regionsOverlap border) (markRegion mark) . markRegion)
+  where
+    flattenMarks = return . 
+                   filter (not . (mark==)) .
+                   (if belongingTogether
+                    then dependentSiblings mark
+                    else concat) . 
+                   marks
+                   
+allOverlappingMarks :: Bool -> MarkInfo -> BufferM [MarkInfo]
+allOverlappingMarks border = overlappingMarks border False
+
+dependentOverlappingMarks :: Bool -> MarkInfo -> BufferM [MarkInfo]
+dependentOverlappingMarks border = overlappingMarks border True
 
 nextBufferMark :: Bool -> BufferM (Maybe MarkInfo)
 nextBufferMark deleteLast = do
