@@ -7,8 +7,8 @@ import Prelude ()
 import Yi.Prelude
 
 import Control.Arrow
-import Control.Monad.RWS hiding (mapM_, forM, forM_, sequence)
-import Data.List hiding (foldl, find, elem, concat, concatMap)
+import Control.Monad.RWS hiding (mapM, mapM_, forM, forM_, sequence)
+import Data.List hiding (foldl', find, elem, concat, concatMap)
 import Data.Char (isSpace)
 import Data.Maybe (fromJust, isJust)
 
@@ -93,7 +93,7 @@ text :: String -> SnippetCmd ()
 text txt = do
     (_, indent) <- ask
     indentSettings <- lift indentSettingsB
-    lift . foldl (>>) (return ()) . 
+    lift . foldl' (>>) (return ()) . 
         intersperse (newlineB >> indentToB indent) . 
         map (if expandTabs indentSettings
              then insertN . expand indentSettings ""
@@ -185,7 +185,7 @@ markText (SimpleMarkInfo _ start) = do
     c <- readAtB p
     if isSpace c
       then return ""
-      else readRegionB =<< regionOfPartNonEmptyB unitViWordOnLine Forward
+      else readRegionB =<< regionOfPartNonEmptyAtB unitViWordOnLine Forward p
       
 markText m = markRegion m >>= readRegionB
 
@@ -195,10 +195,7 @@ setMarkText txt (SimpleMarkInfo _ start) = do
     c <- readAtB p
     if (isSpace c)
       then insertNAt txt p
-      else do  old_p <- pointB
-               moveTo p
-               r <- regionOfPartNonEmptyB unitViWordOnLine Forward
-               moveTo old_p
+      else do  r <- regionOfPartNonEmptyAtB unitViWordOnLine Forward p
                modifyRegionClever (const txt) r
 
 setMarkText txt mi = do
@@ -208,13 +205,21 @@ setMarkText txt mi = do
     modifyRegionClever (const txt) r
     when (start == end) $
         setMarkPointB (endMark mi) (end + (Point $ length txt))
-
-markRegion (SimpleMarkInfo _ s) = do
+        
+markRegion m@(SimpleMarkInfo _ s) = do
     p <- getMarkPointB s
     c <- readAtB p
     if isSpace c
       then return $ mkRegion p p
-      else regionOfPartNonEmptyB unitViWordOnLine Forward
+      else do 
+          r <- regionOfPartNonEmptyAtB unitViWordOnLine Forward p
+          os <- regionsOverlappingMarks True r m
+          rOs <- mapM markRegion os
+          return . mkRegion p $ foldl' minEnd (regionEnd r) rOs
+  where
+    minEnd end r = if regionEnd r <= end
+                   then end
+                   else min end $ regionStart r
 
 markRegion m = liftM2 mkRegion 
                    (getMarkPointB $ startMark m) 
@@ -233,29 +238,34 @@ adjMarkRegion m = do
               -- return adjusted region
               liftM (mkRegion s) (getMarkPointB $ endMark m)
   where
-    adjustEnding end = do oldP <- pointB
-                          moveTo end
-                          r' <- regionOfPartNonEmptyB unitViWordOnLine Forward
-                          setMarkPointB (endMark m) (regionEnd r')
-                          moveTo oldP
-                          
+    adjustEnding end = do 
+        r' <- regionOfPartNonEmptyAtB unitViWordOnLine Forward end
+        setMarkPointB (endMark m) (regionEnd r')
+  
     -- test if we generated overlappings and repair
     repairOverlappings origEnd = do overlappings <- allOverlappingMarks True m
                                     when (not $ null overlappings) $
                                         setMarkPointB (endMark m) origEnd
+                                        
+findOverlappingMarks :: ([[MarkInfo]] -> [MarkInfo]) -> Bool -> Region -> 
+                        MarkInfo -> BufferM [MarkInfo]
+findOverlappingMarks flattenMarks border r m =
+    getA bufferDynamicValueA >>=
+    return . filter (not . (m==)) . flattenMarks . marks >>=
+    filterM (liftM (regionsOverlap border r) . markRegion)
+                                        
+regionsOverlappingMarks :: Bool -> Region -> MarkInfo -> BufferM [MarkInfo]
+regionsOverlappingMarks = findOverlappingMarks concat 
               
 overlappingMarks :: Bool -> Bool -> MarkInfo -> BufferM [MarkInfo]
-overlappingMarks border belongingTogether mark = 
-    getA bufferDynamicValueA >>= 
-    flattenMarks >>= 
-    filterM (liftM2 (regionsOverlap border) (markRegion mark) . markRegion)
-  where
-    flattenMarks = return . 
-                   filter (not . (mark==)) .
-                   (if belongingTogether
-                    then dependentSiblings mark
-                    else concat) . 
-                   marks
+overlappingMarks border belongingTogether mark = do
+    r <- markRegion mark
+    findOverlappingMarks (if belongingTogether
+                          then dependentSiblings mark
+                          else concat)
+                         border
+                         r
+                         mark
                    
 allOverlappingMarks :: Bool -> MarkInfo -> BufferM [MarkInfo]
 allOverlappingMarks border = overlappingMarks border False
