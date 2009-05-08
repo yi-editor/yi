@@ -231,17 +231,23 @@ adjMarkRegion m = do
     s <- getMarkPointB $ startMark m
     e <- getMarkPointB $ endMark m
     c <- readAtB e
-    if not $ isWordChar c
-      then return $ mkRegion s e
-      else do adjustEnding e
-              repairOverlappings e
-              -- return adjusted region
-              liftM (mkRegion s) (getMarkPointB $ endMark m)
+    when (isWordChar c) $ do adjustEnding e
+                             repairOverlappings e
+    e <- getMarkPointB $ endMark m
+    s <- adjustStart s e
+    return $ mkRegion s e
   where
     adjustEnding end = do 
         r' <- regionOfPartNonEmptyAtB unitViWordOnLine Forward end
         setMarkPointB (endMark m) (regionEnd r')
   
+    adjustStart s e = do
+        txt <- readRegionB (mkRegion s e)
+        let sP = s + (Point . length $ takeWhile isSpace txt)
+        when (sP > s) $ do
+            setMarkPointB (startMark m) sP
+        return sP
+
     -- test if we generated overlappings and repair
     repairOverlappings origEnd = do overlappings <- allOverlappingMarks True m
                                     when (not $ null overlappings) $
