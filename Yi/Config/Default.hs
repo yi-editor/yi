@@ -156,6 +156,7 @@ defaultConfig =
                         AnyMode pythonMode,
                         AnyMode ireaderMode,
                         AnyMode svnCommitMode,
+                        AnyMode whitespaceMode,
                         AnyMode fundamentalMode]
          , debugMode = False
          , configKillringAccumulate = False

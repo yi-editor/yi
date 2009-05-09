@@ -5,7 +5,7 @@ module Yi.Modes (fundamentalMode,
                  perlMode, pythonMode, anyExtension,
                  extensionOrContentsMatch, linearSyntaxMode,
                  svnCommitMode, hookModes, applyModeHooks,
-                 lookupMode
+                 lookupMode, whitespaceMode
                 ) where
 
 import Prelude ()
@@ -34,6 +34,7 @@ import qualified Yi.Lexer.Perl       as Perl
 import qualified Yi.Lexer.Python     as Python
 import qualified Yi.Lexer.Srmc       as Srmc
 import qualified Yi.Lexer.SVNCommit  as SVNCommit
+import qualified Yi.Lexer.Whitespace  as Whitespace
 import Yi.Syntax.OnlineTree as OnlineTree
 import qualified Yi.IncrementalParse as IncrParser
 
@@ -159,6 +160,17 @@ ottMode = (linearSyntaxMode Ott.initState Ott.alexScanToken id)
     modeName = "ott",
     modeApplies = anyExtension ["ott"]
   }
+
+whitespaceMode :: TokenBasedMode StyleName
+whitespaceMode = base
+  {
+    modeName = "whitespace",
+    modeApplies = anyExtension ["ws"],
+    modeIndent = \_ _ -> insertB '\t'
+  }
+    where
+      base = linearSyntaxMode Whitespace.initState Whitespace.alexScanToken id
+
 
 -- | Determines if the file's extension is one of the extensions in the list.
 extensionMatches :: [String] -> FilePath -> Bool

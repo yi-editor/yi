@@ -129,6 +129,7 @@ library
         Yi.Lexer.Python
         Yi.Lexer.Srmc
         Yi.Lexer.SVNCommit
+        Yi.Lexer.Whitespace
         Yi.Main
         Yi.MiniBuffer
         Yi.Misc
@@ -265,6 +266,7 @@ executable parserTest
                 Yi.Lexer.Perl
                 Yi.Lexer.Python
                 Yi.Lexer.SVNCommit
+                Yi.Lexer.Whitespace
 
                 Yi.Syntax
                 Yi.Syntax.BList
@@ -395,6 +397,7 @@ executable yi
            Yi.Lexer.Perl
            Yi.Lexer.Python
            Yi.Lexer.SVNCommit
+           Yi.Lexer.Whitespace
 
            Yi.Syntax
            Yi.Syntax.BList
