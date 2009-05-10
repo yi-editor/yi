@@ -42,8 +42,9 @@ data Block t = Block t [Statement t] t
                deriving (Eq, Show)
 
 -- | Represents either a variable name or a variable name assigned to an
---   expression.  @AssignNo@ means it's a simple declaration.  @AssignYes@ means
---   a declaration and an assignment.  @AssignErr@ is used as a recovery.
+--   expression.  @Ass1@ is a variable name /maybe/ followed by an assignment.
+--   @Ass2@ is an equals sign and an expression.  @(Ass1 'x' (Just (Ass2 '='
+--   '5')))@ (pseudo-syntax of course) means @x = 5@.
 data VarDecAss t = Ass1 t (Maybe (VarDecAss t))
                  | Ass2 t (Expr t)
                  | AssignErr t
