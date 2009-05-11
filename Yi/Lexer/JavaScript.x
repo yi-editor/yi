@@ -10,6 +10,9 @@
 -- Things about JavaScript deserve to be mentioned:
 -- * JavaScript explicitly forbids nested comments, so we don't have to care
 --   about the "level" of nesting in multiline comments
+-- * JavaScript supports making variables for which the name clashes with
+--   constructors, e.g. Array, but you cannot use "new Array()" to create an
+--   array if you do that.
 --
 -- Sources for reserved words:
 -- https://developer.mozilla.org/En/Core_JavaScript_1.5_Reference/Reserved_Words

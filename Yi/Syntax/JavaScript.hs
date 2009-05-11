@@ -32,7 +32,7 @@ data Statement t = FunDecl t t t [t] t (Block t)
                  | While t t (Expr t) t (Block t)
                  | DoWhile t (Block t) t t (Expr t) t t
                  | For t t (Expr t) t (Expr t) t (Expr t) t (Block t)
-                 | Expr (Expr t) t -- semi-colon
+                 | Expr (Expr t) (Maybe t) -- semi-colon
                  | Err t
                    deriving (Eq, Show)
 
@@ -126,7 +126,7 @@ parse = many statement <* eof
 
 -- | Parser for statements such as "return", "while", "do-while", "for", etc.
 statement :: P TT (Statement TT)
-statement = FunDecl <$> resWord Function' <*> plzTok name -- no need to plz because of [1]
+statement = FunDecl <$> resWord Function' <*> plzTok name
                     <*> plzSpc '(' <*> parameters <*> plzSpc ')' <*> block
         <|> VarDecl <$> resWord Var' <*> sepBy1 varDecAss (spc ',') <*> plzSpc ';'
         <|> Return  <$> resWord Return' <*> plzExpr <*> plzSpc ';'
@@ -135,14 +135,19 @@ statement = FunDecl <$> resWord Function' <*> plzTok name -- no need to plz beca
                     <*> plzSpc '(' <*> plzExpr <*> plzSpc ')' <*> plzSpc ';'
         <|> For     <$> resWord For' <*> plzSpc '(' <*> plzExpr <*> plzSpc ';'
                     <*> plzExpr <*> plzSpc ';' <*> plzExpr <*> plzSpc ')' <*> block
-        <|> Expr    <$> expression <*> plzSpc ';' -- [1]
+        <|> Expr    <$> expression <*> semicolon
         <|> Err     <$> recoverWith (symbol $ const True)
     where
       varDecAss :: P TT (VarDecAss TT)
       varDecAss = Ass1      <$> name <*> optional (Ass2 <$> oper Assign' <*> plzExpr)
               <|> AssignErr <$> anything
 
--- | Parser for old-style function bodies and "lambda style" ones.
+-- | Parser for "blocks", i.e. a bunch of statements wrapped in curly brackets
+--   /or/ just a single statement.
+--
+--   Note that this works for JavaScript 1.8 "lambda" style function bodies as
+--   well, e.g. "function hello() 5", since expressions are also statements and
+--   we don't require a trailing semi-colon.
 block :: P TT (Block TT)
 block = Block    <$> spc '{' <*> many statement <*> plzSpc '}'
     <|> BlockOne <$> statement
@@ -164,83 +169,86 @@ expression = ExprSimple  <$> simpleTok <*> optional (opExpr)
 
 -- * Parsing helpers
 
+semicolon :: P TT (Maybe TT)
+semicolon = optional $ spc ';'
+
 -- | Parser for comma-separated identifiers.
 parameters :: P TT [TT]
-parameters = Enter "parameters" $ commas (plzTok name)
+parameters = commas (plzTok name)
 
 -- | Parser for comma-separated expressions.
 arguments :: P TT [Expr TT]
-arguments = Enter "arguments" $ commas plzExpr
+arguments = commas plzExpr
 
 -- | Intersperses parses with comma parsers.
 commas :: P TT a -> P TT [a]
-commas x = Enter "commas" $ x `sepBy` spc ','
+commas x = x `sepBy` spc ','
 
 
 -- * Simple parsers
 
 -- | Parses a prefix operator.
-preOp = Enter "preOp" $ symbol (\t -> case fromTT t of
-                                        Op x -> x `elem` prefixOperators
-                                        _    -> False)
+preOp = symbol (\t -> case fromTT t of
+                        Op x -> x `elem` prefixOperators
+                        _    -> False)
 
 -- | Parses a infix operator.
-inOp = Enter "inOp" $ symbol (\t -> case fromTT t of
-                                      Op x -> x `elem` infixOperators
-                                      _    -> False)
+inOp = symbol (\t -> case fromTT t of
+                       Op x -> x `elem` infixOperators
+                       _    -> False)
 
 -- | Parses any literal.
-opTok = Enter "opTok" $ symbol (\t -> case fromTT t of
-                         Op _ -> True
-                         _    -> False)
+opTok = symbol (\t -> case fromTT t of
+                        Op _ -> True
+                        _    -> False)
 
 -- | Parses any literal.
-simpleTok = Enter "simpleTok" $ symbol (\t -> case fromTT t of
-                         Str _       -> True
-                         Number _    -> True
-                         ValidName _ -> True
-                         Res y       -> y `elem` [True', False', Undefined', Null', This']
-                         _           -> False)
+simpleTok = symbol (\t -> case fromTT t of
+                            Str _       -> True
+                            Number _    -> True
+                            ValidName _ -> True
+                            Res y       -> y `elem` [True', False', Undefined', Null', This']
+                            _           -> False)
 
 -- | Parses any string.
 strTok :: P TT TT
-strTok = Enter "strTok" $ symbol (\t -> case fromTT t of
+strTok = symbol (\t -> case fromTT t of
                          Str _ -> True
                          _     -> False)
 
 -- | Parses any valid number.
 numTok :: P TT TT
-numTok = Enter "numTok" $ symbol (\t -> case fromTT t of
+numTok = symbol (\t -> case fromTT t of
                          Number _ -> True
                          _        -> False)
 
 -- | Parses any valid identifier.
 name :: P TT TT
-name = Enter "name" $ symbol (\t -> case fromTT t of
+name = symbol (\t -> case fromTT t of
                        ValidName _ -> True
                        _           -> False)
 
 -- | Parses any boolean.
 boolean :: P TT TT
-boolean = Enter "boolean" $ symbol (\t -> case fromTT t of
+boolean = symbol (\t -> case fromTT t of
                           Res y -> y `elem` [True', False']
                           _     -> False)
 
 -- | Parses a reserved word.
 resWord :: Reserved -> P TT TT
-resWord x = Enter ("resWord " ++ show x) $ symbol (\t -> case fromTT t of
+resWord x = symbol (\t -> case fromTT t of
                             Res y -> x == y
                             _     -> False)
 
 -- | Parses a special token.
 spc :: Char -> P TT TT
-spc x = Enter ("spc " ++ show x) $ symbol (\t -> case fromTT t of
+spc x = symbol (\t -> case fromTT t of
                         Special y -> x == y
                         _         -> False)
 
 -- | Parses an operator.
 oper :: Operator -> P TT TT
-oper x = Enter ("oper " ++ show x) $ symbol (\t -> case fromTT t of
+oper x = symbol (\t -> case fromTT t of
                          Op y -> y == x
                          _    -> False)
 
@@ -253,7 +261,7 @@ plzTok x = x <|> anything
 
 -- | Expects a special token.
 plzSpc :: Char -> P TT TT
-plzSpc x = Enter ("plzSpc " ++ show x) $ plzTok (spc x)
+plzSpc x = plzTok (spc x)
 
 -- | Expects an expression.
 plzExpr :: P TT (Expr TT)
