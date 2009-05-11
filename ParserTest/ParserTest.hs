@@ -74,7 +74,7 @@ parse flags (fName, input) = do
                  else do
                      let tokList = getSyms jsLexer
                          (r,info) = option (mkProcess JS.parse) tokList
-                     write [] (fullLog info) -- write the dot file version of the tree if correct flag
+                     write tokList (fullLog info) -- write the dot file version of the tree if correct flag
                      mapM_ print (zip3 r tokList (map (\t -> extract t input) tokList)) -- will print width followed by token added
                      putStrLn $ show $ evalL $ pushEof info
   where
@@ -117,7 +117,7 @@ fromTree node
        name = (show $ snd $ rootLabel node) ++" [style=filled,color="++ toColor (fst $ rootLabel node) ++ " ,label=" ++showLog (fst $ rootLabel node) ++ " ]"
 
 -- | Replace the Shifts with the token it represents
-shift' :: [TT] -> Tree (LogEntry,Int) -> Tree (LogEntry,Int)
+shift' :: Show a => [a] -> Tree (LogEntry,Int) -> Tree (LogEntry,Int)
 shift' (x:toks) (Node (LShift,n) trees) = (Node ((LS $ show x),n) (map (shift' toks) trees))
 shift' toks (Node r trees)          = (Node r (map (shift' toks) trees))
 
@@ -139,7 +139,7 @@ showLog p = case p of
   where helper p = drop 2 $ filter ((/=) '\"') $ dropWhile ((/=) ':') p
 
 -- | Write the file
-writeTree :: [TT] -> String -> Tree LogEntry -> IO ()
+writeTree :: Show a => [a] -> String -> Tree LogEntry -> IO ()
 writeTree toks fName r = writeFile fName addBegEnd
     where addBegEnd = unlines $ ["digraph G {"] 
                          ++ take 3000 (fromTree $ (shift' toks) $ (\(x,y)-> x)(numTree (r,0))) -- dont create too big trees
