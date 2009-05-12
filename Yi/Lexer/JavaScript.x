@@ -177,12 +177,10 @@ tokenToStyle (Comment Line) = commentStyle
 tokenToStyle (Comment _)    = blockCommentStyle
 tokenToStyle (Const _)      = typeStyle
 tokenToStyle (Number _)     = numberStyle
-tokenToStyle (Op _)         = defaultStyle
 tokenToStyle (Res _)        = keywordStyle
-tokenToStyle (Special _)    = defaultStyle
 tokenToStyle (Str _)        = stringStyle
 tokenToStyle Unknown        = errorStyle
-tokenToStyle (ValidName _)  = defaultStyle
+tokenToStyle _              = defaultStyle
 
 -- | Given a @String@ representing an operator, returns an 'Operator' with the
 --   appropriate constructor.

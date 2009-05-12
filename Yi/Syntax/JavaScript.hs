@@ -3,17 +3,14 @@
 
 module Yi.Syntax.JavaScript where
 
-import Parser.Incremental (Parser(..))
-import Data.DeriveTH
-import Data.Derive.Foldable
-import Data.Monoid (Endo(..))
-import Prelude (unlines, map)
+import Data.Monoid (Endo(..), mempty)
+import Prelude (unlines, map, maybe)
 import Yi.Buffer.Basic (Point(..))
 import Yi.IncrementalParse (P, eof, symbol, recoverWith)
 import Yi.Lexer.Alex
 import Yi.Lexer.JavaScript ( TT, Token(..), Reserved(..), Operator(..)
                            , tokenToStyle, prefixOperators, infixOperators )
-import Yi.Prelude
+import Yi.Prelude hiding (error, Const)
 import Yi.Style (errorStyle, StyleName)
 import Yi.Syntax.Tree (sepBy, sepBy1)
 
@@ -24,22 +21,30 @@ import Yi.Syntax.Tree (sepBy, sepBy1)
 class Strokable a where
     toStrokes :: a -> Endo [Stroke]
 
+-- | Instances of @Strokable@ can represent failure.
+class Failable f where
+    stupid :: t -> f t
+
 type Tree t = [Statement t]
 
+type Semicolon t = Maybe t
+
 data Statement t = FunDecl t t t [t] t (Block t)
-                 | VarDecl t [VarDecAss t] t
-                 | Return t (Expr t) t
+                 | VarDecl t [VarDecAss t] (Semicolon t)
+                 | Return t (Maybe (Expr t)) (Semicolon t)
                  | While t t (Expr t) t (Block t)
-                 | DoWhile t (Block t) t t (Expr t) t t
+                 | DoWhile t (Block t) t t (Expr t) t (Semicolon t)
                  | For t t (Expr t) t (Expr t) t (Expr t) t (Block t)
-                 | Expr (Expr t) (Maybe t) -- semi-colon
-                 | Err t
+                 | Expr (Expr t) (Semicolon t)
                    deriving (Eq, Show)
 
 data Block t = Block t [Statement t] t
              | BlockOne (Statement t)
              | BlockErr t
                deriving (Eq, Show)
+
+instance Failable Block where
+    stupid = BlockErr
 
 -- | Represents either a variable name or a variable name assigned to an
 --   expression.  @Ass1@ is a variable name /maybe/ followed by an assignment.
@@ -50,9 +55,13 @@ data VarDecAss t = Ass1 t (Maybe (VarDecAss t))
                  | AssignErr t
                    deriving (Eq, Show)
 
+instance Failable VarDecAss where
+    stupid = AssignErr
+
 data Expr t = ExprObj t [KeyValue t] t
             | ExprPrefix t (Expr t)
             | ExprSimple t (Maybe (Expr t))
+            | ExprConst t
             | ExprParen t (Expr t) t (Maybe (Expr t))
             | ExprAnonFun t t [t] t (Block t)
             | ExprFunCall t t [Expr t] t
@@ -60,42 +69,66 @@ data Expr t = ExprObj t [KeyValue t] t
             | ExprErr t
               deriving (Eq, Show)
 
+instance Failable Expr where
+    stupid = ExprErr
+
 data KeyValue t = KeyValue t t (Expr t)
                 | KeyValueErr t
                   deriving (Eq, Show)
 
-$(derive makeFoldable ''Statement)
-$(derive makeFoldable ''Expr)
-$(derive makeFoldable ''KeyValue)
-$(derive makeFoldable ''VarDecAss)
-$(derive makeFoldable ''Block)
+instance Failable KeyValue where
+    stupid = KeyValueErr
 
--- TODO: (Optimization) Only make strokes for stuff that don't have
--- defaultStyle.  I'm not entirely sure how much this would help performance,
--- but it should be kept in mind for the future...
 instance Strokable (Tok Token) where
     toStrokes t = if isError t
                     then one (modStroke errorStyle . tokenToStroke) t
                     else one tokenToStroke t
 
+
+-- | TODO: Will generics do this properly?  If so, we have to be confident that
+--   the order in which the stroking happens with generics is left-to-right.
 instance Strokable (Statement TT) where
-    toStrokes (Err t) = one (modStroke errorStyle . tokenToStroke) t
-    toStrokes t = foldMap toStrokes t
+    toStrokes (FunDecl f n l ps r blk) = normal f <> normal n <> normal l <> foldMap toStrokes ps <> normal r <> toStrokes blk
+    toStrokes (VarDecl v vs sc) = normal v <> foldMap toStrokes vs <> maybe mempty normal sc
+    toStrokes (Return t exp sc) = normal t <> maybe mempty toStrokes exp <> maybe mempty normal sc
+    toStrokes (While w l exp r blk) = normal w <> normal l <> toStrokes exp <> normal r <> toStrokes blk
+    toStrokes (DoWhile d blk w l exp r sc) = normal d <> toStrokes blk <> normal w <> normal l <> toStrokes exp <> normal r <> maybe mempty normal sc
+    toStrokes (For f l x1 s1 x2 s2 x3 r blk) = normal f <> normal l <> toStrokes x1 <> normal s1 <> toStrokes x2 <> normal s2 <> toStrokes x3 <> normal r <> toStrokes blk
+    toStrokes (Expr exp sc) = toStrokes exp <> maybe mempty normal sc
 
 instance Strokable (Block TT) where
-    toStrokes = foldMap toStrokes
+    toStrokes (BlockOne stmt) = toStrokes stmt
+    toStrokes (Block l stmts r) = normal l <> foldMap toStrokes stmts <> normal r
+    toStrokes (BlockErr t) = error t
 
 instance Strokable (VarDecAss TT) where
-    toStrokes = foldMap toStrokes
+    toStrokes (Ass1 t x) = normal t <> maybe mempty toStrokes x
+    toStrokes (Ass2 t exp) = normal t <> toStrokes exp
+    toStrokes (AssignErr t) = error t
 
 instance Strokable (Expr TT) where
-    toStrokes expr = foldMap toStrokes expr
+    toStrokes (ExprSimple x exp) = normal x <> maybe mempty toStrokes exp
+    toStrokes (ExprObj l kvs r) = normal l <> foldMap toStrokes kvs <> normal r
+    toStrokes (ExprPrefix t exp) = normal t <> toStrokes exp
+    toStrokes (ExprConst t) = normal t
+    toStrokes (ExprParen l exp r op) = normal l <> toStrokes exp <> normal r <> maybe mempty toStrokes op
+    toStrokes (ExprAnonFun f l ps r blk) = normal f <> normal l <> foldMap toStrokes ps <> normal r <> toStrokes blk
+    toStrokes (ExprFunCall n l exps r) = normal n <> normal l <> foldMap toStrokes exps <> normal r
+    toStrokes (OpExpr op exp) = normal op <> toStrokes exp
+    toStrokes (ExprErr t) = error t
 
 instance Strokable (KeyValue TT) where
-    toStrokes = foldMap toStrokes
+    toStrokes (KeyValue n c exp) = normal n <> normal c <> toStrokes exp
+    toStrokes (KeyValueErr t) = error t
 
 
 -- * Helper functions.
+
+normal :: TT -> Endo [Stroke]
+normal x = one tokenToStroke x
+
+error :: TT -> Endo [Stroke]
+error x = one (modStroke errorStyle . tokenToStroke) x
 
 one :: (t -> a) -> t -> Endo [a]
 one f x = Endo (f x :)
@@ -113,7 +146,7 @@ tokenToStroke :: TT -> Stroke
 tokenToStroke = fmap tokenToStyle . tokToSpan
 
 getStrokes :: Point -> Point -> Point -> Tree TT -> [Stroke]
-getStrokes _point _begin _end t0 = trace (unlines $ map show t0) result
+getStrokes _point _begin _end t0 = trace ("\n" ++ (unlines (map show t0))) result
     where
       result = appEndo (foldMap toStrokes t0) []
 
@@ -128,19 +161,17 @@ parse = many statement <* eof
 statement :: P TT (Statement TT)
 statement = FunDecl <$> resWord Function' <*> plzTok name
                     <*> plzSpc '(' <*> parameters <*> plzSpc ')' <*> block
-        <|> VarDecl <$> resWord Var' <*> sepBy1 varDecAss (spc ',') <*> plzSpc ';'
-        <|> Return  <$> resWord Return' <*> plzExpr <*> plzSpc ';'
+        <|> VarDecl <$> resWord Var' <*> sepBy1 (plz varDecAss) (spc ',') <*> semicolon
+        <|> Return  <$> resWord Return' <*> optional expression <*> semicolon
         <|> While   <$> resWord While' <*> plzSpc '(' <*> plzExpr <*> plzSpc ')' <*> block
         <|> DoWhile <$> resWord Do' <*> block <*> plzTok (resWord While')
-                    <*> plzSpc '(' <*> plzExpr <*> plzSpc ')' <*> plzSpc ';'
+                    <*> plzSpc '(' <*> plzExpr <*> plzSpc ')' <*> semicolon
         <|> For     <$> resWord For' <*> plzSpc '(' <*> plzExpr <*> plzSpc ';'
                     <*> plzExpr <*> plzSpc ';' <*> plzExpr <*> plzSpc ')' <*> block
-        <|> Expr    <$> expression <*> semicolon
-        <|> Err     <$> recoverWith (symbol $ const True)
+        <|> Expr    <$> stmtExpr <*> semicolon
     where
       varDecAss :: P TT (VarDecAss TT)
-      varDecAss = Ass1      <$> name <*> optional (Ass2 <$> oper Assign' <*> plzExpr)
-              <|> AssignErr <$> anything
+      varDecAss = Ass1 <$> name <*> optional (Ass2 <$> oper Assign' <*> plzExpr)
 
 -- | Parser for "blocks", i.e. a bunch of statements wrapped in curly brackets
 --   /or/ just a single statement.
@@ -148,23 +179,39 @@ statement = FunDecl <$> resWord Function' <*> plzTok name
 --   Note that this works for JavaScript 1.8 "lambda" style function bodies as
 --   well, e.g. "function hello() 5", since expressions are also statements and
 --   we don't require a trailing semi-colon.
+--
+--   TODO: function hello() var x; is not a valid program.
 block :: P TT (Block TT)
 block = Block    <$> spc '{' <*> many statement <*> plzSpc '}'
-    <|> BlockOne <$> statement
-    <|> BlockErr <$> anything
+    <|> BlockOne <$> hate 1 (statement)
+    <|> BlockErr <$> hate 1 (anything)
+
+-- | Parser for expressions which may be statements.  In reality, any expression
+--   is also a valid statement, but this is a slight compromise to get rid of
+--   the massive performance loss which is introduced when allowing JavaScript
+--   objects to be valid statements.
+stmtExpr :: P TT (Expr TT)
+stmtExpr = ExprSimple <$> simpleTok <*> optional (opExpr)
+       <|> ExprConst <$> symbol (\t -> case fromTT t of
+                                         Const _ -> True
+                                         _       -> False)
+       <|> ExprParen <$> spc '(' <*> plzExpr <*> plzSpc ')' <*> optional (opExpr)
+       <|> ExprFunCall <$> name <*> plzSpc '(' <*> arguments <*> plzSpc ')'
+       <|> ExprErr <$> hate 1 (symbol (const True))
+    where
+      opExpr :: P TT (Expr TT)
+      opExpr = OpExpr <$> inOp <*> plzExpr
 
 -- | Parser for expressions.
 expression :: P TT (Expr TT)
-expression = ExprSimple  <$> simpleTok <*> optional (opExpr)
-         <|> ExprParen   <$> spc '(' <*> plzExpr <*> plzSpc ')' <*> optional (opExpr)
-         <|> ExprObj     <$> spc '{' <*> commas keyValue <*> plzSpc '}'
-         <|> ExprPrefix  <$> preOp <*> plzExpr
+expression = ExprObj     <$> spc '{' <*> commas keyValue <*> plzSpc '}'
+         <|> ExprPrefix  <$> preOp <*> plzExpr -- TODO
          <|> ExprAnonFun <$> resWord Function' <*> plzSpc '(' <*> parameters <*> plzSpc ')' <*> block
-         <|> ExprFunCall <$> name <*> plzSpc '(' <*> arguments <*> plzSpc ')'
+         <|> stmtExpr
     where
       keyValue = KeyValue    <$> name <*> plzSpc ':' <*> plzExpr
-             <|> KeyValueErr <$> anything
-      opExpr = OpExpr <$> inOp <*> plzExpr
+             <|> KeyValueErr <$> hate 1 (symbol (const True))
+             <|> KeyValueErr <$> hate 2 (pure errorToken)
 
 
 -- * Parsing helpers
@@ -188,21 +235,25 @@ commas x = x `sepBy` spc ','
 -- * Simple parsers
 
 -- | Parses a prefix operator.
+preOp :: P TT TT
 preOp = symbol (\t -> case fromTT t of
                         Op x -> x `elem` prefixOperators
                         _    -> False)
 
 -- | Parses a infix operator.
+inOp :: P TT TT
 inOp = symbol (\t -> case fromTT t of
                        Op x -> x `elem` infixOperators
                        _    -> False)
 
 -- | Parses any literal.
+opTok :: P TT TT
 opTok = symbol (\t -> case fromTT t of
                         Op _ -> True
                         _    -> False)
 
 -- | Parses any literal.
+simpleTok :: P TT TT
 simpleTok = symbol (\t -> case fromTT t of
                             Str _       -> True
                             Number _    -> True
@@ -257,7 +308,9 @@ oper x = symbol (\t -> case fromTT t of
 
 -- | Expects a token x, recovers with 'errorToken'.
 plzTok :: P TT TT -> P TT TT
-plzTok x = x <|> anything
+plzTok x = x
+       <|> hate 1 (symbol (const True))
+       <|> hate 2 (pure errorToken)
 
 -- | Expects a special token.
 plzSpc :: Char -> P TT TT
@@ -265,11 +318,23 @@ plzSpc x = plzTok (spc x)
 
 -- | Expects an expression.
 plzExpr :: P TT (Expr TT)
-plzExpr = expression <|> (ExprErr <$> anything)
+plzExpr = plz expression
+
+plz :: Failable f => P a (f a) -> P a (f a)
+plz x = x
+    <|> stupid <$> hate 1 (symbol (const True))
+    <|> stupid <$> hate 2 (symbol (const True))
 
 -- | General recovery parser, inserts an error token.
 anything :: P s TT
 anything = recoverWith (pure errorToken)
+
+-- | Weighted recovery.
+hate :: Int -> P s a -> P s a
+hate n x = power n recoverWith $ x
+    where
+      power 0 _ = id
+      power m f = f . power (m - 1) f
 
 
 -- * Utility stuff
