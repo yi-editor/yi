@@ -1,11 +1,11 @@
-{-# LANGUAGE TypeFamilies, UndecidableInstances #-}
+{-# LANGUAGE TypeFamilies, UndecidableInstances, DeriveDataTypeable #-}
 
 -- | The BList is like a zipper on lists: it is a list with one point of focus.
 -- We provide parsing functions for BLists, and the corresponding traversal functions.
 -- When used together, accessing the elements around the last point of modification
 -- is fast: they are at the beginning of the lists.
 
-module Yi.Syntax.BList (foldMapAfter, many, some, sepBy, BList, sepBy1) where
+module Yi.Syntax.BList (foldMapAfter, many, some, sepBy, BList, sepBy1, nil) where
 
 import Data.Monoid
 import Parser.Incremental 
@@ -14,8 +14,11 @@ import Yi.Prelude hiding (some, many)
 import Yi.Syntax.Tree hiding (sepBy, sepBy1)
 import Yi.Lexer.Alex
 import Yi.Buffer.Basic
+import Data.Data
+import Data.Typeable
 
 data BList a = One [a] | Two ([a] -> [a]) [a]
+    deriving (Data, Typeable)
 
 instance Show a => Show (BList a) where
     show (One r) =  "[]<>" ++ show r
