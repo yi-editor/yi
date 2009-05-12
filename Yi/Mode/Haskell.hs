@@ -64,7 +64,7 @@ cleverMode = haskellAbstract
     mkHighlighter (skipScanner 50 . IncrParser.scanner Paren.parse . Paren.indentScanner . haskellLexer)
 
   , modeAdjustBlock = adjustBlock
-  , modePrettify = cleverPrettify
+  , modePrettify = (cleverPrettify . allToks)
   , modeGetAnnotations = tokenBasedAnnots Paren.tokenToAnnot
 
  }
@@ -89,20 +89,19 @@ literateMode = haskellAbstract
   , modeGetAnnotations = \t _begin -> catMaybes $ fmap Paren.tokenToAnnot $ allToks t -- FIXME I think that 'begin' should not be ignored
   , modeAdjustBlock = adjustBlock
   , modeIndent = cleverAutoIndentHaskellB
-  , modePrettify = cleverPrettify }
+  , modePrettify = cleverPrettify . allToks }
 
 -- | Experimental Haskell mode, using a rather precise parser for the syntax.
 preciseMode :: Mode (Hask.Tree TT)
 preciseMode = haskellAbstract
   {
-    modeName = "precise haskell",
-    --    modeIndent = cleverAutoIndentHaskellB,
-    modeGetStrokes = \ast point begin end -> Hask.getStrokes point begin end ast,
-    modeHL = ExtHL $
+    modeName = "precise haskell"
+  , modeIndent = cleverAutoIndentHaskellC
+  , modeGetStrokes = \ast point begin end -> Hask.getStrokes point begin end ast
+  , modeHL = ExtHL $
       mkHighlighter (IncrParser.scanner Hask.parse . Hask.indentScanner . haskellLexer)
-    --}                              
-    -- ,  modeAdjustBlock = adjustBlock
-  -- , modePrettify = cleverPrettify
+--   , modePrettify = cleverPrettify . allToks . getExprs
+--   , modeGetAnnotations = (tokenBasedAnnots Hask.tokenToAnnot) . getExprs
  }
 
 
@@ -190,6 +189,63 @@ cleverAutoIndentHaskellB e behaviour = do
                     trace ("firstTokOnLine = " ++ show firstTokOnLine) $      
                     cycleIndentsB behaviour stops
 
+cleverAutoIndentHaskellC :: Hask.Tree TT -> IndentBehaviour -> BufferM ()
+cleverAutoIndentHaskellC (Program _ (Just prog)) beh
+    = cleverAutoIndentHaskellC' (getExprs prog) beh
+cleverAutoIndentHaskellC (Program _ (Nothing)) _ = return ()
+cleverAutoIndentHaskellC' ::[Exp TT] -> IndentBehaviour -> BufferM ()
+cleverAutoIndentHaskellC' e behaviour = do
+  indentSettings <- indentSettingsB
+  let indentLevel = shiftWidth indentSettings
+  previousIndent <- indentOfB =<< getNextNonBlankLineB Backward
+  nextIndent     <- indentOfB =<< getNextNonBlankLineB Forward
+  solPnt <- pointAt moveToSol
+  eolPnt <- pointAt moveToEol
+  let onThisLine ofs = ofs >= solPnt && ofs <= eolPnt
+      firstTokNotOnLine = listToMaybe .
+                              filter (not . onThisLine . posnOfs . tokPosn) .
+                              filter (not . isErrorTok . tokT) . allToks 
+  let stopsOf :: [Hask.Exp TT] -> [Int]
+      stopsOf (g@(Hask.Paren' (Hask.PAtom open _) ctnt (Hask.PAtom close _)):ts) 
+          | isErrorTok (tokT close) || getLastOffset g >= solPnt
+              = [groupIndent open ctnt]  -- stop here: we want to be "inside" that group.
+          | otherwise = stopsOf ts -- this group is closed before this line; just skip it.
+      stopsOf ((Hask.PAtom (Tok {tokT = t}) _):_) | startsLayout t = [nextIndent, previousIndent + indentLevel]
+        -- of; where; etc. we want to start the block here.
+        -- Also use the next line's indent:
+        -- maybe we are putting a new 1st statement in the block here.
+      stopsOf ((Hask.PAtom _ __):ts) = stopsOf ts
+         -- any random part of expression, we ignore it.
+      stopsOf ((Hask.PLet le c e e'):ts) = [groupIndent le e] ++ stopsOf [e] ++ stopsOf ts -- must change later
+      stopsOf (t@(Hask.Block _):ts) = shiftBlock + maybe 0 (posnCol . tokPosn) (getFirstElement t) : stopsOf ts
+      stopsOf (Hask.Error _:ts) = stopsOf ts
+      stopsOf (r:ts) = stopsOf ts -- not yet handled stuff
+      stopsOf [] = []
+      firstTokOnLine = fmap tokT $ listToMaybe $ 
+          dropWhile ((solPnt >) . tokBegin) $ 
+          takeWhile ((eolPnt >) . tokBegin) $ -- for laziness.
+          filter (not . isErrorTok . tokT) $ allToks e
+      shiftBlock = case firstTokOnLine of
+        Just (Reserved t) | t `elem` [Where, Deriving] -> indentLevel
+        Just (ReservedOp Haskell.Pipe) -> indentLevel
+        Just (ReservedOp Haskell.Equal) -> indentLevel
+        _ -> 0
+      deepInGroup = maybe True insideGroup firstTokOnLine
+      groupIndent (Tok {tokT = Special openChar, tokPosn = Posn _ _ openCol}) ctnt
+          | deepInGroup = case firstTokNotOnLine ctnt of
+              -- examine the first token of the group (but not on the line we are indenting!)
+              Nothing -> openCol + nominalIndent openChar -- no such token: indent normally.
+              Just t -> posnCol . tokPosn $ t -- indent along that other token
+          | otherwise = openCol
+      groupIndent (Tok {tokT = (Reserved Let), tokPosn = Posn _ _ openCol'}) _ = openCol'
+      groupIndent (Tok _ _ _) _ = error "unable to indent code"
+  case getLastPath e solPnt of
+    Nothing -> return ()
+    Just path -> let stops = stopsOf path
+                 in trace ("Stops = " ++ show stops) $      
+                    trace ("firstTokOnLine = " ++ show firstTokOnLine) $      
+                    cycleIndentsB behaviour stops
+
 nominalIndent :: Char -> Int
 nominalIndent '{' = 2
 nominalIndent _ = 1
@@ -208,11 +264,10 @@ contiguous a b = lb - la <= 1
 coalesce :: Tok Token -> Tok Token -> Bool
 coalesce a b = isLineComment a && isLineComment b && contiguous a b
 
-cleverPrettify :: Expr TT -> BufferM ()
-cleverPrettify e = do
+cleverPrettify :: [TT] -> BufferM ()
+cleverPrettify toks = do
   pnt <- pointB
-  let toks = allToks e
-      groups = groupBy' coalesce toks
+  let groups = groupBy' coalesce toks
       isCommentGroup g = (tokTyp $ tokT $ head $ g) `elem` fmap Just [Haskell.Line] 
       thisCommentGroup = listToMaybe $ dropWhile ((pnt >) . tokEnd . last) $ filter isCommentGroup $ groups
                          -- FIXME: laziness
