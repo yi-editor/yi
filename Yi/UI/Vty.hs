@@ -439,12 +439,16 @@ attributesToAttr (Attributes fg bg reverse bd _itlc underline') =
 ---------------------------------
 
 
--- | Return @n@ elems starting at @i@ of the buffer as a list.
--- This routine also does syntax highlighting and applies overlays.
+-- | Apply the attributes in @sty@ and @changes@ to @cs@.  If the
+-- attributes are not used, @sty@ and @changes@ are not evaluated.
 paintChars :: a -> [(Point,a)] -> [(Point,Char)] -> [(Char, (a,Point))]
-paintChars sty [] cs = setSty sty cs
-paintChars sty ((endPos,sty'):xs) cs = setSty sty previous ++ paintChars sty' xs later
-        where (previous, later) = break ((endPos <=) . fst) cs
+paintChars sty changes cs = [(c,(s,p)) | ((p,c),s) <- zip cs attrs]
+    where attrs = lazy (stys sty changes cs)
 
-setSty :: a -> [(Point,Char)] -> [(Char, (a,Point))]
-setSty sty cs = [(c,(sty,p)) | (p,c) <- cs]
+lazy :: [a] -> [a]
+lazy l = head l : lazy (tail l)
+
+stys :: a -> [(Point,a)] -> [(Point,Char)] -> [a]
+stys sty [] cs = [ sty | _ <- cs ]
+stys sty ((endPos,sty'):xs) cs = [ sty | _ <- previous ] ++ stys sty' xs later
+    where (previous, later) = break ((endPos <=) . fst) cs
