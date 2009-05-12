@@ -180,13 +180,6 @@ updateDependents' mark deps =
                   setMarkText txt d
                                   
 markText :: MarkInfo -> BufferM String
-markText (SimpleMarkInfo _ start) = do
-    p <- getMarkPointB start
-    c <- readAtB p
-    if isSpace c
-      then return ""
-      else readRegionB =<< regionOfPartNonEmptyAtB unitViWordOnLine Forward p
-      
 markText m = markRegion m >>= readRegionB
 
 setMarkText :: String -> MarkInfo -> BufferM ()
@@ -206,24 +199,28 @@ setMarkText txt mi = do
     when (start == end) $
         setMarkPointB (endMark mi) (end + (Point $ length txt))
         
-markRegion m@(SimpleMarkInfo _ s) = do
+withSimpleRegion (SimpleMarkInfo _ s) f = do
     p <- getMarkPointB s
     c <- readAtB p
     if isSpace c
-      then return $ mkRegion p p
-      else do 
-          r <- regionOfPartNonEmptyAtB unitViWordOnLine Forward p
-          os <- regionsOverlappingMarks True r m
-          rOs <- mapM markRegion os
-          return . mkRegion p $ foldl' minEnd (regionEnd r) rOs
+      then return $ mkRegion p p  -- return empty region
+      else f =<< regionOfPartNonEmptyAtB unitViWordOnLine Forward p
+        
+markRegion m@(SimpleMarkInfo _ s) = withSimpleRegion m $ \r -> do
+    os <- findOverlappingMarksWith safeMarkRegion concat True r m
+    rOs <- mapM safeMarkRegion os
+    return . mkRegion (regionStart r) $ foldl' minEnd (regionEnd r) rOs
   where
-    minEnd end r = if regionEnd r <= end
+    minEnd end r = if regionEnd r < end
                    then end
                    else min end $ regionStart r
 
 markRegion m = liftM2 mkRegion 
                    (getMarkPointB $ startMark m) 
                    (getMarkPointB $ endMark m)
+                   
+safeMarkRegion m@(SimpleMarkInfo _ _) = withSimpleRegion m return
+safeMarkRegion m = markRegion m
 
 adjMarkRegion s@(SimpleMarkInfo _ _) = markRegion s
 
@@ -253,12 +250,17 @@ adjMarkRegion m = do
                                     when (not $ null overlappings) $
                                         setMarkPointB (endMark m) origEnd
                                         
-findOverlappingMarks :: ([[MarkInfo]] -> [MarkInfo]) -> Bool -> Region -> 
-                        MarkInfo -> BufferM [MarkInfo]
-findOverlappingMarks flattenMarks border r m =
+findOverlappingMarksWith :: (MarkInfo -> BufferM Region) -> 
+                            ([[MarkInfo]] -> [MarkInfo]) -> Bool -> Region ->
+                            MarkInfo -> BufferM [MarkInfo]
+findOverlappingMarksWith fMarkRegion flattenMarks border r m =
     getA bufferDynamicValueA >>=
     return . filter (not . (m==)) . flattenMarks . marks >>=
-    filterM (liftM (regionsOverlap border r) . markRegion)
+    filterM (liftM (regionsOverlap border r) . fMarkRegion)
+                                        
+findOverlappingMarks :: ([[MarkInfo]] -> [MarkInfo]) -> Bool -> Region -> 
+                        MarkInfo -> BufferM [MarkInfo]
+findOverlappingMarks = findOverlappingMarksWith markRegion
                                         
 regionsOverlappingMarks :: Bool -> Region -> MarkInfo -> BufferM [MarkInfo]
 regionsOverlappingMarks = findOverlappingMarks concat 
