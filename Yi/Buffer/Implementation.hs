@@ -55,7 +55,7 @@ import Data.List (groupBy, zip, takeWhile)
 import Data.Maybe 
 import Data.Monoid
 import Data.Typeable
-import Prelude (takeWhile, dropWhile, map)
+import Prelude (takeWhile, dropWhile, map, filter)
 import Yi.Buffer.Basic
 import Yi.Prelude
 import Yi.Regex
@@ -245,7 +245,10 @@ strokesRangesBI getStrokes regex rgn  point fb = result
     takeIn  = takeWhile (\s -> spanBegin s <= j)
 
     groundLayer = [(Span i mempty j)]
-    syntaxHlLayer = getStrokes point i j 
+
+    -- zero-length spans seem to break stroking in general, so filter them out!
+    syntaxHlLayer = filter (\(Span b m a) -> b /= a)  $ getStrokes point i j
+
     layers2 = map (map overlayStroke) $ groupBy ((==) `on` overlayLayer) $  Set.toList $ overlays fb
     layer3 = case regex of 
                Just re -> takeIn $ map hintStroke $ regexRegionBI re (mkRegion i j) fb
