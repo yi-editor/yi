@@ -56,6 +56,8 @@ data UIStyle = UIStyle
   , stringStyle        :: Style      -- ^ constant strings
   , longStringStyle    :: Style      -- ^ additional style for long strings
   , typeStyle          :: Style      -- ^ type name (such as class in an OO language)
+  , dataConstructorStyle
+                       :: Style      -- ^ data constructor
   , variableStyle      :: Style      -- ^ any standard variable (identifier)
   , operatorStyle      :: Style      -- ^ infix operators
 
