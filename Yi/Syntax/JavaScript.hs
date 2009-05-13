@@ -37,6 +37,8 @@ data Statement t = FunDecl t t t [t] t (Block t)
                  | While t t (Expr t) t (Block t)
                  | DoWhile t (Block t) t t (Expr t) t (Semicolon t)
                  | For t t (Expr t) t (Expr t) t (Expr t) t (Block t)
+                 | If t t (Expr t) t (Block t) (Maybe (Statement t))
+                 | Else t (Block t)
                  | Expr (Expr t) (Semicolon t)
                    deriving (Eq, Show)
 
@@ -101,6 +103,10 @@ instance Strokable (Tok Token) where
 
 -- | TODO: Will generics do this properly?  If so, we have to be confident that
 --   the order in which the stroking happens with generics is left-to-right.
+--
+--   TODO: Somehow fix Failable and failStroker to be more "generic".  This will
+--   make these instances much nicer and we won't have to make ad-hoc stuff like
+--   this.
 instance Strokable (Statement TT) where
     toStrokes (FunDecl f n l ps r blk) =
         let s = failStroker [n, l, r] in
@@ -116,6 +122,12 @@ instance Strokable (Statement TT) where
     toStrokes (For f l x1 s1 x2 s2 x3 r blk) =
         let s = failStroker [f, l, s1, s2, r] in
         s f <> s l <> toStrokes x1 <> s s1 <> toStrokes x2 <> s s2 <> toStrokes x3 <> s r <> toStrokes blk
+    toStrokes (If i l x r blk e) =
+        let s = failStroker [i, l, r] in
+        s i <> s l <> toStrokes x <> s r <> toStrokes blk <> maybe mempty toStrokes e
+    toStrokes (Else e blk) =
+        let s = if hasFailed blk then error else normal in
+        s e <> toStrokes blk
     toStrokes (Expr exp sc) = toStrokes exp <> maybe mempty normal sc
 
 instance Strokable (Block TT) where
@@ -218,6 +230,8 @@ statement = FunDecl <$> resWord Function' <*> plzTok name
                     <*> plzSpc '(' <*> plzExpr <*> plzSpc ')' <*> semicolon
         <|> For     <$> resWord For' <*> plzSpc '(' <*> plzExpr <*> plzSpc ';'
                     <*> plzExpr <*> plzSpc ';' <*> plzExpr <*> plzSpc ')' <*> block
+        <|> If      <$> resWord If' <*> plzSpc '(' <*> plzExpr <*> plzSpc ')'
+                    <*> block <*> optional (Else <$> resWord Else' <*> block)
         <|> Expr    <$> stmtExpr <*> semicolon
     where
       varDecAss :: P TT (VarDecAss TT)
