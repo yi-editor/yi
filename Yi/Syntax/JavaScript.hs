@@ -21,9 +21,11 @@ import Yi.Syntax.Tree (sepBy, sepBy1)
 class Strokable a where
     toStrokes :: a -> Endo [Stroke]
 
--- | Instances of @Strokable@ can represent failure.
+-- | Instances of @Failable@ can represent failure.  This is a useful class for
+--   future work, since then we can make stroking much easier.
 class Failable f where
     stupid :: t -> f t
+    hasFailed :: f t -> Bool
 
 type Tree t = [Statement t]
 
@@ -45,6 +47,9 @@ data Block t = Block t [Statement t] t
 
 instance Failable Block where
     stupid = BlockErr
+    hasFailed t = case t of
+                    BlockErr _ -> True
+                    _          -> False
 
 -- | Represents either a variable name or a variable name assigned to an
 --   expression.  @Ass1@ is a variable name /maybe/ followed by an assignment.
@@ -57,6 +62,9 @@ data VarDecAss t = Ass1 t (Maybe (VarDecAss t))
 
 instance Failable VarDecAss where
     stupid = AssignErr
+    hasFailed t = case t of
+                    AssignErr _ -> True
+                    _           -> False
 
 data Expr t = ExprObj t [KeyValue t] t
             | ExprPrefix t (Expr t)
@@ -71,6 +79,9 @@ data Expr t = ExprObj t [KeyValue t] t
 
 instance Failable Expr where
     stupid = ExprErr
+    hasFailed t = case t of
+                    ExprErr _ -> True
+                    _         -> False
 
 data KeyValue t = KeyValue t t (Expr t)
                 | KeyValueErr t
@@ -78,6 +89,9 @@ data KeyValue t = KeyValue t t (Expr t)
 
 instance Failable KeyValue where
     stupid = KeyValueErr
+    hasFailed t = case t of
+                    KeyValueErr _ -> True
+                    _             -> False
 
 instance Strokable (Tok Token) where
     toStrokes t = if isError t
@@ -88,7 +102,9 @@ instance Strokable (Tok Token) where
 -- | TODO: Will generics do this properly?  If so, we have to be confident that
 --   the order in which the stroking happens with generics is left-to-right.
 instance Strokable (Statement TT) where
-    toStrokes (FunDecl f n l ps r blk) = normal f <> normal n <> normal l <> foldMap toStrokes ps <> normal r <> toStrokes blk
+    toStrokes (FunDecl f n l ps r blk) =
+        let s = failStroker [n, l, r] in
+        s f <> s n <> s l <> foldMap toStrokes ps <> s r <> toStrokes blk
     toStrokes (VarDecl v vs sc) = normal v <> foldMap toStrokes vs <> maybe mempty normal sc
     toStrokes (Return t exp sc) = normal t <> maybe mempty toStrokes exp <> maybe mempty normal sc
     toStrokes (While w l exp r blk) = normal w <> normal l <> toStrokes exp <> normal r <> toStrokes blk
@@ -124,27 +140,43 @@ instance Strokable (KeyValue TT) where
 
 -- * Helper functions.
 
+-- | Normal stroker.
 normal :: TT -> Endo [Stroke]
 normal x = one tokenToStroke x
 
+-- | Error stroker.
 error :: TT -> Endo [Stroke]
 error x = one (modStroke errorStyle . tokenToStroke) x
 
 one :: (t -> a) -> t -> Endo [a]
 one f x = Endo (f x :)
 
+-- | Given a new style and a stroke, return a stroke with the new style appended
+--   to the old one.
 modStroke :: StyleName -> Stroke -> Stroke
 modStroke style stroke = fmap (style <>) stroke
-
-oneStroke :: TT -> Endo [Stroke]
-oneStroke = one tokenToStroke
 
 
 -- * Stroking functions
 
+-- | Given a list of tokens to check for errors (@xs@) and a list of tokens to
+--   stroke (@xs'@), returns normal strokes for @xs'@ if there were no errors.
+--   Otherwise returns error strokes for @xs'@.
+nError :: [TT] -> [TT] -> Endo [Stroke]
+nError xs xs' = foldMap (failStroker xs) xs'
+
+-- | Given a list of @TT@, if any of them is an error, returns an error stroker,
+--   otherwise a normal stroker.  Using e.g. existentials, we could make this
+--   more general and have support for heterogeneous lists of elements which
+--   implement Failable, but I haven't had the time to fix this.
+failStroker :: [TT] -> TT -> Endo [Stroke]
+failStroker xs = if any isError xs then error else normal
+
+-- | Given a @TT@, return a @Stroke@ for it.
 tokenToStroke :: TT -> Stroke
 tokenToStroke = fmap tokenToStyle . tokToSpan
 
+-- | The main stroking function.
 getStrokes :: Point -> Point -> Point -> Tree TT -> [Stroke]
 getStrokes _point _begin _end t0 = trace ("\n" ++ (unlines (map show t0))) result
     where
@@ -184,7 +216,7 @@ statement = FunDecl <$> resWord Function' <*> plzTok name
 block :: P TT (Block TT)
 block = Block    <$> spc '{' <*> many statement <*> plzSpc '}'
     <|> BlockOne <$> hate 1 (statement)
-    <|> BlockErr <$> hate 1 (anything)
+    <|> BlockErr <$> hate 2 (pure errorToken)
 
 -- | Parser for expressions which may be statements.  In reality, any expression
 --   is also a valid statement, but this is a slight compromise to get rid of
@@ -211,7 +243,7 @@ expression = ExprObj     <$> spc '{' <*> commas keyValue <*> plzSpc '}'
     where
       keyValue = KeyValue    <$> name <*> plzSpc ':' <*> plzExpr
              <|> KeyValueErr <$> hate 1 (symbol (const True))
-             <|> KeyValueErr <$> hate 2 (pure errorToken)
+             <|> KeyValueErr <$> hate 2 (pure $ errorToken)
 
 
 -- * Parsing helpers
