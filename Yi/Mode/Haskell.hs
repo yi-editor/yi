@@ -206,7 +206,7 @@ cleverAutoIndentHaskellC' e behaviour = do
                               filter (not . onThisLine . posnOfs . tokPosn) .
                               filter (not . isErrorTok . tokT) . allToks 
   let stopsOf :: [Hask.Exp TT] -> [Int]
-      stopsOf (g@(Hask.Paren' (Hask.PAtom open _) ctnt (Hask.PAtom close _)):ts) 
+      stopsOf (g@(Hask.Paren (Hask.PAtom open _) ctnt (Hask.PAtom close _)):ts) 
           | isErrorTok (tokT close) || getLastOffset g >= solPnt
               = [groupIndent open ctnt]  -- stop here: we want to be "inside" that group.
           | otherwise = stopsOf ts -- this group is closed before this line; just skip it.
@@ -218,7 +218,9 @@ cleverAutoIndentHaskellC' e behaviour = do
          -- any random part of expression, we ignore it.
       stopsOf ((Hask.PLet le c e e'):ts) = [groupIndent le e] ++ stopsOf [e] ++ stopsOf ts -- must change later
       stopsOf (t@(Hask.Block _):ts) = shiftBlock + maybe 0 (posnCol . tokPosn) (getFirstElement t) : stopsOf ts
-      stopsOf (Hask.Error _:ts) = stopsOf ts
+--       stopsOf (Hask.Error _:ts) = stopsOf ts
+      stopsOf (Hask.Error' _ _:ts) = stopsOf ts
+--       stopsOf (Hask.PData d ) = 
       stopsOf (r:ts) = stopsOf ts -- not yet handled stuff
       stopsOf [] = []
       firstTokOnLine = fmap tokT $ listToMaybe $ 

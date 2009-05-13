@@ -54,8 +54,6 @@ isNoise _ (Reserved In) = False
 -- isNoise _ (CppDirective) = False
 isNoise _ (Reserved Module) = False
 isNoise _ (Reserved Import) = False
--- isNoise _ (Reserved Where) = False
--- isNoise _ (Reserved As) = False
 isNoise _ (Reserved Type) = False
 isNoise _ (Reserved Data) = False
 --isNoise _ (Reserved NewType) = False
@@ -63,7 +61,6 @@ isNoise _ (Reserved Qualified) = False
 isNoise _ (Reserved Hiding) = False
 isNoise _ (Comment _) = False
 isNoise _ (CppDirective) = False
--- isNoise _ (Operator _) = False
 isNoise _ _ = True
 
 type Tree t = Program t
@@ -73,13 +70,13 @@ type Block t = Exp t
 -- | A program is some comments followed by a module and a body
 data Program t 
     = Program [t] (Maybe (Program t)) -- a program can be just comments
-    | ProgMod ((PModule' t)) (Program t) -- (BL.BList [Exp t])
+    | ProgMod ((PModule t)) (Program t) -- (BL.BList [Exp t])
     | Body [PImport t] (Block t) (Block t)-- (BL.BList [Exp t]) (BL.BList [Exp t])
   deriving (Show, Data, Typeable)
 
 -- | A module
 -- note to self, fix module so that the imports can be separated from the module...
-data PModule' t = PModule' (PAtom t) (PAtom t) (Exp t) (Exp t)
+data PModule t = PModule (PAtom t) (PAtom t) (Exp t) (Exp t)
     deriving (Show, Data, Typeable)
 
 -- | Imported things
@@ -88,14 +85,13 @@ data PImport t = PImport (PAtom t) (Exp t) (PAtom t) (Exp t) (Exp t)
 
 -- | Exp can be expression or declaration
 data Exp t
-    = Paren' (PAtom t) (Exp t) (PAtom t) -- A parenthesized expression with comments
+    = Paren (PAtom t) (Exp t) (PAtom t) -- A parenthesized expression with comments
     | Block (BL.BList [Exp t]) -- A list of things separated by layout (as in do; etc.)
     | PAtom t [t]
     | PFun (Exp t) (Exp t) t [t] (Exp t)
     | Expr [Exp t]
-    | KW t [t] (Exp t)
+    | KW (PAtom t) (Exp t)
     | Bin (Exp t) (Exp t)
-    | Error t
     | Error' t [t] -- an error with comments following so we never color comments in wrong color
     | Opt (Maybe (Exp t))
     | Modid t [t]
@@ -113,12 +109,12 @@ type TTT = Exp TT
 
 
 $(derive makeFoldable ''PImport)
-$(derive makeFoldable ''PModule')
+$(derive makeFoldable ''PModule)
 $(derive makeFoldable ''Program)
 
 $(derive makeFoldable ''Exp)
 instance IsTree Exp where
-   subtrees (Paren' _ (Expr g) _) = g
+   subtrees (Paren _ (Expr g) _) = g
    subtrees (Block s)     = concat s
    subtrees (Expr a)      = a
 --      subtrees (TypeSig _ a) = a
@@ -142,8 +138,7 @@ $(derive makeData ''ReservedType)
 
 isError' :: Exp TT ->[Exp TT]
 isError' n = (listify isE' n)
-    where isE' (Error _) = True
-          isE' (Error' _ _) = True
+    where isE' (Error' _ _) = True
           isE' _ = False
 
 -- | Search the given list, and return the 1st tree after the given
@@ -188,8 +183,11 @@ pProgram = Program <$> many pComment <*> (optional
 
 -- | Parse a body that follows a module
 pModBody :: Parser TT (Program TT)
-pModBody =  ((Body <$> ((spec '<') *> pImp) <*> (((Block <$> pBlocks some pDTree') <|> (Block <$> pure BL.nil)) <* (spec '>')) <*> ((Block <$> pBlocks many pDTree')))
-             <|> (Body <$> (spec '.' *>) pImp <*> ((Block <$> pBlocks some pDTree') <|> (Block <$> pure BL.nil)) <*> (Block <$> pure BL.nil))
+pModBody =  ((Body <$> ((spec '<') *> pImp) <*> (((Block <$> pBlocks some pDTree') 
+                                                  <|> pEmptyBL) <* (spec '>')) 
+              <*> ((Block <$> pBlocks many pDTree')))
+             <|> (Body <$> (spec '.' *>) pImp <*> ((Block <$> pBlocks some pDTree') 
+                                                   <|> pEmptyBL) <*> pEmptyBL)
              <|> (Body <$> pure [] <*> pEmptyBL <*> pEmptyBL))
 
 pEmptyBL = Block <$> pure BL.nil
@@ -247,7 +245,7 @@ pVar = pTup ppQvarsym
 sym :: (Token -> Bool) ->Parser TT TT
 sym f   = symbol (f . tokT)
 
--- | Gives a funktion returning Boolean describing if any token in the list is parsed
+-- | Gives a function returning True when any token in the list is parsed
 exact :: [Token] -> (Token ->Bool)
 exact = flip elem 
 
@@ -294,7 +292,7 @@ ppCons = ppAt $ exact' [ConsIdent]
 
 -- | Parse a keyword
 pKW :: Parser TT TT -> Parser TT TTT -> Parser TT TTT
-pKW k r = KW <$> k <*> pCom <*> r
+pKW k r = KW <$> (pAt k) <*> r
 
 -- | Parse an unary operator 
 pOP op r = Op <$> exact' op <*> pCom <*> r
@@ -322,7 +320,9 @@ ppAt b = PAtom <$> pleaseB' b <*> pCom
 -- | Parse end of line or end token
 pEol :: Parser TT ()
 pEol = testNext (\r ->(not $ isJust r) || 
-                 ((flip elem [(Special ';'), (Special '.'), (Special '>')]) . tokT . fromJust) r)
+                 (pEol' r))
+ where pEol' = ((flip elem [(Special ';'), (Special '.'), (Special '>')])
+               . tokT . fromJust)
 
 -- | Parse something separated by, with optional ending
 pSepBy :: Parser TT TTT -> Parser TT TTT -> Parser TT TTT
@@ -346,31 +346,34 @@ isOperator _                = False
 -- End of helper functions Parsing different parts follows
 
 -- | Parse a Module declaration
-pModule :: Parser TT (PModule' TT)
-pModule = (PModule' <$> pAt (exact' [Reserved Module])
+pModule :: Parser TT (PModule TT)
+pModule = (PModule <$> pAt (exact' [Reserved Module])
                   <*> pAt (pleaseB ConsIdent)
                   <*> pExports
-                  <*> ((optional $ spec '.')    *> (Bin <$> pAt (pleaseB $ Reserved Where)) <*> pMany pErr) <* pEmod)
---                   <*> pRest)
+                  <*> ((optional $ spec '.') *> 
+                       (Bin <$> pAt (pleaseB $ Reserved Where))
+                       <*> pMany pErr) <* pEmod)
     where pExports = pOpt $ pTup $ pSepBy pExport pComma
           pExport = ((optional $ spec '.') *> 
-                     (pVarId
+                     pleaseC (pVarId
                       <|> pEModule
                       <|> (Bin <$> pTup ppQvarsym <*> pOpt helper)
                       <|> (Bin <$> pQtycon <*> pOpt helper)
-                      <|> (Error' <$> pErrN <*> pCom)
+--                       <|> (Error' <$> pErrN <*> pCom)
                      ))
-          helper = pTup ((pAt $ exact' [ReservedOp $ OtherOp ".."])
-                          <|> (pSepBy pQvarid pComma)
-                          <|> (Error' <$> pErrN <*> pCom))
+          helper = pTup $  pleaseC ((pAt $ exact' [ReservedOp $ OtherOp ".."])
+                          <|> (pSepBy pQvarid pComma))
+--                           <|> (Error' <$> pErrN <*> pCom))
           pEmod = testNext (\r ->(not $ isJust r) || 
-                            ((flip elem [(Special '.'), (Special '<'), (Special '>')]) . tokT . fromJust) r)
+                            ((flip elem [(Special '.'), (Special '<'), (Special '>')])
+                             . tokT . fromJust) r)
 
 -- | Parse several imports
 pImp :: Parser TT [PImport TT]
 pImp = (many (pImp' <* pEol <* (optional $ exact' [(Special '.'),(Special ';')])))
     where pEol' = testNext (\r ->(not $ isJust r) || 
-                           ((flip elem [(Special '>')]) . tokT . fromJust) r)
+                           ((flip elem [(Special '>')])
+                            . tokT . fromJust) r)
       
 -- | Parse one import
 -- pImp' :: Parser TT TTT
@@ -382,23 +385,25 @@ pImp' = PImport  <$> pAt (exact' [Reserved Import])
     where pImpSpec = ((Bin <$> (pKW (exact' [Reserved Hiding]) $ pleaseC pImpS) <*> pEnd)
                       <|> (Bin <$> pImpS <*> pEnd)) <|> pEnd
           pImpS    = (pTup (pSepBy pExp' pComma) )
-          pExp'    = Bin <$> ((pAt $ sym (\x -> (exact [VarIdent, ConsIdent] x) || isOperator x))
+          pExp'    = Bin <$> ((pAt $ sym (\x -> (exact [VarIdent, ConsIdent] x)
+                                          || isOperator x))
                               <|> pTup ppQvarsym) <*> pOpt pImpS
           pEnd     = pMany pErr
 
 -- | Parse simple types
 pSType :: Parser TT TTT
-pSType = PType <$> exact' [Reserved Type]     <*> pCom
-             <*> (TC <$> ppCons)           <*> pMany pQvarid
-             <*> pleaseB (ReservedOp Equal)        <*> pCom
-             <*> pleaseC pType <* pEol -- ((spec '.') <|> recoverWith (symbol $ const True)) 
+pSType = PType <$> exact' [Reserved Type]    <*> pCom
+             <*> (TC <$> ppCons)             <*> pMany pQvarid
+             <*> pleaseB (ReservedOp Equal)  <*> pCom
+             <*> pleaseC pType <* pEol
 
 -- | Parse typedeclaration
 pType :: Parser TT TTT
 pType = Block <$> some (pAtype) `BL.sepBy1` (pAt $ exact' [ReservedOp RightArrow])
 
 pSimpleType :: Parser TT TTT
-pSimpleType = (Bin <$> (TC <$> ppCons) <*> pMany pQvarid) <|> pTup pSimpleType -- (Atom <$> sym (exact' [ConsIdent, VarIdent])))
+pSimpleType = (Bin <$> (TC <$> ppCons) <*> pMany pQvarid) <|> pTup pSimpleType
+ -- (Atom <$> sym (exact' [ConsIdent, VarIdent])))
 
 -- | Parse data declarations
 pSData :: Parser TT TTT
@@ -410,7 +415,8 @@ pSData = PData <$> exact' [Reserved Data]    <*> pCom
 -- | Parse second half of the data declaration, if there is one
 pSData' :: Parser TT TTT
 pSData' = (PData' <$> eqW <*> pCom -- either we have standard data, or we have GADT:s
-             <*> pleaseC (pConstrs <|> (pBlockOf' (Block <$> many pGadt `BL.sepBy1` spec '.')))
+             <*> pleaseC (pConstrs 
+                          <|> (pBlockOf' (Block <$> many pGadt `BL.sepBy1` spec '.')))
              <*> pOpt pDeriving) <|> pDeriving
     where eqW = (exact' [(ReservedOp Equal),(Reserved Where)])
 
@@ -425,8 +431,9 @@ pGadt = ((Bin <$> (DC <$> pQtycon)
 -- | Parse a deriving
 pDeriving :: Parser TT TTT
 pDeriving = (pKW (exact' [Reserved Deriving])
-                (pleaseC ((pTup ((Bin <$> pleaseC pQtycon <*> pMany (Bin <$> pComma <*> pleaseC pQtycon)))))
-                             <|> pQtycon))
+             (pleaseC $ pTup (Bin <$> pleaseC pQtycon
+                              <*> pMany (Bin <$> pComma <*> pleaseC pQtycon))
+              <|> pQtycon))
 
 pAtype :: Parser TT TTT
 pAtype = pAtype'
@@ -442,14 +449,17 @@ pBtype = pSome pAtype
 
 pContext :: Parser TT TTT
 pContext = (Context <$> pOpt pForAll 
-            <*> (pClass <|> pTup (pSepBy pClass pComma))
+            <*> (pClass 
+                 <|> pTup (pSepBy pClass pComma))
             <*> pleaseB (ReservedOp DoubleRightArrow) <*> pCom)
 
 pClass :: Parser TT TTT
-pClass = Bin <$> pQtycon <*> ((pleaseC pVarId) <|> pTup ((Bin <$> (pleaseC pVarId) <*> pMany pAtype')))
+pClass = Bin <$> pQtycon <*> ((pleaseC pVarId) 
+                              <|> pTup (Bin <$> pleaseC pVarId <*> pMany pAtype'))
 
 -- | Parse for all
-pForAll = KW <$> exact' [Reserved Forall] <*> pCom <*> (Bin <$> pVars <*> (ppAt $ exact' [Operator "."]))
+pForAll = pKW (exact' [Reserved Forall]) 
+              (Bin <$> pVars <*> (ppAt $ exact' [Operator "."]))
 
 pConstrs :: Parser TT TTT
 pConstrs = Bin <$> (Bin <$> pOpt pContext <*> pConstr) 
@@ -457,33 +467,35 @@ pConstrs = Bin <$> (Bin <$> pOpt pContext <*> pConstr)
                           (Bin <$> pOpt pContext <*> pConstr))
 
 pConstr :: Parser TT TTT
-pConstr = (Bin <$> pOpt pForAll <*> (Bin <$> (Bin <$> (DC <$> pAtype) <*> pMany (strictF pAtype)) <*> pOpt st)
+pConstr = (Bin <$> pOpt pForAll <*> (Bin <$> 
+                                     (Bin <$> (DC <$> pAtype) <*> 
+                                      pMany (strictF pAtype)) <*> pOpt st)
            <|> Bin <$> lrHs <*> pMany (strictF pAtype)
            <|> pErr)
     where lrHs = (pOP [Operator "!"] pAtype)
-          st = (pBrace' $ pOpt (Bin <$> pFielddecl <*> pMany (Bin <$> pComma <*> pFielddecl)))
+          st = (pBrace' $ pOpt (Bin <$> pFielddecl 
+                                <*> pMany (Bin <$> pComma <*> pFielddecl)))
 
 -- | Parse optional strict variables
 strictF :: Parser TT TTT -> Parser TT TTT
 strictF a = Bin <$> pOpt (pAt $ exact' [Operator "!"]) <*> a
 
 pFielddecl ::Parser TT TTT
-pFielddecl = (Bin <$> pVars <*> pOpt (pOP [ReservedOp $ OtherOp "::"]
-                                      (pType <|> (KW <$> exact' [Operator "!"] <*> pCom <*> pAtype)  <|> pErr)))
+pFielddecl = (Bin <$> pVars 
+              <*> pOpt (pOP [ReservedOp $ OtherOp "::"]
+                        (pType <|> (pKW (exact' [Operator "!"]) pAtype)  <|> pErr)))
 
 -- | Exporting module
 pEModule ::Parser TT TTT
-pEModule = KW <$> exact' [Reserved Module] <*> pCom <*> pModid
-
--- (Body <$> ((spec '<') *> pImp) <*> (((pBlocks some pDTree') <|> pure BL.nil) <* (spec '>')) <*> ((pBlocks many pDTree')))
---            <|> (Body <$> (((pBol *>) pImp)) <*> ((pBlocks some pDTree')) <*> pure BL.nil)
+pEModule = pKW (exact' [Reserved Module]) pModid
 
 -- | Parse the left hand side of a function
 pFunlhs = ((PFun <$> pVar
             <*> pMany (pApat <|> pErr))
-           <|> ((PFun <$> pApat <*> (Bin <$> ppAt (sym isOperator) <*> (Bin <$> pleaseC pApat <*> pMany pErr)))))
+           <|> (PFun <$> pApat <*> (Bin <$> ppAt (sym isOperator) <*> 
+                                     (Bin <$> pleaseC pApat <*> pMany pErr))))
            <*> pleaseB' (exact' [(ReservedOp Equal),(ReservedOp Pipe)]) <*> pCom
-           <*> pFunrhs  <* pEol -- spec '.'
+           <*> pFunrhs  <* pEol
 
 -- | Parse the rhs of a function
 pFunrhs = pMany pTree'
@@ -503,7 +515,8 @@ pLet = PLet <$> exact' [Reserved Let] <*> pCom
                  <|> (((pAt $ exact' [Reserved In])) <* ((pleaseSym '>')))
                  <|> ((Expr <$> pure []) <* (spec '>')))
 
---     | PLet t [t] (Tree' t) (Tree' t)
+-- pGuard = PGuard <$> exact' [ReservedOp Pipe] <*> pCom
+--            <* pEol
 
 pQcon = pTup ((pMany pGconsym) <|> (pAt $ sym isOperator))
 
@@ -514,8 +527,6 @@ pGconsym = pAt (exact' [ReservedOp (OtherOp ":")])
 --                 <|> (Enter "GCON" pErr)
                 <|> pQvarid
                 <|> pTup (pMany pGconsym)
-
-pt  = pOpt (Block <$> pBlocks some pDTree') -- Bin <$> pSome pDTree' <*> pOpt ((spec '.') *> (Block <$> pBlocks pDTree'))
 
 -- | Parse many of something
 pMany ::Parser TT TTT ->Parser TT TTT
@@ -539,34 +550,16 @@ pBlockOf' p = ((spec '<' *> p <* spec '>')) -- see HACK above
 
 -- | Parse paren expression with comments
 pTup :: Parser TT TTT -> Parser TT TTT
-pTup p = (Paren' <$>  pAt (spec '(')
+pTup p = (Paren <$>  pAt (spec '(')
           <*> p <*> pAt (pleaseSym ')'))
-
--- | Parse a Tuple without comments
-pTuple :: Parser TT TTT -> Parser TT TTT
-pTuple p  = (Paren' <$> (PAtom <$> (spec '(') <*> pure [])
-             <*> p
-             <*> (PAtom <$> (pleaseSym ')') <*> pure []))
-
--- | Parse a Bracked expression without comments
-pBrack :: Parser TT TTT -> Parser TT TTT
-pBrack p  = (Paren' <$> (PAtom <$> (spec '[') <*> pure [])
-             <*> p
-             <*> (PAtom <$> (pleaseSym ']') <*> pure []))
-
--- | Parse a Braced expression without comments
-pBrace :: Parser TT TTT -> Parser TT TTT
-pBrace p  = (Paren'  <$> (PAtom <$> (spec '{') <*> pure []) 
-             <*> p  
-             <*> (PAtom <$> (pleaseSym '}') <*> pure []))
 
 -- | Parse a Braced expression with comments
 pBrace' :: Parser TT TTT -> Parser TT TTT
-pBrace' p  = (Paren'  <$>  pAt (spec '{') <*> p  <*> pAt (pleaseSym '}'))
+pBrace' p  = (Paren  <$>  pAt (spec '{') <*> p  <*> pAt (pleaseSym '}'))
 
 -- | Parse a Bracked expression with comments
 pBrack' :: Parser TT TTT -> Parser TT TTT
-pBrack' p = (Paren'  <$>  pAt (spec '[')  <*> p <*> pAt (pleaseSym ']'))
+pBrack' p = (Paren  <$>  pAt (spec '[')  <*> p <*> pAt (pleaseSym ']'))
 
 -- | Parse a Tree' of expressions
 pTree' :: P TT TTT
@@ -577,7 +570,8 @@ pTree' = (pTup $ pMany pDTree')
           <|> pSData
           <|> pLet
 --           <|> pFunlhs
-          <|> (Error' <$> recoverWith (sym $ not . isNoise (\x -> not $ elem x "})]")) <*> pCom)
+          <|> (Error' <$> recoverWith 
+               (sym $ not . isNoise (\x -> not $ elem x "})]")) <*> pCom)
           <|> (PAtom <$> sym (isNoise $ flip elem ";,`") <*> pCom)
       -- note that, by construction, '<' and '>' will always be matched, so
       -- we don't try to recover errors with them.
@@ -586,7 +580,7 @@ instance SubTree (Exp TT) where
     type Element (Exp TT) = TT
     foldMapToksAfter begin f t0 = work t0
         where work (PAtom t t') = f t 
-              work (Error t) = f t
+--               work (Error t) = f t
               work (Error' t t') = f t
               work (Block s) = BL.foldMapAfter begin (foldMapToksAfter begin f) s
               work _ = undefined
@@ -606,42 +600,37 @@ getStrokeProg point begin _end prog
         (Program c mod)
             ->com c <> funPr mod
         (ProgMod mod body)
-            -> getStrokeMod point begin _end mod  <> getStrokeProg point begin _end body
+            -> getStrokeMod point begin _end mod
+            <> getStrokeProg point begin _end body
         (Body imps exps exps') 
-            -> funImp imps <> getStr point begin _end exps <> getStr point begin _end exps'
+            -> funImp imps 
+            <> getStr point begin _end exps
+            <> getStr point begin _end exps'
   where funMod (Just mod)  = getStrokeMod point begin _end mod
         funMod Nothing     = foldMap id []
         funPr (Just pr)    = getStrokeProg point begin _end pr
         funPr Nothing      = foldMap id []
         funImp imps        = foldMap (getStrokeImp point begin _end) imps
-        funExp exps        = BL.foldMapAfter begin (foldMap (getStr point begin _end)) exps 
 
 -- | Get strokes Module for module
-getStrokeMod :: Point -> Point -> Point -> PModule' TT -> Endo [Stroke]
-getStrokeMod point begin _end (PModule' m na e w)
-              | isErrN na = paintAtom errorStyle m <> getStrokes' na <> getStrokes' e <>
-                                      getStrokes' w -- <> getStrokes' b
-              | isErrN w = paintAtom errorStyle m <> getStrokes' na
-                                     <> getStrokes' e <> getStrokes' w -- <> getStrokes' b
+getStrokeMod :: Point -> Point -> Point -> PModule TT -> Endo [Stroke]
+getStrokeMod point begin _end (PModule m na e w)
+              | isErrN na || isErrN w
+                     = paintAtom errorStyle m 
+                       <> getStrokes' na <> getStrokes' e 
+                       <> getStrokes' w
               | otherwise = getStrokes' m <> getStrokes' na
-                                 <> getStrokes' e <> getStrokes' w
-                                 -- <> getStrokes' b
+                         <> getStrokes' e <> getStrokes' w
     where getStrokes' r = getStr point begin _end r
 
 -- | Get strokes for Imports
 getStrokeImp ::  Point -> Point -> Point -> PImport TT -> Endo [Stroke]
 getStrokeImp point begin _end (PImport m qu na t t')
-              | isErrN na = paintAtom errorStyle m <> getStrokes' qu
-                                      <> getStrokes' t <> getStrokes' t'
-              | isErrN t = paintAtom errorStyle m <> getStrokes' qu
-                                      <> getStrokes' na
-                                      <> getStrokes' t  <> getStrokes' t'
-              | isErrN t' = paintAtom errorStyle m <> getStrokes' qu
-                                       <> getStrokes' na
-                                       <> getStrokes' t  <> getStrokes' t'
-              | otherwise = getStrokes' m    <> getStrokes' qu
-                                    <> getStrokes' na
-                                    <> getStrokes' t  <> getStrokes' t'
+              | isErrN t' || isErrN na || isErrN t
+                          = paintAtom errorStyle m <> getStrokes' qu
+                         <> getStrokes' na <> getStrokes' t  <> getStrokes' t'
+              | otherwise = getStrokes' m <> getStrokes' qu
+                         <> getStrokes' na <> getStrokes' t  <> getStrokes' t'
     where getStrokes' r = getStr point begin _end r
 
 -- | Get strokes for expressions and declarations
@@ -650,7 +639,7 @@ getStr point begin _end t0 = getStrokes' t0
     where getStrokes' ::Exp TT -> Endo [Stroke]
           getStrokes' (PAtom t c) = tk t <> com c
           getStrokes' (Modid t c) = tk t <> com c
-          getStrokes' (Paren' (PAtom l c) g (PAtom r c'))
+          getStrokes' (Paren (PAtom l c) g (PAtom r c'))
               | isErr r = errStyle l <> getStrokes' g
               -- left paren wasn't matched: paint it in red.
               -- note that testing this on the "Paren" node actually forces the parsing of the
@@ -660,17 +649,17 @@ getStr point begin _end t0 = getStrokes' t0
                       <> pStyle hintStyle r <> com c'
               | otherwise  = tk l <> com c <> getStrokes' g
                                   <> tk r <> com c'
-          getStrokes' (Error t) = errStyle t -- paint in red
+--           getStrokes' (Error t) = errStyle t -- paint in red
           getStrokes' (Error' t c) = errStyle t <> com c
           getStrokes' (Block s) = BL.foldMapAfter begin getStrokesL s
           getStrokes' (PFun f args s c rhs) 
-              | isErrN args = foldMap errStyle f <> getStrokes' args
-              | isErr s = foldMap errStyle f <> getStrokes' args
+              | isErrN args || isErr s
+              = foldMap errStyle f <> getStrokes' args              
               | otherwise = getStrokes' f <> getStrokes' args 
                           <> tk s <> com c <> getStrokes' rhs
           getStrokes' (Expr g) = getStrokesL g
           getStrokes' (Bin l r) = getStrokes' l <> getStrokes' r
-          getStrokes' (KW l c r') = tk l <> com c <> getStrokes' r'
+          getStrokes' (KW l r') = getStrokes' l <> getStrokes' r'
           getStrokes' (Op op c r') = tk op <> com c <> getStrokes' r'
           getStrokes' (PType m c na exp eq c' b)
               | isErrN b ||isErrN na || isErr eq
@@ -685,7 +674,7 @@ getStr point begin _end t0 = getStrokes' t0
                            = errStyle m <> com c <> getStrokes' na
                                         <> getStrokes' eq
               | otherwise = tk m <> com c <> getStrokes' na
-                                       <> getStrokes' exp <> getStrokes' eq
+                         <> getStrokes' exp <> getStrokes' eq
           getStrokes' (PData' eq c' b d) =
                 tk eq <> com c' <> getStrokes' b
                             <> getStrokes' d
@@ -698,7 +687,7 @@ getStr point begin _end t0 = getStrokes' t0
                 getStrokes' fAll <> getStrokes' l <> tk arr <> com c
           getStrokes' (TC l) = getStrokes' l
           getStrokes' (DC (PAtom l c)) = pStyle dataConstructorStyle l <> com c
---           getStrokes' (DC (Paren' l c co r c')) = getStrokes' (Paren' l c (dc co) r c') -- small hack...
+--           getStrokes' (DC (Paren l c co r c')) = getStrokes' (Paren l c (dc co) r c') -- small hack...
           getStrokes' (DC r) = getStrokes' r -- in case of empty
           getStrokesL = foldMap getStrokes'
 
@@ -713,8 +702,6 @@ ts = tokenToStroke
 
 pStyle style = one . (modStroke style) . ts
 one x = Endo (x :)
---           dc (Expr ((Atom a):xs)) = Expr ((DC (PAtom a [])):xs)
---           dc xs = xs
 paintAtom col (PAtom a c) = pStyle col a <> com c
 isErr = isErrorTok . tokT
 isErrN t = (any isErr t) || (not $ null $ isError' t)
