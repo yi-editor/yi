@@ -112,7 +112,6 @@ instance Strokable (Statement TT) where
         s w <> s l <> toStrokes exp <> s r <> toStrokes blk
     toStrokes (DoWhile d blk w l exp r sc) =
         let s = failStroker [d, w, l, r] in
-        let s = normal in
         s d <> toStrokes blk <> s w <> s l <> toStrokes exp <> s r <> maybe mempty normal sc
     toStrokes (For f l x1 s1 x2 s2 x3 r blk) =
         let s = failStroker [f, l, s1, s2, r] in
@@ -371,10 +370,10 @@ plzSpc x = plzTok (spc x)
 plzExpr :: P TT (Expr TT)
 plzExpr = plz expression
 
-plz :: Failable f => P a (f a) -> P a (f a)
+plz :: Failable f => P TT (f TT) -> P TT (f TT)
 plz x = x
     <|> stupid <$> hate 1 (symbol (const True))
-    <|> stupid <$> hate 2 (symbol (const True))
+    <|> stupid <$> hate 2 (pure errorToken)
 
 -- | General recovery parser, inserts an error token.
 anything :: P s TT
