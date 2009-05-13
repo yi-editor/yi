@@ -39,6 +39,7 @@ data Statement t = FunDecl t t t [t] t (Block t)
                  | For t t (Expr t) t (Expr t) t (Expr t) t (Block t)
                  | If t t (Expr t) t (Block t) (Maybe (Statement t))
                  | Else t (Block t)
+                 | With t t (Expr t) t (Block t)
                  | Expr (Expr t) (Semicolon t)
                    deriving (Eq, Show)
 
@@ -109,18 +110,18 @@ instance Strokable (Tok Token) where
 --   this.
 instance Strokable (Statement TT) where
     toStrokes (FunDecl f n l ps r blk) =
-        let s = failStroker [n, l, r] in
+        let s = if hasFailed blk then error else failStroker [n, l, r] in
         s f <> s n <> s l <> foldMap toStrokes ps <> s r <> toStrokes blk
     toStrokes (VarDecl v vs sc) = normal v <> foldMap toStrokes vs <> maybe mempty normal sc
     toStrokes (Return t exp sc) = normal t <> maybe mempty toStrokes exp <> maybe mempty normal sc
     toStrokes (While w l exp r blk) =
-        let s = failStroker [w, l, r] in
+        let s = if hasFailed blk then error else failStroker [w, l, r] in
         s w <> s l <> toStrokes exp <> s r <> toStrokes blk
     toStrokes (DoWhile d blk w l exp r sc) =
-        let s = failStroker [d, w, l, r] in
+        let s = if hasFailed blk then error else failStroker [d, w, l, r] in
         s d <> toStrokes blk <> s w <> s l <> toStrokes exp <> s r <> maybe mempty normal sc
     toStrokes (For f l x1 s1 x2 s2 x3 r blk) =
-        let s = failStroker [f, l, s1, s2, r] in
+        let s = if hasFailed blk then error else failStroker [f, l, s1, s2, r] in
         s f <> s l <> toStrokes x1 <> s s1 <> toStrokes x2 <> s s2 <> toStrokes x3 <> s r <> toStrokes blk
     toStrokes (If i l x r blk e) =
         let s = failStroker [i, l, r] in
@@ -128,6 +129,9 @@ instance Strokable (Statement TT) where
     toStrokes (Else e blk) =
         let s = if hasFailed blk then error else normal in
         s e <> toStrokes blk
+    toStrokes (With w l x r blk) =
+        let s = if hasFailed blk then error else failStroker [w, l, r] in
+        s w <> s l <> toStrokes x <> s r <> toStrokes blk
     toStrokes (Expr exp sc) = toStrokes exp <> maybe mempty normal sc
 
 instance Strokable (Block TT) where
@@ -232,6 +236,8 @@ statement = FunDecl <$> resWord Function' <*> plzTok name
                     <*> plzExpr <*> plzSpc ';' <*> plzExpr <*> plzSpc ')' <*> block
         <|> If      <$> resWord If' <*> plzSpc '(' <*> plzExpr <*> plzSpc ')'
                     <*> block <*> optional (Else <$> resWord Else' <*> block)
+        <|> With    <$> resWord With' <*> plzSpc '(' <*> plzExpr <*> plzSpc ')'
+                    <*> block
         <|> Expr    <$> stmtExpr <*> semicolon
     where
       varDecAss :: P TT (VarDecAss TT)
