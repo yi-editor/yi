@@ -107,14 +107,23 @@ instance Strokable (Statement TT) where
         s f <> s n <> s l <> foldMap toStrokes ps <> s r <> toStrokes blk
     toStrokes (VarDecl v vs sc) = normal v <> foldMap toStrokes vs <> maybe mempty normal sc
     toStrokes (Return t exp sc) = normal t <> maybe mempty toStrokes exp <> maybe mempty normal sc
-    toStrokes (While w l exp r blk) = normal w <> normal l <> toStrokes exp <> normal r <> toStrokes blk
-    toStrokes (DoWhile d blk w l exp r sc) = normal d <> toStrokes blk <> normal w <> normal l <> toStrokes exp <> normal r <> maybe mempty normal sc
-    toStrokes (For f l x1 s1 x2 s2 x3 r blk) = normal f <> normal l <> toStrokes x1 <> normal s1 <> toStrokes x2 <> normal s2 <> toStrokes x3 <> normal r <> toStrokes blk
+    toStrokes (While w l exp r blk) =
+        let s = failStroker [w, l, r] in
+        s w <> s l <> toStrokes exp <> s r <> toStrokes blk
+    toStrokes (DoWhile d blk w l exp r sc) =
+        let s = failStroker [d, w, l, r] in
+        let s = normal in
+        s d <> toStrokes blk <> s w <> s l <> toStrokes exp <> s r <> maybe mempty normal sc
+    toStrokes (For f l x1 s1 x2 s2 x3 r blk) =
+        let s = failStroker [f, l, s1, s2, r] in
+        s f <> s l <> toStrokes x1 <> s s1 <> toStrokes x2 <> s s2 <> toStrokes x3 <> s r <> toStrokes blk
     toStrokes (Expr exp sc) = toStrokes exp <> maybe mempty normal sc
 
 instance Strokable (Block TT) where
     toStrokes (BlockOne stmt) = toStrokes stmt
-    toStrokes (Block l stmts r) = normal l <> foldMap toStrokes stmts <> normal r
+    toStrokes (Block l stmts r) =
+        let s = failStroker [l, r] in
+        s l <> foldMap toStrokes stmts <> s r
     toStrokes (BlockErr t) = error t
 
 instance Strokable (VarDecAss TT) where
@@ -124,17 +133,27 @@ instance Strokable (VarDecAss TT) where
 
 instance Strokable (Expr TT) where
     toStrokes (ExprSimple x exp) = normal x <> maybe mempty toStrokes exp
-    toStrokes (ExprObj l kvs r) = normal l <> foldMap toStrokes kvs <> normal r
+    toStrokes (ExprObj l kvs r) =
+        let s = failStroker [l, r] in
+        s l <> foldMap toStrokes kvs <> s r
     toStrokes (ExprPrefix t exp) = normal t <> toStrokes exp
     toStrokes (ExprConst t) = normal t
-    toStrokes (ExprParen l exp r op) = normal l <> toStrokes exp <> normal r <> maybe mempty toStrokes op
-    toStrokes (ExprAnonFun f l ps r blk) = normal f <> normal l <> foldMap toStrokes ps <> normal r <> toStrokes blk
-    toStrokes (ExprFunCall n l exps r) = normal n <> normal l <> foldMap toStrokes exps <> normal r
+    toStrokes (ExprParen l exp r op) =
+        let s = failStroker [l, r] in
+        s l <> toStrokes exp <> s r <> maybe mempty toStrokes op
+    toStrokes (ExprAnonFun f l ps r blk) =
+        let s = failStroker [f, l, r] in
+        s f <> s l <> foldMap toStrokes ps <> s r <> toStrokes blk
+    toStrokes (ExprFunCall n l exps r) =
+        let s = failStroker [n, l, r] in
+        s n <> s l <> foldMap toStrokes exps <> s r
     toStrokes (OpExpr op exp) = normal op <> toStrokes exp
     toStrokes (ExprErr t) = error t
 
 instance Strokable (KeyValue TT) where
-    toStrokes (KeyValue n c exp) = normal n <> normal c <> toStrokes exp
+    toStrokes (KeyValue n c exp) =
+        let s = failStroker [n, c] in
+        s n <> s c <> toStrokes exp
     toStrokes (KeyValueErr t) = error t
 
 
