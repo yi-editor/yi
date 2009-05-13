@@ -15,6 +15,8 @@ import Yi.Syntax hiding (mkHighlighter)
 import Yi.Prelude
 import Prelude ()
 import Yi.Region
+import Data.Ord (comparing)
+import Data.Ix
 
 type IndexedStr = [(Point, Char)]
 type AlexInput = (Char, IndexedStr)
@@ -58,7 +60,15 @@ tokRegion t = mkRegion (tokBegin t) (tokEnd t)
 instance Show t => Show (Tok t) where
     show tok = show (tokPosn tok) ++ ": " ++ show (tokT tok)
 
-data Posn = Posn {posnOfs :: !Point, posnLine :: !Int, posnCol :: !Int}
+data Posn = Posn {
+      posnOfs :: !Point
+    , posnLine :: !Int
+    , posnCol :: !Int
+  } deriving (Eq, Ix)
+
+-- TODO: Verify that this is right.  /Deniz
+instance Ord Posn where
+    compare = comparing posnOfs
 
 instance Show Posn where
     show (Posn o l c) = "L" ++ show l ++ " " ++ "C" ++ show c ++ "@" ++ show o

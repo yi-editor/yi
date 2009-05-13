@@ -9,6 +9,7 @@ import qualified Data.Rope as R
 import Data.Typeable
 import Data.DeriveTH
 import Data.Derive.Binary
+import Data.Ix
 
 -- | Direction of movement inside a buffer
 data Direction = Backward
@@ -47,7 +48,7 @@ instance Show BufferRef where
 
 -- | A point in a buffer
 newtype Point = Point {fromPoint :: Int}           -- offset in the buffer (#codepoints, NOT bytes)
-    deriving (Eq, Ord, Enum, Bounded, Typeable, Binary)
+    deriving (Eq, Ord, Enum, Bounded, Typeable, Binary, Ix)
 
 deriving instance Num Point
 deriving instance Real Point
