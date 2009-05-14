@@ -370,6 +370,7 @@ numTok = symbol (\t -> case fromTT t of
 name :: P TT TT
 name = symbol (\t -> case fromTT t of
                        ValidName _ -> True
+                       Const     _ -> True
                        _           -> False)
 
 -- | Parses any boolean.

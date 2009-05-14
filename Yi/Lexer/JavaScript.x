@@ -63,18 +63,12 @@ $ascsymbol = [\!\#\$\%\&\*\+\.\/\<\=\>\@\\\^\|\-\~\_]
 $unisymbol = [] -- TODO
 $symbol    = [$ascsymbol $unisymbol] # [$special \:\"\']
 $graphic   = [$small $large $symbol $digit $special \:\"\']
-$cntrl     = [$large \@\[\\\]\^\_]
 $name      = [a-zA-Z0-9\_\$] -- Valid characters for a "name"
 
 @number  = $digit+ -- TODO: Hexadecimal/octals/exponent notation
-@ascii   = \^ $cntrl | NUL | SOH | STX | ETX | EOT | ENQ | ACK | BEL | BS  | HT
-         | LF  | VT  | FF  | CR  | SO  | SI  | DLE | DC1 | DC2 | DC3 | DC4 | NAK
-         | SYN | ETB | CAN | EM  | SUB | ESC | FS  | GS  | RS  | US  | SP  | DEL
-$charesc = [abfnrtv\\\"\'\&]
-@escape  = \\ ($charesc | @ascii | @number)
-@gap     = \\ $whitechar+ \\
-@string1 = $graphic # [\"\\] | " " | @escape | @gap
-@string2 = $graphic # [\'\\] | ' ' | @escape | @gap
+@gap     = \\ $whitechar
+@string1 = $graphic # [\"\\] | " " | @gap
+@string2 = $graphic # [\'\\] | " " | @gap
 
 -- @varid represents valid names for variables and functions.
 @varid   = [$name # [0-9A-Z]] $name*
