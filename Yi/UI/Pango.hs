@@ -7,7 +7,7 @@
 
 module Yi.UI.Pango (start) where
 
-import Prelude (filter, map, round, length, take, FilePath, (/), zipWith)
+import Prelude (filter, map, round, FilePath, (/), zipWith)
 import Yi.Prelude 
 import Yi.Buffer
 import qualified Yi.Editor as Editor
@@ -29,7 +29,7 @@ import Control.Monad.State (gets, modify, runState, State)
 import Data.Prototype
 import Data.Foldable
 import Data.IORef
-import Data.List (nub, findIndex, zip, drop, repeat)
+import Data.List (intercalate, nub, findIndex, zip, drop, repeat)
 import qualified Data.List.PointedList.Circular as PL
 import Data.Maybe
 import Data.Traversable
@@ -424,8 +424,8 @@ insertWindow e i win = do
 refresh :: UI -> Editor -> IO ()
 refresh ui e = do
     let ws = Editor.windows e
-    let takeEllipsis s = if length s > 132 then take 129 s ++ "..." else s
-    set (uiCmdLine ui) [labelText := takeEllipsis (show $ statusLine e)]
+    set (uiCmdLine ui) [labelText := intercalate "  " $ statusLine e,
+                        labelEllipsize := EllipsizeEnd]
 
     cache <- readRef $ windowCache ui
     logPutStrLn $ "syncing: " ++ show ws
@@ -502,12 +502,12 @@ render e ui b w _ev = do
                   s /= emptyAttributes]
       rel p = fromIntegral (p - regionStart r'')
       allAttrs = concat $ do
-        (p1, Attributes fg bg _rv bd itlc underline, p2) <- strokes
+        (p1, Attributes fg bg _rv bd itlc udrl, p2) <- strokes
         return $ [ AttrForeground (rel p1) (rel p2) (mkCol True fg)
                  , AttrBackground (rel p1) (rel p2) (mkCol False bg)
-                 , AttrStyle      (rel p1) (rel p2) (if itlc      then StyleItalic     else StyleNormal)
-                 , AttrUnderline  (rel p1) (rel p2) (if underline then UnderlineSingle else UnderlineNone)
-                 , AttrWeight     (rel p1) (rel p2) (if bd        then WeightBold      else WeightNormal)
+                 , AttrStyle      (rel p1) (rel p2) (if itlc then StyleItalic     else StyleNormal)
+                 , AttrUnderline  (rel p1) (rel p2) (if udrl then UnderlineSingle else UnderlineNone)
+                 , AttrWeight     (rel p1) (rel p2) (if bd   then WeightBold      else WeightNormal)
                  ]
 
   layoutSetAttributes layout allAttrs
