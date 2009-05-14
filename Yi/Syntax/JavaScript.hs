@@ -118,7 +118,9 @@ instance Strokable (Statement TT) where
           then trace "%%%%" mempty
           else let s = trace "!!!!" (if hasFailed blk then error else failStroker [n, l, r]) in
                s f <> s n <> s l <> foldMap (toStrokes o) ps <> s r <> toStrokes o blk
-    toStrokes o (VarDecl v vs sc) = normal v <> foldMap (toStrokes o) vs <> maybe mempty normal sc
+    toStrokes o (VarDecl v vs sc) =
+        let s = if any hasFailed vs then error else normal in
+        s v <> foldMap (toStrokes o) vs <> maybe mempty s sc
     toStrokes o (Return t exp sc) = normal t <> maybe mempty (toStrokes o) exp <> maybe mempty normal sc
     toStrokes o (While w l exp r blk) =
         let s = if hasFailed blk then error else failStroker [w, l, r] in
