@@ -58,6 +58,9 @@ flag pango
 flag cocoa
   Description: Provide experimental Cocoa UI
 
+flag gnome
+  Description: Enable GNOME integration
+
 flag hacking
   Default: False
   Description:
@@ -183,6 +186,9 @@ library
       other-modules: Yi.UI.Pango.ProjectTree
                      Yi.UI.Pango.Utils
 
+    if flag(gnome)
+      cpp-options: -DGNOME_ENABLED
+      exposed-modules: Yi.UI.Pango.Gnome
 
     if flag (cocoa)
       cpp-options: -DFRONTEND_COCOA
@@ -337,6 +343,11 @@ executable yi
           other-modules: Yi.UI.Pango.ProjectTree
                          Yi.UI.Pango.Utils
                          Yi.UI.Pango
+
+        if flag(gnome)
+          build-depends: gconf==0.10.*
+          cpp-options: -DGNOME_ENABLED
+          other-modules: Yi.UI.Pango.Gnome
 
         if flag (cocoa)
           build-depends: HOC, HOC-AppKit, HOC-Foundation

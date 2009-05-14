@@ -1,4 +1,5 @@
-{-# LANGUAGE BangPatterns, ExistentialQuantification, RecursiveDo, ParallelListComp #-}
+{-# LANGUAGE CPP, BangPatterns, ExistentialQuantification, RecursiveDo,
+    ParallelListComp #-}
 
 -- Copyright (c) 2007, 2008 Jean-Philippe Bernardy
 
@@ -42,6 +43,10 @@ import System.Glib.GError
 import Yi.UI.Pango.Utils
 import Yi.UI.Utils
 
+#ifdef GNOME_ENABLED
+import Yi.UI.Pango.Gnome(watchSystemFont)
+#endif
+
 ------------------------------------------------------------------------
 
 data UI = UI
@@ -51,6 +56,7 @@ data UI = UI
     , windowCache :: IORef [WinInfo]
     , uiActionCh  :: Action -> IO ()
     , uiConfig    :: UIConfig
+    , uiFont      :: IORef FontDescription
     }
 
 data WinInfo = WinInfo
@@ -82,11 +88,21 @@ mkFontDesc :: UIConfig -> IO FontDescription
 mkFontDesc cfg = do
   f <- fontDescriptionNew
   fontDescriptionSetFamily f (maybe "Monospace" id (configFontName cfg))
-  case  configFontSize cfg of
-    Just x -> fontDescriptionSetSize f (fromIntegral x)
-    -- When the font size is not set, it defaults to 0.0 for the metrics.
-    Nothing -> return ()
+  fontDescriptionSetSize f (maybe 10 fromIntegral (configFontSize cfg))
   return f
+
+updateFont :: IORef FontDescription -> IORef [WinInfo] -> Label
+                  -> FontDescription -> IO ()
+updateFont fontRef wc cmd font = do
+  print =<< fontDescriptionToString font
+  writeIORef fontRef font
+  widgetModifyFont cmd (Just font)
+  wcs <- readIORef wc
+  forM_ wcs $ \wininfo -> do
+      layoutSetFontDescription (winLayout wininfo) (Just font)
+      -- This will cause the textview to redraw
+      widgetModifyFont (textview wininfo) (Just font)
+      widgetModifyFont (modeline wininfo) (Just font)
 
 askBuffer :: Window -> FBuffer -> BufferM a -> a
 askBuffer w b f = fst $ runBuffer w b f
@@ -150,19 +166,27 @@ startNoMsg cfg ch outCh _ed = do
 
   cmd <- labelNew Nothing
   set cmd [ miscXalign := 0.01 ]
-  widgetModifyFont cmd =<< Just <$> mkFontDesc (configUI cfg)
 
   set vb [ containerChild := paned,
            containerChild := cmd,
            boxChildPacking cmd  := PackNatural ]
+
+  fontRef <- newIORef =<< mkFontDesc (configUI cfg)
+  wc <- newIORef []
+
+#ifdef GNOME_ENABLED
+  watchSystemFont
+#else
+  readIORef fontRef >>=
+#endif
+      (updateFont fontRef wc cmd)
 
   -- use our magic threads thingy (http://haskell.org/gtk2hs/archives/2005/07/24/writing-multi-threaded-guis/)
   timeoutAddFull (yield >> return True) priorityDefaultIdle 50
 
   widgetShowAll win
 
-  wc <- newIORef []
-  let ui = UI win vb' cmd wc (outCh . singleton) (configUI cfg)
+  let ui = UI win vb' cmd wc (outCh . singleton) (configUI cfg) fontRef
 
   return (mkUI ui)
 
@@ -347,7 +371,7 @@ handleMove ui w p0 event = do
 -- | Make A new window
 newWindow :: Editor -> UI -> Window -> FBuffer -> IO WinInfo
 newWindow e ui w b = mdo
-    f <- mkFontDesc (uiConfig ui)
+    f <- readIORef (uiFont ui)
 
     ml <- labelNew Nothing
     widgetModifyFont ml (Just f)
