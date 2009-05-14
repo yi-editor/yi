@@ -79,10 +79,23 @@ data Expr t = ExprObj t [KeyValue t] t
             | ExprFunCall t t [Expr t] t (Maybe (Expr t))
             | OpExpr t (Expr t)
             | ExprCond t (Expr t) t (Expr t)
-            | ExprArr t (Expr t) t (Maybe (Expr t))
+            | ExprArr t (Maybe (Array t)) t (Maybe (Expr t))
             | PostExpr t
             | ExprErr t
               deriving (Eq, Show)
+
+data Array t = ArrCont (Expr t) (Maybe (Array t))
+             | ArrRest t (Array t) (Maybe (Array t))
+             | ArrErr t
+               deriving (Eq, Show)
+
+instance Strokable (Array TT) where
+    toStrokes o (ArrCont x m) =
+        toStrokes o x <> maybe mempty (toStrokes o) m
+    toStrokes o (ArrRest c a m) =
+        normal c <> toStrokes o a <> maybe mempty (toStrokes o) m
+    toStrokes _ (ArrErr t) =
+        error t
 
 instance Failable Expr where
     stupid = ExprErr
@@ -177,7 +190,7 @@ instance Strokable (Expr TT) where
         s a <> toStrokes o x <> s b <> toStrokes o y
     toStrokes o (ExprArr l x r m) =
         let s = failStroker [l, r] in
-        s l <> toStrokes o x <> s r <> maybe mempty (toStrokes o) m
+        s l <> maybe mempty (toStrokes o) x <> s r <> maybe mempty (toStrokes o) m
     toStrokes _ (ExprErr t) = error t
 
 instance Strokable (KeyValue TT) where
@@ -276,34 +289,48 @@ block = Block    <$> spc '{' <*> many statement <*> plzSpc '}'
 --   the massive performance loss which is introduced when allowing JavaScript
 --   objects to be valid statements.
 stmtExpr :: P TT (Expr TT)
-stmtExpr = ExprSimple  <$> simpleTok <*> optional (opExpr)
-       <|> ExprParen   <$> spc '(' <*> plzExpr <*> plzSpc ')' <*> optional (opExpr)
+stmtExpr = ExprSimple <$> simpleTok <*> optional (opExpr)
+       <|> ExprParen  <$> spc '(' <*> plzExpr <*> plzSpc ')' <*> optional (opExpr)
        <|> funCall
-       <|> ExprPrefix  <$> preOp <*> plzExpr
-       <|> ExprNew     <$> resWord New' <*> plz funCall
-       <|> ExprErr     <$> hate 1 (symbol (const True))
-
+       <|> ExprPrefix <$> preOp <*> plzExpr
+       <|> ExprNew    <$> resWord New' <*> plz funCall
+       <|> ExprErr    <$> hate 1 (symbol (const True))
     where
-
       funCall :: P TT (Expr TT)
       funCall = ExprFunCall <$> name <*> plzSpc '(' <*> arguments <*> plzSpc ')' <*> optional (opExpr)
 
-      opExpr :: P TT (Expr TT)
-      opExpr = OpExpr   <$> inOp <*> plzExpr
-           <|> ExprCond <$> spc '?' <*> plzExpr <*> plzSpc ':' <*> plzExpr
-           <|> ExprArr  <$> spc '[' <*> plzExpr <*> plzSpc ']' <*> optional (opExpr)
-           <|> PostExpr <$> postOp
+-- | The basic idea here is to parse "the rest" of expressions, e.g. @+ 3@ in @x
+--   + 3@ or @[i]@ in @x[i]@.  Anything which is useful in such a scenario goes
+--   here.  TODO: This accepts [], but shouldn't, since x[] is invalid.
+opExpr :: P TT (Expr TT)
+opExpr = OpExpr   <$> inOp <*> plzExpr
+     <|> ExprCond <$> spc '?' <*> plzExpr <*> plzSpc ':' <*> plzExpr
+     <|> array
+     <|> PostExpr <$> postOp
 
 -- | Parser for expressions.
 expression :: P TT (Expr TT)
 expression = ExprObj     <$> spc '{' <*> commas keyValue <*> plzSpc '}'
          <|> ExprAnonFun <$> resWord Function' <*> plzSpc '(' <*> parameters <*> plzSpc ')' <*> block
          <|> stmtExpr
+         <|> array
     where
       keyValue :: P TT (KeyValue TT)
       keyValue = KeyValue    <$> name <*> plzSpc ':' <*> plzExpr
              <|> KeyValueErr <$> hate 1 (symbol (const True))
              <|> KeyValueErr <$> hate 2 (pure $ errorToken)
+
+-- | Parses both empty and non-empty arrays.  Should probably be split up into
+--   further parts to allow for the separation of @[]@ and @[1, 2, 3]@.
+array :: P TT (Expr TT)
+array = ExprArr <$> spc '[' <*> optional arrayContents <*> plzSpc ']' <*> optional (opExpr)
+    where
+      arrayContents :: P TT (Array TT)
+      arrayContents = ArrCont <$> expression <*> optional arrRest
+      arrRest :: P TT (Array TT)
+      arrRest = ArrRest <$> spc ',' <*> (arrayContents
+                                     <|> ArrErr <$> hate 1 (symbol (const True))
+                                     <|> ArrErr <$> hate 2 (pure $ errorToken)) <*> optional arrRest
 
 
 -- * Parsing helpers
