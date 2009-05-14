@@ -72,14 +72,14 @@ instance Failable VarDecAss where
 
 data Expr t = ExprObj t [KeyValue t] t
             | ExprPrefix t (Expr t)
+            | ExprNew t (Expr t)
             | ExprSimple t (Maybe (Expr t))
-            | ExprConst t
             | ExprParen t (Expr t) t (Maybe (Expr t))
             | ExprAnonFun t t [t] t (Block t)
             | ExprFunCall t t [Expr t] t (Maybe (Expr t))
             | OpExpr t (Expr t)
             | ExprCond t (Expr t) t (Expr t)
-            | ExprArr t (Expr t) t
+            | ExprArr t (Expr t) t (Maybe (Expr t))
             | PostExpr t
             | ExprErr t
               deriving (Eq, Show)
@@ -160,7 +160,7 @@ instance Strokable (Expr TT) where
         let s = failStroker [l, r] in
         s l <> foldMap (toStrokes o) kvs <> s r
     toStrokes o (ExprPrefix t exp) = normal t <> toStrokes o exp
-    toStrokes _ (ExprConst t) = normal t
+    toStrokes o (ExprNew t x) = normal t <> toStrokes o x
     toStrokes o (ExprParen l exp r op) =
         let s = failStroker [l, r] in
         s l <> toStrokes o exp <> s r <> maybe mempty (toStrokes o) op
@@ -175,9 +175,9 @@ instance Strokable (Expr TT) where
     toStrokes o (ExprCond a x b y) =
         let s = failStroker [a, b] in
         s a <> toStrokes o x <> s b <> toStrokes o y
-    toStrokes o (ExprArr l x r) =
+    toStrokes o (ExprArr l x r m) =
         let s = failStroker [l, r] in
-        s l <> toStrokes o x <> s r
+        s l <> toStrokes o x <> s r <> maybe mempty (toStrokes o) m
     toStrokes _ (ExprErr t) = error t
 
 instance Strokable (KeyValue TT) where
@@ -277,18 +277,21 @@ block = Block    <$> spc '{' <*> many statement <*> plzSpc '}'
 --   objects to be valid statements.
 stmtExpr :: P TT (Expr TT)
 stmtExpr = ExprSimple  <$> simpleTok <*> optional (opExpr)
-       <|> ExprConst   <$> symbol (\t -> case fromTT t of
-                                           Const _ -> True
-                                           _       -> False)
        <|> ExprParen   <$> spc '(' <*> plzExpr <*> plzSpc ')' <*> optional (opExpr)
-       <|> ExprFunCall <$> name <*> plzSpc '(' <*> arguments <*> plzSpc ')' <*> optional (opExpr)
+       <|> funCall
        <|> ExprPrefix  <$> preOp <*> plzExpr
+       <|> ExprNew     <$> resWord New' <*> plz funCall
        <|> ExprErr     <$> hate 1 (symbol (const True))
+
     where
+
+      funCall :: P TT (Expr TT)
+      funCall = ExprFunCall <$> name <*> plzSpc '(' <*> arguments <*> plzSpc ')' <*> optional (opExpr)
+
       opExpr :: P TT (Expr TT)
       opExpr = OpExpr   <$> inOp <*> plzExpr
            <|> ExprCond <$> spc '?' <*> plzExpr <*> plzSpc ':' <*> plzExpr
-           <|> ExprArr  <$> spc '[' <*> plzExpr <*> plzSpc ']'
+           <|> ExprArr  <$> spc '[' <*> plzExpr <*> plzSpc ']' <*> optional (opExpr)
            <|> PostExpr <$> postOp
 
 -- | Parser for expressions.
