@@ -29,7 +29,8 @@
 
 module Yi.Lexer.JavaScript ( initState, alexScanToken, tokenToStyle,
                              TT, Token(..), Reserved(..), Operator(..),
-                             HlState, prefixOperators, infixOperators ) where
+                             HlState, prefixOperators, infixOperators,
+                             postfixOperators ) where
 
 import Data.Monoid (Endo(..))
 import Yi.Lexer.Alex
@@ -141,8 +142,13 @@ data Operator = Add' | Subtract' | Multiply' | Divide' | Modulo' | Increment'
               | LeftShift' | RightShift' | RightShiftZ' | BitNot' | Qualify'
                 deriving (Show, Eq)
 
--- | Prefix operators.
-prefixOperators = [ Add', Subtract', Increment', Decrement', BitNot', Not' ]
+-- | Prefix operators.  NOTE: Add' is also a valid prefix operator, but since
+--   it's completely useless in the real world, we don't care about it here.
+--   Doing this makes parsing much, much easier.
+prefixOperators = [ Subtract', Increment', Decrement', BitNot', Not' ]
+
+-- | Postfix operators.
+postfixOperators = [ Increment', Decrement' ]
 
 -- | Infix operators.
 infixOperators = [ Add', Subtract', Multiply', Divide', Modulo', Assign',

@@ -9,17 +9,18 @@ import Yi.Buffer.Basic (Point(..))
 import Yi.IncrementalParse (P, eof, symbol, recoverWith)
 import Yi.Lexer.Alex
 import Yi.Lexer.JavaScript ( TT, Token(..), Reserved(..), Operator(..)
-                           , tokenToStyle, prefixOperators, infixOperators )
+                           , tokenToStyle, prefixOperators, infixOperators, postfixOperators )
 import Yi.Prelude hiding (error, Const)
 import Yi.Style (errorStyle, StyleName)
 import Yi.Syntax.Tree (sepBy, sepBy1)
+import Data.Ix (inRange)
 
 
 -- * Data types, classes and instances
 
 -- | Instances of @Strokable@ are datatypes which can be syntax highlighted.
 class Strokable a where
-    toStrokes :: a -> Endo [Stroke]
+    toStrokes :: (Point, Point) -> a -> Endo [Stroke]
 
 -- | Instances of @Failable@ can represent failure.  This is a useful class for
 --   future work, since then we can make stroking much easier.
@@ -77,6 +78,7 @@ data Expr t = ExprObj t [KeyValue t] t
             | ExprAnonFun t t [t] t (Block t)
             | ExprFunCall t t [Expr t] t
             | OpExpr t (Expr t)
+            | PostExpr t
             | ExprErr t
               deriving (Eq, Show)
 
@@ -97,79 +99,82 @@ instance Failable KeyValue where
                     _             -> False
 
 instance Strokable (Tok Token) where
-    toStrokes t = if isError t
-                    then one (modStroke errorStyle . tokenToStroke) t
-                    else one tokenToStroke t
+    toStrokes _ t = if isError t
+                      then one (modStroke errorStyle . tokenToStroke) t
+                      else one tokenToStroke t
 
 
--- | TODO: Will generics do this properly?  If so, we have to be confident that
---   the order in which the stroking happens with generics is left-to-right.
+-- | TODO: This code is *screaming* for some generic programming.
 --
 --   TODO: Somehow fix Failable and failStroker to be more "generic".  This will
 --   make these instances much nicer and we won't have to make ad-hoc stuff like
 --   this.
 instance Strokable (Statement TT) where
-    toStrokes (FunDecl f n l ps r blk) =
-        let s = if hasFailed blk then error else failStroker [n, l, r] in
-        s f <> s n <> s l <> foldMap toStrokes ps <> s r <> toStrokes blk
-    toStrokes (VarDecl v vs sc) = normal v <> foldMap toStrokes vs <> maybe mempty normal sc
-    toStrokes (Return t exp sc) = normal t <> maybe mempty toStrokes exp <> maybe mempty normal sc
-    toStrokes (While w l exp r blk) =
+    toStrokes o (FunDecl f n l ps r blk) =
+        let pos = posnOfs (tokPosn f) in
+        if not (inRange o pos)
+          then trace "%%%%" mempty
+          else let s = trace "!!!!" (if hasFailed blk then error else failStroker [n, l, r]) in
+               s f <> s n <> s l <> foldMap (toStrokes o) ps <> s r <> toStrokes o blk
+    toStrokes o (VarDecl v vs sc) = normal v <> foldMap (toStrokes o) vs <> maybe mempty normal sc
+    toStrokes o (Return t exp sc) = normal t <> maybe mempty (toStrokes o) exp <> maybe mempty normal sc
+    toStrokes o (While w l exp r blk) =
         let s = if hasFailed blk then error else failStroker [w, l, r] in
-        s w <> s l <> toStrokes exp <> s r <> toStrokes blk
-    toStrokes (DoWhile d blk w l exp r sc) =
+        s w <> s l <> toStrokes o exp <> s r <> toStrokes o blk
+    toStrokes o (DoWhile d blk w l exp r sc) =
         let s = if hasFailed blk then error else failStroker [d, w, l, r] in
-        s d <> toStrokes blk <> s w <> s l <> toStrokes exp <> s r <> maybe mempty normal sc
-    toStrokes (For f l x1 s1 x2 s2 x3 r blk) =
+        s d <> toStrokes o blk <> s w <> s l <> toStrokes o exp <> s r <> maybe mempty normal sc
+    toStrokes o (For f l x1 s1 x2 s2 x3 r blk) =
         let s = if hasFailed blk then error else failStroker [f, l, s1, s2, r] in
-        s f <> s l <> toStrokes x1 <> s s1 <> toStrokes x2 <> s s2 <> toStrokes x3 <> s r <> toStrokes blk
-    toStrokes (If i l x r blk e) =
+        s f <> s l <> toStrokes o x1 <> s s1 <> toStrokes o x2 <> s s2 <> toStrokes o x3 <> s r <> toStrokes o blk
+    toStrokes o (If i l x r blk e) =
         let s = failStroker [i, l, r] in
-        s i <> s l <> toStrokes x <> s r <> toStrokes blk <> maybe mempty toStrokes e
-    toStrokes (Else e blk) =
+        s i <> s l <> toStrokes o x <> s r <> toStrokes o blk <> maybe mempty (toStrokes o) e
+    toStrokes o (Else e blk) =
         let s = if hasFailed blk then error else normal in
-        s e <> toStrokes blk
-    toStrokes (With w l x r blk) =
+        s e <> toStrokes o blk
+    toStrokes o (With w l x r blk) =
         let s = if hasFailed blk then error else failStroker [w, l, r] in
-        s w <> s l <> toStrokes x <> s r <> toStrokes blk
-    toStrokes (Expr exp sc) = toStrokes exp <> maybe mempty normal sc
+        s w <> s l <> toStrokes o x <> s r <> toStrokes o blk
+    toStrokes o (Expr exp sc) = toStrokes o exp <> maybe mempty normal sc
 
 instance Strokable (Block TT) where
-    toStrokes (BlockOne stmt) = toStrokes stmt
-    toStrokes (Block l stmts r) =
+    toStrokes o (BlockOne stmt) = toStrokes o stmt
+    toStrokes o (Block l stmts r) =
         let s = failStroker [l, r] in
-        s l <> foldMap toStrokes stmts <> s r
-    toStrokes (BlockErr t) = error t
+        s l <> foldMap (toStrokes o) stmts <> s r
+    toStrokes _ (BlockErr t) = error t
 
 instance Strokable (VarDecAss TT) where
-    toStrokes (Ass1 t x) = normal t <> maybe mempty toStrokes x
-    toStrokes (Ass2 t exp) = normal t <> toStrokes exp
-    toStrokes (AssignErr t) = error t
+    toStrokes o (Ass1 t x) = normal t <> maybe mempty (toStrokes o) x
+    toStrokes o (Ass2 t exp) = normal t <> toStrokes o exp
+    toStrokes _ (AssignErr t) = error t
 
 instance Strokable (Expr TT) where
-    toStrokes (ExprSimple x exp) = normal x <> maybe mempty toStrokes exp
-    toStrokes (ExprObj l kvs r) =
+    toStrokes o (ExprSimple x exp) = normal x <> maybe mempty (toStrokes o) exp
+    toStrokes o (ExprObj l kvs r) =
         let s = failStroker [l, r] in
-        s l <> foldMap toStrokes kvs <> s r
-    toStrokes (ExprPrefix t exp) = normal t <> toStrokes exp
-    toStrokes (ExprConst t) = normal t
-    toStrokes (ExprParen l exp r op) =
+        s l <> foldMap (toStrokes o) kvs <> s r
+    toStrokes o (ExprPrefix t exp) = normal t <> toStrokes o exp
+    toStrokes _ (ExprConst t) = normal t
+    toStrokes o (ExprParen l exp r op) =
         let s = failStroker [l, r] in
-        s l <> toStrokes exp <> s r <> maybe mempty toStrokes op
-    toStrokes (ExprAnonFun f l ps r blk) =
+        s l <> toStrokes o exp <> s r <> maybe mempty (toStrokes o) op
+    toStrokes o (ExprAnonFun f l ps r blk) =
         let s = failStroker [f, l, r] in
-        s f <> s l <> foldMap toStrokes ps <> s r <> toStrokes blk
-    toStrokes (ExprFunCall n l exps r) =
+        s f <> s l <> foldMap (toStrokes o) ps <> s r <> toStrokes o blk
+    toStrokes o (ExprFunCall n l exps r) =
         let s = failStroker [n, l, r] in
-        s n <> s l <> foldMap toStrokes exps <> s r
-    toStrokes (OpExpr op exp) = normal op <> toStrokes exp
-    toStrokes (ExprErr t) = error t
+        s n <> s l <> foldMap (toStrokes o) exps <> s r
+    toStrokes o (OpExpr op exp) = normal op <> toStrokes o exp
+    toStrokes _ (PostExpr t) = normal t
+    toStrokes _ (ExprErr t) = error t
 
 instance Strokable (KeyValue TT) where
-    toStrokes (KeyValue n c exp) =
+    toStrokes o (KeyValue n c exp) =
         let s = failStroker [n, c] in
-        s n <> s c <> toStrokes exp
-    toStrokes (KeyValueErr t) = error t
+        s n <> s c <> toStrokes o exp
+    toStrokes _ (KeyValueErr t) = error t
 
 
 -- * Helper functions.
@@ -212,9 +217,9 @@ tokenToStroke = fmap tokenToStyle . tokToSpan
 
 -- | The main stroking function.
 getStrokes :: Point -> Point -> Point -> Tree TT -> [Stroke]
-getStrokes _point _begin _end t0 = trace ("\n" ++ (unlines (map show t0))) result
+getStrokes _point b e t0 = trace ("\n" ++ (unlines (map show t0))) result
     where
-      result = appEndo (foldMap toStrokes t0) []
+      result = appEndo (foldMap (toStrokes (b, e)) t0) []
 
 
 -- * The parser
@@ -267,15 +272,16 @@ stmtExpr = ExprSimple <$> simpleTok <*> optional (opExpr)
                                          _       -> False)
        <|> ExprParen <$> spc '(' <*> plzExpr <*> plzSpc ')' <*> optional (opExpr)
        <|> ExprFunCall <$> name <*> plzSpc '(' <*> arguments <*> plzSpc ')'
+       <|> ExprPrefix  <$> preOp <*> plzExpr -- TODO: Broken
        <|> ExprErr <$> hate 1 (symbol (const True))
     where
       opExpr :: P TT (Expr TT)
       opExpr = OpExpr <$> inOp <*> plzExpr
+           <|> PostExpr <$> postOp
 
 -- | Parser for expressions.
 expression :: P TT (Expr TT)
 expression = ExprObj     <$> spc '{' <*> commas keyValue <*> plzSpc '}'
-         <|> ExprPrefix  <$> preOp <*> plzExpr -- TODO
          <|> ExprAnonFun <$> resWord Function' <*> plzSpc '(' <*> parameters <*> plzSpc ')' <*> block
          <|> stmtExpr
     where
@@ -315,6 +321,12 @@ inOp :: P TT TT
 inOp = symbol (\t -> case fromTT t of
                        Op x -> x `elem` infixOperators
                        _    -> False)
+
+-- | Parses a postfix operator.
+postOp :: P TT TT
+postOp = symbol (\t -> case fromTT t of
+                         Op x -> x `elem` postfixOperators
+                         _    -> False)
 
 -- | Parses any literal.
 opTok :: P TT TT
