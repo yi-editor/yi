@@ -78,6 +78,8 @@ data Expr t = ExprObj t [KeyValue t] t
             | ExprAnonFun t t [t] t (Block t)
             | ExprFunCall t t [Expr t] t
             | OpExpr t (Expr t)
+            | ExprCond t (Expr t) t (Expr t)
+            | ExprArr t (Expr t) t
             | PostExpr t
             | ExprErr t
               deriving (Eq, Show)
@@ -168,6 +170,12 @@ instance Strokable (Expr TT) where
         s n <> s l <> foldMap (toStrokes o) exps <> s r
     toStrokes o (OpExpr op exp) = normal op <> toStrokes o exp
     toStrokes _ (PostExpr t) = normal t
+    toStrokes o (ExprCond a x b y) =
+        let s = failStroker [a, b] in
+        s a <> toStrokes o x <> s b <> toStrokes o y
+    toStrokes o (ExprArr l x r) =
+        let s = failStroker [l, r] in
+        s l <> toStrokes o x <> s r
     toStrokes _ (ExprErr t) = error t
 
 instance Strokable (KeyValue TT) where
@@ -266,17 +274,19 @@ block = Block    <$> spc '{' <*> many statement <*> plzSpc '}'
 --   the massive performance loss which is introduced when allowing JavaScript
 --   objects to be valid statements.
 stmtExpr :: P TT (Expr TT)
-stmtExpr = ExprSimple <$> simpleTok <*> optional (opExpr)
-       <|> ExprConst <$> symbol (\t -> case fromTT t of
-                                         Const _ -> True
-                                         _       -> False)
-       <|> ExprParen <$> spc '(' <*> plzExpr <*> plzSpc ')' <*> optional (opExpr)
+stmtExpr = ExprSimple  <$> simpleTok <*> optional (opExpr)
+       <|> ExprConst   <$> symbol (\t -> case fromTT t of
+                                           Const _ -> True
+                                           _       -> False)
+       <|> ExprParen   <$> spc '(' <*> plzExpr <*> plzSpc ')' <*> optional (opExpr)
        <|> ExprFunCall <$> name <*> plzSpc '(' <*> arguments <*> plzSpc ')'
-       <|> ExprPrefix  <$> preOp <*> plzExpr -- TODO: Broken
-       <|> ExprErr <$> hate 1 (symbol (const True))
+       <|> ExprPrefix  <$> preOp <*> plzExpr
+       <|> ExprErr     <$> hate 1 (symbol (const True))
     where
       opExpr :: P TT (Expr TT)
-      opExpr = OpExpr <$> inOp <*> plzExpr
+      opExpr = OpExpr   <$> inOp <*> plzExpr
+           <|> ExprCond <$> spc '?' <*> plzExpr <*> plzSpc ':' <*> plzExpr
+           <|> ExprArr  <$> spc '[' <*> plzExpr <*> plzSpc ']'
            <|> PostExpr <$> postOp
 
 -- | Parser for expressions.

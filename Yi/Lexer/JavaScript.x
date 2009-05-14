@@ -53,13 +53,13 @@ $whitechar  = [\ \t\n\r\f\v]
 
 $large     = [A-Z \xc0-\xd6 \xd8-\xde]
 $small     = [a-z \xdf-\xf6 \xf8-\xff]
-$special   = [\(\)\,\;\[\]\{\}\:]
+$special   = [\(\)\,\;\[\]\{\}\:\?]
 
 $ascdigit  = 0-9
 $unidigit  = [] -- TODO
 $digit     = [$ascdigit $unidigit]
 
-$ascsymbol = [\!\#\$\%\&\*\+\.\/\<\=\>\?\@\\\^\|\-\~\_]
+$ascsymbol = [\!\#\$\%\&\*\+\.\/\<\=\>\@\\\^\|\-\~\_]
 $unisymbol = [] -- TODO
 $symbol    = [$ascsymbol $unisymbol] # [$special \:\"\']
 $graphic   = [$small $large $symbol $digit $special \:\"\']
