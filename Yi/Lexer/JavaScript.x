@@ -73,7 +73,8 @@ $name      = [a-zA-Z0-9\_\$] -- Valid characters for a "name"
 $charesc = [abfnrtv\\\"\'\&]
 @escape  = \\ ($charesc | @ascii | @number)
 @gap     = \\ $whitechar+ \\
-@string  = $graphic # [\"\\] | " " | @escape | @gap
+@string1 = $graphic # [\"\\] | " " | @escape | @gap
+@string2 = $graphic # [\'\\] | ' ' | @escape | @gap
 
 -- @varid represents valid names for variables and functions.
 @varid   = [$name # [0-9A-Z]] $name*
@@ -92,8 +93,8 @@ $special               { cs $ (Special . head) } -- All of the special symbols a
 @varid                 { cs $ ValidName }
 @const                 { cs $ Const }
 
-\" @string* \"         { cs $ Str }
-\' @string* \'         { cs $ Str }
+\" @string1* \"        { cs $ Str }
+\' @string2* \'        { cs $ Str }
 "//".*                 { c  $ Comment Line }
 "/*"                   { m (subtract 1) $ Comment Start }
 
