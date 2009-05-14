@@ -76,7 +76,7 @@ data Expr t = ExprObj t [KeyValue t] t
             | ExprConst t
             | ExprParen t (Expr t) t (Maybe (Expr t))
             | ExprAnonFun t t [t] t (Block t)
-            | ExprFunCall t t [Expr t] t
+            | ExprFunCall t t [Expr t] t (Maybe (Expr t))
             | OpExpr t (Expr t)
             | ExprCond t (Expr t) t (Expr t)
             | ExprArr t (Expr t) t
@@ -165,9 +165,9 @@ instance Strokable (Expr TT) where
     toStrokes o (ExprAnonFun f l ps r blk) =
         let s = failStroker [f, l, r] in
         s f <> s l <> foldMap (toStrokes o) ps <> s r <> toStrokes o blk
-    toStrokes o (ExprFunCall n l exps r) =
+    toStrokes o (ExprFunCall n l exps r m) =
         let s = failStroker [n, l, r] in
-        s n <> s l <> foldMap (toStrokes o) exps <> s r
+        s n <> s l <> foldMap (toStrokes o) exps <> s r <> maybe mempty (toStrokes o) m
     toStrokes o (OpExpr op exp) = normal op <> toStrokes o exp
     toStrokes _ (PostExpr t) = normal t
     toStrokes o (ExprCond a x b y) =
@@ -279,7 +279,7 @@ stmtExpr = ExprSimple  <$> simpleTok <*> optional (opExpr)
                                            Const _ -> True
                                            _       -> False)
        <|> ExprParen   <$> spc '(' <*> plzExpr <*> plzSpc ')' <*> optional (opExpr)
-       <|> ExprFunCall <$> name <*> plzSpc '(' <*> arguments <*> plzSpc ')'
+       <|> ExprFunCall <$> name <*> plzSpc '(' <*> arguments <*> plzSpc ')' <*> optional (opExpr)
        <|> ExprPrefix  <$> preOp <*> plzExpr
        <|> ExprErr     <$> hate 1 (symbol (const True))
     where
@@ -295,6 +295,7 @@ expression = ExprObj     <$> spc '{' <*> commas keyValue <*> plzSpc '}'
          <|> ExprAnonFun <$> resWord Function' <*> plzSpc '(' <*> parameters <*> plzSpc ')' <*> block
          <|> stmtExpr
     where
+      keyValue :: P TT (KeyValue TT)
       keyValue = KeyValue    <$> name <*> plzSpc ':' <*> plzExpr
              <|> KeyValueErr <$> hate 1 (symbol (const True))
              <|> KeyValueErr <$> hate 2 (pure $ errorToken)
