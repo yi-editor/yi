@@ -7,9 +7,9 @@ import Data.Maybe
 import Yi.Char.Unicode (greek, symbols)
 import Control.Monad (replicateM_)
 import Yi.Keymap.Keys (char,(?>>!),(>>!))
-import Yi.Misc (adjBlock)
 import Yi.Buffer
-import Yi.Keymap.Vim (viWrite, v_top_level, v_ins_char, v_opts, tildeop, savingInsertStringB, savingDeleteCharB)
+import Yi.Keymap.Vim (viWrite, v_ex_cmds, v_top_level, v_ins_char, v_opts, tildeop, savingInsertStringB, savingDeleteCharB, exCmds, exHistInfixComplete')
+import Yi.MiniBuffer (matchingBufferNames)
 import qualified Yi.Keymap.Vim as Vim
 
 myModetable :: [AnyMode]
@@ -25,6 +25,7 @@ main = yi $ myConfig defaultVimConfig
 myConfig :: Config -> Config
 myConfig cfg = cfg { modeTable = fmap (onMode prefIndent) (myModetable ++ modeTable cfg)
                    , defaultKm = Vim.mkKeymap extendedVimKeymap
+                   , startActions = startActions cfg ++ [makeAction (maxStatusHeightA %= 10 :: EditorM ())]
                    }
 
 -- Set soft tabs of 4 spaces in width.
@@ -67,5 +68,8 @@ extendedVimKeymap = Vim.defKeymap `override` \super self -> super
                 )
             <|> (adjustPriority (-1) >> extraInput)
     , v_opts = (v_opts super) { tildeop = True }
+    , v_ex_cmds = exCmds [("b",
+                       withEditor . switchToBufferWithNameE,
+                       Just $ exHistInfixComplete' True matchingBufferNames)]
     }
 
