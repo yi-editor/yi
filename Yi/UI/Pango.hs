@@ -84,17 +84,11 @@ mkUI ui = Common.dummyUI
     , Common.reloadProject = reloadProject ui
     }
 
-mkFontDesc :: UIConfig -> IO FontDescription
-mkFontDesc cfg = do
-  f <- fontDescriptionNew
-  fontDescriptionSetFamily f (maybe "Monospace" id (configFontName cfg))
-  fontDescriptionSetSize f (maybe 10 fromIntegral (configFontSize cfg))
-  return f
-
-updateFont :: IORef FontDescription -> IORef [WinInfo] -> Label
+updateFont :: UIConfig -> IORef FontDescription -> IORef [WinInfo] -> Label
                   -> FontDescription -> IO ()
-updateFont fontRef wc cmd font = do
-  print =<< fontDescriptionToString font
+updateFont cfg fontRef wc cmd font = do
+  maybe (return ()) (fontDescriptionSetFamily font) (configFontName cfg)
+  maybe (return ()) (fontDescriptionSetSize font . fromIntegral) (configFontSize cfg)
   writeIORef fontRef font
   widgetModifyFont cmd (Just font)
   wcs <- readIORef wc
@@ -171,15 +165,15 @@ startNoMsg cfg ch outCh _ed = do
            containerChild := cmd,
            boxChildPacking cmd  := PackNatural ]
 
-  fontRef <- newIORef =<< mkFontDesc (configUI cfg)
+  fontRef <- newIORef undefined
   wc <- newIORef []
 
 #ifdef GNOME_ENABLED
-  watchSystemFont
+  let watchFont = watchSystemFont
 #else
-  readIORef fontRef >>=
+  let watchFont = (fontDescriptionFromString "Monospace 10" >>=)
 #endif
-      (updateFont fontRef wc cmd)
+  watchFont $ updateFont (configUI cfg) fontRef wc cmd
 
   -- use our magic threads thingy (http://haskell.org/gtk2hs/archives/2005/07/24/writing-multi-threaded-guis/)
   timeoutAddFull (yield >> return True) priorityDefaultIdle 50
