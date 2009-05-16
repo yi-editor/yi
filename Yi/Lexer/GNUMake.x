@@ -203,6 +203,6 @@ initState :: HlState
 initState = TopLevel
 
 type Token = StyleName
-#include "alex.hsinc"
+#include "common.hsinc"
 }
 

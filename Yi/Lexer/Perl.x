@@ -502,5 +502,5 @@ stateToInit (HlInVariable _ _) = variable
 initState :: HlState
 initState = HlInCode
 
-#include "alex.hsinc"
+#include "common.hsinc"
 }

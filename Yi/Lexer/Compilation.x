@@ -43,5 +43,5 @@ data Token
 stateToInit () = 0
 initState = ()
 
-#include "alex.hsinc"
+#include "common.hsinc"
 }

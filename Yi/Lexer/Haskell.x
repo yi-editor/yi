@@ -254,5 +254,5 @@ isErrorTok :: Token -> Bool
 isErrorTok = isSpecial "!"
 
 
-#include "alex.hsinc"
+#include "common.hsinc"
 }

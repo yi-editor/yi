@@ -122,5 +122,5 @@ stateToInit x = 0
 initState :: HlState
 initState = 0
 
-#include "alex.hsinc"
+#include "common.hsinc"
 }

@@ -31,6 +31,6 @@ initState :: HlState
 initState = undefined
 
 type Token = StyleName
-#include "alex.hsinc"
+#include "common.hsinc"
 }
 

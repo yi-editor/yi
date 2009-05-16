@@ -49,11 +49,12 @@ import Numeric (showHex, showOct)
 import Shim.Utils (splitBy, uncurry3)
 import System.IO (readFile)
 #ifdef mingw32_HOST_OS
-import System.PosixCompat (fileExist, getWorkingDirectory)
+import System.PosixCompat.Files (fileExist)
 #else
-import System.Posix (fileExist, getWorkingDirectory)
+import System.Posix (fileExist)
 #endif
 import System.FilePath (FilePath)
+import System.Directory (getCurrentDirectory)
 
 import Control.Monad.State hiding (mapM_, mapM, sequence)
 import Control.Arrow hiding (left, right)
@@ -1498,7 +1499,7 @@ defKeymap = Proto template
            fn "red"        = withBuffer' redoB
            fn "redo"       = withBuffer' redoB
 
-           fn "pwd"        = (io $ getWorkingDirectory) >>= withEditor . printMsg
+           fn "pwd"        = (io $ getCurrentDirectory) >>= withEditor . printMsg
 
            fn "sus"        = suspendEditor
            fn "suspend"    = suspendEditor

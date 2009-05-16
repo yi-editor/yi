@@ -141,5 +141,5 @@ stateToInit x | x < 0     = nestcomm
 initState :: HlState
 initState = 0
 
-#include "alex.hsinc"
+#include "common.hsinc"
 }

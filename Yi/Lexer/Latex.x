@@ -50,5 +50,5 @@ initState :: HlState
 initState = 0
 
 
-#include "alex.hsinc"
+#include "common.hsinc"
 }

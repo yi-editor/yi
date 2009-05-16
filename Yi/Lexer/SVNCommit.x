@@ -50,6 +50,6 @@ initState :: HlState
 initState = HlCommitMessage
 
 type Token = StyleName
-#include "alex.hsinc"
+#include "common.hsinc"
 }
 

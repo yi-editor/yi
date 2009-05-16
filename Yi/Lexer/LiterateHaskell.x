@@ -212,5 +212,5 @@ stateToInit LaTeXBlock       = 0
 
 initState = LaTeXBlock
 
-#include "alex.hsinc"
+#include "common.hsinc"
 }
