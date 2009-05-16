@@ -136,7 +136,6 @@ library
         Yi.Main
         Yi.MiniBuffer
         Yi.Misc
-        Yi.MkTemp
         Yi.Mode.Buffers
         Yi.Mode.Compilation
         Yi.Mode.Haskell
@@ -443,7 +442,6 @@ executable yi
            Yi.Keymap.Emacs.KillRing
            Yi.Keymap.Emacs.Utils
            Yi.Main
-           Yi.MkTemp
            Yi.Monad
            Yi.Process
            Yi.Snippets
