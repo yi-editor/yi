@@ -22,7 +22,7 @@ type TabBarDescr = PL.PointedList TabDescr
 tabBarDescr :: Editor -> TabBarDescr
 tabBarDescr editor = 
     let prefix = commonNamePrefix editor
-        hintForTab tab = tabAbbrevTitle $ shortIdentString prefix $ findBufferWith (bufkey $ PL.focus tab) editor 
+        hintForTab tab = tabAbbrevTitle $ shortIdentString prefix $ findBufferWith (bufkey $ PL.focus tab) editor
         tabDescr (tab,True) = TabDescr (hintForTab tab) True
         tabDescr (tab,False) = TabDescr (hintForTab tab) False
     in fmap tabDescr (PL.withFocus $ editor ^. tabsA)
@@ -36,3 +36,4 @@ tabAbbrevTitle title = if isValid title
   where abbrev "/" = "/"
         abbrev path | last path == '/' = head path : "/"
                     | otherwise        = path
+

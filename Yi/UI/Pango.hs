@@ -112,7 +112,7 @@ startNoMsg cfg ch outCh _ed = do
   -- rest.
   win <- windowNew
   windowSetDefaultSize win 900 700
-  --windowFullscreen win
+  windowSetTitle win "Yi"
   ico <- loadIcon "yi+lambda-fat.32.png"
   windowSetIcon win ico
 
@@ -239,8 +239,11 @@ end = mainQuit
 syncWindows :: Editor -> UI -> [(Window, Bool)] -- ^ windows paired with their "isFocused" state.
             -> [WinInfo] -> IO [WinInfo]
 syncWindows e ui (wfocused@(w,focused):ws) (c:cs)
-    | winkey w == winkey (coreWin c) = do when focused (setFocus c)
-                                          (:) <$> syncWin e w c <*> syncWindows e ui ws cs
+    | winkey w == winkey (coreWin c) =
+        do when focused $ do let bufferName = shortIdentString (commonNamePrefix e) $ findBufferWith (bufkey w) e
+                             windowSetTitle (uiWindow ui) $ bufferName ++ " - Yi"
+                             setFocus c
+           (:) <$> syncWin e w c <*> syncWindows e ui ws cs
     | winkey w `elem` map (winkey . coreWin) cs = removeWindow ui c >> syncWindows e ui (wfocused:ws) cs
     | otherwise = do c' <- insertWindowBefore e ui w c
                      when focused (setFocus c')
