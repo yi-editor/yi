@@ -58,6 +58,7 @@ data UIStyle = UIStyle
   , typeStyle          :: Style      -- ^ type name (such as class in an OO language)
   , dataConstructorStyle
                        :: Style      -- ^ data constructor
+  , builtinStyle       :: Style      -- ^ builtin things, e.g. Array in JavaScript
   , variableStyle      :: Style      -- ^ any standard variable (identifier)
   , operatorStyle      :: Style      -- ^ infix operators
 

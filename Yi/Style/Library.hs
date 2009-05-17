@@ -35,6 +35,7 @@ defaultTheme = Proto $ const $ UIStyle
   , typeStyle          = withFg darkgreen
   , dataConstructorStyle
                        = withBd True `mappend` withFg darkgreen
+  , builtinStyle       = withFg blue
   , variableStyle      = mempty
   , operatorStyle      = withFg brown
   , makeFileRuleHead   = withFg blue
