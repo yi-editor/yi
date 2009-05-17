@@ -1,15 +1,17 @@
 -- (C) Copyright 2009 Deniz Dogan
 
-module Yi.Mode.JavaScript (javaScriptMode) where
+module Yi.Mode.JavaScript (javaScriptMode, hooks) where
 
-import Yi.Core
 import Prelude ()
-import Yi.Syntax
-import Yi.Syntax.JavaScript as JSSyn
-import qualified Yi.IncrementalParse as IncrParser
-import qualified Yi.Lexer.Alex as Alex
-import Yi.Lexer.JavaScript as JSLex
+import Yi.Core ( (.), Mode, emptyMode, modeApplies, modeName
+               , modeToggleCommentSelection, toggleCommentSelectionB, modeHL
+               , Char, modeGetStrokes, ($) )
+import Yi.IncrementalParse (scanner)
+import Yi.Lexer.Alex (AlexState, Tok, lexScanner)
+import Yi.Lexer.JavaScript (alexScanToken, TT, initState, HlState, Token)
 import Yi.Modes (anyExtension)
+import Yi.Syntax (ExtHL(..), mkHighlighter, Scanner, Point)
+import Yi.Syntax.JavaScript (Tree, parse, getStrokes)
 
 javaScriptAbstract :: Mode syntax
 javaScriptAbstract = emptyMode
@@ -19,12 +21,26 @@ javaScriptAbstract = emptyMode
     modeToggleCommentSelection = toggleCommentSelectionB "// " "//"
   }
 
-javaScriptMode :: Mode (JSSyn.Tree JSLex.TT)
+javaScriptMode :: Mode (Tree TT)
 javaScriptMode = javaScriptAbstract
   {
-    modeHL = ExtHL $ mkHighlighter (IncrParser.scanner JSSyn.parse . jsLexer),
-    modeGetStrokes = \tree point begin end -> JSSyn.getStrokes point begin end tree
+    modeHL = ExtHL $ mkHighlighter (scanner parse . jsLexer),
+    modeGetStrokes = \tree point begin end -> getStrokes point begin end tree
   }
 
-jsLexer :: Scanner Point Char -> Scanner (Alex.AlexState JSLex.HlState) (Alex.Tok Token)
-jsLexer = Alex.lexScanner JSLex.alexScanToken JSLex.initState
+jsLexer :: Scanner Point Char -> Scanner (AlexState HlState) (Tok Token)
+jsLexer = lexScanner alexScanToken initState
+
+--------------------------------------------------------------------------------
+
+-- tta :: Yi.Lexer.Alex.Tok Token -> Maybe (Yi.Syntax.Span String)
+-- tta = sequenceA . tokToSpan . (fmap Main.tokenToText)
+
+hooks :: t -> t
+hooks mode = mode -- { modeGetAnnotations = tokenBasedAnnots tta,
+                  --   modeName = "my " ++ modeName mode,
+                  --   modeKeymap = (choice [ctrlCh 'c' ?>> ctrlCh 'l' ?>>! jsCompile]
+                  --                 <||)
+                  -- }
+
+-- jsCompile = undefined

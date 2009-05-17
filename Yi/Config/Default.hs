@@ -29,7 +29,7 @@ import qualified Yi.Keymap.Cua  as Cua
 import qualified Yi.Keymap.Emacs  as Emacs
 import qualified Yi.Keymap.Vim  as Vim
 import qualified Yi.Mode.Haskell as Haskell
-import qualified Yi.Mode.JavaScript as JavaScript
+import qualified Yi.Mode.JavaScript as JS
 import qualified Yi.Mode.Latex as Latex
 import qualified Yi.Interact as I
 import qualified Data.Rope as R
@@ -152,7 +152,7 @@ defaultConfig =
                         AnyMode ocamlMode,
                         AnyMode ottMode,
                         AnyMode perlMode,
-                        AnyMode JavaScript.javaScriptMode,
+                        AnyMode (JS.hooks JS.javaScriptMode),
                         AnyMode pythonMode,
                         AnyMode ireaderMode,
                         AnyMode svnCommitMode,

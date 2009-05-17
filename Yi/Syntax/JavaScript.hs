@@ -4,16 +4,16 @@
 module Yi.Syntax.JavaScript where
 
 import Data.Monoid (Endo(..), mempty)
-import Prelude (unlines, map, maybe)
+import Prelude (maybe)
 import Yi.Buffer.Basic (Point(..))
 import Yi.IncrementalParse (P, eof, symbol, recoverWith)
-import Yi.Lexer.Alex
+import Yi.Lexer.Alex (Stroke, Tok(..), tokToSpan, tokFromT)
 import Yi.Lexer.JavaScript ( TT, Token(..), Reserved(..), Operator(..)
                            , tokenToStyle, prefixOperators, infixOperators
                            , postfixOperators )
-import Yi.Prelude hiding (error, Const)
+import Yi.Prelude hiding (error, Const, many)
 import Yi.Style (errorStyle, StyleName)
-import Yi.Syntax.Tree (sepBy, sepBy1)
+import Yi.Syntax.BList (BList, sepBy, sepBy1, many)
 
 
 -- * Data types, classes and instances
@@ -28,12 +28,12 @@ class Failable f where
     stupid :: t -> f t
     hasFailed :: f t -> Bool
 
-type Tree t = [Statement t]
+type Tree t = BList (Statement t)
 
 type Semicolon t = Maybe t
 
-data Statement t = FunDecl t t t [t] t (Block t)
-                 | VarDecl t [VarDecAss t] (Semicolon t)
+data Statement t = FunDecl t t t (BList t) t (Block t)
+                 | VarDecl t (BList (VarDecAss t)) (Semicolon t)
                  | Return t (Maybe (Expr t)) (Semicolon t)
                  | While t t (Expr t) t (Block t)
                  | DoWhile t (Block t) t t (Expr t) t (Semicolon t)
@@ -43,17 +43,17 @@ data Statement t = FunDecl t t t [t] t (Block t)
                  | With t t (Expr t) t (Block t)
                  | Comm t
                  | Expr (Expr t) (Semicolon t)
-                   deriving (Eq, Show)
+                   deriving Show
 
 data ForContent t = ForNormal t (Expr t) t (Expr t)
                   | ForIn t (Expr t)
                   | ForErr t
-                    deriving (Eq, Show)
+                    deriving Show
 
-data Block t = Block t [Statement t] t
+data Block t = Block t (BList (Statement t)) t
              | BlockOne (Statement t)
              | BlockErr t
-               deriving (Eq, Show)
+               deriving Show
 
 -- | Represents either a variable name or a variable name assigned to an
 --   expression.  @Ass1@ is a variable name /maybe/ followed by an assignment.
@@ -62,30 +62,30 @@ data Block t = Block t [Statement t] t
 data VarDecAss t = Ass1 t (Maybe (VarDecAss t))
                  | Ass2 t (Expr t)
                  | AssignErr t
-                   deriving (Eq, Show)
+                   deriving Show
 
-data Expr t = ExprObj t [KeyValue t] t
+data Expr t = ExprObj t (BList (KeyValue t)) t
             | ExprPrefix t (Expr t)
             | ExprNew t (Expr t)
             | ExprSimple t (Maybe (Expr t))
             | ExprParen t (Expr t) t (Maybe (Expr t))
-            | ExprAnonFun t t [t] t (Block t)
-            | ExprFunCall t t [Expr t] t (Maybe (Expr t))
+            | ExprAnonFun t t (BList t) t (Block t)
+            | ExprFunCall t t (BList (Expr t)) t (Maybe (Expr t))
             | OpExpr t (Expr t)
             | ExprCond t (Expr t) t (Expr t)
             | ExprArr t (Maybe (Array t)) t (Maybe (Expr t))
             | PostExpr t
             | ExprErr t
-              deriving (Eq, Show)
+              deriving Show
 
 data Array t = ArrCont (Expr t) (Maybe (Array t))
              | ArrRest t (Array t) (Maybe (Array t))
              | ArrErr t
-               deriving (Eq, Show)
+               deriving Show
 
 data KeyValue t = KeyValue t t (Expr t)
                 | KeyValueErr t
-                  deriving (Eq, Show)
+                  deriving Show
 
 instance Failable ForContent where
     stupid = ForErr
@@ -116,20 +116,6 @@ instance Failable KeyValue where
     hasFailed t = case t of
                     KeyValueErr _ -> True
                     _             -> False
-
-instance Strokable (Tok Token) where
-    toStrokes t = if isError t
-                      then one (modStroke errorStyle . tokenToStroke) t
-                      else one tokenToStroke t
-
-instance Strokable (Array TT) where
-    toStrokes (ArrCont x m) =
-        toStrokes x <> maybe mempty toStrokes m
-    toStrokes (ArrRest c a m) =
-        normal c <> toStrokes a <> maybe mempty toStrokes m
-    toStrokes (ArrErr t) =
-        error t
-
 
 -- | TODO: This code is *screaming* for some generic programming.
 --
@@ -229,6 +215,19 @@ instance Strokable (KeyValue TT) where
         s n <> s c <> toStrokes exp
     toStrokes (KeyValueErr t) = error t
 
+instance Strokable (Tok Token) where
+    toStrokes t = if isError t
+                      then one (modStroke errorStyle . tokenToStroke) t
+                      else one tokenToStroke t
+
+instance Strokable (Array TT) where
+    toStrokes (ArrCont x m) =
+        toStrokes x <> maybe mempty toStrokes m
+    toStrokes (ArrRest c a m) =
+        normal c <> toStrokes a <> maybe mempty toStrokes m
+    toStrokes (ArrErr t) =
+        error t
+
 
 -- * Helper functions.
 
@@ -270,7 +269,7 @@ tokenToStroke = fmap tokenToStyle . tokToSpan
 
 -- | The main stroking function.
 getStrokes :: Point -> Point -> Point -> Tree TT -> [Stroke]
-getStrokes _point _begin _end t0 = trace ("\n" ++ (unlines (map show t0))) result
+getStrokes _point _begin _end t0 = trace ("\n" ++ show t0) result
     where
       result = appEndo (foldMap toStrokes t0) []
 
@@ -283,10 +282,9 @@ parse = many statement <* eof
 
 -- | Parser for statements such as "return", "while", "do-while", "for", etc.
 statement :: P TT (Statement TT)
-statement = FunDecl <$> res Function' <*> plzTok name
-                    <*> plzSpc '(' <*> parameters <*> plzSpc ')' <*> block
-        <|> VarDecl <$> res Var' <*> sepBy1 (plz varDecAss) (spc ',')
-                    <*> semicolon
+statement = FunDecl <$> res Function' <*> plzTok name <*> plzSpc '('
+                    <*> parameters <*> plzSpc ')' <*> block
+        <|> VarDecl <$> res Var' <*> plz varDecAss `sepBy1` spc ',' <*> semicolon
         <|> Return  <$> res Return' <*> optional expression <*> semicolon
         <|> While   <$> res While' <*> plzSpc '(' <*> plzExpr <*> plzSpc ')'
                     <*> block
@@ -352,9 +350,8 @@ opExpr = OpExpr   <$> inOp <*> plzExpr
 
 -- | Parser for expressions.
 expression :: P TT (Expr TT)
-expression = ExprObj     <$> spc '{' <*> commas keyValue <*> plzSpc '}'
-         <|> ExprAnonFun <$> res Function' <*> plzSpc '(' <*> parameters
-                         <*> plzSpc ')' <*> block
+expression = ExprObj     <$> spc '{' <*> keyValue `sepBy` spc ',' <*> plzSpc '}'
+         <|> ExprAnonFun <$> res Function' <*> plzSpc '(' <*> parameters <*> plzSpc ')' <*> block
          <|> stmtExpr
          <|> array
     where
@@ -384,13 +381,9 @@ array = ExprArr <$> spc '[' <*> optional arrayContents <*> plzSpc ']'
 semicolon :: P TT (Maybe TT)
 semicolon = optional $ spc ';'
 
--- | Parser for comma-separated identifiers.
-parameters :: P TT [TT]
-parameters = commas (plzTok name)
-
--- | Intersperses parses with comma parsers.
-commas :: P TT a -> P TT [a]
-commas x = x `sepBy` spc ','
+-- | Parses a comma-separated list of valid identifiers.
+parameters :: P TT (BList TT)
+parameters = plzTok name `sepBy` spc ','
 
 
 -- * Simple parsers

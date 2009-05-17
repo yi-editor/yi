@@ -55,9 +55,10 @@ $large     = [A-Z \xc0-\xd6 \xd8-\xde]
 $small     = [a-z \xdf-\xf6 \xf8-\xff]
 $special   = [\(\)\,\;\[\]\{\}\:\?]
 
-$ascdigit  = 0-9
-$unidigit  = [] -- TODO
-$digit     = [$ascdigit $unidigit]
+$digit     = 0-9
+$hexit     = [0-9 A-F a-f]
+@decimal   = $digit+
+@hexal     = "0x" $hexit+
 
 $ascsymbol = [\!\#\$\%\&\*\+\.\/\<\=\>\@\\\^\|\-\~\_]
 $unisymbol = [] -- TODO
@@ -65,7 +66,11 @@ $symbol    = [$ascsymbol $unisymbol] # [$special \:\"\']
 $graphic   = [$small $large $symbol $digit $special \:\"\']
 $name      = [a-zA-Z0-9\_\$] -- Valid characters for a "name"
 
-@number  = $digit+ -- TODO: Hexadecimal/octals/exponent notation
+-- Octals are sort of "implicit" in JavaScript. "0307" is a valid octal, but
+-- "0309" is the exact same thing as "309."  Since we don't make any distinction
+-- between different types of numbers, we completely disregard octals here, they
+-- Just Work (tm).
+@number  = @decimal | @hexal
 @gap     = \\ $whitechar
 @string1 = $graphic # [\"\\] | " " | @gap
 @string2 = $graphic # [\'\\] | " " | @gap
@@ -179,14 +184,23 @@ initState :: HlState
 initState = 0
 
 -- | Takes a 'Token' and returns a style to be used for that type of token.
+--
+--   TODO: The `elem` check is potentially unnecessarily slow.  We could split
+--   the Const constructor into two different ones, one for builtins and one for
+--   others.
 tokenToStyle (Comment Line) = commentStyle
 tokenToStyle (Comment _)    = blockCommentStyle
-tokenToStyle (Const _)      = typeStyle
+tokenToStyle (Const x)      | x `elem` builtinConstructors = builtinStyle
+                            | otherwise = typeStyle
 tokenToStyle (Number _)     = numberStyle
 tokenToStyle (Res _)        = keywordStyle
 tokenToStyle (Str _)        = stringStyle
 tokenToStyle Unknown        = errorStyle
 tokenToStyle _              = defaultStyle
+
+builtinConstructors :: [String]
+builtinConstructors = [ "Array", "String", "RegExp", "Function", "Date"
+                      , "Boolean", "Object" ]
 
 -- | Given a @String@ representing an operator, returns an 'Operator' with the
 --   appropriate constructor.
