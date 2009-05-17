@@ -9,18 +9,18 @@ import Yi.Buffer.Basic (Point(..))
 import Yi.IncrementalParse (P, eof, symbol, recoverWith)
 import Yi.Lexer.Alex
 import Yi.Lexer.JavaScript ( TT, Token(..), Reserved(..), Operator(..)
-                           , tokenToStyle, prefixOperators, infixOperators, postfixOperators )
+                           , tokenToStyle, prefixOperators, infixOperators
+                           , postfixOperators )
 import Yi.Prelude hiding (error, Const)
 import Yi.Style (errorStyle, StyleName)
 import Yi.Syntax.Tree (sepBy, sepBy1)
-import Data.Ix (inRange)
 
 
 -- * Data types, classes and instances
 
 -- | Instances of @Strokable@ are datatypes which can be syntax highlighted.
 class Strokable a where
-    toStrokes :: (Point, Point) -> a -> Endo [Stroke]
+    toStrokes :: a -> Endo [Stroke]
 
 -- | Instances of @Failable@ can represent failure.  This is a useful class for
 --   future work, since then we can make stroking much easier.
@@ -37,23 +37,23 @@ data Statement t = FunDecl t t t [t] t (Block t)
                  | Return t (Maybe (Expr t)) (Semicolon t)
                  | While t t (Expr t) t (Block t)
                  | DoWhile t (Block t) t t (Expr t) t (Semicolon t)
-                 | For t t (Expr t) t (Expr t) t (Expr t) t (Block t)
+                 | For t t (Expr t) (ForContent t) t (Block t)
                  | If t t (Expr t) t (Block t) (Maybe (Statement t))
                  | Else t (Block t)
                  | With t t (Expr t) t (Block t)
+                 | Comm t
                  | Expr (Expr t) (Semicolon t)
                    deriving (Eq, Show)
+
+data ForContent t = ForNormal t (Expr t) t (Expr t)
+                  | ForIn t (Expr t)
+                  | ForErr t
+                    deriving (Eq, Show)
 
 data Block t = Block t [Statement t] t
              | BlockOne (Statement t)
              | BlockErr t
                deriving (Eq, Show)
-
-instance Failable Block where
-    stupid = BlockErr
-    hasFailed t = case t of
-                    BlockErr _ -> True
-                    _          -> False
 
 -- | Represents either a variable name or a variable name assigned to an
 --   expression.  @Ass1@ is a variable name /maybe/ followed by an assignment.
@@ -63,12 +63,6 @@ data VarDecAss t = Ass1 t (Maybe (VarDecAss t))
                  | Ass2 t (Expr t)
                  | AssignErr t
                    deriving (Eq, Show)
-
-instance Failable VarDecAss where
-    stupid = AssignErr
-    hasFailed t = case t of
-                    AssignErr _ -> True
-                    _           -> False
 
 data Expr t = ExprObj t [KeyValue t] t
             | ExprPrefix t (Expr t)
@@ -89,23 +83,33 @@ data Array t = ArrCont (Expr t) (Maybe (Array t))
              | ArrErr t
                deriving (Eq, Show)
 
-instance Strokable (Array TT) where
-    toStrokes o (ArrCont x m) =
-        toStrokes o x <> maybe mempty (toStrokes o) m
-    toStrokes o (ArrRest c a m) =
-        normal c <> toStrokes o a <> maybe mempty (toStrokes o) m
-    toStrokes _ (ArrErr t) =
-        error t
+data KeyValue t = KeyValue t t (Expr t)
+                | KeyValueErr t
+                  deriving (Eq, Show)
+
+instance Failable ForContent where
+    stupid = ForErr
+    hasFailed t = case t of
+                    ForErr _ -> True
+                    _        -> False
+
+instance Failable Block where
+    stupid = BlockErr
+    hasFailed t = case t of
+                    BlockErr _ -> True
+                    _          -> False
+
+instance Failable VarDecAss where
+    stupid = AssignErr
+    hasFailed t = case t of
+                    AssignErr _ -> True
+                    _           -> False
 
 instance Failable Expr where
     stupid = ExprErr
     hasFailed t = case t of
                     ExprErr _ -> True
                     _         -> False
-
-data KeyValue t = KeyValue t t (Expr t)
-                | KeyValueErr t
-                  deriving (Eq, Show)
 
 instance Failable KeyValue where
     stupid = KeyValueErr
@@ -114,9 +118,17 @@ instance Failable KeyValue where
                     _             -> False
 
 instance Strokable (Tok Token) where
-    toStrokes _ t = if isError t
+    toStrokes t = if isError t
                       then one (modStroke errorStyle . tokenToStroke) t
                       else one tokenToStroke t
+
+instance Strokable (Array TT) where
+    toStrokes (ArrCont x m) =
+        toStrokes x <> maybe mempty toStrokes m
+    toStrokes (ArrRest c a m) =
+        normal c <> toStrokes a <> maybe mempty toStrokes m
+    toStrokes (ArrErr t) =
+        error t
 
 
 -- | TODO: This code is *screaming* for some generic programming.
@@ -125,79 +137,97 @@ instance Strokable (Tok Token) where
 --   make these instances much nicer and we won't have to make ad-hoc stuff like
 --   this.
 instance Strokable (Statement TT) where
-    toStrokes o (FunDecl f n l ps r blk) =
-        let pos = posnOfs (tokPosn f) in
-        if not (inRange o pos)
-          then trace "%%%%" mempty
-          else let s = trace "!!!!" (if hasFailed blk then error else failStroker [n, l, r]) in
-               s f <> s n <> s l <> foldMap (toStrokes o) ps <> s r <> toStrokes o blk
-    toStrokes o (VarDecl v vs sc) =
+    toStrokes (FunDecl f n l ps r blk) =
+        let s = if hasFailed blk then error else failStroker [n, l, r] in
+        s f <> s n <> s l <> foldMap toStrokes ps <> s r <> toStrokes blk
+    toStrokes (VarDecl v vs sc) =
         let s = if any hasFailed vs then error else normal in
-        s v <> foldMap (toStrokes o) vs <> maybe mempty s sc
-    toStrokes o (Return t exp sc) = normal t <> maybe mempty (toStrokes o) exp <> maybe mempty normal sc
-    toStrokes o (While w l exp r blk) =
+        s v <> foldMap toStrokes vs <> maybe mempty s sc
+    toStrokes (Return t exp sc) = normal t <> maybe mempty toStrokes exp
+                                           <> maybe mempty normal sc
+    toStrokes (While w l exp r blk) =
         let s = if hasFailed blk then error else failStroker [w, l, r] in
-        s w <> s l <> toStrokes o exp <> s r <> toStrokes o blk
-    toStrokes o (DoWhile d blk w l exp r sc) =
+        s w <> s l <> toStrokes exp <> s r <> toStrokes blk
+    toStrokes (DoWhile d blk w l exp r sc) =
         let s = if hasFailed blk then error else failStroker [d, w, l, r] in
-        s d <> toStrokes o blk <> s w <> s l <> toStrokes o exp <> s r <> maybe mempty normal sc
-    toStrokes o (For f l x1 s1 x2 s2 x3 r blk) =
-        let s = if hasFailed blk then error else failStroker [f, l, s1, s2, r] in
-        s f <> s l <> toStrokes o x1 <> s s1 <> toStrokes o x2 <> s s2 <> toStrokes o x3 <> s r <> toStrokes o blk
-    toStrokes o (If i l x r blk e) =
+        s d <> toStrokes blk <> s w <> s l <> toStrokes exp <> s r
+            <> maybe mempty normal sc
+    toStrokes (For f l x c r blk) =
+        let s = if hasFailed blk
+                  then error
+                  else if hasFailed c
+                         then error
+                         else if hasFailed x
+                                then error
+                                else failStroker [f, l, r] in
+        s f <> s l <> toStrokes x <> toStrokes c <> s r <> toStrokes blk
+    toStrokes (If i l x r blk e) =
         let s = failStroker [i, l, r] in
-        s i <> s l <> toStrokes o x <> s r <> toStrokes o blk <> maybe mempty (toStrokes o) e
-    toStrokes o (Else e blk) =
+        s i <> s l <> toStrokes x <> s r <> toStrokes blk
+            <> maybe mempty toStrokes e
+    toStrokes (Else e blk) =
         let s = if hasFailed blk then error else normal in
-        s e <> toStrokes o blk
-    toStrokes o (With w l x r blk) =
+        s e <> toStrokes blk
+    toStrokes (With w l x r blk) =
         let s = if hasFailed blk then error else failStroker [w, l, r] in
-        s w <> s l <> toStrokes o x <> s r <> toStrokes o blk
-    toStrokes o (Expr exp sc) = toStrokes o exp <> maybe mempty normal sc
+        s w <> s l <> toStrokes x <> s r <> toStrokes blk
+    toStrokes (Expr exp sc) = toStrokes exp <> maybe mempty normal sc
+    toStrokes (Comm t) = normal t
+
+instance Strokable (ForContent TT) where
+    toStrokes (ForNormal s1 x2 s2 x3) =
+        let s = if any hasFailed [x2, x3]
+                  then error
+                  else failStroker [s1, s2] in
+        s s1 <> toStrokes x2 <> s s2 <> toStrokes x3
+    toStrokes (ForIn i x) =
+        let s = if hasFailed x then error else normal in
+        s i <> toStrokes x
+    toStrokes (ForErr t) = error t
 
 instance Strokable (Block TT) where
-    toStrokes o (BlockOne stmt) = toStrokes o stmt
-    toStrokes o (Block l stmts r) =
+    toStrokes (BlockOne stmt) = toStrokes stmt
+    toStrokes (Block l stmts r) =
         let s = failStroker [l, r] in
-        s l <> foldMap (toStrokes o) stmts <> s r
-    toStrokes _ (BlockErr t) = error t
+        s l <> foldMap toStrokes stmts <> s r
+    toStrokes (BlockErr t) = error t
 
 instance Strokable (VarDecAss TT) where
-    toStrokes o (Ass1 t x) = normal t <> maybe mempty (toStrokes o) x
-    toStrokes o (Ass2 t exp) = normal t <> toStrokes o exp
-    toStrokes _ (AssignErr t) = error t
+    toStrokes (Ass1 t x) = normal t <> maybe mempty toStrokes x
+    toStrokes (Ass2 t exp) = normal t <> toStrokes exp
+    toStrokes (AssignErr t) = error t
 
 instance Strokable (Expr TT) where
-    toStrokes o (ExprSimple x exp) = normal x <> maybe mempty (toStrokes o) exp
-    toStrokes o (ExprObj l kvs r) =
+    toStrokes (ExprSimple x exp) = normal x <> maybe mempty toStrokes exp
+    toStrokes (ExprObj l kvs r) =
         let s = failStroker [l, r] in
-        s l <> foldMap (toStrokes o) kvs <> s r
-    toStrokes o (ExprPrefix t exp) = normal t <> toStrokes o exp
-    toStrokes o (ExprNew t x) = normal t <> toStrokes o x
-    toStrokes o (ExprParen l exp r op) =
+        s l <> foldMap toStrokes kvs <> s r
+    toStrokes (ExprPrefix t exp) = normal t <> toStrokes exp
+    toStrokes (ExprNew t x) = normal t <> toStrokes x
+    toStrokes (ExprParen l exp r op) =
         let s = failStroker [l, r] in
-        s l <> toStrokes o exp <> s r <> maybe mempty (toStrokes o) op
-    toStrokes o (ExprAnonFun f l ps r blk) =
+        s l <> toStrokes exp <> s r <> maybe mempty toStrokes op
+    toStrokes (ExprAnonFun f l ps r blk) =
         let s = failStroker [f, l, r] in
-        s f <> s l <> foldMap (toStrokes o) ps <> s r <> toStrokes o blk
-    toStrokes o (ExprFunCall n l exps r m) =
+        s f <> s l <> foldMap toStrokes ps <> s r <> toStrokes blk
+    toStrokes (ExprFunCall n l exps r m) =
         let s = failStroker [n, l, r] in
-        s n <> s l <> foldMap (toStrokes o) exps <> s r <> maybe mempty (toStrokes o) m
-    toStrokes o (OpExpr op exp) = normal op <> toStrokes o exp
-    toStrokes _ (PostExpr t) = normal t
-    toStrokes o (ExprCond a x b y) =
+        s n <> s l <> foldMap toStrokes exps <> s r <> maybe mempty toStrokes m
+    toStrokes (OpExpr op exp) = normal op <> toStrokes exp
+    toStrokes (PostExpr t) = normal t
+    toStrokes (ExprCond a x b y) =
         let s = failStroker [a, b] in
-        s a <> toStrokes o x <> s b <> toStrokes o y
-    toStrokes o (ExprArr l x r m) =
+        s a <> toStrokes x <> s b <> toStrokes y
+    toStrokes (ExprArr l x r m) =
         let s = failStroker [l, r] in
-        s l <> maybe mempty (toStrokes o) x <> s r <> maybe mempty (toStrokes o) m
-    toStrokes _ (ExprErr t) = error t
+        s l <> maybe mempty toStrokes x <> s r <> maybe mempty toStrokes m
+    toStrokes (ExprErr t) = error t
 
 instance Strokable (KeyValue TT) where
-    toStrokes o (KeyValue n c exp) =
+    toStrokes (KeyValue n c exp) =
         let s = failStroker [n, c] in
-        s n <> s c <> toStrokes o exp
-    toStrokes _ (KeyValueErr t) = error t
+        s n <> s c <> toStrokes exp
+    toStrokes (KeyValueErr t) = error t
 
 
 -- * Helper functions.
@@ -240,9 +270,9 @@ tokenToStroke = fmap tokenToStyle . tokToSpan
 
 -- | The main stroking function.
 getStrokes :: Point -> Point -> Point -> Tree TT -> [Stroke]
-getStrokes _point b e t0 = trace ("\n" ++ (unlines (map show t0))) result
+getStrokes _point _begin _end t0 = trace ("\n" ++ (unlines (map show t0))) result
     where
-      result = appEndo (foldMap (toStrokes (b, e)) t0) []
+      result = appEndo (foldMap toStrokes t0) []
 
 
 -- * The parser
@@ -253,21 +283,29 @@ parse = many statement <* eof
 
 -- | Parser for statements such as "return", "while", "do-while", "for", etc.
 statement :: P TT (Statement TT)
-statement = FunDecl <$> resWord Function' <*> plzTok name
+statement = FunDecl <$> res Function' <*> plzTok name
                     <*> plzSpc '(' <*> parameters <*> plzSpc ')' <*> block
-        <|> VarDecl <$> resWord Var' <*> sepBy1 (plz varDecAss) (spc ',') <*> semicolon
-        <|> Return  <$> resWord Return' <*> optional expression <*> semicolon
-        <|> While   <$> resWord While' <*> plzSpc '(' <*> plzExpr <*> plzSpc ')' <*> block
-        <|> DoWhile <$> resWord Do' <*> block <*> plzTok (resWord While')
-                    <*> plzSpc '(' <*> plzExpr <*> plzSpc ')' <*> semicolon
-        <|> For     <$> resWord For' <*> plzSpc '(' <*> plzExpr <*> plzSpc ';'
-                    <*> plzExpr <*> plzSpc ';' <*> plzExpr <*> plzSpc ')' <*> block
-        <|> If      <$> resWord If' <*> plzSpc '(' <*> plzExpr <*> plzSpc ')'
-                    <*> block <*> optional (Else <$> resWord Else' <*> block)
-        <|> With    <$> resWord With' <*> plzSpc '(' <*> plzExpr <*> plzSpc ')'
+        <|> VarDecl <$> res Var' <*> sepBy1 (plz varDecAss) (spc ',')
+                    <*> semicolon
+        <|> Return  <$> res Return' <*> optional expression <*> semicolon
+        <|> While   <$> res While' <*> plzSpc '(' <*> plzExpr <*> plzSpc ')'
                     <*> block
+        <|> DoWhile <$> res Do' <*> block <*> plzTok (res While')
+                    <*> plzSpc '(' <*> plzExpr <*> plzSpc ')' <*> semicolon
+        <|> For     <$> res For' <*> plzSpc '(' <*> plzExpr <*> forContent
+                    <*> plzSpc ')' <*> block
+        <|> If      <$> res If' <*> plzSpc '(' <*> plzExpr <*> plzSpc ')'
+                    <*> block <*> optional (Else <$> res Else' <*> block)
+        <|> With    <$> res With' <*> plzSpc '(' <*> plzExpr <*> plzSpc ')'
+                    <*> block
+        <|> Comm    <$> comment
         <|> Expr    <$> stmtExpr <*> semicolon
     where
+      forContent :: P TT (ForContent TT)
+      forContent = ForNormal <$> spc ';' <*> plzExpr <*> plzSpc ';' <*> plzExpr
+               <|> ForIn     <$> res In' <*> plzExpr
+               <|> ForErr    <$> hate 1 (symbol (const True))
+               <|> ForErr    <$> hate 2 (pure errorToken)
       varDecAss :: P TT (VarDecAss TT)
       varDecAss = Ass1 <$> name <*> optional (Ass2 <$> oper Assign' <*> plzExpr)
 
@@ -290,14 +328,18 @@ block = Block    <$> spc '{' <*> many statement <*> plzSpc '}'
 --   objects to be valid statements.
 stmtExpr :: P TT (Expr TT)
 stmtExpr = ExprSimple <$> simpleTok <*> optional (opExpr)
-       <|> ExprParen  <$> spc '(' <*> plzExpr <*> plzSpc ')' <*> optional (opExpr)
-       <|> funCall
        <|> ExprPrefix <$> preOp <*> plzExpr
-       <|> ExprNew    <$> resWord New' <*> plz funCall
-       <|> ExprErr    <$> hate 1 (symbol (const True))
+       <|> ExprNew    <$> res New' <*> plz funCall
+       <|> funCall
+       -- We hate the parenthesized expression just a tad because otherwise
+       -- confirm('hello') will be seen as "confirm; ('hello');"
+       <|> hate 1 (ExprParen  <$> spc '(' <*> plzExpr <*> plzSpc ')'
+                              <*> optional (opExpr))
+       <|> ExprErr <$> hate 2 (symbol (const True))
     where
       funCall :: P TT (Expr TT)
-      funCall = ExprFunCall <$> name <*> plzSpc '(' <*> arguments <*> plzSpc ')' <*> optional (opExpr)
+      funCall = ExprFunCall <$> name <*> plzSpc '(' <*> plzExpr `sepBy` spc ','
+                            <*> plzSpc ')' <*> optional (opExpr)
 
 -- | The basic idea here is to parse "the rest" of expressions, e.g. @+ 3@ in @x
 --   + 3@ or @[i]@ in @x[i]@.  Anything which is useful in such a scenario goes
@@ -305,13 +347,14 @@ stmtExpr = ExprSimple <$> simpleTok <*> optional (opExpr)
 opExpr :: P TT (Expr TT)
 opExpr = OpExpr   <$> inOp <*> plzExpr
      <|> ExprCond <$> spc '?' <*> plzExpr <*> plzSpc ':' <*> plzExpr
-     <|> array
      <|> PostExpr <$> postOp
+     <|> array
 
 -- | Parser for expressions.
 expression :: P TT (Expr TT)
 expression = ExprObj     <$> spc '{' <*> commas keyValue <*> plzSpc '}'
-         <|> ExprAnonFun <$> resWord Function' <*> plzSpc '(' <*> parameters <*> plzSpc ')' <*> block
+         <|> ExprAnonFun <$> res Function' <*> plzSpc '(' <*> parameters
+                         <*> plzSpc ')' <*> block
          <|> stmtExpr
          <|> array
     where
@@ -323,18 +366,21 @@ expression = ExprObj     <$> spc '{' <*> commas keyValue <*> plzSpc '}'
 -- | Parses both empty and non-empty arrays.  Should probably be split up into
 --   further parts to allow for the separation of @[]@ and @[1, 2, 3]@.
 array :: P TT (Expr TT)
-array = ExprArr <$> spc '[' <*> optional arrayContents <*> plzSpc ']' <*> optional (opExpr)
+array = ExprArr <$> spc '[' <*> optional arrayContents <*> plzSpc ']'
+                <*> optional (opExpr)
     where
       arrayContents :: P TT (Array TT)
       arrayContents = ArrCont <$> expression <*> optional arrRest
       arrRest :: P TT (Array TT)
       arrRest = ArrRest <$> spc ',' <*> (arrayContents
                                      <|> ArrErr <$> hate 1 (symbol (const True))
-                                     <|> ArrErr <$> hate 2 (pure $ errorToken)) <*> optional arrRest
+                                     <|> ArrErr <$> hate 2 (pure $ errorToken))
+                                    <*> optional arrRest
 
 
 -- * Parsing helpers
 
+-- | Parses a semicolon if it's there.
 semicolon :: P TT (Maybe TT)
 semicolon = optional $ spc ';'
 
@@ -342,16 +388,18 @@ semicolon = optional $ spc ';'
 parameters :: P TT [TT]
 parameters = commas (plzTok name)
 
--- | Parser for comma-separated expressions.
-arguments :: P TT [Expr TT]
-arguments = commas plzExpr
-
 -- | Intersperses parses with comma parsers.
 commas :: P TT a -> P TT [a]
 commas x = x `sepBy` spc ','
 
 
 -- * Simple parsers
+
+-- | Parses a comment.
+comment :: P TT TT
+comment = symbol (\t -> case fromTT t of
+                          Comment _ -> True
+                          _         -> False)
 
 -- | Parses a prefix operator.
 preOp :: P TT TT
@@ -380,11 +428,12 @@ opTok = symbol (\t -> case fromTT t of
 -- | Parses any literal.
 simpleTok :: P TT TT
 simpleTok = symbol (\t -> case fromTT t of
-                            Str _       -> True
-                            Number _    -> True
-                            ValidName _ -> True
-                            Res y       -> y `elem` [True', False', Undefined', Null', This']
-                            _           -> False)
+            Str _       -> True
+            Number _    -> True
+            ValidName _ -> True
+            Const _     -> True
+            Res y       -> y `elem` [True', False', Undefined', Null', This']
+            _           -> False)
 
 -- | Parses any string.
 strTok :: P TT TT
@@ -412,10 +461,10 @@ boolean = symbol (\t -> case fromTT t of
                           _     -> False)
 
 -- | Parses a reserved word.
-resWord :: Reserved -> P TT TT
-resWord x = symbol (\t -> case fromTT t of
-                            Res y -> x == y
-                            _     -> False)
+res :: Reserved -> P TT TT
+res x = symbol (\t -> case fromTT t of
+                        Res y -> x == y
+                        _     -> False)
 
 -- | Parses a special token.
 spc :: Char -> P TT TT

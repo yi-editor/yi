@@ -78,31 +78,35 @@ haskell :-
 
 <0> {
 
-$whitechar+            ;
-$special               { cs $ (Special . head) } -- All of the special symbols are characters
+$whitechar+      ;
+$special         { cs $ (Special . head) } -- All of the special symbols are characters
 
-@number                { cs $ Number }
-@ops                   { cs $ (Op . opToOp) }
-@reservedid            { cs $ (Res . resToRes) }
-@varid                 { cs $ ValidName }
-@const                 { cs $ Const }
+@number          { cs $ Number }
+@ops             { cs $ (Op . opToOp) }
+@reservedid      { cs $ (Res . resToRes) }
+@varid           { cs $ ValidName }
+@const           { cs $ Const }
 
-\" @string1* \"        { cs $ Str }
-\' @string2* \'        { cs $ Str }
-"//".*                 { c  $ Comment Line }
-"/*"                   { m (subtract 1) $ Comment Start }
+\" @string1* \"  { cs $ Str }
+\' @string2* \'  { cs $ Str }
+"//".*           { c  $ Comment Line }
+"/*"             { m (subtract 1) $ Comment Start }
+"<!--"           { m (+1) $ Comment Start }
 
-.                      { c  $ Unknown }
+.                { c  $ Unknown }
 
 }
 
-<multicomm> { -- I refrain from calling this "nestcomm" since nested comments
-              -- aren't allowed in JavaScript.
+<multicomm> {
+"*/"         { m (+1) $ Comment End }
+$whitechar+  ;
+.            { c $ Comment Text }
+}
 
-"*/"    { m (+1) $ Comment End }
-.       { c $ Comment Text }
-$whitechar+ ;
-
+<htmlcomm> {
+"-->"        { m (subtract 1) $ Comment End }
+$whitechar+  ;
+.            { c $ Comment Text }
 }
 
 
@@ -167,7 +171,8 @@ data Token = Unknown
            | Const !String
              deriving (Show, Eq)
 
-stateToInit x | x < 0     = multicomm
+stateToInit x | x < 0 = multicomm
+              | x > 0 = htmlcomm
               | otherwise = 0
 
 initState :: HlState
