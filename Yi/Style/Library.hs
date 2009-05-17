@@ -26,7 +26,7 @@ defaultTheme = Proto $ const $ UIStyle
   , strongHintStyle    = withFg black `mappend` withBg magenta
 
   , commentStyle       = withFg purple
-  , blockCommentStyle  = mempty
+  , blockCommentStyle  = withFg purple
   , keywordStyle       = withFg darkblue
   , numberStyle        = withFg darkred
   , preprocessorStyle  = withFg red
