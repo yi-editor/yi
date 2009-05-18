@@ -32,18 +32,26 @@ type Tree t = BList (Statement t)
 
 type Semicolon t = Maybe t
 
-data Statement t = FunDecl t t t (BList t) t (Block t)
+data Statement t = FunDecl t t (Parameters t) (Block t)
                  | VarDecl t (BList (VarDecAss t)) (Semicolon t)
                  | Return t (Maybe (Expr t)) (Semicolon t)
-                 | While t t (Expr t) t (Block t)
-                 | DoWhile t (Block t) t t (Expr t) t (Semicolon t)
+                 | While t (ParExpr t) (Block t)
+                 | DoWhile t (Block t) t (ParExpr t) (Semicolon t)
                  | For t t (Expr t) (ForContent t) t (Block t)
-                 | If t t (Expr t) t (Block t) (Maybe (Statement t))
+                 | If t (ParExpr t) (Block t) (Maybe (Statement t))
                  | Else t (Block t)
-                 | With t t (Expr t) t (Block t)
+                 | With t (ParExpr t) (Block t)
                  | Comm t
                  | Expr (Expr t) (Semicolon t)
                    deriving Show
+
+data Parameters t = Parameters t (BList t) t
+                  | ParErr t
+                    deriving Show
+
+data ParExpr t = ParExpr t (BList (Expr t)) t
+               | ParExprErr t
+                 deriving Show
 
 data ForContent t = ForNormal t (Expr t) t (Expr t)
                   | ForIn t (Expr t)
@@ -69,8 +77,8 @@ data Expr t = ExprObj t (BList (KeyValue t)) t
             | ExprNew t (Expr t)
             | ExprSimple t (Maybe (Expr t))
             | ExprParen t (Expr t) t (Maybe (Expr t))
-            | ExprAnonFun t t (BList t) t (Block t)
-            | ExprFunCall t t (BList (Expr t)) t (Maybe (Expr t))
+            | ExprAnonFun t (Parameters t) (Block t)
+            | ExprFunCall t (ParExpr t) (Maybe (Expr t))
             | OpExpr t (Expr t)
             | ExprCond t (Expr t) t (Expr t)
             | ExprArr t (Maybe (Array t)) t (Maybe (Expr t))
@@ -105,6 +113,18 @@ instance Failable VarDecAss where
                     AssignErr _ -> True
                     _           -> False
 
+instance Failable Parameters where
+    stupid = ParErr
+    hasFailed t = case t of
+                    ParErr _ -> True
+                    _        -> False
+
+instance Failable ParExpr where
+    stupid = ParExprErr
+    hasFailed t = case t of
+                    ParExprErr _ -> True
+                    _            -> False
+
 instance Failable Expr where
     stupid = ExprErr
     hasFailed t = case t of
@@ -123,21 +143,20 @@ instance Failable KeyValue where
 --   make these instances much nicer and we won't have to make ad-hoc stuff like
 --   this.
 instance Strokable (Statement TT) where
-    toStrokes (FunDecl f n l ps r blk) =
-        let s = if hasFailed blk then error else failStroker [n, l, r] in
-        s f <> s n <> s l <> foldMap toStrokes ps <> s r <> toStrokes blk
+    toStrokes (FunDecl f n ps blk) =
+        let s = if hasFailed blk then error else failStroker [n] in
+        s f <> s n <> toStrokes ps <> toStrokes blk
     toStrokes (VarDecl v vs sc) =
         let s = if any hasFailed vs then error else normal in
         s v <> foldMap toStrokes vs <> maybe mempty s sc
-    toStrokes (Return t exp sc) = normal t <> maybe mempty toStrokes exp
-                                           <> maybe mempty normal sc
-    toStrokes (While w l exp r blk) =
-        let s = if hasFailed blk then error else failStroker [w, l, r] in
-        s w <> s l <> toStrokes exp <> s r <> toStrokes blk
-    toStrokes (DoWhile d blk w l exp r sc) =
-        let s = if hasFailed blk then error else failStroker [d, w, l, r] in
-        s d <> toStrokes blk <> s w <> s l <> toStrokes exp <> s r
-            <> maybe mempty normal sc
+    toStrokes (Return t exp sc) = normal t <> maybe mempty toStrokes exp <> maybe mempty normal sc
+    toStrokes (While w exp blk) =
+        let s = if hasFailed blk || hasFailed blk then error else normal in
+        s w <> toStrokes exp <> toStrokes blk
+    toStrokes (DoWhile d blk w exp sc) =
+        let s1 = if hasFailed blk then error else normal
+            s2 = if hasFailed exp then error else normal in
+        s1 d <> toStrokes blk <> s2 w <> toStrokes exp <> maybe mempty normal sc
     toStrokes (For f l x c r blk) =
         let s = if hasFailed blk
                   then error
@@ -147,24 +166,15 @@ instance Strokable (Statement TT) where
                                 then error
                                 else failStroker [f, l, r] in
         s f <> s l <> toStrokes x <> toStrokes c <> s r <> toStrokes blk
-    toStrokes (If i l x r blk e) =
-        let s = failStroker [i, l, r] in
-        s i <> s l <> toStrokes x <> s r <> toStrokes blk
-            <> maybe mempty toStrokes e
-    toStrokes (Else e blk) =
-        let s = if hasFailed blk then error else normal in
-        s e <> toStrokes blk
-    toStrokes (With w l x r blk) =
-        let s = if hasFailed blk then error else failStroker [w, l, r] in
-        s w <> s l <> toStrokes x <> s r <> toStrokes blk
+    toStrokes (If i x blk e) = normal i <> toStrokes x <> toStrokes blk <> maybe mempty toStrokes e
+    toStrokes (Else e blk) = normal e <> toStrokes blk
+    toStrokes (With w x blk) = normal w <> toStrokes x <> toStrokes blk
     toStrokes (Expr exp sc) = toStrokes exp <> maybe mempty normal sc
     toStrokes (Comm t) = normal t
 
 instance Strokable (ForContent TT) where
     toStrokes (ForNormal s1 x2 s2 x3) =
-        let s = if any hasFailed [x2, x3]
-                  then error
-                  else failStroker [s1, s2] in
+        let s = if any hasFailed [x2, x3] then error else failStroker [s2] in
         s s1 <> toStrokes x2 <> s s2 <> toStrokes x3
     toStrokes (ForIn i x) =
         let s = if hasFailed x then error else normal in
@@ -193,12 +203,10 @@ instance Strokable (Expr TT) where
     toStrokes (ExprParen l exp r op) =
         let s = failStroker [l, r] in
         s l <> toStrokes exp <> s r <> maybe mempty toStrokes op
-    toStrokes (ExprAnonFun f l ps r blk) =
-        let s = failStroker [f, l, r] in
-        s f <> s l <> foldMap toStrokes ps <> s r <> toStrokes blk
-    toStrokes (ExprFunCall n l exps r m) =
-        let s = failStroker [n, l, r] in
-        s n <> s l <> foldMap toStrokes exps <> s r <> maybe mempty toStrokes m
+    toStrokes (ExprAnonFun f ps blk) =
+        normal f <> toStrokes ps <> toStrokes blk
+    toStrokes (ExprFunCall n x m) =
+        normal n <> toStrokes x <> maybe mempty toStrokes m
     toStrokes (OpExpr op exp) = normal op <> toStrokes exp
     toStrokes (PostExpr t) = normal t
     toStrokes (ExprCond a x b y) =
@@ -208,6 +216,14 @@ instance Strokable (Expr TT) where
         let s = failStroker [l, r] in
         s l <> maybe mempty toStrokes x <> s r <> maybe mempty toStrokes m
     toStrokes (ExprErr t) = error t
+
+instance Strokable (Parameters TT) where
+    toStrokes (Parameters l ps r) = normal l <> foldMap toStrokes ps <> normal r
+    toStrokes (ParErr t) = error t
+
+instance Strokable (ParExpr TT) where
+    toStrokes (ParExpr l xs r) = normal l <> foldMap toStrokes xs <> normal r
+    toStrokes (ParExprErr t) = error t
 
 instance Strokable (KeyValue TT) where
     toStrokes (KeyValue n c exp) =
@@ -221,12 +237,9 @@ instance Strokable (Tok Token) where
                       else one tokenToStroke t
 
 instance Strokable (Array TT) where
-    toStrokes (ArrCont x m) =
-        toStrokes x <> maybe mempty toStrokes m
-    toStrokes (ArrRest c a m) =
-        normal c <> toStrokes a <> maybe mempty toStrokes m
-    toStrokes (ArrErr t) =
-        error t
+    toStrokes (ArrCont x m) = toStrokes x <> maybe mempty toStrokes m
+    toStrokes (ArrRest c a m) = normal c <> toStrokes a <> maybe mempty toStrokes m
+    toStrokes (ArrErr t) = error t
 
 
 -- * Helper functions.
@@ -282,20 +295,15 @@ parse = many statement <* eof
 
 -- | Parser for statements such as "return", "while", "do-while", "for", etc.
 statement :: P TT (Statement TT)
-statement = FunDecl <$> res Function' <*> plzTok name <*> plzSpc '('
-                    <*> parameters <*> plzSpc ')' <*> block
+statement = FunDecl <$> res Function' <*> plzTok name <*> parameters <*> block
         <|> VarDecl <$> res Var' <*> plz varDecAss `sepBy1` spc ',' <*> semicolon
         <|> Return  <$> res Return' <*> optional expression <*> semicolon
-        <|> While   <$> res While' <*> plzSpc '(' <*> plzExpr <*> plzSpc ')'
-                    <*> block
-        <|> DoWhile <$> res Do' <*> block <*> plzTok (res While')
-                    <*> plzSpc '(' <*> plzExpr <*> plzSpc ')' <*> semicolon
+        <|> While   <$> res While' <*> parExpr <*> block
+        <|> DoWhile <$> res Do' <*> block <*> plzTok (res While') <*> parExpr <*> semicolon
         <|> For     <$> res For' <*> plzSpc '(' <*> plzExpr <*> forContent
                     <*> plzSpc ')' <*> block
-        <|> If      <$> res If' <*> plzSpc '(' <*> plzExpr <*> plzSpc ')'
-                    <*> block <*> optional (Else <$> res Else' <*> block)
-        <|> With    <$> res With' <*> plzSpc '(' <*> plzExpr <*> plzSpc ')'
-                    <*> block
+        <|> If      <$> res If' <*> parExpr <*> block <*> optional (Else <$> res Else' <*> block)
+        <|> With    <$> res With' <*> parExpr <*> block
         <|> Comm    <$> comment
         <|> Expr    <$> stmtExpr <*> semicolon
     where
@@ -332,12 +340,11 @@ stmtExpr = ExprSimple <$> simpleTok <*> optional (opExpr)
        -- We hate the parenthesized expression just a tad because otherwise
        -- confirm('hello') will be seen as "confirm; ('hello');"
        <|> hate 1 (ExprParen  <$> spc '(' <*> plzExpr <*> plzSpc ')'
-                              <*> optional (opExpr))
+                              <*> optional opExpr)
        <|> ExprErr <$> hate 2 (symbol (const True))
     where
       funCall :: P TT (Expr TT)
-      funCall = ExprFunCall <$> name <*> plzSpc '(' <*> plzExpr `sepBy` spc ','
-                            <*> plzSpc ')' <*> optional (opExpr)
+      funCall = ExprFunCall <$> name <*> parExpr <*> optional (opExpr)
 
 -- | The basic idea here is to parse "the rest" of expressions, e.g. @+ 3@ in @x
 --   + 3@ or @[i]@ in @x[i]@.  Anything which is useful in such a scenario goes
@@ -351,7 +358,7 @@ opExpr = OpExpr   <$> inOp <*> plzExpr
 -- | Parser for expressions.
 expression :: P TT (Expr TT)
 expression = ExprObj     <$> spc '{' <*> keyValue `sepBy` spc ',' <*> plzSpc '}'
-         <|> ExprAnonFun <$> res Function' <*> plzSpc '(' <*> parameters <*> plzSpc ')' <*> block
+         <|> ExprAnonFun <$> res Function' <*> parameters <*> block
          <|> stmtExpr
          <|> array
     where
@@ -382,8 +389,15 @@ semicolon :: P TT (Maybe TT)
 semicolon = optional $ spc ';'
 
 -- | Parses a comma-separated list of valid identifiers.
-parameters :: P TT (BList TT)
-parameters = plzTok name `sepBy` spc ','
+parameters :: P TT (Parameters TT)
+parameters = Parameters <$> spc '(' <*> plzTok name `sepBy` spc ',' <*> plzSpc ')'
+         <|> ParErr <$> hate 1 (symbol (const True))
+         <|> ParErr <$> hate 2 (pure errorToken)
+
+parExpr :: P TT (ParExpr TT)
+parExpr = ParExpr <$> spc '(' <*> plzExpr `sepBy` spc ',' <*> plzSpc ')'
+      <|> ParExprErr <$> hate 1 (symbol (const True))
+      <|> ParExprErr <$> hate 2 (pure errorToken)
 
 
 -- * Simple parsers
