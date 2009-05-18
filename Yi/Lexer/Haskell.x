@@ -41,7 +41,7 @@ $nl        = [\n\r]
 
 @reservedid =
         case|class|default|else|if|
-        in|infix|infixl|infixr|instance|
+        infix|infixl|infixr|instance|
         then|family|foreign|export|dynamic|
         safe|threadsafe|unsafe|stdcall|ccall|dotnet
 
