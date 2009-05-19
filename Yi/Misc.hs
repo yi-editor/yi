@@ -26,14 +26,14 @@ import System.Directory
   , getDirectoryContents
   , getCurrentDirectory
   )
-import Control.OldException
+
 import Control.Monad.Trans (MonadIO (..))
 {- External Library Module Imports -}
 {- Local (yi) module imports -}
 
 import Prelude ()
 import Yi.Core
-import Yi.UI.Common 
+
 
 -- | Given a possible starting path (which if not given defaults to
 --   the current directory) and a fragment of a path we find all
