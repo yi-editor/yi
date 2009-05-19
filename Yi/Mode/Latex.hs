@@ -31,7 +31,7 @@ fastMode = abstract
  }
 
 -- | syntax-based latex mode
-latexMode2 :: Mode [Latex.Tree Latex.TT]
+latexMode2 :: Mode (Latex.Expr Latex.TT)
 latexMode2 = abstract
   {
     modeName = "latex",

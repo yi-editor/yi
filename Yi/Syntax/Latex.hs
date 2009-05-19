@@ -1,3 +1,4 @@
+{-# LANGUAGE FlexibleInstances, TypeFamilies #-}
 -- Copyright (c) JP Bernardy 2008
 module Yi.Syntax.Latex where
 
@@ -6,11 +7,13 @@ import Yi.Lexer.Alex
 import Yi.Lexer.Latex
 import Yi.Style
 import Yi.Syntax.Tree
+import Yi.Syntax.BList
 import Yi.Syntax
 import Yi.Prelude 
 import Prelude ()
 import Data.Monoid
 import Data.List (zip)
+
 
 isNoise :: Token -> Bool
 isNoise Text = True
@@ -22,9 +25,10 @@ isNoise (Special _) = False
 isNoise (Begin _) = False
 isNoise (End _) = False
 
-type Expr t = [Tree t]
+type Expr t = BList (Tree t)
 
 type TT = Tok Token
+
 
 data Tree t
     = Paren t (Expr t) t -- A parenthesized expression (maybe with [ ] ...)
@@ -32,23 +36,35 @@ data Tree t
     | Error t
       deriving Show
 
-instance Functor Tree where
-  fmap = fmapDefault
+
+
+--instance Functor Tree where
+--  fmap = fmapDefault
 
 instance Foldable Tree where
-    foldMap = foldMapDefault
+    foldMap f (Atom t) = f t
+    foldMap f (Error t ) = f t
+    foldMap f (Paren l g r) = f l <> foldMap (foldMap f) g <> f r
 
-instance Traversable Tree where
-    traverse f (Atom t) = Atom <$> f t
-    traverse f (Error t) = Error <$> f t
-    traverse f (Paren l g r) = Paren <$> f l <*> traverse (traverse f) g <*> f r
---    traverse f (Block b n g e m) = Block <$> f b <*> traverse f n <*> traverse (traverse f) g <*> f e <*> traverse f m
+--instance Traversable Tree where
+--    traverse f (Atom t) = Atom <$> f t
+--    traverse f (Error t) = Error <$> f t
+--    traverse f (Paren l g r) = Paren <$> f l <*> traverse (traverse f) g <*> f r
+
+instance SubTree (Tree TT) where
+    type Element (Tree TT) = TT
+    foldMapToksAfter begin f t0 = work t0
+        where work (Atom t) = f t
+              work (Error t) = f t
+              work (Paren l g r) = f l <> foldMapAfter begin (foldMapToksAfter begin f) g <> f r
+    foldMapToks f = foldMap (foldMapToks f)
+
 
 instance IsTree Tree where
-    subtrees (Paren _ g _) = g
+    subtrees (Paren _ g _) = toList g
     subtrees _ = []
 
-parse :: P TT [Tree TT]
+parse :: P TT (Expr TT)
 parse = pExpr True <* eof
     where 
       -- | Create a special character symbol
@@ -66,7 +82,7 @@ parse = pExpr True <* eof
       -- pleaseSym' c = recoverWith errT <|> sym' c
 
       -- pExpr :: P TT [Expr TT]
-      pExpr = many . pTree
+      pExpr = Yi.Syntax.BList.many . pTree
 
       parens = [(Special x, Special y) | (x,y) <- zip "({[" ")}]"]
       openParens = fmap fst parens
@@ -81,9 +97,10 @@ parse = pExpr True <* eof
           <|> (Atom <$> sym' isNoise)
           <|> (Error <$> recoverWith (sym' (not . ((||) <$> isNoise <*> (`elem` openParens)))))
 
-getStrokes :: Point -> Point -> Point -> [Tree TT] -> [Stroke]
-getStrokes point _begin _end t0 = result 
-    where getStrokes' (Atom t) = ts id t
+getStrokes :: Point -> Point -> Point -> Expr TT -> [Stroke]
+getStrokes point begin _end t0 = appEndo result []
+    where getStrokes' :: Tree TT -> Endo [Stroke]
+          getStrokes' (Atom t) = ts id t
           getStrokes' (Error t) = ts (modStroke errorStyle) t -- paint in red
           getStrokes' (Paren l g r)
               -- we have special treatment for (Begin, End) because these blocks are typically very large.
@@ -100,20 +117,19 @@ getStrokes point _begin _end t0 = result
               | (posnOfs $ tokPosn $ l) == point || (posnOfs $ tokPosn $ r) == point - 1
                = hintPaint
               | otherwise = normalPaint
-              where normalPaint = ts id l . getStrokesL g . tsEnd id l r
-                    hintPaint = ts (modStroke hintStyle) l . getStrokesL g . tsEnd (modStroke hintStyle) l r
-                    errPaint = ts (modStroke errorStyle) l . getStrokesL g
+              where normalPaint = ts id l <> getStrokesL g <> tsEnd id l r
+                    hintPaint = ts (modStroke hintStyle) l <> getStrokesL g <> tsEnd (modStroke hintStyle) l r
+                    errPaint = ts (modStroke errorStyle) l <> getStrokesL g
 
           tsEnd _ (Tok{tokT = Begin b}) t@(Tok{tokT = End e}) 
               | b /= e = ts (modStroke errorStyle) t
           tsEnd f _ t = ts f t
-          getStrokesL g = compose (fmap getStrokes' g)
+          getStrokesL :: Expr TT -> Endo [Stroke]
+          getStrokesL = foldMapAfter begin  getStrokes'
           ts f t 
-              | isErrorTok (tokT t) = id
-              | otherwise = (f (tokenToStroke t) :)
-          compose = foldr (.) id
-          result = getStrokesL t0 []
-
+              | isErrorTok (tokT t) = mempty
+              | otherwise = Endo (f (tokenToStroke t) :)
+          result = getStrokesL t0
 
 modStroke :: StyleName -> Stroke -> Stroke
 modStroke f = fmap (f `mappend`)
