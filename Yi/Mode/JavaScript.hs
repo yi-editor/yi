@@ -25,7 +25,7 @@ javaScriptMode :: Mode (Tree TT)
 javaScriptMode = javaScriptAbstract
   {
     modeHL = ExtHL $ mkHighlighter (scanner parse . jsLexer),
-    modeGetStrokes = \tree point begin end -> getStrokes point begin end tree
+    modeGetStrokes = getStrokes
   }
 
 jsLexer :: Scanner Point Char -> Scanner (AlexState HlState) (Tok Token)

@@ -281,8 +281,8 @@ tokenToStroke :: TT -> Stroke
 tokenToStroke = fmap tokenToStyle . tokToSpan
 
 -- | The main stroking function.
-getStrokes :: Point -> Point -> Point -> Tree TT -> [Stroke]
-getStrokes _point _begin _end t0 = trace ("\n" ++ show t0) result
+getStrokes :: Tree TT -> Point -> Point -> Point -> [Stroke]
+getStrokes t0 _point _begin _end = trace ("\n" ++ show t0) result
     where
       result = appEndo (foldMap toStrokes t0) []
 
