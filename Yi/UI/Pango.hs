@@ -79,7 +79,7 @@ mkUI ui = Common.dummyUI
     { Common.main          = main ui
     , Common.end           = const end
     , Common.suspend       = windowIconify (uiWindow ui)
-    , Common.refresh       = refresh ui
+    , Common.refresh       = \e -> refresh ui e >> return e
     , Common.prepareAction = prepareAction ui
     , Common.reloadProject = reloadProject ui
     }

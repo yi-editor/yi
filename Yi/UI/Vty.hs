@@ -65,7 +65,7 @@ mkUI ui = Common.dummyUI
    Common.main           = main ui,
    Common.end            = end ui,
    Common.suspend        = raiseSignal sigTSTP,
-   Common.refresh        = scheduleRefresh ui,
+   Common.refresh        = refresh ui,
    Common.prepareAction  = prepareAction ui,
    Common.userForceRefresh = userForceRefresh ui
   }
@@ -163,15 +163,7 @@ fromVtyMod Vty.MMeta  = Yi.Event.MMeta
 fromVtyMod Vty.MAlt   = Yi.Event.MMeta
 
 prepareAction :: UI -> IO (EditorM ())
-prepareAction ui = do
-  (yss,xss) <- readRef (scrsize ui)
-  return $ do
-    e <- get
-    modA windowsA (computeHeights (yss - (if hasTabBar e ui then 1 else 0)))
-    let ws = windows e
-        renderSeq = fmap (scrollAndRenderWindow (configUI $ config ui) xss) (PL.withFocus ws)
-    sequence_ renderSeq
-
+prepareAction _ui = return $ return ()
 
 -- | Redraw the entire terminal from the UI.
 -- Among others, this re-computes the heights and widths of all the windows.
@@ -181,7 +173,7 @@ refresh ui e = do
   let ws' = computeHeights (yss - tabBarHeight - cmdHeight + 1) ws
       ws = windows e
       tabBarHeight = if hasTabBar e ui then 1 else 0
-      windowStartY = if hasTabBar e ui then 1 else 0
+      windowStartY = tabBarHeight
       (cmd, cmdSty) = statusLineInfo e
       niceCmd = arrangeItems cmd xss (maxStatusHeight e)
       formatCmdLine text = withAttributes statusBarStyle (take xss $ text ++ repeat ' ')
@@ -252,8 +244,8 @@ scrollAndRenderWindow cfg width (win,hasFocus) = do
                                                      p <- pointB
                                                      moveTo $ max (regionStart r) $ min (regionEnd r - 1) $ p
         b2 = if inWindow then b1 else 
-                if pointDriven then moveWinTosShowPoint b1 win else showPoint b1
-        b3 = snd $ runBuffer win b2 $ putA pointDriveA True -- always revert to a point-drive behavior
+                if pointDriven (wkey win) then moveWinTosShowPoint b1 win else showPoint b1
+        b3 = trace (show $ pointDriven (wkey win)) b2 
         (rendered, b4) = drawWindow cfg e b3 sty hasFocus width win
     put e { buffers = M.insert (bufkey win) b4 (buffers e) }
     return rendered

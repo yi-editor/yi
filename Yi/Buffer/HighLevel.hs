@@ -353,7 +353,8 @@ scrollCursorToBottomB = do
 
 -- | Scroll by n lines.
 scrollB :: Int -> BufferM ()
-scrollB n = do putA pointDriveA False
+scrollB n = do curw <- askWindow wkey
+               modA pointDriveA (\p w -> if w == curw then False else p w)
                MarkSet fr _ _ _ <- askMarks
                savingPointB $ do
                    moveTo =<< getMarkPointB fr
@@ -383,8 +384,8 @@ middleB = do
 
 pointInWindowB :: Point -> BufferM Bool
 pointInWindowB p = nearRegion p <$> winRegionB
- --    trace ("pointInWindowB " ++ show fromP ++ " " ++ show toP ++ " " ++ show p) $ (return $ fromP <= p && p <= toP)
-
+--  do w <- winRegionB;  trace ("pointInWindowB " ++ show w ++ " p = " ++ show p)
+         
 -----------------------------
 -- Region-related operations
 

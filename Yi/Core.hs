@@ -227,11 +227,12 @@ refreshEditor = onYiVar $ \yi var -> do
                Just msg -> (statusLinesA ^: DelayList.insert msg) e0 {buffers = fmap fst newBuffers}
                Nothing -> e0
             e2 = buffersA ^: (fmap (clearSyntax . clearHighlight)) $ e1
-            e3 = buffersA ^: (fmap clearUpdates) $ e2
-        UI.refresh (yiUi yi) e2
-        terminateSubprocesses (staleProcess $ buffers e3) yi var {yiEditor = e3}
+        e4 <- UI.refresh (yiUi yi) e2
+        let e5 = buffersA ^: (fmap (clearUpdates . setPointDrive)) $ e4
+        terminateSubprocesses (staleProcess $ buffers e5) yi var {yiEditor = e5}
   where 
     clearUpdates fb = pendingUpdatesA ^= [] $ fb
+    setPointDrive fb = pointDriveA ^= const True $ fb
     clearHighlight fb =
       -- if there were updates, then hide the selection.
       let h = getVal highlightSelectionA fb
