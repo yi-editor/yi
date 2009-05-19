@@ -760,6 +760,7 @@ defKeymap = Proto template
          ,([ctrlW, char 'o'], closeOtherE)
          ,([ctrlW, char 's'], splitE)
          ,([ctrlW, char 'w'], nextWinE)
+         ,([ctrlW, ctrlW], nextWinE)
          ,([ctrlW, char 'W'], prevWinE)
          ,([ctrlW, char 'p'], prevWinE)
 
