@@ -353,12 +353,12 @@ scrollCursorToBottomB = do
 
 -- | Scroll by n lines.
 scrollB :: Int -> BufferM ()
-scrollB n = do MarkSet _ im _ _ <- askMarks
-               new_ip <- savingPointB $ do
-                   moveTo =<< getMarkPointB im
+scrollB n = do putA pointDriveA False
+               MarkSet fr _ _ _ <- askMarks
+               savingPointB $ do
+                   moveTo =<< getMarkPointB fr
                    gotoLnFrom n
-                   pointB
-               setMarkPointB im new_ip
+                   setMarkPointB fr =<< pointB
 
 -- | Move to @n@ lines down from top of screen
 downFromTosB :: Int -> BufferM ()
