@@ -31,7 +31,7 @@ indentScanner = layoutHandler startsLayout [(Special '(', Special ')'),
                                             (Special '{', Special '}')] ignoredToken
                          ([(Special '<'), (Special '>'), (Special '.')]) isBrace
 
--- HACK: We insert the Special '<', '>', '.', that don't occur in normal haskell
+-- HACK: We insert the Special '<', '>', '.', which do not occur in normal haskell
 -- parsing.
 
 isBrace :: TT -> Bool
