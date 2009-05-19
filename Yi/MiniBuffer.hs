@@ -119,14 +119,14 @@ withMinibufferGen proposal getHint prompt completer act = do
 
 -- | Open a minibuffer, given a finite number of suggestions.
 withMinibufferFin :: String -> [String] -> (String -> YiM ()) -> YiM ()
-withMinibufferFin prompt posibilities act 
+withMinibufferFin prompt possibilities act 
     = withMinibufferGen "" hinter prompt completer (act . best)
       where 
         -- The function for returning the hints provided to the user underneath
         -- the input, basically all those that currently match.
         hinter s = return $ match s
         -- All those which currently match.
-        match s = filter (s `isInfixOf`) posibilities
+        match s = filter (s `isInfixOf`) possibilities
 
         -- The best match from the list of matches
         -- If the string matches completely then we take that
@@ -140,7 +140,7 @@ withMinibufferFin prompt posibilities act
         -- return with an incomplete possibility. The reason is we may have for
         -- example two possibilities which share a long prefix and hence we wish
         -- to press tab to complete up to the point at which they differ.
-        completer s = return $ case commonPrefix $ catMaybes $ fmap (infixMatch s) posibilities of
+        completer s = return $ case commonPrefix $ catMaybes $ fmap (infixMatch s) possibilities of
             "" -> s
             p -> p
 
