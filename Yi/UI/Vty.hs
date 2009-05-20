@@ -179,7 +179,7 @@ refresh ui e = do
       formatCmdLine text = withAttributes statusBarStyle (take xss $ text ++ repeat ' ')
       cmdHeight = length niceCmd
       renderSeq = fmap (scrollAndRenderWindow (configUI $ config ui) xss) (PL.withFocus ws')
-      (e', renders) = runEditor (config ui) (sequence renderSeq) e
+      (e', renders) = runEditor (config ui) (sequence renderSeq) (windowsA ^= ws' $ e)
 
       startXs = scanrT (+) windowStartY (fmap height ws')
       wImages = fmap picture renders
