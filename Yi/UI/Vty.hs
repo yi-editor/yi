@@ -222,6 +222,7 @@ renderTabBar e ui xss =
 hasTabBar :: Editor -> UI -> Bool
 hasTabBar e ui = (not . configAutoHideTabBar . configUI . config $ ui) || (PL.length $ e ^. tabsA) > 1
 
+-- As scanr, but generalized to a traversable (TODO)
 scanrT :: (Int -> Int -> Int) -> Int -> PL.PointedList Int -> PL.PointedList Int
 scanrT (+*+) k t = fst $ runState (mapM f t) k
     where f x = do s <- get
@@ -238,14 +239,14 @@ scrollAndRenderWindow cfg width (win,hasFocus) = do
         (_,b1) = drawWindow cfg e b0 sty hasFocus width win
         -- this is merely to recompute the bos point.
         ((pointDriven, inWindow), _) = runBuffer win b1 $ do point <- pointB
-                                                             (,) <$> getA pointDriveA <*> pointInWindowB point
+                                                             (,) <$> (($ wkey win) <$> getA pointDriveA) <*> pointInWindowB point
         -- | Move the point inside the window.
         showPoint buf = snd $ runBuffer win buf $ do r <- winRegionB
                                                      p <- pointB
                                                      moveTo $ max (regionStart r) $ min (regionEnd r - 1) $ p
         b2 = if inWindow then b1 else 
-                if pointDriven (wkey win) then moveWinTosShowPoint b1 win else showPoint b1
-        b3 = trace (show $ pointDriven (wkey win)) b2 
+                if pointDriven then moveWinTosShowPoint b1 win else showPoint b1
+        b3 = b2
         (rendered, b4) = drawWindow cfg e b3 sty hasFocus width win
     put e { buffers = M.insert (bufkey win) b4 (buffers e) }
     return rendered
