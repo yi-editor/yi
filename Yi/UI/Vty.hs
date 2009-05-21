@@ -114,7 +114,7 @@ main ui = do
                                  logPutStrLn "refresh crashed with IO Error"
                                  logError $ show $ except)
                              (readRef (uiEditor ui) >>= refresh ui >> return ())
-  readRef (uiEditor ui) >>= scheduleRefresh ui
+  --readRef (uiEditor ui) >>= scheduleRefresh ui
   logPutStrLn "refreshLoop started"
   refreshLoop
   
