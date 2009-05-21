@@ -40,7 +40,7 @@ $symchar   = [$symbol \:]
 $nl        = [\n\r]
 
 @reservedid =
-        case|class|default|else|if|
+        case|default|else|if|
         infix|infixl|infixr|instance|
         then|family|foreign|export|dynamic|
         safe|threadsafe|unsafe|stdcall|ccall|dotnet
@@ -122,6 +122,7 @@ haskell :-
   "qualified"                                   { c (Reserved Qualified) }
   "let"                                         { c (Reserved Let) }
   "in"                                          { c (Reserved In) }
+  "class"                                       { c (Reserved Class) }
   @layoutReservedId                             { c (Reserved OtherLayout) }
   `@qual @varid`                                { cs $ Operator . init . tail }
   `@qual @conid`                                { cs $ ConsOperator . init . tail }
@@ -159,7 +160,7 @@ type HlState = Int
 data CommentType = Open | Close | Text | Line
     deriving (Eq, Show)
 
-data ReservedType = Hiding | Qualified | As | Import | Data | NewType | Type | Where | Let | In | OtherLayout | Deriving | Module | Forall | Other
+data ReservedType = Hiding | Qualified | As | Import | Data | NewType | Type | Where | Let | In | OtherLayout | Deriving | Module | Forall | Other | Class
     deriving (Eq, Show)
 
 data OpType = Pipe | Equal | BackSlash | LeftArrow | RightArrow | DoubleRightArrow | OtherOp String
