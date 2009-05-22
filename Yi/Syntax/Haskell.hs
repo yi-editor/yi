@@ -97,7 +97,7 @@ $(derive makeFoldable ''Exp)
 instance IsTree Exp where
    subtrees (Paren _ (Expr g) _) = g
    subtrees (Block s)     = concat s
---    subtrees (Block' s)     = s
+   subtrees (PGuard s)    = s
    subtrees (Expr a)      = a
 --      subtrees (TypeSig _ a) = a
    subtrees _             = []
@@ -527,10 +527,12 @@ pGuard = (PGuard <$>
                 <*> pleaseB' (exact' [(ReservedOp Equal),(ReservedOp RightArrow)])
                 -- comments are by default parsed after this -- this must be -> if used in case
           <*> (Expr <$> (pTr' [(Reserved Class),(Reserved In),(Reserved Data), (Reserved Type)] [(Reserved In), (ReservedOp Pipe)]))))
-    where pEol = testNext (\r ->(not $ isJust r) || 
-                 (pEol' r))
-          pEol' = ((flip elem [(Special ';'), (Special '.')])
-                   . tokT . fromJust)
+
+pRHS :: Parser TT TTT
+pRHS = pGuard <|> pEq
+
+pEq :: Parser TT TTT
+pEq = Bin <$> (PAtom <$> exact' [ReservedOp Equal] <*> pure []) <*> (Expr <$> (pTr' [(Reserved Class),(Reserved Data), (Reserved Type)] [(ReservedOp RightArrow),(ReservedOp Equal), (ReservedOp Pipe)]))
 
 pQcon :: Parser TT TTT
 pQcon = pTup ((pMany pGconsym) <|> (pAt $ sym isOperator))
@@ -590,7 +592,7 @@ pTree :: [Token] -> [Token] -> Parser TT [TTT]
 pTree err at = pTr err at
      <|> (liftA2 (:) pSType (pure []))
      <|> (liftA2 (:) pSData (pure []))
-      <|> (liftA2 (:) (PAtom <$> exact' [Reserved Class] <*> (pure [])) (pTr' err (delete (ReservedOp Pipe) at)))
+     <|> (liftA2 (:) (PAtom <$> exact' [Reserved Class] <*> (pure [])) (pTr' err (delete (ReservedOp Pipe) at)))
 
 -- | Parse something not containing a Type, Data declaration or a class kw
 pTr :: [Token] -> [Token] -> Parser TT [TTT]
@@ -602,7 +604,7 @@ pTr err at
 
 -- | Parse something where guards are not allowed
 pTr' :: [Token] -> [Token] -> Parser TT [TTT]
-pTr' err at = (pure []) <|> (liftA2 (:) (pTree' noiseErr at <|> (pBlockOf (pTr' err at))) (pTr' err at))
+pTr' err at = (pure []) <|> (liftA2 (:) (pTree' noiseErr at <|> (pBlockOf (pTr err (delete (ReservedOp Equal) at)))) (pTr' err at))
 
 -- | Parse a Tree' of expressions
 pTree' ::[Token] -> [Token] -> Parser TT TTT
