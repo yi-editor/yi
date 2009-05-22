@@ -305,6 +305,7 @@ executable yi
         build-depends: data-accessor == 0.2.*
         build-depends: data-accessor-monads-fd == 0.2.*
         build-depends: data-accessor-template == 0.2.*
+        build-depends: dlist >=0.4.1
         build-depends: filepath>=1.1 && <1.2
         build-depends: fingertree >= 0 && <0.1
         build-depends: ghc-paths ==0.1.*
@@ -418,6 +419,8 @@ executable yi
            Yi.Syntax.Paren
            Yi.Syntax.Latex
            Yi.Syntax.Tree
+
+           Yi.Verifier.JavaScript
 
            Yi.Mode.Interactive
 
