@@ -54,7 +54,7 @@ data UI = UI {  vty       :: Vty             -- ^ Vty
              , uiThread   :: ThreadId
              , uiEnd      :: MVar ()
              , uiRefresh  :: MVar ()
-             , uiEditor   :: IORef Editor    -- ^ Copy of the editor state, local to the UI
+             , uiEditor   :: IORef Editor    -- ^ Copy of the editor state, local to the UI, used to show stuff when the window is resized.
              , config     :: Config
              , oAttrs     :: TerminalAttributes
              }
@@ -201,6 +201,7 @@ refresh ui e = do
                         -- Not really nice, but upon the next refresh the cursor will show.
           }
 
+  writeRef (uiEditor ui) e
   return e'
 
 -- | Construct images for the tabbar if at least one tab exists.
