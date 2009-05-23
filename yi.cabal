@@ -171,6 +171,7 @@ library
         Yi.UI.Batch
         Yi.UI.Utils
         Yi.UI.TabBar
+        Yi.Verifier.JavaScript
         Yi.Window
         Yi.Char.Unicode
 
