@@ -36,7 +36,6 @@ reloadEditor = do
     withUI (flip UI.end False)
     liftIO $ restart (Just editor)
 
-
 driver :: IO ()
 yi :: Config -> IO ()
 restart :: Maybe Editor -> IO ()

@@ -118,3 +118,4 @@ blockifyRegion r = savingPointB $ do
   when (startLine > endLine) $ fail "blockifyRegion: impossible"
   mapM (\line -> mkRegion <$> pointOfLineColB line lowCol <*> pointOfLineColB line (1 + highCol))
        [startLine..endLine]
+

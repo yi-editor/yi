@@ -14,6 +14,7 @@ import Yi.Config
 import Yi.Config.Default
 import Yi.Core
 import Yi.Dired
+import Yi.Keymap
 import HConf (hconfOptions)
 import qualified HConf
 import Paths_yi
@@ -133,7 +134,9 @@ main cfg state = do
               TestSuite.main
 #endif
          case do_args cfg args of
-              Left (Err err code) -> do putStrLn err
-                                        exitWith code
-              Right finalCfg -> do when (debugMode finalCfg) $ initDebug ".yi.dbg" 
-                                   startEditor finalCfg state
+              Left (Err err code) ->
+                do putStrLn err
+                   exitWith code
+              Right finalCfg ->
+                do when (debugMode finalCfg) $ initDebug ".yi.dbg"
+                   startEditor finalCfg state

@@ -124,7 +124,7 @@ startEditor cfg st = do
   
     runYi $
       if isNothing st 
-         then postActions $ startActions cfg -- process options if booting for the first time
+         then postActions $ startActions cfg ++ [makeAction showErrors] -- process options if booting for the first time
          else withEditor $ modA buffersA (fmap (recoverMode (modeTable cfg))) -- otherwise: recover the mode of buffers
 
     runYi refreshEditor
@@ -139,8 +139,17 @@ recoverMode tbl buffer  = case fromMaybe (AnyMode emptyMode) (find (\(AnyMode m)
 postActions :: [Action] -> YiM ()
 postActions actions = do yi <- ask; liftIO $ output yi actions
 
+-- | Display the errors buffer if it is not already visible.
+showErrors :: YiM ()
+showErrors = withEditor $ do
+               bs <- gets $ findBufferWithName ".yi/yi.errors"
+               case bs of
+                 []    -> return ()
+                 (b:_) -> do splitE
+                             switchToBufferWithNameE ".yi/yi.errors"
+
 -- | Process an event by advancing the current keymap automaton an
--- execing the generated actions
+-- execing the generated actions.
 dispatch :: Event -> YiM ()
 dispatch ev =
     do yi <- ask

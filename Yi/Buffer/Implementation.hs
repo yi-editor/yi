@@ -382,4 +382,3 @@ getMarkDefaultPosBI name defaultPos fb@FBufferData {marks = mks, markNames = nms
 getAst :: BufferImpl syntax -> syntax
 getAst FBufferData {hlCache = HLState (SynHL {hlGetTree = gt}) cache} = gt cache
 
-
