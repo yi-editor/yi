@@ -462,20 +462,23 @@ insertWindow e i win = do
 
               return w
 
-refresh :: UI -> Editor -> IO ()
-refresh ui e = do
+updateCache :: UI -> Editor -> IO ()
+updateCache ui e = do
     let tabs = tabs_ e
-
-    set (uiCmdLine ui) [labelText := intercalate "  " $ statusLine e,
-                        labelEllipsize := EllipsizeEnd]
-
     cache <- readRef $ windowCache ui
     logPutStrLn $ "syncing: " ++ show tabs
     logPutStrLn $ "with: " ++ show cache
     cache' <- syncTabs e ui tabs cache
     logPutStrLn $ "Gives: " ++ show cache'
     writeRef (windowCache ui) cache'
-    forM_ cache' $ \w -> do
+
+refresh :: UI -> Editor -> IO ()
+refresh ui e = do
+    set (uiCmdLine ui) [labelText := intercalate "  " $ statusLine e,
+                        labelEllipsize := EllipsizeEnd]
+    updateCache ui e
+    cache <- readRef $ windowCache ui
+    forM_ cache $ \w -> do
         let b = findBufferWith (bufkey (coreWin w)) e
         -- when (not $ null $ pendingUpdates b) $ 
         do 
