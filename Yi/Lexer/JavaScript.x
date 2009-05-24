@@ -106,12 +106,14 @@ $special         { cs $ (Special . head) } -- All of the special symbols are cha
 "*/"         { m (+1) $ Comment End }
 $whitechar+  ;
 [^\*]+       { c $ Comment Text }
+.            { c $ Comment Text }
 }
 
 <htmlcomm> {
 "-->"        { m (subtract 1) $ Comment End }
 $whitechar+  ;
 [^\-]        { c $ Comment Text }
+.            { c $ Comment Text }
 }
 
 
