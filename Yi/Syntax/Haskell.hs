@@ -4,7 +4,7 @@ module Yi.Syntax.Haskell where
 
 import Prelude ()
 import Data.Maybe
-import Data.List (delete, filter, takeWhile, (\\))
+import Data.List (delete, filter, union, takeWhile, (\\))
 import Yi.IncrementalParse
 import Yi.Lexer.Alex
 import Yi.Lexer.Haskell
@@ -527,7 +527,7 @@ pApat = (Bin <$> pQcon
 -- | Parse a Let expression
 pLet :: Parser TT (Exp TT)
 pLet = PLet <$> exact' [Reserved Let] <*> pCom
-            <*> ((pBlockOf' (Block <$> pBlocks' (pTr el [(ReservedOp Pipe)])))
+            <*> ((pBlockOf' (Block <$> pBlocks' (pTr el [(ReservedOp Pipe),(ReservedOp Equal)])))
                  <|> ((Expr <$> pure []) <* pEol))
             <*> pOpt (PAtom <$> exact' [Reserved In] <*> pure [])
     where pEol :: Parser TT ()
@@ -551,14 +551,13 @@ pGuard = PGuard <$>
         err' = [(Reserved Class),(Reserved In),(Reserved Data), (Reserved Type)]
         at'  = [(Reserved In), (ReservedOp Pipe)]
 
-pRHS :: Parser TT TTT
-pRHS = pGuard -- <|> pEq
+pRHS :: [Token] -> [Token] ->Parser TT TTT
+pRHS err at = pGuard <|> pEq err at
 
-pEq :: Parser TT TTT
-pEq = Bin <$> (PAtom <$> exact' [ReservedOp Equal] <*> pure []) 
-          <*> (Expr <$> (pTr' err atom))
-  where err = [(ReservedOp Equal),(Reserved Class),(Reserved Data), (Reserved Type)]
-        atom =  [(ReservedOp RightArrow),(ReservedOp Equal), (ReservedOp Pipe)]
+pEq :: [Token] -> [Token] -> Parser TT TTT
+pEq err at = Bin <$> (PAtom <$> exact' [ReservedOp Equal] <*> pure [])
+              <*> (Expr <$> (pTr' err ([(ReservedOp Equal),(ReservedOp Pipe)] `union` at)))
+  where err  = [(Reserved In),(ReservedOp Equal),(Reserved Class),(Reserved Data), (Reserved Type)]
 
 pQcon :: Parser TT TTT
 pQcon = pTup ((pMany pGconsym) <|> (pAt $ sym isOperator))
@@ -581,7 +580,7 @@ pSome r = Expr <$> some r
 pDTree :: Parser TT [TTT]
 pDTree = (pTree err atom)
     where err = [(Reserved In)]
-          atom = [(ReservedOp Pipe), (Reserved In)]
+          atom = [(ReservedOp Equal),(ReservedOp Pipe), (Reserved In)]
 
 -- | Parse a some of something separated by the token (Special '.')
 pBlocks :: (Parser TT TTT -> Parser TT [TTT])
@@ -627,23 +626,23 @@ pTree err at = pTr err at
 pTr :: [Token] -> [Token] -> Parser TT [TTT]
 pTr err at
     = pure []
-      <|> ((:) <$> (pTree' noiseErr at
+      <|> ((:) <$> (pTree' (noiseErr \\ [(ReservedOp Pipe),(ReservedOp Equal)]) at
                        <|> pBlockOf (pTr err at)) <*> pTr err at)
-      <|> ((:) <$> pRHS <*> pure [])
+      <|> ((:) <$> pRHS err at <*> pure [])
 
 -- | Parse something where guards are not allowed
 pTr' :: [Token] -> [Token] -> Parser TT [TTT]
 pTr' err at = pure []
               <|> ((:) <$> (pTree' err at
-                            <|> (pBlockOf (pTr err at)))
+                            <|> (pBlockOf (pTr err ([(ReservedOp Equal), (ReservedOp Pipe)] `union` at))))
                    <*> (pTr' err at))
 
 -- | Parse a Tree' of expressions
 pTree' ::[Token] -> [Token] -> Parser TT TTT
 pTree' err at
     = (pTup' (Expr <$> (pTr err at)))
-          <|> (pBrack (Expr <$> (pTr' err (at \\ [(ReservedOp Pipe)]))))
-          <|> (pBrace (Expr <$> (pTr' err (at \\ [(ReservedOp Pipe)]))))
+          <|> (pBrack (Expr <$> (pTr' err (at \\ [(ReservedOp Pipe),(ReservedOp Equal)]))))
+          <|> (pBrace (Expr <$> (pTr' err (at \\ [(ReservedOp Pipe),(ReservedOp Equal)]))))
           <|> pLet
           <|> (PError <$> recoverWith
                (sym $ flip elem $ (isNoiseErr err)) <*> pure [])
