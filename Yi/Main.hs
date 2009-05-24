@@ -14,7 +14,6 @@ import Yi.Config
 import Yi.Config.Default
 import Yi.Core
 import Yi.Dired
-import Yi.Keymap
 import HConf (hconfOptions)
 import qualified HConf
 import Paths_yi
@@ -89,7 +88,6 @@ usage = usageInfo ("Usage: " ++ projectName ++ " [option...] [file]") options
 
 versinfo = projectName ++ ' ' : display version
 
-
 -- | Transform the config with options
 do_args :: Config -> [String] -> Either Err Config
 do_args cfg args =
@@ -140,3 +138,4 @@ main cfg state = do
               Right finalCfg ->
                 do when (debugMode finalCfg) $ initDebug ".yi.dbg"
                    startEditor finalCfg state
+

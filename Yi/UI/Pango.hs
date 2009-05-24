@@ -9,6 +9,23 @@
 module Yi.UI.Pango (start) where
 
 import Prelude (filter, map, round, FilePath, (/), zipWith)
+
+import Control.Concurrent (yield)
+import Control.Monad (ap)
+import Control.Monad.Reader (liftIO, when, MonadIO)
+import Control.Monad.State (gets, modify, runState, State)
+import Data.Prototype
+import Data.IORef
+import Data.List (intercalate, nub, findIndex, zip, drop, repeat)
+import qualified Data.List.PointedList.Circular as PL
+import Data.Maybe
+import qualified Data.Map as M
+
+import Graphics.UI.Gtk hiding (on, Region, Window, Action, Point, Style)
+import qualified Graphics.UI.Gtk.Gdk.Events as Gdk.Events
+import qualified Graphics.UI.Gtk as Gtk
+import System.Glib.GError
+
 import Yi.Prelude 
 import Yi.Buffer
 import qualified Yi.Editor as Editor
@@ -18,30 +35,10 @@ import Yi.Event
 import Yi.Keymap
 import Yi.Monad
 import qualified Yi.UI.Common as Common
-import Yi.Config
-import Yi.Style
-
-import Control.Applicative
-import Control.Concurrent (yield)
-import Control.Monad (ap)
-import Control.Monad.Reader (liftIO, when, MonadIO)
-import Control.Monad.State (gets, modify, runState, State)
-
-import Data.Prototype
-import Data.Foldable
-import Data.IORef
-import Data.List (intercalate, nub, findIndex, zip, drop, repeat)
-import qualified Data.List.PointedList.Circular as PL
-import Data.Maybe
-import Data.Traversable
-import qualified Data.Map as M
-
-import Graphics.UI.Gtk hiding (on, Region, Window, Action, Point, Style)
-import qualified Graphics.UI.Gtk.Gdk.Events as Gdk.Events
-import qualified Graphics.UI.Gtk as Gtk
-import System.Glib.GError
 import Yi.UI.Pango.Utils
 import Yi.UI.Utils
+import Yi.Config
+import Yi.Style
 
 #ifdef GNOME_ENABLED
 import Yi.UI.Pango.Gnome(watchSystemFont)
@@ -109,7 +106,6 @@ startNoMsg :: UIBoot
 startNoMsg cfg ch outCh _ed = do
   unsafeInitGUIForThreadedRTS
 
-  -- rest.
   win <- windowNew
   windowSetDefaultSize win 900 700
   windowSetTitle win "Yi"
@@ -568,7 +564,7 @@ prepareAction ui = do
 
 -- | Calculate window heights, given all the windows and current height.
 computeHeights :: [Int] -> PL.PointedList Window -> PL.PointedList Window
-computeHeights heights ws = fst $ runState (Data.Traversable.mapM distribute ws) heights
+computeHeights heights ws = fst $ runState (mapM distribute ws) heights
 
 distribute :: Window -> State [Int] Window
 distribute win = case isMini win of
