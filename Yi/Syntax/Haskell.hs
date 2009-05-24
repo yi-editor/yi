@@ -75,6 +75,8 @@ data Exp t
     | Bin (Exp t) (Exp t)
        -- an error with comments following so we never color comments in wrong color
     | PError t [t]
+      -- rhs that begins with Equal
+    | RHS (PAtom t) [Exp t]
     | Opt (Maybe (Exp t))
     | Modid t [t]
     | Op t [t] (Exp t)
@@ -555,9 +557,13 @@ pRHS :: [Token] -> [Token] ->Parser TT TTT
 pRHS err at = pGuard <|> pEq err at
 
 pEq :: [Token] -> [Token] -> Parser TT TTT
-pEq err at = Bin <$> (PAtom <$> exact' [ReservedOp Equal] <*> pure [])
-              <*> (Expr <$> (pTr' err ([(ReservedOp Equal),(ReservedOp Pipe)] `union` at)))
-  where err  = [(Reserved In),(ReservedOp Equal),(Reserved Class),(Reserved Data), (Reserved Type)]
+pEq err at = RHS <$> (PAtom <$> exact' [ReservedOp Equal] <*> pure [])
+              <*> (pTr' err ([(ReservedOp Equal),(ReservedOp Pipe)] `union` at))
+  where err  = [ (Reserved In)
+               , (ReservedOp Equal)
+               , (Reserved Class)
+               , (Reserved Data)
+               , (Reserved Type)]
 
 pQcon :: Parser TT TTT
 pQcon = pTup ((pMany pGconsym) <|> (pAt $ sym isOperator))
@@ -794,6 +800,8 @@ getStr point begin _end t0 = getStrokes' t0
               | otherwise = getStrokes' f <> getStrokes' args
                           <> tk s <> com c <> getStrokes' rhs
           getStrokes' (Expr g) = getStrokesL g
+          getStrokes' (RHS eq g) = getStrokes' eq <> getStrokesL g
+--           getStrokes' (RHS eq g) = paintAtom errorStyle eq <> foldMap errStyle (Expr g) -- will color rhs functions red
           getStrokes' (Bin l r) = getStrokes' l <> getStrokes' r
           getStrokes' (KW l r') = getStrokes' l <> getStrokes' r'
           getStrokes' (Op op c r') = tk op <> com c <> getStrokes' r'
