@@ -48,13 +48,18 @@ import Yi.UI.Pango.Gnome(watchSystemFont)
 
 data UI = UI
     { uiWindow    :: Gtk.Window
-    , uiBox       :: VBox
+    , uiNotebook  :: Notebook
     , uiCmdLine   :: Label
     , windowCache :: IORef [WinInfo]
     , uiActionCh  :: Action -> IO ()
     , uiConfig    :: UIConfig
     , uiFont      :: IORef FontDescription
     }
+
+uiBox :: UI -> IO Box
+uiBox u = do pageNum <- notebookGetCurrentPage (uiNotebook u)
+             page    <- notebookGetNthPage (uiNotebook u) pageNum
+             return . castToBox . fromJust $ page
 
 data WinInfo = WinInfo
     { coreWin         :: Window
@@ -122,12 +127,12 @@ startNoMsg cfg ch outCh _ed = do
   -- concluded. Shim causes crashes, but it's not worth fixing if we'll soon
   -- replace it.
 
-  {-
-  tabs <- notebookNew
-  widgetSetSizeRequest tabs 200 (-1)
-  notebookSetTabPos tabs PosBottom
-  panedAdd1 paned tabs
+  tabs' <- notebookNew
+  widgetSetSizeRequest tabs' 200 (-1)
+  notebookSetTabPos tabs' PosBottom
+  panedAdd1 paned tabs'
 
+  {-
   -- Create the tree views for files and modules
   (filesProject, modulesProject) <- loadProject =<< getCurrentDirectory
 
@@ -148,14 +153,17 @@ startNoMsg cfg ch outCh _ed = do
   notebookAppendPage tabs scrlModules "Modules"
   -}
 
-  vb' <- vBoxNew False 1
-  panedAdd2 paned vb'
+  tabs <- notebookNew
+  vb'  <- vBoxNew False 1
+
+  notebookAppendPage tabs vb' "Test"
+  panedAdd2 paned tabs
 
   set win [ containerChild := vb ]
   onDestroy win mainQuit
 
   cmd <- labelNew Nothing
-  set cmd [ miscXalign := 0.01 ]
+  set cmd [ miscXalign := 0 ]
 
   set vb [ containerChild := paned,
            containerChild := cmd,
@@ -176,7 +184,7 @@ startNoMsg cfg ch outCh _ed = do
 
   widgetShowAll win
 
-  let ui = UI win vb' cmd wc (outCh . singleton) (configUI cfg) fontRef
+  let ui = UI win tabs cmd wc (outCh . singleton) (configUI cfg) fontRef
 
   return (mkUI ui)
 
@@ -231,6 +239,15 @@ keyTable = M.fromList
 end :: IO ()
 end = mainQuit
 
+syncTabs :: Editor -> UI -> PL.PointedList (PL.PointedList Window) -> [WinInfo] -> IO [WinInfo]
+syncTabs e ui tabs cache = do
+    cache' <- forM tabs $ \ws -> syncTab e ui ws cache
+    return $ concat cache'
+
+syncTab :: Editor -> UI -> PL.PointedList Window -> [WinInfo] -> IO [WinInfo]
+syncTab e ui ws cache =
+    syncWindows e ui (toList $ PL.withFocus ws) cache
+
 -- | Synchronize the windows displayed by GTK with the status of windows in the Core.
 syncWindows :: Editor -> UI -> [(Window, Bool)] -- ^ windows paired with their "isFocused" state.
             -> [WinInfo] -> IO [WinInfo]
@@ -238,6 +255,8 @@ syncWindows e ui (wfocused@(w,focused):ws) (c:cs)
     | winkey w == winkey (coreWin c) =
         do when focused $ do let bufferName = shortIdentString (commonNamePrefix e) $ findBufferWith (bufkey w) e
                              windowSetTitle (uiWindow ui) $ bufferName ++ " - Yi"
+                             -- b <- uiBox ui -- Is it possible to replace this with (widget c)
+                             -- notebookSetMenuLabelText (uiNotebook ui) b $ bufferName
                              setFocus c
            (:) <$> syncWin e w c <*> syncWindows e ui ws cs
     | winkey w `elem` map (winkey . coreWin) cs = removeWindow ui c >> syncWindows e ui (wfocused:ws) cs
@@ -262,7 +281,8 @@ setFocus w = do
   when (not hasFocus) $ widgetGrabFocus (textview w)
 
 removeWindow :: UI -> WinInfo -> IO ()
-removeWindow i win = containerRemove (uiBox i) (widget win)
+removeWindow i win = do b <- uiBox i
+                        containerRemove b (widget win)
 
 handleClick :: UI -> WinInfo -> Gdk.Events.Event -> IO Bool
 handleClick ui w event = do
@@ -430,24 +450,29 @@ insertWindow :: Editor -> UI -> Window -> IO WinInfo
 insertWindow e i win = do
   let buf = findBufferWith (bufkey win) e
   liftIO $ do w <- newWindow e i win buf
-              set (uiBox i) [containerChild := widget w,
-                             boxChildPacking (widget w) := if isMini (coreWin w) then PackNatural else PackGrow]
+              b <- uiBox i
+
+              set b [ containerChild := widget w,
+                      boxChildPacking (widget w) := if isMini (coreWin w) then PackNatural else PackGrow ]
+
               textview w `onButtonRelease` handleClick i w
               textview w `onButtonPress` handleClick i w
               textview w `onScroll` handleScroll i w
               widgetShowAll (widget w)
+
               return w
 
 refresh :: UI -> Editor -> IO ()
 refresh ui e = do
-    let ws = Editor.windows e
+    let tabs = tabs_ e
+
     set (uiCmdLine ui) [labelText := intercalate "  " $ statusLine e,
                         labelEllipsize := EllipsizeEnd]
 
     cache <- readRef $ windowCache ui
-    logPutStrLn $ "syncing: " ++ show ws
+    logPutStrLn $ "syncing: " ++ show tabs
     logPutStrLn $ "with: " ++ show cache
-    cache' <- syncWindows e ui (toList $ PL.withFocus $ ws) cache
+    cache' <- syncTabs e ui tabs cache
     logPutStrLn $ "Gives: " ++ show cache'
     writeRef (windowCache ui) cache'
     forM_ cache' $ \w -> do

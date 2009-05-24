@@ -544,7 +544,6 @@ withOtherWindow f = do
   liftEditor prevWinE
   return x
 
-
 acceptedInputs :: EditorM [String]
 acceptedInputs = do
     cfg <- askCfg
