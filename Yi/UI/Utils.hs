@@ -15,19 +15,6 @@ import Data.List.Split (splitEvery)
 import Yi.String (padLeft)
 import Control.Monad.State (runState,modify)
 
--- | return index of Sol on line @n@ above current line
-indexOfSolAbove :: Int -> BufferM Point
-indexOfSolAbove n = pointAt $ gotoLnFrom (negate n)
-
--- | Scroll in the window so that the point is visible.
-moveWinTosShowPoint :: FBuffer -> Window -> FBuffer
-moveWinTosShowPoint b w = result
-  where gap = height w `div` 2
-        (_, result) = runBuffer w b $ do
-               i <- indexOfSolAbove gap
-               f <- fromMark <$> askMarks
-               setMarkPointB f i
-
 indexedAnnotatedStreamB :: Point -> BufferM [(Point, Char)]
 indexedAnnotatedStreamB p = do
     text <- indexedStreamB Forward p

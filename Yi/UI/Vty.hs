@@ -13,7 +13,6 @@ import Prelude (map, take, zip, repeat, length, break, splitAt)
 import Control.Arrow
 import Control.Concurrent
 import Control.Exception
-import Control.Monad (forever)
 import Control.Monad.State (runState, get, put)
 import Control.Monad.Trans (liftIO, MonadIO)
 import Data.Char (ord,chr)
@@ -21,7 +20,6 @@ import Data.Foldable
 import Data.IORef
 import Data.List (partition, sort, nub)
 import qualified Data.List.PointedList.Circular as PL
-import qualified Data.Map as M
 import Data.Maybe
 import Data.Monoid
 import Data.Traversable
@@ -40,6 +38,7 @@ import Yi.Window
 import Yi.Style as Style
 import Graphics.Vty as Vty hiding (refresh)
 import qualified Graphics.Vty as Vty
+import Yi.Keymap (makeAction, YiM)
 
 import Yi.UI.Utils
 import Yi.UI.TabBar
@@ -53,8 +52,6 @@ data UI = UI {  vty       :: Vty             -- ^ Vty
              , scrsize    :: IORef (Int,Int) -- ^ screen size
              , uiThread   :: ThreadId
              , uiEnd      :: MVar ()
-             , uiRefresh  :: MVar ()
-             , uiEditor   :: IORef Editor    -- ^ Copy of the editor state, local to the UI, used to show stuff when the window is resized.
              , config     :: Config
              , oAttrs     :: TerminalAttributes
              }
@@ -66,13 +63,13 @@ mkUI ui = Common.dummyUI
    Common.end            = end ui,
    Common.suspend        = raiseSignal sigTSTP,
    Common.refresh        = refresh ui,
-   Common.prepareAction  = prepareAction ui,
+   Common.layout         = layout ui,
    Common.userForceRefresh = userForceRefresh ui
   }
 
 -- | Initialise the ui
 start :: UIBoot
-start cfg ch _outCh editor = do
+start cfg ch outCh _editor = do
   liftIO $ do 
           oattr <- getTerminalAttributes stdInput
           v <- mkVtyEscDelay $ configVtyEscDelay $ configUI $ cfg
@@ -85,9 +82,7 @@ start cfg ch _outCh editor = do
           -- otherwise all threads will block waiting for input
           tid <- myThreadId
           endUI <- newEmptyMVar
-          tuiRefresh <- newEmptyMVar
-          editorRef <- newIORef editor
-          let result = UI v sz tid endUI tuiRefresh editorRef cfg oattr
+          let result = UI v sz tid endUI cfg oattr
               -- | Action to read characters into a channel
               getcLoop = maybe (getKey >>= ch >> getcLoop) (const (return ())) =<< tryTakeMVar endUI
 
@@ -95,28 +90,17 @@ start cfg ch _outCh editor = do
               getKey = do 
                 event <- getEvent v
                 case event of 
-                  (EvResize x y) -> do logPutStrLn $ "UI: EvResize: " ++ show (x,y)
-                                       writeIORef sz (y,x) >> readRef (uiEditor result) >>= Yi.UI.Vty.refresh result >> getKey
+                  (EvResize x y) -> do
+                      logPutStrLn $ "UI: EvResize: " ++ show (x,y)
+                      writeIORef sz (y,x)
+                      outCh [makeAction (layoutAction result :: YiM ())]
+                      getKey
                   _ -> return (fromVtyEvent event)
           forkIO getcLoop
           return (mkUI result)
 
 main :: UI -> IO ()
-main ui = do
-  let
-      -- | When the editor state isn't being modified, refresh, then wait for
-      -- it to be modified again. 
-      refreshLoop :: IO ()
-      refreshLoop = forever $ do 
-                      logPutStrLn "waiting for refresh"
-                      takeMVar (uiRefresh ui)
-                      handle (\(except :: IOException) -> do
-                                 logPutStrLn "refresh crashed with IO Error"
-                                 logError $ show $ except)
-                             (readRef (uiEditor ui) >>= refresh ui >> return ())
-  --readRef (uiEditor ui) >>= scheduleRefresh ui
-  logPutStrLn "refreshLoop started"
-  refreshLoop
+main UI { uiEnd = endUI } = takeMVar endUI >> putMVar endUI ()
   
 -- | Clean up and go home
 end :: UI -> Bool -> IO ()
@@ -162,29 +146,43 @@ fromVtyMod Vty.MCtrl  = Yi.Event.MCtrl
 fromVtyMod Vty.MMeta  = Yi.Event.MMeta
 fromVtyMod Vty.MAlt   = Yi.Event.MMeta
 
-prepareAction :: UI -> IO (EditorM ())
-prepareAction _ui = return $ return ()
+-- This re-computes the heights and widths of all the windows.
+layout :: UI -> Editor -> IO Editor
+layout ui e = do
+  (rows,cols) <- readIORef (scrsize ui)
+  let ws = windows e
+      tabBarHeight = if hasTabBar e ui then 1 else 0
+      (cmd, _) = statusLineInfo e
+      niceCmd = arrangeItems cmd cols (maxStatusHeight e)
+      cmdHeight = length niceCmd
+      ws' = applyHeights (computeHeights (rows - tabBarHeight - cmdHeight + 1) ws) ws
+      ws'' = fmap apply ws'
+      apply win = fix $ \self -> win {
+          getRegion = getRegionImpl self (configUI $ config ui) e cols (height self)
+        }
+  return $ windowsA ^= ws'' $ e
+
+-- Do Vty layout inside the Yi event loop
+layoutAction :: (MonadEditor m, MonadIO m) => UI -> m ()
+layoutAction ui = do
+    withEditor . put =<< io . layout ui =<< withEditor get
+    withEditor $ mapM_ (flip withWindowE snapInsB) =<< getA windowsA
 
 -- | Redraw the entire terminal from the UI.
--- Among others, this re-computes the heights and widths of all the windows.
-refresh :: UI -> Editor -> IO Editor
+refresh :: UI -> Editor -> IO ()
 refresh ui e = do
-  (yss,xss) <- readRef (scrsize ui)
-  let ws' = applyHeights (computeHeights (yss - tabBarHeight - cmdHeight + 1) ws) ws
-      ws = windows e
+  (_,xss) <- readRef (scrsize ui)
+  let ws = windows e
       tabBarHeight = if hasTabBar e ui then 1 else 0
       windowStartY = tabBarHeight
       (cmd, cmdSty) = statusLineInfo e
       niceCmd = arrangeItems cmd xss (maxStatusHeight e)
       formatCmdLine text = withAttributes statusBarStyle (take xss $ text ++ repeat ' ')
-      cmdHeight = length niceCmd
-      renderSeq = fmap (scrollAndRenderWindow (configUI $ config ui) xss) (PL.withFocus ws')
-      (e', renders) = runEditor (config ui) (sequence renderSeq) (windowsA ^= ws' $ e)
-
-      startXs = scanrT (+) windowStartY (fmap height ws')
+      renders = fmap (renderWindow (configUI $ config ui) e xss) (PL.withFocus ws)
+      startXs = scanrT (+) windowStartY (fmap height ws)
       wImages = fmap picture renders
       statusBarStyle = ((appEndo <$> cmdSty) <*> baseAttributes) $ configStyle $ configUI $ config $ ui
-      tabBarImages = renderTabBar e' ui xss
+      tabBarImages = renderTabBar e ui xss
   logPutStrLn "refreshing screen."
   logPutStrLn $ "startXs: " ++ show startXs
   Vty.update (vty $ ui) 
@@ -201,8 +199,7 @@ refresh ui e = do
                         -- Not really nice, but upon the next refresh the cursor will show.
           }
 
-  writeRef (uiEditor ui) e
-  return e'
+  return ()
 
 -- | Construct images for the tabbar if at least one tab exists.
 renderTabBar :: Editor -> UI -> Int -> [Image]
@@ -231,37 +228,29 @@ scanrT (+*+) k t = fst $ runState (mapM f t) k
                    put s'
                    return s
 
--- | Scrolls the window to show the point if needed, and return a rendered wiew of the window.
-scrollAndRenderWindow :: UIConfig -> Int -> (Window, Bool) -> EditorM Rendered
-scrollAndRenderWindow cfg width (win,hasFocus) = do 
-    e <- get
-    let sty = configStyle cfg
-        b0 = findBufferWith (bufkey win) e
-        (_,b1) = drawWindow cfg e b0 sty hasFocus width win
-        -- this is merely to recompute the bos point.
-        ((pointDriven, inWindow), _) = runBuffer win b1 $ do point <- pointB
-                                                             (,) <$> (($ wkey win) <$> getA pointDriveA) <*> pointInWindowB point
-        -- | Move the point inside the window.
-        showPoint buf = snd $ runBuffer win buf $ do r <- winRegionB
-                                                     p <- pointB
-                                                     moveTo $ max (regionStart r) $ min (regionEnd r - 1) $ p
-        b2 = if inWindow then b1 else 
-                if pointDriven then moveWinTosShowPoint b1 win else showPoint b1
-        b3 = b2
-        (rendered, b4) = drawWindow cfg e b3 sty hasFocus width win
-    put e { buffers = M.insert (bufkey win) b4 (buffers e) }
-    return rendered
+getRegionImpl :: Window -> UIConfig -> Editor -> Int -> Int -> FBuffer -> Region
+getRegionImpl win cfg e w h b =
+  let (_,to) = drawWindow cfg e b undefined {-focus isn't used-} win w h
+  in mkRegion (fst $ runBuffer win b (getMarkPointB =<< fromMark <$> askMarks)) to
+
+-- | Return a rendered wiew of the window.
+renderWindow :: UIConfig -> Editor -> Int -> (Window, Bool) -> Rendered
+renderWindow cfg e width (win,hasFocus) =
+    let b0 = findBufferWith (bufkey win) e
+        (rendered,_) = drawWindow cfg e b0 hasFocus win width (height win)
+    in rendered
 
 -- | Draw a window
 -- TODO: horizontal scrolling.
-drawWindow :: UIConfig -> Editor -> FBuffer -> UIStyle -> Bool -> Int -> Window -> (Rendered, FBuffer)
-drawWindow cfg e b sty focused w win = (Rendered { picture = pict,cursor = cur}, b')
+drawWindow :: UIConfig -> Editor -> FBuffer -> Bool -> Window -> Int -> Int -> (Rendered, Point)
+drawWindow cfg e b focused win w h = (Rendered { picture = pict,cursor = cur}, toMarkPoint')
     where
+        sty = configStyle cfg
         
         notMini = not (isMini win)
         -- off reserves space for the mode line. The mini window does not have a mode line.
         off = if notMini then 1 else 0
-        h' = height win - off
+        h' = h - off
         ground = baseAttributes sty
         wsty = attributesToAttr ground attr
         eofsty = appEndo (eofStyle sty) ground
@@ -270,7 +259,7 @@ drawWindow cfg e b sty focused w win = (Rendered { picture = pict,cursor = cur},
         region = mkSizeRegion fromMarkPoint (Size (w*h'))
         -- Work around a problem with the mini window never displaying it's contents due to a
         -- fromMark that is always equal to the end of the buffer contents.
-        (Just (MarkSet fromM _ _ toM), _) = runBuffer win b (getMarks win)
+        (Just (MarkSet fromM _ _), _) = runBuffer win b (getMarks win)
         fromMarkPoint = if notMini
                             then fst $ runBuffer win b (getMarkPointB fromM)
                             else Point 0
@@ -289,7 +278,6 @@ drawWindow cfg e b sty focused w win = (Rendered { picture = pict,cursor = cur},
                                 tabWidth
                                 ([(c,(wsty, (-1))) | c <- prompt] ++ bufData ++ [(' ',(wsty, eofPoint))])
                              -- we always add one character which can be used to position the cursor at the end of file
-        (_, b') = runBuffer win b (setMarkPointB toM toMarkPoint')
         (modeLine0, _) = runBuffer win b $ getModeLine (commonNamePrefix e)
         modeLine = if notMini then Just modeLine0 else Nothing
         modeLines = map (withAttributes modeStyle . take w . (++ repeat ' ')) $ maybeToList $ modeLine
@@ -361,18 +349,6 @@ withAttributes sty str = horzcat $ fmap (renderChar (attributesToAttr sty attr))
 
 userForceRefresh :: UI -> IO ()
 userForceRefresh = Vty.refresh . vty
-
--- | Schedule a refresh of the UI.
-scheduleRefresh :: UI -> Editor -> IO ()
-scheduleRefresh ui e = do
-  writeRef (uiEditor ui) e
-  logPutStrLn "scheduleRefresh"
-  tryPutMVar (uiRefresh ui) ()
-  return ()
--- The non-blocking behviour was set up with this in mind: if the display
--- thread is not able to catch up with the editor updates (possible since
--- display is much more time consuming than simple editor operations),
--- then there will be fewer display refreshes. 
 
 -- | Calculate window heights, given all the windows and current height.
 -- (No specific code for modelines)

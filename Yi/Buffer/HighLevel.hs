@@ -334,7 +334,7 @@ vimScrollByB f n = do h <- askWindow height
 -- | Move to middle line in screen
 scrollToCursorB :: BufferM ()
 scrollToCursorB = do
-    MarkSet f i _ _ <- markLines
+    MarkSet f i _ <- markLines
     h <- askWindow height
     let m = f + (h `div` 2)
     scrollB $ i - m
@@ -342,24 +342,48 @@ scrollToCursorB = do
 -- | Move cursor to the top of the screen
 scrollCursorToTopB :: BufferM ()
 scrollCursorToTopB = do
-    MarkSet f i _ _ <- markLines
+    MarkSet f i _ <- markLines
     scrollB $ i - f
 
 -- | Move cursor to the bottom of the screen
 scrollCursorToBottomB :: BufferM ()
 scrollCursorToBottomB = do
-    MarkSet _ i _ t <- markLines
+    MarkSet _ i _ <- markLines
+    r <- winRegionB
+    t <- lineOf (regionEnd r - 1)
     scrollB $ i - t
 
 -- | Scroll by n lines.
 scrollB :: Int -> BufferM ()
-scrollB n = do curw <- askWindow wkey
-               modA pointDriveA (\p w -> if w == curw then False else p w)
-               MarkSet fr _ _ _ <- askMarks
-               savingPointB $ do
-                   moveTo =<< getMarkPointB fr
-                   gotoLnFrom n
-                   setMarkPointB fr =<< pointB
+scrollB n = do
+  MarkSet fr _ _ <- askMarks
+  savingPointB $ do
+    moveTo =<< getMarkPointB fr
+    gotoLnFrom n
+    setMarkPointB fr =<< pointB
+  snapInsB
+
+-- | Move the point to inside the viewable region
+snapInsB :: BufferM ()
+snapInsB = do
+  r <- winRegionB
+  p <- pointB
+  moveTo $ max (regionStart r) $ min (regionEnd r - 1) $ p
+
+-- | return index of Sol on line @n@ above current line
+indexOfSolAbove :: Int -> BufferM Point
+indexOfSolAbove n = pointAt $ gotoLnFrom (negate n)
+
+-- | Move the visible region to include the point
+snapScreenB :: BufferM ()
+snapScreenB = do
+  inWin <- pointInWindowB =<< pointB
+  unless inWin $ do
+    height <- askWindow height
+    let gap = height `div` 2
+    i <- indexOfSolAbove gap
+    f <- fromMark <$> askMarks
+    setMarkPointB f i
 
 -- | Move to @n@ lines down from top of screen
 downFromTosB :: Int -> BufferM ()
@@ -370,7 +394,8 @@ downFromTosB n = do
 -- | Move to @n@ lines up from the bottom of the screen
 upFromBosB :: Int -> BufferM ()
 upFromBosB n = do
-  moveTo =<< getMarkPointB =<< toMark <$> askMarks
+  r <- winRegionB
+  moveTo (regionEnd r - 1)
   moveToSol
   replicateM_ n lineUp
 

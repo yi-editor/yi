@@ -6,12 +6,12 @@
 --
 
 module Yi.Window where
-import Control.Monad (ap)
 import Data.Binary
 import Data.Typeable
 import Yi.Buffer.Basic (BufferRef)
-import Data.DeriveTH
-import Data.Derive.Binary
+import {-# source #-} Yi.Buffer.Misc (FBuffer)
+import Yi.Region (Region,emptyRegion)
+import Control.Applicative
 
 ------------------------------------------------------------------------
 -- | A window onto a buffer.
@@ -22,12 +22,17 @@ data Window = Window {
                       isMini    :: !Bool   -- ^ regular or mini window?
                      ,bufkey    :: !BufferRef -- ^ the buffer this window opens to
                      ,bufAccessList :: ![BufferRef] -- ^ list of last accessed buffers. Last accessed one is first element
-                     ,height    :: !Int    -- ^ height of the window (in number of lines displayed)
+                     ,height    :: Int    -- ^ height of the window (in number of lines displayed)
+                     ,getRegion :: (FBuffer -> Region) -- ^ get view area
                      ,wkey      :: !WindowRef -- ^ identifier for the window (for UI sync)
                      }
         deriving (Typeable)
-$(derive makeBinary ''Window)
 
+instance Binary Window where
+    put (Window mini bk bl _h _rgn key) = put mini >> put bk >> put bl >> put key
+    get = Window <$> get <*> get <*> get
+                   <*> return 0 <*> return (const emptyRegion)
+                   <*> get
 
 
 -- | Get the identification of a window.
@@ -53,5 +58,5 @@ dummyWindowKey = (-1)
 
 -- | Return a "fake" window onto a buffer.
 dummyWindow :: BufferRef -> Window
-dummyWindow b = Window False b [] 0 dummyWindowKey
+dummyWindow b = Window False b [] 0 (const emptyRegion) dummyWindowKey
 

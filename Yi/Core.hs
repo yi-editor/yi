@@ -91,9 +91,7 @@ interactive :: [Action] -> YiM ()
 interactive action = do
   evs <- withEditor $ getA pendingEventsA
   logPutStrLn $ ">>> interactively" ++ showEvs evs
-  prepAction <- withUI UI.prepareAction
-  withEditor $ do prepAction
-                  modA buffersA (fmap $  undosA ^: addChangeU InteractivePoint)
+  withEditor $ modA buffersA (fmap $  undosA ^: addChangeU InteractivePoint)
   mapM_ runAction action
   withEditor $ modA killringA krEndCmd
   refreshEditor
@@ -236,12 +234,17 @@ refreshEditor = onYiVar $ \yi var -> do
                Just msg -> (statusLinesA ^: DelayList.insert msg) e0 {buffers = fmap fst newBuffers}
                Nothing -> e0
             e2 = buffersA ^: (fmap (clearSyntax . clearHighlight)) $ e1
-        e4 <- UI.refresh (yiUi yi) e2
-        let e5 = buffersA ^: (fmap (clearUpdates . setPointDrive)) $ e4
+        e3 <- UI.layout (yiUi yi) e2
+        -- Adjust point according to the current layout
+        let e4 = fst $ runEditor (yiConfig yi)
+                                 (do ws <- getA windowsA
+                                     mapM (flip withWindowE snapScreenB) ws)
+                                 e3
+        UI.refresh (yiUi yi) e4
+        let e5 = buffersA ^: (fmap clearUpdates) $ e4
         terminateSubprocesses (staleProcess $ buffers e5) yi var {yiEditor = e5}
   where 
     clearUpdates fb = pendingUpdatesA ^= [] $ fb
-    setPointDrive fb = pointDriveA ^= const True $ fb
     clearHighlight fb =
       -- if there were updates, then hide the selection.
       let h = getVal highlightSelectionA fb

@@ -108,7 +108,6 @@ module Yi.Buffer.Misc
   , getMarkPointB
   , askMarks
   , pointAt
-  , pointDriveA
   , SearchExp
   , lastActiveWindowA
   , bufferDynamicValueA
@@ -172,10 +171,10 @@ import Data.Time
 
 type WinMarks = MarkSet Mark
 
-data MarkSet a = MarkSet { fromMark, insMark, selMark, toMark :: !a }
+data MarkSet a = MarkSet { fromMark, insMark, selMark :: !a }
 
 instance Traversable MarkSet where
-    traverse f (MarkSet a b c d) = MarkSet <$> f a <*> f b <*> f c <*> f d
+    traverse f (MarkSet a b c) = MarkSet <$> f a <*> f b <*> f c
 instance Foldable MarkSet where
     foldMap = foldMapDefault
 instance Functor MarkSet where
@@ -202,7 +201,6 @@ data Attributes = Attributes
                 { ident :: !BufferId
                 , bkey__   :: !BufferRef            -- ^ immutable unique key
                 , undos  :: !URList               -- ^ undo/redo list
-                , pointDrive :: !(WindowRef -> Bool)
                 , bufferDynamic :: !DynamicValues -- ^ dynamic components
                 , preferCol :: !(Maybe Int)       -- ^ prefered column to arrive at when we do a lineDown / lineUp
                 , pendingUpdates :: ![UIUpdate]    -- ^ updates that haven't been synched in the UI yet
@@ -219,13 +217,13 @@ $(nameDeriveAccessors ''Attributes (\n -> Just (n ++ "AA")))
 
 -- unfortunately the dynamic stuff can't be read.
 instance Binary Attributes where
-    put (Attributes n b u _pd _bd pc pu selectionStyle_ _proc wm law lst ro) = do
+    put (Attributes n b u _bd pc pu selectionStyle_ _proc wm law lst ro) = do
           put n >> put b >> put u
           -- put pd >> 
           put pc >> put pu >> put selectionStyle_ >> put wm
           put law >> put lst >> put ro
     get = Attributes <$> get <*> get <*> get <*> 
-          pure (const True) <*> pure emptyDV <*> get <*> get <*> get <*> pure I.End <*> get <*> get <*> get <*> get
+          pure emptyDV <*> get <*> get <*> get <*> pure I.End <*> get <*> get <*> get <*> get
 
 instance Binary UTCTime where
     put (UTCTime x y) = put (fromEnum x) >> put (fromEnum y)
@@ -301,9 +299,6 @@ lastActiveWindowA = lastActiveWindowAA . attrsA
 
 lastSyncTimeA :: Accessor FBuffer UTCTime
 lastSyncTimeA = lastSyncTimeAA . attrsA
-
-pointDriveA :: Accessor FBuffer (WindowRef -> Bool)
-pointDriveA = pointDriveAA . attrsA
 
 undosA :: Accessor FBuffer URList
 undosA = undosAA . attrsA
@@ -497,8 +492,7 @@ runBufferFull w b f =
                         -- no previous window, create some marks from scratch.
                          MarkSet { insMark = MarkValue 0 Forward,
                                    selMark = MarkValue 0 Backward, -- sel
-                                   fromMark = MarkValue 0 Backward, -- from
-                                   toMark = MarkValue 0 Forward } -- to
+                                   fromMark = MarkValue 0 Backward } -- from
                     else do
                         Just mrks  <- getsA winMarksA (M.lookup $ wkey (b ^. lastActiveWindowA))
                         forM mrks getMarkValueB
@@ -593,7 +587,6 @@ newB unique nm s =
  Attributes { ident  = nm
             , bkey__ = unique
             , undos  = emptyU
-            , pointDrive = const True
             , preferCol = Nothing
             , bufferDynamic = emptyDV 
             , pendingUpdates = []

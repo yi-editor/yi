@@ -8,18 +8,18 @@
 
 module Yi.UI.Pango (start) where
 
-import Prelude (filter, map, round, FilePath, (/), zipWith)
+import Prelude (filter, map, round, FilePath, (/))
 
 import Control.Concurrent (yield)
 import Control.Monad (ap)
 import Control.Monad.Reader (liftIO, when, MonadIO)
-import Control.Monad.State (gets, modify, runState, State)
 import Data.Prototype
 import Data.IORef
-import Data.List (intercalate, nub, findIndex, zip, drop, repeat)
+import Data.List (intercalate, nub, findIndex, zip, drop)
 import qualified Data.List.PointedList.Circular as PL
 import Data.Maybe
 import qualified Data.Map as M
+import System.IO.Unsafe
 
 import Graphics.UI.Gtk hiding (on, Region, Window, Action, Point, Style)
 import qualified Graphics.UI.Gtk.Gdk.Events as Gdk.Events
@@ -63,7 +63,7 @@ uiBox u = do pageNum <- notebookGetCurrentPage (uiNotebook u)
 
 data WinInfo = WinInfo
     { coreWin         :: Window
-    , shownRegion     :: IORef Region
+    , shownTos        :: IORef Point
     , renderer        :: IORef (ConnectId DrawingArea)
     , winMotionSignal :: IORef (Maybe (ConnectId DrawingArea))
     , winLayout       :: PangoLayout
@@ -81,8 +81,8 @@ mkUI ui = Common.dummyUI
     { Common.main          = main ui
     , Common.end           = const end
     , Common.suspend       = windowIconify (uiWindow ui)
-    , Common.refresh       = \e -> refresh ui e >> return e
-    , Common.prepareAction = prepareAction ui
+    , Common.refresh       = refresh ui
+    , Common.layout        = doLayout ui
     , Common.reloadProject = reloadProject ui
     }
 
@@ -242,6 +242,7 @@ end = mainQuit
 syncTabs :: Editor -> UI -> PL.PointedList (PL.PointedList Window) -> [WinInfo] -> IO [WinInfo]
 syncTabs e ui tabs cache = do
     cache' <- forM tabs $ \ws -> syncTab e ui ws cache
+    containerResizeChildren =<< uiBox ui
     return $ concat cache'
 
 syncTab :: Editor -> UI -> PL.PointedList Window -> [WinInfo] -> IO [WinInfo]
@@ -270,13 +271,10 @@ syncWin :: Editor -> Window -> WinInfo -> IO WinInfo
 syncWin e w wi = do
   let b = findBufferWith (bufkey w) e
       reg = askBuffer w b winRegionB
-  logPutStrLn $ "Updated one: " ++ show w ++ " to " ++ show reg
-  writeRef (shownRegion wi) reg
   return (wi {coreWin = w})
 
 setFocus :: WinInfo -> IO ()
 setFocus w = do
-  logPutStrLn $ "gtk focusing " ++ show w
   hasFocus <- get (textview w) widgetIsFocus
   when (not hasFocus) $ widgetGrabFocus (textview w)
 
@@ -289,9 +287,9 @@ handleClick ui w event = do
   -- logPutStrLn $ "Click: " ++ show (eventX e, eventY e, eventClick e)
 
   -- retrieve the clicked offset.
-  (_,layoutIndex,_) <- layoutXYToIndex (winLayout w) (Gdk.Events.eventX event) (Gdk.Events.eventY event)
-  r <- readRef (shownRegion w)
-  let p1 = regionStart r + fromIntegral layoutIndex
+  (_,layoutIndex,_) <- io $ layoutXYToIndex (winLayout w) (Gdk.Events.eventX event) (Gdk.Events.eventY event)
+  tos <- readRef (shownTos w)
+  let p1 = tos + fromIntegral layoutIndex
 
   -- maybe focus the window
   logPutStrLn $ "Clicked inside window: " ++ show w
@@ -346,8 +344,8 @@ handleMove ui w p0 event = do
 
   -- retrieve the clicked offset.
   (_,layoutIndex,_) <- layoutXYToIndex (winLayout w) (Gdk.Events.eventX event) (Gdk.Events.eventY event)
-  r <- readRef (shownRegion w)
-  let p1 = regionStart r + fromIntegral layoutIndex
+  tos <- readRef (shownTos w)
+  let p1 = tos + fromIntegral layoutIndex
 
 
   let editorAction = do
@@ -417,7 +415,7 @@ newWindow e ui w b = mdo
       return (castToBox vb)
      
     sig       <- newIORef =<< (v `onExpose` render e ui b win)
-    rRef      <- newIORef (askBuffer w b winRegionB)
+    tosRef    <- newIORef (askBuffer w b (getMarkPointB =<< fromMark <$> askMarks))
     context   <- widgetCreatePangoContext v
     layout    <- layoutEmpty context
     language  <- contextGetLanguage context
@@ -435,7 +433,7 @@ newWindow e ui w b = mdo
                       , modeline  = ml
                       , widget    = box
                       , renderer  = sig
-                      , shownRegion = rRef
+                      , shownTos  = tosRef
                       }
 
     return win
@@ -466,17 +464,13 @@ updateCache :: UI -> Editor -> IO ()
 updateCache ui e = do
     let tabs = tabs_ e
     cache <- readRef $ windowCache ui
-    logPutStrLn $ "syncing: " ++ show tabs
-    logPutStrLn $ "with: " ++ show cache
     cache' <- syncTabs e ui tabs cache
-    logPutStrLn $ "Gives: " ++ show cache'
     writeRef (windowCache ui) cache'
 
 refresh :: UI -> Editor -> IO ()
 refresh ui e = do
     set (uiCmdLine ui) [labelText := intercalate "  " $ statusLine e,
                         labelEllipsize := EllipsizeEnd]
-    updateCache ui e
     cache <- readRef $ windowCache ui
     forM_ cache $ \w -> do
         let b = findBufferWith (bufkey (coreWin w)) e
@@ -497,55 +491,16 @@ winEls tospnt h = savingPointB $ do
 
 render :: Editor -> UI -> FBuffer -> WinInfo -> t -> IO Bool
 render e ui b w _ev = do
-  reg               <- readRef (shownRegion w)
-  drawWindow        <- widgetGetDrawWindow $ textview w
-  (width', height') <- widgetGetSize $ textview w
-
-  let win                 = coreWin w
-      [width'', height''] = map fromIntegral [width', height']
-      metrics             = winMetrics w
-      layout              = winLayout w
-      winh                = round (height'' / (ascent metrics + descent metrics))
-
-      (point, text)       = askBuffer win b $ do
-                              numChars <- winEls (regionStart reg) winh
-                              p        <- pointB
-                              content  <- nelemsB (fromIntegral numChars) (regionStart reg)
-                              return (p, content)
-
-  layoutSetWidth layout (Just width'')
-  layoutSetText layout text
-
-  (_,bos,_) <- layoutXYToIndex layout width'' height''
-  let r' = mkRegion (regionStart reg) (fromIntegral bos + regionStart reg)
-
-  -- Scroll the window when the cursor goes out of it:
-  logPutStrLn $ "prewin: " ++ show r'
-  logPutStrLn $ "point: " ++ show point
-  r'' <- if inRegion point r'
-    then return r'
-    else do
-      logPutStrLn $ "point moved out of visible region"
-
-      let (topOfScreen, numChars, text') = askBuffer win b $ do
-            top       <- indexOfSolAbove (winh `div` 2)
-            charCount <- winEls top winh
-            content   <- nelemsB (fromIntegral numChars) top
-            return (top, charCount, content)
-
-      layoutSetText layout text'
-
-      return $ mkSizeRegion topOfScreen numChars
-
-  writeRef (shownRegion w) r''
-  logPutStrLn $ "updated: " ++ show r''
+  (tos,cur,bos) <- updatePango w b (winLayout w)
+  writeRef (shownTos w) tos
+  drawWindow    <- widgetGetDrawWindow $ textview w
 
   -- add color attributes.
-  let picture = askBuffer win b $ attributesPictureAndSelB sty (currentRegex e) r''
+  let picture = askBuffer (coreWin w) b $ attributesPictureAndSelB sty (currentRegex e) (mkRegion tos bos)
       sty = extractValue $ configTheme (uiConfig ui)
-      strokes = [(start',s,end') | ((start', s), end') <- zip picture (drop 1 (map fst picture) ++ [regionEnd r'']),
+      strokes = [(start',s,end') | ((start', s), end') <- zip picture (drop 1 (map fst picture) ++ [bos]),
                   s /= emptyAttributes]
-      rel p = fromIntegral (p - regionStart r'')
+      rel p = fromIntegral (p - tos)
       allAttrs = concat $ do
         (p1, Attributes fg bg _rv bd itlc udrl, p2) <- strokes
         return $ [ AttrForeground (rel p1) (rel p2) (mkCol True fg)
@@ -554,10 +509,11 @@ render e ui b w _ev = do
                  , AttrUnderline  (rel p1) (rel p2) (if udrl then UnderlineSingle else UnderlineNone)
                  , AttrWeight     (rel p1) (rel p2) (if bd   then WeightBold      else WeightNormal)
                  ]
+      layout = winLayout w
 
   layoutSetAttributes layout allAttrs
 
-  (PangoRectangle curx cury curw curh, _) <- layoutGetCursorPos layout (fromPoint (point - regionStart r''))
+  (PangoRectangle curx cury curw curh, _) <- layoutGetCursorPos layout (rel cur)
 
   gc <- gcNew drawWindow
   drawLayout drawWindow gc 0 0 layout
@@ -567,28 +523,63 @@ render e ui b w _ev = do
   drawLine drawWindow gc (round curx, round cury) (round $ curx + curw, round $ cury + curh) 
   return True
 
-prepareAction :: UI -> IO (EditorM ())
-prepareAction ui = do
-    wins <- readRef (windowCache ui)
-    let ws = fmap coreWin wins
-    rs <- mapM (readRef . shownRegion) wins
-    logPutStrLn $ "new wins: " ++ show wins
-    logPutStrLn $ "new regs: " ++ show rs
-    heights <- forM wins $ \w -> do
+doLayout :: UI -> Editor -> IO Editor
+doLayout ui ePrev = mdo -- This recursive do ensures that we don't use old
+                        -- WinInfo data such as height. Unfortunately it
+                        -- means "logPutStrLn (print win)" can loop because
+                        -- Window's Show instance uses the Window's height.
+    let updateWin w = w { height = height' w, getRegion = getRegion' w }
+        e' = (windowsA ^: fmap updateWin) ePrev
+    io $ updateCache ui e'
+    wins <- io $ readRef (windowCache ui)
+    heights <- io $ forM wins $ \w -> do
       (_, h) <- widgetGetSize $ textview w
       let metrics = winMetrics w
-      return $ round ((fromIntegral h) / (ascent metrics + descent metrics))
-    return $ do
-      let updWin w r = do
-             withGivenBufferAndWindow0 w (bufkey w) $ do
-                 Just (MarkSet f _ _ t) <- getMarks w
-                 setMarkPointB f (regionStart r)
-                 setMarkPointB t (regionEnd   r)
-      sequence_ $ zipWith updWin ws rs
-      modA windowsA (applyHeights $ heights ++ repeat 0)
-      -- TODO: bos needs to be set also.
-      -- FIXME: Get rid of 'repeat 0'; it seems to be necessary because no
-      -- windows are available when this is first executed.
+      return (w,
+              round ((fromIntegral h) / (ascent metrics + descent metrics)))
+
+    f <- readIORef (uiFont ui)
+    let height' w = case find ((w ==) . coreWin . fst) heights of
+                        Nothing -> 0
+                        Just (_,h) -> h
+        getRegion' w = case find ((w ==) . coreWin) wins of
+                           Nothing -> const emptyRegion
+                           Just win -> shownRegion f win
+    logPutStrLn ("heights:"++show heights)
+    return e'
+
+shownRegion :: FontDescription -> WinInfo -> FBuffer -> Region
+shownRegion f w b =
+  -- PangoLayout operations should be functional
+  unsafePerformIO $ do
+  -- Don't use layoutCopy, it just segfaults (as of gtk2hs 0.10.1)
+  context <- widgetCreatePangoContext (textview w)
+  layout <- layoutEmpty context
+  layoutSetWrap layout WrapAnywhere
+  layoutSetFontDescription layout (Just f)
+  (tos,_,bos) <- updatePango w b layout
+  return $ mkRegion tos bos
+
+updatePango :: WinInfo -> FBuffer -> PangoLayout -> IO (Point,Point,Point)
+updatePango w b layout = do
+  (width', height') <- widgetGetSize $ textview w
+
+  let win                 = coreWin w
+      [width'', height''] = map fromIntegral [width', height']
+      metrics             = winMetrics w
+      winh                = round (height'' / (ascent metrics + descent metrics))
+
+      (tos, point, text)  = askBuffer win b $ do
+                              from     <- getMarkPointB =<< fromMark <$> askMarks
+                              numChars <- winEls from winh
+                              p        <- pointB
+                              content  <- nelemsB (fromIntegral numChars) from
+                              return (from, p, content)
+
+  layoutSetWidth layout (Just width'')
+  layoutSetText layout text
+  (_,bosOffset,_) <- layoutXYToIndex layout width'' height''
+  return (tos,point,tos+fromIntegral bosOffset)
 
 reloadProject :: UI -> FilePath -> IO ()
 reloadProject _ _ = return ()

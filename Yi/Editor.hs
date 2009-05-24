@@ -386,7 +386,7 @@ alternateBufferE n = do
 
 -- | Create a new window onto the given buffer.
 newWindowE :: Bool -> BufferRef -> EditorM Window
-newWindowE mini bk = Window mini bk [] 0 <$> newRef
+newWindowE mini bk = Window mini bk [] 0 (const emptyRegion) <$> newRef
 
 -- | Attach the specified buffer to the current window
 switchToBufferE :: BufferRef -> EditorM ()
@@ -394,6 +394,7 @@ switchToBufferE bk = do
     modA (PL.focusA . windowsA) (\w -> 
         w { bufkey = bk, 
             bufAccessList = ((bufkey w):) . filter (bk/=) $ bufAccessList w })
+    withBuffer0 (scrollB 0)
 
 -- | Attach the specified buffer to some other window than the current one
 switchToBufferOtherWindowE :: BufferRef -> EditorM ()
@@ -450,6 +451,9 @@ fixCurrentWindow = do
 
 withWindow :: (Window -> a) -> EditorM a
 withWindow = getsA (PL.focusA . windowsA)
+
+withWindowE :: Window -> BufferM a -> EditorM a
+withWindowE w = withGivenBufferAndWindow0 w (bufkey w)
 
 findWindowWith :: WindowRef -> Editor -> Window
 findWindowWith k e =
