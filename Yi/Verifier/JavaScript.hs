@@ -3,7 +3,7 @@
 module Yi.Verifier.JavaScript where
 
 import Control.Monad.Writer.Lazy (Writer, mapM_, MonadWriter, tell)
-import Data.List (map, dropWhile, drop, filter, length)
+import Data.List (map, dropWhile, drop, filter, length, intersperse)
 import qualified Data.DList as D
 import Prelude ()
 import Yi.Lexer.Alex (Posn, Tok, tokT, tokPosn)
@@ -33,7 +33,8 @@ instance Eq (Tok Token) where
 
 instance Show ErrType where
     show (MultipleFunctionDeclaration n ps) =
-        "Function `" ++ n ++ "' declared more than once: " ++ show ps
+        "Function `" ++ n ++ "' declared more than once: " ++
+                     concat (intersperse ", " $ map show ps)
 
 instance Show WarnType where
     show (UnreachableCode pos) =
@@ -49,8 +50,7 @@ instance Show Report where
 -- | The main verifier which calls the sub-verifiers.
 verify :: Tree TT -> Writer (D.DList Report) ()
 verify t = do
-  let topfuns = findFunctions (toList t) -- top level functions
-  log $ "TOP LEVEL FUNCTIONS: " ++ show (map (nameOf . tokT . funName) topfuns)
+  let topfuns = findFunctions (toList t)
   checkMultipleFuns topfuns
   mapM_ (checkUnreachable . funBody) topfuns
 
@@ -58,7 +58,6 @@ verify t = do
 --   declarations, including the functions' subfunctions.
 checkMultipleFuns :: [Statement TT] -> Writer (D.DList Report) ()
 checkMultipleFuns stmts = do
-  trace ("Checking for multiple function declarations... Statements:\n" ++ show stmts) $ return ()
   let dupFuns = dupsBy ((==) `on` funName) stmts
   when (not $ null dupFuns)
     (say (Err (MultipleFunctionDeclaration
@@ -69,16 +68,12 @@ checkMultipleFuns stmts = do
 
 checkUnreachable :: [Statement TT] -> Writer (D.DList Report) ()
 checkUnreachable stmts = do
-  log $ "Checking unreachable code... Statements:\n" ++ show stmts
   let afterReturn = dropWhile' (not . isReturn) stmts
   when (not (null afterReturn))
     (say (Warn (UnreachableCode (tokPosn $ firstTok $ head afterReturn))))
 
 
 -- * Helper functions
-
-log :: Monad m => String -> m ()
-log x = trace x $ return ()
 
 say :: MonadWriter (D.DList a) m => a -> m ()
 say = tell . D.singleton
