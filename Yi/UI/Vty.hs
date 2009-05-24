@@ -13,6 +13,7 @@ import Prelude (map, take, zip, repeat, length, break, splitAt)
 import Control.Arrow
 import Control.Concurrent
 import Control.Exception
+import Control.Monad (forever)
 import Control.Monad.State (runState, get, put)
 import Control.Monad.Trans (liftIO, MonadIO)
 import Data.Char (ord,chr)
@@ -52,6 +53,8 @@ data UI = UI {  vty       :: Vty             -- ^ Vty
              , scrsize    :: IORef (Int,Int) -- ^ screen size
              , uiThread   :: ThreadId
              , uiEnd      :: MVar ()
+             , uiRefresh  :: MVar ()
+             , uiEditor   :: IORef Editor    -- ^ Copy of the editor state, local to the UI, used to show stuff when the window is resized.
              , config     :: Config
              , oAttrs     :: TerminalAttributes
              }
@@ -69,7 +72,7 @@ mkUI ui = Common.dummyUI
 
 -- | Initialise the ui
 start :: UIBoot
-start cfg ch outCh _editor = do
+start cfg ch outCh editor = do
   liftIO $ do 
           oattr <- getTerminalAttributes stdInput
           v <- mkVtyEscDelay $ configVtyEscDelay $ configUI $ cfg
@@ -82,7 +85,9 @@ start cfg ch outCh _editor = do
           -- otherwise all threads will block waiting for input
           tid <- myThreadId
           endUI <- newEmptyMVar
-          let result = UI v sz tid endUI cfg oattr
+          tuiRefresh <- newEmptyMVar
+          editorRef <- newIORef editor
+          let result = UI v sz tid endUI tuiRefresh editorRef cfg oattr
               -- | Action to read characters into a channel
               getcLoop = maybe (getKey >>= ch >> getcLoop) (const (return ())) =<< tryTakeMVar endUI
 
@@ -100,8 +105,21 @@ start cfg ch outCh _editor = do
           return (mkUI result)
 
 main :: UI -> IO ()
-main UI { uiEnd = endUI } = takeMVar endUI >> putMVar endUI ()
-  
+main ui = do
+  let
+      -- | When the editor state isn't being modified, refresh, then wait for
+      -- it to be modified again.
+      refreshLoop :: IO ()
+      refreshLoop = forever $ do
+                      logPutStrLn "waiting for refresh"
+                      takeMVar (uiRefresh ui)
+                      handle (\(except :: IOException) -> do
+                                 logPutStrLn "refresh crashed with IO Error"
+                                 logError $ show $ except)
+                             (readRef (uiEditor ui) >>= refresh ui >> return ())
+  logPutStrLn "refreshLoop started"
+  refreshLoop
+
 -- | Clean up and go home
 end :: UI -> Bool -> IO ()
 end i reallyQuit = do  
@@ -349,6 +367,14 @@ withAttributes sty str = horzcat $ fmap (renderChar (attributesToAttr sty attr))
 
 userForceRefresh :: UI -> IO ()
 userForceRefresh = Vty.refresh . vty
+
+-- | Schedule a refresh of the UI.
+scheduleRefresh :: UI -> Editor -> IO ()
+scheduleRefresh ui e = do
+  writeRef (uiEditor ui) e
+  logPutStrLn "scheduleRefresh"
+  tryPutMVar (uiRefresh ui) ()
+  return ()
 
 -- | Calculate window heights, given all the windows and current height.
 -- (No specific code for modelines)
