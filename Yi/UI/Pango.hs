@@ -585,21 +585,10 @@ prepareAction ui = do
                  setMarkPointB f (regionStart r)
                  setMarkPointB t (regionEnd   r)
       sequence_ $ zipWith updWin ws rs
-      modA windowsA (computeHeights $ heights ++ repeat 0)
+      modA windowsA (applyHeights $ heights ++ repeat 0)
       -- TODO: bos needs to be set also.
       -- FIXME: Get rid of 'repeat 0'; it seems to be necessary because no
       -- windows are available when this is first executed.
-
--- | Calculate window heights, given all the windows and current height.
-computeHeights :: [Int] -> PL.PointedList Window -> PL.PointedList Window
-computeHeights heights ws = fst $ runState (mapM distribute ws) heights
-
-distribute :: Window -> State [Int] Window
-distribute win = case isMini win of
-                 True -> return win {height = 1}
-                 False -> do h <- gets head
-                             modify tail
-                             return win {height = h}
 
 reloadProject :: UI -> FilePath -> IO ()
 reloadProject _ _ = return ()

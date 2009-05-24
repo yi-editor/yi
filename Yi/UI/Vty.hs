@@ -14,7 +14,7 @@ import Control.Arrow
 import Control.Concurrent
 import Control.Exception
 import Control.Monad (forever)
-import Control.Monad.State (runState, State, gets, modify, get, put)
+import Control.Monad.State (runState, get, put)
 import Control.Monad.Trans (liftIO, MonadIO)
 import Data.Char (ord,chr)
 import Data.Foldable
@@ -170,7 +170,7 @@ prepareAction _ui = return $ return ()
 refresh :: UI -> Editor -> IO Editor
 refresh ui e = do
   (yss,xss) <- readRef (scrsize ui)
-  let ws' = computeHeights (yss - tabBarHeight - cmdHeight + 1) ws
+  let ws' = applyHeights (computeHeights (yss - tabBarHeight - cmdHeight + 1) ws) ws
       ws = windows e
       tabBarHeight = if hasTabBar e ui then 1 else 0
       windowStartY = tabBarHeight
@@ -376,18 +376,10 @@ scheduleRefresh ui e = do
 
 -- | Calculate window heights, given all the windows and current height.
 -- (No specific code for modelines)
-computeHeights :: Int -> PL.PointedList Window -> PL.PointedList Window
-computeHeights totalHeight ws = result
+computeHeights :: Int -> PL.PointedList Window -> [Int]
+computeHeights totalHeight ws = ((y+r-1) : repeat y)
   where (mwls, wls) = partition isMini (toList ws)
-        (y,r) = getY (totalHeight - length mwls) (length wls) 
-        (result, _) = runState (Data.Traversable.mapM distribute ws) ((y+r-1) : repeat y)
-
-distribute :: Window -> State [Int] Window
-distribute win = case isMini win of
-                 True -> return win {height = 1}
-                 False -> do h <- gets head
-                             modify tail
-                             return win {height = h}
+        (y,r) = getY (totalHeight - length mwls) (length wls)
 
 getY :: Int -> Int -> (Int,Int)
 getY screenHeight 0               = (screenHeight, 0)

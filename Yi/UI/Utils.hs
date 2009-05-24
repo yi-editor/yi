@@ -13,6 +13,7 @@ import Data.List (zip, repeat, span, dropWhile, length, zipWith, transpose, scan
 import Yi.Syntax (Span(..))
 import Data.List.Split (splitEvery)
 import Yi.String (padLeft)
+import Control.Monad.State (runState,modify)
 
 -- | return index of Sol on line @n@ above current line
 indexOfSolAbove :: Int -> BufferM Point
@@ -33,6 +34,14 @@ indexedAnnotatedStreamB p = do
     annots <- gets (withSyntax0 modeGetAnnotations)
     return $ spliceAnnots text (dropWhile (\s -> spanEnd s < p) (annots p))
        
+applyHeights :: Traversable t => [Int] -> t Window -> t Window
+applyHeights heights ws = fst $ runState (mapM distribute ws) heights
+    where distribute win = case isMini win of
+                 True -> return win {height = 1}
+                 False -> do h <- gets head
+                             modify tail
+                             return win {height = h}
+
 
 spliceAnnots :: [(Point,Char)] -> [Span String] -> [(Point,Char)]
 spliceAnnots text [] = text
