@@ -19,6 +19,7 @@ import Data.Tree
 haskellLexer = Alex.lexScanner alexScanToken initState
 jsLexer = Alex.lexScanner JSLex.alexScanToken JSLex.initState
 
+main :: IO ()
 main = do
     arg <- getArgs
     let (flags,rest) = partition (isPrefixOf "-") arg  -- flag begins with -
@@ -31,33 +32,39 @@ main = do
         _ -> mapM_ (dirs flags) rest
 
 -- | Find files to parse, recursively if flagged -r
+dirs :: [String] -> FilePath -> IO ()
 dirs flags dir = do
-    b <- doesDirectoryExist dir
-    let b' = b &&(List.all ((/=) '.') dir) -- dont look in "." or ".."e
-    case b' of
-        True -> (pFiles =<< getFiles) >> recurse
-        False -> pFiles [dir] -- check so that file has correct extension
-  where recurse = if (List.elem "-r" flags) then ((\x -> mapM_ (dirs flags) x) =<< filterM (doesDirectoryExist)
-                      =<< liftM2 map (return $ (</>) dir) (getDirectoryContents dir)) else return ()
-        getExt = if (List.elem "-hs" flags) then [".hs"] else [".js",".json"] -- Should take more js files
-        getFiles = (filterM doesFileExist . filter (\x -> elem (takeExtension x) getExt)
+    dirExist <- doesDirectoryExist dir
+    if dirExist &&(List.all ((/=) '.') dir) then
+       (pFiles =<< getFiles) >> recurse
+       else pFiles [dir]
+  where recurse :: IO ()
+        recurse = when (List.elem "-r" flags) $
+                     (mapM_ (dirs flags) =<<
+                      (filterM doesDirectoryExist) . map ((</>) dir)
+                      =<< (getDirectoryContents dir))
+        getExt :: [String]
+        getExt = if (List.elem "-hs" flags) then [".hs"] else [".js",".json"]
+        getFiles :: IO [FilePath]
+        getFiles = (filterM doesFileExist . filter (flip elem getExt . takeExtension)
                    . map ((</>) dir) =<< getDirectoryContents dir)
+        pFiles :: [FilePath] -> IO ()
         pFiles arg' = do
-            b <-P.foldlM (\a b -> liftM2 (==) (return a) (doesFileExist b)) True arg'
-            case b of
-                True -> do
-                    input <- mapM readFile arg'
-                    Control.Monad.mapM_ (parse flags) $ zip arg' input
-                False -> return () -- not valid file/folder
+            fileExist <-P.foldlM (\a b -> liftM2 (==) (return a) (doesFileExist b)) True arg'
+            when fileExist $ do
+                        input <- mapM readFile arg'
+                        Control.Monad.mapM_ (parse flags) $ zip arg' input
 
-extract t input = take (fromIntegral $ tokLen t) (drop (fromIntegral $ posnOfs (tokPosn t)) input)
+extract ::(Tok t) -> String -> String
+extract t = take (fromIntegral $ tokLen t) . drop (fromIntegral $ posnOfs $ tokPosn t)
 
 -- | Parse given flags, file name and content
+parse :: [String] -> (String, String) -> IO ()
 parse flags (fName, input) = do
     if (List.elem "-cmp" flags) then do -- compare with Paren.hs
        let tokList = getSyms (Haskell.indentScanner . haskellLexer)
            (paths, finRes) = option (mkProcess Haskell.parse) tokList
-       let tokList' = getSyms (Paren.indentScanner . haskellLexer)
+           tokList' = getSyms (Paren.indentScanner . haskellLexer)
            (paths', finRes') = option (mkProcess Paren.parse) tokList'
        debug $ getSyms (Haskell.indentScanner . haskellLexer)
        write tokList (fullLog finRes) -- write the dot file version of the tree if correct flag
@@ -78,9 +85,8 @@ parse flags (fName, input) = do
                      mapM_ print (zip3 r tokList (map (\t -> extract t input) tokList)) -- will print width followed by token added
                      putStrLn $ show $ evalL $ pushEof info
   where
-      debug allSyms = if (List.elem "-d" flags) then
+      debug allSyms = when (List.elem "-d" flags) $
                            mapM_ print allSyms
-                           else return ()
       getSyms scan =
           let getText = Scanner 0 id (error "getText: no character beyond eof")
                          (\idx -> zip [idx..] (drop (fromIntegral idx) input))
@@ -90,7 +96,7 @@ parse flags (fName, input) = do
                               oneByOne thisFar xs
                               else ([], pushSyms xs $ thisFar)
       write toks (msgs,log) = case (find (isPrefixOf "-Tree=") flags) of
-          Nothing -> return () -- if not write then dont!
+          Nothing -> return ()
           Just x ->do print msgs
                       writeTree toks (drop 6 x) log
       numToks toks = case (find (isPrefixOf "-Toks=") flags) of
@@ -113,7 +119,7 @@ fromTree node
           rest = (map fromTree (subForest node))
       in (name : r ++ (concat rest))
  where edge n = "        " ++ (show $ snd $ rootLabel node)
-                 ++ " -> " ++ (show $ snd $ rootLabel n) 
+                 ++ " -> " ++ (show $ snd $ rootLabel n)
        name = (show $ snd $ rootLabel node) ++" [style=filled,color="++ toColor (fst $ rootLabel node) ++ " ,label=" ++showLog (fst $ rootLabel node) ++ " ]"
 
 -- | Replace the Shifts with the token it represents
@@ -121,7 +127,7 @@ shift' :: Show a => [a] -> Tree (LogEntry,Int) -> Tree (LogEntry,Int)
 shift' (x:toks) (Node (LShift,n) trees) = (Node ((LS $ show x),n) (map (shift' toks) trees))
 shift' toks (Node r trees)          = (Node r (map (shift' toks) trees))
 
-
+toColor :: LogEntry -> String
 toColor s = case s of
     LEmpty -> "lightgray"
     LDislike -> "yellow"
@@ -132,6 +138,7 @@ toColor s = case s of
     (LLog str) -> "orange1"
     (LS str) -> "cyan"
 
+showLog :: LogEntry -> String
 showLog p = case p of
     (LLog str) -> "\"" ++ str ++ "\""
     (LS str)   -> "\"" ++ helper str ++ "\""
@@ -141,7 +148,7 @@ showLog p = case p of
 -- | Write the file
 writeTree :: Show a => [a] -> String -> Tree LogEntry -> IO ()
 writeTree toks fName r = writeFile fName addBegEnd
-    where addBegEnd = unlines $ ["digraph G {"] 
+    where addBegEnd = unlines $ ["digraph G {"]
                          ++ take 3000 (fromTree $ (shift' toks) $ (\(x,y)-> x)(numTree (r,0))) -- dont create too big trees
                          ++ ["}"]
 
