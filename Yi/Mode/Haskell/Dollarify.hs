@@ -62,9 +62,9 @@ dollarifyTop _ = []
 
 -- Expression must not contain comments
 dollarifyExpr :: Expr TT -> [QueuedUpdate]
-dollarifyExpr e@(_:_) | p@(Paren t e t2) <- last e
+dollarifyExpr e@(_:_) | p@(Paren t e2 t2) <- last e
                      , isNormalParen p
-                     , isCollapsible e
+                     , isCollapsible e2
                      , all isSimple e
    = [queueDelete t2, queueReplaceWith "$ " t]
 dollarifyExpr _ = []
