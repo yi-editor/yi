@@ -74,3 +74,11 @@ logStreamThread :: Show a => String -> Chan a -> IO ()
 logStreamThread msg ch = do
   stream <- getChanContents =<< dupChan ch
   mapM_ logPutStrLn [msg ++ "(" ++ show i ++ ")" ++ show event | (event, i) <- zip stream [(0::Int)..]]
+
+-- | Traces @x@ and returns @y@.
+traceM :: Monad m => String -> a -> m a
+traceM x y = trace x $ return y
+
+-- | Like traceM, but returns ().
+traceM_ :: Monad m => String -> m ()
+traceM_ x = traceM x ()
