@@ -768,10 +768,14 @@ getStrokeImp ::  Point -> Point -> Point -> PImport TT -> Endo [Stroke]
 getStrokeImp point begin _end (PImport m qu na t t')
               | isErrN t' || isErrN na || isErrN t
                           = paintAtom errorStyle m <> getStrokes' qu
-                         <> getStrokes' na <> getStrokes' t  <> getStrokes' t'
+                         <> getStrokes' na <> paintAs t  <> getStrokes' t'
               | otherwise = getStrokes' m <> getStrokes' qu
-                         <> getStrokes' na <> getStrokes' t  <> getStrokes' t'
+                         <> getStrokes' na <> paintAs t  <> getStrokes' t'
     where getStrokes' r = getStr point begin _end r
+          paintAs (Opt (Just (KW (PAtom n c) tw)))
+              = (one $ (fmap (const keywordStyle) . tokToSpan) n) <> com c
+                   <> getStr point begin _end tw
+          paintAs _ = Endo $ pure []
 
 -- | Get strokes for expressions and declarations
 getStr ::Point -> Point -> Point -> Exp TT -> Endo [Stroke]
@@ -847,20 +851,27 @@ tokenToAnnot (Tok t len posn) = case tokenToText t of
     Nothing -> Nothing
     Just x -> Just (Span (posnOfs posn) x (posnOfs posn +~ len))
 
+ts :: TT -> Stroke
 ts = tokenToStroke
 
 pStyle style = one . (modStroke style) . ts
+
 one x = Endo (x :)
+
 paintAtom col (PAtom a c) = pStyle col a <> com c
+
 isErr = isErrorTok . tokT
 isErrN t = (any isErr t) || (not $ null $ isError' t)
 errStyle = pStyle errorStyle
+
 tokenToStroke :: TT -> Stroke
 tokenToStroke = fmap tokenToStyle . tokToSpan
+
 modStroke :: StyleName -> Stroke -> Stroke
 modStroke f = fmap (f `mappend`)
 
 com r = (foldMap tk r)
 
 tk t | isErr t = errStyle t
+     | (Reserved As) == (tokT t) = one $ (fmap (const variableStyle) . tokToSpan) t
      | otherwise = one (ts t)
