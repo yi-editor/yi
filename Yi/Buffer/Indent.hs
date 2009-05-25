@@ -386,7 +386,9 @@ indentAsPreviousB =
      previousIndent <- indentOfB previousLine
      indentToB previousIndent
 
-
+-- | Insert a newline at point and indent the new line as the previous one.
+newlineAndIndentB :: BufferM ()
+newlineAndIndentB = newlineB >> indentAsPreviousB
 
 -- | Set the padding of the string to newCount, filling in tabs if
 -- expandTabs is set in the buffers IndentSettings

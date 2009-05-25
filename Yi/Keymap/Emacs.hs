@@ -141,7 +141,7 @@ emacsKeys univArg =
          , ctrlCh 'g'           ?>>! (setVisibleSelection False)               
          , ctrlCh 'h'           ?>> char 'b' ?>>! acceptedInputs               
          , ctrlCh 'i'           ?>>! (adjIndent IncreaseOnly)
-         , ctrlCh 'j'           ?>>! (repeatingArg $ insertB '\n')
+         , ctrlCh 'j'           ?>>! newlineAndIndentB
          , ctrlCh 'k'           ?>>! killLineE univArg
          , ctrlCh 'l'           ?>>! (withBuffer scrollToCursorB >> userForceRefresh)
          , ctrlCh 'm'           ?>>! (repeatingArg $ insertB '\n')
