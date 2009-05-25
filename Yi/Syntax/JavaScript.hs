@@ -67,12 +67,12 @@ data Block t = Block t (BList (Statement t)) t
                deriving (Show, Data, Typeable)
 
 -- | Represents either a variable name or a variable name assigned to an
---   expression.  @Ass1@ is a variable name /maybe/ followed by an assignment.
---   @Ass2@ is an equals sign and an expression.  @(Ass1 'x' (Just (Ass2 '='
---   '5')))@ (pseudo-syntax of course) means @x = 5@.
-data VarDecAss t = Ass1 t (Maybe (VarDecAss t))
-                 | Ass2 t (Expr t)
-                 | AssignErr t
+--   expression.  @AssBeg@ is a variable name /maybe/ followed by an assignment.
+--   @AssRst@ is an equals sign and an expression.  @(AssBeg 'x' (Just (AssRst
+--   '=' '5')))@ (pseudo-syntax of course) means @x = 5@.
+data VarDecAss t = AssBeg t (Maybe (VarDecAss t))
+                 | AssRst t (Expr t)
+                 | AssErr t
                    deriving (Show, Data, Typeable)
 
 data Expr t = ExprObj t (BList (KeyValue t)) t
@@ -131,10 +131,10 @@ instance Failable Block where
                     _          -> False
 
 instance Failable VarDecAss where
-    stupid = AssignErr
+    stupid = AssErr
     hasFailed t = case t of
-                    AssignErr _ -> True
-                    _           -> False
+                    AssErr _ -> True
+                    _        -> False
 
 instance Failable Parameters where
     stupid = ParErr
@@ -209,9 +209,9 @@ instance Strokable (Block TT) where
     toStrokes (BlockErr t) = error t
 
 instance Strokable (VarDecAss TT) where
-    toStrokes (Ass1 t x) = normal t <> maybe mempty toStrokes x
-    toStrokes (Ass2 t exp) = normal t <> toStrokes exp
-    toStrokes (AssignErr t) = error t
+    toStrokes (AssBeg t x) = normal t <> maybe mempty toStrokes x
+    toStrokes (AssRst t exp) = normal t <> toStrokes exp
+    toStrokes (AssErr t) = error t
 
 instance Strokable (Expr TT) where
     toStrokes (ExprSimple x exp) = normal x <> maybe mempty toStrokes exp
@@ -333,7 +333,7 @@ statement = FunDecl <$> res Function' <*> plzTok name <*> parameters <*> block
                <|> ForErr    <$> hate 1 (symbol (const True))
                <|> ForErr    <$> hate 2 (pure errorToken)
       varDecAss :: P TT (VarDecAss TT)
-      varDecAss = Ass1 <$> name <*> optional (Ass2 <$> oper Assign' <*> plzExpr)
+      varDecAss = AssBeg <$> name <*> optional (AssRst <$> oper Assign' <*> plzExpr)
 
 -- | Parser for "blocks", i.e. a bunch of statements wrapped in curly brackets
 --   /or/ just a single statement.
