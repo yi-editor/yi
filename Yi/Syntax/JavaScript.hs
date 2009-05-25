@@ -3,6 +3,7 @@
 
 module Yi.Syntax.JavaScript where
 
+import Data.DeriveTH
 import Data.Data (Data, Typeable)
 import Data.Monoid (Endo(..), mempty)
 import Prelude (maybe)
@@ -15,6 +16,7 @@ import Yi.Lexer.JavaScript ( TT, Token(..), Reserved(..), Operator(..)
 import Yi.Prelude hiding (error, Const, many)
 import Yi.Style (errorStyle, StyleName)
 import Yi.Syntax.BList (BList, sepBy, sepBy1, many)
+import Yi.Syntax.Tree (IsTree(..))
 
 
 -- * Data types, classes and instances
@@ -28,69 +30,6 @@ class Strokable a where
 class Failable f where
     stupid :: t -> f t
     hasFailed :: f t -> Bool
-
-class HasTokens a where
-    firstTok :: a -> TT
-
--- | Please, anyone, help me out with some TH here... /Deniz
-instance HasTokens (Statement TT) where
-    firstTok (FunDecl x _ _ _) = x
-    firstTok (VarDecl x _ _) = x
-    firstTok (Return x _ _) = x
-    firstTok (While x _ _) = x
-    firstTok (DoWhile x _ _ _ _) = x
-    firstTok (For x _ _ _ _ _) = x
-    firstTok (If x _ _ _) = x
-    firstTok (Else x _) = x
-    firstTok (With x _ _) = x
-    firstTok (Comm x) = x
-    firstTok (Expr x _) = firstTok x
-
-instance HasTokens (Parameters TT) where
-    firstTok (Parameters x _ _) = x
-    firstTok (ParErr x) = x
-
-instance HasTokens (ParExpr TT) where
-    firstTok (ParExpr x _ _) = x
-    firstTok (ParExprErr x) = x
-
-instance HasTokens (ForContent TT) where
-    firstTok (ForNormal x _ _ _) = x
-    firstTok (ForIn x _) = x
-    firstTok (ForErr x) = x
-
-instance HasTokens (Block TT) where
-    firstTok (Block x _ _) = x
-    firstTok (BlockOne x) = firstTok x
-    firstTok (BlockErr x) = x
-
-instance HasTokens (VarDecAss TT) where
-    firstTok (Ass1 x _) = x
-    firstTok (Ass2 x _) = x
-    firstTok (AssignErr x) = x
-
-instance HasTokens (Array TT) where
-    firstTok (ArrCont x _) = firstTok x
-    firstTok (ArrRest x _ _) = x
-    firstTok (ArrErr x) = x
-
-instance HasTokens (KeyValue TT) where
-    firstTok (KeyValue x _ _) = x
-    firstTok (KeyValueErr x) = x
-
-instance HasTokens (Expr TT) where
-    firstTok (ExprObj x _ _) = x
-    firstTok (ExprPrefix x _) = x
-    firstTok (ExprNew x _) = x
-    firstTok (ExprSimple x _) = x
-    firstTok (ExprParen x _ _ _) = x
-    firstTok (ExprAnonFun x _ _) = x
-    firstTok (ExprFunCall x _ _) = x
-    firstTok (OpExpr x _) = x
-    firstTok (ExprCond x _ _ _) = x
-    firstTok (ExprArr x _ _ _) = x
-    firstTok (PostExpr x) = x
-    firstTok (ExprErr x) = x
 
 type Tree t = BList (Statement t)
 
@@ -159,6 +98,26 @@ data KeyValue t = KeyValue t t (Expr t)
                 | KeyValueErr t
                   deriving (Show, Data, Typeable)
 
+$(derive makeFoldable ''Statement)
+$(derive makeFoldable ''Parameters)
+$(derive makeFoldable ''ParExpr)
+$(derive makeFoldable ''ForContent)
+$(derive makeFoldable ''Block)
+$(derive makeFoldable ''VarDecAss)
+$(derive makeFoldable ''Expr)
+$(derive makeFoldable ''Array)
+$(derive makeFoldable ''KeyValue)
+
+instance IsTree Statement where
+    subtrees (FunDecl _ _ _ x) = fromBlock x
+    subtrees (While _ _ x) = fromBlock x
+    subtrees (DoWhile _ x _ _ _) = fromBlock x
+    subtrees (For _ _ _ _ _ x) = fromBlock x
+    subtrees (If _ _ x mb) = fromBlock x ++ maybe [] subtrees mb
+    subtrees (Else _ x) = fromBlock x
+    subtrees (With _ _ x) = fromBlock x
+    subtrees _ = []
+
 instance Failable ForContent where
     stupid = ForErr
     hasFailed t = case t of
@@ -200,6 +159,7 @@ instance Failable KeyValue where
     hasFailed t = case t of
                     KeyValueErr _ -> True
                     _             -> False
+
 
 -- | TODO: This code is *screaming* for some generic programming.
 --
@@ -584,6 +544,14 @@ hate n x = power n recoverWith $ x
 
 
 -- * Utility stuff
+
+fromBlock :: Block t -> [Statement t]
+fromBlock (Block _ x _) = toList x
+fromBlock (BlockOne x) = [x]
+fromBlock (BlockErr _) = []
+
+firstTok :: Foldable f => f t -> t
+firstTok x = head (toList x)
 
 errorToken :: TT
 errorToken = toTT $ Special '!'
