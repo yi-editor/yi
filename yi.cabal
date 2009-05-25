@@ -186,10 +186,9 @@ library
       exposed-modules: Yi.UI.Pango
       other-modules: Yi.UI.Pango.ProjectTree
                      Yi.UI.Pango.Utils
-
-    if flag(gnome)
-      cpp-options: -DGNOME_ENABLED
-      exposed-modules: Yi.UI.Pango.Gnome
+      if flag(gnome)
+        cpp-options: -DGNOME_ENABLED
+        exposed-modules: Yi.UI.Pango.Gnome
 
     if flag (cocoa)
       cpp-options: -DFRONTEND_COCOA
@@ -347,10 +346,10 @@ executable yi
                          Yi.UI.Pango.Utils
                          Yi.UI.Pango
 
-        if flag(gnome)
-          build-depends: gconf==0.10.*
-          cpp-options: -DGNOME_ENABLED
-          other-modules: Yi.UI.Pango.Gnome
+          if flag(gnome)
+            build-depends: gconf==0.10.*
+            cpp-options: -DGNOME_ENABLED
+            other-modules: Yi.UI.Pango.Gnome
 
         if flag (cocoa)
           build-depends: HOC, HOC-AppKit, HOC-Foundation
