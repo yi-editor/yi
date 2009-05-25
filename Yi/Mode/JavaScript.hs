@@ -40,7 +40,7 @@ import qualified Data.DList as D
 javaScriptAbstract :: Mode syntax
 javaScriptAbstract = emptyMode
   {
-    modeApplies = anyExtension ["js", "json"]
+    modeApplies = anyExtension ["js"]
   , modeName = "javascript"
   , modeToggleCommentSelection = toggleCommentSelectionB "// " "//"
   }
