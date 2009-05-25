@@ -1,12 +1,12 @@
+{-# LANGUAGE PatternGuards #-}
 module Yi.Mode.Haskell.Dollarify where
 
-import Prelude (filter, maybe, reverse, takeWhile, uncurry)
+import Prelude (filter, maybe, takeWhile, uncurry)
 import Data.Maybe (fromMaybe)
 import Data.List (sortBy)
 import Yi.Prelude 
 import Yi.Syntax.Paren (Expr, Tree(..))
 import Yi.Syntax.Tree (getAllSubTrees, getFirstOffset, getLastOffset,getLastPath)
-import Yi.Buffer.HighLevel (getSelectRegionB, nextPointB)
 import Yi.Lexer.Alex (posnOfs, Tok(..))
 import Yi.Lexer.Haskell (isComment, TT, Token(..))
 import Yi.Buffer hiding (Block)
@@ -30,6 +30,7 @@ runQ = mapM_ run1Q . sortBy (flip compare)
               = do deleteNAt Forward d p
                    when (not $ null i) $ insertNAt i p
 
+openParen, closeParen :: Token
 openParen = Special '('
 closeParen = Special ')'
 
