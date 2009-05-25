@@ -11,15 +11,17 @@ import Data.Typeable (Typeable)
 import Prelude (unlines, map)
 import System.FilePath.Posix (takeBaseName)
 import Yi.Buffer.Basic (BufferRef, Direction(..), fromString)
-import Yi.Buffer.Indent (indentSettingsB, indentOfB, cycleIndentsB)
-import Yi.Buffer.HighLevel (replaceBufferContent, getNextNonBlankLineB, moveToSol, moveToEol)
+import Yi.Buffer.Indent (indentSettingsB, indentOfB, cycleIndentsB, newlineAndIndentB)
+import Yi.Buffer.HighLevel (replaceBufferContent, getNextNonBlankLineB, moveToSol)
 import Yi.Buffer.Misc (Mode(..), BufferM, IndentBehaviour, file, pointAt, shiftWidth)
 import Yi.Core ( (.), Mode, emptyMode, modeApplies, modeName
                , modeToggleCommentSelection, toggleCommentSelectionB, modeHL
                , Char, modeGetStrokes, ($), withSyntax )
 import Yi.Dynamic (Initializable)
+-- import Yi.Debug (traceM, traceM_)
 import Yi.Editor (withEditor, withOtherWindow, getDynamic, stringToNewBuffer
                  , findBuffer, switchToBufferE)
+import Yi.Event (Key(..), Event(..))
 import Yi.File (fwriteE)
 import Yi.IncrementalParse (scanner)
 import Yi.Interact (choice)
@@ -57,12 +59,16 @@ jsSimpleIndent t behave = do
   prevInd  <- getNextNonBlankLineB Backward >>= indentOfB
   solPnt   <- pointAt moveToSol
   let path = getLastPath (toList t) solPnt
-  case trace (show path) path of
-    Nothing -> cycleIndentsB behave $ nub [indLevel, 0]
-    Just p  -> cycleIndentsB behave $ nub [prevInd,
-                                           prevInd + indLevel,
-                                           prevInd - indLevel,
-                                           0]
+  case path of
+    Nothing -> indentTo [indLevel, 0]
+    Just _  -> indentTo [prevInd,
+                         prevInd + indLevel,
+                         prevInd - indLevel]
+  where
+    -- | Given a list of possible columns to indent to, removes any duplicates
+    --   from it and cycles between the resulting indentations.
+    indentTo :: [Int] -> BufferM ()
+    indentTo = cycleIndentsB behave . nub
 
 jsLexer :: Scanner Point Char -> Scanner (AlexState HlState) (Tok Token)
 jsLexer = lexScanner alexScanToken initState
@@ -77,7 +83,9 @@ hooks :: Mode (Tree TT) -> Mode (Tree TT)
 hooks mode = mode
   {
     -- modeGetAnnotations = tokenBasedAnnots tta
-    modeKeymap = (choice [ctrlCh 'c' ?>> ctrlCh 'l' ?>>! withSyntax modeFollow] <||)
+    modeKeymap = (choice [ctrlCh 'c' ?>> ctrlCh 'l' ?>>! withSyntax modeFollow,
+                          Event KEnter []           ?>>! newlineAndIndentB]
+                  <||)
   , modeFollow = YiA . jsCompile
   }
 
