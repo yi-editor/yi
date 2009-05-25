@@ -94,6 +94,7 @@ $special         { cs $ (Special . head) } -- All of the special symbols are cha
 
 \" @string1* \"  { cs $ Str }
 \' @string2* \'  { cs $ Str }
+\/ [^\/]+ \/     { cs $ Rex }
 "//".*           { c  $ Comment Line }
 "/*"             { m (subtract 1) $ Comment Start }
 "<!--"           { m (+1) $ Comment Start }
@@ -170,6 +171,7 @@ type HlState = Int
 data Token = Unknown
            | Res !Reserved
            | Str !String
+           | Rex !String
            | Op !Operator
            | Special !Char
            | Number !String
@@ -197,6 +199,7 @@ tokenToStyle (Const x)      | x `elem` builtinConstructors = builtinStyle
 tokenToStyle (Number _)     = numberStyle
 tokenToStyle (Res _)        = keywordStyle
 tokenToStyle (Str _)        = stringStyle
+tokenToStyle (Rex _)        = regexStyle
 tokenToStyle Unknown        = errorStyle
 tokenToStyle _              = defaultStyle
 

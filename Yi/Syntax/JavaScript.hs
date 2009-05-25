@@ -459,6 +459,7 @@ simpleTok = symbol (\t -> case fromTT t of
             Number _    -> True
             ValidName _ -> True
             Const _     -> True
+            Rex _       -> True
             Res y       -> y `elem` [True', False', Undefined', Null', This']
             _           -> False)
 
