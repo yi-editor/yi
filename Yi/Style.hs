@@ -59,6 +59,7 @@ data UIStyle = UIStyle
   , dataConstructorStyle
                        :: Style      -- ^ data constructor
   , builtinStyle       :: Style      -- ^ builtin things, e.g. Array in JavaScript
+  , regexStyle         :: Style      -- ^ regular expressions
   , variableStyle      :: Style      -- ^ any standard variable (identifier)
   , operatorStyle      :: Style      -- ^ infix operators
 
