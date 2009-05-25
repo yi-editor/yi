@@ -182,13 +182,9 @@ instance Strokable (Statement TT) where
             s2 = if hasFailed exp then error else normal in
         s1 d <> toStrokes blk <> s2 w <> toStrokes exp <> maybe mempty normal sc
     toStrokes (For f l x c r blk) =
-        let s = if hasFailed blk
+        let s = if hasFailed blk || hasFailed c || hasFailed x
                   then error
-                  else if hasFailed c
-                         then error
-                         else if hasFailed x
-                                then error
-                                else failStroker [f, l, r] in
+                  else failStroker [f, l, r] in
         s f <> s l <> toStrokes x <> toStrokes c <> s r <> toStrokes blk
     toStrokes (If i x blk e) = normal i <> toStrokes x <> toStrokes blk <> maybe mempty toStrokes e
     toStrokes (Else e blk) = normal e <> toStrokes blk
