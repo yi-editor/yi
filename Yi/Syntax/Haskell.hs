@@ -1,5 +1,7 @@
 {-# LANGUAGE FlexibleInstances, TypeFamilies, TemplateHaskell, DeriveDataTypeable #-}
 -- Copyright (c) JP Bernardy 2008
+-- Note if the layout of the first line (not comments)
+-- is wrong the parser will only parse what is in the blocks given by Layout.hs
 module Yi.Syntax.Haskell where
 
 import Prelude ()
@@ -780,7 +782,7 @@ getStrokeImp point begin _end (PImport m qu na t t')
           paintAs (Opt (Just (KW (PAtom n c) tw)))
               = (one $ (fmap (const keywordStyle) . tokToSpan) n) <> com c
                    <> getStr point begin _end tw
-          paintAs _ = Endo $ pure []
+          paintAs a = getStrokes' a
 
 -- | Get strokes for expressions and declarations
 getStr ::Point -> Point -> Point -> Exp TT -> Endo [Stroke]
