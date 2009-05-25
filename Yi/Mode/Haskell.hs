@@ -36,6 +36,7 @@ import qualified Yi.Lexer.LiterateHaskell as LiterateHaskell
 import Yi.Lexer.Haskell as Haskell
 import qualified Yi.Mode.Interactive as Interactive
 import Yi.Modes (anyExtension, extensionOrContentsMatch)
+import Yi.Mode.Haskell.Dollarify
 
 haskellAbstract :: Mode syntax
 haskellAbstract = emptyMode 

@@ -139,6 +139,7 @@ library
         Yi.Mode.Buffers
         Yi.Mode.Compilation
         Yi.Mode.Haskell
+        Yi.Mode.Haskell.Dollarify
         Yi.Mode.IReader
         Yi.Mode.Interactive
         Yi.Mode.JavaScript
@@ -250,6 +251,7 @@ executable parserTest
                 Yi.Modes
                 Yi.Mode.Compilation
                 Yi.Mode.Haskell
+                Yi.Mode.Haskell.Dollarify
                 Yi.UI.Common
 
                 Paths_yi
@@ -380,6 +382,7 @@ executable yi
            Yi.Modes
            Yi.Mode.Compilation
            Yi.Mode.Haskell
+           Yi.Mode.Haskell.Dollarify
            Yi.Buffer
            Yi.Buffer.Basic
            Yi.Keymap.Keys
