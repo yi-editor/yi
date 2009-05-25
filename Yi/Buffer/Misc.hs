@@ -377,10 +377,8 @@ instance Binary (Mode syntax) where
     get = do n <- get
              return (emptyMode {modeName = n})
 
-{-
-  Is used to specify the behaviour of the automatic indent command.
--}
-data IndentBehaviour = 
+-- | Used to specify the behaviour of the automatic indent command.
+data IndentBehaviour =
     IncreaseCycle -- ^ Increase the indentation to the next higher indentation
                   --   hint. If we are currently at the highest level of
                   --   indentation then cycle back to the lowest.
@@ -391,6 +389,7 @@ data IndentBehaviour =
                   --   if no such hint exists do nothing.
   | DecreaseOnly  -- ^ Decrease the indentation to the next smaller indentation
                   --   hint, if no such hint exists do nothing.
+    deriving (Eq, Show)
 
 
 -- | The BufferM monad writes the updates performed.
