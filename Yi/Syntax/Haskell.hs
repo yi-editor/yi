@@ -162,8 +162,9 @@ getSubtreeSpan tree = (posnOfs $ first, lastLine - firstLine)
           assertJust _ = error "assertJust: Just expected"
 
 getExprs :: Program TT -> [Exp TT]
-getExprs (ProgMod _ b) = getExprs b
+getExprs (ProgMod _ b)     = getExprs b
 getExprs (Body _ exp exp') = [exp, exp']
+getExprs _                 = error "no match"
 
 -- | The parser
 parse :: P TT (Tree TT)
@@ -323,8 +324,8 @@ ppAt b = pleaseC (PAtom <$> b <*> pCom)
 -- | Parse end of line or end token
 pEol :: Parser TT ()
 pEol = testNext (\r -> (not $ isJust r) ||
-                 pEol' r)
- where pEol' = (flip elem [(Special ';'), (Special '.'), (Special '>')])
+                 pE r)
+ where pE = (flip elem [(Special ';'), (Special '.'), (Special '>')])
                . tokT . fromJust
 
 pEol' :: Parser TT ()
@@ -384,6 +385,7 @@ pImp = many (pImp'
       
 -- | Parse one import
 -- pImp' :: Parser TT TTT
+pImp' :: Parser TT (PImport TT)
 pImp' = PImport  <$> pAt (exact' [Reserved Import])
                  <*> pOpt (pAt $ exact' [Reserved Qualified])
                  <*> pAt (pleaseB ConsIdent)
@@ -425,7 +427,7 @@ pSData = PData <$> exact' [Reserved Data] <*> pCom
                                             ||(CppDirective == x)
                                             ||((ReservedOp Equal) == x)
                                             ||((Reserved Deriving) == x)
-                                            ||((Reserved Where) ==x))) <*> pCom)
+                                            ||((Reserved Where) == x))) <*> pCom)
 
 -- | Parse second half of the data declaration, if there is one
 pSData' :: Parser TT TTT
@@ -639,7 +641,7 @@ pTr err at
 -- | Parse something where guards are not allowed
 pTr' :: [Token] -> [Token] -> Parser TT [TTT]
 pTr' err at = pure []
-              <|> ((:) <$> (pTree' err at
+              <|> ((:) <$> (pTree' ([ReservedOp Pipe] `union` err) at
                             <|> (pBlockOf (pTr err ([(ReservedOp Equal), (ReservedOp Pipe)] `union` at))))
                    <*> (pTr' err at))
 
@@ -658,13 +660,15 @@ pTree' err at
 
 -- | Parse a typesignature 
 -- not finished yet!!
-pTypeSig = pOP [ReservedOp (OtherOp "::")] (Expr <$> (pTr noiseErr [])) <* pEol'
-    where pEol' = testNext (\r ->(not $ isJust r) ||
+pTypeSig :: Parser TT (Exp TT)
+pTypeSig = pOP [ReservedOp (OtherOp "::")] (Expr <$> (pTr noiseErr [])) <* pE
+    where pE = testNext (\r ->(not $ isJust r) ||
                  (pEol'' r))
           pEol'' = ((flip elem [(Special ';'), (Special '.'), (Special ')')])
                  . tokT . fromJust)
 
 -- | A list of keywords that usually should be an error
+noiseErr :: [Token]
 noiseErr = [(Reserved Class)
            , (ReservedOp Pipe)
            , (Reserved In)
@@ -672,6 +676,7 @@ noiseErr = [(Reserved Class)
            , (Reserved Type)]
 
 -- | A list of Keywords that usually are not allowed as tokens
+noiseAt :: [Token]
 noiseAt = [(ReservedOp Pipe)]
 
 -- | List of things that allways should be parsed as errors
@@ -719,8 +724,8 @@ pBrack p = (Paren  <$>  pEAtom (spec '[')
 instance SubTree (Exp TT) where
     type Element (Exp TT) = TT
     foldMapToksAfter begin f t0 = work t0
-        where work (PAtom t t') = f t 
-              work (PError t t') = f t
+        where work (PAtom t _) = f t 
+              work (PError t _) = f t
               work (Block s) = BL.foldMapAfter
                                 begin (foldMapToksAfter begin f) s
               work _ = undefined
@@ -737,10 +742,10 @@ getStrokes point begin _end t0 = trace (show t0) result
 getStrokeProg ::  Point -> Point -> Point -> Tree TT -> Endo [Stroke]
 getStrokeProg point begin _end prog
     = case prog of
-        (Program c mod)
-            ->com c <> funPr mod
-        (ProgMod mod body)
-            -> getStrokeMod point begin _end mod
+        (Program c m)
+            ->com c <> funPr m
+        (ProgMod m body)
+            -> getStrokeMod point begin _end m
             <> getStrokeProg point begin _end body
         (Body imps exps exps') 
             -> funImp imps
@@ -794,7 +799,7 @@ getStr point begin _end t0 = getStrokes' t0
                       <> pStyle hintStyle r <> com c'
               | otherwise  = tk l <> com c <> getStrokes' g
                                   <> tk r <> com c'
-          getStrokes' (Paren (PAtom l c) g e@(PError r c'))
+          getStrokes' (Paren (PAtom l c) g e@(PError _ _))
               = errStyle l <> com c <> getStrokes' g <> getStrokes' e
           getStrokes' (PError t c) = errStyle t <> com c
           getStrokes' (Block s) = BL.foldMapAfter begin getStrokesL s
@@ -835,7 +840,7 @@ getStr point begin _end t0 = getStrokes' t0
           getStrokes' (TC l) = getStrokes' l
           getStrokes' (DC (PAtom l c)) = pStyle dataConstructorStyle l <> com c
           getStrokes' (DC r) = getStrokes' r -- in case of empty
-          getStrokes' (PGuard list) = getStrokesL list
+          getStrokes' (PGuard ls) = getStrokesL ls
           getStrokes' (PGuard' t e t' e')
               | isErrN e ||isErrN e' ||isErr t'
               = errStyle t <> getStrokes' e <> tk t' <> getStrokes' e'
@@ -854,14 +859,23 @@ tokenToAnnot (Tok t len posn) = case tokenToText t of
 ts :: TT -> Stroke
 ts = tokenToStroke
 
+pStyle :: StyleName -> TT -> Endo [Stroke]
 pStyle style = one . (modStroke style) . ts
 
+one :: Stroke -> Endo [Stroke]
 one x = Endo (x :)
 
+paintAtom :: StyleName -> (Exp TT) -> Endo [Stroke]
 paintAtom col (PAtom a c) = pStyle col a <> com c
+paintAtom _ _ = error "wrong usage of paintAtom"
 
+isErr :: TT -> Bool
 isErr = isErrorTok . tokT
+
+isErrN :: (Exp TT) -> Bool
 isErrN t = (any isErr t) || (not $ null $ isError' t)
+
+errStyle :: TT -> Endo [Stroke]
 errStyle = pStyle errorStyle
 
 tokenToStroke :: TT -> Stroke
@@ -870,8 +884,10 @@ tokenToStroke = fmap tokenToStyle . tokToSpan
 modStroke :: StyleName -> Stroke -> Stroke
 modStroke f = fmap (f `mappend`)
 
+com :: [TT] -> Endo [Stroke]
 com r = (foldMap tk r)
 
+tk :: TT -> Endo [Stroke]
 tk t | isErr t = errStyle t
      | (Reserved As) == (tokT t) = one $ (fmap (const variableStyle) . tokToSpan) t
      | otherwise = one (ts t)
