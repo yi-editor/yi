@@ -5,13 +5,15 @@
 module Yi.Mode.JavaScript (javaScriptMode, hooks) where
 
 import Control.Monad.Writer.Lazy (execWriter)
+import Data.List (nub)
 import Data.Maybe (isJust)
 import Data.Typeable (Typeable)
 import Prelude (unlines, map)
 import System.FilePath.Posix (takeBaseName)
-import Yi.Buffer.Basic (BufferRef, fromString)
-import Yi.Buffer.HighLevel (replaceBufferContent)
-import Yi.Buffer.Misc (Mode(..), file)
+import Yi.Buffer.Basic (BufferRef, Direction(..), fromString)
+import Yi.Buffer.Indent (indentSettingsB, indentOfB, cycleIndentsB)
+import Yi.Buffer.HighLevel (replaceBufferContent, getNextNonBlankLineB, moveToSol, moveToEol)
+import Yi.Buffer.Misc (Mode(..), BufferM, IndentBehaviour, file, pointAt, shiftWidth)
 import Yi.Core ( (.), Mode, emptyMode, modeApplies, modeName
                , modeToggleCommentSelection, toggleCommentSelectionB, modeHL
                , Char, modeGetStrokes, ($), withSyntax )
@@ -29,23 +31,38 @@ import Yi.Modes (anyExtension)
 import Yi.Prelude hiding (list)
 import Yi.Syntax (ExtHL(..), mkHighlighter, Scanner, Point)
 import Yi.Syntax.JavaScript (Tree, parse, getStrokes)
+import Yi.Syntax.Tree (getLastPath)
 import Yi.Verifier.JavaScript (verify)
 import qualified Data.DList as D
 
 javaScriptAbstract :: Mode syntax
 javaScriptAbstract = emptyMode
   {
-    modeApplies = anyExtension ["js", "json"],
-    modeName = "javascript",
-    modeToggleCommentSelection = toggleCommentSelectionB "// " "//"
+    modeApplies = anyExtension ["js", "json"]
+  , modeName = "javascript"
+  , modeToggleCommentSelection = toggleCommentSelectionB "// " "//"
   }
 
 javaScriptMode :: Mode (Tree TT)
 javaScriptMode = javaScriptAbstract
   {
-    modeHL = ExtHL $ mkHighlighter (scanner parse . jsLexer),
-    modeGetStrokes = getStrokes
+    modeIndent = jsSimpleIndent
+  , modeHL = ExtHL $ mkHighlighter (scanner parse . jsLexer)
+  , modeGetStrokes = getStrokes
   }
+
+jsSimpleIndent :: Tree TT -> IndentBehaviour -> BufferM ()
+jsSimpleIndent t behave = do
+  indLevel <- shiftWidth <$> indentSettingsB
+  prevInd  <- getNextNonBlankLineB Backward >>= indentOfB
+  solPnt   <- pointAt moveToSol
+  let path = getLastPath (toList t) solPnt
+  case trace (show path) path of
+    Nothing -> cycleIndentsB behave $ nub [indLevel, 0]
+    Just p  -> cycleIndentsB behave $ nub [prevInd,
+                                           prevInd + indLevel,
+                                           prevInd - indLevel,
+                                           0]
 
 jsLexer :: Scanner Point Char -> Scanner (AlexState HlState) (Tok Token)
 jsLexer = lexScanner alexScanToken initState
