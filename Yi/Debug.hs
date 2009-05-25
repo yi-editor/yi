@@ -2,6 +2,8 @@
 module Yi.Debug (
         initDebug       -- :: FilePath -> IO ()
        ,trace           -- :: String -> a -> a
+       ,traceM
+       ,traceM_
        ,logPutStrLn
        ,logError
        ,logStream
