@@ -15,7 +15,7 @@ module Yi.Mode.Haskell
   ) where
 
 import Data.Binary
-import Data.List (dropWhile, takeWhile, filter, drop)
+import Data.List (dropWhile, takeWhile, filter, drop, length)
 import Data.Maybe (maybe, listToMaybe, isJust, catMaybes)
 import Prelude (unwords)
 import Yi.Core
@@ -205,9 +205,9 @@ cleverAutoIndentHaskellC' e behaviour = do
   let onThisLine ofs = ofs >= solPnt && ofs <= eolPnt
       firstTokNotOnLine = listToMaybe .
                               filter (not . onThisLine . posnOfs . tokPosn) .
-                              filter (not . isErrorTok . tokT) . allToks 
+                              filter (not . isErrorTok . tokT) . allToks
   let stopsOf :: [Hask.Exp TT] -> [Int]
-      stopsOf (g@(Hask.Paren (Hask.PAtom open _) ctnt (Hask.PAtom close _)):ts) 
+      stopsOf (g@(Hask.Paren (Hask.PAtom open _) ctnt (Hask.PAtom close _)):ts)
           | isErrorTok (tokT close) || getLastOffset g >= solPnt
               = [groupIndent open ctnt]  -- stop here: we want to be "inside" that group.
           | otherwise = stopsOf ts -- this group is closed before this line; just skip it.
@@ -217,19 +217,39 @@ cleverAutoIndentHaskellC' e behaviour = do
         -- maybe we are putting a new 1st statement in the block here.
       stopsOf ((Hask.PAtom _ __):ts) = stopsOf ts
          -- any random part of expression, we ignore it.
-      stopsOf ((Hask.PLet le c e e'):ts) = [groupIndent le e] ++ stopsOf [e] ++ stopsOf ts -- must change later
-      stopsOf (t@(Hask.Block _):ts) = shiftBlock + maybe 0 (posnCol . tokPosn) (getFirstElement t) : stopsOf ts
---       stopsOf (Hask.Error _:ts) = stopsOf ts
+      stopsOf ((Hask.PLet le c e@(Hask.Block expr) e'):ts) =
+         case firstTokOnLine of
+             Just (Reserved In) ->firstTokOnCol le : []
+             Just (Reserved Let) ->[0]
+             Nothing -> maybe 0 firstTokOnCol (getFirstElement e) : stopsOf (concat expr)
+             _ -> maybe 0 firstTokOnCol (getFirstElement e) : stopsOf (concat expr)
+      stopsOf (t@(Hask.Block _):ts) = shiftBlock + maybe 0 firstTokOnCol (getFirstElement t) : stopsOf ts
+      stopsOf (t@(Hask.PGuard' pipe _ eq expr):ts) = case firstTokOnLine of
+          Nothing -> 0 : maybe 0 firstTokOnCol (getFirstElement expr) : stopsOf [expr]
+          Just (ReservedOp Haskell.Pipe) -> firstTokOnCol pipe : []
+          _ -> 0 : maybe 0 firstTokOnCol (getFirstElement expr) : stopsOf [expr]
       stopsOf (Hask.PError _ _:ts) = stopsOf ts
---       stopsOf (Hask.PData d ) = 
-      stopsOf (r:ts) = stopsOf ts -- not yet handled stuff
+      --       stopsOf (Hask.PData d) = stopsOf [d]
+      stopsOf (t@(Hask.RHS (Hask.PAtom eq com) []):ts) = 0 : (firstTokOnCol eq + 2) : stopsOf ts
+      stopsOf (t@(Hask.RHS (Hask.PAtom eq com) r@(exp:exps)):ts) = case firstTokOnLine of
+          Nothing -> 0 : maybe 0 firstTokOnCol (getFirstElement exp) : []
+          Just (ReservedOp Haskell.Equal) -> firstTokOnCol eq : []
+          Just t@(Operator op) ->opLength op (maybe 0 firstTokOnCol (getFirstElement exp)) : stopsOf r
+          -- case of an operator should check so that value allways is at least 1
+          _ -> 0 : maybe 0 firstTokOnCol (getFirstElement exp) : stopsOf r
+      stopsOf ((Hask.Expr e):ts) = stopsOf e
+      stopsOf (r:ts) = [] -- stopsOf ts -- not yet handled stuff
       stopsOf [] = []
-      firstTokOnLine = fmap tokT $ listToMaybe $ 
-          dropWhile ((solPnt >) . tokBegin) $ 
+      -- calculate indentation of operator (must be at least 1 to be valid)
+      opLength ts r = let l = r - (length ts + 1)
+                      in  if l > 0 then l else 1
+      firstTokOnCol = posnCol . tokPosn
+      firstTokOnLine = fmap tokT $ listToMaybe $
+          dropWhile ((solPnt >) . tokBegin) $
           takeWhile ((eolPnt >) . tokBegin) $ -- for laziness.
           filter (not . isErrorTok . tokT) $ allToks e
       shiftBlock = case firstTokOnLine of
-        Just (Reserved t) | t `elem` [Where, Deriving] -> indentLevel
+        Just (Reserved t) | t `elem` [Let,In,Where, Deriving] -> indentLevel
         Just (ReservedOp Haskell.Pipe) -> indentLevel
         Just (ReservedOp Haskell.Equal) -> indentLevel
         _ -> 0
@@ -245,8 +265,8 @@ cleverAutoIndentHaskellC' e behaviour = do
   case getLastPath e solPnt of
     Nothing -> return ()
     Just path -> let stops = stopsOf path
-                 in trace ("Stops = " ++ show stops) $      
-                    trace ("firstTokOnLine = " ++ show firstTokOnLine) $      
+                 in trace ("Stops = " ++ show stops) $
+                    trace ("firstTokOnLine = " ++ show firstTokOnLine) $
                     cycleIndentsB behaviour stops
 
 nominalIndent :: Char -> Int
