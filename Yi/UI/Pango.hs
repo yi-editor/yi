@@ -44,22 +44,29 @@ import Yi.Style
 import Yi.UI.Pango.Gnome(watchSystemFont)
 #endif
 
-------------------------------------------------------------------------
-
 data UI = UI
-    { uiWindow    :: Gtk.Window
-    , uiNotebook  :: Notebook
-    , uiCmdLine   :: Label
-    , windowCache :: IORef [WinInfo]
-    , uiActionCh  :: Action -> IO ()
-    , uiConfig    :: UIConfig
-    , uiFont      :: IORef FontDescription
+    { uiWindow   :: Gtk.Window
+    , uiNotebook :: Notebook
+    , uiCmdLine  :: Label
+    , tabCache   :: IORef [TabInfo]
+    , uiActionCh :: Action -> IO ()
+    , uiConfig   :: UIConfig
+    , uiFont     :: IORef FontDescription
     }
 
 uiBox :: UI -> IO Box
 uiBox u = do pageNum <- notebookGetCurrentPage (uiNotebook u)
              page    <- notebookGetNthPage (uiNotebook u) pageNum
              return . castToBox . fromJust $ page
+
+data TabInfo = TabInfo
+    { coreTab     :: PL.PointedList Window
+    , page        :: Widget
+    , windowCache :: IORef [WinInfo]
+    }
+
+instance Show TabInfo where
+    show t = show (coreTab t)
 
 data WinInfo = WinInfo
     { coreWin         :: Window
@@ -86,19 +93,21 @@ mkUI ui = Common.dummyUI
     , Common.reloadProject = reloadProject ui
     }
 
-updateFont :: UIConfig -> IORef FontDescription -> IORef [WinInfo] -> Label
+updateFont :: UIConfig -> IORef FontDescription -> IORef [TabInfo] -> Label
                   -> FontDescription -> IO ()
-updateFont cfg fontRef wc cmd font = do
-  maybe (return ()) (fontDescriptionSetFamily font) (configFontName cfg)
-  maybe (return ()) (fontDescriptionSetSize font . fromIntegral) (configFontSize cfg)
-  writeIORef fontRef font
-  widgetModifyFont cmd (Just font)
-  wcs <- readIORef wc
-  forM_ wcs $ \wininfo -> do
-      layoutSetFontDescription (winLayout wininfo) (Just font)
-      -- This will cause the textview to redraw
-      widgetModifyFont (textview wininfo) (Just font)
-      widgetModifyFont (modeline wininfo) (Just font)
+updateFont cfg fontRef tc cmd font = do
+    maybe (return ()) (fontDescriptionSetFamily font) (configFontName cfg)
+    maybe (return ()) (fontDescriptionSetSize font . fromIntegral) (configFontSize cfg)
+    writeIORef fontRef font
+    widgetModifyFont cmd (Just font)
+    tcs <- readIORef tc
+    forM_ tcs $ \tabinfo -> do
+	wcs <- readIORef $ windowCache tabinfo
+        forM_ wcs $ \wininfo -> do
+            layoutSetFontDescription (winLayout wininfo) (Just font)
+	    -- This will cause the textview to redraw
+	    widgetModifyFont (textview wininfo) (Just font)
+	    widgetModifyFont (modeline wininfo) (Just font)
 
 askBuffer :: Window -> FBuffer -> BufferM a -> a
 askBuffer w b f = fst $ runBuffer w b f
@@ -109,6 +118,7 @@ start cfg ch outCh ed = catchGError (startNoMsg cfg ch outCh ed) (\(GError _dom 
 
 startNoMsg :: UIBoot
 startNoMsg cfg ch outCh _ed = do
+  logPutStrLn "startNoMsg"
   unsafeInitGUIForThreadedRTS
 
   win <- windowNew
@@ -170,21 +180,21 @@ startNoMsg cfg ch outCh _ed = do
            boxChildPacking cmd  := PackNatural ]
 
   fontRef <- newIORef undefined
-  wc <- newIORef []
+  tc <- newIORef []
 
 #ifdef GNOME_ENABLED
   let watchFont = watchSystemFont
 #else
   let watchFont = (fontDescriptionFromString "Monospace 10" >>=)
 #endif
-  watchFont $ updateFont (configUI cfg) fontRef wc cmd
+  watchFont $ updateFont (configUI cfg) fontRef tc cmd
 
   -- use our magic threads thingy (http://haskell.org/gtk2hs/archives/2005/07/24/writing-multi-threaded-guis/)
   timeoutAddFull (yield >> return True) priorityDefaultIdle 50
 
   widgetShowAll win
 
-  let ui = UI win tabs cmd wc (outCh . singleton) (configUI cfg) fontRef
+  let ui = UI win tabs cmd tc (outCh . singleton) (configUI cfg) fontRef
 
   return (mkUI ui)
 
@@ -239,15 +249,15 @@ keyTable = M.fromList
 end :: IO ()
 end = mainQuit
 
-syncTabs :: Editor -> UI -> PL.PointedList (PL.PointedList Window) -> [WinInfo] -> IO [WinInfo]
+syncTabs :: Editor -> UI -> PL.PointedList (PL.PointedList Window) -> [TabInfo] -> IO [TabInfo]
 syncTabs e ui tabs cache = do
     cache' <- forM tabs $ \ws -> syncTab e ui ws cache
     containerResizeChildren =<< uiBox ui
     return $ concat cache'
 
-syncTab :: Editor -> UI -> PL.PointedList Window -> [WinInfo] -> IO [WinInfo]
-syncTab e ui ws cache =
-    syncWindows e ui (toList $ PL.withFocus ws) cache
+syncTab :: Editor -> UI -> PL.PointedList Window -> [TabInfo] -> IO [TabInfo]
+syncTab e ui ws cache = undefined
+    -- syncWindows e ui (toList $ PL.withFocus ws) cache
 
 -- | Synchronize the windows displayed by GTK with the status of windows in the Core.
 syncWindows :: Editor -> UI -> [(Window, Bool)] -- ^ windows paired with their "isFocused" state.
@@ -293,9 +303,16 @@ handleClick ui w event = do
 
   -- maybe focus the window
   logPutStrLn $ "Clicked inside window: " ++ show w
-  wCache <- readIORef (windowCache ui)
-  let Just idx = findIndex (((==) `on` (winkey . coreWin)) w) wCache
-      focusWindow = modA windowsA (fromJust . PL.move idx)
+  tCache <- readIORef (tabCache ui)
+  (win:_) <- forM tCache $ \tabinfo -> do
+    wCache <- readIORef $ windowCache tabinfo
+    return $ head $ forM wCache $ \wininfo -> do
+      if (winkey $ coreWin w) == (winkey $ coreWin w)
+        then return w
+	else []
+  let focusWindow = undefined
+  -- let Just idx = findIndex (((==) `on` (winkey . coreWin)) w) wCache
+  --    focusWindow = modA windowsA (fromJust . PL.move idx)
 
   case (Gdk.Events.eventClick event, Gdk.Events.eventButton event) of
      (Gdk.Events.SingleClick, Gdk.Events.LeftButton) -> do
@@ -379,7 +396,24 @@ handleMove ui w p0 event = do
 
   return True
 
--- | Make A new window
+-- | Make a new tab.
+newTab :: Editor -> UI -> PL.PointedList Window -> IO TabInfo
+newTab e ui ws = do
+    logPutStrLn "Creating tab"
+    l  <- labelNew (Just "Hello, world!")
+    wc <- newIORef []
+    return $ TabInfo { coreTab = ws
+                     , page    = castToWidget l
+                     , windowCache = wc
+                     }
+
+insertTab :: Editor -> UI -> PL.PointedList Window -> IO TabInfo
+insertTab e ui ws = do
+    t <- newTab e ui ws
+    notebookAppendPage (uiNotebook ui) (page t) "Tab Title"
+    return t
+
+-- | Make a new window.
 newWindow :: Editor -> UI -> Window -> FBuffer -> IO WinInfo
 newWindow e ui w b = mdo
     f <- readIORef (uiFont ui)
@@ -463,23 +497,26 @@ insertWindow e i win = do
 updateCache :: UI -> Editor -> IO ()
 updateCache ui e = do
     let tabs = tabs_ e
-    cache <- readRef $ windowCache ui
+    cache <- readRef $ tabCache ui
     cache' <- syncTabs e ui tabs cache
-    writeRef (windowCache ui) cache'
+    writeRef (tabCache ui) cache'
 
 refresh :: UI -> Editor -> IO ()
 refresh ui e = do
+    logPutStrLn "refresh"
     set (uiCmdLine ui) [labelText := intercalate "  " $ statusLine e,
                         labelEllipsize := EllipsizeEnd]
-    cache <- readRef $ windowCache ui
-    forM_ cache $ \w -> do
-        let b = findBufferWith (bufkey (coreWin w)) e
-        -- when (not $ null $ pendingUpdates b) $ 
-        do 
-           sig <- readIORef (renderer w)
-           signalDisconnect sig
-           writeRef (renderer w) =<< (textview w `onExpose` render e ui b w)
-           widgetQueueDraw (textview w)
+    cache <- readRef $ tabCache ui
+    forM_ cache $ \t -> do
+        wins <- readRef $ windowCache t
+        forM_ wins $ \w -> do
+            let b = findBufferWith (bufkey (coreWin w)) e
+            -- when (not $ null $ pendingUpdates b) $
+	    do
+                sig <- readIORef (renderer w)
+                signalDisconnect sig
+                writeRef (renderer w) =<< (textview w `onExpose` render e ui b w)
+                widgetQueueDraw (textview w)
 
 winEls :: Point -> Int -> BufferM Yi.Buffer.Size
 winEls tospnt h = savingPointB $ do
@@ -524,29 +561,34 @@ render e ui b w _ev = do
   return True
 
 doLayout :: UI -> Editor -> IO Editor
-doLayout ui ePrev = mdo -- This recursive do ensures that we don't use old
-                        -- WinInfo data such as height. Unfortunately it
-                        -- means "logPutStrLn (print win)" can loop because
-                        -- Window's Show instance uses the Window's height.
-    let updateWin w = w { height = height' w, getRegion = getRegion' w }
-        e' = (windowsA ^: fmap updateWin) ePrev
-    io $ updateCache ui e'
-    wins <- io $ readRef (windowCache ui)
-    heights <- io $ forM wins $ \w -> do
-      (_, h) <- widgetGetSize $ textview w
-      let metrics = winMetrics w
-      return (w,
-              round ((fromIntegral h) / (ascent metrics + descent metrics)))
+doLayout ui ePrev = do
+    logPutStrLn $ "doLayout: "
+    tCache <- readRef $ tabCache ui
+    es <- forM tCache $ \tab -> mdo
+        -- This recursive do ensures that we don't use old
+        -- WinInfo data such as height. Unfortunately it
+        -- means "logPutStrLn (print win)" can loop because
+        -- Window's Show instance uses the Window's height.
 
-    f <- readIORef (uiFont ui)
-    let height' w = case find ((w ==) . coreWin . fst) heights of
-                        Nothing -> 0
-                        Just (_,h) -> h
-        getRegion' w = case find ((w ==) . coreWin) wins of
-                           Nothing -> const emptyRegion
-                           Just win -> shownRegion f win
-    logPutStrLn ("heights:"++show heights)
-    return e'
+        let updateWin w = w { height = height' w, getRegion = getRegion' w }
+            e' = (windowsA ^: fmap updateWin) ePrev
+        io $ updateCache ui e'
+        wins <- io $ readRef (windowCache tab)
+        heights <- io $ forM wins $ \w -> do
+            (_, h) <- widgetGetSize $ textview w
+            let metrics = winMetrics w
+            return (w, round ((fromIntegral h) / (ascent metrics + descent metrics)))
+
+        f <- readIORef (uiFont ui)
+        let height' w = case find ((w ==) . coreWin . fst) heights of
+                            Nothing -> 0
+                            Just (_,h) -> h
+            getRegion' w = case find ((w ==) . coreWin) wins of
+                               Nothing -> const emptyRegion
+                               Just win -> shownRegion f win
+        logPutStrLn ("heights:"++show heights)
+        return e'
+    return $ head es
 
 shownRegion :: FontDescription -> WinInfo -> FBuffer -> Region
 shownRegion f w b =

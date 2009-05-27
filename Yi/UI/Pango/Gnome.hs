@@ -24,3 +24,4 @@ watch gconf key cb = do
   cb =<< gconfGet gconf key
   gconfNotifyAdd gconf key $ \key' val -> when (key == key') (cb val)
   return ()
+
