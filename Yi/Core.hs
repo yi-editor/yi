@@ -142,9 +142,9 @@ showErrors :: YiM ()
 showErrors = withEditor $ do
                bs <- gets $ findBufferWithName ".yi/yi.errors"
                case bs of
-                 []    -> return ()
-                 (b:_) -> do splitE
-                             switchToBufferWithNameE ".yi/yi.errors"
+                 [] -> return ()
+                 _  -> do splitE
+                          switchToBufferWithNameE ".yi/yi.errors"
 
 -- | Process an event by advancing the current keymap automaton an
 -- execing the generated actions.
