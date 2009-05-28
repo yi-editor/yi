@@ -1182,7 +1182,7 @@ defKeymap = Proto template
               ,(ctrl $ spec KRight) ?>>! genMoveB unitViWORD (Backward,InsideBound) Forward
               ,ctrlCh 'j'     ?>>! savingInsertCharB '\n'
               ,ctrlCh 'm'     ?>>! savingInsertCharB '\r'
-              ,spec KTab      ?>>! mapM_ insrepB =<< tabB
+              ,spec KTab      ?>>! adjIndent IncreaseCycle
               ,ctrlCh 'i'     ?>>! mapM_ insrepB =<< tabB
               ,ctrlCh 'e'     ?>>! insrepB =<< savingPointB (lineDown >> readB)
               ,ctrlCh 'y'     ?>>! insrepB =<< savingPointB (lineUp >> readB)
