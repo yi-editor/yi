@@ -35,8 +35,12 @@ openParen = Special '('
 closeParen = Special ')'
 
 isNormalParen :: Tree TT -> Bool
-isNormalParen (Paren t1 _ t2) = tokT t1 == openParen && tokT t2 == closeParen
+isNormalParen (Paren t1 xs t2) = tokT t1 == openParen && tokT t2 == closeParen && (not $ any isTuple xs)
 isNormalParen _               = False
+
+isTuple ::Tree TT -> Bool
+isTuple (Atom t) = tokT t == Special ','
+isTuple _ = False
 
 -- Assumes length of token is one character
 queueDelete :: TT -> QueuedUpdate
