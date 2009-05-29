@@ -1,4 +1,6 @@
 {-# LANGUAGE ScopedTypeVariables #-}
+-- Note: If the first line of the file has wrong indentation, some of the
+-- code might be left outside of the blocks
 module Yi.Syntax.Layout (layoutHandler, State) where
 
 import Yi.Syntax
@@ -99,7 +101,7 @@ layoutHandler isSpecial parens isIgnored [openT, closeT, nextT] isGroupOpen lexS
            
             -- next item
             | line > lastLine &&
-              col == deepestIndent levels 
+              col == deepestIndent levels
                 = (st', tt nextT) : parse (IState (dropWhile isParen levels) doOpen line) toks
                   -- drop all paren levels inside the indent
 
