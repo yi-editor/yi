@@ -60,7 +60,7 @@ stripComments = filter $ \t -> case t of { (Atom x) -> not (isComment $ tokT x);
 dollarifyTop :: Tree TT -> [QueuedUpdate]
 dollarifyTop p@(Paren t1 e t2)
    | isNormalParen p = case stripComments e of
-       [Paren t1' _ t2'] -> [queueDelete t2', queueDelete t1']
+       [Paren _ _ _] -> [queueDelete t2, queueDelete t1]
        e'            -> dollarifyExpr e'
 dollarifyTop (Block bList) = dollarifyExpr . stripComments =<< toList bList
 dollarifyTop _ = []
