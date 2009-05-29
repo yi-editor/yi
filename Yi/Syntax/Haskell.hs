@@ -68,6 +68,10 @@ data PImport t = PImport (PAtom t) (Exp t) (PAtom t) (Exp t) (Exp t)
 data Exp t
       -- A parenthesized expression with comments
     = Paren (PAtom t) (Exp t) (PAtom t)
+      -- Special parenthesis to increase speed of parser
+    | SParen (PAtom t) (Exp t)
+    | SParen' (Exp t) (PAtom t) (Exp t)
+      --
       -- A list of things separated by layout (as in do; etc.)
     | Block (BL.BList [Exp t])
     | PAtom t [t]
