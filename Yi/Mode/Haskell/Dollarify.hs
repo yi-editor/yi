@@ -20,10 +20,10 @@ dollarifyWithin = trace . ("dollarifyWithin: " ++) . show <*> runQ . (dollarifyT
 data QueuedUpdate = QueuedUpdate { qUpdatePoint :: Point
                                  , qInsert      :: String
                                  , qDelete      :: Int
-                                 } deriving (Eq, Ord)
+                                 } deriving (Eq, Ord, Show)
 
 runQ :: [QueuedUpdate] -> BufferM ()
-runQ = mapM_ run1Q . sortBy (flip compare)
+runQ = trace . ("runQ: " ++) . show <*> mapM_ run1Q . sortBy (flip compare)
     where
        run1Q :: QueuedUpdate -> BufferM ()
        run1Q (QueuedUpdate { qUpdatePoint = p, qInsert = i, qDelete = d })
