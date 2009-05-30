@@ -1,7 +1,7 @@
 {-# LANGUAGE PatternGuards #-}
 module Yi.Mode.Haskell.Dollarify where
 
-import Prelude (filter, maybe, takeWhile, uncurry)
+import Prelude (filter, maybe, takeWhile)
 import Data.Maybe (fromMaybe)
 import Data.List (sortBy)
 import Yi.Prelude 
@@ -80,11 +80,8 @@ isSimple (Block _)     = False
 isSimple (Atom t)      = tokT t `elem` [Number, CharTok, StringTok,VarIdent, ConsIdent]
 isSimple _             = False
 
-both :: (a -> b) -> a -> a -> (b, b)
-both f x y = (f x, f y)
-
 isCollapsible :: Expr TT -> Bool
-isCollapsible = uncurry (&&) . (both isSimple . head <*> last) . stripComments
+isCollapsible = (((&&) `on` isSimple) . head <*> last) . stripComments
 
 selectedTree :: Expr TT -> Region -> Maybe (Tree TT)
 selectedTree e r = findLargestWithin r <$> getLastPath e (regionLast r)
