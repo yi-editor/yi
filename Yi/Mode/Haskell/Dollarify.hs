@@ -67,21 +67,26 @@ dollarifyTop _ = []
 
 -- Expression must not contain comments
 dollarifyExpr :: Expr TT -> [QueuedUpdate]
-dollarifyExpr e@(_:_) | p@(Paren t e2 t2) <- last e
-                     , isNormalParen p
-                     , isCollapsible e2
-                     , all isSimple e
-   = [queueDelete t2, queueReplaceWith "$ " t]
+dollarifyExpr e@(_:_)
+    | p@(Paren t e2 t2) <- last e
+    , isNormalParen p
+    , all isSimple e
+    = let dollarifyLoop :: Expr TT -> [QueuedUpdate]
+          dollarifyLoop [] = []
+          dollarifyLoop e3@[Paren _ _ _] = dollarifyExpr e3
+          dollarifyLoop e3 = if isCollapsible e3 then [queueDelete t2, queueReplaceWith "$ " t] else []
+          in dollarifyLoop $ stripComments e2
 dollarifyExpr _ = []
 
 isSimple :: Tree TT -> Bool
 isSimple (Paren _ _ _) = True
 isSimple (Block _)     = False
-isSimple (Atom t)      = tokT t `elem` [Number, CharTok, StringTok,VarIdent, ConsIdent]
+isSimple (Atom t)      = tokT t `elem` [Number, CharTok, StringTok, VarIdent, ConsIdent]
 isSimple _             = False
 
+-- Expression must not contain comments
 isCollapsible :: Expr TT -> Bool
-isCollapsible = (((&&) `on` isSimple) . head <*> last) . stripComments
+isCollapsible = (((&&) `on` isSimple) . head <*> last)
 
 selectedTree :: Expr TT -> Region -> Maybe (Tree TT)
 selectedTree e r = findLargestWithin r <$> getLastPath e (regionLast r)
