@@ -55,6 +55,9 @@ defaultHConfParams = HConf.HConfParams
     , HConf.saveState        = saveState
     , HConf.showErrorsInConf = showErrorsInConf
     , HConf.realMain         = realMain
-    , HConf.ghcFlags         = []
+        -- monads-fd collide with mtl.
+        -- Could not find module `Control.Monad.Writer':
+        --       it was found in multiple packages: monads-fd-0.0.0.0 mtl-1.1.0.2
+    , HConf.ghcFlags         = ["-hide-package", "mtl"]
     }
 
