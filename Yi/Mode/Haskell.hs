@@ -153,10 +153,10 @@ cleverAutoIndentHaskellB e behaviour = do
                               filter (not . onThisLine . posnOfs . tokPosn) .
                               filter (not . isErrorTok . tokT) . allToks 
   let stopsOf :: [Paren.Tree TT] -> [Int]
-      stopsOf (g@(Paren.Paren open ctnt close):ts) 
+      stopsOf (g@(Paren.Paren open ctnt close):ts') 
           | isErrorTok (tokT close) || getLastOffset g >= solPnt
               = [groupIndent open ctnt]  -- stop here: we want to be "inside" that group.
-          | otherwise = stopsOf ts -- this group is closed before this line; just skip it.
+          | otherwise = stopsOf ts' -- this group is closed before this line; just skip it.
       stopsOf ((Paren.Atom (Tok {tokT = t})):_) | startsLayout t = [nextIndent, previousIndent + indentLevel]
         -- of; where; etc. we want to start the block here.
         -- Also use the next line's indent:
@@ -216,33 +216,38 @@ cleverAutoIndentHaskellC' e behaviour = do
         -- Also use the next line's indent:
         -- maybe we are putting a new 1st statement in the block here.
       stopsOf ((Hask.PAtom _ __):ts) = stopsOf ts
+      stopsOf ((Hask.PWhere w _):_) = case firstTokOnLine of
+         Nothing ->  0 : (firstTokOnCol w + 6) : []
+         Just _ -> 0 : firstTokOnCol w + 6 : []
          -- any random part of expression, we ignore it.
-      stopsOf ((Hask.PLet le c e@(Hask.Block expr) e'):ts) =
+      stopsOf ((Hask.PLet le _ e@(Hask.Block expr) _):_) =
          case firstTokOnLine of
              Just (Reserved In) ->firstTokOnCol le : []
              Just (Reserved Let) ->[0]
-             Nothing -> maybe 0 firstTokOnCol (getFirstElement e) : stopsOf (concat expr)
-             _ -> maybe 0 firstTokOnCol (getFirstElement e) : stopsOf (concat expr)
-      stopsOf (t@(Hask.Block _):ts) = shiftBlock + maybe 0 firstTokOnCol (getFirstElement t) : stopsOf ts
-      stopsOf (t@(Hask.PGuard' pipe _ eq expr):ts) = case firstTokOnLine of
+             Nothing ->maybe 0 firstTokOnCol (getFirstElement e) : stopsOf (concat expr)
+             _ ->maybe 0 firstTokOnCol (getFirstElement e) : stopsOf (concat expr)
+      stopsOf (t@(Hask.Block _):ts') = shiftBlock + maybe 0 firstTokOnCol (getFirstElement t) : stopsOf ts'
+      stopsOf ((Hask.PGuard' pipe _ _ expr):_) = case firstTokOnLine of
           Nothing -> 0 : maybe 0 firstTokOnCol (getFirstElement expr) : stopsOf [expr]
           Just (ReservedOp Haskell.Pipe) -> firstTokOnCol pipe : []
           _ -> 0 : maybe 0 firstTokOnCol (getFirstElement expr) : stopsOf [expr]
-      stopsOf (Hask.PError _ _:ts) = stopsOf ts
+      stopsOf (Hask.PError _ _:ts') = stopsOf ts'
       --       stopsOf (Hask.PData d) = stopsOf [d]
-      stopsOf (t@(Hask.RHS (Hask.PAtom eq com) []):ts) = 0 : (firstTokOnCol eq + 2) : stopsOf ts
-      stopsOf (t@(Hask.RHS (Hask.PAtom eq com) r@(exp:exps)):ts) = case firstTokOnLine of
-          Nothing -> 0 : maybe 0 firstTokOnCol (getFirstElement exp) : []
-          Just (ReservedOp Haskell.Equal) -> firstTokOnCol eq : []
-          Just t@(Operator op) ->opLength op (maybe 0 firstTokOnCol (getFirstElement exp)) : stopsOf r
+      stopsOf ((Hask.RHS (Hask.PAtom eq _) []):_) = 0 : previousIndent : (firstTokOnCol eq + 2) : [] -- stopsOf ts
+      stopsOf ((Hask.RHS (Hask.PAtom eq _) r@(exp:_)):ts') = case firstTokOnLine of
+          Nothing -> 0 : previousIndent : maybe 0 firstTokOnCol (getFirstElement exp) : stopsOf r
+          Just (ReservedOp Haskell.Equal) -> firstTokOnCol eq : stopsOf r
+          Just (Reserved Haskell.Where) -> fmap (+indentLevel) (0 : stopsOf ts')
+          Just (Operator op) ->opLength op (maybe 0 firstTokOnCol (getFirstElement exp)) : stopsOf r
           -- case of an operator should check so that value allways is at least 1
-          _ -> 0 : maybe 0 firstTokOnCol (getFirstElement exp) : stopsOf r
-      stopsOf ((Hask.Expr e):ts) = stopsOf e
-      stopsOf (r:ts) = [] -- stopsOf ts -- not yet handled stuff
+          Just _ -> 0 : previousIndent : maybe 0 firstTokOnCol (getFirstElement exp) : stopsOf r
+--       stopsOf ((Hask.Expr e):ts) = stopsOf e
+      stopsOf ((Hask.TS _ _):ts') = stopsOf ts'
       stopsOf [] = []
-      -- calculate indentation of operator (must be at least 1 to be valid)
-      opLength ts r = let l = r - (length ts + 1)
-                      in  if l > 0 then l else 1
+      stopsOf (r:_) = error (show r) -- stopsOf ts -- not yet handled stuff
+       -- calculate indentation of operator (must be at least 1 to be valid)
+      opLength ts' r = let l = r - (length ts' + 1)
+                       in  if l > 0 then l else 1
       firstTokOnCol = posnCol . tokPosn
       firstTokOnLine = fmap tokT $ listToMaybe $
           dropWhile ((solPnt >) . tokBegin) $
@@ -260,7 +265,6 @@ cleverAutoIndentHaskellC' e behaviour = do
               Nothing -> openCol + nominalIndent openChar -- no such token: indent normally.
               Just t -> posnCol . tokPosn $ t -- indent along that other token
           | otherwise = openCol
-      groupIndent (Tok {tokT = (Reserved Let), tokPosn = Posn _ _ openCol'}) _ = openCol'
       groupIndent (Tok _ _ _) _ = error "unable to indent code"
   case getLastPath e solPnt of
     Nothing -> return ()

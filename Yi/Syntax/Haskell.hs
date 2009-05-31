@@ -78,6 +78,7 @@ data Exp t
     | PFun (Exp t) (Exp t) t [t] (Exp t)
     | Expr [Exp t]
     | KW (PAtom t) (Exp t)
+    | PWhere t (Exp t)
     | Bin (Exp t) (Exp t)
        -- an error with comments following so we never color comments in wrong color
     | PError t [t]
@@ -111,8 +112,11 @@ $(derive makeFoldable ''Program)
 $(derive makeFoldable ''Exp)
 instance IsTree Exp where
    subtrees (Paren _ (Expr g) _) = g
+   subtrees (RHS _ g)     = g
+   subtrees (PWhere _ (Block r))  = concat r
    subtrees (Block s)     = concat s
    subtrees (PGuard s)    = s
+   subtrees (PLet _ _ (Block s) _)  = concat s
    subtrees (Expr a)      = a
 --      subtrees (TypeSig _ a) = a
    subtrees _             = []
@@ -667,7 +671,7 @@ pTr err at
                 <|> pBlockOf (pTr err (at \\ [(Special ',')])))
        <*> pTr err (at \\ [(ReservedOp (OtherOp "::")),(Special ','),(ReservedOp RightArrow)]))
   <|> ((:) <$> pRHS err (at \\ [(Special ','),(ReservedOp (OtherOp "::"))]) <*> pure []) -- guard or equal
-  <|> ((:) <$> (Bin <$> pAt (exact' [Reserved Where]) <*> (pBlockOf $ pTree err' atom'))
+  <|> ((:) <$> (PWhere <$> exact' [Reserved Where] <*> pleaseC (pBlockOf $ pTree err' atom'))
        <*> pTr' err at)
     where err' = [(Reserved In)]
           atom' = [(ReservedOp Equal),(ReservedOp Pipe), (Reserved In)]
@@ -679,7 +683,7 @@ pTr' err at = pure []
                         <|> (pBlockOf (pTr err (([(ReservedOp Equal), (ReservedOp Pipe)] `union` at) 
                                                 \\ [(ReservedOp (OtherOp "::")),(ReservedOp RightArrow)]))))
                <*> pTr' err at)
-          <|> ((:) <$> (Bin <$> pAt (exact' [Reserved Where]) <*> (pBlockOf $ pTree err' atom'))
+          <|> ((:) <$> (PWhere <$> exact' [Reserved Where] <*> pleaseC (pBlockOf $ pTree err' atom'))
               <*> pTr' err at)
     where err' = [(Reserved In)]
           atom' = [(ReservedOp Equal),(ReservedOp Pipe), (Reserved In)]
@@ -851,6 +855,7 @@ getStr tk point begin _end t0 = getStrokes' t0
               | otherwise = getStrokes' f <> getStrokes' args
                           <> tk s <> com c <> getStrokes' rhs
           getStrokes' (Expr g) = getStrokesL g
+          getStrokes' (PWhere c exp) = tk c <> getStrokes' exp
           getStrokes' (RHS eq g) = getStrokes' eq <> getStrokesL g
 --           getStrokes' (RHS eq g) = paintAtom errorStyle eq <> foldMap errStyle (Expr g) -- will color rhs functions red
           getStrokes' (Bin l r) = getStrokes' l <> getStrokes' r
