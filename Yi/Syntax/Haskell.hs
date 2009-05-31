@@ -656,7 +656,8 @@ pTree err at = ((:) <$> beginLine
                    , (ReservedOp Pipe)
                    , (ReservedOp Equal)
                    , (Reserved Let)
-                   , (Reserved In)]
+                   , (Reserved In)
+                   , (Reserved Where)]
 
 -- | Parse something not containing a Type, Data declaration or a class kw but parse a where
 pTr :: [Token] -> [Token] -> Parser TT [TTT]
