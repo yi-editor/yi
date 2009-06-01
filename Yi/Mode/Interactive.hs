@@ -1,5 +1,6 @@
 module Yi.Mode.Interactive where
 
+import Control.Concurrent (threadDelay)
 import Data.List (elemIndex)
 import Prelude ()
 import Yi.Modes
@@ -98,3 +99,20 @@ feedCommand = do
         return $ cmd
     withEditor interactHistoryStart
     sendToProcess b cmd
+
+
+
+-- | Send command, recieve reply
+queryReply :: BufferRef -> String -> YiM String
+queryReply buf cmd = do
+    start <- withGivenBuffer buf pointB
+    sendToProcess buf (cmd ++ "\n")
+    io $ threadDelay 50000  -- Hack to let ghci finish writing its output.
+    withGivenBuffer buf $ do
+        botB
+        moveToSol
+        leftB -- There is probably a much better way to do this moving around, but it works
+        end <- pointB
+        result <- readRegionB (mkRegion start end)
+        botB
+        return result

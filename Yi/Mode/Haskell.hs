@@ -11,6 +11,7 @@ module Yi.Mode.Haskell
    
    -- * IO-level operations
    ghciGet,
+   ghciSend,
    ghciLoadBuffer
   ) where
 
