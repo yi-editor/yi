@@ -510,7 +510,7 @@ pForAll = pKW (exact' [Reserved Forall])
 pConstrs :: Parser TT TTT
 pConstrs = Bin <$> (Bin <$> pOpt pContext <*> pConstr)
        <*> pMany (pOP [ReservedOp Pipe]
-                  (Bin <$> pOpt pContext <*> pConstr))
+                  (Bin <$> pOpt pContext <*> pleaseC pConstr))
 
 pConstr :: Parser TT TTT
 pConstr = Bin <$> pOpt pForAll 
