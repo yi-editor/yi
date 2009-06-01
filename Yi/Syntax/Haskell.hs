@@ -544,7 +544,7 @@ pLet :: Parser TT (Exp TT)
 pLet = PLet <$> exact' [Reserved Let] <*> pCom
    <*> ((pBlockOf' (Block <$> pBlocks' (pTr el [(ReservedOp Pipe),(ReservedOp Equal)])))
         <|> ((Expr <$> pure []) <* pEol))
-   <*> pOpt (PAtom <$> exact' [Reserved In] <*> pure []) -- problem
+   <*> (Expr <$> pure []) -- pOpt (PAtom <$> exact' [Reserved In] <*> pure []) -- problem
     where pEol :: Parser TT ()
           pEol = testNext (\r ->(not $ isJust r) ||
                            (pEol' r))
