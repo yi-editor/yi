@@ -368,6 +368,7 @@ data Mode syntax = Mode
      modeToggleCommentSelection :: BufferM (),
      modeGetStrokes :: syntax -> Point -> Point -> Point -> [Stroke],
      modeGetAnnotations :: syntax -> Point -> [Span String],
+     modePrintTree :: syntax -> BufferM (),
      -- should this be an Action instead?
      modeOnLoad :: BufferM () -- ^ An action that is to be executed when this mode is set
     }
@@ -574,6 +575,7 @@ emptyMode = Mode
    modeToggleCommentSelection = fail "'comment selection' not defined for this mode",
    modeGetStrokes = \_ _ _ _ -> [],
    modeGetAnnotations = \_ _ -> [],
+   modePrintTree = \_ -> return (),
    modeOnLoad = return ()
   }
 
