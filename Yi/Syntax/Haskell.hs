@@ -728,8 +728,6 @@ isNoiseErr :: [Token] -> [Token]
 isNoiseErr r
     = [ (Reserved Module)
       , (Reserved Import)
-      , (Reserved Qualified)
-      , (Reserved Hiding)
       , (Special '}')
       , (Special ')')
       , (Special ']')] ++ r
@@ -743,8 +741,6 @@ isNoise r
       , (Reserved Import)
       , (Reserved Type)
       , (Reserved Data)
-      , (Reserved Qualified)
-      , (Reserved Hiding)
       , (Reserved Where)] ++ (fmap Special "()[]{}<>.") ++ r
 
 -- | Parse an atom witout comments
@@ -817,15 +813,21 @@ getStrokeMod point begin _end (PModule m na e w)
 getStrokeImp ::  Point -> Point -> Point -> PImport TT -> Endo [Stroke]
 getStrokeImp point begin _end (PImport m qu na t t')
               | isErrN t' || isErrN na || isErrN t
-                          = paintAtom errorStyle m <> getStrokes' qu
-                         <> getStr tkImport point begin _end na <> paintAs t  <> getStrokes' t'
-              | otherwise = getStrokes' m <> getStrokes' qu
-                         <> getStr tkImport point begin _end na <> paintAs t  <> getStrokes' t'
+                          = paintAtom errorStyle m <> paintQu qu
+                         <> getStr tkImport point begin _end na <> paintAs t  <> paintHi t'
+              | otherwise = getStrokes' m <> paintQu qu
+                         <> getStr tkImport point begin _end na <> paintAs t  <> paintHi t'
     where getStrokes' r = getStr tkDConst point begin _end r
           paintAs (Opt (Just (KW (PAtom n c) tw)))
               = (one $ (fmap (const keywordStyle) . tokToSpan) n) <> com c
                    <> getStr tkImport point begin _end tw
           paintAs a = getStrokes' a
+          paintQu (Opt (Just ((PAtom n c)))) = (one $ (fmap (const keywordStyle) . tokToSpan) n) <> com c
+          paintQu a = getStrokes' a
+          paintHi (Bin (KW (PAtom n c) tw) r) = (one $ (fmap (const keywordStyle) . tokToSpan) n) 
+                                             <> com c <> getStr tkImport point begin _end tw
+                                             <> getStrokes' r
+          paintHi a = getStrokes' a
 
 -- | Get strokes for expressions and declarations
 getStr ::(TT -> Endo [Stroke]) -> Point -> Point -> Point -> Exp TT -> Endo [Stroke]
@@ -947,7 +949,7 @@ com r = (foldMap tkDConst r)
 
 tk' :: (TT -> Bool) -> (TT -> Endo [Stroke]) -> TT -> Endo [Stroke]
 tk' f s t | isErr t = errStyle t
-          | (Reserved As) == (tokT t) = one $ (fmap (const variableStyle) . tokToSpan) t
+          | elem (tokT t) (fmap Reserved [As, Qualified, Hiding]) = one $ (fmap (const variableStyle) . tokToSpan) t
           | f t = s t
           | otherwise = one (ts t)
 
