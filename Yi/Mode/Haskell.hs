@@ -12,7 +12,8 @@ module Yi.Mode.Haskell
    -- * IO-level operations
    ghciGet,
    ghciSend,
-   ghciLoadBuffer
+   ghciLoadBuffer,
+   ghciInferType,
   ) where
 
 import Data.Binary
@@ -376,3 +377,12 @@ ghciLoadBuffer = do
     Just filename <- withBuffer $ gets file
     ghciSend $ ":load " ++ filename
 
+
+
+-- Tells ghci to infer the type of the identifier at point. Doesn't check for errors (yet)
+ghciInferType :: YiM ()
+ghciInferType = do
+    name <- withBuffer $ readUnitB unitWord
+    buf <- ghciGet
+    result <- Interactive.queryReply buf (":t " ++ name)
+    withBuffer $ moveToSol *> insertB '\n' *> leftB *> insertN result *> rightB
