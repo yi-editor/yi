@@ -676,7 +676,7 @@ pTr err at
        <*> pTr err (at \\ [(ReservedOp (OtherOp "::")),(Special ','),(ReservedOp RightArrow)]))
   <|> ((:) <$> pRHS err (at \\ [(Special ','),(ReservedOp (OtherOp "::"))]) <*> pure []) -- guard or equal
   <|> ((:) <$> (PWhere <$> exact' [Reserved Where] <*> pleaseC (pBlockOf $ pTree err' atom'))
-       <*> pTr' err at)
+       <*> pTree err' atom')
     where err' = [(Reserved In)]
           atom' = [(ReservedOp Equal),(ReservedOp Pipe), (Reserved In)]
 
