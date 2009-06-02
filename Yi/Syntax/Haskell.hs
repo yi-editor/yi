@@ -101,6 +101,94 @@ data Exp t
     | PLet t [t] (Exp t) (Exp t)
   deriving (Show, Data, Typeable)
 
+instance SubTree (Exp TT) where
+    type Element (Exp TT) = TT
+    foldMapToksAfter begin f t0 = work t0
+        where work (Paren e e' e'') = work e <> work e' <> work e''
+              work (PFun e e' t lt e'') 
+                     = work e 
+                    <> work e'
+                    <> f t
+                    <> fold' lt
+                    <> work e''
+              work (Expr e)     = foldMap work e
+              work (KW e e')    = work e <> work e'
+              work (PWhere t e) = f t <> work e
+              work (Bin e e')   = work e <> work e'
+              work (RHS e l)    = work e <> foldMap work l
+              work (Opt (Just t)) = work t
+              work (Opt Nothing)  = mempty
+              work (Modid t l)    = f t
+                                 <> fold' l
+              work (Op t l e) = f t
+                             <> fold' l
+                             <> work e
+              work (Context e e' t l) = f t
+                                     <> work e
+                                     <> work e'
+                                     <> fold' l
+              work (PType t l e e' t' l' e'') = f t
+                                             <> fold' l
+                                             <> work e
+                                             <> work e'
+                                             <> f t'
+                                             <> fold' l'
+                                             <> work e''
+              work (PData t l e e' e'') = f t
+                                       <> fold' l
+                                       <> work e
+                                       <> work e'
+                                       <> work e''
+              work (PData' t l e e') = f t
+                                    <> fold' l
+                                    <> work e
+                                    <> work e'
+              work (PGuard l) = foldMap work l
+              work (PGuard' t e t' e') = f t
+                                      <> work e
+                                      <> f t'
+                                      <> work e'
+              work (PAtom t c) = f t <> fold' c
+              work (PError t c) = f t <> fold' c
+              work (TS t e) = f t <> foldMap work e
+              work (DC e) = work e
+              work (TC e) = work e
+              work (PLet t l e e') = f t 
+                                  <> fold' l
+                                  <> work e
+                                  <> work e'
+              work (Block s) = BL.foldMapAfter
+                                begin (foldMapToksAfter begin f) s
+              work a = error $ "Instance SubTree: " ++ show a
+              fold' = foldMapToksAfter begin f
+    foldMapToks f = foldMap (foldMapToks f)
+
+instance SubTree (Program TT) where
+    type Element (Program TT) = TT
+    foldMapToksAfter begin f t0 = work t0
+        where work (Program m (Just p)) = foldMapToksAfter begin f m <> work p
+              work (Program m Nothing) = foldMapToksAfter begin f m
+              work (ProgMod m p) = work p
+              work (Body i (Block t) (Block t')) = (BL.foldMapAfter
+                                begin (foldMapToksAfter begin f) t) 
+                                       <> (BL.foldMapAfter
+                                       begin (foldMapToksAfter begin f) t')
+              work _ = undefined
+    foldMapToks f = foldMap (foldMapToks f)
+
+instance SubTree (PImport TT) where
+    type Element (PImport TT) = TT
+    foldMapToksAfter begin f t0 = work t0
+        where work (PImport at e at' e' e'') = fold' at
+                                            <> fold' e
+                                            <> fold' at'
+                                            <> fold' e'
+                                            <> fold' e''
+              work _ = undefined
+              fold' = foldMapToksAfter begin f
+    foldMapToks f = foldMap (foldMapToks f)
+
+
 type TTT = Exp TT
 
 
@@ -765,16 +853,6 @@ pBrace p  = (Paren  <$>  pEAtom (spec '{')
 pBrack :: Parser TT TTT -> Parser TT TTT
 pBrack p = (Paren  <$>  pEAtom (spec '[')  
              <*> p <*> pEAtom (pleaseSym ']'))
-
-instance SubTree (Exp TT) where
-    type Element (Exp TT) = TT
-    foldMapToksAfter begin f t0 = work t0
-        where work (PAtom t _) = f t 
-              work (PError t _) = f t
-              work (Block s) = BL.foldMapAfter
-                                begin (foldMapToksAfter begin f) s
-              work _ = undefined
-    foldMapToks f = foldMap (foldMapToks f)
 
 -- Stroke the program
 
