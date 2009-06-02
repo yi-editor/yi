@@ -71,7 +71,6 @@ data Exp t
       -- Special parenthesis to increase speed of parser
     | SParen (PAtom t) (Exp t)
     | SParen' (Exp t) (PAtom t) (Exp t)
-      --
       -- A list of things separated by layout (as in do; etc.)
     | Block (BL.BList [Exp t])
     | PAtom t [t]
@@ -185,8 +184,8 @@ parse = pProgram <* eof
 -- | Parse a program
 pProgram :: Parser TT (Program TT)
 pProgram = Program <$> many pComment <*> optional
-            (pBlockOf' ((ProgMod <$> pModule
-             <*> pModBody) <|> pBody))
+           (pBlockOf' ((ProgMod <$> pModule
+                        <*> pModBody) <|> pBody))
 
 -- | Parse a body that follows a module
 pModBody :: Parser TT (Program TT)
@@ -198,7 +197,7 @@ pModBody = (Body <$> ((spec '<') *> pImp)
             <*> pEmptyBL)
        <|> (Body <$> pure [] <*> pEmptyBL <*> pEmptyBL)
     where pBol  = testNext (\r ->(not $ isJust r) ||
-                  not (((flip elem elems) . tokT . fromJust) r))
+                            not (((flip elem elems) . tokT . fromJust) r))
           pBod  = (Block <$> pBlocks' pDTree)
           elems = [(Special '.'),(Special '<')]
 
@@ -209,7 +208,7 @@ pEmptyBL = Block <$> pure BL.nil
 pBody :: Parser TT (Program TT)
 pBody = Body <$> pImp <*> (pBol *> (Block <$> pBlocks' pDTree)) <*> pEmptyBL
     where pBol = testNext (\r ->(not $ isJust r) ||
-                 not (((flip elem elems) . tokT . fromJust) r))
+                           not (((flip elem elems) . tokT . fromJust) r))
           elems = [(Special '.'),(Special '<')]
 
 -- Helper functions for parsing follows
@@ -330,7 +329,8 @@ ppAt b = pleaseC (PAtom <$> b <*> pCom)
 
 -- | Parse something separated by, with optional ending
 pSepBy :: Parser TT TTT -> Parser TT TTT -> Parser TT TTT
-pSepBy r p = Bin <$> pMany (Bin <$> r <*> p) <*> pOpt r
+pSepBy r p = Bin <$> pMany (Bin <$> r <*> p)
+         <*> pOpt r
 
 -- | Parse a comma separator
 pComma ::Parser TT TTT
@@ -352,11 +352,11 @@ isOperator _                = False
 -- | Parse a Module declaration
 pModule :: Parser TT (PModule TT)
 pModule = (PModule <$> pAt (exact' [Reserved Module])
-                  <*> pAt (pleaseB ConsIdent)
-                  <*> pExports
-                  <*> ((optional $ spec '.') *>
-                       (Bin <$> pAt (pleaseB $ Reserved Where))
-                       <*> pMany pErr') <* pEmod)
+           <*> pAt (pleaseB ConsIdent)
+           <*> pExports
+           <*> ((optional $ spec '.') *>
+                (Bin <$> pAt (pleaseB $ Reserved Where))
+                <*> pMany pErr') <* pEmod)
     where pExports = pOpt (pTup $ pSepBy pExport pComma)
           pExport = ((optional $ spec '.') *>
                      pleaseC (pVarId
@@ -365,7 +365,7 @@ pModule = (PModule <$> pAt (exact' [Reserved Module])
                               <|> (Bin <$> (TC <$> pQtycon) <*> (DC <$> pOpt helper))
                      ))
           helper = pTup $  pleaseC ((pAt $ exact' [ReservedOp $ OtherOp ".."])
-                          <|> (pSepBy pQvarid pComma))
+                                    <|> (pSepBy pQvarid pComma))
           pEmod = testNext (\r ->(not $ isJust r) ||
                             ((flip elem elems)
                              . tokT . fromJust) r)
@@ -385,7 +385,7 @@ pImp = many (pImp'
              <* (optional $ exact' [(Special '.'),(Special ';')]))
     where pEol :: Parser TT ()
           pEol = testNext (\r ->(not $ isJust r) ||
-                 (pEol' r))
+                           (pEol' r))
           pEol' = (flip elem [(Special '<'),(Special ';'), (Special '.'), (Special '>')])
                 . tokT . fromJust
  
@@ -393,15 +393,15 @@ pImp = many (pImp'
 -- pImp' :: Parser TT TTT
 pImp' :: Parser TT (PImport TT)
 pImp' = PImport  <$> pAt (exact' [Reserved Import])
-                 <*> pOpt (pAt $ exact' [Reserved Qualified])
-                 <*> pAt (pleaseB ConsIdent)
-                 <*> pOpt (pKW (exact' [Reserved As]) ppCons)
-                 <*> pImpSpec
+    <*> pOpt (pAt $ exact' [Reserved Qualified])
+    <*> pAt (pleaseB ConsIdent)
+    <*> pOpt (pKW (exact' [Reserved As]) ppCons)
+    <*> (TC <$> pImpSpec)
     where pImpSpec = ((Bin <$> (pKW (exact' [Reserved Hiding]) $
                                 pleaseC pImpS) <*> pEnd)
                       <|> (Bin <$> pImpS <*> pEnd)) 
                  <|> pEnd
-          pImpS    = (pTup (pSepBy pExp' pComma))
+          pImpS    = (DC <$> ((pTup (pSepBy pExp' pComma))))
           pExp'    = Bin <$> ((pAt $ sym (\x -> (exact [VarIdent, ConsIdent] x)
                                           || isOperator x))
                               <|>  ppQvarsym) <*> pOpt pImpS
@@ -416,7 +416,10 @@ pSType = PType <$> exact' [Reserved Type]    <*> pCom
     where pEol :: Parser TT ()
           pEol = testNext (\r ->(not $ isJust r) ||
                  (pEol'' r))
-          pEol'' = (flip elem [(Special '<'),(Special ';'), (Special '.'), (Special '>')])
+          pEol'' = (flip elem [ (Special '<')
+                              , (Special ';')
+                              , (Special '.')
+                              , (Special '>')])
                  . tokT . fromJust
 
 -- | Parse typedeclaration
@@ -430,15 +433,16 @@ pSimpleType = (Bin <$> (TC <$> ppCons) <*> pMany pQvarid)
 -- | Parse data declarations
 pSData :: Parser TT TTT
 pSData = PData <$> exact' [(Reserved Data)] <*> pCom
-               <*> pOpt (TC <$> pContext)
-               <*> (Bin <$> (TC <$> pSimpleType)   <*> pMany pErr')
-               <*> (pOpt (Bin <$> pSData' <*> pMany pErr)) <* pEol
-    where pErr' = PError <$> recoverWith (sym $ not .
-                                          (\x -> isComment x
-                                           ||(elem x [ CppDirective
-                                                     , (ReservedOp Equal)
-                                                     , (Reserved Deriving)])
-                                          )) <*> pCom
+     <*> pOpt (TC <$> pContext)
+     <*> (Bin <$> (TC <$> pSimpleType)   <*> pMany pErr')
+     <*> (pOpt (Bin <$> pSData' <*> pMany pErr)) <* pEol
+    where pErr' = PError 
+              <$> recoverWith (sym $ not .
+                               (\x -> isComment x
+                                ||(elem x [ CppDirective
+                                          , (ReservedOp Equal)
+                                          , (Reserved Deriving)])
+                               )) <*> pCom
           pEol :: Parser TT ()
           pEol = testNext (\r -> (not $ isJust r) ||
                            pE r)
@@ -460,15 +464,16 @@ pGadt = (Bin <$> (DC <$> pQtycon)
          <*> (ppOP [ReservedOp $ OtherOp "::"]
               (Bin <$> pOpt pContext <*>
                (pType <|> (pOP [Operator "!"] pAtype) <|> pErr))))
-   <|>  pErr
+    <|>  pErr
 
 -- | Parse a deriving
 pDeriving :: Parser TT TTT
-pDeriving = TC <$> (pKW (exact' [Reserved Deriving])
-                    (pleaseC $ pTup 
-                     (Bin <$> pleaseC pQtycon
-                      <*> pMany (Bin <$> pComma <*> pleaseC pQtycon))
-                     <|> pQtycon))
+pDeriving = TC 
+        <$> (pKW (exact' [Reserved Deriving])
+             (pleaseC $ pTup 
+              (Bin <$> pleaseC pQtycon
+               <*> pMany (Bin <$> pComma <*> pleaseC pQtycon))
+              <|> pQtycon))
 
 pAtype :: Parser TT TTT
 pAtype = pAtype'
@@ -483,8 +488,7 @@ pAtype = pAtype'
                                          , ConsIdent
                                          , (Reserved Other)
                                          , (Reserved As)]
-                               ))
-             <*> pCom
+                               )) <*> pCom
 
 pAtype' :: Parser TT TTT
 pAtype' = pQvarid
@@ -505,7 +509,7 @@ pClass = Bin <$> pQtycon
 -- | Parse for all
 pForAll :: Parser TT TTT
 pForAll = pKW (exact' [Reserved Forall])
-              (Bin <$> pVars <*> (ppAt $ exact' [Operator "."]))
+          (Bin <$> pVars <*> (ppAt $ exact' [Operator "."]))
 
 pConstrs :: Parser TT TTT
 pConstrs = Bin <$> (Bin <$> pOpt pContext <*> pConstr)
@@ -601,13 +605,13 @@ pSome r = Expr <$> some r
 
 pDTree :: Parser TT [TTT]
 pDTree = pTree err atom
-    where err = [(Reserved In)]
+    where err  = [(Reserved In)]
           atom = [(ReservedOp Equal),(ReservedOp Pipe), (Reserved In)]
 
 -- | Parse a some of something separated by the token (Special '.')
 pBlocks :: (Parser TT TTT -> Parser TT [TTT])
             -> Parser TT TTT -> Parser TT (BL.BList [TTT])
-pBlocks r p   = (r p) `BL.sepBy1` spec '.' -- see HACK above
+pBlocks r p = (r p) `BL.sepBy1` spec '.' -- see HACK above
 
 pBlocks' :: Parser TT r -> Parser TT (BL.BList r)
 pBlocks' p =  p `BL.sepBy1` spec '.'
@@ -627,8 +631,8 @@ pTup p = Paren <$>  pAt (spec '(')
 
 -- | Parse a Braced expression with comments
 pBrace' :: Parser TT TTT -> Parser TT TTT
-pBrace' p  = Paren  <$>  pAt (spec '{')
-         <*> p  <*> ppAt (spec '}')
+pBrace' p = Paren  <$>  pAt (spec '{')
+        <*> p  <*> ppAt (spec '}')
 
 -- | Parse a Bracked expression with comments
 pBrack' :: Parser TT TTT -> Parser TT TTT
@@ -705,7 +709,7 @@ pTree' err at
 -- not finished yet!!
 pTypeSig :: Parser TT [TTT]
 pTypeSig = ((:) <$> (TS <$>  exact' [ReservedOp (OtherOp "::")]
-                     <*> ((pTr noiseErr [])) <* pE) <*> pure [])
+                     <*> (pTr noiseErr []) <* pE) <*> pure [])
     where pE = testNext (\r ->(not $ isJust r) ||
                  (pEol'' r))
           pEol'' = ((flip elem [(Special ';'), (Special '>'), (Special '<'), (Special '.'), (Special ')')])
@@ -792,9 +796,7 @@ getStrokeProg point begin _end prog
             -> funImp imps
             <> getStr tkDConst point begin _end exps
             <> getStr tkDConst point begin _end exps'
-  where -- funMod (Just m)  = getStrokeMod point begin _end m
---         funMod Nothing     = foldMap id []
-        funPr (Just pr)    = getStrokeProg point begin _end pr
+  where funPr (Just pr)    = getStrokeProg point begin _end pr
         funPr Nothing      = foldMap id []
         funImp imps        = foldMap (getStrokeImp point begin _end) imps
 
@@ -803,8 +805,8 @@ getStrokeMod :: Point -> Point -> Point -> PModule TT -> Endo [Stroke]
 getStrokeMod point begin _end (PModule m na e w)
               | isErrN na || isErrN w
                      = paintAtom errorStyle m
-                       <> getStr tkImport point begin _end na <> getStrokes' e
-                       <> getStrokes' w
+                    <> getStr tkImport point begin _end na <> getStrokes' e
+                    <> getStrokes' w
               | otherwise = getStrokes' m <> getStr tkImport point begin _end na
                          <> getStrokes' e <> getStrokes' w
     where getStrokes' r = getStr tkDConst point begin _end r
@@ -820,7 +822,7 @@ getStrokeImp point begin _end (PImport m qu na t t')
     where getStrokes' r = getStr tkDConst point begin _end r
           paintAs (Opt (Just (KW (PAtom n c) tw)))
               = (one $ (fmap (const keywordStyle) . tokToSpan) n) <> com c
-                   <> getStr tkImport point begin _end tw
+             <> getStr tkImport point begin _end tw
           paintAs a = getStrokes' a
           paintQu (Opt (Just ((PAtom n c)))) = (one $ (fmap (const keywordStyle) . tokToSpan) n) <> com c
           paintQu a = getStrokes' a
@@ -933,7 +935,8 @@ isErr :: TT -> Bool
 isErr = isErrorTok . tokT
 
 isErrN :: (Exp TT) -> Bool
-isErrN t = (any isErr t) || (not $ null $ isError' t)
+isErrN t = (any isErr t) 
+        || (not $ null $ isError' t)
 
 errStyle :: TT -> Endo [Stroke]
 errStyle = pStyle errorStyle
@@ -945,11 +948,12 @@ modStroke :: StyleName -> Stroke -> Stroke
 modStroke f = fmap (f `mappend`)
 
 com :: [TT] -> Endo [Stroke]
-com r = (foldMap tkDConst r)
+com r = foldMap tkDConst r
 
 tk' :: (TT -> Bool) -> (TT -> Endo [Stroke]) -> TT -> Endo [Stroke]
 tk' f s t | isErr t = errStyle t
-          | elem (tokT t) (fmap Reserved [As, Qualified, Hiding]) = one $ (fmap (const variableStyle) . tokToSpan) t
+          | elem (tokT t) (fmap Reserved [As, Qualified, Hiding]) 
+            = one $ (fmap (const variableStyle) . tokToSpan) t
           | f t = s t
           | otherwise = one (ts t)
 
