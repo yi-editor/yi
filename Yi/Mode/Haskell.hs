@@ -19,7 +19,7 @@ module Yi.Mode.Haskell
 import Data.Binary
 import Data.List (dropWhile, takeWhile, filter, drop, length)
 import Data.Maybe (maybe, listToMaybe, isJust, catMaybes)
-import Prelude (unwords)
+import Prelude (unwords, zipWith)
 import Yi.Core
 import Yi.File
 import Yi.Lexer.Alex (Tok(..),Posn(..),tokBegin,tokEnd,tokRegion)
@@ -39,6 +39,7 @@ import Yi.Lexer.Haskell as Haskell
 import qualified Yi.Mode.Interactive as Interactive
 import Yi.Modes (anyExtension, extensionOrContentsMatch)
 import Yi.Mode.Haskell.Dollarify
+import Yi.MiniBuffer
 
 haskellAbstract :: Mode syntax
 haskellAbstract = emptyMode 
@@ -383,6 +384,14 @@ ghciLoadBuffer = do
 ghciInferType :: YiM ()
 ghciInferType = do
     name <- withBuffer $ readUnitB unitWord
+    when (not $ null name) $ 
+        withMinibufferGen name noHint "Insert type of which identifier?" return ghciInferTypeOf
+
+ghciInferTypeOf :: String -> YiM ()
+ghciInferTypeOf name = do
     buf <- ghciGet
     result <- Interactive.queryReply buf (":t " ++ name)
-    withBuffer $ moveToSol *> insertB '\n' *> leftB *> insertN result *> rightB
+    let successful = (not . null) name &&and (zipWith (==) name result)
+    when successful $
+         withBuffer $ moveToSol *> insertB '\n' *> leftB *> insertN result *> rightB
+
