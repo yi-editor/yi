@@ -105,7 +105,7 @@ feedCommand = do
 -- | Send command, recieve reply
 queryReply :: BufferRef -> String -> YiM String
 queryReply buf cmd = do
-    start <- withGivenBuffer buf pointB
+    start <- withGivenBuffer buf (botB >> pointB)
     sendToProcess buf (cmd ++ "\n")
     io $ threadDelay 50000  -- Hack to let ghci finish writing its output.
     withGivenBuffer buf $ do
