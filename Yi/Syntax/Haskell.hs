@@ -98,7 +98,8 @@ data Exp t
     | TS t [Exp t]
        -- data constructor
     | DC (Exp t)
-    | PLet t [t] (Exp t) (Exp t)
+    | PLet t [t] (Exp t) (Exp t) 
+    | PIn t [Exp t]
   deriving (Show, Data, Typeable)
 
 instance SubTree (Exp TT) where
@@ -157,6 +158,7 @@ instance SubTree (Exp TT) where
                                   <> fold' l
                                   <> work e
                                   <> work e'
+              work (PIn t l) = f t <> foldMap work l
               work (Block s) = BL.foldMapAfter
                                 begin (foldMapToksAfter begin f) s
               work a = error $ "Instance SubTree: " ++ show a
@@ -204,6 +206,7 @@ instance IsTree Exp where
    subtrees (Block s)     = concat s
    subtrees (PGuard s)    = s
    subtrees (PLet _ _ (Block s) _)  = concat s
+   subtrees (PIn _ ts) = ts
    subtrees (Expr a)      = a
 --      subtrees (TypeSig _ a) = a
    subtrees _             = []
@@ -637,13 +640,14 @@ pLet :: Parser TT (Exp TT)
 pLet = PLet <$> exact' [Reserved Let] <*> pCom
    <*> ((pBlockOf' (Block <$> pBlocks' (pTr el [(ReservedOp Pipe),(ReservedOp Equal)])))
         <|> ((Expr <$> pure []) <* pEol))
-   <*> (Expr <$> pure []) -- pOpt (PAtom <$> exact' [Reserved In] <*> pure []) -- problem
+   <*> pIn
     where pEol :: Parser TT ()
-          pEol = testNext (\r ->(not $ isJust r) ||
+          pEol = testNext (\r -> (not $ isJust r) ||
                            (pEol' r))
           pEol' = (flip elem [(Special '>')])
                    . tokT . fromJust
           el = [(Reserved Data),(Reserved Type)]
+          pIn = pOpt (PIn <$> exact' [Reserved In] <*> (pTr el [(ReservedOp Pipe),(ReservedOp Equal)]))
 
 -- check if pEq can be used here instead problem with optional ->
 pGuard :: Parser TT TTT
@@ -963,6 +967,7 @@ getStr tk point begin _end t0 = getStrokes' t0
                             <> getStrokes' d
           getStrokes' (PLet l c expr i) =
                 tk l <> com c <> getStrokes' expr <> getStrokes' i
+          getStrokes' (PIn t l) = tk t <> getStrokesL l
           getStrokes' (Opt (Just l)) =  getStrokes' l
           getStrokes' (Opt Nothing) = getStrokesL []
           getStrokes' (Context fAll l arr c) =
