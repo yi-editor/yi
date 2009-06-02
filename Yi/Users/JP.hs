@@ -119,7 +119,8 @@ main :: IO ()
 main = yi $ defaultConfig {
                            configInputPreprocess = I.idAutomaton,
                            startFrontEnd = frontend,
-                           modeTable = AnyMode (haskellModeHooks Haskell.cleverMode) 
+                           modeTable = AnyMode (haskellModeHooks Haskell.preciseMode) 
+                                     : AnyMode (haskellModeHooks Haskell.cleverMode) 
                                      : AnyMode (haskellModeHooks Haskell.fastMode) 
                                      : AnyMode (haskellModeHooks Haskell.literateMode) 
                                      : modeTable defaultConfig,
