@@ -263,7 +263,8 @@ getSubtreeSpan tree = (posnOfs $ first, lastLine - firstLine)
 getExprs :: Program TT -> [Exp TT]
 getExprs (ProgMod _ b)     = getExprs b
 getExprs (Body _ exp exp') = [exp, exp']
-getExprs _                 = error "no match"
+getExprs (Program _ (Just e)) = getExprs e
+getExprs _                 = [] -- error "no match"
 
 -- | The parser
 parse :: P TT (Tree TT)
