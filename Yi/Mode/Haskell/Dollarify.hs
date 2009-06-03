@@ -6,10 +6,12 @@ import Data.Maybe (fromMaybe)
 import Data.List (sortBy)
 import Yi.Prelude 
 import Yi.Syntax.Paren (Expr, Tree(..))
+import qualified Yi.Syntax.Haskell as H (Tree(..), Exp(..), getExprs)
 import Yi.Syntax.Tree (getAllSubTrees, getFirstOffset, getLastOffset,getLastPath)
 import Yi.Lexer.Alex (posnOfs, Tok(..))
 import Yi.Lexer.Haskell (isComment, TT, Token(..))
 import Yi.Buffer hiding (Block)
+import Yi.Syntax.Tree
 
 dollarify :: Expr TT -> BufferM ()
 dollarify e = maybe (return ()) dollarifyWithin . selectedTree e =<< getSelectRegionB
@@ -101,3 +103,68 @@ within r t = includedRegion ((mkRegion . getFirstOffset <*> getLastOffset) t) r
 safeLast :: [a] -> Maybe a
 safeLast [] = Nothing
 safeLast s  = return $ last s
+
+-- Here follows code for the precise haskell mode
+
+dollarifyP :: H.Tree TT -> BufferM ()
+dollarifyP e = maybe (return ()) dollarifyWithinP . selectedTreeP (H.getExprs e) =<< getSelectRegionB
+
+dollarifyWithinP :: H.Exp TT -> BufferM ()
+dollarifyWithinP = trace . ("dollarifyWithin: " ++) . show <*> runQ . (dollarifyTopP =<<) . getAllSubTrees
+
+isNormalParenP :: H.Exp TT -> Bool
+isNormalParenP (H.Paren (H.PAtom r c) (H.Expr xs) (H.PAtom r' c')) = tokT r == openParen && tokT r' == closeParen && (not $ any isTupleP xs)
+isNormalParenP _               = False
+
+isTupleP :: H.Exp TT -> Bool
+isTupleP (H.PAtom t c) = tokT t == Special ','
+isTupleP _ = False
+
+-- Only strips comments from the top level
+stripCommentsP :: [H.Exp TT] -> [H.Exp TT]
+stripCommentsP = filter $ \t -> case t of { (H.PAtom x c) -> not (isComment $ tokT x); _ -> True }
+
+dollarifyTopP :: H.Exp TT -> [QueuedUpdate]
+dollarifyTopP p@(H.Paren (H.PAtom t1 _) (H.Expr e) (H.PAtom t2 _))
+   | isNormalParenP p = case stripCommentsP e of
+       [H.Paren _ _ _] -> [queueDelete t2, queueDelete t1]
+       e'            -> dollarifyExprP e'
+dollarifyTopP (H.Block bList) = dollarifyExprP . stripCommentsP =<< toList bList
+dollarifyTopP _ = []
+
+-- Expression must not contain comments
+dollarifyExprP :: [H.Exp TT] -> [QueuedUpdate]
+dollarifyExprP e@(_:_)
+    | p@(H.Paren (H.PAtom t _) (H.Expr e2) (H.PAtom t2 _)) <- last e
+    , isNormalParenP p
+    , all isSimpleP e
+    = let dollarifyLoop :: [H.Exp TT] -> [QueuedUpdate]
+          dollarifyLoop [] = []
+          dollarifyLoop e3@[H.Paren _ _ _] = dollarifyExprP e3
+          dollarifyLoop e3 = if isCollapsibleP e3 then [queueDelete t2, queueReplaceWith "$ " t] else []
+          in dollarifyLoop $ stripCommentsP e2
+dollarifyExprP _ = []
+
+isSimpleP :: H.Exp TT -> Bool
+isSimpleP (H.Paren _ _ _) = True
+isSimpleP (H.Block _)     = False
+isSimpleP (H.PAtom t c)      = tokT t `elem` [Number, CharTok, StringTok, VarIdent, ConsIdent]
+isSimpleP _             = False
+
+-- Expression must not contain comments
+isCollapsibleP :: [H.Exp TT] -> Bool
+isCollapsibleP = (((&&) `on` isSimpleP) . head <*> last)
+
+selectedTreeP :: [H.Exp TT] -> Region -> Maybe (H.Exp TT)
+selectedTreeP e r = findLargestWithinP r <$> getLastPath e (regionLast r)
+
+-- List must be non-empty
+findLargestWithinP :: Region -> [H.Exp TT] -> H.Exp TT
+findLargestWithinP r = fromMaybe . head <*> safeLast . takeWhile (withinP r)
+
+withinP :: Region -> H.Exp TT -> Bool
+withinP r t = includedRegion ((mkRegion . getFirstOffset <*> getLastOffset) t) r
+    
+safeLastP :: [a] -> Maybe a
+safeLastP [] = Nothing
+safeLastP s  = return $ last s
