@@ -697,9 +697,9 @@ pSome ::Parser TT TTT ->Parser TT TTT
 pSome r = Expr <$> some r
 
 pDTree :: Parser TT [TTT]
-pDTree = pTree err atom
+pDTree = pTree (\x y -> pure []) err atom
     where err  = [(Reserved In)]
-          atom = [(ReservedOp Equal),(ReservedOp Pipe), (Reserved In)]
+          atom = [(ReservedOp Equal), (ReservedOp Pipe), (Reserved In)]
 
 -- | Parse a some of something separated by the token (Special '.')
 pBlocks :: (Parser TT TTT -> Parser TT [TTT])
@@ -733,21 +733,17 @@ pBrack' p = Paren  <$>  pAt (spec '[')
         <*> p <*> ppAt (spec ']')
 
 -- | Parse something that can contain a data, type declaration or a class
-pTree :: [Token] -> [Token] -> Parser TT [TTT]
-pTree err at = ((:) <$> beginLine
+pTree :: ([Token] ->[Token] -> Parser TT [TTT]) -> [Token] -> [Token] -> Parser TT [TTT]
+pTree opt err at = ((:) <$> beginLine
                 <*> (pTypeSig
                      <|> (pTr err (at `union` [(Special ','), (ReservedOp (OtherOp "::"))]))
-                     <|> ((:) <$> pAt (exact' [Special ',']) <*> pTree err at)))
-     <|> pure []
-     <|> ((:) <$> (pBrack $ Expr <$> pTr' err (at \\ [(Special ','), (ReservedOp Pipe),(ReservedOp Equal)]))
-          <*> (pTr err $ at `union` [(Special ','), (ReservedOp (OtherOp "::"))]))
-     <|> ((:) <$> (pBrace $ Expr <$> (pTr' err (at \\ [(Special ','),(ReservedOp Pipe),(ReservedOp Equal)])))
-          <*> (pTr err $ at `union` [(Special ','), (ReservedOp (OtherOp "::"))]))
+                     <|> ((:) <$> pAt (exact' [Special ',']) <*> pTree (\x y -> pure []) err at)))
      <|> ((:) <$> pSType <*> pure [])
      <|> ((:) <$> pSData <*> pure [])
      <|> ((:) <$> (PAtom <$> exact' [(Reserved Class)]
                    <*> pure [])
           <*> ((:) <$> (TC <$> (Expr <$> (pTr' err $ delete (ReservedOp Pipe) at))) <*> pure []))
+     <|> opt err at
     where beginLine = (pTup' (Expr <$> pTr err at))
                   <|> (PAtom <$> sym (flip notElem $ isNoise errors) <*> pure [])
                   <|> (PError <$> recoverWith
@@ -757,7 +753,17 @@ pTree err at = ((:) <$> beginLine
                    , (ReservedOp Equal)
                    , (Reserved Let)
                    , (Reserved In)
-                   , (Reserved Where)]
+                   , (Reserved Where)
+                   , (Special '{')
+                   , (Special '[')]
+
+-- | The pWBlock describes what extra things are allowed in a where claus
+pWBlock err at = pure []
+     <|> ((:) <$> (pBrack $ Expr <$> pTr' err (at \\ [(Special ','), (ReservedOp Pipe),(ReservedOp Equal)]))
+          <*> (pTr err $ at `union` [(Special ','), (ReservedOp (OtherOp "::"))]))
+     <|> ((:) <$> (pBrace $ Expr <$> (pTr' err (at \\ [(Special ','),(ReservedOp Pipe),(ReservedOp Equal)])))
+          <*> (pTr err $ at `union` [(Special ','), (ReservedOp (OtherOp "::"))]))
+
 
 -- | Parse something not containing a Type, Data declaration or a class kw but parse a where
 pTr :: [Token] -> [Token] -> Parser TT [TTT]
@@ -767,8 +773,8 @@ pTr err at
                 <|> pBlockOf (pTr err (at \\ [(Special ',')])))
        <*> pTr err (at \\ [(ReservedOp (OtherOp "::")),(Special ','),(ReservedOp RightArrow)]))
   <|> ((:) <$> pRHS err (at \\ [(Special ','),(ReservedOp (OtherOp "::"))]) <*> pure []) -- guard or equal
-  <|> ((:) <$> (PWhere <$> exact' [Reserved Where] <*> many pComment <*> pleaseC (pBlockOf $ pTree err' atom'))
-       <*> pTree err' atom')
+  <|> ((:) <$> (PWhere <$> exact' [Reserved Where] <*> many pComment <*> pleaseC (pBlockOf $ pTree pWBlock err' atom'))
+       <*> pTree (\x y -> pure []) err' atom')
     where err' = [(Reserved In)]
           atom' = [(ReservedOp Equal),(ReservedOp Pipe), (Reserved In)]
 
@@ -779,7 +785,7 @@ pTr' err at = pure []
                         <|> (pBlockOf (pTr err (([(ReservedOp Equal), (ReservedOp Pipe)] `union` at) 
                                                 \\ [(ReservedOp (OtherOp "::")),(ReservedOp RightArrow)]))))
                <*> pTr' err at)
-          <|> ((:) <$> (PWhere <$> exact' [Reserved Where] <*> many pComment <*> pleaseC (pBlockOf $ pTree err' atom'))
+          <|> ((:) <$> (PWhere <$> exact' [Reserved Where] <*> many pComment <*> pleaseC (pBlockOf $ pTree pWBlock err' atom'))
               <*> pTr' err at)
     where err' = [(Reserved In)]
           atom' = [(ReservedOp Equal),(ReservedOp Pipe), (Reserved In)]
