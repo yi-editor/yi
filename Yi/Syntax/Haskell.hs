@@ -638,9 +638,9 @@ pEModule = pKW (exact' [Reserved Module]) pModid
 -- | Parse a Let expression
 pLet :: Parser TT (Exp TT)
 pLet = PLet <$> exact' [Reserved Let] <*> pCom
-   <*> ((pBlockOf' (Block <$> pBlocks' (pTr el [(ReservedOp Pipe),(ReservedOp Equal)])))
+   <*> ((pBlockOf' (Block <$> pBlocks' (pTr el [(Reserved In),(ReservedOp Pipe),(ReservedOp Equal)])))
         <|> ((Expr <$> pure []) <* pEol))
-   <*> pIn
+   <*>  pOpt (PAtom <$> exact' [Reserved In] <*> pure [])
     where pEol :: Parser TT ()
           pEol = testNext (\r -> (not $ isJust r) ||
                            (pEol' r))
@@ -752,8 +752,7 @@ pTree err at = ((:) <$> beginLine
                   <|> (PAtom <$> sym (flip notElem $ isNoise errors) <*> pure [])
                   <|> (PError <$> recoverWith
                        (sym $ flip elem $ isNoiseErr errors) <*> pure [])
-          errors = [ (Reserved Let)
-                   , (Reserved Class)
+          errors = [ (Reserved Class)
                    , (ReservedOp Pipe)
                    , (ReservedOp Equal)
                    , (Reserved Let)
