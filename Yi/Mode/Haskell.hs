@@ -219,7 +219,7 @@ cleverAutoIndentHaskellC' e behaviour = do
         -- Also use the next line's indent:
         -- maybe we are putting a new 1st statement in the block here.
       stopsOf ((Hask.PAtom _ __):ts) = stopsOf ts
-      stopsOf ((Hask.PWhere w _):_) = case firstTokOnLine of
+      stopsOf ((Hask.PWhere w _ _):_) = case firstTokOnLine of
          Nothing ->  0 : (firstTokOnCol w + 6) : []
          Just _ -> 0 : firstTokOnCol w + 6 : []
          -- any random part of expression, we ignore it.
@@ -271,10 +271,10 @@ cleverAutoIndentHaskellC' e behaviour = do
       groupIndent (Tok _ _ _) _ = error "unable to indent code"
   case getLastPath e solPnt of
     Nothing -> return ()
-    Just path -> let stops = stopsOf path
-                 in trace ("Stops = " ++ show stops) $
-                    trace ("firstTokOnLine = " ++ show firstTokOnLine) $
-                    cycleIndentsB behaviour stops
+    Just path ->let stops = stopsOf path
+                in trace ("Stops = " ++ show stops) $
+                   trace ("firstTokOnLine = " ++ show firstTokOnLine) $
+                   cycleIndentsB behaviour stops
 
 nominalIndent :: Char -> Int
 nominalIndent '{' = 2
