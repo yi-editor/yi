@@ -236,14 +236,14 @@ cleverAutoIndentHaskellC' e behaviour = do
           _ -> 0 : maybe 0 firstTokOnCol (getFirstElement expr) : stopsOf [expr]
       stopsOf (Hask.PError _ _:ts') = stopsOf ts'
       --       stopsOf (Hask.PData d) = stopsOf [d]
-      stopsOf ((Hask.RHS (Hask.PAtom eq _) []):_) = 0 : previousIndent : (firstTokOnCol eq + 2) : [] -- stopsOf ts
+      stopsOf ((Hask.RHS (Hask.PAtom eq _) []):ts') = previousIndent : (firstTokOnCol eq + 2) : stopsOf ts'
       stopsOf ((Hask.RHS (Hask.PAtom eq _) r@(exp:_)):ts') = case firstTokOnLine of
-          Nothing -> 0 : previousIndent : maybe 0 firstTokOnCol (getFirstElement exp) : stopsOf r
+          Nothing -> previousIndent : maybe 0 firstTokOnCol (getFirstElement exp) : stopsOf r ++ stopsOf ts'
           Just (ReservedOp Haskell.Equal) -> firstTokOnCol eq : stopsOf r
           Just (Reserved Haskell.Where) -> fmap (+indentLevel) (0 : stopsOf ts')
-          Just (Operator op) ->opLength op (maybe 0 firstTokOnCol (getFirstElement exp)) : stopsOf r
-          -- case of an operator should check so that value allways is at least 1
-          Just _ -> 0 : previousIndent : maybe 0 firstTokOnCol (getFirstElement exp) : stopsOf r
+          Just (Operator op) -> opLength op (maybe 0 firstTokOnCol (getFirstElement exp)) : stopsOf r
+          -- case of an operator should check so that value always is at least 1
+          Just _ -> previousIndent : maybe 0 firstTokOnCol (getFirstElement exp) : stopsOf r ++ stopsOf ts'
 --       stopsOf ((Hask.Expr e):ts) = stopsOf e
       stopsOf ((Hask.TS _ _):ts') = stopsOf ts'
       stopsOf [] = []
