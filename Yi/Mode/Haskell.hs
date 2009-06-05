@@ -230,10 +230,10 @@ cleverAutoIndentHaskellC' e behaviour = do
              Nothing ->maybe 0 firstTokOnCol (getFirstElement e) : stopsOf (concat expr)
              _ ->maybe 0 firstTokOnCol (getFirstElement e) : stopsOf (concat expr)
       stopsOf (t@(Hask.Block _):ts') = shiftBlock + maybe 0 firstTokOnCol (getFirstElement t) : stopsOf ts'
-      stopsOf ((Hask.PGuard' pipe _ _ expr):_) = case firstTokOnLine of
-          Nothing -> 0 : maybe 0 firstTokOnCol (getFirstElement expr) : stopsOf [expr]
+      stopsOf ((Hask.PGuard' pipe _ _ expr):ts') = case firstTokOnLine of
+          Nothing -> maybe 0 firstTokOnCol (getFirstElement expr) : stopsOf [expr] ++ stopsOf ts'
           Just (ReservedOp Haskell.Pipe) -> firstTokOnCol pipe : []
-          _ -> 0 : maybe 0 firstTokOnCol (getFirstElement expr) : stopsOf [expr]
+          _ -> maybe 0 firstTokOnCol (getFirstElement expr) : stopsOf [expr]
       stopsOf (Hask.PError _ _:ts') = stopsOf ts'
       --       stopsOf (Hask.PData d) = stopsOf [d]
       stopsOf ((Hask.RHS (Hask.PAtom eq _) []):ts') = previousIndent : (firstTokOnCol eq + 2) : stopsOf ts'
@@ -257,7 +257,7 @@ cleverAutoIndentHaskellC' e behaviour = do
           takeWhile ((eolPnt >) . tokBegin) $ -- for laziness.
           filter (not . isErrorTok . tokT) $ allToks e
       shiftBlock = case firstTokOnLine of
-        Just (Reserved t) | t `elem` [Let,In,Where, Deriving] -> indentLevel
+        Just (Reserved t) | t `elem` [Let,In,Where, Deriving] -> indentLevel -- no sure let/in should be here
         Just (ReservedOp Haskell.Pipe) -> indentLevel
         Just (ReservedOp Haskell.Equal) -> indentLevel
         _ -> 0
