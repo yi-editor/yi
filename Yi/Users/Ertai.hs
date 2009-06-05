@@ -1,5 +1,7 @@
+{-# LANGUAGE TypeFamilies #-}
 import Yi
 import qualified Yi.Mode.Haskell as Haskell
+import qualified Yi.Lexer.Haskell as Haskell
 import Yi.Prelude
 import Prelude (map)
 import Data.List (isPrefixOf, reverse, length)
@@ -7,6 +9,9 @@ import Data.Maybe
 import Yi.Char.Unicode (greek, symbols)
 import Control.Monad (replicateM_)
 import Yi.Keymap.Keys (char,(?>>!),(>>!))
+import Yi.Lexer.Alex (Tok)
+import qualified Yi.Syntax.Tree as Tree
+import Yi.Hoogle
 import Yi.Buffer
 import Yi.Keymap.Vim (viWrite, v_ex_cmds, v_top_level, v_ins_char, v_opts, tildeop, savingInsertStringB, savingDeleteCharB, exCmds, exHistInfixComplete')
 import Yi.MiniBuffer (matchingBufferNames)
@@ -14,10 +19,32 @@ import qualified Yi.Keymap.Vim as Vim
 
 myModetable :: [AnyMode]
 myModetable = [
-               AnyMode Haskell.cleverMode
+               AnyMode $ haskellModeHooks Haskell.preciseMode
               ,
-               AnyMode Haskell.fastMode
+               AnyMode $ haskellModeHooks Haskell.cleverMode
+              ,
+               AnyMode $ haskellModeHooks Haskell.fastMode
               ]
+
+haskellModeHooks :: (Tok Haskell.Token ~ Tree.Element syntax, Tree.SubTree syntax) =>Mode syntax -> Mode syntax
+haskellModeHooks mode = 
+                  -- uncomment for shim:
+                  -- Shim.minorMode $ 
+                     mode {
+                        -- modeGetAnnotations = tokenBasedAnnots tta,
+
+                        -- modeAdjustBlock = \_ _ -> return (),
+                        -- modeGetStrokes = \_ _ _ _ -> [],
+                        modeName = "my " ++ modeName mode,
+                        -- example of Mode-local rebinding
+                        modeKeymap = ((char '|' ?>> choice [char 'l' ?>>! Haskell.ghciLoadBuffer,
+                                                            char 'z' ?>>! Haskell.ghciGet,
+                                                            char 'h' ?>>! hoogle,
+                                                            char 'r' ?>>! Haskell.ghciSend ":r",
+                                                            char 't' ?>>! Haskell.ghciInferType
+                                                           ])
+                                      <||)
+                       }
 
 main :: IO ()
 main = yi $ myConfig defaultVimConfig
