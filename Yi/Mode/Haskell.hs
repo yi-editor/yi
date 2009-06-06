@@ -226,7 +226,7 @@ cleverAutoIndentHaskellC' e behaviour = do
       stopsOf ((Hask.PLet le _ e@(Hask.Block expr) _):_) =
          case firstTokOnLine of
              Just (Reserved In) ->firstTokOnCol le : []
-             Just (Reserved Let) ->[0]
+             Just (Reserved Let) -> [0] -- TODO
              Nothing ->maybe 0 firstTokOnCol (getFirstElement e) : stopsOf (concat expr)
              _ ->maybe 0 firstTokOnCol (getFirstElement e) : stopsOf (concat expr)
       stopsOf (t@(Hask.Block _):ts') = shiftBlock + maybe 0 firstTokOnCol (getFirstElement t) : stopsOf ts'
@@ -235,12 +235,12 @@ cleverAutoIndentHaskellC' e behaviour = do
           Just (ReservedOp Haskell.Pipe) -> firstTokOnCol pipe : []
           _ -> maybe 0 firstTokOnCol (getFirstElement expr) : stopsOf [expr]
       stopsOf (Hask.PError _ _:ts') = stopsOf ts'
-      --       stopsOf (Hask.PData d) = stopsOf [d]
+      stopsOf (d@(Hask.PData _ _ _ _ _):ts') = colOf d + indentLevel : stopsOf ts'
       stopsOf ((Hask.RHS (Hask.PAtom eq _) []):ts') = previousIndent : (firstTokOnCol eq + 2) : stopsOf ts'
       stopsOf ((Hask.RHS (Hask.PAtom eq _) r@(exp:_)):ts') = case firstTokOnLine of
           Nothing -> previousIndent : maybe 0 firstTokOnCol (getFirstElement exp) : stopsOf r ++ stopsOf ts'
           Just (ReservedOp Haskell.Equal) -> firstTokOnCol eq : stopsOf r
-          Just (Reserved Haskell.Where) -> fmap (+indentLevel) (0 : stopsOf ts')
+          Just (Reserved Haskell.Where) -> fmap (+indentLevel) (stopsOf ts')
           Just (Operator op) -> opLength op (maybe 0 firstTokOnCol (getFirstElement exp)) : stopsOf r
           -- case of an operator should check so that value always is at least 1
           Just _ -> previousIndent : maybe 0 firstTokOnCol (getFirstElement exp) : stopsOf r ++ stopsOf ts'
@@ -249,6 +249,8 @@ cleverAutoIndentHaskellC' e behaviour = do
       stopsOf [] = []
       stopsOf (r:_) = error (show r) -- stopsOf ts -- not yet handled stuff
        -- calculate indentation of operator (must be at least 1 to be valid)
+      colOf :: Foldable t => t TT -> Int
+      colOf = maybe 0 firstTokOnCol . getFirstElement
       opLength ts' r = let l = r - (length ts' + 1)
                        in  if l > 0 then l else 1
       firstTokOnCol = posnCol . tokPosn
