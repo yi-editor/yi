@@ -5,6 +5,7 @@ module Yi.Syntax.JavaScript where
 
 import Data.DeriveTH
 import Data.Data (Data, Typeable)
+import Data.Maybe (isJust)
 import Data.Monoid (Endo(..), mempty)
 import Prelude (maybe)
 import Yi.Buffer.Basic (Point(..))
@@ -210,7 +211,9 @@ instance Strokable (Block TT) where
 
 instance Strokable (VarDecAss TT) where
     toStrokes (AssBeg t x) = normal t <> maybe mempty toStrokes x
-    toStrokes (AssRst t exp) = normal t <> toStrokes exp
+    toStrokes (AssRst t exp) =
+        let s = if hasFailed exp then error else normal in
+        s t <> toStrokes exp
     toStrokes (AssErr t) = error t
 
 instance Strokable (Expr TT) where
@@ -226,8 +229,11 @@ instance Strokable (Expr TT) where
     toStrokes (ExprAnonFun f ps blk) =
         normal f <> toStrokes ps <> toStrokes blk
     toStrokes (ExprFunCall n x m) =
-        normal n <> toStrokes x <> maybe mempty toStrokes m
-    toStrokes (OpExpr op exp) = normal op <> toStrokes exp
+        let s = if hasFailed x then error else normal in
+        s n <> toStrokes x <> maybe mempty toStrokes m
+    toStrokes (OpExpr op exp) =
+        let s = if hasFailed exp then error else normal in
+        s op <> toStrokes exp
     toStrokes (PostExpr t) = normal t
     toStrokes (ExprCond a x b y) =
         let s = failStroker [a, b] in
@@ -242,7 +248,11 @@ instance Strokable (Parameters TT) where
     toStrokes (ParErr t) = error t
 
 instance Strokable (ParExpr TT) where
-    toStrokes (ParExpr l xs r) = normal l <> foldMap toStrokes xs <> normal r
+    toStrokes (ParExpr l xs r) =
+        let s = if isError r || any hasFailed xs
+                  then error
+                  else normal in
+        s l <> foldMap toStrokes xs <> s r
     toStrokes (ParExprErr t) = error t
 
 instance Strokable (KeyValue TT) where
