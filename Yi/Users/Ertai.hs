@@ -1,6 +1,8 @@
 {-# LANGUAGE TypeFamilies #-}
 import Yi
+import Yi.Modes (removeAnnots)
 import qualified Yi.Mode.Haskell as Haskell
+import qualified Yi.Syntax.Haskell as Haskell
 import qualified Yi.Lexer.Haskell as Haskell
 import Yi.Prelude
 import Prelude (map)
@@ -25,6 +27,12 @@ myModetable = [
                AnyMode $ haskellModeHooks Haskell.cleverMode
               ,
                AnyMode $ haskellModeHooks Haskell.fastMode
+              ,
+               AnyMode . haskellModeHooks . removeAnnots $ Haskell.cleverMode
+              ,
+               AnyMode $ haskellModeHooks Haskell.fastMode
+              ,
+               AnyMode . haskellModeHooks . removeAnnots $ Haskell.fastMode
               ]
 
 haskellModeHooks :: (Tok Haskell.Token ~ Tree.Element syntax, Tree.SubTree syntax) =>Mode syntax -> Mode syntax
@@ -32,7 +40,7 @@ haskellModeHooks mode =
                   -- uncomment for shim:
                   -- Shim.minorMode $ 
                      mode {
-                        -- modeGetAnnotations = tokenBasedAnnots tta,
+                        modeGetAnnotations = Tree.tokenBasedAnnots Haskell.tokenToAnnot,
 
                         -- modeAdjustBlock = \_ _ -> return (),
                         -- modeGetStrokes = \_ _ _ _ -> [],
