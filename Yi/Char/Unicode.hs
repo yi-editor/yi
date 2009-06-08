@@ -1,4 +1,7 @@
 module Yi.Char.Unicode (greek, symbols, subscripts) where
+
+import Data.List (isPrefixOf)
+
 greek :: [(String, String)]
 greek = [(name, unicode) | (_,name,unicode) <- greekData] ++ 
         [(['\'',shorthand],unicode) | (Just shorthand,_,unicode) <- greekData]
@@ -138,6 +141,16 @@ symbols =
  ,("||-", "⊩")
 
  ]
+
+checkAmbs :: [(String, String)] -> [(String, String)]
+checkAmbs table = check
+  where ambs = [ (x, y)
+               | v@(x, _) <- table
+               , w@(y, _) <- table
+               , v /= w
+               , x `isPrefixOf` y ]
+        check | null ambs = table
+              | otherwise = error $ "checkAmbs: ambiguous declarations for " ++ show ambs
 
 -- More:
 -- arrows: ⇸ ⇆
