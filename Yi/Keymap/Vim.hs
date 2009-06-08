@@ -26,6 +26,7 @@ module Yi.Keymap.Vim (keymapSet,
                       savingDeleteB,
                       savingDeleteCharB,
                       savingDeleteWordB,
+                      savingCommandY,
                       savingCommandE,
                       mkKeymap,
                       beginIns,
@@ -128,7 +129,7 @@ data ViMove = Move TextUnit Direction
             | NoMove
   deriving (Typeable)
 
-data ViCmd = ArbCmd (Int -> EditorM ()) Int
+data ViCmd = ArbCmd !(Int -> YiM ()) !Int
            | NoOp
   deriving (Typeable)
 
@@ -216,7 +217,7 @@ lastViCommandA = dynA
 currentViInsertionA :: Accessor FBuffer (Maybe ViInsertion)
 currentViInsertionA = bufferDynamicValueA
 
-applyViCmd :: Maybe Int -> ViCmd -> EditorM ()
+applyViCmd :: Maybe Int -> ViCmd -> YiM ()
 applyViCmd _  NoOp = return ()
 applyViCmd mi (ArbCmd f i') = f $ fromMaybe i' mi
 
@@ -297,7 +298,7 @@ savingDeleteWordB dir = savingDeleteB $ deleteRegionB =<< regionOfPartNonEmptyB 
 viCommandOfViInsertion :: ViInsertion -> BufferM ViCmd
 viCommandOfViInsertion ins@(ViIns mayFirstAct before _ _ after) = do
   text <- viInsText ins
-  return $ flip ArbCmd 1 $ case mayFirstAct of
+  return . flip ArbCmd 1 . fmap withEditor $ case mayFirstAct of
     Just firstAct -> \n->
       replicateM_ n firstAct >> withBuffer0' (before >> insertN text >> after)
     Nothing ->
@@ -308,8 +309,11 @@ commitLastInsertionE = do mins <- withBuffer0 $ getA currentViInsertionA
                           withBuffer0 $ putA currentViInsertionA Nothing
                           putA lastViCommandA =<< maybe (return NoOp) (withBuffer0 . viCommandOfViInsertion) mins
 
+savingCommandY :: (Int -> YiM ()) -> Int -> YiM ()
+savingCommandY f i = putA lastViCommandA (ArbCmd f i) >> f i
+
 savingCommandE :: (Int -> EditorM ()) -> Int -> EditorM ()
-savingCommandE f i = putA lastViCommandA (ArbCmd f i) >> f i
+savingCommandE f i = putA lastViCommandA (ArbCmd (withEditor . f) i) >> f i
 
 savingCommandE'Y :: (Int -> EditorM ()) -> Int -> YiM ()
 savingCommandE'Y f = withEditor' . savingCommandE f
@@ -655,7 +659,7 @@ defKeymap = Proto template
           [char 'r' ?>> do c <- textChar
                            write $ savingCommandB (savingPointB . writeN . flip replicate c) i
           ,char 'm' ?>> setMark
-          ,char '.' ?>>! applyViCmd cnt =<< getA lastViCommandA]
+          ,char '.' ?>>! applyViCmd cnt =<< withEditor (getA lastViCommandA)]
 
 
      searchCurrentWord :: Direction -> EditorM ()
