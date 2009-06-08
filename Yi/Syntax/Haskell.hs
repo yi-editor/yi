@@ -186,7 +186,6 @@ instance SubTree (PImport TT) where
                                             <> fold' at'
                                             <> fold' e'
                                             <> fold' e''
-              work _ = undefined
               fold' = foldMapToksAfter begin f
     foldMapToks f = foldMap (foldMapToks f)
 
