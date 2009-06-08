@@ -1001,9 +1001,7 @@ getStr tk point begin _end t0 = getStrokes' t0
 -- Stroke helpers follows
 
 tokenToAnnot :: TT -> Maybe (Span String)
-tokenToAnnot (Tok t len posn) = case tokenToText t of
-    Nothing -> Nothing
-    Just x -> Just (Span (posnOfs posn) x (posnOfs posn +~ len))
+tokenToAnnot = sequenceA . tokToSpan . fmap tokenToText
 
 ts :: TT -> Stroke
 ts = tokenToStroke
