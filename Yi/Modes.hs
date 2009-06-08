@@ -5,7 +5,7 @@ module Yi.Modes (TokenBasedMode, fundamentalMode,
                  perlMode, pythonMode, anyExtension,
                  extensionOrContentsMatch, linearSyntaxMode,
                  svnCommitMode, hookModes, applyModeHooks,
-                 lookupMode, whitespaceMode
+                 lookupMode, whitespaceMode, removeAnnots
                 ) where
 
 import Prelude ()
@@ -71,6 +71,9 @@ linearSyntaxMode initSt scanToken tokenToStyle
                       }
     where tokenToStroke = fmap tokenToStyle . tokToSpan
           lexer = Alex.lexScanner scanToken initSt
+
+removeAnnots :: Mode a -> Mode a
+removeAnnots m = m { modeName = modeName m ++ " no annots", modeGetAnnotations = modeGetAnnotations emptyMode }
 
 cMode = (linearSyntaxMode C.initState C.alexScanToken id)
   {
