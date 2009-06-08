@@ -4,6 +4,7 @@ import qualified Yi.Mode.Haskell as Haskell
 import qualified Yi.Lexer.Haskell as Haskell
 import Yi.Prelude
 import Prelude (map)
+import System.Environment
 import Data.List (isPrefixOf, reverse, length)
 import Data.Maybe
 import Yi.Char.Unicode (greek, symbols)
@@ -47,7 +48,10 @@ haskellModeHooks mode =
                        }
 
 main :: IO ()
-main = yi $ myConfig defaultVimConfig
+main = do args <- getArgs
+          if any ("--as=" `isPrefixOf`) args
+            then yi defaultConfig
+            else yi $ myConfig defaultVimConfig
 
 myConfig :: Config -> Config
 myConfig cfg = cfg { modeTable = fmap (onMode prefIndent) (myModetable ++ modeTable cfg)
