@@ -1,5 +1,5 @@
 {-# LANGUAGE Rank2Types #-}
-module Yi.Modes (fundamentalMode,
+module Yi.Modes (TokenBasedMode, fundamentalMode,
                  cMode, objectiveCMode, cppMode, cabalMode,
                  srmcMode, ocamlMode, ottMode, gnuMakeMode,
                  perlMode, pythonMode, anyExtension,

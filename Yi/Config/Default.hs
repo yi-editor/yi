@@ -28,6 +28,7 @@ import qualified Data.Map as M
 import qualified Yi.Keymap.Cua  as Cua
 import qualified Yi.Keymap.Emacs  as Emacs
 import qualified Yi.Keymap.Vim  as Vim
+import qualified Yi.Mode.Abella as Abella
 import qualified Yi.Mode.Haskell as Haskell
 import qualified Yi.Mode.JavaScript as JS
 import qualified Yi.Mode.Latex as Latex
@@ -115,6 +116,7 @@ defaultPublishedActions = M.fromList $
     , ("unitViWord"             , box unitViWord)
     , ("writeB"                 , box writeB)
     , ("ghci"                   , box Haskell.ghciGet)
+    , ("abella"                 , box Abella.abella)
     ]
 
   where box x = [Data.Dynamic.toDyn x]
@@ -143,6 +145,7 @@ defaultConfig =
                         AnyMode Haskell.preciseMode,
                         AnyMode Latex.latexMode2,
                         AnyMode Latex.fastMode,
+                        AnyMode Abella.abellaModeEmacs,
                         AnyMode cMode,
                         AnyMode objectiveCMode,
                         AnyMode cppMode,
@@ -189,7 +192,9 @@ escToMeta = mkAutomaton $ forever $ (anyEvent >>= I.write) ||> do
     c <- printableChar
     I.write (Event (KASCII c) [MMeta])
 
-toVimStyleConfig cfg = cfg {defaultKm = Vim.keymapSet, configRegionStyle = Inclusive}
+toVimStyleConfig cfg = cfg { defaultKm = Vim.keymapSet
+                           , configRegionStyle = Inclusive
+                           , modeTable = AnyMode Abella.abellaModeVim : modeTable cfg }
 toCuaStyleConfig cfg = cfg {defaultKm = Cua.keymap}
 
 -- | Open an emacs-like scratch buffer if no file is open.

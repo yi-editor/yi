@@ -111,6 +111,7 @@ execEditorAction s = do
 
                  toDyn (makeAction :: YiM () -> Action),
                  toDyn (makeAction :: YiM BufferRef -> Action),
+                 toDyn (makeAction :: (CommandArguments -> YiM BufferRef) -> Action),
 
                  toDyn (makeAction :: (String ::: RegexTag -> YiM ()) -> Action),
                  toDyn (makeAction :: (String ::: FilePatternTag -> String ::: RegexTag -> YiM ()) -> Action),
