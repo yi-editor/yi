@@ -31,11 +31,15 @@ import Yi.Style
             | homs
             | funs
             | fun
+            | parsing
+            | left
+            | right
 
 @reservedop = "::"
             | "::="
             | "_::"
             | "<::"
+            | "<="
             | "/>"
             | "//"
             | "</"
