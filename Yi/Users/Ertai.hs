@@ -38,7 +38,7 @@ haskellModeHooks mode =
                         -- modeGetStrokes = \_ _ _ _ -> [],
                         modeName = "my " ++ modeName mode,
                         -- example of Mode-local rebinding
-                        modeKeymap = ((char '|' ?>> choice [char 'l' ?>>! Haskell.ghciLoadBuffer,
+                        modeKeymap =((char '\\' ?>> choice [char 'l' ?>>! Haskell.ghciLoadBuffer,
                                                             char 'z' ?>>! Haskell.ghciGet,
                                                             char 'h' ?>>! hoogle,
                                                             char 'r' ?>>! Haskell.ghciSend ":r",
@@ -81,7 +81,7 @@ extendedVimKeymap :: Proto Vim.ModeMap
 extendedVimKeymap = Vim.defKeymap `override` \super self -> super
     { v_top_level = (deprioritize >> v_top_level super)
                     <|> (char ',' ?>>! viWrite)
-                    <|> ((events $ map char "|u") >>! unicodifySymbols)
+                    <|> ((events $ map char "\\u") >>! unicodifySymbols)
                     <|> ((events $ map char "\\c") >>! withModeB modeToggleCommentSelection)
     , v_ins_char =
             (deprioritize >> v_ins_char super)
