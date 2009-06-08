@@ -5,7 +5,6 @@ module Yi.Syntax.JavaScript where
 
 import Data.DeriveTH
 import Data.Data (Data, Typeable)
-import Data.Maybe (isJust)
 import Data.Monoid (Endo(..), mempty)
 import Prelude (maybe)
 import Yi.Buffer.Basic (Point(..))
@@ -82,6 +81,7 @@ data Expr t = ExprObj t (BList (KeyValue t)) t
             | ExprSimple t (Maybe (Expr t))
             | ExprParen t (Expr t) t (Maybe (Expr t))
             | ExprAnonFun t (Parameters t) (Block t)
+            | ExprTypeOf t (Expr t)
             | ExprFunCall t (ParExpr t) (Maybe (Expr t))
             | OpExpr t (Expr t)
             | ExprCond t (Expr t) t (Expr t)
@@ -187,7 +187,9 @@ instance Strokable (Statement TT) where
                   then error
                   else failStroker [f, l, r] in
         s f <> s l <> toStrokes x <> toStrokes c <> s r <> toStrokes blk
-    toStrokes (If i x blk e) = normal i <> toStrokes x <> toStrokes blk <> maybe mempty toStrokes e
+    toStrokes (If i x blk e) =
+        let s = if hasFailed blk then error else normal in
+        s i <> toStrokes x <> toStrokes blk <> maybe mempty toStrokes e
     toStrokes (Else e blk) = normal e <> toStrokes blk
     toStrokes (With w x blk) = normal w <> toStrokes x <> toStrokes blk
     toStrokes (Expr exp sc) = toStrokes exp <> maybe mempty normal sc
@@ -228,6 +230,9 @@ instance Strokable (Expr TT) where
         s l <> toStrokes exp <> s r <> maybe mempty toStrokes op
     toStrokes (ExprAnonFun f ps blk) =
         normal f <> toStrokes ps <> toStrokes blk
+    toStrokes (ExprTypeOf t x) =
+        let s = if hasFailed x then error else normal in
+        s t <> toStrokes x
     toStrokes (ExprFunCall n x m) =
         let s = if hasFailed x then error else normal in
         s n <> toStrokes x <> maybe mempty toStrokes m
@@ -389,6 +394,7 @@ opExpr = OpExpr   <$> inOp <*> plzExpr
 expression :: P TT (Expr TT)
 expression = ExprObj     <$> spc '{' <*> keyValue `sepBy` spc ',' <*> plzSpc '}'
          <|> ExprAnonFun <$> res Function' <*> parameters <*> block
+         <|> ExprTypeOf  <$> res TypeOf' <*> plzExpr
          <|> stmtExpr
          <|> array
     where
@@ -544,7 +550,7 @@ anything = recoverWith (pure errorToken)
 
 -- | Weighted recovery.
 hate :: Int -> P s a -> P s a
-hate n x = power n recoverWith $ x
+hate n x = power n recoverWith x
     where
       power 0 _ = id
       power m f = f . power (m - 1) f
