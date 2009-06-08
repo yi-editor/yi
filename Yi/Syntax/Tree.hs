@@ -38,10 +38,10 @@ instance SubTree t => SubTree [t] where
     foldMapToks f = foldMap (foldMapToks f)
 
 toksAfter :: SubTree tree => Point -> tree -> [Element tree]
-toksAfter begin t = foldMapToksAfter begin (\x ->(x:)) t []
+toksAfter begin t = foldMapToksAfter begin (:) t []
 
 allToks :: SubTree tree =>tree -> [Element tree]
-allToks t = foldMapToks (\x ->(x:)) t []
+allToks t = foldMapToks (:) t []
 
 tokAtOrBefore :: (Element a ~ Tok t, SubTree a) => Point -> a -> Maybe (Tok t)
 tokAtOrBefore p res = listToMaybe $ reverse $ toksInRegion (mkRegion 0 (p+1)) res
@@ -80,7 +80,7 @@ getAllSubTrees t = t : concatMap getAllSubTrees (subtrees t)
 
 -- | Return the 1st token of a subtree.
 getFirstElement :: Foldable t => t a -> Maybe a
-getFirstElement tree = getFirst $ foldMap (\x -> First (Just x)) tree
+getFirstElement tree = getFirst $ foldMap (First . Just) tree
 
 getFirstTok, getLastTok :: (SubTree a) => a -> Maybe (Element a)
 getFirstTok = getFirst . foldMapToks (First . Just) 
@@ -88,7 +88,7 @@ getLastTok = getLast . foldMapToks (Last . Just)
 
 -- | Return the last token of a subtree.
 getLastElement :: Foldable t => t a -> Maybe a
-getLastElement tree = getLast $ foldMap (\x -> Last (Just x)) tree
+getLastElement tree = getLast $ foldMap (Last . Just) tree
 
 
 getLastOffset :: (Element a ~ Tok t, SubTree a) =>a -> Point
