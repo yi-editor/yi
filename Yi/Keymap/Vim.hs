@@ -182,12 +182,13 @@ peekTagStack = do VimTagStack ts <- getTagStack
                     []    -> return Nothing
                     (p:_) -> return $ Just p
 
-popTagStack :: EditorM (Maybe (FilePath, Point))
-popTagStack = do VimTagStack ts <- getTagStack
-                 case ts of
-                   []     -> return Nothing
-                   (p:ps) -> do setTagStack $ VimTagStack ps
-                                return $ Just p
+-- pop 'count' element from the tag stack.
+popTagStack :: Int -> EditorM (Maybe (FilePath, Point))
+popTagStack count = do VimTagStack ts <- getTagStack
+                       case drop (count - 1) ts of
+                         []     -> return Nothing
+                         (p:ps) -> do setTagStack $ VimTagStack ps
+                                      return $ Just p
 
 $(nameDeriveAccessors ''VimOpts $ Just.(++ "A"))
 
@@ -455,7 +456,8 @@ defKeymap = Proto template
      vis_move :: VimMode
      vis_move = (moveKeymap >>= write . viMove . snd)
                 <|> do cnt <- count
-                       choice ([events evs >>! action | (evs,action) <- visOrCmdFM ] ++
+                       let i = fromMaybe 1 cnt
+                       choice ([events evs >>! action i | (evs,action) <- visOrCmdFM ] ++
                                [events evs >>! action cnt | (evs, action) <- scrollCmdFM ])
 
      vis_mode :: RegionStyle -> VimMode
@@ -648,7 +650,7 @@ defKeymap = Proto template
         let i = fromMaybe 1 cnt
         choice $
           [events evs >>! action i   | (evs, action) <- cmdFM ] ++
-          [events evs >>! action     | (evs, action) <- visOrCmdFM ] ++
+          [events evs >>! action i   | (evs, action) <- visOrCmdFM ] ++
           [events evs >>! action cnt | (evs, action) <- scrollCmdFM ] ++
           [char 'r' ?>> do c <- textChar
                            write $ savingCommandB (savingPointB . writeN . flip replicate c) i
@@ -680,9 +682,9 @@ defKeymap = Proto template
                                          p  <- withBuffer0 pointB
                                          pushTagStack bn p
 
-     gotoPrevTagMark :: YiM ()
-     gotoPrevTagMark = do
-       lastP <- withEditor $ popTagStack
+     gotoPrevTagMark :: Int -> YiM ()
+     gotoPrevTagMark count = do
+       lastP <- withEditor $ popTagStack count
        case lastP of
          Nothing      -> withEditor $ fail "bottom of tag stack"
          Just (fp, p) -> do viFnewE fp
@@ -748,44 +750,48 @@ defKeymap = Proto template
        where (s1,s2) = break isDigit s
 
      -- as cmdFM but these commands are also valid in visual mode
-     visOrCmdFM :: [([Event], YiM ())]
+     visOrCmdFM :: [([Event], Int -> YiM ())]
      visOrCmdFM =
-         [([ctrlCh 'l'],      userForceRefresh)
-         ,([ctrlCh 'z'],      suspendEditor)
+         [([ctrlCh 'l'],      const userForceRefresh)
+         ,([ctrlCh 'z'],      const suspendEditor)
          ,([ctrlCh 't'],      gotoPrevTagMark)
-         ,([ctrlCh ']'],      gotoTagCurrentWord)
+         ,([ctrlCh ']'],      const gotoTagCurrentWord) -- TODO add support for 'count'
          ] ++
-         map (second withEditor)
-         [([ctrlW, char 'c'], tryCloseE)
-         ,([ctrlW, char 'o'], closeOtherE)
-         ,([ctrlW, char 's'], splitE)
-         ,([ctrlW, char 'w'], nextWinE)
-         ,([ctrlW, ctrlW], nextWinE)
-         ,([ctrlW, char 'W'], prevWinE)
-         ,([ctrlW, char 'p'], prevWinE)
+         (fmap.second.fmap) withEditor
+         [([ctrlW, char 'c'], const tryCloseE)
+         ,([ctrlW, char 'o'], const closeOtherE)
+         ,([ctrlW, char 's'], const splitE)
+         ,([ctrlW, char 'w'], nextWinE')
+         ,([ctrlW, ctrlW],    nextWinE')
+         ,([ctrlW, char 'W'], prevWinE')
+         ,([ctrlW, char 'p'], prevWinE')
 
          -- these 4 commands should go to moveKeymap
          -- however moveKeymap is currently confined to BufferM
-         ,([char 'n'],        continueSearching id)
-         ,([char 'N'],        continueSearching reverseDir)
-         ,([char '*'],        searchCurrentWord Forward)
-         ,([char '#'],        searchCurrentWord Backward)
+         ,([char 'n'],          const $ continueSearching id)
+         ,([char 'N'],          const $ continueSearching reverseDir)
+         ,([char '*'],          const $ searchCurrentWord Forward)
+         ,([char '#'],          const $ searchCurrentWord Backward)
 
          -- since we don't have vertical splitting,
          -- these moving can be done using next/prev.
-         ,([ctrlW,spec KDown],  nextWinE)
-         ,([ctrlW,spec KUp],    prevWinE)
-         ,([ctrlW,spec KRight], nextWinE)
-         ,([ctrlW,spec KLeft],  prevWinE)
-         ,([ctrlW,char 'k'],    prevWinE)
-         ,([ctrlW,char 'j'],    nextWinE)    -- Same as the above pair, when you're a bit slow to release ctl.
-         ,([ctrlW, ctrlCh 'k'], prevWinE)
-         ,([ctrlW, ctrlCh 'j'], nextWinE)
-         ,(map char "ga",       viCharInfo)
-         ,(map char "g8",       viChar8Info)
-         ,(map char "gt",       nextTabE)
-         ,(map char "gT",       previousTabE)
+         ,([ctrlW,spec KDown],  nextWinE')
+         ,([ctrlW,spec KUp],    prevWinE')
+         ,([ctrlW,spec KRight], nextWinE')
+         ,([ctrlW,spec KLeft],  prevWinE')
+         ,([ctrlW,char 'k'],    prevWinE')
+         ,([ctrlW,char 'j'],    nextWinE')    -- Same as the above pair, when you're a bit slow to release ctl.
+         ,([ctrlW, ctrlCh 'k'], prevWinE')
+         ,([ctrlW, ctrlCh 'j'], nextWinE')
+         ,(map char "ga",       const viCharInfo)
+         ,(map char "g8",       const viChar8Info)
+         ,(map char "gt",       nextTabE')
+         ,(map char "gT",       prevTabE')
          ]
+       where nextWinE' = flip replicateM_ nextWinE
+             prevWinE' = flip replicateM_ prevWinE
+             nextTabE' = flip replicateM_ nextTabE
+             prevTabE' = flip replicateM_ previousTabE
 
      -- | cmd mode commands
      -- An event specified paired with an action that may take an integer argument.
