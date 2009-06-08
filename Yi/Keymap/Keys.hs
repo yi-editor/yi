@@ -8,7 +8,7 @@ module Yi.Keymap.Keys
      module Yi.Event,
      module Yi.Interact,
      printableChar, charOf, shift, meta, ctrl, super, spec, char,
-     (>>!), (>>=!), (?>>), (?>>!),
+     (>>!), (>>=!), (?>>), (?>>!), (?*>>), (?*>>!),
      ctrlCh, metaCh,
      optMod,
      pString
@@ -80,7 +80,15 @@ ev ?>> proc = event ev >> proc
 (?>>!) :: (MonadInteract m Action Event, YiAction a x, Show x) => Event -> a -> m ()
 ev ?>>! act = event ev >> write act
 
+(?*>>) :: (MonadInteract m action Event) => [Event] -> m a -> m a
+ev ?*>> proc = events ev >> proc
+
+(?*>>!) :: (MonadInteract m Action Event, YiAction a x, Show x) => [Event] -> a -> m ()
+ev ?*>>! act = events ev >> write act
+
 infixl 1 >>!
 infixl 1 >>=!
 infixr 0 ?>>!
 infixr 0 ?>>
+infixr 0 ?*>>!
+infixr 0 ?*>>
