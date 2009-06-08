@@ -200,16 +200,16 @@ $(derive makeFoldable ''Program)
 
 $(derive makeFoldable ''Exp)
 instance IsTree Exp where
-   subtrees (Paren _ (Expr g) _) = g
-   subtrees (RHS _ g)     = g
-   subtrees (PWhere _ _ (Block r))  = concat r
-   subtrees (Block s)     = concat s
-   subtrees (PGuard s)    = s
-   subtrees (PLet _ _ (Block s) _)  = concat s
-   subtrees (PIn _ ts) = ts
-   subtrees (Expr a)      = a
---      subtrees (TypeSig _ a) = a
-   subtrees _             = []
+   subtrees tree = case tree of
+       (Paren _ g _)  -> subtrees g
+       (RHS _ g)      -> g
+       (PWhere _ _ r) -> subtrees r
+       (Block s)      -> concat s
+       (PGuard s)     -> s
+       (PLet _ _ s _) -> subtrees s
+       (PIn _ ts)     -> ts
+       (Expr a)       -> a
+       _              -> []
 
 $(derive makeTypeable ''Tok)
 $(derive makeTypeable ''Token)
@@ -338,7 +338,7 @@ pConop = pAt $ sym isOperator
 
 -- | parse a special symbol
 sym :: (Token -> Bool) ->Parser TT TT
-sym f   = symbol (f . tokT)
+sym f = symbol (f . tokT)
 
 -- | Gives a function returning True when any token in the list is parsed
 exact :: [Token] -> (Token ->Bool)
@@ -381,7 +381,7 @@ pErrN = (recoverWith $ pure $ newT '!')
 pErr :: Parser TT TTT
 pErr = PError <$>
        recoverWith (sym $ not . (\x -> isComment x
-                                 ||CppDirective == x))
+                                 || CppDirective == x))
    <*> pCom
 
 -- | Parse an ConsIdent
@@ -450,11 +450,11 @@ pModule = (PModule <$> pAt (exact' [Reserved Module])
                 (Bin <$> pAt (pleaseB $ Reserved Where))
                 <*> pMany pErr') <* pEmod)
     where pExports = pOpt (pTup $ pSepBy pExport pComma)
-          pExport = ((optional $ spec '.') *>
-                     pleaseC (pVarId
-                              <|> pEModule
-                              <|> (Bin <$> ppQvarsym <*> (DC <$> pOpt helper))
-                              <|> (Bin <$> (TC <$> pQtycon) <*> (DC <$> pOpt helper))
+          pExport = ((optional $ spec '.') *> pleaseC 
+                     (pVarId
+                      <|> pEModule
+                      <|> (Bin <$> ppQvarsym <*> (DC <$> pOpt helper))
+                      <|> (Bin <$> (TC <$> pQtycon) <*> (DC <$> pOpt helper))
                      ))
           helper = pTup $  pleaseC ((pAt $ exact' [ReservedOp $ OtherOp ".."])
                                     <|> (pSepBy pQvarid pComma))
@@ -490,29 +490,28 @@ pImp' = PImport  <$> pAt (exact' [Reserved Import])
     <*> pOpt (pKW (exact' [Reserved As]) ppCons)
     <*> (TC <$> pImpSpec)
     where pImpSpec = ((Bin <$> (pKW (exact' [Reserved Hiding]) $
-                                pleaseC pImpS) <*> pEnd)
-                      <|> (Bin <$> pImpS <*> pEnd)) 
-                 <|> pEnd
-          pImpS    = (DC <$> ((pTup (pSepBy pExp' pComma))))
+                                pleaseC pImpS) <*> pMany pErr)
+                      <|> (Bin <$> pImpS <*> pMany pErr))
+                 <|> pMany pErr
+          pImpS    = DC <$> (pTup (pSepBy pExp' pComma))
           pExp'    = Bin <$> ((pAt $ sym (\x -> (exact [VarIdent, ConsIdent] x)
                                           || isOperator x))
                               <|>  ppQvarsym) <*> pOpt pImpS
-          pEnd     = pMany pErr
 
 -- | Parse simple types
 pSType :: Parser TT TTT
-pSType = PType <$> exact' [Reserved Type]    <*> pCom
-             <*> (TC <$> ppCons)             <*> pMany pQvarid
-             <*> pleaseB (ReservedOp Equal)  <*> pCom
-             <*> (TC <$> pleaseC pType) <* pEol
+pSType = PType <$> exact' [Reserved Type] <*> pCom
+     <*> (TC <$> ppCons) <*> pMany pQvarid
+     <*> pleaseB (ReservedOp Equal) <*> pCom
+     <*> (TC <$> pleaseC pType) <* pEol
     where pEol :: Parser TT ()
           pEol = testNext (\r ->(not $ isJust r) ||
-                 (pEol'' r))
-          pEol'' = (flip elem [ (Special '<')
-                              , (Special ';')
-                              , (Special '.')
-                              , (Special '>')])
-                 . tokT . fromJust
+                 (pEol' r))
+          pEol' = (flip elem [ (Special '<')
+                             , (Special ';')
+                             , (Special '.')
+                             , (Special '>')])
+                . tokT . fromJust
 
 -- | Parse typedeclaration
 pType :: Parser TT TTT
