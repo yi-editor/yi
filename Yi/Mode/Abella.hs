@@ -5,10 +5,11 @@ module Yi.Mode.Abella
 where
 
 import Prelude ()
-import Control.Monad (replicateM_)
+import Control.Monad (replicateM_, join)
 import Data.Char (isSpace)
 import Data.Binary
 import Data.Maybe (isJust)
+import Data.List (isInfixOf)
 import Yi.Core
 import qualified Yi.Mode.Interactive as Interactive
 import Yi.Modes (TokenBasedMode, linearSyntaxMode, anyExtension)
@@ -44,8 +45,15 @@ abellaModeEmacs = abellaModeGen (\ch -> [ctrlCh 'c', ctrlCh ch])
 newtype AbellaBuffer = AbellaBuffer {_abellaBuffer :: Maybe BufferRef}
     deriving (Initializable, Typeable, Binary)
 
+getProofPointMark :: BufferM Mark
+getProofPointMark = getMarkB $ Just "p"
+
+getTheoremPointMark :: BufferM Mark
+getTheoremPointMark = getMarkB $ Just "t"
+
 abellaEval :: YiM ()
 abellaEval = do reg <- withBuffer . savingPointB $ do
+                          join $ setMarkPointB <$> getProofPointMark <*> pointB
                           leftB
                           readRegionB =<< regionOfNonEmptyB unitSentence
                 abellaSend reg
@@ -57,13 +65,17 @@ abellaNext = do reg <- withBuffer $ readRegionB =<< regionOfNonEmptyB unitSenten
                                 rightB
                                 untilB_ (not . isSpace <$> readB) rightB
                                 untilB_ ((/= '%') <$> readB) $ moveToEol >> rightB >> firstNonSpaceB
+                                join $ setMarkPointB <$> getProofPointMark <*> pointB
 
 abellaUndo :: YiM ()
 abellaUndo = do abellaSend "undo."
-                withBuffer $ moveB unitSentence Backward
+                withBuffer $ do moveB unitSentence Backward
+                                join $ setMarkPointB <$> getProofPointMark <*> pointB
 
 abellaAbort :: YiM ()
-abellaAbort = abellaSend "abort."
+abellaAbort = do abellaSend "abort."
+                 withBuffer $ do moveTo =<< getMarkPointB =<< getTheoremPointMark
+                                 join $ setMarkPointB <$> getProofPointMark <*> pointB
 
 -- | Start Abella in a buffer
 abella :: CommandArguments -> YiM BufferRef
@@ -89,6 +101,8 @@ abellaGet = withOtherWindow $ do
 -- | Send a command to Abella
 abellaSend :: String -> YiM ()
 abellaSend cmd = do
+    when ("Theorem" `isInfixOf` cmd) $
+      withBuffer $ join $ setMarkPointB <$> getTheoremPointMark <*> pointB
     b <- abellaGet
     withGivenBuffer b botB
     sendToProcess b (cmd ++ "\n")
