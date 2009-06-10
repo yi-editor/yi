@@ -223,12 +223,11 @@ cleverAutoIndentHaskellC' e behaviour = do
          Nothing ->  0 : (firstTokOnCol w + 6) : []
          Just _ -> 0 : firstTokOnCol w + 6 : []
          -- any random part of expression, we ignore it.
-      stopsOf ((Hask.PLet le _ e@(Hask.Block expr) _):_) =
+      stopsOf (l@(Hask.PLet le _ e@(Hask.Block expr) _):ts') =
          case firstTokOnLine of
-             Just (Reserved In) ->firstTokOnCol le : []
+             Just (Reserved In) -> colOf l : []
              Just (Reserved Let) -> [0] -- TODO
-             Nothing ->maybe 0 firstTokOnCol (getFirstElement e) : stopsOf (concat expr)
-             _ ->maybe 0 firstTokOnCol (getFirstElement e) : stopsOf (concat expr)
+             _ -> colOf l : stopsOf ts'
       stopsOf (t@(Hask.Block _):ts') = shiftBlock + maybe 0 firstTokOnCol (getFirstElement t) : stopsOf ts'
       stopsOf ((Hask.PGuard' pipe _ _ expr):ts') = case firstTokOnLine of
           Nothing -> maybe 0 firstTokOnCol (getFirstElement expr) : stopsOf [expr] ++ stopsOf ts'
