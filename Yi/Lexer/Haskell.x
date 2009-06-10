@@ -41,7 +41,7 @@ $nl        = [\n\r]
 
 @reservedid =
         case|default|else|if|
-        infix|infixl|infixr|instance|
+        infix|infixl|infixr|
         then|family|foreign|export|dynamic|
         safe|threadsafe|unsafe|stdcall|ccall|dotnet
 
@@ -123,6 +123,7 @@ haskell :-
   "let"                                         { c (Reserved Let) }
   "in"                                          { c (Reserved In) }
   "class"                                       { c (Reserved Class) }
+  "instance"                                    { c (Reserved Instance) }
   @layoutReservedId                             { c (Reserved OtherLayout) }
   `@qual @varid`                                { cs $ Operator . init . tail }
   `@qual @conid`                                { cs $ ConsOperator . init . tail }
@@ -160,7 +161,8 @@ type HlState = Int
 data CommentType = Open | Close | Text | Line
     deriving (Eq, Show)
 
-data ReservedType = Hiding | Qualified | As | Import | Data | NewType | Type | Where | Let | In | OtherLayout | Deriving | Module | Forall | Other | Class
+data ReservedType = Hiding | Qualified | As | Import | Data | NewType | Type | Where
+                  | Let | In | OtherLayout | Deriving | Module | Forall | Other | Class | Instance
     deriving (Eq, Show)
 
 data OpType = Pipe | Equal | BackSlash | LeftArrow | RightArrow | DoubleRightArrow | OtherOp String
