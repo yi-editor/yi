@@ -303,7 +303,7 @@ handleClick ui w event = do
 
   -- maybe focus the window
   logPutStrLn $ "Clicked inside window: " ++ show w
-  tCache <- readIORef (tabCache ui)
+  tCache <- readRef $ tabCache ui
   (win:_) <- forM tCache $ \tabinfo -> do
     wCache <- readIORef $ windowCache tabinfo
     return $ head $ forM wCache $ \wininfo -> do
@@ -496,7 +496,8 @@ insertWindow e i win = do
 
 updateCache :: UI -> Editor -> IO ()
 updateCache ui e = do
-    let tabs = tabs_ e
+    logPutStrLn "updateCache"
+    let tabs = e ^. tabsA
     cache <- readRef $ tabCache ui
     cache' <- syncTabs e ui tabs cache
     writeRef (tabCache ui) cache'
@@ -504,8 +505,10 @@ updateCache ui e = do
 refresh :: UI -> Editor -> IO ()
 refresh ui e = do
     logPutStrLn "refresh"
+    logPutStrLn $ show $ bufferStack e
     set (uiCmdLine ui) [labelText := intercalate "  " $ statusLine e,
                         labelEllipsize := EllipsizeEnd]
+    updateCache ui e
     cache <- readRef $ tabCache ui
     forM_ cache $ \t -> do
         wins <- readRef $ windowCache t
@@ -562,33 +565,37 @@ render e ui b w _ev = do
 
 doLayout :: UI -> Editor -> IO Editor
 doLayout ui ePrev = do
-    logPutStrLn $ "doLayout: "
-    tCache <- readRef $ tabCache ui
-    es <- forM tCache $ \tab -> mdo
-        -- This recursive do ensures that we don't use old
-        -- WinInfo data such as height. Unfortunately it
-        -- means "logPutStrLn (print win)" can loop because
-        -- Window's Show instance uses the Window's height.
+    tabs <- readRef $ tabCache ui
+    handleTabs tabs ePrev
+  where handleTabs :: [TabInfo] -> Editor -> IO Editor
+        handleTabs [] e = return e
+        handleTabs (t:ts) e = do
+          e' <- handleTab t e
+          handleTabs ts e'
 
-        let updateWin w = w { height = height' w, getRegion = getRegion' w }
-            e' = (windowsA ^: fmap updateWin) ePrev
-        io $ updateCache ui e'
-        wins <- io $ readRef (windowCache tab)
-        heights <- io $ forM wins $ \w -> do
-            (_, h) <- widgetGetSize $ textview w
-            let metrics = winMetrics w
-            return (w, round ((fromIntegral h) / (ascent metrics + descent metrics)))
+        handleTab :: TabInfo -> Editor -> IO Editor
+        handleTab tab e = mdo
+          logPutStrLn $ "Updating tab: " ++ show tab
+          let updateWin w = w { height = height' w, getRegion = getRegion' w }
+              e' = (windowsA ^: fmap updateWin) e
 
-        f <- readIORef (uiFont ui)
-        let height' w = case find ((w ==) . coreWin . fst) heights of
-                            Nothing -> 0
-                            Just (_,h) -> h
-            getRegion' w = case find ((w ==) . coreWin) wins of
-                               Nothing -> const emptyRegion
-                               Just win -> shownRegion f win
-        logPutStrLn ("heights:"++show heights)
-        return e'
-    return $ head es
+          -- This gets called here, but also in refresh; are both necessary?
+          io $ updateCache ui e'
+          wins <- io $ readRef (windowCache tab)
+          heights <- io $ forM wins $ \w -> do
+                (_, h) <- widgetGetSize $ textview w
+                let metrics = winMetrics w
+                return (w, round ((fromIntegral h) / (ascent metrics + descent metrics)))
+
+          f <- readRef (uiFont ui)
+          let height' w = case find ((w ==) . coreWin . fst) heights of
+                                Nothing -> 0
+                                Just (_,h) -> h
+              getRegion' w = case find ((w ==) . coreWin) wins of
+                                   Nothing -> const emptyRegion
+                                   Just win -> shownRegion f win
+          logPutStrLn $ "heights: " ++ show heights
+          return e'
 
 shownRegion :: FontDescription -> WinInfo -> FBuffer -> Region
 shownRegion f w b =
