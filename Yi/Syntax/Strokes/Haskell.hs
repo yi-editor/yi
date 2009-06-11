@@ -3,30 +3,17 @@ module Yi.Syntax.Strokes.Haskell (getStrokes) where
 import Prelude ()
 import Data.Maybe
 import Data.List (delete, filter, union, takeWhile, (\\))
-import Yi.IncrementalParse
 import Yi.Lexer.Alex
 import Yi.Lexer.Haskell
 import Yi.Style
-import Yi.Syntax.Layout
 import Yi.Syntax.Tree
 import qualified Yi.Syntax.BList as BL
 import Yi.Syntax
 import Yi.Prelude
 import Prelude ()
 import Data.Monoid
-import Data.DeriveTH
-import Data.Derive.Foldable
-import Data.Derive.Data
 import Data.Maybe
-import Data.Data
-import Data.Typeable
-import Data.Generics.Schemes
 import Yi.Syntax.Haskell
-
-isError' :: Exp TT ->[Exp TT]
-isError' n = (listify isE' n)
-    where isE' (PError _ _) = True
-          isE' _ = False
 
 -- TODO: (optimization) make sure we take in account the begin, so we don't return useless strokes
 getStrokes :: Point -> Point -> Point -> Tree TT -> [Stroke]
@@ -99,9 +86,9 @@ getStr tk point begin _end t0 = getStrokes' t0
                       <> pStyle hintStyle r <> com c'
               | otherwise  = tk l <> com c <> getStrokes' g
                                   <> tk r <> com c'
-          getStrokes' (Paren (PAtom l c) g e@(PError _ _))
+          getStrokes' (Paren (PAtom l c) g e@(PError _ _ _))
               = errStyle l <> com c <> getStrokes' g <> getStrokes' e
-          getStrokes' (PError t c) = errStyle t <> com c
+          getStrokes' (PError _ t c) = errStyle t <> com c
           getStrokes' (Block s) = BL.foldMapAfter begin getStrokesL s
           getStrokes' (PFun f args s c rhs)
               | isErrN args || isErr s
@@ -180,8 +167,8 @@ getStr tk point begin _end t0 = getStrokes' t0
 
 -- Stroke helpers follows
 
-tokenToAnnot :: TT -> Maybe (Span String)
-tokenToAnnot = sequenceA . tokToSpan . fmap tokenToText
+-- tokenToAnnot :: TT -> Maybe (Span String)
+-- tokenToAnnot = sequenceA . tokToSpan . fmap tokenToText
 
 ts :: TT -> Stroke
 ts = tokenToStroke
@@ -201,7 +188,7 @@ isErr = isErrorTok . tokT
 
 isErrN :: (Exp TT) -> Bool
 isErrN t = (any isErr t) 
-        || (not $ null $ isError' t)
+--         || (not $ null $ isError' t)
 
 errStyle :: TT -> Endo [Stroke]
 errStyle = pStyle errorStyle

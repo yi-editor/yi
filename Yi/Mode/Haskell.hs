@@ -234,7 +234,7 @@ cleverAutoIndentHaskellC' e behaviour = do
           Nothing -> maybe 0 firstTokOnCol (getFirstElement expr) : stopsOf [expr] ++ stopsOf ts'
           Just (ReservedOp Haskell.Pipe) -> firstTokOnCol pipe : []
           _ -> maybe 0 firstTokOnCol (getFirstElement expr) : stopsOf [expr]
-      stopsOf (Hask.PError _ _:ts') = stopsOf ts'
+      stopsOf (Hask.PError _ _ _:ts') = stopsOf ts'
       stopsOf (d@(Hask.PData _ _ _ _ _):ts') = colOf d + indentLevel : stopsOf ts'
       stopsOf ((Hask.RHS (Hask.PAtom eq _) []):ts') = previousIndent : (firstTokOnCol eq + 2) : stopsOf ts'
       stopsOf ((Hask.RHS (Hask.PAtom eq _) r@(exp:_)):ts') = case firstTokOnLine of

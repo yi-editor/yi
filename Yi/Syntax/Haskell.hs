@@ -27,10 +27,7 @@ import Prelude ()
 import Data.Monoid
 import Data.DeriveTH
 import Data.Derive.Foldable
-import Data.Derive.Data
 import Data.Maybe
-import Data.Data
-import Data.Typeable
 
 indentScanner :: Scanner (AlexState lexState) (TT)
               -> Scanner (Yi.Syntax.Layout.State Token lexState) (TT)
@@ -60,15 +57,15 @@ data Program t
     = Program [t] (Maybe (Program t)) -- a program can be just comments
     | ProgMod (PModule t) (Program t)
     | Body [PImport t] (Block t) (Block t)
-  deriving (Show, Data, Typeable)
+  deriving (Show)
 
 -- | A module
 data PModule t = PModule (PAtom t) (PAtom t) (Exp t) (Exp t)
-    deriving (Show, Data, Typeable)
+    deriving (Show)
 
 -- | Imported things
 data PImport t = PImport (PAtom t) (Exp t) (PAtom t) (Exp t) (Exp t)
-    deriving (Show, Data, Typeable)
+    deriving (Show)
 
 -- | Exp can be expression or declaration
 data Exp t
@@ -85,8 +82,10 @@ data Exp t
     | KW (PAtom t) (Exp t)
     | PWhere t [t] (Exp t)
     | Bin (Exp t) (Exp t)
-       -- an error with comments following so we never color comments in wrong color
-    | PError t [t]
+       -- an error with comments following so we never color comments in wrong
+       -- color. The error has an extra token, the Special '!' token to indicate
+       -- that it contains an error
+    | PError t t [t]
       -- rhs that begins with Equal
     | RHS (PAtom t) [Exp t]
     | Opt (Maybe (Exp t))
@@ -110,7 +109,7 @@ data Exp t
     | PClass (PAtom t) (Exp t) (Exp t) (Exp t) (Exp t)
       -- keyword, Opt scontext, tycls, Inst, where
     | PInstance (PAtom t) (Exp t) (Exp t) (Exp t) (Exp t)
-  deriving (Show, Data, Typeable)
+  deriving (Show)
 
 instance SubTree (Exp TT) where
     type Element (Exp TT) = TT
@@ -159,8 +158,8 @@ instance SubTree (Exp TT) where
                                       <> work e
                                       <> f t'
                                       <> work e'
-              work (PAtom t c) = f t <> fold' c
-              work (PError t c) = f t <> fold' c
+              work (PAtom t c)  = f t <> fold' c
+              work (PError t' t c) = f t' <> f t <> fold' c
               work (TS t e) = f t <> foldMap work e
               work (DC e) = work e
               work (TC e) = work e
@@ -184,8 +183,8 @@ instance SubTree (Program TT) where
     foldMapToksAfter begin f t0 = work t0
         where work (Program m (Just p)) = foldMapToksAfter begin f m <> work p
               work (Program m Nothing) = foldMapToksAfter begin f m
-              work (ProgMod m p) = work p
-              work (Body i (Block t) (Block t')) = (BL.foldMapAfter
+              work (ProgMod _ p) = work p
+              work (Body _ (Block t) (Block t')) = (BL.foldMapAfter
                                 begin (foldMapToksAfter begin f) t)
                                        <> (BL.foldMapAfter
                                        begin (foldMapToksAfter begin f) t')
@@ -223,22 +222,6 @@ instance IsTree Exp where
        (PIn _ ts)     -> ts
        (Expr a)       -> a
        _              -> []
-
-$(derive makeTypeable ''Tok)
-$(derive makeTypeable ''Token)
-$(derive makeTypeable ''ReservedType)
-$(derive makeTypeable ''Size)
-$(derive makeTypeable ''Posn)
-$(derive makeTypeable ''OpType)
-$(derive makeTypeable ''CommentType)
-$(derive makeData ''Tok)
-$(derive makeData ''Token)
-$(derive makeData ''Size)
-$(derive makeData ''Posn)
-$(derive makeData ''CommentType)
-$(derive makeData ''OpType)
-$(derive makeData ''Point)
-$(derive makeData ''ReservedType)
 
 -- | Search the given list, and return the 1st tree after the given
 -- point on the given line.  This is the tree that will be moved if
@@ -360,7 +343,7 @@ pleaseB' = (<|>) pErrN
 
 -- | Parse a Tree tok using please
 pleaseC ::Parser TT TTT ->Parser TT TTT
-pleaseC = (<|>) (PError <$> pErrN <*> pure [])
+pleaseC = (<|>) (PError <$> pure (newT '!') <*> pErrN <*> pure [])
 
 -- | Recover from anything
 pErrN :: Parser TT TT
@@ -368,8 +351,8 @@ pErrN = recoverWith $ pure $ newT '!'
 
 -- | Parse anything that is an error
 pErr :: Parser TT TTT
-pErr = PError <$>
-       recoverWith (sym $ not . (\x -> isComment x
+pErr = PError <$> pure (newT '!')
+   <*> recoverWith (sym $ not . (\x -> isComment x
                                  || CppDirective == x))
    <*> pCom
 
@@ -440,7 +423,7 @@ pModule = PModule <$> pAtom [Reserved Module]
                             ((flip elem elems)
                              . tokT . fromJust) r)
           elems = [(Special '.'), (Special '<'), (Special '>')]
-          pErr' = PError <$>
+          pErr' = PError <$> pure (newT '!') <*> 
                   recoverWith (sym $ not . (\x -> isComment x
                                             ||elem x [CppDirective
                                                      , (Special '<')
@@ -501,8 +484,8 @@ pSData = PData <$> exact [(Reserved Data)] <*> pCom
      <*> pOpt (TC <$> pContext)
      <*> (Bin <$> (TC <$> pSimpleType)   <*> pMany pErr')
      <*> (pOpt (Bin <$> pSData' <*> pMany pErr)) <* pTestTok pEol
-    where pErr' = PError 
-              <$> recoverWith (sym $ not .
+    where pErr' = PError <$> pure (newT '!')
+              <*> recoverWith (sym $ not .
                                (\x -> isComment x
                                 ||(elem x [ CppDirective
                                           , (ReservedOp Equal)
@@ -539,8 +522,8 @@ pDeriving = TC
 pAtype :: Parser TT TTT
 pAtype = pAtype'
      <|> pErr'
-    where pErr' = PError
-              <$> recoverWith (sym $ not .
+    where pErr' = PError <$> pure (newT '!')
+              <*> recoverWith (sym $ not .
                                (\x -> isComment x
                                 ||elem x [ CppDirective
                                          , (Special '(')
@@ -619,11 +602,11 @@ pClass = PClass <$> pAtom [Reserved Class]
                        <*> ppAtom [ReservedOp DoubleRightArrow]))
      <*> ppAtom [ConsIdent]
      <*> ppAtom [VarIdent]
-     <*> (((pMany pErr) <* pTestTok pEol) <|> pW)
+     <*> (((pMany pErr') <* pTestTok pEol) <|> pW)
         where pW = Bin <$> pAtom [Reserved Where]
                <*> pleaseC (pBlockOf $ pTree pWBlock err' atom')
               pEol = [(Special '.'), (Special '>')]
-              pErr = PError <$>
+              pErr' = PError <$> pure (newT '!') <*>
                      recoverWith (sym $ not . (\x -> isComment x
                                                || elem x [CppDirective
                                                          , (Special '>')
@@ -685,7 +668,7 @@ pMany ::Parser TT TTT -> Parser TT TTT
 pMany r = Expr <$> many r
 
 pDTree :: Parser TT [TTT]
-pDTree = pTree (\x y -> pure []) err atom
+pDTree = pTree (\_ _ -> pure []) err atom
     where err  = [(Reserved In)]
           atom = [(ReservedOp Equal), (ReservedOp Pipe), (Reserved In)]
 
@@ -721,7 +704,7 @@ pTree :: ([Token] ->[Token] -> Parser TT [TTT]) -> [Token] -> [Token] -> Parser 
 pTree opt err at = ((:) <$> beginLine
                     <*> (pTypeSig
                          <|> (pTr err (at `union` [(Special ','), (ReservedOp (OtherOp "::"))]))
-                         <|> ((:) <$> pAtom [Special ','] <*> pTree (\x y -> pure []) err at))) -- change to opt err at <|> beginLine dont forget to include type data etc in err
+                         <|> ((:) <$> pAtom [Special ','] <*> pTree (\_ _ -> pure []) err at))) -- change to opt err at <|> beginLine dont forget to include type data etc in err
      <|> ((:) <$> pSType <*> pure [])
      <|> ((:) <$> pSData <*> pure [])
      <|> ((:) <$> pClass <*> pure [])
@@ -729,7 +712,7 @@ pTree opt err at = ((:) <$> beginLine
      <|> opt err at
     where beginLine = (pTup' (Expr <$> pTr err at))
                   <|> (PAtom <$> sym (flip notElem $ isNoise errors) <*> pure [])
-                  <|> (PError <$> recoverWith
+                  <|> (PError <$> pure (newT '!') <*> recoverWith
                        (sym $ flip elem $ isNoiseErr errors) <*> pure [])
           errors = [ (Reserved Class)
                    , (Reserved Instance)
@@ -759,7 +742,7 @@ pTr err at
        <*> pTr err (at \\ [(ReservedOp (OtherOp "::")),(Special ','),(ReservedOp RightArrow)]))
   <|> ((:) <$> pRHS err (at \\ [(Special ','),(ReservedOp (OtherOp "::"))]) <*> pure []) -- guard or equal
   <|> ((:) <$> (PWhere <$> exact [Reserved Where] <*> many pComment <*> pleaseC (pBlockOf $ pTree pWBlock err' atom'))
-       <*> pTree (\x y -> pure []) err' atom')
+       <*> pTree (\_ _ -> pure []) err' atom')
     where err' = [(Reserved In)]
           atom' = [(ReservedOp Equal),(ReservedOp Pipe), (Reserved In)]
 
@@ -782,7 +765,7 @@ pTree' err at
   <|> (pBrack (Expr <$> (pTr' err (at \\ [(Special ','), (ReservedOp Pipe),(ReservedOp Equal)]))))
   <|> (pBrace (Expr <$> (pTr' err (at \\ [(Special ','),(ReservedOp Pipe),(ReservedOp Equal)]))))
   <|> pLet
-  <|> (PError <$> recoverWith
+  <|> (PError <$>  pure (newT '!') <*> recoverWith
        (sym $ flip elem $ (isNoiseErr err)) <*> pure [])
   <|> (PAtom <$> sym (flip notElem $ (isNoise at)) <*> pure [])
       -- note that, by construction, '<' and '>' will always be matched, so
