@@ -2,11 +2,9 @@ module Yi.Syntax.Strokes.Haskell (getStrokes) where
 
 import Prelude ()
 import Data.Maybe
-import Data.List (delete, filter, union, takeWhile, (\\))
 import Yi.Lexer.Alex
 import Yi.Lexer.Haskell
 import Yi.Style
-import Yi.Syntax.Tree
 import qualified Yi.Syntax.BList as BL
 import Yi.Syntax
 import Yi.Prelude
@@ -90,42 +88,36 @@ getStr tk point begin _end t0 = getStrokes' t0
               = errStyle l <> com c <> getStrokes' g <> getStrokes' e
           getStrokes' (PError _ t c) = errStyle t <> com c
           getStrokes' (Block s) = BL.foldMapAfter begin getStrokesL s
-          getStrokes' (PFun f args s c rhs)
-              | isErrN args || isErr s
-              = foldMap errStyle f <> getStrokes' args
-              | otherwise = getStrokes' f <> getStrokes' args
-                          <> tk s <> com c <> getStrokes' rhs
           getStrokes' (Expr g) = getStrokesL g
-          getStrokes' (PWhere c c' exp) = tk c <> com c' <> getStrokes' exp
+          getStrokes' (PWhere e exp) = getStrokes' e <> getStrokes' exp
           getStrokes' (RHS eq g) = getStrokes' eq <> getStrokesL g
---           getStrokes' (RHS eq g) = paintAtom errorStyle eq <> foldMap errStyle (Expr g) -- will color rhs functions red
           getStrokes' (Bin l r) = getStrokes' l <> getStrokes' r
           getStrokes' (KW l r') = getStrokes' l <> getStrokes' r'
-          getStrokes' (Op op c r') = tk op <> com c <> getStrokes' r'
-          getStrokes' (PType m c na exp eq c' b)
-              | isErrN b ||isErrN na || isErr eq
-                          = errStyle m <> com c  <> getStrokes' na
-                                       <> getStrokes' exp <> tk eq
-                                       <> com c <> getStrokes' b
-              | otherwise = tk m <> com c <> getStrokes' na
-                                       <> getStrokes' exp <> tk eq
-                                       <> com c' <> getStrokes' b
-          getStrokes' (PData m c na exp eq)
+          getStrokes' (Op e r') = getStrokes' e <> getStrokes' r'
+          getStrokes' (PType e na exp eq b)
+              | isErrN b ||isErrN na || isErrN eq
+                          = foldMap errStyle e <> getStrokes' na
+                                       <> getStrokes' exp <> getStrokes' eq
+                                       <> getStrokes' b
+              | otherwise = getStrokes' e <> getStrokes' na
+                                       <> getStrokes' exp <> getStrokes' eq
+                                       <> getStrokes' b
+          getStrokes' (PData kw na exp eq)
               | isErrN exp || isErrN na ||isErrN eq
-                           = errStyle m <> com c <> getStrokes' na
+                           = foldMap errStyle kw <> getStrokes' na
                                         <> getStrokes' eq
-              | otherwise = tk m <> com c <> getStrokes' na
+              | otherwise = getStrokes' kw <> getStrokes' na
                          <> getStrokes' exp <> getStrokes' eq
-          getStrokes' (PData' eq c' b d) =
-                tk eq <> com c' <> getStrokes' b
-                            <> getStrokes' d
-          getStrokes' (PLet l c expr i) =
-                tk l <> com c <> getStrokes' expr <> getStrokes' i
+          getStrokes' (PData' eq b d) =
+                getStrokes' eq <> getStrokes' b
+                               <> getStrokes' d
+          getStrokes' (PLet l expr i) =
+                getStrokes' l <> getStrokes' expr <> getStrokes' i
           getStrokes' (PIn t l) = tk t <> getStrokesL l
           getStrokes' (Opt (Just l)) =  getStrokes' l
           getStrokes' (Opt Nothing) = getStrokesL []
-          getStrokes' (Context fAll l arr c) =
-                getStrokes' fAll <> getStrokes' l <> tk arr <> com c
+          getStrokes' (Context fAll l arr) =
+                getStrokes' fAll <> getStrokes' l <> getStrokes' arr
           getStrokes' (TC l) = getStr tkTConst point begin _end l
           getStrokes' (DC (PAtom l c)) = tkDConst l <> com c
           getStrokes' (DC r) = getStrokes' r -- do not color operator dc

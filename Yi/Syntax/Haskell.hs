@@ -77,10 +77,9 @@ data Exp t
       -- A list of things separated by layout (as in do; etc.)
     | Block (BL.BList [Exp t])
     | PAtom t [t]
-    | PFun (Exp t) (Exp t) t [t] (Exp t)
     | Expr [Exp t]
     | KW (PAtom t) (Exp t)
-    | PWhere t [t] (Exp t)
+    | PWhere (PAtom t) (Exp t)
     | Bin (Exp t) (Exp t)
        -- an error with comments following so we never color comments in wrong
        -- color. The error has an extra token, the Special '!' token to indicate
@@ -90,11 +89,11 @@ data Exp t
     | RHS (PAtom t) [Exp t]
     | Opt (Maybe (Exp t))
     | Modid t [t]
-    | Op t [t] (Exp t)
-    | Context (Exp t) (Exp t) t [t]
-    | PType t [t] (Exp t) (Exp t) t [t] (Exp t)
-    | PData t [t] (Exp t) (Exp t) (Exp t)
-    | PData' t [t] (Exp t) (Exp t)
+    | Op (PAtom t) (Exp t)
+    | Context (Exp t) (Exp t) (PAtom t)
+    | PType (PAtom t) (Exp t) (Exp t) (PAtom t) (Exp t)
+    | PData (PAtom t) (Exp t) (Exp t) (Exp t)
+    | PData' (PAtom t) (Exp t) (Exp t)
     | PGuard [PGuard t]
     | PGuard' t (Exp t) t (Exp t)
       -- type constructor
@@ -103,7 +102,7 @@ data Exp t
     | TS t [Exp t]
       -- data constructor
     | DC (Exp t)
-    | PLet t [t] (Exp t) (Exp t)
+    | PLet (PAtom t) (Exp t) (Exp t)
     | PIn t [Exp t]
       -- keyword, Opt scontext, tycls, tyvar, Opt where
     | PClass (PAtom t) (Exp t) (Exp t) (Exp t) (Exp t)
@@ -115,42 +114,30 @@ instance SubTree (Exp TT) where
     type Element (Exp TT) = TT
     foldMapToksAfter begin f t0 = work t0
         where work (Paren e e' e'') = work e <> work e' <> work e''
-              work (PFun e e' t lt e'')
-                     = work e
-                    <> work e'
-                    <> f t
-                    <> fold' lt
-                    <> work e''
               work (Expr e)     = foldMap work e
               work (KW e e')    = work e <> work e'
-              work (PWhere t c e) = f t <> fold' c <> work e
+              work (PWhere e' e) = work e' <> work e
               work (Bin e e')   = work e <> work e'
               work (RHS e l)    = work e <> foldMap work l
               work (Opt (Just t)) = work t
               work (Opt Nothing)  = mempty
               work (Modid t l)    = f t
                                  <> fold' l
-              work (Op t l e) = f t
-                             <> fold' l
+              work (Op e' e) = work e'
                              <> work e
-              work (Context e e' t l) = f t
-                                     <> work e
-                                     <> work e'
-                                     <> fold' l
-              work (PType t l e e' t' l' e'') = f t
-                                             <> fold' l
+              work (Context e e' t) = work e
+                                   <> work e'
+                                   <> work t
+              work (PType kw e e' exp e'') = work kw
                                              <> work e
                                              <> work e'
-                                             <> f t'
-                                             <> fold' l'
+                                             <> work exp
                                              <> work e''
-              work (PData t l e e' e'') = f t
-                                       <> fold' l
+              work (PData kw e e' e'') = work kw
                                        <> work e
                                        <> work e'
                                        <> work e''
-              work (PData' t l e e') = f t
-                                    <> fold' l
+              work (PData' eq e e') = work eq
                                     <> work e
                                     <> work e'
               work (PGuard l) = foldMap work l
@@ -163,10 +150,9 @@ instance SubTree (Exp TT) where
               work (TS t e) = f t <> foldMap work e
               work (DC e) = work e
               work (TC e) = work e
-              work (PLet t l e e') = f t
-                                  <> fold' l
-                                  <> work e
-                                  <> work e'
+              work (PLet t e e') = work t
+                                <> work e
+                                <> work e'
               work (PIn t l) = f t <> foldMap work l
               work (Block s) = BL.foldMapAfter
                                 begin (foldMapToksAfter begin f) s
@@ -215,10 +201,10 @@ instance IsTree Exp where
    subtrees tree = case tree of
        (Paren _ g _)  -> subtrees g
        (RHS _ g)      -> g
-       (PWhere _ _ r) -> subtrees r
+       (PWhere _ r) -> subtrees r
        (Block s)      -> concat s
        (PGuard s)     -> s
-       (PLet _ _ s _) -> subtrees s
+       (PLet _ s _) -> subtrees s
        (PIn _ ts)     -> ts
        (Expr a)       -> a
        _              -> []
@@ -366,10 +352,10 @@ pKW k r = KW <$> pAtom k <*> r
 
 -- | Parse an unary operator
 pOP :: [Token] -> Parser TT (Exp TT) -> Parser TT (Exp TT)
-pOP op r = Op <$> exact op <*> pCom <*> r
+pOP op r = Op <$> pAtom op <*> r
 
 ppOP :: [Token] -> Parser TT (Exp TT) -> Parser TT (Exp TT)
-ppOP op r = Op <$> pleaseB' (sym $ flip elem op) <*> pCom <*> r
+ppOP op r = Op <$> ppAtom op <*> r
 
 -- | Parse many comments
 pCom ::Parser TT [TT]
@@ -461,9 +447,9 @@ pImp' = PImport  <$> pAtom [Reserved Import]
 
 -- | Parse simple types
 pSType :: Parser TT TTT
-pSType = PType <$> exact [Reserved Type] <*> pCom
+pSType = PType <$> pAtom [Reserved Type]
      <*> (TC <$> ppCons) <*> pMany pQvarid
-     <*> pleaseB (ReservedOp Equal) <*> pCom
+     <*> ppAtom [ReservedOp Equal]
      <*> (TC <$> pleaseC pType) <* pTestTok pEol
     where pEol =[ (Special '<')
                 , (Special ';')
@@ -480,7 +466,7 @@ pSimpleType = (Bin <$> (TC <$> ppCons) <*> pMany pQvarid)
 
 -- | Parse data declarations
 pSData :: Parser TT TTT
-pSData = PData <$> exact [(Reserved Data)] <*> pCom
+pSData = PData <$> pAtom [(Reserved Data)]
      <*> pOpt (TC <$> pContext)
      <*> (Bin <$> (TC <$> pSimpleType)   <*> pMany pErr')
      <*> (pOpt (Bin <$> pSData' <*> pMany pErr)) <* pTestTok pEol
@@ -495,12 +481,12 @@ pSData = PData <$> exact [(Reserved Data)] <*> pCom
 
 -- | Parse second half of the data declaration, if there is one
 pSData' :: Parser TT TTT
-pSData' = (PData' <$> eqW <*> pCom -- either we have standard data, or we have GADT:s
+pSData' = (PData' <$> pAtom eqW -- either we have standard data, or we have GADT:s
            <*> (pleaseC pConstrs
                 <|> pBlockOf' (Block <$> many pGadt `BL.sepBy1` exact [Special '.']))
            <*> pOpt pDeriving)
       <|> pDeriving
-    where eqW = (exact [(ReservedOp Equal),(Reserved Where)])
+    where eqW = [(ReservedOp Equal),(Reserved Where)]
 
 -- | Parse an GADT declaration
 pGadt :: Parser TT TTT
@@ -543,7 +529,7 @@ pContext :: Parser TT TTT
 pContext = Context <$> pOpt pForAll
        <*> (TC <$> (pClass'
                     <|> pTup (pSepBy pClass' pComma)))
-       <*> pleaseB (ReservedOp DoubleRightArrow) <*> pCom
+       <*> ppAtom [ReservedOp DoubleRightArrow]
         where pClass' :: Parser TT TTT
               pClass' = Bin <$> pQtycon
                    <*> (pleaseC pVarId
@@ -588,7 +574,7 @@ pEModule = pKW [Reserved Module] (Modid <$> pleaseB' (exact [ConsIdent]) <*> pCo
 
 -- | Parse a Let expression
 pLet :: Parser TT (Exp TT)
-pLet = PLet <$> exact [Reserved Let] <*> pCom
+pLet = PLet <$> pAtom [Reserved Let]
    <*> ((pBlockOf' (Block <$> pBlocks (pTr el [(Reserved In),(ReservedOp Pipe),(ReservedOp Equal)])))
         <|> ((Expr <$> pure []) <* pTestTok pEol))
    <*>  pOpt (PAtom <$> exact [Reserved In] <*> pure [])
@@ -741,7 +727,7 @@ pTr err at
                 <|> pBlockOf (pTr err (at \\ [(Special ',')])))
        <*> pTr err (at \\ [(ReservedOp (OtherOp "::")),(Special ','),(ReservedOp RightArrow)]))
   <|> ((:) <$> pRHS err (at \\ [(Special ','),(ReservedOp (OtherOp "::"))]) <*> pure []) -- guard or equal
-  <|> ((:) <$> (PWhere <$> exact [Reserved Where] <*> many pComment <*> pleaseC (pBlockOf $ pTree pWBlock err' atom'))
+  <|> ((:) <$> (PWhere <$> pAtom [Reserved Where] <*> pleaseC (pBlockOf $ pTree pWBlock err' atom'))
        <*> pTree (\_ _ -> pure []) err' atom')
     where err' = [(Reserved In)]
           atom' = [(ReservedOp Equal),(ReservedOp Pipe), (Reserved In)]
@@ -753,7 +739,7 @@ pTr' err at = pure []
                         <|> (pBlockOf (pTr err (([(ReservedOp Equal), (ReservedOp Pipe)] `union` at)
                                                 \\ [(ReservedOp (OtherOp "::")),(ReservedOp RightArrow)]))))
                <*> pTr' err at)
-          <|> ((:) <$> (PWhere <$> exact [Reserved Where] <*> many pComment <*> pleaseC (pBlockOf $ pTree pWBlock err' atom'))
+          <|> ((:) <$> (PWhere <$> pAtom [Reserved Where] <*> pleaseC (pBlockOf $ pTree pWBlock err' atom'))
               <*> pTr' err at)
     where err' = [(Reserved In)]
           atom' = [(ReservedOp Equal),(ReservedOp Pipe), (Reserved In)]

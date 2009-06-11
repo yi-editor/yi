@@ -220,11 +220,11 @@ cleverAutoIndentHaskellC' e behaviour = do
         -- Also use the next line's indent:
         -- maybe we are putting a new 1st statement in the block here.
       stopsOf ((Hask.PAtom _ __):ts) = stopsOf ts
-      stopsOf ((Hask.PWhere w _ _):_) = case firstTokOnLine of
+      stopsOf ((Hask.PWhere (Hask.PAtom w _) _):_) = case firstTokOnLine of
          Nothing ->  0 : (firstTokOnCol w + 6) : []
          Just _ -> 0 : firstTokOnCol w + 6 : []
          -- any random part of expression, we ignore it.
-      stopsOf (l@(Hask.PLet le _ e@(Hask.Block expr) _):ts') =
+      stopsOf (l@(Hask.PLet le e@(Hask.Block expr) _):ts') =
          case firstTokOnLine of
              Just (Reserved In) -> colOf l : []
              Just (Reserved Let) -> [0] -- TODO
@@ -235,7 +235,7 @@ cleverAutoIndentHaskellC' e behaviour = do
           Just (ReservedOp Haskell.Pipe) -> firstTokOnCol pipe : []
           _ -> maybe 0 firstTokOnCol (getFirstElement expr) : stopsOf [expr]
       stopsOf (Hask.PError _ _ _:ts') = stopsOf ts'
-      stopsOf (d@(Hask.PData _ _ _ _ _):ts') = colOf d + indentLevel : stopsOf ts'
+      stopsOf (d@(Hask.PData _ _ _ _):ts') = colOf d + indentLevel : stopsOf ts'
       stopsOf ((Hask.RHS (Hask.PAtom eq _) []):ts') = previousIndent : (firstTokOnCol eq + 2) : stopsOf ts'
       stopsOf ((Hask.RHS (Hask.PAtom eq _) r@(exp:_)):ts') = case firstTokOnLine of
           Nothing -> previousIndent : maybe 0 firstTokOnCol (getFirstElement exp) : stopsOf r ++ stopsOf ts'
