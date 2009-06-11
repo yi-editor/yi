@@ -29,6 +29,7 @@ import Yi.Region
 import Yi.String
 import Yi.Syntax
 import Yi.Syntax.Haskell as Hask
+import Yi.Syntax.Strokes.Haskell as HS
 import Yi.Syntax.Paren as Paren
 import Yi.Syntax.Tree
 import Yi.Syntax.OnlineTree as OnlineTree
@@ -101,7 +102,7 @@ preciseMode = haskellAbstract
   {
     modeName = "precise haskell"
   , modeIndent = cleverAutoIndentHaskellC
-  , modeGetStrokes = \ast point begin end -> Hask.getStrokes point begin end ast
+  , modeGetStrokes = \ast point begin end -> HS.getStrokes point begin end ast
   , modeHL = ExtHL $
       mkHighlighter (IncrParser.scanner Hask.parse . Hask.indentScanner . haskellLexer)
 --   , modePrettify = cleverPrettify . allToks . getExprs
