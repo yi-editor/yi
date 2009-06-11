@@ -167,6 +167,7 @@ library
         Yi.Syntax.OnlineTree
         Yi.Syntax.Paren
         Yi.Syntax.Tree
+        Yi.Syntax.Strokes.Haskell
         Yi.Tag
         Yi.Templates
         Yi.TextCompletion,
@@ -428,6 +429,7 @@ executable yi
            Yi.Syntax.Paren
            Yi.Syntax.Latex
            Yi.Syntax.Tree
+           Yi.Syntax.Strokes.Haskell
 
            Yi.Verifier.JavaScript
 
