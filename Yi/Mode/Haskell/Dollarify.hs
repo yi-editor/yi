@@ -11,7 +11,6 @@ import Yi.Syntax.Tree (getAllSubTrees, getFirstOffset, getLastOffset,getLastPath
 import Yi.Lexer.Alex (posnOfs, Tok(..))
 import Yi.Lexer.Haskell (isComment, TT, Token(..))
 import Yi.Buffer hiding (Block)
-import Yi.Syntax.Tree
 
 dollarify :: Expr TT -> BufferM ()
 dollarify e = maybe (return ()) dollarifyWithin . selectedTree e =<< getSelectRegionB
@@ -113,16 +112,16 @@ dollarifyWithinP :: H.Exp TT -> BufferM ()
 dollarifyWithinP = trace . ("dollarifyWithin: " ++) . show <*> runQ . (dollarifyTopP =<<) . getAllSubTrees
 
 isNormalParenP :: H.Exp TT -> Bool
-isNormalParenP (H.Paren (H.PAtom r c) (H.Expr xs) (H.PAtom r' c')) = tokT r == openParen && tokT r' == closeParen && (not $ any isTupleP xs)
+isNormalParenP (H.Paren (H.PAtom r _) (H.Expr xs) (H.PAtom r' _)) = tokT r == openParen && tokT r' == closeParen && (not $ any isTupleP xs)
 isNormalParenP _               = False
 
 isTupleP :: H.Exp TT -> Bool
-isTupleP (H.PAtom t c) = tokT t == Special ','
+isTupleP (H.PAtom t _) = tokT t == Special ','
 isTupleP _ = False
 
 -- Only strips comments from the top level
 stripCommentsP :: [H.Exp TT] -> [H.Exp TT]
-stripCommentsP = filter $ \t -> case t of { (H.PAtom x c) -> not (isComment $ tokT x); _ -> True }
+stripCommentsP = filter $ \t -> case t of { (H.PAtom x _) -> not (isComment $ tokT x); _ -> True }
 
 dollarifyTopP :: H.Exp TT -> [QueuedUpdate]
 dollarifyTopP p@(H.Paren (H.PAtom t1 _) (H.Expr e) (H.PAtom t2 _))
@@ -148,7 +147,7 @@ dollarifyExprP _ = []
 isSimpleP :: H.Exp TT -> Bool
 isSimpleP (H.Paren _ _ _) = True
 isSimpleP (H.Block _)     = False
-isSimpleP (H.PAtom t c)      = tokT t `elem` [Number, CharTok, StringTok, VarIdent, ConsIdent]
+isSimpleP (H.PAtom t _)      = tokT t `elem` [Number, CharTok, StringTok, VarIdent, ConsIdent]
 isSimpleP _             = False
 
 -- Expression must not contain comments
