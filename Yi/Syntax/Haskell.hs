@@ -2,11 +2,19 @@
 -- Copyright (c) JP Bernardy 2008
 -- Note if the layout of the first line (not comments)
 -- is wrong the parser will only parse what is in the blocks given by Layout.hs
-module Yi.Syntax.Haskell where
+module Yi.Syntax.Haskell ( Program (..)
+                         , PModule (..)
+                         , PImport (..)
+                         , Exp (..)
+                         , Tree
+                         , parse
+                         , indentScanner
+                         , getExprs
+                         ) where
 
 import Prelude ()
 import Data.Maybe
-import Data.List (delete, filter, union, takeWhile, (\\))
+import Data.List (filter, union, takeWhile, (\\))
 import Yi.IncrementalParse
 import Yi.Lexer.Alex
 import Yi.Lexer.Haskell
@@ -234,11 +242,6 @@ $(derive makeData ''OpType)
 $(derive makeData ''Point)
 $(derive makeData ''ReservedType)
 
-isError' :: Exp TT ->[Exp TT]
-isError' n = (listify isE' n)
-    where isE' (PError _ _) = True
-          isE' _ = False
-
 -- | Search the given list, and return the 1st tree after the given
 -- point on the given line.  This is the tree that will be moved if
 -- something is inserted at the point.  Precondition: point is in the
@@ -339,10 +342,6 @@ pQtycon = pAt pConId
 pVars :: Parser TT TTT
 pVars = pMany $ pVarId
 
--- | Parse an operator
-pConop ::Parser TT TTT
-pConop = pAt $ sym isOperator
-
 -- | parse a special symbol
 sym :: (Token -> Bool) ->Parser TT TT
 sym f = symbol (f . tokT)
@@ -434,10 +433,6 @@ pSepBy r p = Bin <$> pMany (Bin <$> r <*> p)
 -- | Parse a comma separator
 pComma :: Parser TT TTT
 pComma = pAt $ spec ','
-
--- | Parse a comma using please
-ppComma :: Parser TT TTT
-ppComma = pAt (pleaseB' $ spec ',')
 
 -- | Parse any operator
 isOperator :: Token -> Bool
@@ -652,7 +647,6 @@ pLet = PLet <$> exact' [Reserved Let] <*> pCom
           pEol' = (flip elem [(Special '>')])
                    . tokT . fromJust
           el = [(Reserved Data),(Reserved Type)]
-          pIn = pOpt (PIn <$> exact' [Reserved In] <*> (pTr ([Reserved In] `union` el) [(Reserved In),(ReservedOp Pipe),(ReservedOp Equal)]))
 
 -- | Parse a class decl
 pClass :: Parser TT TTT
@@ -730,24 +724,9 @@ pEq _ at = RHS <$> (PAtom <$> exact' [ReservedOp Equal] <*> pure [])
                , (Reserved Data)
                , (Reserved Type)]
 
-pQcon :: Parser TT TTT
-pQcon = pTup (pMany pGconsym
-              <|> (pAt $ sym isOperator))
-
-pQconid :: Parser TT TTT
-pQconid = pQtycon
-
-pGconsym :: Parser TT TTT
-pGconsym = pAt (exact' [ReservedOp (OtherOp ":")])
-       <|> pQvarid
-       <|> pTup (pMany pGconsym)
-
 -- | Parse many of something
 pMany ::Parser TT TTT -> Parser TT TTT
 pMany r = Expr <$> many r
-
-pSome ::Parser TT TTT -> Parser TT TTT
-pSome r = Expr <$> some r
 
 pDTree :: Parser TT [TTT]
 pDTree = pTree (\x y -> pure []) err atom
@@ -812,6 +791,7 @@ pTree opt err at = ((:) <$> beginLine
                    , (Special '[')]
 
 -- | The pWBlock describes what extra things are allowed in a where clause
+pWBlock :: [Token] -> [Token] -> Parser TT [TTT]
 pWBlock err at = pure []
      <|> ((:) <$> (pBrack $ Expr <$> pTr' err (at \\ [(Special ','), (ReservedOp Pipe),(ReservedOp Equal)]))
           <*> (pTr err $ at `union` [(Special ','), (ReservedOp (OtherOp "::"))]))
@@ -876,10 +856,6 @@ noiseErr = [(Reserved Class)
            , (Reserved Data)
            , (Reserved Type)]
 
--- | A list of Keywords that usually are not allowed as atoms
-noiseAt :: [Token]
-noiseAt = [(ReservedOp Pipe), (Reserved In)]
-
 -- | List of things that allways should be parsed as errors
 isNoiseErr :: [Token] -> [Token]
 isNoiseErr r
@@ -919,209 +895,3 @@ pBrace p  = (Paren  <$>  pEAtom (spec '{')
 pBrack :: Parser TT TTT -> Parser TT TTT
 pBrack p = (Paren  <$>  pEAtom (spec '[')
              <*> p <*> pEAtom (pleaseSym ']'))
-
--- Stroke the program
-
--- TODO: (optimization) make sure we take in account the begin, so we don't return useless strokes
-getStrokes :: Point -> Point -> Point -> Tree TT -> [Stroke]
-getStrokes point begin _end t0 = trace (show t0) result
-    where result = appEndo (getStrokeProg point begin _end t0) []
-
--- | getStroke Program
-getStrokeProg ::  Point -> Point -> Point -> Tree TT -> Endo [Stroke]
-getStrokeProg point begin _end prog
-    = case prog of
-        (Program c m)
-            ->com c <> funPr m
-        (ProgMod m body)
-            -> getStrokeMod point begin _end m
-            <> getStrokeProg point begin _end body
-        (Body imps exps exps') 
-            -> funImp imps
-            <> getStr tkDConst point begin _end exps
-            <> getStr tkDConst point begin _end exps'
-  where funPr (Just pr)    = getStrokeProg point begin _end pr
-        funPr Nothing      = foldMap id []
-        funImp imps        = foldMap (getStrokeImp point begin _end) imps
-
--- | Get strokes Module for module
-getStrokeMod :: Point -> Point -> Point -> PModule TT -> Endo [Stroke]
-getStrokeMod point begin _end (PModule m na e w)
-              | isErrN na || isErrN w
-                     = paintAtom errorStyle m
-                    <> getStr tkImport point begin _end na <> getStrokes' e
-                    <> getStrokes' w
-              | otherwise = getStrokes' m <> getStr tkImport point begin _end na
-                         <> getStrokes' e <> getStrokes' w
-    where getStrokes' r = getStr tkDConst point begin _end r
-
--- | Get strokes for Imports
-getStrokeImp ::  Point -> Point -> Point -> PImport TT -> Endo [Stroke]
-getStrokeImp point begin _end (PImport m qu na t t')
-              | isErrN t' || isErrN na || isErrN t
-                          = paintAtom errorStyle m <> paintQu qu
-                         <> getStr tkImport point begin _end na <> paintAs t  <> paintHi t'
-              | otherwise = getStrokes' m <> paintQu qu
-                         <> getStr tkImport point begin _end na <> paintAs t  <> paintHi t'
-    where getStrokes' r = getStr tkDConst point begin _end r
-          paintAs (Opt (Just (KW (PAtom n c) tw)))
-              = (one $ (fmap (const keywordStyle) . tokToSpan) n) <> com c
-             <> getStr tkImport point begin _end tw
-          paintAs a = getStrokes' a
-          paintQu (Opt (Just ((PAtom n c)))) = (one $ (fmap (const keywordStyle) . tokToSpan) n) <> com c
-          paintQu a = getStrokes' a
-          paintHi (Bin (KW (PAtom n c) tw) r) = (one $ (fmap (const keywordStyle) . tokToSpan) n)
-                                             <> com c <> getStr tkImport point begin _end tw
-                                             <> getStrokes' r
-          paintHi a = getStrokes' a
-
--- | Get strokes for expressions and declarations
-getStr ::(TT -> Endo [Stroke]) -> Point -> Point -> Point -> Exp TT -> Endo [Stroke]
-getStr tk point begin _end t0 = getStrokes' t0
-    where getStrokes' ::Exp TT -> Endo [Stroke]
-          getStrokes' (PAtom t c) = tk t <> com c
-          getStrokes' (TS col ts') = tk col <> foldMap (getStr tkTConst point begin _end) ts'
-          getStrokes' (Modid t c) = tkImport t <> com c
-          getStrokes' (Paren (PAtom l c) g (PAtom r c'))
-              | isErr r = errStyle l <> getStrokes' g
-              -- left paren wasn't matched: paint it in red.
-              -- note that testing this on the "Paren" node actually forces the parsing of the
-              -- right paren, undermining online behaviour.
-              | (posnOfs $ tokPosn $ l) ==
-                    point || (posnOfs $ tokPosn $ r) == point - 1
-               = pStyle hintStyle l <> com c <> getStrokes' g
-                      <> pStyle hintStyle r <> com c'
-              | otherwise  = tk l <> com c <> getStrokes' g
-                                  <> tk r <> com c'
-          getStrokes' (Paren (PAtom l c) g e@(PError _ _))
-              = errStyle l <> com c <> getStrokes' g <> getStrokes' e
-          getStrokes' (PError t c) = errStyle t <> com c
-          getStrokes' (Block s) = BL.foldMapAfter begin getStrokesL s
-          getStrokes' (PFun f args s c rhs)
-              | isErrN args || isErr s
-              = foldMap errStyle f <> getStrokes' args
-              | otherwise = getStrokes' f <> getStrokes' args
-                          <> tk s <> com c <> getStrokes' rhs
-          getStrokes' (Expr g) = getStrokesL g
-          getStrokes' (PWhere c c' exp) = tk c <> com c' <> getStrokes' exp
-          getStrokes' (RHS eq g) = getStrokes' eq <> getStrokesL g
---           getStrokes' (RHS eq g) = paintAtom errorStyle eq <> foldMap errStyle (Expr g) -- will color rhs functions red
-          getStrokes' (Bin l r) = getStrokes' l <> getStrokes' r
-          getStrokes' (KW l r') = getStrokes' l <> getStrokes' r'
-          getStrokes' (Op op c r') = tk op <> com c <> getStrokes' r'
-          getStrokes' (PType m c na exp eq c' b)
-              | isErrN b ||isErrN na || isErr eq
-                          = errStyle m <> com c  <> getStrokes' na
-                                       <> getStrokes' exp <> tk eq
-                                       <> com c <> getStrokes' b
-              | otherwise = tk m <> com c <> getStrokes' na
-                                       <> getStrokes' exp <> tk eq
-                                       <> com c' <> getStrokes' b
-          getStrokes' (PData m c na exp eq)
-              | isErrN exp || isErrN na ||isErrN eq
-                           = errStyle m <> com c <> getStrokes' na
-                                        <> getStrokes' eq
-              | otherwise = tk m <> com c <> getStrokes' na
-                         <> getStrokes' exp <> getStrokes' eq
-          getStrokes' (PData' eq c' b d) =
-                tk eq <> com c' <> getStrokes' b
-                            <> getStrokes' d
-          getStrokes' (PLet l c expr i) =
-                tk l <> com c <> getStrokes' expr <> getStrokes' i
-          getStrokes' (PIn t l) = tk t <> getStrokesL l
-          getStrokes' (Opt (Just l)) =  getStrokes' l
-          getStrokes' (Opt Nothing) = getStrokesL []
-          getStrokes' (Context fAll l arr c) =
-                getStrokes' fAll <> getStrokes' l <> tk arr <> com c
-          getStrokes' (TC l) = getStr tkTConst point begin _end l
-          getStrokes' (DC (PAtom l c)) = tkDConst l <> com c
-          getStrokes' (DC r) = getStrokes' r -- do not color operator dc
-          getStrokes' (PGuard ls) = getStrokesL ls
-          getStrokes' (PGuard' t e t' e')
-              | isErrN e ||isErrN e' ||isErr t'
-              = errStyle t <> getStrokes' e <> tk t' <> getStrokes' e'
-              | otherwise
-              = one (ts t) <> getStrokes' e <> tk t' <> getStrokes' e'
-          getStrokes' (SParen (PAtom l c) (SParen' g (PAtom r c') e))
-              | isErr r = errStyle l <> getStrokes' g <> getStrokes' e
-              -- left paren wasn't matched: paint it in red.
-              -- note that testing this on the "Paren" node actually forces the parsing of the
-              -- right paren, undermining online behaviour.
-              | (posnOfs $ tokPosn $ l) ==
-                    point || (posnOfs $ tokPosn $ r) == point - 1
-               = pStyle hintStyle l <> com c <> getStrokes' g
-                      <> pStyle hintStyle r <> com c' <> getStrokes' e
-              | otherwise  = tk l <> com c <> getStrokes' g
-                                  <> tk r <> com c' <> getStrokes' e
-          getStrokes' (PClass e e' exp exp' e'')
-              | isErrN e' || isErrN exp || isErrN exp' || isErrN e''
-              = paintAtom errorStyle e <> getStrokes' e'
-                <> getStrokes' exp <> getStrokes' exp'
-                <> getStrokes' e''
-              | otherwise = getStrokes' e <> getStrokes' e'
-                <> getStrokes' exp <> getStrokes' exp'
-                <> getStrokes' e''
-          getStrokes' (PInstance e e' exp exp' e'')
-              | isErrN e' || isErrN exp || isErrN exp' || isErrN e''
-              = paintAtom errorStyle e <> getStrokes' e'
-                <> getStrokes' exp <> getStrokes' exp'
-                <> getStrokes' e''
-              | otherwise = getStrokes' e <> getStrokes' e'
-                <> getStrokes' exp <> getStrokes' exp'
-                <> getStrokes' e''
-          getStrokes' a = error (show a)
-          getStrokesL = foldMap getStrokes'
-
--- Stroke helpers follows
-
-tokenToAnnot :: TT -> Maybe (Span String)
-tokenToAnnot = sequenceA . tokToSpan . fmap tokenToText
-
-ts :: TT -> Stroke
-ts = tokenToStroke
-
-pStyle :: StyleName -> TT -> Endo [Stroke]
-pStyle style = one . (modStroke style) . ts
-
-one :: Stroke -> Endo [Stroke]
-one x = Endo (x :)
-
-paintAtom :: StyleName -> (Exp TT) -> Endo [Stroke]
-paintAtom col (PAtom a c) = pStyle col a <> com c
-paintAtom _ _ = error "wrong usage of paintAtom"
-
-isErr :: TT -> Bool
-isErr = isErrorTok . tokT
-
-isErrN :: (Exp TT) -> Bool
-isErrN t = (any isErr t) 
-        || (not $ null $ isError' t)
-
-errStyle :: TT -> Endo [Stroke]
-errStyle = pStyle errorStyle
-
-tokenToStroke :: TT -> Stroke
-tokenToStroke = fmap tokenToStyle . tokToSpan
-
-modStroke :: StyleName -> Stroke -> Stroke
-modStroke f = fmap (f `mappend`)
-
-com :: [TT] -> Endo [Stroke]
-com r = foldMap tkDConst r
-
-tk' :: (TT -> Bool) -> (TT -> Endo [Stroke]) -> TT -> Endo [Stroke]
-tk' f s t | isErr t = errStyle t
-          | elem (tokT t) (fmap Reserved [As, Qualified, Hiding]) 
-            = one $ (fmap (const variableStyle) . tokToSpan) t
-          | f t = s t
-          | otherwise = one (ts t)
-
-tkTConst :: TT -> Endo [Stroke]
-tkTConst = tk' (const False) (const (Endo id))
-
-
-tkDConst :: TT -> Endo [Stroke]
-tkDConst = tk' ((== ConsIdent) . tokT) (pStyle dataConstructorStyle)
-
-tkImport :: TT -> Endo [Stroke]
-tkImport = tk' ((== ConsIdent) . tokT) (pStyle importStyle)
