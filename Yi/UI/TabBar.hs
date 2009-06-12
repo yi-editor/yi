@@ -12,9 +12,8 @@ import Yi.Editor (Editor(..)
 
 -- | A TabDescr describes the properties of a UI tab independent of the particular GUI in use. 
 data TabDescr = TabDescr
-    {
-        tabText :: String,
-        tabInFocus :: Bool
+    { tabText :: String
+    , tabInFocus :: Bool
     }
 
 type TabBarDescr = PL.PointedList TabDescr

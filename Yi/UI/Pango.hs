@@ -15,7 +15,7 @@ import Control.Monad (ap)
 import Control.Monad.Reader (liftIO, when, MonadIO)
 import Data.Prototype
 import Data.IORef
-import Data.List (intercalate, nub, findIndex, zip, drop)
+import Data.List (drop, intercalate, nub, zip)
 import qualified Data.List.PointedList.Circular as PL
 import Data.Maybe
 import qualified Data.Map as M
@@ -53,11 +53,6 @@ data UI = UI
     , uiConfig   :: UIConfig
     , uiFont     :: IORef FontDescription
     }
-
-uiBox :: UI -> IO Box
-uiBox u = do pageNum <- notebookGetCurrentPage (uiNotebook u)
-             page    <- notebookGetNthPage (uiNotebook u) pageNum
-             return . castToBox . fromJust $ page
 
 data TabInfo = TabInfo
     { coreTab     :: PL.PointedList Window
@@ -102,12 +97,12 @@ updateFont cfg fontRef tc cmd font = do
     widgetModifyFont cmd (Just font)
     tcs <- readIORef tc
     forM_ tcs $ \tabinfo -> do
-	wcs <- readIORef $ windowCache tabinfo
-        forM_ wcs $ \wininfo -> do
-            layoutSetFontDescription (winLayout wininfo) (Just font)
-	    -- This will cause the textview to redraw
-	    widgetModifyFont (textview wininfo) (Just font)
-	    widgetModifyFont (modeline wininfo) (Just font)
+    wcs <- readIORef $ windowCache tabinfo
+    forM_ wcs $ \wininfo -> do
+        layoutSetFontDescription (winLayout wininfo) (Just font)
+        -- This will cause the textview to redraw
+        widgetModifyFont (textview wininfo) (Just font)
+        widgetModifyFont (modeline wininfo) (Just font)
 
 askBuffer :: Window -> FBuffer -> BufferM a -> a
 askBuffer w b f = fst $ runBuffer w b f
@@ -164,10 +159,6 @@ startNoMsg cfg ch outCh _ed = do
   -}
 
   tabs <- notebookNew
-
-  -- vb'  <- vBoxNew False 1
-  -- notebookAppendPage tabs vb' "Test"
-
   panedAdd2 paned tabs
 
   set win [ containerChild := vb ]
@@ -250,18 +241,10 @@ keyTable = M.fromList
 end :: IO ()
 end = mainQuit
 
-{-
-syncTabs :: Editor -> UI -> PL.PointedList (PL.PointedList Window) -> [TabInfo] -> IO [TabInfo]
-syncTabs e ui tabs cache = do
-    cache' <- forM tabs $ \ws -> syncTab e ui ws cache
-    containerResizeChildren =<< uiBox ui
-    return $ concat cache'
--}
-
 syncTabs :: Editor -> UI -> [(PL.PointedList Window, Bool)] -> [TabInfo] -> IO [TabInfo]
 syncTabs e ui (tfocused@(t,focused):ts) (c:cs)
     | t == coreTab c =
-        do when focused $ do setTabFocus c
+        do when focused $ setTabFocus ui c
            wCache <- readRef $ windowCache c
            (:) <$> syncTab e ui c t wCache <*> syncTabs e ui ts cs
     | t `elem` map coreTab cs =
@@ -269,60 +252,64 @@ syncTabs e ui (tfocused@(t,focused):ts) (c:cs)
            syncTabs e ui (tfocused:ts) cs
     | otherwise =
         do c' <- insertTabBefore e ui t c
-           when focused $ setTabFocus c'
+           when focused $ setTabFocus ui c'
            return (c':) `ap` syncTabs e ui ts (c:cs)
 syncTabs e ui ts [] = mapM (insertTab e ui) (map fst ts)
-syncTabs e ui [] cs = mapM_ (removeTab ui) cs >> return []
+syncTabs _ ui [] cs = mapM_ (removeTab ui) cs >> return []
 
 syncTab :: Editor -> UI -> TabInfo -> PL.PointedList Window -> [WinInfo] -> IO TabInfo
 syncTab e ui tab ws cache = do
-    wCache <- syncWindows e ui (toList $ PL.withFocus ws) cache
+    wCache <- syncWindows e ui tab (toList $ PL.withFocus ws) cache
     writeRef (windowCache tab) wCache
     return tab
 
 -- | Synchronize the windows displayed by GTK with the status of windows in the Core.
-syncWindows :: Editor -> UI -> [(Window, Bool)] -- ^ windows paired with their "isFocused" state.
+syncWindows :: Editor -> UI -> TabInfo -> [(Window, Bool)] -- ^ windows paired with their "isFocused" state.
             -> [WinInfo] -> IO [WinInfo]
-syncWindows e ui (wfocused@(w,focused):ws) (c:cs)
-    | winkey w == winkey (coreWin c) =
-        do when focused $ do let bufferName = shortIdentString (commonNamePrefix e) $ findBufferWith (bufkey w) e
-                             windowSetTitle (uiWindow ui) $ bufferName ++ " - Yi"
-                             -- b <- uiBox ui -- Is it possible to replace this with (widget c)
-                             -- notebookSetMenuLabelText (uiNotebook ui) b $ bufferName
-                             setFocus c
-           (:) <$> syncWin e w c <*> syncWindows e ui ws cs
-    | winkey w `elem` map (winkey . coreWin) cs = removeWindow ui c >> syncWindows e ui (wfocused:ws) cs
-    | otherwise = do c' <- insertWindowBefore e ui w c
-                     when focused (setFocus c')
-                     return (c':) `ap` syncWindows e ui ws (c:cs)
-syncWindows e ui ws [] = mapM (insertWindowAtEnd e ui) (map fst ws)
-syncWindows _e ui [] cs = mapM_ (removeWindow ui) cs >> return []
+syncWindows e ui tab (wfocused@(w,focused):ws) (c:cs)
+    | w == coreWin c =
+        do when focused $ setFocus e ui tab c
+           (:) <$> syncWin e w c <*> syncWindows e ui tab ws cs
+    | w `elem` map coreWin cs =
+        removeWindow ui tab c >> syncWindows e ui tab (wfocused:ws) cs
+    | otherwise = do
+        c' <- insertWindowBefore e ui tab w c
+        when focused (setFocus e ui tab c')
+        return (c':) `ap` syncWindows e ui tab ws (c:cs)
+syncWindows e ui tab ws [] = mapM (insertWindowAtEnd e ui tab) (map fst ws)
+syncWindows _ ui tab [] cs = mapM_ (removeWindow ui tab) cs >> return []
 
 syncWin :: Editor -> Window -> WinInfo -> IO WinInfo
-syncWin e w wi = do
-  let b = findBufferWith (bufkey w) e
-      reg = askBuffer w b winRegionB
+syncWin _ w wi = do
   return (wi {coreWin = w})
 
-setTabFocus :: TabInfo -> IO ()
-setTabFocus t = do
-  return ()
+setTabFocus :: UI -> TabInfo -> IO ()
+setTabFocus ui t = do
+  p <- notebookPageNum (uiNotebook ui) (page t)
+  case p of
+    Just n  -> notebookSetCurrentPage (uiNotebook ui) n
+    Nothing -> return ()
 
-setFocus :: WinInfo -> IO ()
-setFocus w = do
+setFocus :: Editor -> UI -> TabInfo -> WinInfo -> IO ()
+setFocus e ui t w = do
+  let bufferName = shortIdentString (commonNamePrefix e) $ findBufferWith (bufkey $ coreWin w) e
+
   hasFocus <- get (textview w) widgetIsFocus
   when (not hasFocus) $ widgetGrabFocus (textview w)
 
+  windowSetTitle (uiWindow ui) $ bufferName ++ " - Yi"
+  notebookSetTabLabelText (uiNotebook ui) (page t) bufferName
+
 removeTab :: UI -> TabInfo -> IO ()
 removeTab ui  t = do
-    page <- notebookPageNum (uiNotebook ui) (page t)
-    case page of
+    p <- notebookPageNum (uiNotebook ui) (page t)
+    case p of
         Just n  -> notebookRemovePage (uiNotebook ui) n
         Nothing -> return ()
 
-removeWindow :: UI -> WinInfo -> IO ()
-removeWindow ui win = do b <- uiBox ui
-                         containerRemove b (widget win)
+removeWindow :: UI -> TabInfo -> WinInfo -> IO ()
+removeWindow _ tab win = do
+    containerRemove (page tab) (widget win)
 
 handleClick :: UI -> WinInfo -> Gdk.Events.Event -> IO Bool
 handleClick ui w event = do
@@ -336,12 +323,12 @@ handleClick ui w event = do
   -- maybe focus the window
   logPutStrLn $ "Clicked inside window: " ++ show w
   tCache <- readRef $ tabCache ui
-  (win:_) <- forM tCache $ \tabinfo -> do
+  forM tCache $ \tabinfo -> do
     wCache <- readIORef $ windowCache tabinfo
     return $ head $ forM wCache $ \wininfo -> do
-      if (winkey $ coreWin w) == (winkey $ coreWin w)
+      if (winkey $ coreWin w) == (winkey $ coreWin wininfo)
         then return w
-	else []
+        else []
   let focusWindow = undefined
   -- let Just idx = findIndex (((==) `on` (winkey . coreWin)) w) wCache
   --    focusWindow = modA windowsA (fromJust . PL.move idx)
@@ -430,15 +417,13 @@ handleMove ui w p0 event = do
 
 -- | Make a new tab.
 newTab :: Editor -> UI -> PL.PointedList Window -> IO TabInfo
-newTab e ui ws = do
-    logPutStrLn "Creating tab"
+newTab _ _ ws = do
     vb <- vBoxNew False 1
     wc <- newIORef []
     return $ TabInfo { coreTab = ws
                      , page    = vb
                      , windowCache = wc
                      }
-
 
 -- | Make a new window.
 newWindow :: Editor -> UI -> Window -> FBuffer -> IO WinInfo
@@ -474,7 +459,7 @@ newWindow e ui w b = mdo
                containerChild := ml,
                boxChildPacking ml := PackNatural]
       return (castToBox vb)
-     
+
     sig       <- newIORef =<< (v `onExpose` render e ui b win)
     tosRef    <- newIORef (askBuffer w b (getMarkPointB =<< fromMark <$> askMarks))
     context   <- widgetCreatePangoContext v
@@ -505,36 +490,40 @@ insertTabBefore e ui t _c = insertTab e ui t
 insertTab :: Editor -> UI -> PL.PointedList Window -> IO TabInfo
 insertTab e ui ws = do
     t <- newTab e ui ws
-    logPutStrLn "Adding tab"
     notebookAppendPage (uiNotebook ui) (page t) "Title"
     widgetShowAll $ page t
     return t
 
-insertWindowBefore :: Editor -> UI -> Window -> WinInfo -> IO WinInfo
-insertWindowBefore e ui w _c = insertWindow e ui w
+insertWindowBefore :: Editor -> UI -> TabInfo -> Window -> WinInfo -> IO WinInfo
+insertWindowBefore e ui tab w _c = insertWindow e ui tab w
 
-insertWindowAtEnd :: Editor -> UI -> Window -> IO WinInfo
-insertWindowAtEnd e ui w = insertWindow e ui w
+insertWindowAtEnd :: Editor -> UI -> TabInfo -> Window -> IO WinInfo
+insertWindowAtEnd e ui tab w = insertWindow e ui tab w
 
-insertWindow :: Editor -> UI -> Window -> IO WinInfo
-insertWindow e ui win = do
+insertWindow :: Editor -> UI -> TabInfo -> Window -> IO WinInfo
+insertWindow e ui tab win = do
   let buf = findBufferWith (bufkey win) e
   liftIO $ do w <- newWindow e ui win buf
-              b <- uiBox ui
 
-              set b [ containerChild := widget w,
-                      boxChildPacking (widget w) := if isMini (coreWin w) then PackNatural else PackGrow ]
+              set (page tab) $ 
+                [ containerChild := widget w
+                , boxChildPacking (widget w) :=
+                    if isMini (coreWin w)
+                        then PackNatural
+                        else PackGrow
+                ]
 
               textview w `onButtonRelease` handleClick ui w
               textview w `onButtonPress` handleClick ui w
               textview w `onScroll` handleScroll ui w
               widgetShowAll (widget w)
 
+              setFocus e ui tab w
+
               return w
 
 updateCache :: UI -> Editor -> IO ()
 updateCache ui e = do
-    logPutStrLn "updateCache"
     let tabs = e ^. tabsA
     cache <- readRef $ tabCache ui
     cache' <- syncTabs e ui (toList $ PL.withFocus tabs) cache
@@ -542,7 +531,6 @@ updateCache ui e = do
 
 refresh :: UI -> Editor -> IO ()
 refresh ui e = do
-    logPutStrLn "refresh"
     set (uiCmdLine ui) [labelText := intercalate "  " $ statusLine e,
                         labelEllipsize := EllipsizeEnd]
     updateCache ui e
@@ -552,7 +540,7 @@ refresh ui e = do
         forM_ wins $ \w -> do
             let b = findBufferWith (bufkey (coreWin w)) e
             -- when (not $ null $ pendingUpdates b) $
-	    do
+            do
                 sig <- readIORef (renderer w)
                 signalDisconnect sig
                 writeRef (renderer w) =<< (textview w `onExpose` render e ui b w)
