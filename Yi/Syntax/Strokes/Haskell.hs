@@ -55,13 +55,13 @@ getStrokeImp point begin _end (PImport m qu na t t')
               | otherwise = getStrokes' m <> paintQu qu
                          <> getStr tkImport point begin _end na <> paintAs t  <> paintHi t'
     where getStrokes' r = getStr tkDConst point begin _end r
-          paintAs (Opt (Just (KW (PAtom n c) tw)))
+          paintAs (Opt (Just (Bin (PAtom n c) tw)))
               = (one $ (fmap (const keywordStyle) . tokToSpan) n) <> com c
              <> getStr tkImport point begin _end tw
           paintAs a = getStrokes' a
           paintQu (Opt (Just ((PAtom n c)))) = (one $ (fmap (const keywordStyle) . tokToSpan) n) <> com c
           paintQu a = getStrokes' a
-          paintHi (Bin (KW (PAtom n c) tw) r) = (one $ (fmap (const keywordStyle) . tokToSpan) n)
+          paintHi (Bin (Bin (PAtom n c) tw) r) = (one $ (fmap (const keywordStyle) . tokToSpan) n)
                                              <> com c <> getStr tkImport point begin _end tw
                                              <> getStrokes' r
           paintHi a = getStrokes' a
@@ -86,14 +86,12 @@ getStr tk point begin _end t0 = getStrokes' t0
                                   <> tk r <> com c'
           getStrokes' (Paren (PAtom l c) g e@(PError _ _ _))
               = errStyle l <> com c <> getStrokes' g <> getStrokes' e
-          getStrokes' (PError _ t c) = errStyle t <> com c
+          getStrokes' (PError t _ c) = errStyle t <> com c
           getStrokes' (Block s) = BL.foldMapAfter begin getStrokesL s
           getStrokes' (Expr g) = getStrokesL g
           getStrokes' (PWhere e exp) = getStrokes' e <> getStrokes' exp
           getStrokes' (RHS eq g) = getStrokes' eq <> getStrokesL g
           getStrokes' (Bin l r) = getStrokes' l <> getStrokes' r
-          getStrokes' (KW l r') = getStrokes' l <> getStrokes' r'
-          getStrokes' (Op e r') = getStrokes' e <> getStrokes' r'
           getStrokes' (PType e na exp eq b)
               | isErrN b ||isErrN na || isErrN eq
                           = foldMap errStyle e <> getStrokes' na
@@ -123,10 +121,10 @@ getStr tk point begin _end t0 = getStrokes' t0
           getStrokes' (DC r) = getStrokes' r -- do not color operator dc
           getStrokes' (PGuard ls) = getStrokesL ls
           getStrokes' (PGuard' t e t' e')
-              | isErrN e ||isErrN e' ||isErr t'
-              = errStyle t <> getStrokes' e <> tk t' <> getStrokes' e'
+              | isErrN e ||isErrN e' || isErrN t'
+              = errStyle t <> getStrokes' e <> getStrokes' t' <> getStrokes' e'
               | otherwise
-              = one (ts t) <> getStrokes' e <> tk t' <> getStrokes' e'
+              = one (ts t) <> getStrokes' e <> getStrokes' t' <> getStrokes' e'
           getStrokes' (SParen (PAtom l c) (SParen' g (PAtom r c') e))
               | isErr r = errStyle l <> getStrokes' g <> getStrokes' e
               -- left paren wasn't matched: paint it in red.
