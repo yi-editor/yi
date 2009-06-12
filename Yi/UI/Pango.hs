@@ -249,15 +249,37 @@ keyTable = M.fromList
 end :: IO ()
 end = mainQuit
 
+{-
 syncTabs :: Editor -> UI -> PL.PointedList (PL.PointedList Window) -> [TabInfo] -> IO [TabInfo]
 syncTabs e ui tabs cache = do
     cache' <- forM tabs $ \ws -> syncTab e ui ws cache
     containerResizeChildren =<< uiBox ui
     return $ concat cache'
+-}
 
-syncTab :: Editor -> UI -> PL.PointedList Window -> [TabInfo] -> IO [TabInfo]
-syncTab e ui ws cache = undefined
-    -- syncWindows e ui (toList $ PL.withFocus ws) cache
+-- tabkey :: PL.PointedList Window -> 
+
+syncTabs :: Editor -> UI -> [(PL.PointedList Window, Bool)] -> [TabInfo] -> IO [TabInfo]
+syncTabs e ui (tfocused@(t,focused):ts) (c:cs)
+    | t == coreTab c =
+        do when focused $ do setTabFocus c
+           wCache <- readRef $ windowCache c
+           (:) <$> syncTab e ui c t wCache <*> syncTabs e ui ts cs
+    | t `elem` map coreTab cs =
+        do removeTab ui c
+           syncTabs e ui (tfocused:ts) cs
+    | otherwise =
+        do c' <- insertTabBefore e ui t c
+           when focused $ setTabFocus c'
+           return (c':) `ap` syncTabs e ui ts (c:cs)
+syncTabs e ui ts [] = mapM (insertTab e ui) (map fst ts)
+syncTabs e ui [] cs = mapM_ (removeTab ui) cs >> return []
+
+syncTab :: Editor -> UI -> TabInfo -> PL.PointedList Window -> [WinInfo] -> IO TabInfo
+syncTab e ui tab ws cache = do
+    wCache <- syncWindows e ui (toList $ PL.withFocus ws) cache
+    writeRef (windowCache tab) wCache
+    return tab
 
 -- | Synchronize the windows displayed by GTK with the status of windows in the Core.
 syncWindows :: Editor -> UI -> [(Window, Bool)] -- ^ windows paired with their "isFocused" state.
@@ -283,14 +305,25 @@ syncWin e w wi = do
       reg = askBuffer w b winRegionB
   return (wi {coreWin = w})
 
+setTabFocus :: TabInfo -> IO ()
+setTabFocus t = do
+  return ()
+
 setFocus :: WinInfo -> IO ()
 setFocus w = do
   hasFocus <- get (textview w) widgetIsFocus
   when (not hasFocus) $ widgetGrabFocus (textview w)
 
+removeTab :: UI -> TabInfo -> IO ()
+removeTab ui  t = do
+    page <- notebookPageNum (uiNotebook ui) (page t)
+    case page of
+        Just n  -> notebookRemovePage (uiNotebook ui) n
+        Nothing -> return ()
+
 removeWindow :: UI -> WinInfo -> IO ()
-removeWindow i win = do b <- uiBox i
-                        containerRemove b (widget win)
+removeWindow ui win = do b <- uiBox ui
+                         containerRemove b (widget win)
 
 handleClick :: UI -> WinInfo -> Gdk.Events.Event -> IO Bool
 handleClick ui w event = do
@@ -407,12 +440,6 @@ newTab e ui ws = do
                      , windowCache = wc
                      }
 
-insertTab :: Editor -> UI -> PL.PointedList Window -> IO TabInfo
-insertTab e ui ws = do
-    t <- newTab e ui ws
-    notebookAppendPage (uiNotebook ui) (page t) "Tab Title"
-    return t
-
 -- | Make a new window.
 newWindow :: Editor -> UI -> Window -> FBuffer -> IO WinInfo
 newWindow e ui w b = mdo
@@ -472,24 +499,33 @@ newWindow e ui w b = mdo
 
     return win
 
+insertTabBefore :: Editor -> UI -> PL.PointedList Window -> TabInfo -> IO TabInfo
+insertTabBefore e ui t _c = insertTab e ui t
+
+insertTab :: Editor -> UI -> PL.PointedList Window -> IO TabInfo
+insertTab e ui ws = do
+    t <- newTab e ui ws
+    notebookAppendPage (uiNotebook ui) (page t) "Tab Title"
+    return t
+
 insertWindowBefore :: Editor -> UI -> Window -> WinInfo -> IO WinInfo
-insertWindowBefore e i w _c = insertWindow e i w
+insertWindowBefore e ui w _c = insertWindow e ui w
 
 insertWindowAtEnd :: Editor -> UI -> Window -> IO WinInfo
-insertWindowAtEnd e i w = insertWindow e i w
+insertWindowAtEnd e ui w = insertWindow e ui w
 
 insertWindow :: Editor -> UI -> Window -> IO WinInfo
-insertWindow e i win = do
+insertWindow e ui win = do
   let buf = findBufferWith (bufkey win) e
-  liftIO $ do w <- newWindow e i win buf
-              b <- uiBox i
+  liftIO $ do w <- newWindow e ui win buf
+              b <- uiBox ui
 
               set b [ containerChild := widget w,
                       boxChildPacking (widget w) := if isMini (coreWin w) then PackNatural else PackGrow ]
 
-              textview w `onButtonRelease` handleClick i w
-              textview w `onButtonPress` handleClick i w
-              textview w `onScroll` handleScroll i w
+              textview w `onButtonRelease` handleClick ui w
+              textview w `onButtonPress` handleClick ui w
+              textview w `onScroll` handleScroll ui w
               widgetShowAll (widget w)
 
               return w
@@ -499,7 +535,7 @@ updateCache ui e = do
     logPutStrLn "updateCache"
     let tabs = e ^. tabsA
     cache <- readRef $ tabCache ui
-    cache' <- syncTabs e ui tabs cache
+    cache' <- syncTabs e ui (toList $ PL.withFocus tabs) cache
     writeRef (tabCache ui) cache'
 
 refresh :: UI -> Editor -> IO ()
