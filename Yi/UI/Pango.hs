@@ -61,7 +61,7 @@ uiBox u = do pageNum <- notebookGetCurrentPage (uiNotebook u)
 
 data TabInfo = TabInfo
     { coreTab     :: PL.PointedList Window
-    , page        :: Widget
+    , page        :: VBox
     , windowCache :: IORef [WinInfo]
     }
 
@@ -164,9 +164,10 @@ startNoMsg cfg ch outCh _ed = do
   -}
 
   tabs <- notebookNew
-  vb'  <- vBoxNew False 1
 
-  notebookAppendPage tabs vb' "Test"
+  -- vb'  <- vBoxNew False 1
+  -- notebookAppendPage tabs vb' "Test"
+
   panedAdd2 paned tabs
 
   set win [ containerChild := vb ]
@@ -256,8 +257,6 @@ syncTabs e ui tabs cache = do
     containerResizeChildren =<< uiBox ui
     return $ concat cache'
 -}
-
--- tabkey :: PL.PointedList Window -> 
 
 syncTabs :: Editor -> UI -> [(PL.PointedList Window, Bool)] -> [TabInfo] -> IO [TabInfo]
 syncTabs e ui (tfocused@(t,focused):ts) (c:cs)
@@ -433,12 +432,13 @@ handleMove ui w p0 event = do
 newTab :: Editor -> UI -> PL.PointedList Window -> IO TabInfo
 newTab e ui ws = do
     logPutStrLn "Creating tab"
-    l  <- labelNew (Just "Hello, world!")
+    vb <- vBoxNew False 1
     wc <- newIORef []
     return $ TabInfo { coreTab = ws
-                     , page    = castToWidget l
+                     , page    = vb
                      , windowCache = wc
                      }
+
 
 -- | Make a new window.
 newWindow :: Editor -> UI -> Window -> FBuffer -> IO WinInfo
@@ -505,7 +505,9 @@ insertTabBefore e ui t _c = insertTab e ui t
 insertTab :: Editor -> UI -> PL.PointedList Window -> IO TabInfo
 insertTab e ui ws = do
     t <- newTab e ui ws
-    notebookAppendPage (uiNotebook ui) (page t) "Tab Title"
+    logPutStrLn "Adding tab"
+    notebookAppendPage (uiNotebook ui) (page t) "Title"
+    widgetShowAll $ page t
     return t
 
 insertWindowBefore :: Editor -> UI -> Window -> WinInfo -> IO WinInfo
@@ -541,7 +543,6 @@ updateCache ui e = do
 refresh :: UI -> Editor -> IO ()
 refresh ui e = do
     logPutStrLn "refresh"
-    logPutStrLn $ show $ bufferStack e
     set (uiCmdLine ui) [labelText := intercalate "  " $ statusLine e,
                         labelEllipsize := EllipsizeEnd]
     updateCache ui e
