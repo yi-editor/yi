@@ -652,8 +652,8 @@ updatePango w b layout = do
 
   layoutSetWidth layout (Just width'')
   layoutSetText layout text
-  (_,bosOffset,_) <- layoutXYToIndex layout width'' height''
-  return (tos,point,tos+fromIntegral bosOffset)
+  (_, bosOffset, _) <- layoutXYToIndex layout width'' height''
+  return (tos, point, tos + fromIntegral bosOffset + 1)
 
 reloadProject :: UI -> FilePath -> IO ()
 reloadProject _ _ = return ()
