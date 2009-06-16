@@ -577,7 +577,7 @@ pEModule = pKW [Reserved Module] $ please (Modid <$> (exact [ConsIdent]) <*> pCo
 pLet :: Parser TT (Exp TT)
 pLet = PLet <$> pAtom [Reserved Let]
    <*> ((pBlockOf' (Block <$> pBlocks (pTr el [(Reserved In),(ReservedOp Pipe),(ReservedOp Equal)])))
-        <|> ((Expr <$> pure []) <* pTestTok pEol))
+        <|> (pEmptyBL <* pTestTok pEol))
    <*>  pOpt (PAtom <$> exact [Reserved In] <*> pure [])
     where pEol = [endBlock]
           el = [(Reserved Data),(Reserved Type)]
