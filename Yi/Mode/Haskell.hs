@@ -244,7 +244,7 @@ cleverAutoIndentHaskellC' e behaviour = do
           Just (Operator op) -> opLength op (maybe 0 firstTokOnCol (getFirstElement exp)) : stopsOf r
           -- case of an operator should check so that value always is at least 1
           Just _ -> previousIndent : maybe 0 firstTokOnCol (getFirstElement exp) : stopsOf r ++ stopsOf ts'
---       stopsOf ((Hask.Expr e):ts) = stopsOf e
+      stopsOf ((Hask.Expr e):ts) = stopsOf e ++ stopsOf ts
       stopsOf ((Hask.TS _ _):ts') = stopsOf ts'
       stopsOf [] = []
       stopsOf (r:_) = error (show r) -- stopsOf ts -- not yet handled stuff
