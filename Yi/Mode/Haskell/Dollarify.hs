@@ -112,7 +112,7 @@ dollarifyWithinP :: H.Exp TT -> BufferM ()
 dollarifyWithinP = trace . ("dollarifyWithin: " ++) . show <*> runQ . (dollarifyTopP =<<) . getAllSubTrees
 
 isNormalParenP :: H.Exp TT -> Bool
-isNormalParenP (H.Paren (H.PAtom r _) (H.Expr xs) (H.PAtom r' _)) = tokT r == openParen && tokT r' == closeParen && (not $ any isTupleP xs)
+isNormalParenP (H.Paren (H.PAtom r _) xs (H.PAtom r' _)) = tokT r == openParen && tokT r' == closeParen && (not $ any isTupleP xs)
 isNormalParenP _               = False
 
 isTupleP :: H.Exp TT -> Bool
@@ -124,7 +124,7 @@ stripCommentsP :: [H.Exp TT] -> [H.Exp TT]
 stripCommentsP = filter $ \t -> case t of { (H.PAtom x _) -> not (isComment $ tokT x); _ -> True }
 
 dollarifyTopP :: H.Exp TT -> [QueuedUpdate]
-dollarifyTopP p@(H.Paren (H.PAtom t1 _) (H.Expr e) (H.PAtom t2 _))
+dollarifyTopP p@(H.Paren (H.PAtom t1 _) e (H.PAtom t2 _))
    | isNormalParenP p = case stripCommentsP e of
        [H.Paren _ _ _] -> [queueDelete t2, queueDelete t1]
        e'            -> dollarifyExprP e'
@@ -134,7 +134,7 @@ dollarifyTopP _ = []
 -- Expression must not contain comments
 dollarifyExprP :: [H.Exp TT] -> [QueuedUpdate]
 dollarifyExprP e@(_:_)
-    | p@(H.Paren (H.PAtom t _) (H.Expr e2) (H.PAtom t2 _)) <- last e
+    | p@(H.Paren (H.PAtom t _) e2 (H.PAtom t2 _)) <- last e
     , isNormalParenP p
     , all isSimpleP e
     = let dollarifyLoop :: [H.Exp TT] -> [QueuedUpdate]

@@ -81,7 +81,7 @@ data Exp t
     | PInstance (PAtom t) (Exp t) (Exp t) (Exp t) (Exp t)
       -- declarations and parts of them follow
       -- A parenthesized expression with comments
-    | Paren (PAtom t) (Exp t) (PAtom t)
+    | Paren (PAtom t) [Exp t] (PAtom t)
       -- Special parenthesis to increase speed of parser
     | SParen (PAtom t) (Exp t)
     | SParen' (Exp t) (PAtom t) (Exp t)
@@ -114,7 +114,7 @@ data Exp t
 instance SubTree (Exp TT) where
     type Element (Exp TT) = TT
     foldMapToksAfter begin f t0 = work t0
-        where work (Paren e e' e'') = work e <> work e' <> work e''
+        where work (Paren e e' e'') = work e <> foldMap work e' <> work e''
               work (Expr e)     = foldMap work e
               work (PWhere e' e) = work e' <> work e
               work (Bin e e')   = work e <> work e'
@@ -193,7 +193,7 @@ $(derive makeFoldable ''Program)
 $(derive makeFoldable ''Exp)
 instance IsTree Exp where
    subtrees tree = case tree of
-       (Paren _ g _)  -> subtrees g
+       (Paren _ g _)  -> g
        (RHS _ g)      -> g
        (PWhere _ r) -> subtrees r
        (Block s)      -> concat s
@@ -247,8 +247,8 @@ parse = pProgram <* eof
 -- | Parse a program
 pProgram :: Parser TT (Program TT)
 pProgram = Program <$> pComments <*> optional
-           (pBlockOf' ((ProgMod <$> pModule
-                        <*> pModBody) <|> pBody))
+           (pBlockOf' (ProgMod <$> pModule
+                       <*> pModBody <|> pBody))
 
 -- | Parse a body that follows a module
 pModBody :: Parser TT (Program TT)
@@ -287,7 +287,7 @@ pQvarid = pAtom [VarIdent, ConsIdent, (Reserved Other), (Reserved As)]
 
 -- | Parse an operator using please
 pQvarsym :: Parser TT (Exp TT)
-pQvarsym = pParen (please $ PAtom <$> sym isOperator <*> pComments) pComments
+pQvarsym = pParen ((:) <$> (please $ PAtom <$> sym isOperator <*> pComments) <*> pure []) pComments
 
 -- | Parse any operator
 isOperator :: Token -> Bool
@@ -396,15 +396,17 @@ pModule = PModule <$> pAtom [Reserved Module]
       <*> ((optional $ exact [nextLine]) *>
            (Bin <$> ppAtom [Reserved Where])
            <*> pMany pErr) <* pTestTok elems
-    where pExports = pOpt (pParen (Expr <$> pSepBy pExport pComma) pComments)
+    where pExports = pOpt (pParen (pSepBy pExport pComma) pComments)
           pExport = ((optional $ exact [nextLine]) *>
                      (pVarId
                       <|> pEModule
                       <|> (Bin <$> pQvarsym <*> (DC <$> pOpt helper))
                       <|> (Bin <$> (TC <$> pQtycon) <*> (DC <$> pOpt helper))
                      ))
-          helper = pParen (please (pAtom [ReservedOp $ OtherOp ".."]
-                                    <|> (Expr <$> pSepBy pQvarid pComma))) pComments
+          helper = pParen ((:) <$> 
+                           (please (pAtom [ReservedOp $ OtherOp ".."]
+                                    <|> (Expr <$> pSepBy pQvarid pComma))) <*> pure [])
+                   pComments
           elems = [nextLine, startBlock, endBlock]
           pErr = PError <$>
                  recoverWith (sym $ not . (\x -> isComment x
@@ -437,7 +439,7 @@ pImport = PImport  <$> pAtom [Reserved Import]
                                     please pImpS) <*> pMany pErr)
                           <|> (Bin <$> pImpS <*> pMany pErr))
                      <|> pMany pErr
-              pImpS    = DC <$> (pParen ((Expr <$> pSepBy pExp' pComma)) pComments)
+              pImpS    = DC <$> (pParen ((pSepBy pExp' pComma)) pComments)
               pExp'    = Bin <$> ((PAtom <$> sym (\x -> (flip elem [VarIdent, ConsIdent] x)
                                                   || isOperator x) <*> pComments)
                                   <|>  pQvarsym) <*> pOpt pImpS
@@ -459,7 +461,7 @@ pTypeRhs = Block <$> some pAtype `BL.sepBy1` pAtom [ReservedOp RightArrow]
 
 pSimpleType :: Parser TT (Exp TT)
 pSimpleType = (Bin <$> (TC <$> ppCons) <*> pMany pQvarid)
-          <|> (pParen (Bin <$> (TC <$> ppCons) <*> pMany pQvarid) pComments)
+          <|> (pParen ((:) <$> (TC <$> ppCons) <*> many pQvarid) pComments)
 
 -- | Parse data declarations
 pSData :: Parser TT (Exp TT)
@@ -500,8 +502,8 @@ pDeriving :: Parser TT (Exp TT)
 pDeriving = TC
         <$> (pKW [Reserved Deriving]
              (please (pParen
-              ((Bin <$> please pQtycon
-               <*> pMany (Bin <$> pComma <*> please pQtycon))) pComments
+              (((:) <$> please pQtycon
+                <*> many (Bin <$> pComma <*> please pQtycon))) pComments
                       <|> pQtycon)))
 
 pAtype :: Parser TT (Exp TT)
@@ -523,18 +525,18 @@ pAtype = pAtype'
 
 pAtype' :: Parser TT (Exp TT)
 pAtype' = pQvarid
-      <|> pParen (pMany $ pTree' [(Reserved Data), (Reserved Type)] []) pComments
-      <|> pBrack (pMany $ pTree' [(Reserved Data), (Reserved Type)] []) pComments
+      <|> pParen (many $ pTree' [(Reserved Data), (Reserved Type)] []) pComments
+      <|> pBrack (many $ pTree' [(Reserved Data), (Reserved Type)] []) pComments
 
 pContext :: Parser TT (Exp TT)
 pContext = Context <$> pOpt pForAll
        <*> (TC <$> (pClass'
-                    <|> pParen (Expr <$> pSepBy pClass' pComma) pComments))
+                    <|> pParen (pSepBy pClass' pComma) pComments))
        <*> ppAtom [ReservedOp DoubleRightArrow]
         where pClass' :: Parser TT (Exp TT)
               pClass' = Bin <$> pQtycon
                    <*> (please pVarId
-                        <|> pParen (Bin <$> please pVarId <*> pMany pAtype') pComments)
+                        <|> pParen ((:) <$> please pVarId <*> many pAtype') pComments)
 
 -- | Parse for all
 pForAll :: Parser TT (Exp TT)
@@ -554,9 +556,11 @@ pConstr = Bin <$> pOpt pForAll
       <|> Bin <$> lrHs <*> pMany (strictF pAtype)
       <|> pErr
     where lrHs = pOP [Operator "!"] pAtype
-          st = pBrace (pOpt
-             $ Bin <$> pFielddecl
-                <*> pMany (Bin <$> pComma <*> pFielddecl)) pComments
+          st = pBrace ((:) <$> (pOpt
+                                $ Bin <$> pFielddecl
+                                <*> pMany (Bin <$> pComma <*> pFielddecl))
+                      <*> pure [])
+               pComments
 
 -- | Parse optional strict variables
 strictF :: Parser TT (Exp TT) -> Parser TT (Exp TT)
@@ -585,7 +589,7 @@ pLet = PLet <$> pAtom [Reserved Let]
 -- | Parse a class decl
 pClass :: Parser TT (Exp TT)
 pClass = PClass <$> pAtom [Reserved Class]
-     <*> (TC <$> pOpt (Bin <$> (pSContext <|> (pParen (Expr <$> pSepBy pSContext pComma) pComments))
+     <*> (TC <$> pOpt (Bin <$> (pSContext <|> (pParen (pSepBy pSContext pComma) pComments))
                        <*> ppAtom [ReservedOp DoubleRightArrow]))
      <*> ppAtom [ConsIdent]
      <*> ppAtom [VarIdent]
@@ -609,7 +613,7 @@ pSContext = Bin <$> pAtom [ConsIdent] <*> ppAtom [VarIdent]
 -- | Parse instances, no extensions are supported, but maybe multi-parameter should be supported
 pInstance :: Parser TT (Exp TT)
 pInstance = PInstance <$> pAtom [Reserved Instance]
-        <*> (TC <$> pOpt (Bin <$> (pSContext <|> (pParen (Expr <$> pSepBy pSContext pComma) pComments))
+        <*> (TC <$> pOpt (Bin <$> (pSContext <|> (pParen (pSepBy pSContext pComma) pComments))
                        <*> ppAtom [ReservedOp DoubleRightArrow]))
         <*> ppAtom [ConsIdent]
         <*> pInst
@@ -617,8 +621,8 @@ pInstance = PInstance <$> pAtom [Reserved Instance]
         where pW = Bin <$> ppAtom [Reserved Where]
                <*> (pBlockOf $ pTree pWBlock err' atom')
               pInst = please (pAtom [ConsIdent] 
-                              <|> pParen (pMany (pTree' [(Reserved Data), (Reserved Type)] [])) pComments
-                              <|> pBrack (pMany (pTree' [(Reserved Data), (Reserved Type)] [])) pComments)
+                              <|> pParen (many (pTree' [(Reserved Data), (Reserved Type)] [])) pComments
+                              <|> pBrack (many (pTree' [(Reserved Data), (Reserved Type)] [])) pComments)
               pEol = [nextLine, startBlock, endBlock, (Reserved Where)]
               err' = [(Reserved In)]
               atom' = [(ReservedOp Equal),(ReservedOp Pipe), (Reserved In)]
@@ -685,7 +689,7 @@ pTree opt err at = ((:) <$> beginLine
      <|> ((:) <$> pClass <*> pure [])
      <|> ((:) <$> pInstance <*> pure [])
      <|> opt err at
-    where beginLine = (pParen (Expr <$> pTr err at)  $ pure [])
+    where beginLine = (pParen (pTr err at)  $ pure [])
                   <|> (PAtom <$> sym (flip notElem $ isNoise errors) <*> pure [])
                   <|> (PError <$> recoverWith
                        (sym $ flip elem $ isNoiseErr errors) 
@@ -703,9 +707,9 @@ pTree opt err at = ((:) <$> beginLine
 -- | The pWBlock describes what extra things are allowed in a where clause
 pWBlock :: [Token] -> [Token] -> Parser TT [(Exp TT)]
 pWBlock err at = pure []
-     <|> ((:) <$> (pBrack (Expr <$> pTr' err (at \\ [(Special ','), (ReservedOp Pipe),(ReservedOp Equal)])) (pure []))
+     <|> ((:) <$> (pBrack (pTr' err (at \\ [(Special ','), (ReservedOp Pipe),(ReservedOp Equal)])) (pure []))
           <*> (pTr err $ at `union` [(Special ','), (ReservedOp (OtherOp "::"))]))
-     <|> ((:) <$> (pBrace (Expr <$> (pTr' err (at \\ [(Special ','),(ReservedOp Pipe),(ReservedOp Equal)]))) (pure []))
+     <|> ((:) <$> (pBrace ((pTr' err (at \\ [(Special ','),(ReservedOp Pipe),(ReservedOp Equal)]))) (pure []))
           <*> (pTr err $ at `union` [(Special ','), (ReservedOp (OtherOp "::"))]))
 
 
@@ -737,9 +741,9 @@ pTr' err at = pure []
 -- | Parse a Tree' of expressions
 pTree' ::[Token] -> [Token] -> Parser TT (Exp TT)
 pTree' err at
-    = (pParen (Expr <$> (pTr err (at \\ [Special ',']))) $ pure [])
-  <|> (pBrack (Expr <$> (pTr' err (at \\ [(Special ','), (ReservedOp Pipe),(ReservedOp Equal)]))) $ pure [])
-  <|> (pBrace (Expr <$> (pTr' err (at \\ [(Special ','),(ReservedOp Pipe),(ReservedOp Equal)]))) $ pure [])
+    = (pParen ((pTr err (at \\ [Special ',']))) $ pure [])
+  <|> (pBrack ((pTr' err (at \\ [(Special ','), (ReservedOp Pipe),(ReservedOp Equal)]))) $ pure [])
+  <|> (pBrace ((pTr' err (at \\ [(Special ','),(ReservedOp Pipe),(ReservedOp Equal)]))) $ pure [])
   <|> pLet
   <|> (PError <$> recoverWith
        (sym $ flip elem $ (isNoiseErr err)) <*>  pure (newT '!') <*> pure [])
@@ -786,7 +790,7 @@ isNoise r
 -- | Parse parenthesis, brackets and braces containing
 -- an expression followed by possible comments
 pParen, pBrace, pBrack
-       :: Parser TT (Exp TT) -> Parser TT [TT] -> Parser TT (Exp TT)
+       :: Parser TT [Exp TT] -> Parser TT [TT] -> Parser TT (Exp TT)
 
 pParen p c = Paren <$> pCAtom [Special '('] c 
         <*> p <*> please (pCAtom [Special ')'] c)

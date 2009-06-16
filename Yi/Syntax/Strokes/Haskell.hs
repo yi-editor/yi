@@ -74,18 +74,18 @@ getStr tk point begin _end t0 = getStrokes' t0
           getStrokes' (TS col ts') = tk col <> foldMap (getStr tkTConst point begin _end) ts'
           getStrokes' (Modid t c) = tkImport t <> com c
           getStrokes' (Paren (PAtom l c) g (PAtom r c'))
-              | isErr r = errStyle l <> getStrokes' g
+              | isErr r = errStyle l <> getStrokesL g
               -- left paren wasn't matched: paint it in red.
               -- note that testing this on the "Paren" node actually forces the parsing of the
               -- right paren, undermining online behaviour.
               | (posnOfs $ tokPosn $ l) ==
                     point || (posnOfs $ tokPosn $ r) == point - 1
-               = pStyle hintStyle l <> com c <> getStrokes' g
+               = pStyle hintStyle l <> com c <> getStrokesL g
                       <> pStyle hintStyle r <> com c'
-              | otherwise  = tk l <> com c <> getStrokes' g
+              | otherwise  = tk l <> com c <> getStrokesL g
                                   <> tk r <> com c'
           getStrokes' (Paren (PAtom l c) g e@(PError _ _ _))
-              = errStyle l <> com c <> getStrokes' g <> getStrokes' e
+              = errStyle l <> com c <> getStrokesL g <> getStrokes' e
           getStrokes' (PError t _ c) = errStyle t <> com c
           getStrokes' (Block s) = BL.foldMapAfter begin getStrokesL s
           getStrokes' (Expr g) = getStrokesL g
