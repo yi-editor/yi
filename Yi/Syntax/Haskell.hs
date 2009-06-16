@@ -102,7 +102,7 @@ data Exp t
     | Context (Exp t) (Exp t) (PAtom t)
     | PGuard [PGuard t]
     -- the PAtom in PGuard' does not contain any comments
-    | PGuard' t (Exp t) (PAtom t) (Exp t)
+    | PGuard' t [Exp t] (PAtom t) [Exp t]
       -- type constructor is just a wrapper to indicate which highlightning to use
     | TC (Exp t)
       -- data constructor same as with the TC constructor
@@ -140,9 +140,9 @@ instance SubTree (Exp TT) where
                                     <> work e'
               work (PGuard l) = foldMap work l
               work (PGuard' t e t' e') = f t
-                                      <> work e
+                                      <> foldMap work e
                                       <> work t'
-                                      <> work e'
+                                      <> foldMap work e'
               work (PAtom t c)  = f t <> fold' c
               work (PError t' t c) = f t' <> f t <> fold' c
               work (TS t e) = f t <> foldMap work e
@@ -632,12 +632,12 @@ pGuard :: Parser TT (Exp TT)
 pGuard = PGuard
      <$> some (PGuard' <$> (exact [ReservedOp Pipe]) <*>
                -- comments are by default parsed after this
-               (Expr <$> (pTr' err at))
+               (pTr' err at)
                <*> please (PAtom <$> exact
                             [(ReservedOp Equal),(ReservedOp RightArrow)]
                             <*> pure [])
                -- comments are by default parsed after this -- this must be -> if used in case
-               <*> (Expr <$> pTr' err' at'))
+               <*> pTr' err' at')
   where err  = [(Reserved Class),(Reserved Instance),(Reserved Data), (Reserved Type)]
         at   = [(ReservedOp RightArrow),(ReservedOp Equal), (ReservedOp Pipe)]
         err' = [(Reserved Class),(Reserved Instance),(Reserved In),(Reserved Data), (Reserved Type)]

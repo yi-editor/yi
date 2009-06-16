@@ -121,10 +121,10 @@ getStr tk point begin _end t0 = getStrokes' t0
           getStrokes' (DC r) = getStrokes' r -- do not color operator dc
           getStrokes' (PGuard ls) = getStrokesL ls
           getStrokes' (PGuard' t e t' e')
-              | isErrN e ||isErrN e' || isErrN t'
-              = errStyle t <> getStrokes' e <> getStrokes' t' <> getStrokes' e'
+              | any isErrN e || any isErrN e' || isErrN t'
+              = errStyle t <> getStrokesL e <> getStrokes' t' <> getStrokesL e'
               | otherwise
-              = one (ts t) <> getStrokes' e <> getStrokes' t' <> getStrokes' e'
+              = one (ts t) <> getStrokesL e <> getStrokes' t' <> getStrokesL e'
           getStrokes' (SParen (PAtom l c) (SParen' g (PAtom r c') e))
               | isErr r = errStyle l <> getStrokes' g <> getStrokes' e
               -- left paren wasn't matched: paint it in red.
