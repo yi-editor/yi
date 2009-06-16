@@ -254,24 +254,29 @@ pProgram = Program <$> pComments <*> optional
 
 -- | Parse a body that follows a module
 pModBody :: Parser TT (Program TT)
-pModBody = (Body <$> ((exact [Special '<']) *> pImp)
-            <*> (((pBol *> pBod) <|> pEmptyBL) <* (exact [Special '>']))
-            <*> pBod)
-       <|> (Body <$> (exact [Special '.'] *>) pImp
-            <*> ((pBol *> pBod) <|> pEmptyBL)
-            <*> pEmptyBL)
-       <|> (Body <$> pure [] <*> pEmptyBL <*> pEmptyBL)
+pModBody = ((exact [Special '<']) *>
+            ((Body <$> pImp
+              <*> ((pBol *> pBod) <|> pEmptyBL) <* (exact [Special '>'])
+              <*> pBod) <|>
+             (Body <$> noImports <*> ((pBod <|> pEmptyBL) <* (exact [Special '>']))
+              <*> pBod)))
+       <|> ((exact [Special '.']) *> pBody)
+       <|> Body <$> pure [] <*> pEmptyBL <*> pEmptyBL
     where pBol  = pTestTok elems
-          pBod  = (Block <$> pBlocks pDTree)
-          elems = [(Special '.'),(Special '<')]
+          pBod  = Block <$> pBlocks pDTree
+          elems = [(Special '.'), (Special '<')]
 
 pEmptyBL :: Parser TT (Exp TT)
 pEmptyBL = Block <$> pure BL.nil
 
 -- | Parse a body of a program
 pBody :: Parser TT (Program TT)
-pBody = Body <$> pImp <*> (pTestTok elems *> (Block <$> pBlocks pDTree)) <*> pEmptyBL
+pBody = Body <$> noImports <*> (Block <$> pBlocks pDTree) <*> pEmptyBL
+    <|> Body <$> pImp <*> ((pTestTok elems *> (Block <$> pBlocks pDTree)) <|> pEmptyBL) <*> pEmptyBL
     where elems = [(Special '.'),(Special '<')]
+
+noImports = (notNext [Reserved Import]) *> pure []
+    where notNext f = testNext (\r -> (not $ isJust r) || (not . elem ((tokT . fromJust) r)) f)
 
 -- Helper functions for parsing follows
 -- | Parse Variables
