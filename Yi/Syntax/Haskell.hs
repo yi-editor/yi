@@ -375,9 +375,12 @@ pCAtom :: [Token] -> Parser TT [TT] -> Parser TT (Exp TT)
 pCAtom r c = PAtom <$> exact r <*> c
 
 -- | Parse something separated by, with optional ending
-pSepBy :: Parser TT (Exp TT) -> Parser TT (Exp TT) -> Parser TT (Exp TT)
-pSepBy r p = Bin <$> pMany (Bin <$> r <*> p)
-         <*> pOpt r
+pSepBy :: Parser TT (Exp TT) -> Parser TT (Exp TT) -> Parser TT [Exp TT]
+pSepBy r p = pure []
+          <|> (:) <$> r <*> (pSep r p <|> pure [])
+          <|> (:) <$> p <*> pure [] -- optional ending comma
+    where pTok r p = (:) <$> r <*> (pure [] <|> pSep r p)
+          pSep r p = (:) <$> p <*> (pure [] <|> pTok r p)
 
 -- | Parse a comma separator
 pComma :: Parser TT (Exp TT)
@@ -393,7 +396,7 @@ pModule = PModule <$> pAtom [Reserved Module]
       <*> ((optional $ exact [nextLine]) *>
            (Bin <$> ppAtom [Reserved Where])
            <*> pMany pErr) <* pTestTok elems
-    where pExports = pOpt (pParen (pSepBy pExport pComma) pComments)
+    where pExports = pOpt (pParen (Expr <$> pSepBy pExport pComma) pComments)
           pExport = ((optional $ exact [nextLine]) *>
                      (pVarId
                       <|> pEModule
@@ -401,7 +404,7 @@ pModule = PModule <$> pAtom [Reserved Module]
                       <|> (Bin <$> (TC <$> pQtycon) <*> (DC <$> pOpt helper))
                      ))
           helper = pParen (please (pAtom [ReservedOp $ OtherOp ".."]
-                                    <|> (pSepBy pQvarid pComma))) pComments
+                                    <|> (Expr <$> pSepBy pQvarid pComma))) pComments
           elems = [nextLine, startBlock, endBlock]
           pErr = PError <$>
                  recoverWith (sym $ not . (\x -> isComment x
@@ -434,7 +437,7 @@ pImport = PImport  <$> pAtom [Reserved Import]
                                     please pImpS) <*> pMany pErr)
                           <|> (Bin <$> pImpS <*> pMany pErr))
                      <|> pMany pErr
-              pImpS    = DC <$> (pParen ((pSepBy pExp' pComma)) pComments)
+              pImpS    = DC <$> (pParen ((Expr <$> pSepBy pExp' pComma)) pComments)
               pExp'    = Bin <$> ((PAtom <$> sym (\x -> (flip elem [VarIdent, ConsIdent] x)
                                                   || isOperator x) <*> pComments)
                                   <|>  pQvarsym) <*> pOpt pImpS
@@ -526,7 +529,7 @@ pAtype' = pQvarid
 pContext :: Parser TT (Exp TT)
 pContext = Context <$> pOpt pForAll
        <*> (TC <$> (pClass'
-                    <|> pParen (pSepBy pClass' pComma) pComments))
+                    <|> pParen (Expr <$> pSepBy pClass' pComma) pComments))
        <*> ppAtom [ReservedOp DoubleRightArrow]
         where pClass' :: Parser TT (Exp TT)
               pClass' = Bin <$> pQtycon
@@ -582,7 +585,7 @@ pLet = PLet <$> pAtom [Reserved Let]
 -- | Parse a class decl
 pClass :: Parser TT (Exp TT)
 pClass = PClass <$> pAtom [Reserved Class]
-     <*> (TC <$> pOpt (Bin <$> (pSContext <|> (pParen (pSepBy pSContext pComma) pComments))
+     <*> (TC <$> pOpt (Bin <$> (pSContext <|> (pParen (Expr <$> pSepBy pSContext pComma) pComments))
                        <*> ppAtom [ReservedOp DoubleRightArrow]))
      <*> ppAtom [ConsIdent]
      <*> ppAtom [VarIdent]
@@ -606,7 +609,7 @@ pSContext = Bin <$> pAtom [ConsIdent] <*> ppAtom [VarIdent]
 -- | Parse instances, no extensions are supported, but maybe multi-parameter should be supported
 pInstance :: Parser TT (Exp TT)
 pInstance = PInstance <$> pAtom [Reserved Instance]
-        <*> (TC <$> pOpt (Bin <$> (pSContext <|> (pParen (pSepBy pSContext pComma) pComments))
+        <*> (TC <$> pOpt (Bin <$> (pSContext <|> (pParen (Expr <$> pSepBy pSContext pComma) pComments))
                        <*> ppAtom [ReservedOp DoubleRightArrow]))
         <*> ppAtom [ConsIdent]
         <*> pInst
