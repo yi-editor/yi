@@ -403,9 +403,8 @@ pModule = PModule <$> pAtom [Reserved Module]
                       <|> (Bin <$> pQvarsym <*> (DC <$> pOpt helper))
                       <|> (Bin <$> (TC <$> pQtycon) <*> (DC <$> pOpt helper))
                      ))
-          helper = pParen ((:) <$> 
-                           (please (pAtom [ReservedOp $ OtherOp ".."]
-                                    <|> (Expr <$> pSepBy pQvarid pComma))) <*> pure [])
+          helper = pParen (((:) <$> please (pAtom [ReservedOp $ OtherOp ".."]) <*> pure [])
+                           <|> pSepBy pQvarid pComma)
                    pComments
           elems = [nextLine, startBlock, endBlock]
           pErr = PError <$>
