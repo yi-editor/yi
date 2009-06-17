@@ -59,9 +59,9 @@ type PGuard t = Exp t
 
 -- | A program is some comments followed by a module and a body
 data Program t
-    = Program [t] (Maybe (Program t)) -- a program can be just comments
-    | ProgMod (PModule t) (Program t)
-    | Body [PImport t] (Block t) (Block t)
+    = Program [t] (Maybe (Program t)) -- ^ A Program can be just comments
+    | ProgMod (PModule t) (Program t) -- ^ The module declaration part
+    | Body [PImport t] (Block t) (Block t) -- ^ The body of the module
   deriving Show
 
 -- | A module
@@ -75,48 +75,38 @@ data PImport t = PImport (PAtom t) (Exp t) (PAtom t) (Exp t) (Exp t)
 -- | Exp can be expression or declaration
 data Exp t
       -- Top declarations
-      -- type signature same as the TC constructor
-    = TS t [Exp t]
-    | PType (PAtom t) (Exp t) (Exp t) (PAtom t) (Exp t)
-    | PData (PAtom t) (Exp t) (Exp t) (Exp t)
-    | PData' (PAtom t) (Exp t) (Exp t)
-      -- keyword, Opt scontext, tycls, tyvar, Opt where
-    | PClass (PAtom t) (Exp t) (Exp t) (Exp t) (Exp t)
-      -- keyword, Opt scontext, tycls, Inst, where
-    | PInstance (PAtom t) (Exp t) (Exp t) (Exp t) (Exp t)
+    = TS t [Exp t] -- ^ Type signature 
+    | PType (PAtom t) (Exp t) (Exp t) (PAtom t) (Exp t) -- ^ Type declaration
+    | PData (PAtom t) (Exp t) (Exp t) (Exp t) -- ^ Data declaration
+    | PData' (PAtom t) (Exp t) (Exp t) -- ^ Data declaration RHS
+    | PClass (PAtom t) (Exp t) (Exp t) (Exp t) (Exp t) -- ^ Class declaration
+    | PInstance (PAtom t) (Exp t) (Exp t) (Exp t) (Exp t) -- ^ Instance
+      -- declaration
       -- declarations and parts of them follow
-      -- A parenthesized expression with comments
-    | Paren (PAtom t) [Exp t] (PAtom t)
-      -- Special parenthesis to increase speed of parser
-    | SParen (PAtom t) (Exp t)
-    | SParen' (Exp t) (PAtom t) (Exp t)
-      -- A list of things separated by layout (as in do; etc.)
-    | Block (BL.BList [Exp t])
-    | PAtom t [t]
-    | Expr [Exp t]
-      -- A where decl is simply the where keyword
-      -- followed by possibly some comments
-      -- and then a (Special '<') (Special '>') surrounded block
-    | PWhere (PAtom t) (Exp t)
+    | Paren (PAtom t) [Exp t] (PAtom t) -- ^ A parenthesized, bracked or braced
+    | Block (BL.BList [Exp t]) -- ^ A block of things separated by layout
+    | PAtom t [t] -- ^ An atom is a token followed by many comments
+    | Expr [Exp t] -- ^
+    | PWhere (PAtom t) (Exp t) -- ^ Where clause
     | Bin (Exp t) (Exp t)
        -- an error with comments following so we never color comments in wrong
        -- color. The error has an extra token, the Special '!' token to
        -- indicate that it contains an error
-    | PError t t [t]
+    | PError t t [t] -- ^ An wrapper for errors
       -- rhs that begins with Equal
-    | RHS (PAtom t) [Exp t]
-    | Opt (Maybe (Exp t))
-    | Modid t [t]
-    | Context (Exp t) (Exp t) (PAtom t)
-    | PGuard [PGuard t]
+    | RHS (PAtom t) [Exp t] -- ^ Righthandside of functions with =
+    | Opt (Maybe (Exp t)) -- ^ An optional
+    | Modid t [t] -- ^ Module identifier
+    | Context (Exp t) (Exp t) (PAtom t) -- ^
+    | PGuard [PGuard t] -- ^ Righthandside of functions with |
       -- the PAtom in PGuard' does not contain any comments
     | PGuard' t [Exp t] (PAtom t) [Exp t]
       -- type constructor is just a wrapper to indicate which highlightning to
       -- use.
-    | TC (Exp t)
+    | TC (Exp t) -- ^ Type constructor
       -- data constructor same as with the TC constructor
-    | DC (Exp t)
-    | PLet (PAtom t) (Exp t) (Exp t)
+    | DC (Exp t) -- ^ Data constructor
+    | PLet (PAtom t) (Exp t) (Exp t) -- ^ let expression
     | PIn t [Exp t]
   deriving Show
 
@@ -168,7 +158,6 @@ instance SubTree (Exp TT) where
               work (PInstance e e' exp exp' e'' ) = work e <> work e'
                                                  <> work exp <> work exp'
                                                  <> work e''
-              work a = error $ "Instance SubTree: " ++ show a
               fold' = foldMapToksAfter begin f
     foldMapToks f = foldMap (foldMapToks f)
 
@@ -285,6 +274,7 @@ pBody = Body <$> noImports <*> (Block <$> pBlocks pDTree) <*> pEmptyBL
                                <|> pEmptyBL) <*> pEmptyBL
     where elems = [nextLine, startBlock]
 
+noImports :: Parser TT [a]
 noImports = (notNext [Reserved Import]) *> pure []
     where notNext f = testNext (\r -> (not $ isJust r)
                    || (not . elem ((tokT . fromJust) r)) f)
@@ -397,8 +387,8 @@ pSepBy :: Parser TT (Exp TT) -> Parser TT (Exp TT) -> Parser TT [Exp TT]
 pSepBy r p = pure []
           <|> (:) <$> r <*> (pSep r p <|> pure [])
           <|> (:) <$> p <*> pure [] -- optional ending comma
-    where pTok r p = (:) <$> r <*> (pure [] <|> pSep r p)
-          pSep r p = (:) <$> p <*> (pure [] <|> pTok r p)
+    where pTok r' p' = (:) <$> r' <*> (pure [] <|> pSep r' p')
+          pSep r' p' = (:) <$> p' <*> (pure [] <|> pTok r' p')
 
 -- | Parse a comma separator
 pComma :: Parser TT (Exp TT)
@@ -413,7 +403,7 @@ pModule = PModule <$> pAtom [Reserved Module]
       <*> pExports
       <*> ((optional $ exact [nextLine]) *>
            (Bin <$> ppAtom [Reserved Where])
-           <*> pMany pErr) <* pTestTok elems
+           <*> pMany pErr') <* pTestTok elems
     where pExports = pOpt (pParen (pSepBy pExport pComma) pComments)
           pExport = ((optional $ exact [nextLine]) *>
                      (pVarId
@@ -426,7 +416,7 @@ pModule = PModule <$> pAtom [Reserved Module]
                            <|> pSepBy pQvarid pComma)
                    pComments
           elems = [nextLine, startBlock, endBlock]
-          pErr = PError <$>
+          pErr' = PError <$>
                  recoverWith (sym $ not . (\x -> isComment x
                                            || elem x [CppDirective
                                                      , startBlock
@@ -682,6 +672,7 @@ pFunRHS :: [Token] -> [Token] -> Parser TT (Exp TT)
 pFunRHS err at = pGuard
              <|> pEq err at
 
+pFunLHS :: [Token] -> [Token] -> Parser TT [(Exp TT)]
 pFunLHS err at = (:) <$> beginLine
              <*> (pTypeSig
                   <|> (pTr err (at `union` [(Special ',')

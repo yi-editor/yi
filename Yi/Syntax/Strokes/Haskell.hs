@@ -123,17 +123,6 @@ getStr tk point begin _end t0 = getStrokes' t0
               = errStyle t <> getStrokesL e <> getStrokes' t' <> getStrokesL e'
               | otherwise
               = one (ts t) <> getStrokesL e <> getStrokes' t' <> getStrokesL e'
-          getStrokes' (SParen (PAtom l c) (SParen' g (PAtom r c') e))
-              | isErr r = errStyle l <> getStrokes' g <> getStrokes' e
-              -- left paren wasn't matched: paint it in red.
-              -- note that testing this on the "Paren" node actually forces the parsing of the
-              -- right paren, undermining online behaviour.
-              | (posnOfs $ tokPosn $ l) ==
-                    point || (posnOfs $ tokPosn $ r) == point - 1
-               = pStyle hintStyle l <> com c <> getStrokes' g
-                      <> pStyle hintStyle r <> com c' <> getStrokes' e
-              | otherwise  = tk l <> com c <> getStrokes' g
-                                  <> tk r <> com c' <> getStrokes' e
           getStrokes' (PClass e e' exp exp' e'')
               | isErrN e' || isErrN exp || isErrN exp' || isErrN e''
               = paintAtom errorStyle e <> getStrokes' e'
