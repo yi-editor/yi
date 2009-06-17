@@ -383,7 +383,10 @@ pOpt = ((<$>) Opt) . optional
 pAtom, ppAtom :: [Token] -> Parser TT (Exp TT)
 pAtom = flip pCAtom pComments
 
-ppAtom = please . pAtom
+ppAtom at =  pAtom at <|> recoverAtom
+
+recoverAtom :: Parser TT (Exp TT)
+recoverAtom = PAtom <$> (recoverWith $ pure $ newT '!') <*> pure []
 
 -- | Parse an atom with optional comments
 pCAtom :: [Token] -> Parser TT [TT] -> Parser TT (Exp TT)
@@ -623,13 +626,6 @@ pClass = PClass <$> pAtom [Reserved Class]
                <*> (Bin <$> please (pBlockOf $ pTree pWBlock err' atom')
                     <*> (Expr <$> pTree pWBlock err' atom'))
               pEol = [nextLine, endBlock, startBlock, (Reserved Where)]
-              pErr' = PError
-                  <$> recoverWith (sym $ not . (\x -> isComment x
-                                               || elem x [CppDirective
-                                                         , endBlock
-                                                         , nextLine]))
-                  <*> pure (newT '!')
-                  <*> pComments
               err' = [(Reserved In)]
               atom' = [(ReservedOp Equal),(ReservedOp Pipe), (Reserved In)]
 
@@ -859,10 +855,10 @@ pParen, pBrace, pBrack
        :: Parser TT [Exp TT] -> Parser TT [TT] -> Parser TT (Exp TT)
 
 pParen p c = Paren <$> pCAtom [Special '('] c 
-        <*> p <*> please (pCAtom [Special ')'] c)
+        <*> p <*> (recoverAtom <|> pCAtom [Special ')'] c)
 
 pBrace p c = Paren  <$> pCAtom [Special '{'] c
-         <*> p <*> please (pCAtom [Special '}'] c)
+         <*> p <*> (recoverAtom <|> pCAtom [Special '}'] c)
 
 pBrack p c = Paren  <$>  pCAtom [Special '['] c
-         <*> p <*> please (pCAtom [Special ']'] c)
+         <*> p <*> (recoverAtom <|> pCAtom [Special ']'] c)

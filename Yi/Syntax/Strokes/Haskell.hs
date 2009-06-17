@@ -84,8 +84,6 @@ getStr tk point begin _end t0 = getStrokes' t0
                       <> pStyle hintStyle r <> com c'
               | otherwise  = tk l <> com c <> getStrokesL g
                                   <> tk r <> com c'
-          getStrokes' (Paren (PAtom l c) g e@(PError _ _ _))
-              = errStyle l <> com c <> getStrokesL g <> getStrokes' e
           getStrokes' (PError t _ c) = errStyle t <> com c
           getStrokes' (Block s) = BL.foldMapAfter begin getStrokesL s
           getStrokes' (Expr g) = getStrokesL g
