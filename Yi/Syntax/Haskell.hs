@@ -592,10 +592,11 @@ pClass = PClass <$> pAtom [Reserved Class]
                        <*> ppAtom [ReservedOp DoubleRightArrow]))
      <*> ppAtom [ConsIdent]
      <*> ppAtom [VarIdent]
-     <*> (((pMany pErr') <* pTestTok pEol) <|> pW)
-        where pW = Bin <$> pAtom [Reserved Where]
-               <*> please (pBlockOf $ pTree pWBlock err' atom')
-              pEol = [nextLine, endBlock]
+     <*> (Bin <$> ((pMany pErr) <* pTestTok pEol) <*> pW)
+        where pW = PWhere <$> pAtom [Reserved Where]
+               <*> (Bin <$> please (pBlockOf $ pTree pWBlock err' atom')
+                    <*> (Expr <$> pTree pWBlock err' atom'))
+              pEol = [nextLine, endBlock, startBlock, (Reserved Where)]
               pErr' = PError
                   <$> recoverWith (sym $ not . (\x -> isComment x
                                                || elem x [CppDirective
@@ -617,11 +618,13 @@ pInstance = PInstance <$> pAtom [Reserved Instance]
         <*> ppAtom [ConsIdent]
         <*> pInst
         <*> (Bin <$> (pMany pErr <* pTestTok pEol) <*> pW)
-        where pW = Bin <$> ppAtom [Reserved Where]
-               <*> (pBlockOf $ pTree pWBlock err' atom')
-              pInst = please (pAtom [ConsIdent] 
-                              <|> pParen (many (pTree' [(Reserved Data), (Reserved Type)] [])) pComments
-                              <|> pBrack (many (pTree' [(Reserved Data), (Reserved Type)] [])) pComments)
+        where pW = PWhere <$> pAtom [Reserved Where]
+               <*> (Bin <$> please (pBlockOf $ pTree pWBlock err' atom')
+                    <*> (Expr <$> pTree pWBlock err' atom'))
+              pInst = please
+                    ( pAtom [ConsIdent]
+                      <|> pParen (many (pTree' [(Reserved Data), (Reserved Type)] [])) pComments
+                      <|> pBrack (many (pTree' [(Reserved Data), (Reserved Type)] [])) pComments)
               pEol = [nextLine, startBlock, endBlock, (Reserved Where)]
               err' = [(Reserved In)]
               atom' = [(ReservedOp Equal),(ReservedOp Pipe), (Reserved In)]
