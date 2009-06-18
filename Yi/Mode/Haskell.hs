@@ -8,7 +8,7 @@ module Yi.Mode.Haskell
    preciseMode,
    literateMode,
    fastMode,
-   
+
    -- * IO-level operations
    ghciGet,
    ghciSend,
@@ -39,7 +39,6 @@ import qualified Yi.Lexer.LiterateHaskell as LiterateHaskell
 import Yi.Lexer.Haskell as Haskell
 import qualified Yi.Mode.Interactive as Interactive
 import Yi.Modes (anyExtension, extensionOrContentsMatch)
-import Yi.Mode.Haskell.Dollarify
 import Yi.MiniBuffer
 
 haskellAbstract :: Mode syntax
@@ -190,14 +189,14 @@ cleverAutoIndentHaskellB e behaviour = do
   case getLastPath e solPnt of
     Nothing -> return ()
     Just path -> let stops = stopsOf path
-                 in trace ("Stops = " ++ show stops) $      
-                    trace ("firstTokOnLine = " ++ show firstTokOnLine) $      
+                 in trace ("Stops = " ++ show stops) $
+                    trace ("firstTokOnLine = " ++ show firstTokOnLine) $
                     cycleIndentsB behaviour stops
 
 cleverAutoIndentHaskellC :: Hask.Tree TT -> IndentBehaviour -> BufferM ()
 cleverAutoIndentHaskellC (PModule _ (Just prog)) beh
     = cleverAutoIndentHaskellC' (getExprs prog) beh
-cleverAutoIndentHaskellC (PModule _ (Nothing)) _ = return ()
+cleverAutoIndentHaskellC _ _ = return ()
 cleverAutoIndentHaskellC' ::[Exp TT] -> IndentBehaviour -> BufferM ()
 cleverAutoIndentHaskellC' e behaviour = do
   indentSettings <- indentSettingsB
@@ -213,9 +212,12 @@ cleverAutoIndentHaskellC' e behaviour = do
   let stopsOf :: [Hask.Exp TT] -> [Int]
       stopsOf (g@(Hask.Paren (Hask.PAtom open _) ctnt (Hask.PAtom close _)):ts)
           | isErrorTok (tokT close) || getLastOffset g >= solPnt
-              = [groupIndent open ctnt]  -- stop here: we want to be "inside" that group.
-          | otherwise = stopsOf ts -- this group is closed before this line; just skip it.
-      stopsOf ((Hask.PAtom (Tok {tokT = t}) _):_) | startsLayout t = [nextIndent, previousIndent + indentLevel]
+              = [groupIndent open ctnt]
+            -- stop here: we want to be "inside" that group.
+          | otherwise = stopsOf ts
+           -- this group is closed before this line; just skip it.
+      stopsOf ((Hask.PAtom (Tok {tokT = t}) _):_) | startsLayout t
+          = [nextIndent, previousIndent + indentLevel]
         -- of; where; etc. we want to start the block here.
         -- Also use the next line's indent:
         -- maybe we are putting a new 1st statement in the block here.
@@ -224,16 +226,16 @@ cleverAutoIndentHaskellC' e behaviour = do
          Nothing ->  0 : (firstTokOnCol w + 6) : []
          Just _ -> 0 : firstTokOnCol w + 6 : []
          -- any random part of expression, we ignore it.
-      stopsOf (l@(Hask.PLet le e@(Hask.Block expr) _):ts') =
+      stopsOf (l@(Hask.PLet _ (Hask.Block _) _):ts') =
          case firstTokOnLine of
              Just (Reserved In) -> colOf l : []
              Just (Reserved Let) -> [0] -- TODO
              _ -> colOf l : stopsOf ts'
       stopsOf (t@(Hask.Block _):ts') = shiftBlock + maybe 0 firstTokOnCol (getFirstElement t) : stopsOf ts'
-      stopsOf ((Hask.PGuard' pipe _ _ (e:expr)):ts') = case firstTokOnLine of
-          Nothing -> maybe 0 firstTokOnCol (getFirstElement e) : stopsOf expr ++ stopsOf ts'
+      stopsOf ((Hask.PGuard' pipe _ _ (e':expr)):ts') = case firstTokOnLine of
+          Nothing -> maybe 0 firstTokOnCol (getFirstElement e') : stopsOf expr ++ stopsOf ts'
           Just (ReservedOp Haskell.Pipe) -> firstTokOnCol pipe : []
-          _ -> maybe 0 firstTokOnCol (getFirstElement e) : stopsOf expr
+          _ -> maybe 0 firstTokOnCol (getFirstElement e') : stopsOf expr
       stopsOf (Hask.PError _ _ _:ts') = stopsOf ts'
       stopsOf (d@(Hask.PData _ _ _ _):ts') = colOf d + indentLevel : stopsOf ts'
       stopsOf ((Hask.RHS (Hask.PAtom eq _) []):ts') = previousIndent : (firstTokOnCol eq + 2) : stopsOf ts'
@@ -244,11 +246,10 @@ cleverAutoIndentHaskellC' e behaviour = do
           Just (Operator op) -> opLength op (maybe 0 firstTokOnCol (getFirstElement exp)) : stopsOf r
           -- case of an operator should check so that value always is at least 1
           Just _ -> previousIndent : maybe 0 firstTokOnCol (getFirstElement exp) : stopsOf r ++ stopsOf ts'
-      stopsOf ((Hask.Expr e):ts) = stopsOf e ++ stopsOf ts
+      stopsOf ((Hask.Expr e'):ts) = stopsOf e' ++ stopsOf ts
       stopsOf ((Hask.TS _ _):ts') = stopsOf ts'
-      stopsOf ((Hask.PError _ _ _):ts') = stopsOf ts'
       stopsOf [] = []
-      stopsOf (r:_) = error (show r) -- stopsOf ts -- not yet handled stuff
+      stopsOf (r:_) = error (show r) -- not yet handled stuff
        -- calculate indentation of operator (must be at least 1 to be valid)
       colOf :: Foldable t => t TT -> Int
       colOf = maybe 0 firstTokOnCol . getFirstElement
