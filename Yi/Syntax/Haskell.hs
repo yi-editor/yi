@@ -419,7 +419,7 @@ pExports :: Parser TT (Exp TT)
 pExports = pParen (pSepBy pExport pComma) pComments
 
 pExport :: Parser TT (Exp TT)
-pExport = (optional $ exact [nextLine]) *>
+pExport = (optional $ exact [nextLine]) *> please
         ( pVarId
           <|> pEModule
           <|> Bin <$> pQvarsym <*> (DC <$> pOpt expSpec) -- typeOperator
