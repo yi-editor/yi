@@ -3,8 +3,8 @@
 -- Copyright (c) JP Bernardy 2008
 -- Note if the layout of the first line (not comments)
 -- is wrong the parser will only parse what is in the blocks given by Layout.hs
-module Yi.Syntax.Haskell ( Program (..)
-                         , PModule (..)
+module Yi.Syntax.Haskell ( PModule (..)
+                         , PModuleDecl (..)
                          , PImport (..)
                          , Exp (..)
                          , Tree
@@ -52,20 +52,20 @@ isBrace (Tok b _ _) = (Special '{') == b
 ignoredToken :: TT -> Bool
 ignoredToken (Tok t _ (Posn _ _ _)) = isComment t || t == CppDirective
 
-type Tree t = Program t
+type Tree t = PModule t
 type PAtom t = Exp t
 type Block t = Exp t
 type PGuard t = Exp t
 
 -- | A program is some comments followed by a module and a body
-data Program t
-    = Program [t] (Maybe (Program t)) -- ^ A Program can be just comments
-    | ProgMod (PModule t) (Program t) -- ^ The module declaration part
+data PModule t
+    = PModule [t] (Maybe (PModule t)) -- ^ A PModule can be just comments
+    | ProgMod (PModuleDecl t) (PModule t) -- ^ The module declaration part
     | Body [PImport t] (Block t) (Block t) -- ^ The body of the module
   deriving Show
 
 -- | A module
-data PModule t = PModule (PAtom t) (PAtom t) (Exp t) (Exp t)
+data PModuleDecl t = PModuleDecl (PAtom t) (PAtom t) (Exp t) (Exp t)
     deriving Show
 
 -- | Imported things
@@ -161,11 +161,11 @@ instance SubTree (Exp TT) where
               fold' = foldMapToksAfter begin f
     foldMapToks f = foldMap (foldMapToks f)
 
-instance SubTree (Program TT) where
-    type Element (Program TT) = TT
+instance SubTree (PModule TT) where
+    type Element (PModule TT) = TT
     foldMapToksAfter begin f t0 = work t0
-        where work (Program m (Just p)) = foldMapToksAfter begin f m <> work p
-              work (Program m Nothing) = foldMapToksAfter begin f m
+        where work (PModule m (Just p)) = foldMapToksAfter begin f m <> work p
+              work (PModule m Nothing) = foldMapToksAfter begin f m
               work (ProgMod _ p) = work p
               work (Body _ (Block t) (Block t')) = (BL.foldMapAfter
                                 begin (foldMapToksAfter begin f) t)
@@ -186,8 +186,8 @@ instance SubTree (PImport TT) where
     foldMapToks f = foldMap (foldMapToks f)
 
 $(derive makeFoldable ''PImport)
+$(derive makeFoldable ''PModuleDecl)
 $(derive makeFoldable ''PModule)
-$(derive makeFoldable ''Program)
 
 $(derive makeFoldable ''Exp)
 instance IsTree Exp where
@@ -233,24 +233,24 @@ getSubtreeSpan tree = (posnOfs $ first, lastLine - firstLine)
           assertJust (Just x) = x
           assertJust _ = error "assertJust: Just expected"
 
-getExprs :: Program TT -> [Exp TT]
+getExprs :: PModule TT -> [Exp TT]
 getExprs (ProgMod _ b)     = getExprs b
 getExprs (Body _ exp exp') = [exp, exp']
-getExprs (Program _ (Just e)) = getExprs e
+getExprs (PModule _ (Just e)) = getExprs e
 getExprs _                 = [] -- error "no match"
 
 -- | The parser
 parse :: P TT (Tree TT)
-parse = pProgram <* eof
+parse = pPModule <* eof
 
 -- | Parse a program
-pProgram :: Parser TT (Program TT)
-pProgram = Program <$> pComments <*> optional
-           (pBlockOf' (ProgMod <$> pModule
+pPModule :: Parser TT (PModule TT)
+pPModule = PModule <$> pComments <*> optional
+           (pBlockOf' (ProgMod <$> pModuleDecl
                        <*> pModBody <|> pBody))
 
 -- | Parse a body that follows a module
-pModBody :: Parser TT (Program TT)
+pModBody :: Parser TT (PModule TT)
 pModBody = ((exact [startBlock]) *>
             (Body <$> pImports
              <*> ((pTestTok elems *> pBod)
@@ -268,7 +268,7 @@ pEmptyBL :: Parser TT (Exp TT)
 pEmptyBL = Block <$> pure BL.nil
 
 -- | Parse a body of a program
-pBody :: Parser TT (Program TT)
+pBody :: Parser TT (PModule TT)
 pBody = Body <$> noImports <*> (Block <$> pBlocks pDTree) <*> pEmptyBL
     <|> Body <$> pImports <*> ((pTestTok elems *> (Block <$> pBlocks pDTree))
                                <|> pEmptyBL) <*> pEmptyBL
@@ -397,13 +397,13 @@ pComma = pAtom [Special ',']
 -- End of helper functions Parsing different parts follows
 
 -- | Parse a Module declaration
-pModule :: Parser TT (PModule TT)
-pModule = PModule <$> pAtom [Reserved Module]
-      <*> ppAtom [ConsIdent]
-      <*> pExports
-      <*> ((optional $ exact [nextLine]) *>
-           (Bin <$> ppAtom [Reserved Where])
-           <*> pMany pErr') <* pTestTok elems
+pModuleDecl :: Parser TT (PModuleDecl TT)
+pModuleDecl = PModuleDecl <$> pAtom [Reserved Module]
+          <*> ppAtom [ConsIdent]
+          <*> pExports
+          <*> ((optional $ exact [nextLine]) *>
+               (Bin <$> ppAtom [Reserved Where])
+               <*> pMany pErr') <* pTestTok elems
     where pExports = pOpt (pParen (pSepBy pExport pComma) pComments)
           pExport = ((optional $ exact [nextLine]) *>
                      (pVarId
@@ -455,8 +455,8 @@ pImport = PImport  <$> pAtom [Reserved Import]
                           <|>  pQvarsym) <*> pOpt pImpS
 
 -- | Parse simple types
-pSType :: Parser TT (Exp TT)
-pSType = PType <$> pAtom [Reserved Type]
+pType :: Parser TT (Exp TT)
+pType = PType <$> pAtom [Reserved Type]
      <*> (TC <$> ppCons) <*> pMany pQvarid
      <*> ppAtom [ReservedOp Equal]
      <*> (TC <$> please pTypeRhs) <* pTestTok pEol
@@ -474,11 +474,11 @@ pSimpleType = Bin <$> (TC <$> ppCons) <*> pMany pQvarid
           <|> pParen ((:) <$> (TC <$> ppCons) <*> many pQvarid) pComments
 
 -- | Parse data declarations
-pSData :: Parser TT (Exp TT)
-pSData = PData <$> pAtom [(Reserved Data)]
+pData :: Parser TT (Exp TT)
+pData = PData <$> pAtom [(Reserved Data)]
      <*> pOpt (TC <$> pContext)
      <*> (Bin <$> (TC <$> pSimpleType)   <*> pMany pErr')
-     <*> (pOpt (Bin <$> pSData' <*> pMany pErr)) <* pTestTok pEol
+     <*> (pOpt (Bin <$> pDataRHS <*> pMany pErr)) <* pTestTok pEol
     where pErr' = PError
               <$> recoverWith (sym $ not .
                                (\x -> isComment x
@@ -491,8 +491,8 @@ pSData = PData <$> pAtom [(Reserved Data)]
           pEol = [(Special ';'), nextLine, endBlock]
 
 -- | Parse second half of the data declaration, if there is one
-pSData' :: Parser TT (Exp TT)
-pSData' = PData' <$> pAtom eqW -- either we have standard data
+pDataRHS :: Parser TT (Exp TT)
+pDataRHS = PData' <$> pAtom eqW -- either we have standard data
                                 -- or we have GADT:s
       <*> (please pConstrs
            <|> pBlockOf' (Block <$> many pGadt
@@ -730,8 +730,8 @@ pBlockOf' p = exact [startBlock] *> p <* exact [endBlock] -- see HACK above
 pTopDecl :: ([Token] ->[Token] -> Parser TT [(Exp TT)])
       -> [Token] -> [Token] -> Parser TT [(Exp TT)]
 pTopDecl opt err at = pFunLHS err at
-                  <|> ((:) <$> pSType <*> pure [])
-                  <|> ((:) <$> pSData <*> pure [])
+                  <|> ((:) <$> pType <*> pure [])
+                  <|> ((:) <$> pData <*> pure [])
                   <|> ((:) <$> pClass <*> pure [])
                   <|> ((:) <$> pInstance <*> pure [])
                   <|> opt err at

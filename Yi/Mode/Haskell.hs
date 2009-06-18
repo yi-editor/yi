@@ -195,9 +195,9 @@ cleverAutoIndentHaskellB e behaviour = do
                     cycleIndentsB behaviour stops
 
 cleverAutoIndentHaskellC :: Hask.Tree TT -> IndentBehaviour -> BufferM ()
-cleverAutoIndentHaskellC (Program _ (Just prog)) beh
+cleverAutoIndentHaskellC (PModule _ (Just prog)) beh
     = cleverAutoIndentHaskellC' (getExprs prog) beh
-cleverAutoIndentHaskellC (Program _ (Nothing)) _ = return ()
+cleverAutoIndentHaskellC (PModule _ (Nothing)) _ = return ()
 cleverAutoIndentHaskellC' ::[Exp TT] -> IndentBehaviour -> BufferM ()
 cleverAutoIndentHaskellC' e behaviour = do
   indentSettings <- indentSettingsB

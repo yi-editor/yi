@@ -22,8 +22,8 @@ getStrokes point begin _end t0 = trace (show t0) result
 getStrokeProg ::  Point -> Point -> Point -> Tree TT -> Endo [Stroke]
 getStrokeProg point begin _end prog
     = case prog of
-        (Program c m)
-            ->com c <> funPr m
+        (PModule c m)
+            -> com c <> funPr m
         (ProgMod m body)
             -> getStrokeMod point begin _end m
             <> getStrokeProg point begin _end body
@@ -36,8 +36,8 @@ getStrokeProg point begin _end prog
         funImp imps        = foldMap (getStrokeImp point begin _end) imps
 
 -- | Get strokes Module for module
-getStrokeMod :: Point -> Point -> Point -> PModule TT -> Endo [Stroke]
-getStrokeMod point begin _end (PModule m na e w)
+getStrokeMod :: Point -> Point -> Point -> PModuleDecl TT -> Endo [Stroke]
+getStrokeMod point begin _end (PModuleDecl m na e w)
               | isErrN na || isErrN w
                      = paintAtom errorStyle m
                     <> getStr tkImport point begin _end na <> getStrokes' e
