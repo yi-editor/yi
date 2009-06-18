@@ -241,11 +241,11 @@ getExprs _                 = [] -- error "no match"
 
 -- | The parser
 parse :: P TT (Tree TT)
-parse = pPModule <* eof
+parse = pModule <* eof
 
--- | Parse a program
-pPModule :: Parser TT (PModule TT)
-pPModule = PModule <$> pComments <*> optional
+-- | Parse a module
+pModule :: Parser TT (PModule TT)
+pModule = PModule <$> pComments <*> optional
            (pBlockOf' (ProgMod <$> pModuleDecl
                        <*> pModBody <|> pBody))
 
@@ -400,30 +400,33 @@ pComma = pAtom [Special ',']
 pModuleDecl :: Parser TT (PModuleDecl TT)
 pModuleDecl = PModuleDecl <$> pAtom [Reserved Module]
           <*> ppAtom [ConsIdent]
-          <*> pExports
+          <*> pOpt pExports
           <*> ((optional $ exact [nextLine]) *>
                (Bin <$> ppAtom [Reserved Where])
                <*> pMany pErr') <* pTestTok elems
-    where pExports = pOpt (pParen (pSepBy pExport pComma) pComments)
-          pExport = ((optional $ exact [nextLine]) *>
-                     (pVarId
-                      <|> pEModule
-                      <|> (Bin <$> pQvarsym <*> (DC <$> pOpt helper))
-                      <|> (Bin <$> (TC <$> pQtycon) <*> (DC <$> pOpt helper))
-                     ))
-          helper = pParen (((:) <$> please
-                            (pAtom [ReservedOp $ OtherOp ".."]) <*> pure [])
-                           <|> pSepBy pQvarid pComma)
-                   pComments
-          elems = [nextLine, startBlock, endBlock]
+    where elems = [nextLine, startBlock, endBlock]
           pErr' = PError <$>
-                 recoverWith (sym $ not . (\x -> isComment x
-                                           || elem x [CppDirective
-                                                     , startBlock
-                                                     , endBlock
-                                                     , nextLine]))
-             <*> pure (newT '!')
-             <*> pComments
+                  recoverWith (sym $ not .
+                               (\x -> isComment x
+                                || elem x [CppDirective
+                                          , startBlock
+                                          , endBlock
+                                          , nextLine]))
+              <*> pure (newT '!')
+              <*> pComments
+
+pExports = pParen (pSepBy pExport pComma) pComments
+pExport = (optional $ exact [nextLine]) *>
+        ( pVarId
+          <|> pEModule
+          <|> Bin <$> pQvarsym <*> (DC <$> pOpt expSpec) -- typeOperator
+          <|> Bin <$> (TC <$> pQtycon) <*> (DC <$> pOpt expSpec)
+        )
+        where pDotOp = (ReservedOp $ OtherOp "..")
+              expSpec = pParen
+                        (((:) <$> please
+                          (pAtom [ReservedOp $ OtherOp ".."]) <*> pure [])
+                         <|> pSepBy pQvarid pComma) pComments
 
 -- | Check if next token is in given list
 pTestTok :: [Token] -> Parser TT ()
