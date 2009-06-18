@@ -38,7 +38,7 @@ getStrokeProg point begin _end prog
 -- | Get strokes Module for module
 getStrokeMod :: Point -> Point -> Point -> PModuleDecl TT -> Endo [Stroke]
 getStrokeMod point begin _end (PModuleDecl m na e w)
-              | isErrN na || isErrN w
+              | isErrN na || isErrN w || isErrN e
                      = paintAtom errorStyle m
                     <> getStr tkImport point begin _end na <> getStrokes' e
                     <> getStrokes' w
