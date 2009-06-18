@@ -195,9 +195,14 @@ cleverAutoIndentHaskellB e behaviour = do
 
 cleverAutoIndentHaskellC :: Hask.Tree TT -> IndentBehaviour -> BufferM ()
 cleverAutoIndentHaskellC (PModule _ (Just prog)) beh
-    = cleverAutoIndentHaskellC' (getExprs prog) beh
+    = cleverAutoIndentHaskellC' (iMod prog) beh
+        where iMod (ProgMod (PModuleDecl _ _ expor _ ) r)
+                   = [expor] ++ iMod r
+              iMod (Body imps b b') = fmap iImp imps ++ [b, b']
+              iImp (PImport _ _ _ _ spec) = spec
 cleverAutoIndentHaskellC _ _ = return ()
-cleverAutoIndentHaskellC' ::[Exp TT] -> IndentBehaviour -> BufferM ()
+
+cleverAutoIndentHaskellC' :: [Exp TT] -> IndentBehaviour -> BufferM ()
 cleverAutoIndentHaskellC' e behaviour = do
   indentSettings <- indentSettingsB
   let indentLevel = shiftWidth indentSettings
@@ -222,6 +227,10 @@ cleverAutoIndentHaskellC' e behaviour = do
         -- Also use the next line's indent:
         -- maybe we are putting a new 1st statement in the block here.
       stopsOf ((Hask.PAtom _ __):ts) = stopsOf ts
+      stopsOf (Hask.Opt (Just t):ts) = stopsOf (t:ts)
+      stopsOf (Hask.TC t:ts) = stopsOf (t:ts)
+      stopsOf (Hask.DC t:ts) = stopsOf (t:ts)
+      stopsOf (Hask.Bin t t':ts) = stopsOf (t:t':ts)
       stopsOf ((Hask.PWhere (Hask.PAtom w _) _):_) = case firstTokOnLine of
          Nothing ->  0 : (firstTokOnCol w + 6) : []
          Just _ -> 0 : firstTokOnCol w + 6 : []
