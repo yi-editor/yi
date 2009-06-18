@@ -415,7 +415,10 @@ pModuleDecl = PModuleDecl <$> pAtom [Reserved Module]
               <*> pure (newT '!')
               <*> pComments
 
+pExports :: Parser TT (Exp TT)
 pExports = pParen (pSepBy pExport pComma) pComments
+
+pExport :: Parser TT (Exp TT)
 pExport = (optional $ exact [nextLine]) *>
         ( pVarId
           <|> pEModule
