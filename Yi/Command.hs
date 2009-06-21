@@ -106,7 +106,7 @@ grepFind :: String ::: FilePatternTag -> String ::: RegexTag -> YiM ()
 grepFind (Doc pattern) (Doc searched) = withOtherWindow $ do
     startSubprocess "find" [".", 
                             "-name", "_darcs", "-prune", "-o", 
-                            "-name", pattern, "-exec", "grep", "-Hnie", searched, "{}", ";"] (const $ return ())
+                            "-name", searched, "-exec", "grep", "-Hnie", pattern, "{}", ";"] (const $ return ())
     withBuffer $ setMode Compilation.mode
     return ()
 
