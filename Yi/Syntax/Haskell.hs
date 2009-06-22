@@ -243,7 +243,7 @@ getExprs _                 = [] -- error "no match"
 parse :: P TT (Tree TT)
 parse = pModule <* eof
 
--- | Parse a module
+-- | @pModule@ parse a module
 pModule :: Parser TT (PModule TT)
 pModule = PModule <$> pComments <*> optional
            (pBlockOf' (ProgMod <$> pModuleDecl
@@ -264,6 +264,7 @@ pModBody = ((exact [startBlock]) *>
     where pBod  = Block <$> pBlocks pDTree
           elems = [nextLine, startBlock]
 
+-- | @pEmptyBL@ A parser returning an empty block
 pEmptyBL :: Parser TT (Exp TT)
 pEmptyBL = Block <$> pure BL.nil
 
@@ -322,11 +323,11 @@ endBlock :: Token
 endBlock = Special '>'
 
 
--- | parse a special symbol
+-- | @sym f@ returns a parser parsing @f@ as a special symbol
 sym :: (Token -> Bool) -> Parser TT TT
 sym f = symbol (f . tokT)
 
--- | Parse anything that is in the list
+-- | @exact tokList@ parse anything that is in @tokList@
 exact :: [Token] -> Parser TT TT
 exact = sym . (flip elem)
 
@@ -334,7 +335,8 @@ exact = sym . (flip elem)
 newT :: Char -> TT
 newT = tokFromT . Special
 
--- | Parse a Tree tok using please
+-- | @please p@ returns a parser parsing either @p@ or recovers with the
+-- (Special '!') token.
 please :: Parser TT (Exp TT) -> Parser TT (Exp TT)
 please = (<|>) (PError <$> (recoverWith $ pure $ newT '!')
                 <*> pure (newT '!')
@@ -433,7 +435,7 @@ pExport = (optional $ exact [nextLine]) *> please
         where pDotOp = (ReservedOp $ OtherOp "..")
               expSpec = pParen
                         (((:) <$> please
-                          (pAtom [ReservedOp $ OtherOp ".."]) <*> pure [])
+                          (pAtom [pDotOp]) <*> pure [])
                          <|> pSepBy pQvarid pComma) pComments
 
 -- | Check if next token is in given list
