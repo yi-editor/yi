@@ -382,13 +382,18 @@ recoverAtom = PAtom <$> (recoverWith $ pure $ newT '!') <*> pure []
 pCAtom :: [Token] -> Parser TT [TT] -> Parser TT (Exp TT)
 pCAtom r c = PAtom <$> exact r <*> c
 
--- | Parse something separated by, with optional ending
+-- | @pSepBy p sep@ parse /zero/ or more occurences of @p@, separated
+-- by @sep@, with optional ending @sep@,
+-- this is quite similar to the sepBy function provided in
+-- Parsec, but this one allows an optional extra separator at the end.
+--
+-- > commaSep p = p `pSepBy` (symbol (==(Special ',')))
+
 pSepBy :: Parser TT (Exp TT) -> Parser TT (Exp TT) -> Parser TT [Exp TT]
-pSepBy r p = pure []
-          <|> (:) <$> r <*> (pSep r p <|> pure [])
-          <|> (:) <$> p <*> pure [] -- optional ending comma
-    where pTok r' p' = (:) <$> r' <*> (pure [] <|> pSep r' p')
-          pSep r' p' = (:) <$> p' <*> (pure [] <|> pTok r' p')
+pSepBy p sep = pure []
+           <|> (:) <$> p <*> (pSepBy1 p sep <|> pure [])
+           <|> (:) <$> sep <*> pure [] -- optional ending separator
+    where pSepBy1 r p' = (:) <$> p' <*> (pure [] <|> pSepBy1 p' r)
 
 -- | Parse a comma separator
 pComma :: Parser TT (Exp TT)
