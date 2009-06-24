@@ -262,7 +262,7 @@ pModBody = ((exact [startBlock]) *>
        <|> ((exact [nextLine]) *> pBody)
        <|> Body <$> pure [] <*> pEmptyBL <*> pEmptyBL
     where pBod  = Block <$> pBlocks pDTree
-          elems = [nextLine, startBlock]
+          elems = [(Special ';'), nextLine, startBlock]
 
 -- | @pEmptyBL@ A parser returning an empty block
 pEmptyBL :: Parser TT (Exp TT)
