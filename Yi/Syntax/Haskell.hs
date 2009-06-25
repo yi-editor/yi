@@ -100,7 +100,7 @@ data Exp t
     | Context (Exp t) (Exp t) (PAtom t) -- ^
     | PGuard [PGuard t] -- ^ Righthandside of functions with |
       -- the PAtom in PGuard' does not contain any comments
-    | PGuard' t [Exp t] (PAtom t) [Exp t]
+    | PGuard' (PAtom t) [Exp t] (PAtom t) [Exp t]
       -- type constructor is just a wrapper to indicate which highlightning to
       -- use.
     | TC (Exp t) -- ^ Type constructor
@@ -138,7 +138,7 @@ instance SubTree (Exp TT) where
                                     <> work e
                                     <> work e'
               work (PGuard l) = foldMap work l
-              work (PGuard' t e t' e') = f t
+              work (PGuard' t e t' e') = work t
                                       <> foldMap work e
                                       <> work t'
                                       <> foldMap work e'
@@ -664,7 +664,7 @@ pInstance = PInstance <$> pAtom [Reserved Instance]
 -- check if pEq can be used here instead problem with optional ->
 pGuard :: Parser TT (Exp TT)
 pGuard = PGuard
-     <$> some (PGuard' <$> (exact [ReservedOp Pipe]) <*>
+     <$> some (PGuard' <$> (PAtom <$> exact [ReservedOp Pipe] <*> pure []) <*>
                -- comments are by default parsed after this
                (pTr' err at)
                <*> please (PAtom <$> exact

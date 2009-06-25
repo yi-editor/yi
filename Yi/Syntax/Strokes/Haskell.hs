@@ -37,23 +37,18 @@ getStrokeProg point begin _end prog
 
 -- | Get strokes Module for module
 getStrokeMod :: Point -> Point -> Point -> PModuleDecl TT -> Endo [Stroke]
-getStrokeMod point begin _end (PModuleDecl m na e w)
-              | isErrN na || isErrN w || isErrN e
-                     = paintAtom errorStyle m
-                    <> getStr tkImport point begin _end na <> getStrokes' e
-                    <> getStrokes' w
-              | otherwise = getStrokes' m <> getStr tkImport point begin _end na
-                         <> getStrokes' e <> getStrokes' w
-    where getStrokes' r = getStr tkDConst point begin _end r
+getStrokeMod point begin _end tm@(PModuleDecl m na e w)
+    = pKW tm m <> getStr tkImport point begin _end na
+   <> getStrokes' e <> getStrokes' w
+        where getStrokes' r = getStr tkDConst point begin _end r
+              pKW b word | isErrN b = paintAtom errorStyle word
+                         | otherwise = getStrokes' word
 
 -- | Get strokes for Imports
 getStrokeImp ::  Point -> Point -> Point -> PImport TT -> Endo [Stroke]
-getStrokeImp point begin _end (PImport m qu na t t')
-              | isErrN t' || isErrN na || isErrN t
-                          = paintAtom errorStyle m <> paintQu qu
-                         <> getStr tkImport point begin _end na <> paintAs t  <> paintHi t'
-              | otherwise = getStrokes' m <> paintQu qu
-                         <> getStr tkImport point begin _end na <> paintAs t  <> paintHi t'
+getStrokeImp point begin _end imp@(PImport m qu na t t')
+    = pKW imp m <> paintQu qu
+   <> getStr tkImport point begin _end na <> paintAs t  <> paintHi t'
     where getStrokes' r = getStr tkDConst point begin _end r
           paintAs (Opt (Just (Bin (PAtom n c) tw)))
               = (one $ (fmap (const keywordStyle) . tokToSpan) n) <> com c
@@ -65,9 +60,12 @@ getStrokeImp point begin _end (PImport m qu na t t')
                                              <> com c <> getStr tkImport point begin _end tw
                                              <> getStrokes' r
           paintHi a = getStrokes' a
+          pKW b word | isErrN b = paintAtom errorStyle word
+                     | otherwise = getStrokes' word
 
 -- | Get strokes for expressions and declarations
-getStr ::(TT -> Endo [Stroke]) -> Point -> Point -> Point -> Exp TT -> Endo [Stroke]
+getStr :: (TT -> Endo [Stroke]) -> Point -> Point -> Point -> Exp TT 
+          -> Endo [Stroke]
 getStr tk point begin _end t0 = getStrokes' t0
     where getStrokes' ::Exp TT -> Endo [Stroke]
           getStrokes' (PAtom t c) = tk t <> com c
@@ -90,20 +88,13 @@ getStr tk point begin _end t0 = getStrokes' t0
           getStrokes' (PWhere e exp) = getStrokes' e <> getStrokes' exp
           getStrokes' (RHS eq g) = getStrokes' eq <> getStrokesL g
           getStrokes' (Bin l r) = getStrokes' l <> getStrokes' r
-          getStrokes' (PType e na exp eq b)
-              | isErrN b ||isErrN na || isErrN eq
-                          = foldMap errStyle e <> getStrokes' na
-                                       <> getStrokes' exp <> getStrokes' eq
-                                       <> getStrokes' b
-              | otherwise = getStrokes' e <> getStrokes' na
-                                       <> getStrokes' exp <> getStrokes' eq
-                                       <> getStrokes' b
-          getStrokes' (PData kw na exp eq)
-              | isErrN exp || isErrN na ||isErrN eq
-                           = foldMap errStyle kw <> getStrokes' na
-                                        <> getStrokes' eq
-              | otherwise = getStrokes' kw <> getStrokes' na
-                         <> getStrokes' exp <> getStrokes' eq
+          getStrokes' ty@(PType e na exp eq b)
+               = pKW ty e <> getStrokes' na
+              <> getStrokes' exp <> getStrokes' eq
+              <> getStrokes' b
+          getStrokes' da@(PData kw na exp eq)
+               = pKW da kw <> getStrokes' na
+              <> getStrokes' exp <> getStrokes' eq
           getStrokes' (PData' eq b d) =
                 getStrokes' eq <> getStrokes' b
                                <> getStrokes' d
@@ -118,29 +109,20 @@ getStr tk point begin _end t0 = getStrokes' t0
           getStrokes' (DC (PAtom l c)) = tkDConst l <> com c
           getStrokes' (DC r) = getStrokes' r -- do not color operator dc
           getStrokes' (PGuard ls) = getStrokesL ls
-          getStrokes' (PGuard' t e t' e')
-              | any isErrN e || any isErrN e' || isErrN t'
-              = errStyle t <> getStrokesL e <> getStrokes' t' <> getStrokesL e'
-              | otherwise
-              = one (ts t) <> getStrokesL e <> getStrokes' t' <> getStrokesL e'
-          getStrokes' (PClass e e' exp exp' e'')
-              | isErrN e' || isErrN exp || isErrN exp' || isErrN e''
-              = paintAtom errorStyle e <> getStrokes' e'
-                <> getStrokes' exp <> getStrokes' exp'
-                <> getStrokes' e''
-              | otherwise = getStrokes' e <> getStrokes' e'
-                <> getStrokes' exp <> getStrokes' exp'
-                <> getStrokes' e''
-          getStrokes' (PInstance e e' exp exp' e'')
-              | isErrN e' || isErrN exp || isErrN exp' || isErrN e''
-              = paintAtom errorStyle e <> getStrokes' e'
-                <> getStrokes' exp <> getStrokes' exp'
-                <> getStrokes' e''
-              | otherwise = getStrokes' e <> getStrokes' e'
+          getStrokes' g@(PGuard' t e t' e')
+              = pKW g t <> getStrokesL e <> getStrokes' t' <> getStrokesL e'
+          getStrokes' cl@(PClass e e' exp exp' e'')
+              = pKW cl e <> getStrokes' e'
+             <> getStrokes' exp <> getStrokes' exp'
+             <> getStrokes' e''
+          getStrokes' ins@(PInstance e e' exp exp' e'')             
+              = pKW ins e <> getStrokes' e'
                 <> getStrokes' exp <> getStrokes' exp'
                 <> getStrokes' e''
           getStrokes' a = error (show a)
           getStrokesL = foldMap getStrokes'
+          pKW b word | isErrN b = paintAtom errorStyle word
+                     | otherwise = getStrokes' word
 
 -- Stroke helpers follows
 
@@ -163,7 +145,7 @@ paintAtom _ _ = error "wrong usage of paintAtom"
 isErr :: TT -> Bool
 isErr = isErrorTok . tokT
 
-isErrN :: (Exp TT) -> Bool
+isErrN :: (Foldable v) => (v TT) -> Bool
 isErrN t = (any isErr t) 
 --         || (not $ null $ isError' t)
 
