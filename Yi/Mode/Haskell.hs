@@ -199,7 +199,8 @@ cleverAutoIndentHaskellC (PModule _ (Just prog)) beh
         where iMod (ProgMod (PModuleDecl _ _ expor _ ) r)
                    = [expor] ++ iMod r
               iMod (Body imps b b') = fmap iImp imps ++ [b, b']
-              iImp (PImport _ _ _ _ spec) = spec
+              iMod _ = []
+              iImp (PImport _ _ _ _ spec') = spec'
 cleverAutoIndentHaskellC _ _ = return ()
 
 cleverAutoIndentHaskellC' :: [Exp TT] -> IndentBehaviour -> BufferM ()
@@ -231,9 +232,10 @@ cleverAutoIndentHaskellC' e behaviour = do
       stopsOf (Hask.TC t:ts) = stopsOf (t:ts)
       stopsOf (Hask.DC t:ts) = stopsOf (t:ts)
       stopsOf (Hask.Bin t t':ts) = stopsOf (t:t':ts)
-      stopsOf (Hask.PClass k c v w b:ts) = indentLevel: stopsOf [b]
+      stopsOf (Hask.PGuard ls:ts) = stopsOf ls ++ stopsOf ts
+      stopsOf (Hask.PClass _ _ _ _ b:ts) = indentLevel: stopsOf [b]
                                         ++ stopsOf ts
-      stopsOf (Hask.PInstance k c v w b:ts) = indentLevel: stopsOf [b]
+      stopsOf (Hask.PInstance _ _ _ _ b:ts) = indentLevel: stopsOf [b]
                                            ++ stopsOf ts
       stopsOf ((Hask.PWhere (Hask.PAtom w _) _):_) = case firstTokOnLine of
          Nothing ->  0 : (firstTokOnCol w + 6) : []
@@ -241,31 +243,36 @@ cleverAutoIndentHaskellC' e behaviour = do
          -- any random part of expression, we ignore it.
       stopsOf (l@(Hask.PLet _ (Hask.Block _) _):ts') =
          case firstTokOnLine of
-             Just (Reserved In) -> colOf l : []
+             Just (Reserved In) -> colOf' l : []
              Just (Reserved Let) -> [0] -- TODO
-             _ -> colOf l : stopsOf ts'
-      stopsOf (t@(Hask.Block _):ts') = shiftBlock + maybe 0 firstTokOnCol (getFirstElement t) : stopsOf ts'
+             _ -> colOf' l : stopsOf ts'
+      stopsOf (t@(Hask.Block _):ts') = shiftBlock + colOf' t : stopsOf ts'
       stopsOf ((Hask.PGuard' pipe _ _ (e':expr)):ts') = case firstTokOnLine of
-          Nothing -> maybe 0 firstTokOnCol (getFirstElement e') : stopsOf expr ++ stopsOf ts'
-          Just (ReservedOp Haskell.Pipe) -> firstTokOnCol pipe : []
-          _ -> maybe 0 firstTokOnCol (getFirstElement e') : stopsOf expr
-      stopsOf (Hask.PError _ _ _:ts') = stopsOf ts'
-      stopsOf (d@(Hask.PData _ _ _ _):ts') = colOf d + indentLevel : stopsOf ts'
-      stopsOf ((Hask.RHS (Hask.PAtom eq _) []):ts') = previousIndent : (firstTokOnCol eq + 2) : stopsOf ts'
-      stopsOf ((Hask.RHS (Hask.PAtom eq _) r@(exp:_)):ts') = case firstTokOnLine of
-          Nothing -> previousIndent : maybe 0 firstTokOnCol (getFirstElement exp) : stopsOf r ++ stopsOf ts'
-          Just (ReservedOp Haskell.Equal) -> firstTokOnCol eq : stopsOf r
+          Nothing -> colOf' e' : stopsOf expr ++ stopsOf ts'
           Just (Reserved Haskell.Where) -> fmap (+indentLevel) (stopsOf ts')
-          Just (Operator op) -> opLength op (maybe 0 firstTokOnCol (getFirstElement exp)) : stopsOf r
-          -- case of an operator should check so that value always is at least 1
-          Just _ -> previousIndent : maybe 0 firstTokOnCol (getFirstElement exp) : stopsOf r ++ stopsOf ts'
+          Just (ReservedOp Haskell.Pipe) -> firstTokOnCol pipe : []
+          _ -> colOf' e' : stopsOf expr ++ stopsOf ts'
+      stopsOf (Hask.PError _ _ _:ts') = stopsOf ts'
+      stopsOf (d@(Hask.PData _ _ _ _):ts') = colOf' d + indentLevel
+                                           : stopsOf ts'
+      stopsOf ((Hask.RHS (Hask.PAtom eq _) []):ts') 
+          = previousIndent
+          : (firstTokOnCol eq + 2) : stopsOf ts'
+      stopsOf ((Hask.RHS (Hask.PAtom eq _) r@(exp:_)):ts')
+          = case firstTokOnLine of
+              Nothing -> previousIndent : colOf' exp : stopsOf r ++ stopsOf ts'
+              Just (ReservedOp Haskell.Equal) -> firstTokOnCol eq : stopsOf r
+              Just (Reserved Haskell.Where) -> fmap (+indentLevel) (stopsOf ts')
+              Just (Operator op) -> opLength op (colOf' exp) : stopsOf r
+         -- case of an operator should check so that value always is at least 1
+              Just _ -> previousIndent : colOf' exp : stopsOf r ++ stopsOf ts'
       stopsOf ((Hask.Expr e'):ts) = stopsOf e' ++ stopsOf ts
       stopsOf ((Hask.TS _ _):ts') = stopsOf ts'
       stopsOf [] = []
       stopsOf (r:_) = error (show r) -- not yet handled stuff
        -- calculate indentation of operator (must be at least 1 to be valid)
-      colOf :: Foldable t => t TT -> Int
-      colOf = maybe 0 firstTokOnCol . getFirstElement
+      colOf' :: Foldable t => t TT -> Int
+      colOf' = maybe 0 firstTokOnCol . getFirstElement
       opLength ts' r = let l = r - (length ts' + 1)
                        in  if l > 0 then l else 1
       firstTokOnCol = posnCol . tokPosn
@@ -274,15 +281,18 @@ cleverAutoIndentHaskellC' e behaviour = do
           takeWhile ((eolPnt >) . tokBegin) $ -- for laziness.
           filter (not . isErrorTok . tokT) $ allToks e
       shiftBlock = case firstTokOnLine of
-        Just (Reserved t) | t `elem` [Let,In,Where, Deriving] -> indentLevel -- no sure let/in should be here
+        Just (Reserved t) | t `elem` [Let,In,Where, Deriving] -> indentLevel
+        -- no sure let/in should be here
         Just (ReservedOp Haskell.Pipe) -> indentLevel
         Just (ReservedOp Haskell.Equal) -> indentLevel
         _ -> 0
       deepInGroup = maybe True insideGroup firstTokOnLine
       groupIndent (Tok {tokT = Special openChar, tokPosn = Posn _ _ openCol}) ctnt
           | deepInGroup = case firstTokNotOnLine ctnt of
-              -- examine the first token of the group (but not on the line we are indenting!)
-              Nothing -> openCol + nominalIndent openChar -- no such token: indent normally.
+              -- examine the first token of the group
+              -- (but not on the line we are indenting!)
+              Nothing -> openCol + nominalIndent openChar
+              -- no such token: indent normally.
               Just t -> posnCol . tokPosn $ t -- indent along that other token
           | otherwise = openCol
       groupIndent (Tok _ _ _) _ = error "unable to indent code"
