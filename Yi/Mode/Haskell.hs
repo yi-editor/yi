@@ -231,8 +231,10 @@ cleverAutoIndentHaskellC' e behaviour = do
       stopsOf (Hask.TC t:ts) = stopsOf (t:ts)
       stopsOf (Hask.DC t:ts) = stopsOf (t:ts)
       stopsOf (Hask.Bin t t':ts) = stopsOf (t:t':ts)
-      stopsOf (Hask.PClass k c v w b:ts) = indentLevel:stopsOf ts
-      stopsOf (Hask.PInstance k c v w b:ts) = indentLevel:stopsOf ts
+      stopsOf (Hask.PClass k c v w b:ts) = indentLevel: stopsOf [b]
+                                        ++ stopsOf ts
+      stopsOf (Hask.PInstance k c v w b:ts) = indentLevel: stopsOf [b]
+                                           ++ stopsOf ts
       stopsOf ((Hask.PWhere (Hask.PAtom w _) _):_) = case firstTokOnLine of
          Nothing ->  0 : (firstTokOnCol w + 6) : []
          Just _ -> 0 : firstTokOnCol w + 6 : []
