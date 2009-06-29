@@ -615,7 +615,7 @@ pLet = PLet <$> pAtom [Reserved Let]
         (Block <$> pBlocks 
          (pTr el [(ReservedOp Pipe),(ReservedOp Equal)]))
         <|> (pEmptyBL <* pTestTok pEol))
-   <*>  pOpt (PAtom <$> exact [Reserved In] <*> pEmpty)
+   <*>  pOpt (pCAtom [Reserved In] pEmpty)
     where pEol = [endBlock]
           el = [(Reserved Data),(Reserved Type)]
 
@@ -664,12 +664,11 @@ pInstance = PInstance <$> pAtom [Reserved Instance]
 -- check if pEq can be used here instead problem with optional ->
 pGuard :: Parser TT (Exp TT)
 pGuard = PGuard
-     <$> some (PGuard' <$> (PAtom <$> exact [ReservedOp Pipe] <*> pEmpty) <*>
+     <$> some (PGuard' <$> (pCAtom [ReservedOp Pipe] pEmpty) <*>
                -- comments are by default parsed after this
                (pTr' err at)
-               <*> please (PAtom <$> exact
-                            [(ReservedOp Equal),(ReservedOp RightArrow)]
-                            <*> pEmpty)
+               <*> please (pCAtom [(ReservedOp Equal),(ReservedOp RightArrow)]
+                           pEmpty)
                -- comments are by default parsed after this
                -- this must be -> if used in case
                <*> pTr' err' at')
@@ -711,7 +710,7 @@ pFunLHS err at = (:) <$> beginLine
                        , (Special '{')]
 
 pEq :: [Token] -> [Token] -> Parser TT (Exp TT)
-pEq _ at = RHS <$> (PAtom <$> exact [ReservedOp Equal] <*> pEmpty)
+pEq _ at = RHS <$> (pCAtom [ReservedOp Equal] pEmpty)
        <*> (pTr' err ([(ReservedOp Equal), (ReservedOp Pipe)] `union` at))
   where err  = [ (ReservedOp Equal)
                , (Reserved Class)
