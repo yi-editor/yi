@@ -695,10 +695,8 @@ pFunLHS err at = (:) <$> beginLine
                   <|> (pTr err (at `union` [(Special ',')
                                            , (ReservedOp (OtherOp "::"))]))
                   <|> ((:) <$> pAtom [Special ',']
-                       <*> pTopDecl err at))
-              -- change to opt err at <|> beginLine dont forget to 
-              -- include type data etc in err
-        where beginLine = (pParen (pTr err at) pEmpty)
+                       <*> (pFunLHS err at <|> pEmpty)))
+        where beginLine = pParen (pTr err at) pEmpty
                       <|> (PAtom <$> sym (flip notElem $ isNoise errors)
                            <*> pEmpty)
                       <|> (PError <$> recoverWith
@@ -776,8 +774,6 @@ pTr err at
        <*> pTr err (at \\ [(ReservedOp (OtherOp "::")), (Special ',')
                           , (ReservedOp RightArrow)]))
   <|> pToList (pFunRHS err (at \\ [(Special ','),(ReservedOp (OtherOp "::"))]))
-      -- guard or equal
-    where atom' = [(ReservedOp Equal),(ReservedOp Pipe)]
 
 -- | Parse something where guards are not allowed
 pTr' :: [Token] -> [Token] -> Parser TT [(Exp TT)]
@@ -826,6 +822,8 @@ isNoiseErr r
     = [ (Reserved Module)
       , (Reserved Import)
       , (Reserved In)
+      , (Reserved Type)
+      , (Reserved Data)
       , (Special '}')
       , (Special ')')
       , (Special ']')] ++ r
