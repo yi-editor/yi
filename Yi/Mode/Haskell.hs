@@ -229,6 +229,7 @@ cleverAutoIndentHaskellC' e behaviour = do
         -- maybe we are putting a new 1st statement in the block here.
       stopsOf ((Hask.PAtom _ __):ts) = stopsOf ts
       stopsOf (Hask.Opt (Just t):ts) = stopsOf (t:ts)
+      stopsOf (Hask.Opt _:ts) = stopsOf ts
       stopsOf (Hask.TC t:ts) = stopsOf (t:ts)
       stopsOf (Hask.DC t:ts) = stopsOf (t:ts)
       stopsOf (Hask.Bin t t':ts) = stopsOf (t:t':ts)
