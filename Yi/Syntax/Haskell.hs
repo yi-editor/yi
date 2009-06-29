@@ -629,10 +629,9 @@ pClass = PClass <$> pAtom [Reserved Class]
      <*> ppAtom [VarIdent]
      <*> (Bin <$> ((pMany pErr) <* pTestTok pEol) <*> pOpt pW)
         where pW = PWhere <$> pAtom [Reserved Where]
-               <*> (Bin <$> please (pBlockOf $ pTopDecl pWBlock [] atom')
-                    <*> (Expr <$> pTopDecl pWBlock [] atom'))
+               <*> (Bin <$> please (pBlockOf $ pWBlock [] atom')
+                    <*> (Expr <$> pWBlock [] atom'))
               pEol = [nextLine, endBlock, startBlock, (Reserved Where)]
---               err' = [(Reserved In)]
               atom' = [(ReservedOp Equal),(ReservedOp Pipe), (Reserved In)]
 
 pSContext :: Parser TT (Exp TT)
@@ -648,8 +647,8 @@ pInstance = PInstance <$> pAtom [Reserved Instance]
         <*> pInst
         <*> (Bin <$> (pMany pErr <* pTestTok pEol) <*> please pW)
         where pW = PWhere <$> pAtom [Reserved Where]
-               <*> (Bin <$> please (pBlockOf $ pTopDecl pWBlock [] atom')
-                    <*> (Expr <$> pTopDecl pWBlock [] atom'))
+               <*> (Bin <$> please (pBlockOf $ pWBlock [] atom')
+                    <*> (Expr <$> pWBlock [] atom'))
               pInst = please
                     ( pAtom [ConsIdent]
                       <|> pParen (many (pTree [(Reserved Data)
@@ -686,7 +685,7 @@ pFunRHS :: [Token] -> [Token] -> Parser TT (Exp TT)
 pFunRHS err at = Bin <$> (pGuard
                           <|> pEq err at) <*> pOpt pst
     where pst = Expr <$> ((:) <$> (PWhere <$> pAtom [Reserved Where]
-                                   <*> please (pBlockOf $ pTopDecl
+                                   <*> please (pBlockOf $
                                                pWBlock [Reserved Where] at))
                           <*> pTr' err at)
 
@@ -696,7 +695,7 @@ pFunLHS err at = (:) <$> beginLine
                   <|> (pTr err (at `union` [(Special ',')
                                            , (ReservedOp (OtherOp "::"))]))
                   <|> ((:) <$> pAtom [Special ',']
-                       <*> pTopDecl (\_ _ -> pEmpty) err at))
+                       <*> pTopDecl err at))
               -- change to opt err at <|> beginLine dont forget to 
               -- include type data etc in err
         where beginLine = (pParen (pTr err at) pEmpty)
@@ -729,7 +728,7 @@ pMany :: Parser TT (Exp TT) -> Parser TT (Exp TT)
 pMany = (<$>) Expr . many
 
 pDTree :: Parser TT [(Exp TT)]
-pDTree = pTopDecl (\_ _ -> pEmpty) [] atom
+pDTree = pTopDecl [] atom
     where atom = [(ReservedOp Equal), (ReservedOp Pipe)]
 
 -- | Parse a some of something separated by the token (Special '.')
@@ -745,18 +744,17 @@ pBlockOf' :: Parser TT a -> Parser TT a
 pBlockOf' p = exact [startBlock] *> p <* exact [endBlock] -- see HACK above
 
 -- | Parse something that can contain a data, type declaration or a class
-pTopDecl :: ([Token] ->[Token] -> Parser TT [(Exp TT)])
-      -> [Token] -> [Token] -> Parser TT [(Exp TT)]
-pTopDecl opt err at = pFunLHS err at
+pTopDecl :: [Token] -> [Token] -> Parser TT [(Exp TT)]
+pTopDecl err at = pFunLHS err at
                   <|> pToList pType
                   <|> pToList pData
                   <|> pToList pClass
                   <|> pToList pInstance
-                  <|> opt err at
+                  <|> pEmpty
 
 -- | The pWBlock describes what extra things are allowed in a where clause
 pWBlock :: [Token] -> [Token] -> Parser TT [(Exp TT)]
-pWBlock err at = pEmpty
+pWBlock err at = pTopDecl err at
      <|> ((:) <$> (pBrack (pTr' err (at \\ [(Special ',')
                                            , (ReservedOp Pipe)
                                            , (ReservedOp Equal)])) pEmpty)
