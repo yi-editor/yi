@@ -683,8 +683,12 @@ pGuard = PGuard
         at'  = [(ReservedOp Pipe)]
 
 pFunRHS :: [Token] -> [Token] -> Parser TT (Exp TT)
-pFunRHS err at = pGuard
-             <|> pEq err at
+pFunRHS err at = Bin <$> (pGuard
+                          <|> pEq err at) <*> pOpt pst
+    where pst = Expr <$> ((:) <$> (PWhere <$> pAtom [Reserved Where]
+                                   <*> please (pBlockOf $ pTopDecl
+                                               pWBlock [Reserved Where] at))
+                          <*> pTr' err at)
 
 pFunLHS :: [Token] -> [Token] -> Parser TT [(Exp TT)]
 pFunLHS err at = (:) <$> beginLine
@@ -763,34 +767,30 @@ pWBlock err at = pEmpty
           <*> (pTr err $ at `union` [(Special ',')
                                     , (ReservedOp (OtherOp "::"))]))
 
-
 -- | Parse something not containing a Type, Data declaration or a class kw
 --  but parse a where
 pTr :: [Token] -> [Token] -> Parser TT [(Exp TT)]
 pTr err at
     = pEmpty
-  <|> ((:) <$> (pTree (noiseErr \\ [(ReservedOp Pipe),(ReservedOp Equal)]) at
+  <|> ((:) <$> (pTree ((noiseErr `union` [Reserved Where])
+                       \\ [(ReservedOp Pipe),(ReservedOp Equal)]) at
                 <|> pBlockOf (pTr err (at \\ [(Special ',')])))
        <*> pTr err (at \\ [(ReservedOp (OtherOp "::")), (Special ',')
                           , (ReservedOp RightArrow)]))
   <|> pToList (pFunRHS err (at \\ [(Special ','),(ReservedOp (OtherOp "::"))]))
       -- guard or equal
-  <|> ((:) <$> (PWhere <$> pAtom [Reserved Where]
-                <*> please (pBlockOf $ pTopDecl pWBlock [] atom'))
-       <*> pTopDecl (\_ _ -> pEmpty) [] atom')
     where atom' = [(ReservedOp Equal),(ReservedOp Pipe)]
 
 -- | Parse something where guards are not allowed
 pTr' :: [Token] -> [Token] -> Parser TT [(Exp TT)]
 pTr' err at = pEmpty
-          <|> (:) <$> (pTree ([ReservedOp Pipe] `union` err) at
+          <|> (:) <$> (pTree ([(ReservedOp Pipe)
+                              , (Reserved Where)
+                              , (ReservedOp Equal)] `union` err) at
                        <|> (pBlockOf (pTr err ((atom' `union` at)
                                                \\ [(ReservedOp (OtherOp "::"))
                                                   , (ReservedOp RightArrow)]
                                               ))))
-              <*> pTr' err at
-          <|> (:) <$> (PWhere <$> pAtom [Reserved Where]
-                       <*> please (pBlockOf $ pTopDecl pWBlock [] atom'))
               <*> pTr' err at
     where atom' = [(ReservedOp Equal),(ReservedOp Pipe)]
 
@@ -812,7 +812,7 @@ pTree err at
 pTypeSig :: Parser TT [(Exp TT)]
 pTypeSig = pToList (TS <$>  exact [ReservedOp (OtherOp "::")]
                      <*> (pTr noiseErr []) <* pTestTok pEol)
-    where pEol = [(Special ';'), startBlock, endBlock, nextLine, (Special ')')]
+    where pEol = [startBlock, endBlock, nextLine]-- , (Special ')')]
 
 -- | A list of keywords that usually should be an error
 noiseErr :: [Token]
