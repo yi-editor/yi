@@ -849,6 +849,8 @@ pCBrace p c = Paren  <$> pCAtom [Special '{'] c
 pCBrack p c = Paren  <$>  pCAtom [Special '['] c
           <*> p <*> (recoverAtom <|> pCAtom [Special ']'] c)
 
+pParen, pBrace, pBrack :: Parser TT [Exp TT] -> Parser TT (Exp TT)
+
 pParen = flip pCParen pComments
 
 pBrace = flip pCBrace pComments
