@@ -685,8 +685,7 @@ pFunRHS :: [Token] -> [Token] -> Parser TT (Exp TT)
 pFunRHS err at = Bin <$> (pGuard
                           <|> pEq err at) <*> pOpt pst
     where pst = Expr <$> ((:) <$> (PWhere <$> pAtom [Reserved Where]
-                                   <*> please (pBlockOf $
-                                               pWBlock [Reserved Where] at))
+                                   <*> please (pBlockOf $ pFunLHS err at))
                           <*> pTr' err at)
 
 pFunLHS :: [Token] -> [Token] -> Parser TT [(Exp TT)]
