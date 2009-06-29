@@ -696,6 +696,7 @@ pFunLHS err at = (:) <$> beginLine
                   <|> ((:) <$> pAtom [Special ',']
                        <*> (pFunLHS err at <|> pEmpty)))
         where beginLine = pParen (pTr err at) pEmpty
+                      <|> pBrack (pTr err at) pEmpty
                       <|> (PAtom <$> sym (flip notElem $ isNoise errors)
                            <*> pEmpty)
                       <|> (PError <$> recoverWith
@@ -707,9 +708,7 @@ pFunLHS err at = (:) <$> beginLine
                        , (ReservedOp Equal)
                        , (Reserved Let)
                        , (Reserved Where)
-                       , (Special '{')
-                       , (Special '[')]
-
+                       , (Special '{')]
 
 pEq :: [Token] -> [Token] -> Parser TT (Exp TT)
 pEq _ at = RHS <$> (PAtom <$> exact [ReservedOp Equal] <*> pEmpty)
