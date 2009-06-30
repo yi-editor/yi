@@ -27,18 +27,20 @@ import qualified Graphics.UI.Gtk as Gtk
 import System.Glib.GError
 
 import Yi.Prelude 
+
 import Yi.Buffer
+import Yi.Config
 import qualified Yi.Editor as Editor
 import Yi.Editor hiding (windows)
-import Yi.Window
 import Yi.Event
 import Yi.Keymap
 import Yi.Monad
+import Yi.Style
+import Yi.Window
+
 import qualified Yi.UI.Common as Common
 import Yi.UI.Pango.Utils
 import Yi.UI.Utils
-import Yi.Config
-import Yi.Style
 
 #ifdef GNOME_ENABLED
 import Yi.UI.Pango.Gnome(watchSystemFont)
@@ -268,13 +270,13 @@ syncWindows :: Editor -> UI -> TabInfo -> [(Window, Bool)] -- ^ windows paired w
             -> [WinInfo] -> IO [WinInfo]
 syncWindows e ui tab (wfocused@(w,focused):ws) (c:cs)
     | w == coreWin c =
-        do when focused $ setFocus e ui tab c
+        do when focused $ setWindowFocus e ui tab c
            (:) <$> syncWin e w c <*> syncWindows e ui tab ws cs
     | w `elem` map coreWin cs =
         removeWindow ui tab c >> syncWindows e ui tab (wfocused:ws) cs
     | otherwise = do
         c' <- insertWindowBefore e ui tab w c
-        when focused (setFocus e ui tab c')
+        when focused (setWindowFocus e ui tab c')
         return (c':) `ap` syncWindows e ui tab ws (c:cs)
 syncWindows e ui tab ws [] = mapM (insertWindowAtEnd e ui tab) (map fst ws)
 syncWindows _ ui tab [] cs = mapM_ (removeWindow ui tab) cs >> return []
@@ -290,8 +292,8 @@ setTabFocus ui t = do
     Just n  -> notebookSetCurrentPage (uiNotebook ui) n
     Nothing -> return ()
 
-setFocus :: Editor -> UI -> TabInfo -> WinInfo -> IO ()
-setFocus e ui t w = do
+setWindowFocus :: Editor -> UI -> TabInfo -> WinInfo -> IO ()
+setWindowFocus e ui t w = do
   let bufferName = shortIdentString (commonNamePrefix e) $ findBufferWith (bufkey $ coreWin w) e
 
   hasFocus <- get (textview w) widgetIsFocus
@@ -323,12 +325,14 @@ handleClick ui w event = do
   -- maybe focus the window
   logPutStrLn $ "Clicked inside window: " ++ show w
   tCache <- readRef $ tabCache ui
-  forM tCache $ \tabinfo -> do
+  {-
+  ((w:_):_) <- forM tCache $ \tabinfo -> do
     wCache <- readIORef $ windowCache tabinfo
     return $ head $ forM wCache $ \wininfo -> do
       if (winkey $ coreWin w) == (winkey $ coreWin wininfo)
         then return w
         else []
+  -}
   let focusWindow = undefined
   -- let Just idx = findIndex (((==) `on` (winkey . coreWin)) w) wCache
   --    focusWindow = modA windowsA (fromJust . PL.move idx)
@@ -518,7 +522,7 @@ insertWindow e ui tab win = do
               textview w `onScroll` handleScroll ui w
               widgetShowAll (widget w)
 
-              setFocus e ui tab w
+              setWindowFocus e ui tab w
 
               return w
 
@@ -539,7 +543,7 @@ refresh ui e = do
         wins <- readRef $ windowCache t
         forM_ wins $ \w -> do
             let b = findBufferWith (bufkey (coreWin w)) e
-            -- when (not $ null $ pendingUpdates b) $
+            -- when (not $ null $ b ^. pendingUpdatesA) $
             do
                 sig <- readIORef (renderer w)
                 signalDisconnect sig
@@ -595,7 +599,9 @@ doLayout ui ePrev = do
   where handleTabs :: [TabInfo] -> Editor -> IO Editor
         handleTabs [] e = return e
         handleTabs (t:ts) e = do
-          e' <- handleTab t e
+          visible <- get (page t) widgetVisible
+          e' <- if visible then handleTab t e
+                           else return e
           handleTabs ts e'
 
         handleTab :: TabInfo -> Editor -> IO Editor
@@ -631,10 +637,10 @@ shownRegion f w b =
   layout <- layoutEmpty context
   layoutSetWrap layout WrapAnywhere
   layoutSetFontDescription layout (Just f)
-  (tos,_,bos) <- updatePango w b layout
+  (tos, _, bos) <- updatePango w b layout
   return $ mkRegion tos bos
 
-updatePango :: WinInfo -> FBuffer -> PangoLayout -> IO (Point,Point,Point)
+updatePango :: WinInfo -> FBuffer -> PangoLayout -> IO (Point, Point, Point)
 updatePango w b layout = do
   (width', height') <- widgetGetSize $ textview w
 
