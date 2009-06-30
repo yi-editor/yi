@@ -27,10 +27,14 @@ dist-config::
 	cabal configure
 
 prof-config-hacking::
-	cabal configure -fhacking -f-cocoa -f-gtk -f-pango --enable-executable-profiling --ghc-options=-auto-all
+	cabal configure -fhacking -f-cocoa -f-pango --enable-executable-profiling --ghc-options=-auto-all
 
 prof-config::
-	cabal configure -f-cocoa -f-gtk -f-pango --enable-executable-profiling --enable-library-profiling --ghc-options=-auto-all
+	cabal configure -f-cocoa -f-pango --enable-executable-profiling --enable-library-profiling --ghc-options=-auto-all
+
+# Gtk2Hs must be configured with --enable-profiling (as an option to ./configure during installation)
+prof-config-pango::
+	cabal configure -fpango -f-vty -f-cocoa --enable-executable-profiling --enable-library-profiling --ghc-options=-auto-all
 
 run-inplace: build
 	dist/build/yi/yi
