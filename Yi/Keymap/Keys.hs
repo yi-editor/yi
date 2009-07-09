@@ -51,6 +51,8 @@ super (Event k ms) = Event k $ nub $ sort (MSuper:ms)
 
 char :: Char -> Event
 char '\t' = Event KTab []
+char '\r' = Event KEnter []
+char '\n' = Event KEnter []
 char c = Event (KASCII c) []
 
 ctrlCh :: Char -> Event
