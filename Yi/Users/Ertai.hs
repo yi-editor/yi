@@ -4,6 +4,7 @@ import Yi.Modes (removeAnnots)
 import qualified Yi.Mode.Haskell as Haskell
 import qualified Yi.Syntax.Haskell as Haskell
 import qualified Yi.Lexer.Haskell as Haskell
+import qualified Yi.Syntax.Strokes.Haskell as Haskell
 import Yi.Prelude
 import Prelude (map)
 import System.Environment
@@ -22,9 +23,9 @@ import qualified Yi.Keymap.Vim as Vim
 
 myModetable :: [AnyMode]
 myModetable = [
-               AnyMode $ haskellModeHooks Haskell.preciseMode
-              ,
                AnyMode $ haskellModeHooks Haskell.cleverMode
+              ,
+               AnyMode $ haskellModeHooks Haskell.preciseMode
               ,
                AnyMode $ haskellModeHooks Haskell.fastMode
               ,
