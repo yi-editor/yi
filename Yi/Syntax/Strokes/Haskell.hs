@@ -1,4 +1,4 @@
-module Yi.Syntax.Strokes.Haskell (getStrokes) where
+module Yi.Syntax.Strokes.Haskell (getStrokes, tokenToAnnot) where
 
 import Prelude ()
 import Data.Maybe
@@ -126,8 +126,8 @@ getStr tk point begin _end t0 = getStrokes' t0
 
 -- Stroke helpers follows
 
--- tokenToAnnot :: TT -> Maybe (Span String)
--- tokenToAnnot = sequenceA . tokToSpan . fmap tokenToText
+tokenToAnnot :: TT -> Maybe (Span String)
+tokenToAnnot = sequenceA . tokToSpan . fmap tokenToText
 
 ts :: TT -> Stroke
 ts = tokenToStroke
