@@ -194,12 +194,17 @@ instance IsTree Exp where
    subtrees tree = case tree of
        (Paren _ g _)  -> g
        (RHS _ g)      -> g
-       (PWhere _ r) -> subtrees r
        (Block s)      -> concat s
        (PGuard s)     -> s
        (PLet _ s _) -> subtrees s
        (PIn _ ts)     -> ts
        (Expr a)       -> a
+       (PClass a b c d e) -> [a,b,c,d,e]
+       (PInstance a b c d e) -> [a,b,c,d,e]
+       (PWhere a b) -> [a,b]
+       (Opt (Just x)) -> [x]
+       (Bin a b) -> [a,b]
+       -- FIXME: lots of problems in this function!
        _              -> []
 
 -- | Search the given list, and return the 1st tree after the given
