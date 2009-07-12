@@ -228,20 +228,7 @@ cleverAutoIndentHaskellC' e behaviour = do
         -- Also use the next line's indent:
         -- maybe we are putting a new 1st statement in the block here.
       stopsOf ((Hask.PAtom _ __):ts) = stopsOf ts
-      stopsOf (Hask.Opt (Just t):ts) = stopsOf (t:ts)
-      stopsOf (Hask.Opt _:ts) = stopsOf ts
-      stopsOf (Hask.TC t:ts) = stopsOf (t:ts)
-      stopsOf (Hask.DC t:ts) = stopsOf (t:ts)
-      stopsOf (Hask.Bin t t':ts) = stopsOf (t:t':ts)
       stopsOf (Hask.PGuard ls:ts) = stopsOf ls ++ stopsOf ts
-      stopsOf (Hask.PClass _ _ _ _ b:ts) = indentLevel: stopsOf [b]
-                                        ++ stopsOf ts
-      stopsOf (Hask.PInstance _ _ _ _ b:ts) = indentLevel: stopsOf [b]
-                                           ++ stopsOf ts
-      stopsOf ((Hask.PWhere (Hask.PAtom w _) _):_) = case firstTokOnLine of
-         Nothing ->  0 : (firstTokOnCol w + 6) : []
-         Just _ -> 0 : firstTokOnCol w + 6 : []
-         -- any random part of expression, we ignore it.
       stopsOf (l@(Hask.PLet _ (Hask.Block _) _):ts') =
          case firstTokOnLine of
              Just (Reserved In) -> colOf' l : []
@@ -272,7 +259,7 @@ cleverAutoIndentHaskellC' e behaviour = do
       stopsOf ((Hask.Expr e'):ts) = stopsOf e' ++ stopsOf ts
       stopsOf ((Hask.TS _ _):ts') = stopsOf ts'
       stopsOf [] = []
-      stopsOf (r:_) = error (show r) -- not yet handled stuff
+      stopsOf (t:ts) = stopsOf ts -- by default, there is no reason to indent against an expression.
        -- calculate indentation of operator (must be at least 1 to be valid)
       colOf' :: Foldable t => t TT -> Int
       colOf' = maybe 0 firstTokOnCol . getFirstElement
@@ -302,7 +289,8 @@ cleverAutoIndentHaskellC' e behaviour = do
   case getLastPath e solPnt of
     Nothing -> return ()
     Just path ->let stops = stopsOf path
-                in trace ("Stops = " ++ show stops) $
+                in trace ("Path = " ++ show path) $
+                   trace ("Stops = " ++ show stops) $
                    trace ("firstTokOnLine = " ++ show firstTokOnLine) $
                    cycleIndentsB behaviour stops
 
