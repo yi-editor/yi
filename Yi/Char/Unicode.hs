@@ -1,4 +1,4 @@
-module Yi.Char.Unicode (greek, symbols, subscripts) where
+module Yi.Char.Unicode (greek, symbols, subscripts, checkAmbs, disamb) where
 
 import Data.List (isPrefixOf)
 
@@ -151,6 +151,16 @@ checkAmbs table = check
                , x `isPrefixOf` y ]
         check | null ambs = table
               | otherwise = error $ "checkAmbs: ambiguous declarations for " ++ show ambs
+
+disamb :: [(String, String)] -> [(String, String)]
+disamb table = map f table
+  where f v@(x, vx) =
+            let ambs = [ w
+                       | w@(y, _) <- table
+                       , v /= w
+                       , x `isPrefixOf` y ]
+            in if null ambs then v else (x ++ " ", vx)
+
 
 -- More:
 -- arrows: ⇸ ⇆
