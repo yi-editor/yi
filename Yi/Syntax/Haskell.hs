@@ -33,6 +33,7 @@ import Data.Maybe
 indentScanner :: Scanner (AlexState lexState) (TT)
               -> Scanner (Yi.Syntax.Layout.State Token lexState) (TT)
 indentScanner = layoutHandler startsLayout [(Special '(', Special ')'),
+                                            (Reserved Let, Reserved In),
                                             (Special '[', Special ']'),
                                             (Special '{', Special '}')]
                          ignoredToken

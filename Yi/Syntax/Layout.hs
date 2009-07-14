@@ -107,7 +107,9 @@ layoutHandler isSpecial parens isIgnored [openT, closeT, nextT] isGroupOpen lexS
 
             -- open a paren block
             | isJust $ findParen fst $ (tokT tok)
-              = (st', tok) : parse (IState (Paren (tokT tok):levels) False  line) tokss
+              = (st', tok) : parse (IState (Paren (tokT tok):levels) (isSpecial (tokT tok)) line) tokss 
+              -- important note: the the token can be both special and an opening. This is the case of the
+              -- haskell 'let' (which is closed by 'in'). In that case the inner block is that of the indentation.
 
             -- prepare to open a compound
             | isSpecial (tokT tok) 
