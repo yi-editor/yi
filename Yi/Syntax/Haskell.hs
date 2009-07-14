@@ -59,28 +59,66 @@ type PGuard = Exp
 
 -- | A program is some comments followed by a module and a body
 data PModule t
-    = PModule [t] (Maybe (PModule t)) -- ^ A PModule can be just comments
-    | ProgMod (PModuleDecl t) (PModule t) -- ^ The module declaration part
-    | Body [PImport t] (Block t) (Block t) -- ^ The body of the module
+    = PModule { comments :: [t]
+              , progMod  :: (Maybe (PModule t))
+              }
+    | ProgMod { modDecl :: (PModuleDecl t)
+              , body    :: (PModule t)  -- ^ The module declaration part
+              }
+    | Body { imports :: [PImport t]
+           , content :: (Block t)
+           , extraContent :: (Block t) -- ^ The body of the module
+           }
   deriving Show
 
 -- | A module
-data PModuleDecl t = PModuleDecl (PAtom t) (PAtom t) (Exp t) (Exp t)
+data PModuleDecl t = PModuleDecl { moduleKeyword :: (PAtom t)
+                                 , name          :: (PAtom t)
+                                 , exports       :: (Exp t)
+                                 , whereKeyword  :: (Exp t)
+                                 }
     deriving Show
 
 -- | Imported things
-data PImport t = PImport (PAtom t) (Exp t) (PAtom t) (Exp t) (Exp t)
+data PImport t = PImport { importKeyword :: (PAtom t)
+                         , qual          :: (Exp t)
+                         , name'         :: (PAtom t)
+                         , as            :: (Exp t)
+                         , specification :: (Exp t)
+                         }
     deriving Show
 
 -- | Exp can be expression or declaration
 data Exp t
       -- Top declarations
     = TS t [Exp t] -- ^ Type signature 
-    | PType (PAtom t) (Exp t) (Exp t) (PAtom t) (Exp t) -- ^ Type declaration
-    | PData (PAtom t) (Exp t) (Exp t) (Exp t) -- ^ Data declaration
-    | PData' (PAtom t) (Exp t) (Exp t) -- ^ Data declaration RHS
-    | PClass (PAtom t) (Exp t) (Exp t) (Exp t) (Exp t) -- ^ Class declaration
-    | PInstance (PAtom t) (Exp t) (Exp t) (Exp t) (Exp t) -- ^ Instance
+    | PType { typeKeyword :: (PAtom t)
+            , typeCons    :: (Exp t)
+            , typeVars    :: (Exp t)
+            , equal       :: (PAtom t)
+            , btype       :: (Exp t)
+            } -- ^ Type declaration
+    | PData { dataKeyword :: (PAtom t)
+            , dtypeCons   :: (Exp t)
+            , dContext    :: (Exp t)
+            , dataRhs     :: (Exp t)
+            }  -- ^ Data declaration
+    | PData' { dEqual    :: (PAtom t)
+             , dataCons  :: (Exp t)
+             , dDeriving :: (Exp t) -- ^ Data declaration RHS
+             }
+    | PClass { classKeyword :: (PAtom t)
+             , cContext     :: (Exp t)
+             , cTycls       :: (Exp t)
+             , cTyVars      :: (Exp t)
+             , cwhere       :: (Exp t) -- ^ Class declaration
+             }
+    | PInstance { instanceKeyword :: (PAtom t)
+                , iContext        :: (Exp t)
+                , iTycls          :: (Exp t)
+                , iTyVars         :: (Exp t)
+                , iwhere          :: (Exp t) -- ^ Instance
+                }
       -- declaration
       -- declarations and parts of them follow
     | Paren (PAtom t) [Exp t] (PAtom t) -- ^ A parenthesized, bracked or braced
@@ -92,7 +130,10 @@ data Exp t
        -- an error with comments following so we never color comments in wrong
        -- color. The error has an extra token, the Special '!' token to
        -- indicate that it contains an error
-    | PError t t [t] -- ^ An wrapper for errors
+    | PError { errorTok    :: t
+             , marker      :: t
+             , commentList :: [t] -- ^ An wrapper for errors
+             }
       -- rhs that begins with Equal
     | RHS (PAtom t) [Exp t] -- ^ Righthandside of functions with =
     | Opt (Maybe (Exp t)) -- ^ An optional
