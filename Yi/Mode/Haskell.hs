@@ -222,52 +222,43 @@ cleverAutoIndentHaskellC' e behaviour = do
             -- stop here: we want to be "inside" that group.
           | otherwise = stopsOf ts
            -- this group is closed before this line; just skip it.
-      stopsOf ((Hask.PAtom (Tok {tokT = t}) _):_) | startsLayout t
+      stopsOf ((Hask.PAtom (Tok {tokT = t}) _):_) | startsLayout t || (t == ReservedOp Equal)
           = [nextIndent, previousIndent + indentLevel]
-        -- of; where; etc. we want to start the block here.
+        -- of; where; etc. ends the previous line. We want to start the block here.
         -- Also use the next line's indent:
         -- maybe we are putting a new 1st statement in the block here.
-      -- stopsOf (Hask.PGuard ls:ts) = stopsOf ls ++ stopsOf ts
-      stopsOf (l@(Hask.PLet _ (Hask.Block _) _):ts') =
-         case firstTokOnLine of
-             Just (Reserved In) -> colOf' l : []
-             Just (Reserved Let) -> [0] -- TODO
-             _ -> colOf' l : stopsOf ts'
-      stopsOf (t@(Hask.Block _):ts') = shiftBlock + colOf' t : stopsOf ts'
-      stopsOf ((Hask.PGuard' (PAtom pipe  _) _ _ (e':expr)):ts') = 
-          case firstTokOnLine of
-              Nothing -> colOf' e' : stopsOf expr ++ stopsOf ts'
-              Just (Reserved Haskell.Where) -> fmap (+indentLevel) (stopsOf ts')
-              Just (ReservedOp Haskell.Pipe) -> tokCol pipe : []
-              _ -> colOf' e' : stopsOf expr ++ stopsOf ts'
+      stopsOf (l@(Hask.PLet _ (Hask.Block _) _):ts') = [colOf' l | lineStartsWith (Reserved Haskell.In)] ++ stopsOf ts'
+                                                       -- offer to align with let only if this is an "in"
+      stopsOf (t@(Hask.Block _):ts') = [shiftBlock + colOf' t] ++ stopsOf ts' 
+                                       -- offer add another statement in the block
+      stopsOf ((Hask.PGuard' (PAtom pipe  _) _ _ (e':_expr)):ts') = [tokCol pipe | lineStartsWith (ReservedOp Haskell.Pipe)]
+                                                                 -- offer to align against another guard
       stopsOf (d@(Hask.PData _ _ _ r):ts') = colOf' d + indentLevel
-                                           : stopsOf [r] ++ stopsOf ts'
-      -- stopsOf (d@(Hask.PData' _ r _):ts') = stopsOf [r] ++ stopsOf ts'
-      stopsOf ((Hask.RHS (Hask.PAtom eq _) []):ts') 
-          = previousIndent
-          : (tokCol eq + 2) : stopsOf ts'
-      stopsOf ((Hask.RHS (Hask.PAtom eq _) r@(exp:_)):ts')
-          = case firstTokOnLine of
-              Nothing -> previousIndent : colOf' exp : stopsOf ts'
-              Just (ReservedOp Haskell.Equal) -> tokCol eq : stopsOf ts' -- This is probably the equal of another guard...
-              Just (Reserved Haskell.Where) -> fmap (+indentLevel) (stopsOf ts') -- 'where' on the current line should be handled uniformly
-              Just (Operator op) -> opLength op (colOf' exp) : stopsOf ts' -- Usually operators are aligned against the '=' sign
-         -- case of an operator should check so that value always is at least 1
-              Just _ -> previousIndent : colOf' exp : stopsOf ts'
-      stopsOf ((Hask.Expr e'):ts) = stopsOf e' ++ stopsOf ts
-      stopsOf ((Hask.TS _ _):ts') = stopsOf ts'
-      stopsOf [] = []
+                                           : stopsOf ts' --FIXME!
+      stopsOf ((Hask.RHS (Hask.PAtom eq _) (exp:_)):ts')
+          = [(case firstTokOnLine of
+              Just (Operator op) -> opLength op (colOf' exp) -- Usually operators are aligned against the '=' sign
+              -- case of an operator should check so that value always is at least 1 
+              _ -> colOf' exp) | lineIsExpression ] ++ stopsOf ts'
+                   -- offer to continue the RHS if this looks like an expression.
+      stopsOf [] = [0] -- maybe it's new declaration in the module
       stopsOf (_:ts) = stopsOf ts -- by default, there is no reason to indent against an expression.
        -- calculate indentation of operator (must be at least 1 to be valid)
-      opLength ts' r = let l = r - (length ts' + 1)
+      opLength ts' r = let l = r - (length ts' + 1) -- I find this dubious...
                        in  if l > 0 then l else 1
-      firstTokOnLine = fmap tokT $ listToMaybe $
+
+      lineStartsWith tok = firstTokOnLine == Just tok
+      lineIsEquation     = any (== ReservedOp Haskell.Equal) toksOnLine
+      lineIsExpression   = all (`notElem` [ReservedOp Haskell.Pipe, ReservedOp Haskell.Equal, ReservedOp RightArrow]) toksOnLine
+                           && not (lineStartsWith (Reserved Haskell.In))
+      -- TODO: check the tree instead of guessing by looking at tokens
+      firstTokOnLine = listToMaybe toksOnLine
+      toksOnLine = fmap tokT $
           dropWhile ((solPnt >) . tokBegin) $
           takeWhile ((eolPnt >) . tokBegin) $ -- for laziness.
           filter (not . isErrorTok . tokT) $ allToks e
       shiftBlock = case firstTokOnLine of
-        Just (Reserved t) | t `elem` [Let,In,Where, Deriving] -> indentLevel
-        -- no sure let/in should be here
+        Just (Reserved t) | t `elem` [Where, Deriving] -> indentLevel
         Just (ReservedOp Haskell.Pipe) -> indentLevel
         Just (ReservedOp Haskell.Equal) -> indentLevel
         _ -> 0
@@ -286,6 +277,8 @@ cleverAutoIndentHaskellC' e behaviour = do
     Just path ->let stops = stopsOf path
                 in trace ("Path = " ++ show path) $
                    trace ("Stops = " ++ show stops) $
+                   trace ("Previous indent = " ++ show previousIndent) $
+                   trace ("Next indent = " ++ show nextIndent) $
                    trace ("firstTokOnLine = " ++ show firstTokOnLine) $
                    cycleIndentsB behaviour stops
 
