@@ -192,11 +192,10 @@ $(derive makeFoldable ''PModule)
 $(derive makeFoldable ''Exp)
 instance IsTree Exp where
    subtrees tree = case tree of
-       (Paren _ g _)  -> g
-       (RHS _ g)      -> g
+       (Paren l g r)  -> l:g ++ [r]
+       (RHS l g)      -> l:g
        (Block s)      -> concat s
-       (PGuard s)     -> s
-       (PLet _ s _) -> subtrees s
+       (PLet l s i)   -> l:s:[i]
        (PIn _ ts)     -> ts
        (Expr a)       -> a
        (PClass a b c d e) -> [a,b,c,d,e]
@@ -204,6 +203,14 @@ instance IsTree Exp where
        (PWhere a b) -> [a,b]
        (Opt (Just x)) -> [x]
        (Bin a b) -> [a,b]
+       (PType a b c d e) -> [a,b,c,d,e]
+       (PData a b c d) -> [a,b,c,d]
+       (PData' a b c) -> [a,b,c] 
+       (Context a b c) -> [a,b,c]
+       (PGuard xs) -> xs
+       (PGuard' a b c d) -> a:b ++ c:d
+       (TC e) -> [e]
+       (DC e) -> [e]
        -- FIXME: lots of problems in this function!
        _              -> []
 
