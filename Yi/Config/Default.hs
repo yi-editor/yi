@@ -95,6 +95,7 @@ defaultPublishedActions = M.fromList $
     , ("ireadSaveAsArticle"     , box saveAsNewArticle)
     , ("leftB"                  , box leftB)
     , ("linePrefixSelectionB"   , box linePrefixSelectionB)
+    , ("lineStreamB"            , box lineStreamB)
     , ("mkRegion"               , box mkRegion)
     , ("makeBuild"              , box makeBuild)
     , ("moveB"                  , box moveB)

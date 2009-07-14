@@ -100,6 +100,7 @@ execEditorAction s = do
                  toDyn (makeAction :: BufferM Char -> Action),
                  toDyn (makeAction :: BufferM Int -> Action),
                  toDyn (makeAction :: BufferM String -> Action),
+                 toDyn (makeAction :: BufferM [String] -> Action),
                  toDyn (makeAction :: BufferM Region -> Action),
                  toDyn (makeAction :: BufferM Mark -> Action),
                  toDyn (makeAction :: BufferM MarkValue -> Action),
