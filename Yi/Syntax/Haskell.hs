@@ -252,7 +252,6 @@ instance IsTree Exp where
        (PGuard' a b c d) -> a:b ++ c:d
        (TC e) -> [e]
        (DC e) -> [e]
-       -- FIXME: lots of problems in this function!
        _              -> []
 
 -- | Search the given list, and return the 1st tree after the given

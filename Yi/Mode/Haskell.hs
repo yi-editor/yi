@@ -227,8 +227,7 @@ cleverAutoIndentHaskellC' e behaviour = do
         -- of; where; etc. we want to start the block here.
         -- Also use the next line's indent:
         -- maybe we are putting a new 1st statement in the block here.
-      stopsOf ((Hask.PAtom _ __):ts) = stopsOf ts
-      stopsOf (Hask.PGuard ls:ts) = stopsOf ls ++ stopsOf ts
+      -- stopsOf (Hask.PGuard ls:ts) = stopsOf ls ++ stopsOf ts
       stopsOf (l@(Hask.PLet _ (Hask.Block _) _):ts') =
          case firstTokOnLine of
              Just (Reserved In) -> colOf' l : []
@@ -239,33 +238,29 @@ cleverAutoIndentHaskellC' e behaviour = do
           case firstTokOnLine of
               Nothing -> colOf' e' : stopsOf expr ++ stopsOf ts'
               Just (Reserved Haskell.Where) -> fmap (+indentLevel) (stopsOf ts')
-              Just (ReservedOp Haskell.Pipe) -> firstTokOnCol pipe : []
+              Just (ReservedOp Haskell.Pipe) -> tokCol pipe : []
               _ -> colOf' e' : stopsOf expr ++ stopsOf ts'
-      stopsOf (Hask.PError _ _ _:ts') = stopsOf ts'
       stopsOf (d@(Hask.PData _ _ _ r):ts') = colOf' d + indentLevel
                                            : stopsOf [r] ++ stopsOf ts'
-      stopsOf (d@(Hask.PData' _ r _):ts') = stopsOf [r] ++ stopsOf ts'
+      -- stopsOf (d@(Hask.PData' _ r _):ts') = stopsOf [r] ++ stopsOf ts'
       stopsOf ((Hask.RHS (Hask.PAtom eq _) []):ts') 
           = previousIndent
-          : (firstTokOnCol eq + 2) : stopsOf ts'
+          : (tokCol eq + 2) : stopsOf ts'
       stopsOf ((Hask.RHS (Hask.PAtom eq _) r@(exp:_)):ts')
           = case firstTokOnLine of
-              Nothing -> previousIndent : colOf' exp : stopsOf r ++ stopsOf ts'
-              Just (ReservedOp Haskell.Equal) -> firstTokOnCol eq : stopsOf r
-              Just (Reserved Haskell.Where) -> fmap (+indentLevel) (stopsOf ts')
-              Just (Operator op) -> opLength op (colOf' exp) : stopsOf r
+              Nothing -> previousIndent : colOf' exp : stopsOf ts'
+              Just (ReservedOp Haskell.Equal) -> tokCol eq : stopsOf ts' -- This is probably the equal of another guard...
+              Just (Reserved Haskell.Where) -> fmap (+indentLevel) (stopsOf ts') -- 'where' on the current line should be handled uniformly
+              Just (Operator op) -> opLength op (colOf' exp) : stopsOf ts' -- Usually operators are aligned against the '=' sign
          -- case of an operator should check so that value always is at least 1
-              Just _ -> previousIndent : colOf' exp : stopsOf r ++ stopsOf ts'
+              Just _ -> previousIndent : colOf' exp : stopsOf ts'
       stopsOf ((Hask.Expr e'):ts) = stopsOf e' ++ stopsOf ts
       stopsOf ((Hask.TS _ _):ts') = stopsOf ts'
       stopsOf [] = []
-      stopsOf (t:ts) = stopsOf ts -- by default, there is no reason to indent against an expression.
+      stopsOf (_:ts) = stopsOf ts -- by default, there is no reason to indent against an expression.
        -- calculate indentation of operator (must be at least 1 to be valid)
-      colOf' :: Foldable t => t TT -> Int
-      colOf' = maybe 0 firstTokOnCol . getFirstElement
       opLength ts' r = let l = r - (length ts' + 1)
                        in  if l > 0 then l else 1
-      firstTokOnCol = posnCol . tokPosn
       firstTokOnLine = fmap tokT $ listToMaybe $
           dropWhile ((solPnt >) . tokBegin) $
           takeWhile ((eolPnt >) . tokBegin) $ -- for laziness.
@@ -293,6 +288,12 @@ cleverAutoIndentHaskellC' e behaviour = do
                    trace ("Stops = " ++ show stops) $
                    trace ("firstTokOnLine = " ++ show firstTokOnLine) $
                    cycleIndentsB behaviour stops
+
+colOf' :: Foldable t => t TT -> Int
+colOf' = maybe 0 tokCol . getFirstElement
+
+tokCol = posnCol . tokPosn
+
 
 nominalIndent :: Char -> Int
 nominalIndent '{' = 2
