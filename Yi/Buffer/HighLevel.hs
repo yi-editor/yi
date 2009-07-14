@@ -464,7 +464,7 @@ deleteBlankLinesB =
 -- | Get a (lazy) stream of lines in the buffer, starting at the /next/ line
 -- in the given direction.
 lineStreamB :: Direction -> BufferM [String]
-lineStreamB dir = fmap rev . lines' . R.toString <$> (streamB dir =<< pointB)
+lineStreamB dir = drop 1 . fmap rev . lines' . R.toString <$> (streamB dir =<< pointB)
     where rev = case dir of
                   Forward -> id
                   Backward -> reverse
