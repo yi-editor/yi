@@ -502,8 +502,8 @@ pTestTok f = testNext (\r -> not (isJust r) || elem ((tokT . fromJust) r) f)
 pImports :: Parser TT [PImport TT]
 pImports = many (pImport
                  <* pTestTok pEol
-                 <* optional (exact [nextLine,(Special ';')]))
-        where pEol = [startBlock, (Special ';'), nextLine, endBlock]
+                 <* optional (some $ exact [nextLine,(Special ';')]))
+        where pEol = [(Special ';'), nextLine, endBlock]
  
 -- | Parse one import
 pImport :: Parser TT (PImport TT)
@@ -553,7 +553,8 @@ pData = PData <$> pAtom [Reserved Data]
                                (\x -> isComment x
                                 || elem x [ CppDirective
                                           , (ReservedOp Equal)
-                                          , (Reserved Deriving)]
+                                          , (Reserved Deriving)
+                                          , (Reserved Where)]
                                ))
               <*> pure (newT '!')
               <*> pComments
