@@ -29,6 +29,8 @@ import Data.Monoid
 import Data.DeriveTH
 import Data.Derive.Foldable
 import Data.Maybe
+import Data.Tuple (uncurry)
+import Control.Arrow ((&&&))
 
 indentScanner :: Scanner (AlexState lexState) (TT)
               -> Scanner (Yi.Syntax.Layout.State Token lexState) (TT)
@@ -330,8 +332,8 @@ pBody = Body <$> noImports <*> (Block <$> pBlocks pDTree) <*> pEmptyBL
 
 noImports :: Parser TT [a]
 noImports = notNext [Reserved Import] *> pEmpty
-    where notNext f = testNext (\r -> not (isJust r)
-                   || notElem ((tokT . fromJust) r) f)
+    where notNext f = testNext $ uncurry (||) . (&&&) isNothing
+                      (flip notElem f . tokT . fromJust)
 
 -- Helper functions for parsing follows
 -- | Parse Variables
@@ -401,8 +403,8 @@ please = (<|>) (PError <$> recoverWith (pure $ newT '!')
 
 -- | Parse anything that is an error
 pErr :: Parser TT (Exp TT)
-pErr = PError <$> recoverWith (sym $ not . (\x -> isComment x
-                                            || CppDirective == x))
+pErr = PError <$> recoverWith (sym $ not . uncurry (||) . (&&&) isComment
+                               (== CppDirective))
    <*> pure (newT '!')
    <*> pComments
 
@@ -422,7 +424,7 @@ ppOP op r = Bin <$> ppAtom op <*> r
 
 -- | Parse comments
 pComments :: Parser TT [TT]
-pComments = many $ sym $ \x -> isComment x || CppDirective == x
+pComments = many $ sym $ uncurry (||) . (&&&) isComment (== CppDirective)
 
 -- | Parse something thats optional
 pOpt :: Parser TT (Exp TT) -> Parser TT (Exp TT)
@@ -474,9 +476,8 @@ pModuleDecl = PModuleDecl <$> pAtom [Reserved Module]
                <*> pMany pErr') <* pTestTok elems
     where elems = [nextLine, startBlock, endBlock]
           pErr' = PError <$>
-                  recoverWith (sym $ not .
-                               (\x -> isComment x
-                                || elem x [CppDirective
+                  recoverWith (sym $ not . uncurry (||) . (&&&) isComment
+                               (flip elem [CppDirective
                                           , startBlock
                                           , endBlock
                                           , nextLine]))
@@ -496,7 +497,8 @@ pExport = optional (exact [nextLine]) *> please
 
 -- | Check if next token is in given list
 pTestTok :: [Token] -> Parser TT ()
-pTestTok f = testNext (\r -> not (isJust r) || elem ((tokT . fromJust) r) f)
+pTestTok f = testNext (uncurry (||) . (&&&) isNothing
+                       (flip elem f . tokT . fromJust))
 
 -- | Parse several imports
 pImports :: Parser TT [PImport TT]
@@ -519,9 +521,11 @@ pImport = PImport  <$> pAtom [Reserved Import]
               pImpS    = DC <$> pParenSep pExp'
               pExp'    = Bin
                      <$> (PAtom <$> sym
-                          (\x -> flip elem [VarIdent, ConsIdent] x
-                           || isOperator x) <*> pComments
-                          <|>  pQvarsym) <*> pOpt pImpS
+                          (uncurry (||) . (&&&)
+                           (flip elem [VarIdent, ConsIdent])
+                           isOperator) <*> pComments
+                          <|>  pQvarsym)
+                     <*> pOpt pImpS
 
 -- | Parse simple types
 pType :: Parser TT (Exp TT)
@@ -550,12 +554,12 @@ pData = PData <$> pAtom [Reserved Data]
      <*> pOpt (Bin <$> pDataRHS <*> pMany pErr) <* pTestTok pEol
     where pErr' = PError
               <$> recoverWith (sym $ not .
-                               (\x -> isComment x
-                                || elem x [ CppDirective
+                               uncurry (||) . (&&&) isComment
+                               (flip elem [ CppDirective
                                           , (ReservedOp Equal)
                                           , (Reserved Deriving)
-                                          , (Reserved Where)]
-                               ))
+                                          , (Reserved Where)])
+                              )
               <*> pure (newT '!')
               <*> pComments
           pEol = [(Special ';'), nextLine, endBlock]
@@ -593,15 +597,15 @@ pAtype = pAtype'
      <|> pErr'
     where pErr' = PError
               <$> recoverWith (sym $ not .
-                               (\x -> isComment x
-                                ||elem x [ CppDirective
-                                         , (Special '(')
-                                         , (Special '[')
-                                         , VarIdent
-                                         , ConsIdent
-                                         , (Reserved Other)
-                                         , (Reserved As)]
-                               ))
+                               uncurry (||) . (&&&) isComment
+                               (flip elem [ CppDirective
+                                          , (Special '(')
+                                          , (Special '[')
+                                          , VarIdent
+                                          , ConsIdent
+                                          , (Reserved Other)
+                                          , (Reserved As)])
+                               )
               <*> pure (newT '!')
               <*> pComments
 
