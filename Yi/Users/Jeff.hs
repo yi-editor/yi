@@ -2,29 +2,15 @@
      FunctionalDependencies, GeneralizedNewtypeDeriving,
      MultiParamTypeClasses, TypeSynonymInstances #-}
 
-import Bag
-import Control.Monad
-import Data.Maybe
-import Data.Prototype
-import qualified Data.Rope as R
-import GHC
-import GHC.SYB.Utils
-import HscTypes
-import Outputable (ppr, showSDoc)
-import Scion
-import Scion.Types
+import Yi.Prelude
+import Prelude ()
 
-import Yi.Boot
-import Yi.Config
-import Yi.Config.Default
-import Yi.Core hiding ((.))
-import Yi.Editor
-import Yi.Keymap
+import Yi
+
 import Yi.Keymap.Vim
-import Yi.Misc
-import Yi.Search
+import Yi.Scion
 import Yi.Snippets
-import Yi.Style.Library
+import Yi.Snippets.Haskell
 import Yi.UI.Vty as Vty
 
 main = yi $ defaultVimConfig
@@ -33,51 +19,22 @@ main = yi $ defaultVimConfig
     { configTheme = defaultLightTheme 
     , configWindowFill = '~'
     }
-  , startActions = [makeAction (maxStatusHeightA %= 40 :: EditorM ())]
+  , startActions = [makeAction (maxStatusHeightA %= 20 :: EditorM ())]
   , startFrontEnd = Vty.start
   }
-
-deleteSnippetMarkers = True
 
 myVimKeymap = mkKeymap $ defKeymap `override` \super self -> super
   { v_top_level = v_top_level super ||>
       (char ';' ?>>! resetRegexE)
 
-  , v_ins_char  = (v_ins_char super) <|>
-      choice [ ctrlCh 's' ?>>! moveToNextBufferMark deleteSnippetMarkers
+  , v_ins_char  = (v_ins_char super ||> tabKeymap) <|>
+      choice [ ctrlCh 's' ?>>! moveToNextBufferMark deleteSnippets
              , meta (spec KLeft)  ?>>! prevWordB
              , meta (spec KRight) ?>>! nextWordB
              ]
-  , v_ex_cmds = exCmds [("scion", runScionStuff, Nothing)]
+  , v_ex_cmds = exCmds [("scion", const runScionStuff, Nothing)]
   }
 
-scionAction :: (Int, Int) -> String -> ScionM String
-scionAction pt fn = do
-  addTarget =<< guessTarget fn Nothing
+deleteSnippets = True
 
-  s <- handleSourceError handleError $ do
-    mss  <- modulesInDepOrder
-    deps <- Control.Monad.forM mss $ \m ->do
-      module' <- loadModule =<< typecheckModule =<< parseModule m
-      let t = n . fun_matches . unLoc .
-                last . bagToList . last . bagToList . mapBag m .
-                filterBag (\l -> spans (getLoc l) pt) . typecheckedSource
-          m = abs_binds . unLoc
-          n (MatchGroup _ t) = t
-      return $ showSDoc $ ppr $ t module'
-    return $ deps
-
-  return . last $ s
-
-handleError :: SourceError -> ScionM [String]
-handleError error = return [show error]
-
-runScionStuff :: String -> YiM ()
-runScionStuff fn = do
-  (pt, fn) <- withEditor $ withBuffer0 $ do
-          ln  <- curLn
-          col <- curCol 
-          fn  <- Yi.Core.gets $ shortIdentString []
-          return ((ln, col), fn)
-  s  <- io $ runScion $ scionAction pt fn
-  withEditor $ printMsgs $ lines s
+tabKeymap = superTab True $ fromSnippets deleteSnippets $ [("f", function)]
