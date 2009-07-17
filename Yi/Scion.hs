@@ -20,8 +20,8 @@ import Yi.Buffer
 import Yi.Editor
 import Yi.Keymap
 
-scionAction :: (Int, Int) -> String -> ScionM String
-scionAction pt fn = do
+functionType :: (Int, Int) -> String -> ScionM String
+functionType pt fn = do
   addTarget =<< guessTarget fn Nothing
 
   s <- handleSourceError handleError $ do
@@ -41,12 +41,12 @@ scionAction pt fn = do
 handleError :: SourceError -> ScionM [String]
 handleError err = return [show err]
 
-runScionStuff :: YiM ()
-runScionStuff = do
+runScionWithLocation :: ((Int, Int) -> String -> ScionM String) -> YiM ()
+runScionWithLocation f = do
   (pt, fn) <- withEditor $ withBuffer0 $ do
           ln  <- curLn
           col <- curCol 
           Just fn  <- gets file
           return ((ln, col), fn)
-  s  <- io $ runScion $ scionAction pt fn
+  s  <- io $ runScion $ f pt fn
   withEditor $ printMsgs $ lines s

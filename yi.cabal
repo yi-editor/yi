@@ -38,10 +38,11 @@ extra-source-files: Yi/Lexer/alex.hsinc
 
 flag ghcInterpreter
   Description: Use the "hint" interpreter for extended commands (M-x) (experimental)
-  Default: False      
+  Default: False
 
 flag scion
   Default: False
+  Description: Use the scion library to provide extra commands that interface with GHC (experimental)
 
 flag ghcAPI
   Description: Enable linking with GHC API for advanced features.
