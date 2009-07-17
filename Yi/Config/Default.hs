@@ -22,6 +22,9 @@ import Yi.File
 import Yi.IReader (saveAsNewArticle)
 import Yi.Mode.IReader (ireaderMode, ireadMode)
 import Yi.Modes
+#ifdef SCION
+import Yi.Scion
+#endif
 import Yi.Search
 import Yi.Style.Library
 import qualified Data.Map as M
@@ -118,6 +121,9 @@ defaultPublishedActions = M.fromList $
     , ("writeB"                 , box writeB)
     , ("ghci"                   , box Haskell.ghciGet)
     , ("abella"                 , box Abella.abella)
+#ifdef SCION
+    , ("scion"                  , box runScionStuff)
+#endif
     ]
 
   where box x = [Data.Dynamic.toDyn x]

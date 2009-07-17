@@ -40,6 +40,9 @@ flag ghcInterpreter
   Description: Use the "hint" interpreter for extended commands (M-x) (experimental)
   Default: False      
 
+flag scion
+  Default: False
+
 flag ghcAPI
   Description: Enable linking with GHC API for advanced features.
   Default: False
@@ -207,6 +210,10 @@ library
       other-modules:
          Yi.Interpreter
 
+    if flag (scion)
+      cpp-options: -DSCION
+      exposed-modules:  Yi.Scion
+
     if flag (ghcAPI)
       cpp-options: -DGHC_API
 
@@ -363,6 +370,11 @@ executable yi
           cpp-options: -DGHC_INTERPRETER
           build-depends: hint > 0.3.1 
           -- requires an unreleased version atm.
+
+        if flag (scion)
+          build-depends: ghc == 6.10.*
+          build-depends: scion
+          cpp-options: -DSCION
 
         if flag (ghcAPI)
           build-depends: ghc == 6.8.3 || == 6.10.*
