@@ -40,6 +40,7 @@ import Yi.Window
 
 import qualified Yi.UI.Common as Common
 import Yi.UI.Pango.Utils
+import Yi.UI.TabBar
 import Yi.UI.Utils
 
 #ifdef GNOME_ENABLED
@@ -303,7 +304,7 @@ setWindowFocus e ui t w = do
   windowSetTitle (uiWindow ui) $ bufferName ++ " - Yi"
   labelSetText (modeline w) ml
 
-  notebookSetTabLabelText (uiNotebook ui) (page t) bufferName
+  notebookSetTabLabelText (uiNotebook ui) (page t) (tabAbbrevTitle bufferName)
 
 removeTab :: UI -> TabInfo -> IO ()
 removeTab ui  t = do

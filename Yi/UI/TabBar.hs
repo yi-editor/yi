@@ -33,6 +33,7 @@ tabAbbrevTitle title = if isValid title
                            then concatMap abbrev (splitPath title)
                            else title
   where abbrev "/" = "/"
-        abbrev path | last path == '/' = head path : "/"
+        abbrev path | head path == '.' && last path == '/' = take 2 path ++ "/"
+                    | last path == '/' = head path : "/"
                     | otherwise        = path
 
