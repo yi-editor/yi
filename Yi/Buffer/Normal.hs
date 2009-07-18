@@ -34,6 +34,7 @@ module Yi.Buffer.Normal (TextUnit(Character, Line, VLine, Document),
                          numberOfB,
                          deleteB, genMaybeMoveB,
                          genMoveB, BoundarySide(..), genAtBoundaryB,
+                         genEnclosingUnit, genUnitBoundary,
                          checkPeekB
                          , RegionStyle(..)
                          , mkRegionOfStyleB

@@ -26,7 +26,7 @@ import qualified Graphics.UI.Gtk.Gdk.Events as Gdk.Events
 import qualified Graphics.UI.Gtk as Gtk
 import System.Glib.GError
 
-import Yi.Prelude 
+import Yi.Prelude
 
 import Yi.Buffer
 import Yi.Config

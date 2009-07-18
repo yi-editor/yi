@@ -379,8 +379,8 @@ snapScreenB :: BufferM ()
 snapScreenB = do
   inWin <- pointInWindowB =<< pointB
   unless inWin $ do
-    height <- askWindow height
-    let gap = height `div` 2
+    h <- askWindow height
+    let gap = h `div` 2
     i <- indexOfSolAbove gap
     f <- fromMark <$> askMarks
     setMarkPointB f i
