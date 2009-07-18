@@ -295,11 +295,14 @@ setTabFocus ui t = do
 setWindowFocus :: Editor -> UI -> TabInfo -> WinInfo -> IO ()
 setWindowFocus e ui t w = do
   let bufferName = shortIdentString (commonNamePrefix e) $ findBufferWith (bufkey $ coreWin w) e
+      ml = askBuffer (coreWin w) (findBufferWith (bufkey $ coreWin w) e) $ getModeLine (commonNamePrefix e)
 
   hasFocus <- get (textview w) widgetIsFocus
   when (not hasFocus) $ widgetGrabFocus (textview w)
 
   windowSetTitle (uiWindow ui) $ bufferName ++ " - Yi"
+  labelSetText (modeline w) ml
+
   notebookSetTabLabelText (uiNotebook ui) (page t) bufferName
 
 removeTab :: UI -> TabInfo -> IO ()
@@ -324,8 +327,8 @@ handleClick ui w event = do
 
   -- maybe focus the window
   logPutStrLn $ "Clicked inside window: " ++ show w
-  tCache <- readRef $ tabCache ui
   {-
+  tCache <- readRef $ tabCache ui
   ((w:_):_) <- forM tCache $ \tabinfo -> do
     wCache <- readIORef $ windowCache tabinfo
     return $ head $ forM wCache $ \wininfo -> do
@@ -434,7 +437,7 @@ newWindow :: Editor -> UI -> Window -> FBuffer -> IO WinInfo
 newWindow e ui w b = mdo
     f <- readIORef (uiFont ui)
 
-    ml <- labelNew (Just . fst . runBuffer w b . getModeLine $ commonNamePrefix e)
+    ml <- labelNew Nothing
     widgetModifyFont ml (Just f)
     set ml [ miscXalign := 0.01 ] -- so the text is left-justified.
 
