@@ -1629,7 +1629,8 @@ leaveInsRep = do oneOf [spec KEsc, ctrlCh '[', ctrlCh 'c']
 -- | Insert mode is either insertion actions, or the meta (\ESC) action
 -- TODO repeat
 ins_mode :: ModeMap -> VimMode
-ins_mode self = write (setStatus (["-- INSERT --"], defaultStyle)) >> many (v_ins_char self <|> kwd_mode (v_opts self) ) >> leaveInsRep >> write (moveXorSol 1)
+ins_mode self = write (setStatus (["-- INSERT --"], defaultStyle) >> withBuffer0 (setInserting True)) >> many (v_ins_char self <|> kwd_mode (v_opts self) ) >>
+                  leaveInsRep >> write (moveXorSol 1 >> setInserting False)
 
 -- TODO refactor with beginInsB and beginInsE
 beginIns :: (Show x, YiAction a x) => ModeMap -> a -> I Event Action ()

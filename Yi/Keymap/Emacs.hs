@@ -69,7 +69,7 @@ defKeymap = Proto template
                             , completionCaseSensitive = False }
       where 
         emacsKeymap :: Keymap
-        emacsKeymap = selfInsertKeymap Nothing isDigit <|> completionKm (completionCaseSensitive self) <|>
+        emacsKeymap = write (setInserting True) >> selfInsertKeymap Nothing isDigit <|> completionKm (completionCaseSensitive self) <|>
              do univArg <- readUniversalArg
                 selfInsertKeymap univArg (not . isDigit) <|> emacsKeys univArg
 

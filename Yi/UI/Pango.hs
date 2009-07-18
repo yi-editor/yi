@@ -590,13 +590,17 @@ render e ui b w _ev = do
   layoutSetAttributes layout allAttrs
 
   (PangoRectangle curx cury curw curh, _) <- layoutGetCursorPos layout (rel cur)
+  PangoRectangle chx chy chw chh          <- layoutIndexToPos layout (rel cur)
 
   gc <- gcNew drawWindow
   drawLayout drawWindow gc 0 0 layout
 
   -- paint the cursor   
   gcSetValues gc (newGCValues { Gtk.foreground = mkCol True $ Yi.Style.foreground $ baseAttributes $ configStyle $ uiConfig ui })
-  drawLine drawWindow gc (round curx, round cury) (round $ curx + curw, round $ cury + curh) 
+  if askBuffer (coreWin w) b $ getA insertingA
+     then do drawLine drawWindow gc (round curx, round cury) (round $ curx + curw, round $ cury + curh) 
+     else do drawRectangle drawWindow gc False (round chx) (round chy) (if chw > 0 then round chw else 8) (round chh)
+
   return True
 
 doLayout :: UI -> Editor -> IO Editor
@@ -666,7 +670,7 @@ updatePango ui w b layout = do
 
   if configLineWrap $ uiConfig ui
     then layoutSetWidth layout $ Just width''
-    else do ((Rectangle px _py pwidth _pheight), _) <- layoutGetPixelExtents layout
+    else do (Rectangle px _py pwidth _pheight, _) <- layoutGetPixelExtents layout
             widgetSetSizeRequest (textview w) (px+pwidth) (-1)
 
   (_, bosOffset, _) <- layoutXYToIndex layout width'' height''

@@ -73,6 +73,7 @@ module Yi.Buffer.Misc
   , readAtB
   , getModeLine
   , getPercent
+  , setInserting
   , forgetPreferCol
   , movingToPrefCol
   , setPrefCol
@@ -86,6 +87,7 @@ module Yi.Buffer.Misc
   , highlightSelectionA
   , rectangleSelectionA
   , readOnlyA
+  , insertingA
   , revertPendingUpdatesB
   , askWindow
   , clearSyntax
@@ -210,20 +212,20 @@ data Attributes = Attributes
                 , lastActiveWindow :: !Window
                 , lastSyncTime :: !UTCTime -- ^ time of the last synchronization with disk
                 , readOnly :: !Bool                -- ^ read-only flag
-
+                , inserting :: !Bool -- ^ the keymap is ready for insertion into this buffer
                 } deriving Typeable
 
 $(nameDeriveAccessors ''Attributes (\n -> Just (n ++ "AA")))
 
 -- unfortunately the dynamic stuff can't be read.
 instance Binary Attributes where
-    put (Attributes n b u _bd pc pu selectionStyle_ _proc wm law lst ro) = do
+    put (Attributes n b u _bd pc pu selectionStyle_ _proc wm law lst ro ins) = do
           put n >> put b >> put u
           -- put pd >> 
           put pc >> put pu >> put selectionStyle_ >> put wm
-          put law >> put lst >> put ro
+          put law >> put lst >> put ro >> put ins
     get = Attributes <$> get <*> get <*> get <*> 
-          pure emptyDV <*> get <*> get <*> get <*> pure I.End <*> get <*> get <*> get <*> get
+          pure emptyDV <*> get <*> get <*> get <*> pure I.End <*> get <*> get <*> get <*> get <*> get
 
 instance Binary UTCTime where
     put (UTCTime x y) = put (fromEnum x) >> put (fromEnum y)
@@ -305,6 +307,9 @@ undosA = undosAA . attrsA
 
 readOnlyA :: Accessor FBuffer Bool
 readOnlyA = readOnlyAA . attrsA
+
+insertingA :: Accessor FBuffer Bool
+insertingA = insertingAA . attrsA
 
 file :: FBuffer -> (Maybe FilePath)
 file b = case b ^. identA of
@@ -597,6 +602,7 @@ newB unique nm s =
             , lastActiveWindow = dummyWindow unique
             , lastSyncTime = epoch
             , readOnly = False
+            , inserting = False
             } }
 
 epoch :: UTCTime
@@ -637,6 +643,9 @@ moveTo x = do
   flip setMarkPointB x =<< getInsMark
 
 ------------------------------------------------------------------------
+
+setInserting :: Bool -> BufferM ()
+setInserting = putA insertingA
 
 checkRO :: BufferM Bool
 checkRO =  do

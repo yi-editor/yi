@@ -35,7 +35,8 @@ spawnMinibufferE :: String -> KeymapEndo -> EditorM BufferRef
 spawnMinibufferE prompt kmMod =
     do b <- stringToNewBuffer (Left prompt) (R.fromString "")
        insKm <- configInsertKeymap <$> askCfg
-       withGivenBuffer0 b $ modifyMode (\m -> m {modeKeymap = \_topLevlKm -> kmMod insKm})
+       withGivenBuffer0 b $ do modifyMode (\m -> m {modeKeymap = \_topLevlKm -> kmMod insKm})
+                               setInserting True
        w <- newWindowE True b
        modA windowsA (insertAtEnd w)
        return b
