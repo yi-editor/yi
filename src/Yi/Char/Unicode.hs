@@ -1,4 +1,4 @@
-module Yi.Char.Unicode (greek, symbols, subscripts, checkAmbs, disamb) where
+module Yi.Char.Unicode (greek, symbols, subscripts, superscripts, checkAmbs, disamb) where
 
 import Data.List (isPrefixOf)
 
@@ -124,7 +124,6 @@ symbols =
  ,("|N","ℕ")
  ,("|P","ℙ")
  ,("|R","ℝ")
- ,("^n","ⁿ")
  ,("::","∷")
  ,("0", "∅")
  ,("*", "★") -- or "⋆"
@@ -178,5 +177,6 @@ disamb table = map f table
 -- turnstyles: ⊦ ⊧
 
 
-subscripts :: [(String, String)]
-subscripts = zip (fmap (('_':). (:[])) "0123456789+-=()") (fmap (:[]) "₀₁₂₃₄₅₆₇₈₉₊₋₌₍₎")
+subscripts, superscripts :: [(String, String)]
+subscripts   = zip (fmap (('_':). (:[])) "0123456789+-=()")  (fmap (:[]) "₀₁₂₃₄₅₆₇₈₉₊₋₌₍₎")
+superscripts = zip (fmap (('^':). (:[])) "0123456789+-=()n") (fmap (:[]) "⁰¹²³⁴⁵⁶⁷⁸⁹⁺⁻⁼⁽⁾ⁿ")
