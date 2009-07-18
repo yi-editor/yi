@@ -134,12 +134,12 @@ startNoMsg cfg ch outCh _ed = do
   -- concluded. Shim causes crashes, but it's not worth fixing if we'll soon
   -- replace it.
 
+  {-
   tabs' <- notebookNew
   widgetSetSizeRequest tabs' 200 (-1)
   notebookSetTabPos tabs' PosBottom
   panedAdd1 paned tabs'
 
-  {-
   -- Create the tree views for files and modules
   (filesProject, modulesProject) <- loadProject =<< getCurrentDirectory
 
