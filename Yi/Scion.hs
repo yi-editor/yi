@@ -20,7 +20,9 @@ import Yi.Buffer
 import Yi.Editor
 import Yi.Keymap
 
-functionType :: (Int, Int) -> String -> ScionM String
+functionType :: (Int, Int)    -- ^ The line and column of the current point
+             -> String        -- ^ The filename in which the point is positioned
+             -> ScionM String -- ^ The `ScionM` action resulting in the function's type
 functionType pt fn = do
   addTarget =<< guessTarget fn Nothing
 
