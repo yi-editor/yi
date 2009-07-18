@@ -48,13 +48,13 @@ import Yi.UI.Pango.Gnome(watchSystemFont)
 #endif
 
 data UI = UI
-    { uiWindow   :: Gtk.Window
-    , uiNotebook :: Notebook
-    , uiCmdLine  :: Label
-    , tabCache   :: IORef [TabInfo]
-    , uiActionCh :: Action -> IO ()
-    , uiConfig   :: UIConfig
-    , uiFont     :: IORef FontDescription
+    { uiWindow    :: Gtk.Window
+    , uiNotebook  :: Notebook
+    , uiStatusbar :: Statusbar
+    , tabCache    :: IORef [TabInfo]
+    , uiActionCh  :: Action -> IO ()
+    , uiConfig    :: UIConfig
+    , uiFont      :: IORef FontDescription
     }
 
 data TabInfo = TabInfo
@@ -91,13 +91,13 @@ mkUI ui = Common.dummyUI
     , Common.reloadProject = reloadProject ui
     }
 
-updateFont :: UIConfig -> IORef FontDescription -> IORef [TabInfo] -> Label
+updateFont :: UIConfig -> IORef FontDescription -> IORef [TabInfo] -> Statusbar
                   -> FontDescription -> IO ()
-updateFont cfg fontRef tc cmd font = do
+updateFont cfg fontRef tc status font = do
     maybe (return ()) (fontDescriptionSetFamily font) (configFontName cfg)
     maybe (return ()) (fontDescriptionSetSize font . fromIntegral) (configFontSize cfg)
     writeIORef fontRef font
-    widgetModifyFont cmd (Just font)
+    widgetModifyFont status (Just font)
     tcs <- readIORef tc
     forM_ tcs $ \tabinfo -> do
     wcs <- readIORef $ windowCache tabinfo
@@ -167,12 +167,12 @@ startNoMsg cfg ch outCh _ed = do
   set win [ containerChild := vb ]
   onDestroy win mainQuit
 
-  cmd <- labelNew Nothing
-  set cmd [ miscXalign := 0 ]
+  status  <- statusbarNew
+  statusbarGetContextId status "global"
 
   set vb [ containerChild := paned,
-           containerChild := cmd,
-           boxChildPacking cmd  := PackNatural ]
+           containerChild := status,
+           boxChildPacking status := PackNatural ]
 
   fontRef <- newIORef undefined
   tc <- newIORef []
@@ -182,14 +182,14 @@ startNoMsg cfg ch outCh _ed = do
 #else
   let watchFont = (fontDescriptionFromString "Monospace 10" >>=)
 #endif
-  watchFont $ updateFont (configUI cfg) fontRef tc cmd
+  watchFont $ updateFont (configUI cfg) fontRef tc status
 
   -- use our magic threads thingy (http://haskell.org/gtk2hs/archives/2005/07/24/writing-multi-threaded-guis/)
   timeoutAddFull (yield >> return True) priorityDefaultIdle 50
 
   widgetShowAll win
 
-  let ui = UI win tabs cmd tc (outCh . singleton) (configUI cfg) fontRef
+  let ui = UI win tabs status tc (outCh . singleton) (configUI cfg) fontRef
 
   return (mkUI ui)
 
@@ -542,8 +542,10 @@ updateCache ui e = do
 
 refresh :: UI -> Editor -> IO ()
 refresh ui e = do
-    set (uiCmdLine ui) [labelText := intercalate "  " $ statusLine e,
-                        labelEllipsize := EllipsizeEnd]
+    contextId <- statusbarGetContextId (uiStatusbar ui) "global"
+    statusbarPop  (uiStatusbar ui) contextId
+    statusbarPush (uiStatusbar ui) contextId $ intercalate "  " $ statusLine e
+
     updateCache ui e
     cache <- readRef $ tabCache ui
     forM_ cache $ \t -> do
