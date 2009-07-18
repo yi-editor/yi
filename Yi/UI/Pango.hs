@@ -446,23 +446,27 @@ newWindow e ui w b = mdo
     widgetAddEvents v [Button1MotionMask]
     widgetModifyBg v StateNormal $ mkCol False $ Yi.Style.background $ baseAttributes $ configStyle $ uiConfig ui
 
+    sw <- scrolledWindowNew Nothing Nothing
+    scrolledWindowAddWithViewport sw v
+    scrolledWindowSetPolicy sw PolicyAutomatic PolicyNever
+
     box <- if isMini w
      then do
-      widgetSetSizeRequest v (-1) 1
+      widgetSetSizeRequest sw (-1) 1
 
       prompt <- labelNew (Just $ identString b)
       widgetModifyFont prompt (Just f)
 
       hb <- hBoxNew False 1
       set hb [ containerChild := prompt,
-               containerChild := v,
+               containerChild := sw,
                boxChildPacking prompt := PackNatural,
-               boxChildPacking v := PackGrow]
+               boxChildPacking sw := PackGrow]
 
       return (castToBox hb)
      else do
       vb <- vBoxNew False 1
-      set vb [ containerChild := v,
+      set vb [ containerChild := sw,
                containerChild := ml,
                boxChildPacking ml := PackNatural]
       return (castToBox vb)
@@ -475,7 +479,6 @@ newWindow e ui w b = mdo
     metrics   <- contextGetMetrics context f language
     motionSig <- newIORef Nothing
 
-    layoutSetWrap layout WrapAnywhere
     layoutSetFontDescription layout (Just f)
 
     let win = WinInfo { coreWin   = w
@@ -563,7 +566,7 @@ winEls tospnt h = savingPointB $ do
 
 render :: Editor -> UI -> FBuffer -> WinInfo -> t -> IO Bool
 render e ui b w _ev = do
-  (tos,cur,bos) <- updatePango w b (winLayout w)
+  (tos,cur,bos) <- updatePango ui w b (winLayout w)
   writeRef (shownTos w) tos
   drawWindow    <- widgetGetDrawWindow $ textview w
 
@@ -627,24 +630,23 @@ doLayout ui ePrev = do
                                 Just (_,h) -> h
               getRegion' w = case find ((w ==) . coreWin) wins of
                                    Nothing -> const emptyRegion
-                                   Just win -> shownRegion f win
+                                   Just win -> shownRegion ui f win
           logPutStrLn $ "heights: " ++ show heights
           return e'
 
-shownRegion :: FontDescription -> WinInfo -> FBuffer -> Region
-shownRegion f w b =
+shownRegion :: UI -> FontDescription -> WinInfo -> FBuffer -> Region
+shownRegion ui f w b =
   -- PangoLayout operations should be functional
   unsafePerformIO $ do
   -- Don't use layoutCopy, it just segfaults (as of gtk2hs 0.10.1)
   context <- widgetCreatePangoContext (textview w)
   layout <- layoutEmpty context
-  layoutSetWrap layout WrapAnywhere
   layoutSetFontDescription layout (Just f)
-  (tos, _, bos) <- updatePango w b layout
+  (tos, _, bos) <- updatePango ui w b layout
   return $ mkRegion tos bos
 
-updatePango :: WinInfo -> FBuffer -> PangoLayout -> IO (Point, Point, Point)
-updatePango w b layout = do
+updatePango :: UI -> WinInfo -> FBuffer -> PangoLayout -> IO (Point, Point, Point)
+updatePango ui w b layout = do
   (width', height') <- widgetGetSize $ textview w
 
   let win                 = coreWin w
@@ -659,8 +661,13 @@ updatePango w b layout = do
                               content  <- nelemsB (fromIntegral numChars) from
                               return (from, p, content)
 
-  layoutSetWidth layout (Just width'')
   layoutSetText layout text
+
+  if configLineWrap $ uiConfig ui
+    then layoutSetWidth layout $ Just width''
+    else do ((Rectangle px _py pwidth _pheight), _) <- layoutGetPixelExtents layout
+            widgetSetSizeRequest (textview w) (px+pwidth) (-1)
+
   (_, bosOffset, _) <- layoutXYToIndex layout width'' height''
   return (tos, point, tos + fromIntegral bosOffset + 1)
 
