@@ -434,7 +434,7 @@ newWindow :: Editor -> UI -> Window -> FBuffer -> IO WinInfo
 newWindow e ui w b = mdo
     f <- readIORef (uiFont ui)
 
-    ml <- labelNew Nothing
+    ml <- labelNew (Just . fst . runBuffer w b . getModeLine $ commonNamePrefix e)
     widgetModifyFont ml (Just f)
     set ml [ miscXalign := 0.01 ] -- so the text is left-justified.
 
