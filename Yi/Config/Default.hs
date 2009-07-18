@@ -122,7 +122,7 @@ defaultPublishedActions = M.fromList $
     , ("ghci"                   , box Haskell.ghciGet)
     , ("abella"                 , box Abella.abella)
 #ifdef SCION
-    , ("scion"                  , box runScionStuff)
+    , ("scion"                  , box $ runScionWithLocation functionType)
 #endif
     ]
 

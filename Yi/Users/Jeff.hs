@@ -32,9 +32,13 @@ myVimKeymap = mkKeymap $ defKeymap `override` \super self -> super
              , meta (spec KLeft)  ?>>! prevWordB
              , meta (spec KRight) ?>>! nextWordB
              ]
-  , v_ex_cmds = exCmds [("scion", const runScionStuff, Nothing)]
+  -- :yi scion now works, as it's included in the default published actions
+  -- , v_ex_cmds = exCmds [("scion", const $ runScionWithLocation functionType, Nothing)]
   }
 
 deleteSnippets = True
 
-tabKeymap = superTab True $ fromSnippets deleteSnippets $ [("f", function)]
+tabKeymap = superTab True $ fromSnippets deleteSnippets $
+  [ ("f", hsFunction)
+  , ("c", hsClass)
+  ]
