@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 -- Copyright (c) 2007,8 JP Bernardy
 -- Copyright (c) 2004 Don Stewart - http://www.cse.unsw.edu.au/~dons
 
@@ -24,7 +25,10 @@ module Yi
     module Yi.Style,
     module Yi.Style.Library,
     module Yi.Misc,
-    module Yi.Mode.Haskell
+    module Yi.Mode.Haskell,
+#ifdef SCION
+    module Yi.Scion
+#endif
   ) where
 
 import Data.Prototype
@@ -40,3 +44,6 @@ import Yi.Style
 import Yi.Style.Library
 import Yi.Misc
 import Yi.Mode.Haskell (ghciGet, ghciLoadBuffer)
+#ifdef SCION
+import Yi.Scion
+#endif
