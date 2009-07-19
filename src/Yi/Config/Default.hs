@@ -119,10 +119,10 @@ defaultPublishedActions = M.fromList $
     , ("unitParagraph"          , box unitParagraph)
     , ("unitViWord"             , box unitViWord)
     , ("writeB"                 , box writeB)
-    , ("ghci"                   , box Haskell.ghciGet)
+    , ("ghciGet"                , box Haskell.ghciGet)
     , ("abella"                 , box Abella.abella)
 #ifdef SCION
-    , ("scion"                  , box $ runScionWithLocation functionType)
+    , ("scion"                  , box scion)
 #endif
     ]
 
