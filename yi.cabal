@@ -379,6 +379,7 @@ executable yi
 
         if flag (scion)
           build-depends: ghc == 6.10.*
+          build-depends: ghc-syb
           build-depends: scion
           cpp-options: -DSCION
 
