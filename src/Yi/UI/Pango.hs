@@ -301,10 +301,12 @@ setWindowFocus e ui t w = do
   hasFocus <- get (textview w) widgetIsFocus
   when (not hasFocus) $ widgetGrabFocus (textview w)
 
-  windowSetTitle (uiWindow ui) $ bufferName ++ " - Yi"
   labelSetText (modeline w) ml
 
-  notebookSetTabLabelText (uiNotebook ui) (page t) (tabAbbrevTitle bufferName)
+  if isMini (coreWin w)
+     then return ()
+     else do windowSetTitle (uiWindow ui) $ bufferName ++ " - Yi"
+             notebookSetTabLabelText (uiNotebook ui) (page t) (tabAbbrevTitle bufferName)
 
 removeTab :: UI -> TabInfo -> IO ()
 removeTab ui  t = do
