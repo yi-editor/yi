@@ -12,7 +12,6 @@ import Bag
 import Data.Maybe
 import GHC
 import HscTypes
-import Outputable (ppr, showSDoc)
 import qualified Outputable as O
 import Scion
 import Scion.Types hiding (gets) 
@@ -20,7 +19,7 @@ import Scion.Utils
 import Outputable
 import GHC.SYB.Utils
 import PprTyThing (pprTypeForUser)
-import FastString (fsLit, unpackFS) -- ghosts
+import FastString (fsLit) -- ghosts
 
 import Yi.Buffer
 import Yi.Editor
@@ -29,6 +28,7 @@ import Scion.Inspect ( prettyResult )
 import Scion.Inspect.Find ( overlaps, findHsThing, pathToDeepest)
 import Scion.Inspect.TypeOf ( typeOf )
 
+loadFile :: String -> ScionM TypecheckedModule
 loadFile fn = do
   addTarget =<< guessTarget fn Nothing
   Scion.load LoadAllTargets
@@ -85,6 +85,7 @@ handleError :: SourceError -> ScionM [String]
 handleError err = return [show err]
 
 -- This is copied from Protocol.Vim
+thingAtPoint :: (TypecheckedMod m) => (Int, Int) -> String -> m -> ScionM String
 thingAtPoint (line,col) fname tcm = do
       let loc = srcLocSpan $ mkSrcLoc (fsLit fname) line col
       --let Just (src, _, _, _, _) = renamedSource tcm
