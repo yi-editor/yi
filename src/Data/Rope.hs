@@ -41,7 +41,7 @@ import qualified Data.ByteString.UTF8 as B
 import qualified Data.ByteString as B (null, append, concat, elemIndices)
 import qualified Data.ByteString as Byte 
 import Data.ByteString (ByteString)
-import qualified Data.ByteString.Lazy as LB (toChunks, fromChunks, writeFile, null, readFile)
+import qualified Data.ByteString.Lazy as LB (toChunks, fromChunks, null, readFile)
 import qualified Data.ByteString.Lazy.UTF8 as LB 
  
 import qualified Data.FingerTree as T
@@ -52,6 +52,8 @@ import Data.Char (ord)
 import Data.Monoid
 import Data.Foldable (toList)
 import Data.Int
+
+import System.IO.Cautious (writeFileL)
  
 defaultChunkSize :: Int
 defaultChunkSize = 128 -- in chars! (chunkSize requires this to be <= 256)
@@ -189,7 +191,7 @@ instance Binary Rope where
 
 
 writeFile :: FilePath -> Rope -> IO ()
-writeFile f r = LB.writeFile f $ toLazyByteString r
+writeFile f r = writeFileL f $ toLazyByteString r
 
 readFile :: FilePath -> IO Rope
 readFile f = fromLazyByteString `fmap` LB.readFile f
