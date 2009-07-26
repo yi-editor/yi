@@ -280,10 +280,10 @@ pModBody :: Parser TT (PModule TT)
 pModBody = (exact [startBlock] *>
             (Body <$> pImports
              <*> ((pTestTok elems *> pBod)
-                  <|> pEmptyBL) <* exact [Special '>']
+                  <|> pEmptyBL) <* exact [endBlock]
              <*> pBod
             <|> Body <$> noImports
-             <*> ((pBod <|> pEmptyBL) <* exact [Special '>'])
+             <*> ((pBod <|> pEmptyBL) <* exact [endBlock])
              <*> pBod))
        <|> (exact [nextLine] *> pBody)
        <|> Body <$> pEmpty <*> pEmptyBL <*> pEmptyBL
