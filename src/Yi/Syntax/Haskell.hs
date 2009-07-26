@@ -721,7 +721,7 @@ pFunDecl at = (:) <$> beginLine
                       <|> (PAtom <$> sym (flip notElem $ isNotNoise [])
                            <*> pEmpty)
                       <|> (PError <$> recoverWith
-                           (sym $ flip elem $ isNoiseErr)
+                           (sym $ flip elem $ isNoiseErr [])
                            <*> pure (newT '!') <*> pEmpty)
 
 pEq :: [Token] -> Parser TT (Exp TT)
@@ -801,7 +801,7 @@ pTree at
   <|> pCBrace (pTr' (at \\ notAtom)) pEmpty
   <|> pLet
   <|> (PError <$> recoverWith
-       (sym $ flip elem $ isNoiseErr) <*>  pure (newT '!') <*> pEmpty)
+       (sym $ flip elem $ isNoiseErr at) <*>  pure (newT '!') <*> pEmpty)
   <|> (PAtom <$> sym (flip notElem (isNotNoise at)) <*> pEmpty)
         where notAtom = [(Special ','), (ReservedOp Pipe), (ReservedOp Equal)]
 
@@ -812,8 +812,8 @@ pTypeSig = pToList (TS <$>  exact [ReservedOp (DoubleColon)]
     where pEol = [startBlock, endBlock, nextLine]-- , (Special ')')]
 
 -- | List of things that allways should be parsed as errors
-isNoiseErr :: [Token]
-isNoiseErr = recoverableSymbols
+isNoiseErr :: [Token] -> [Token]
+isNoiseErr r = recoverableSymbols \\ r
 
 recoverableSymbols = recognizedSymbols \\ fmap Special "([{<>."
 -- We just don't recover opening symbols (only closing are "fixed").
