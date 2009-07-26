@@ -5,7 +5,6 @@
 -- NOTES and todos:
 -- * carrying arround a list of "error" tokens is probably not necessary:
 --   they should be errors all the time.
--- * pTypeSig should be a top-level declaration
 
 -- Note if the layout of the first line (not comments)
 -- is wrong the parser will only parse what is in the blocks given by Layout.hs
@@ -715,6 +714,10 @@ pFunRHS err at = Bin <$> (pGuard
     where pst = Expr <$> ((:) <$> (PWhere <$> pAtom [Reserved Where]
                                    <*> please (pBlockOf $ pFunDecl err at))
                           <*> pTr' err at)
+
+-- Note that this can both parse an equation and a type declaration.
+-- Since they can start with the same token the left part (beginLine)
+-- is factored here.
 
 pFunDecl :: [Token] -> [Token] -> Parser TT [(Exp TT)]
 pFunDecl err at = (:) <$> beginLine
