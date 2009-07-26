@@ -48,10 +48,6 @@ $nl        = [\n\r]
 @layoutReservedId =
     of|let|do|mdo
 
-
-@reservedop =
-        ".." | ":" | "::" | "=" | "|" | "<-" | "->" | "@" | "~" | "=>"
-
 @varid  = $small $idchar* [\#]?
 @conid  = $large $idchar* [\#]?
 @anyid = (@varid | @conid)
@@ -135,8 +131,11 @@ haskell :-
   \\                                            { c (ReservedOp BackSlash) }
   "<-"                                          { c (ReservedOp LeftArrow) }
   "->"                                          { c (ReservedOp RightArrow) }
+  ".."                                          { c (ReservedOp DoubleDot) }
+  "@"                                           { c (ReservedOp Arobase) }
+  "~"                                           { c (ReservedOp Tilda) }
   "=>"                                          { c (ReservedOp DoubleRightArrow) }
-  @reservedop                                   { cs (ReservedOp . OtherOp) }
+  "::"                                          { c (ReservedOp DoubleColon) }
   @qual @varsym                                 { cs Operator }
   @qual @consym                                 { cs ConsOperator }
 
@@ -165,7 +164,7 @@ data ReservedType = Hiding | Qualified | As | Import | Data | NewType | Type | W
                   | Let | In | OtherLayout | Deriving | Module | Forall | Other | Class | Instance
     deriving (Eq, Show)
 
-data OpType = Pipe | Equal | BackSlash | LeftArrow | RightArrow | DoubleRightArrow | OtherOp String
+data OpType = Pipe | Equal | BackSlash | LeftArrow | RightArrow | DoubleRightArrow | DoubleColon | DoubleDot | Arobase | Tilda
     deriving (Eq, Show)
 
 data Token = Number | CharTok | StringTok | VarIdent | ConsIdent
@@ -198,7 +197,7 @@ tokenToText (ReservedOp BackSlash) = Just "λ"
 tokenToText (ReservedOp RightArrow) = Just "→ "
 tokenToText (ReservedOp DoubleRightArrow) = Just "⇒ "
 tokenToText (ReservedOp LeftArrow) = Just "← "
-tokenToText (ReservedOp (OtherOp "::")) = Just "∷ "
+tokenToText (ReservedOp DoubleColon) = Just "∷ "
 -- missing: ++ >>=
 tokenToText (Operator "*") = Just "×"
 tokenToText (Operator "-") = Just "−"

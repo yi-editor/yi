@@ -134,7 +134,11 @@ haskell :-
   "<-"                                          { c (ReservedOp LeftArrow) }
   "->"                                          { c (ReservedOp RightArrow) }
   "=>"                                          { c (ReservedOp DoubleRightArrow) }
-  @reservedop                                   { cs $ ReservedOp . OtherOp }
+  ".."                                          { c (ReservedOp DoubleDot) }
+  "@"                                           { c (ReservedOp Arobase) }
+  "~"                                           { c (ReservedOp Tilda) }
+  "=>"                                          { c (ReservedOp DoubleRightArrow) }
+  "::"                                          { c (ReservedOp DoubleColon) }
   @qual @varsym                                 { cs Operator }
   @qual @consym                                 { cs ConsOperator }
 
@@ -181,7 +185,11 @@ haskell :-
   "<-"                                          { c (ReservedOp LeftArrow) }
   "->"                                          { c (ReservedOp RightArrow) }
   "=>"                                          { c (ReservedOp DoubleRightArrow) }
-  @reservedop                                   { cs $ ReservedOp . OtherOp }
+  ".."                                          { c (ReservedOp DoubleDot) }
+  "@"                                           { c (ReservedOp Arobase) }
+  "~"                                           { c (ReservedOp Tilda) }
+  "=>"                                          { c (ReservedOp DoubleRightArrow) }
+  "::"                                          { c (ReservedOp DoubleColon) }
   @qual @varsym                                 { cs Operator }
   @qual @consym                                 { cs ConsOperator }
 

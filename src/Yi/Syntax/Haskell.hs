@@ -466,8 +466,7 @@ pExport = optional (exact [nextLine]) *> please
           <|> Bin <$> pQvarsym <*> (DC <$> pOpt expSpec) -- typeOperator
           <|> Bin <$> (TC <$> pQtycon) <*> (DC <$> pOpt expSpec)
         )
-        where pDotOp = ReservedOp $ OtherOp ".."
-              expSpec = pParen (pToList (please (pAtom [pDotOp]))
+        where expSpec = pParen (pToList (please (pAtom [ReservedOp DoubleDot]))
                                 <|> pSepBy pQvarid pComma)
 
 -- | Check if next token is in given list
@@ -553,7 +552,7 @@ pDataRHS = PData' <$> pAtom eqW -- either we have standard data
 -- | Parse an GADT declaration
 pGadt :: Parser TT (Exp TT)
 pGadt = Bin <$> (DC <$> pQtycon)
-    <*> ppOP [ReservedOp $ OtherOp "::"]
+    <*> ppOP [ReservedOp $ DoubleColon]
          (Bin <$> pOpt pContext <*>
           (pTypeRhs <|> pOP [Operator "!"] pAtype <|> pErr))
     <|>  pErr
@@ -628,7 +627,7 @@ strictF a = Bin <$> pOpt (pAtom [Operator "!"]) <*> a
 
 pFielddecl ::Parser TT (Exp TT)
 pFielddecl = Bin <$> pVars
-         <*> pOpt (pOP [ReservedOp $ OtherOp "::"]
+         <*> pOpt (pOP [ReservedOp $ DoubleColon]
                    (pTypeRhs
                     <|> pKW [Operator "!"] pAtype
                     <|> pErr))
@@ -722,9 +721,9 @@ pFunDecl err at = (:) <$> beginLine
              <*> (pTypeSig
                   <|> pTr err (at `union` [(Special ',') -- here we know that
                                                       -- arguments will follow
-                                           , (ReservedOp (OtherOp "::"))])
+                                           , (ReservedOp DoubleColon)])
                   <|> ((:) <$> pAtom [Special ','] -- here we know that it is
-                                                   -- an type signature
+                                                   -- a type signature
                        <*> (pFunDecl err at <|> pEmpty)))
         where beginLine = pCParen (pTr err at) pEmpty
                       <|> pCBrack (pTr err at) pEmpty
@@ -786,11 +785,11 @@ pWBlock err at = pTopDecl err at
                                            , (ReservedOp Pipe)
                                            , (ReservedOp Equal)])) pEmpty
           <*> pTr err (at `union` [(Special ',')
-                                    , (ReservedOp (OtherOp "::"))]))
+                                    , (ReservedOp (DoubleColon))]))
      <|> ((:) <$> pCBrace (pTr' err (at \\ [(Special ','),(ReservedOp Pipe)
                                             , (ReservedOp Equal)])) pEmpty
           <*> pTr err (at `union` [ (Special ',')
-                                  , (ReservedOp (OtherOp "::"))]))
+                                  , (ReservedOp (DoubleColon))]))
 
 -- | Parse something not containing a Type, Data declaration or a class kw
 --  but parse a where
@@ -800,9 +799,9 @@ pTr err at
   <|> ((:) <$> (pTree ((noiseErr `union` [Reserved Where])
                        \\ [(ReservedOp Pipe),(ReservedOp Equal)]) at
                 <|> pBlockOf (pTr err (at \\ [(Special ',')])))
-       <*> pTr err (at \\ [(ReservedOp (OtherOp "::")), (Special ',')
+       <*> pTr err (at \\ [(ReservedOp (DoubleColon)), (Special ',')
                           , (ReservedOp RightArrow)]))
-  <|> pToList (pFunRHS err (at \\ [(Special ','),(ReservedOp (OtherOp "::"))]))
+  <|> pToList (pFunRHS err (at \\ [(Special ','),(ReservedOp (DoubleColon))]))
 
 -- | Parse something where guards are not allowed
 pTr' :: [Token] -> [Token] -> Parser TT [(Exp TT)]
@@ -811,7 +810,7 @@ pTr' err at = pEmpty
                               , (Reserved Where)
                               , (ReservedOp Equal)] `union` err) at
                        <|> pBlockOf (pTr err ((atom' `union` at)
-                                               \\ [(ReservedOp (OtherOp "::"))
+                                               \\ [(ReservedOp (DoubleColon))
                                                   , (ReservedOp RightArrow)]
                                               )))
               <*> pTr' err at
@@ -833,7 +832,7 @@ pTree err at
 
 -- | Parse a typesignature 
 pTypeSig :: Parser TT [(Exp TT)]
-pTypeSig = pToList (TS <$>  exact [ReservedOp (OtherOp "::")]
+pTypeSig = pToList (TS <$>  exact [ReservedOp (DoubleColon)]
                     <*> pTr noiseErr []) <* pTestTok pEol
     where pEol = [startBlock, endBlock, nextLine]-- , (Special ')')]
 
