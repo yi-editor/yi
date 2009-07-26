@@ -5,7 +5,6 @@
 -- NOTES and todos:
 -- * carrying arround a list of "error" tokens is probably not necessary:
 --   they should be errors all the time.
--- * pFunLHS should be called pFunDecl
 -- * pTypeSig should be a top-level declaration
 
 -- Note if the layout of the first line (not comments)
@@ -715,18 +714,18 @@ pFunRHS :: [Token] -> [Token] -> Parser TT (Exp TT)
 pFunRHS err at = Bin <$> (pGuard
                           <|> pEq err at) <*> pOpt pst
     where pst = Expr <$> ((:) <$> (PWhere <$> pAtom [Reserved Where]
-                                   <*> please (pBlockOf $ pFunLHS err at))
+                                   <*> please (pBlockOf $ pFunDecl err at))
                           <*> pTr' err at)
 
-pFunLHS :: [Token] -> [Token] -> Parser TT [(Exp TT)]
-pFunLHS err at = (:) <$> beginLine
+pFunDecl :: [Token] -> [Token] -> Parser TT [(Exp TT)]
+pFunDecl err at = (:) <$> beginLine
              <*> (pTypeSig
                   <|> pTr err (at `union` [(Special ',') -- here we know that
                                                       -- arguments will follow
                                            , (ReservedOp (OtherOp "::"))])
                   <|> ((:) <$> pAtom [Special ','] -- here we know that it is
                                                    -- an type signature
-                       <*> (pFunLHS err at <|> pEmpty)))
+                       <*> (pFunDecl err at <|> pEmpty)))
         where beginLine = pCParen (pTr err at) pEmpty
                       <|> pCBrack (pTr err at) pEmpty
                       <|> (PAtom <$> sym (flip notElem $ isNoise errors)
@@ -773,7 +772,7 @@ pBlockOf' p = exact [startBlock] *> p <* exact [endBlock] -- see HACK above
 
 -- | Parse something that can contain a data, type declaration or a class
 pTopDecl :: [Token] -> [Token] -> Parser TT [(Exp TT)]
-pTopDecl err at = pFunLHS err at
+pTopDecl err at = pFunDecl err at
                   <|> pToList pType
                   <|> pToList pData
                   <|> pToList pClass
