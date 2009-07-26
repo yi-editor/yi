@@ -3,9 +3,6 @@
 -- Copyright (c) Anders Karlsson 2009
 -- Copyright (c) JP Bernardy 2009
 -- NOTES and todos:
--- * carrying arround a list of "error" tokens is probably not necessary:
---   they should be errors all the time.
-
 -- Note if the layout of the first line (not comments)
 -- is wrong the parser will only parse what is in the blocks given by Layout.hs
 module Yi.Syntax.Haskell ( PModule (..)
@@ -54,7 +51,7 @@ indentScanner = layoutHandler startsLayout [(Special '(', Special ')'),
 -- | Check if a token is a brace, this function is used to
 -- fix the layout so that do { works correctly
 isBrace :: TT -> Bool
-isBrace (Tok b _ _) = Special '{' == b
+isBrace (Tok br _ _) = Special '{' == br
 
 -- | Theese are the tokens ignored by the layout handler.
 ignoredToken :: TT -> Bool
@@ -584,9 +581,8 @@ pAtype = pAtype'
 
 pAtype' :: Parser TT (Exp TT)
 pAtype' = pQvarid
-      <|> pParen (many $ pTree err [])
-      <|> pBrack (many $ pTree err [])
-        where err = [(Reserved Data), (Reserved Type)]
+      <|> pParen (many $ pTree [])
+      <|> pBrack (many $ pTree [])
 
 pContext :: Parser TT (Exp TT)
 pContext = Context <$> pOpt pForAll
@@ -641,11 +637,10 @@ pLet :: Parser TT (Exp TT)
 pLet = PLet <$> pAtom [Reserved Let]
    <*> (pBlockOf'
         (Block <$> pBlocks 
-         (pTr el [(ReservedOp Pipe),(ReservedOp Equal)]))
+         (pTr [(ReservedOp Pipe),(ReservedOp Equal)]))
         <|> (pEmptyBL <* pTestTok pEol))
    <*>  pOpt (pCAtom [Reserved In] pEmpty)
     where pEol = [endBlock]
-          el = [(Reserved Data),(Reserved Type)]
 
 -- | Parse a class decl
 pClass :: Parser TT (Exp TT)
@@ -657,8 +652,8 @@ pClass = PClass <$> pAtom [Reserved Class]
      <*> ppAtom [VarIdent]
      <*> (Bin <$> (pMany pErr <* pTestTok pEol) <*> pOpt pW)
         where pW = PWhere <$> pAtom [Reserved Where]
-               <*> (Bin <$> please (pBlockOf $ pWBlock [] atom')
-                    <*> (Expr <$> pWBlock [] atom'))
+               <*> (Bin <$> please (pBlockOf $ pWBlock atom')
+                    <*> (Expr <$> pWBlock atom'))
               pEol = [nextLine, endBlock, startBlock, (Reserved Where)]
               atom' = [(ReservedOp Equal),(ReservedOp Pipe), (Reserved In)]
 
@@ -675,18 +670,13 @@ pInstance = PInstance <$> pAtom [Reserved Instance]
         <*> pInst
         <*> (Bin <$> (pMany pErr <* pTestTok pEol) <*> please pW)
         where pW = PWhere <$> pAtom [Reserved Where]
-               <*> (Bin <$> please (pBlockOf $ pWBlock [] atom')
-                    <*> (Expr <$> pWBlock [] atom'))
+               <*> (Bin <$> please (pBlockOf $ pWBlock atom')
+                    <*> (Expr <$> pWBlock atom'))
               pInst = please
                     ( pAtom [ConsIdent]
-                      <|> pParen (many (pTree [(Reserved Data)
-                                               , (Reserved Type)]
-                                        []))
-                      <|> pBrack (many (pTree [(Reserved Data)
-                                               , (Reserved Type)] 
-                                        [])))
+                      <|> pParen (many $ pTree [])
+                      <|> pBrack (many $ pTree []))
               pEol = [nextLine, startBlock, endBlock, (Reserved Where)]
---               err' = [(Reserved In)]
               atom' = [(ReservedOp Equal),(ReservedOp Pipe)]
 
 -- check if pEq can be used here instead problem with optional ->
@@ -694,70 +684,54 @@ pGuard :: Parser TT (Exp TT)
 pGuard = PGuard
      <$> some (PGuard' <$> pCAtom [ReservedOp Pipe] pEmpty <*>
                -- comments are by default parsed after this
-               pTr' err at
+               pTr' at
                <*> please (pCAtom [(ReservedOp Equal),(ReservedOp RightArrow)]
                            pEmpty)
                -- comments are by default parsed after this
                -- this must be -> if used in case
-               <*> pTr' err' at')
-  where err  = [(Reserved Class), (Reserved Instance)
-               , (Reserved Data), (Reserved Type)]
-        at   = [(ReservedOp RightArrow),(ReservedOp Equal)
+               <*> pTr' at')
+  where at   = [(ReservedOp RightArrow),(ReservedOp Equal)
                , (ReservedOp Pipe)]
-        err' = [(Reserved Class),(Reserved Instance)
-               ,(Reserved Data), (Reserved Type)]
         at'  = [(ReservedOp Pipe)]
 
-pFunRHS :: [Token] -> [Token] -> Parser TT (Exp TT)
-pFunRHS err at = Bin <$> (pGuard
-                          <|> pEq err at) <*> pOpt pst
+pFunRHS :: [Token] -> Parser TT (Exp TT)
+pFunRHS at = Bin <$> (pGuard
+                      <|> pEq at) <*> pOpt pst
     where pst = Expr <$> ((:) <$> (PWhere <$> pAtom [Reserved Where]
-                                   <*> please (pBlockOf $ pFunDecl err at))
-                          <*> pTr' err at)
+                                   <*> please (pBlockOf $ pFunDecl at))
+                          <*> pTr' at)
+
 
 -- Note that this can both parse an equation and a type declaration.
 -- Since they can start with the same token the left part (beginLine)
 -- is factored here.
-
-pFunDecl :: [Token] -> [Token] -> Parser TT [(Exp TT)]
-pFunDecl err at = (:) <$> beginLine
-             <*> (pTypeSig
-                  <|> pTr err (at `union` [(Special ',') -- here we know that
-                                                      -- arguments will follow
-                                           , (ReservedOp DoubleColon)])
-                  <|> ((:) <$> pAtom [Special ','] -- here we know that it is
-                                                   -- a type signature
-                       <*> (pFunDecl err at <|> pEmpty)))
-        where beginLine = pCParen (pTr err at) pEmpty
-                      <|> pCBrack (pTr err at) pEmpty
-                      <|> (PAtom <$> sym (flip notElem $ isNoise errors)
+pFunDecl :: [Token] -> Parser TT [(Exp TT)]
+pFunDecl at = (:) <$> beginLine
+          <*> (pTypeSig
+               <|> pTr (at `union` [(Special ',') -- here we know that
+                                    -- arguments will follow
+                                   , (ReservedOp DoubleColon)])
+               <|> ((:) <$> pAtom [Special ','] -- here we know that it is
+                                                -- a type signature
+                    <*> (pFunDecl at <|> pEmpty)))
+        where beginLine = pCParen (pTr at) pEmpty
+                      <|> pCBrack (pTr at) pEmpty
+                      <|> (PAtom <$> sym (flip notElem $ isNoise [])
                            <*> pEmpty)
                       <|> (PError <$> recoverWith
-                           (sym $ flip elem $ isNoiseErr errors)
+                           (sym $ flip elem $ isNoiseErr)
                            <*> pure (newT '!') <*> pEmpty)
-              errors = [ (Reserved Class)
-                       , (Reserved Instance)
-                       , (ReservedOp Pipe)
-                       , (ReservedOp Equal)
-                       , (Reserved Let)
-                       , (Reserved Where)
-                       , (Special '{')]
 
-pEq :: [Token] -> [Token] -> Parser TT (Exp TT)
-pEq _ at = RHS <$> pCAtom [ReservedOp Equal] pEmpty
-       <*> pTr' err ([(ReservedOp Equal), (ReservedOp Pipe)] `union` at)
-  where err  = [ (ReservedOp Equal)
-               , (Reserved Class)
-               , (Reserved Instance)
-               , (Reserved Data)
-               , (Reserved Type)]
+pEq :: [Token] -> Parser TT (Exp TT)
+pEq at = RHS <$> pCAtom [ReservedOp Equal] pEmpty
+       <*> pTr' ([(ReservedOp Equal), (ReservedOp Pipe)] `union` at)
 
 -- | Parse many of something
 pMany :: Parser TT (Exp TT) -> Parser TT (Exp TT)
 pMany = (<$>) Expr . many
 
 pDTree :: Parser TT [(Exp TT)]
-pDTree = pTopDecl [] atom
+pDTree = pTopDecl atom
     where atom = [(ReservedOp Equal), (ReservedOp Pipe)]
 
 -- | Parse a some of something separated by the token (Special '.')
@@ -773,61 +747,57 @@ pBlockOf' :: Parser TT a -> Parser TT a
 pBlockOf' p = exact [startBlock] *> p <* exact [endBlock] -- see HACK above
 
 -- | Parse something that can contain a data, type declaration or a class
-pTopDecl :: [Token] -> [Token] -> Parser TT [(Exp TT)]
-pTopDecl err at = pFunDecl err at
-                  <|> pToList pType
-                  <|> pToList pData
-                  <|> pToList pClass
-                  <|> pToList pInstance
-                  <|> pEmpty
+pTopDecl :: [Token] -> Parser TT [(Exp TT)]
+pTopDecl at = pFunDecl at
+          <|> pToList pType
+          <|> pToList pData
+          <|> pToList pClass
+          <|> pToList pInstance
+          <|> pEmpty
 
 -- | The pWBlock describes what extra things are allowed in a where clause
-pWBlock :: [Token] -> [Token] -> Parser TT [(Exp TT)]
-pWBlock err at = pTopDecl err at
-     <|> ((:) <$> pCBrack (pTr' err (at \\ [(Special ',')
+pWBlock :: [Token] -> Parser TT [(Exp TT)]
+pWBlock at = pTopDecl at
+         <|> ((:) <$> pCBrack (pTr' (at \\ [(Special ',')
                                            , (ReservedOp Pipe)
                                            , (ReservedOp Equal)])) pEmpty
-          <*> pTr err (at `union` [(Special ',')
-                                    , (ReservedOp (DoubleColon))]))
-     <|> ((:) <$> pCBrace (pTr' err (at \\ [(Special ','),(ReservedOp Pipe)
-                                            , (ReservedOp Equal)])) pEmpty
-          <*> pTr err (at `union` [ (Special ',')
+              <*> pTr (at `union` [(Special ',')
+                                  , (ReservedOp DoubleColon)]))
+         <|> ((:) <$> pCBrace (pTr' (at \\ [(Special ','),(ReservedOp Pipe)
+                                           , (ReservedOp Equal)])) pEmpty
+              <*> pTr (at `union` [ (Special ',')
                                   , (ReservedOp (DoubleColon))]))
 
 -- | Parse something not containing a Type, Data declaration or a class kw
 --  but parse a where
-pTr :: [Token] -> [Token] -> Parser TT [(Exp TT)]
-pTr err at
-    = pEmpty
-  <|> ((:) <$> (pTree ((noiseErr `union` [Reserved Where])
-                       \\ [(ReservedOp Pipe),(ReservedOp Equal)]) at
-                <|> pBlockOf (pTr err (at \\ [(Special ',')])))
-       <*> pTr err (at \\ [(ReservedOp (DoubleColon)), (Special ',')
-                          , (ReservedOp RightArrow)]))
-  <|> pToList (pFunRHS err (at \\ [(Special ','),(ReservedOp (DoubleColon))]))
+pTr :: [Token] -> Parser TT [(Exp TT)]
+pTr at = pEmpty
+     <|> ((:) <$> (pTree at
+                   <|> pBlockOf (pTr (at \\ [(Special ',')])))
+          <*> pTr (at \\ [(ReservedOp DoubleColon), (Special ',')
+                         , (ReservedOp RightArrow)]))
+     <|> pToList (pFunRHS (at \\ [(Special ','),(ReservedOp DoubleColon)]))
 
 -- | Parse something where guards are not allowed
-pTr' :: [Token] -> [Token] -> Parser TT [(Exp TT)]
-pTr' err at = pEmpty
-          <|> (:) <$> (pTree ([(ReservedOp Pipe)
-                              , (Reserved Where)
-                              , (ReservedOp Equal)] `union` err) at
-                       <|> pBlockOf (pTr err ((atom' `union` at)
-                                               \\ [(ReservedOp (DoubleColon))
-                                                  , (ReservedOp RightArrow)]
-                                              )))
-              <*> pTr' err at
+pTr' :: [Token] -> Parser TT [(Exp TT)]
+pTr' at = pEmpty
+      <|> (:) <$> (pTree at
+                   <|> pBlockOf (pTr ((atom' `union` at)
+                                      \\ [(ReservedOp DoubleColon)
+                                         , (ReservedOp RightArrow)]
+                                     )))
+      <*> pTr' at
     where atom' = [(ReservedOp Equal),(ReservedOp Pipe)]
 
 -- | Parse an expression, as a list of "things".
-pTree ::[Token] -> [Token] -> Parser TT (Exp TT)
-pTree err at
-    = pCParen (pTr err (at \\ [Special ','])) pEmpty
-  <|> pCBrack (pTr' err (at \\ notAtom)) pEmpty
-  <|> pCBrace (pTr' err (at \\ notAtom)) pEmpty
+pTree :: [Token] -> Parser TT (Exp TT)
+pTree at
+    = pCParen (pTr (at \\ [Special ','])) pEmpty
+  <|> pCBrack (pTr' (at \\ notAtom)) pEmpty
+  <|> pCBrace (pTr' (at \\ notAtom)) pEmpty
   <|> pLet
   <|> (PError <$> recoverWith
-       (sym $ flip elem $ isNoiseErr err) <*>  pure (newT '!') <*> pEmpty)
+       (sym $ flip elem $ isNoiseErr) <*>  pure (newT '!') <*> pEmpty)
   <|> (PAtom <$> sym (flip notElem (isNoise at)) <*> pEmpty)
       -- note that, by construction, '<' and '>' will always be matched, so
       -- we don't try to recover errors with them.
@@ -836,20 +806,12 @@ pTree err at
 -- | Parse a typesignature 
 pTypeSig :: Parser TT [(Exp TT)]
 pTypeSig = pToList (TS <$>  exact [ReservedOp (DoubleColon)]
-                    <*> pTr noiseErr []) <* pTestTok pEol
+                    <*> pTr []) <* pTestTok pEol
     where pEol = [startBlock, endBlock, nextLine]-- , (Special ')')]
 
--- | A list of keywords that usually should be an error
-noiseErr :: [Token]
-noiseErr = [(Reserved Class)
-           , (Reserved Instance)
-           , (ReservedOp Pipe)
-           , (Reserved Data)
-           , (Reserved Type)]
-
 -- | List of things that allways should be parsed as errors
-isNoiseErr :: [Token] -> [Token]
-isNoiseErr r
+isNoiseErr :: [Token]
+isNoiseErr
     = [ (Reserved Module)
       , (Reserved Import)
       , (Reserved In)
@@ -857,7 +819,15 @@ isNoiseErr r
       , (Reserved Data)
       , (Special '}')
       , (Special ')')
-      , (Special ']')] ++ r
+      , (Special ']')
+      , (Reserved Class)
+      , (Reserved Instance)
+      , (ReservedOp Pipe)
+      , (Reserved Where)
+      , (ReservedOp Equal)
+      , (Reserved Let)
+      , (Special '{')
+      ] 
 
 -- | List of things that never should be parsed as an atom
 isNoise :: [Token] -> [Token]
