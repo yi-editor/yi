@@ -1,6 +1,13 @@
 {-# LANGUAGE FlexibleInstances, TypeFamilies
   , TemplateHaskell, DeriveDataTypeable #-}
--- Copyright (c) JP Bernardy 2008
+-- Copyright (c) Anders Karlsson 2009
+-- Copyright (c) JP Bernardy 2009
+-- NOTES and todos:
+-- * carrying arround a list of "error" tokens is probably not necessary:
+--   they should be errors all the time.
+-- * pFunLHS should be called pFunDecl
+-- * pTypeSig should be a top-level declaration
+
 -- Note if the layout of the first line (not comments)
 -- is wrong the parser will only parse what is in the blocks given by Layout.hs
 module Yi.Syntax.Haskell ( PModule (..)
@@ -507,7 +514,7 @@ pType = PType <$> pAtom [Reserved Type]
                 , nextLine
                 , endBlock]
 
--- | Parse typedeclaration inside something
+-- | Parse type-declaration inside something
 pTypeRhs :: Parser TT (Exp TT)
 pTypeRhs = Block <$> some pAtype `BL.sepBy1` pAtom [ReservedOp RightArrow]
 
@@ -811,7 +818,7 @@ pTr' err at = pEmpty
               <*> pTr' err at
     where atom' = [(ReservedOp Equal),(ReservedOp Pipe)]
 
--- | Parse a Tree of expressions
+-- | Parse an expression, as a list of "things".
 pTree ::[Token] -> [Token] -> Parser TT (Exp TT)
 pTree err at
     = pCParen (pTr err (at \\ [Special ','])) pEmpty
