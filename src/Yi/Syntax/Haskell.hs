@@ -811,7 +811,7 @@ pTypeSig = pToList (TS <$>  exact [ReservedOp (DoubleColon)]
 
 -- | List of things that allways should be parsed as errors
 isNoiseErr :: [Token]
-isNoiseErr = recoverableSymbols ++ [(ReservedOp Pipe)]
+isNoiseErr = recoverableSymbols
 
 recoverableSymbols = recognizedSymbols \\ fmap Special "([{<>."
 -- We just don't recover opening symbols (only closing are "fixed").
