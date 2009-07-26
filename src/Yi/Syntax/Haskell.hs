@@ -257,37 +257,6 @@ instance IsTree Exp where
        (DC e) -> [e]
        _              -> []
 
--- | Search the given list, and return the 1st tree after the given
--- point on the given line.  This is the tree that will be moved if
--- something is inserted at the point.  Precondition: point is in the
--- given line.
-
--- TODO: this should be optimized by just giving the point of the end
--- of the line
-getIndentingSubtree :: [Exp TT] -> Point -> Int -> Maybe (Exp TT)
-getIndentingSubtree roots offset line =
-    listToMaybe [t | (t,posn) <- takeWhile
-                 ((<= line) . posnLine . snd) allSubTree'sPosn,
---                    -- it's very important that we do a linear search
---                    -- here (takeWhile), so that the tree is evaluated
---                    -- lazily and therefore parsing it can be lazy.
-                 posnOfs posn > offset, posnLine posn == line]
-    where allSubTree'sPosn = [(t',posn) | root <- roots,
-                              t'@(Block _) <- filter (not . null . toList)
-                              (getAllSubTrees root),
-                             let (tok:_) = toList t',
-                             let posn = tokPosn tok]
-
--- | given a tree, return (first offset, number of lines).
-getSubtreeSpan :: Exp TT -> (Point, Int)
-getSubtreeSpan tree = (posnOfs first, lastLine - firstLine)
-    where bounds@[first, _last]
-              = fmap (tokPosn . assertJust)
-                [getFirstElement tree, getLastElement tree]
-          [firstLine, lastLine] = fmap posnLine bounds
-          assertJust (Just x) = x
-          assertJust _ = error "assertJust: Just expected"
-
 getExprs :: PModule TT -> [Exp TT]
 getExprs (ProgMod _ b)     = getExprs b
 getExprs (Body _ exp exp') = [exp, exp']
