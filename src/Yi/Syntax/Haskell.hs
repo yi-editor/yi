@@ -745,6 +745,8 @@ pBlockOf p  = Block <$> pBlockOf' (pBlocks p) -- see HACK above
 -- | Parse something surrounded by (Special '<') and (Special '>')
 pBlockOf' :: Parser TT a -> Parser TT a
 pBlockOf' p = exact [startBlock] *> p <* exact [endBlock] -- see HACK above
+-- note that, by construction, '<' and '>' will always be matched, so
+-- we don't try to recover errors with them.
 
 -- | Parse something that can contain a data, type declaration or a class
 pTopDecl :: [Token] -> Parser TT [(Exp TT)]
