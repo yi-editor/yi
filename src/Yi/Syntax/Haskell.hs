@@ -716,7 +716,7 @@ pFunDecl at = (:) <$> beginLine
                     <*> (pFunDecl at <|> pEmpty)))
         where beginLine = pCParen (pTr at) pEmpty
                       <|> pCBrack (pTr at) pEmpty
-                      <|> (PAtom <$> sym (flip notElem $ isNoise [])
+                      <|> (PAtom <$> sym (flip notElem $ isNotNoise [])
                            <*> pEmpty)
                       <|> (PError <$> recoverWith
                            (sym $ flip elem $ isNoiseErr)
@@ -800,9 +800,7 @@ pTree at
   <|> pLet
   <|> (PError <$> recoverWith
        (sym $ flip elem $ isNoiseErr) <*>  pure (newT '!') <*> pEmpty)
-  <|> (PAtom <$> sym (flip notElem (isNoise at)) <*> pEmpty)
-      -- note that, by construction, '<' and '>' will always be matched, so
-      -- we don't try to recover errors with them.
+  <|> (PAtom <$> sym (flip notElem (isNotNoise at)) <*> pEmpty)
         where notAtom = [(Special ','), (ReservedOp Pipe), (ReservedOp Equal)]
 
 -- | Parse a typesignature 
@@ -831,18 +829,26 @@ isNoiseErr
       , (Special '{')
       ] 
 
--- | List of things that never should be parsed as an atom
-isNoise :: [Token] -> [Token]
-isNoise r
-    = [ (Reserved Let)
-      , (Reserved In)
-      , (Reserved Class)
-      , (Reserved Instance)
-      , (Reserved Module)
-      , (Reserved Import)
-      , (Reserved Type)
-      , (Reserved Data)
-      , (Reserved Where)] ++ fmap Special "()[]{}<>." ++ r
+recoverableSymbols = recognizedSymbols \\ fmap Special "([{<>."
+-- We just don't recover opening symbols (only closing are "fixed").
+-- Layout symbols "<>." are never recovered, because layout is constructed correctly.
+
+-- | List of things that should not be parsed as noise
+isNotNoise :: [Token] -> [Token]
+isNotNoise r = recognizedSymbols ++ r
+
+-- | These symbols are always properly recognized, and therefore they
+-- should never be accepted as "noise" inside expressions.
+recognizedSymbols = fmap ReservedOp [Equal] ++
+    [ (Reserved Let)
+    , (Reserved In)
+    , (Reserved Class)
+    , (Reserved Instance)
+    , (Reserved Module)
+    , (Reserved Import)
+    , (Reserved Type)
+    , (Reserved Data)
+    , (Reserved Where)] ++ fmap Special "()[]{}<>."
 
 -- | Parse parenthesis, brackets and braces containing
 -- an expression followed by possible comments
