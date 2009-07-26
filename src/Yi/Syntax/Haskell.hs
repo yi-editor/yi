@@ -826,7 +826,6 @@ isNoiseErr
       , (Reserved Where)
       , (ReservedOp Equal)
       , (Reserved Let)
-      , (Special '{')
       ] 
 
 recoverableSymbols = recognizedSymbols \\ fmap Special "([{<>."
