@@ -2,7 +2,9 @@
   , TemplateHaskell, DeriveDataTypeable #-}
 -- Copyright (c) Anders Karlsson 2009
 -- Copyright (c) JP Bernardy 2009
--- NOTES and todos:
+-- NOTES:
+-- * It seems as if the list of tokens that is passed (at) is sometimes modified in the
+--   wrong way: stuff is removed instead of added (or maybe the other way around)
 -- Note if the layout of the first line (not comments)
 -- is wrong the parser will only parse what is in the blocks given by Layout.hs
 module Yi.Syntax.Haskell ( PModule (..)
@@ -823,7 +825,8 @@ isNotNoise r = recognizedSymbols ++ r
 
 -- | These symbols are always properly recognized, and therefore they
 -- should never be accepted as "noise" inside expressions.
-recognizedSymbols = fmap ReservedOp [Equal] ++
+recognizedSymbols = -- fmap ReservedOp [Equal] ++
+                    -- Equal is not properly recognized in record declarations
     [ (Reserved Let)
     , (Reserved In)
     , (Reserved Class)
