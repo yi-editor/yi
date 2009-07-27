@@ -347,10 +347,10 @@ startBlock = Special '<'
 endBlock :: Token
 endBlock = Special '>'
 
-pEmpty :: (Functor f, Applicative f) =>  f [a]
+pEmpty :: Applicative f =>  f [a]
 pEmpty = pure []
 
-pToList :: (Functor f, Applicative f) =>  f a -> f [a]
+pToList :: Applicative f =>  f a -> f [a]
 pToList = (<*>) $ flip (:) <$> pEmpty
 
 -- | @sym f@ returns a parser parsing @f@ as a special symbol
@@ -399,7 +399,7 @@ pComments = many $ sym $ uncurry (||) . (&&&) isComment (== CppDirective)
 
 -- | Parse something thats optional
 pOpt :: Parser TT (Exp TT) -> Parser TT (Exp TT)
-pOpt = (<$>) Opt . optional
+pOpt x = Opt <$> optional x
 
 -- | Parse an atom with, and without using please
 pAtom, ppAtom :: [Token] -> Parser TT (Exp TT)
@@ -622,7 +622,7 @@ strictF a = Bin <$> pOpt (pAtom [Operator "!"]) <*> a
 
 pFielddecl ::Parser TT (Exp TT)
 pFielddecl = Bin <$> pVars
-         <*> pOpt (pOP [ReservedOp $ DoubleColon]
+         <*> pOpt (pOP [ReservedOp DoubleColon]
                    (pTypeRhs
                     <|> pKW [Operator "!"] pAtype
                     <|> pErr))
@@ -739,7 +739,7 @@ pBlocks p =  p `BL.sepBy1` exact [nextLine]
 pBlockOf :: Parser TT [(Exp TT)] -> Parser TT (Exp TT)
 pBlockOf p  = Block <$> pBlockOf' (pBlocks p) -- see HACK above
 
--- | Parse something surrounded by (Special '<') and (Special '>')
+-- | Parse something surrounded by (Special '<') and (Special '>')
 pBlockOf' :: Parser TT a -> Parser TT a
 pBlockOf' p = exact [startBlock] *> p <* exact [endBlock] -- see HACK above
 -- note that, by construction, '<' and '>' will always be matched, so
