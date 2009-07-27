@@ -657,7 +657,7 @@ pClass = PClass <$> pAtom [Reserved Class]
                <*> (Bin <$> please (pBlockOf $ pWBlock atom')
                     <*> (Expr <$> pWBlock atom'))
               pEol = [nextLine, endBlock, startBlock, (Reserved Where)]
-              atom' = [(ReservedOp Equal),(ReservedOp Pipe), (Reserved In)]
+              atom' = [(ReservedOp Equal),(ReservedOp Pipe)]
 
 pSContext :: Parser TT (Exp TT)
 pSContext = Bin <$> pAtom [ConsIdent] <*> ppAtom [VarIdent]
