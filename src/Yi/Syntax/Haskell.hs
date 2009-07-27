@@ -638,8 +638,8 @@ pipeEqual = [ReservedOp Equal,ReservedOp Pipe]
 pLet :: Parser TT (Exp TT)
 pLet = PLet <$> pAtom [Reserved Let]
    <*> (pBlockOf'
-        (Block <$> pBlocks (pFunDecl pipeEqual))
-        <|> (pEmptyBL <* pTestTok pEol))
+        (Block <$> pBlocks' (pFunDecl pipeEqual))
+        <|> (Enter "let block expected" $ Yuck pEmptyBL))
    <*>  pOpt (pCAtom [Reserved In] pEmpty)
     where pEol = [endBlock]
 
@@ -734,6 +734,11 @@ pDTree = pTopDecl [ReservedOp Equal, ReservedOp Pipe]
 -- | Parse a some of something separated by the token (Special '.')
 pBlocks :: Parser TT r -> Parser TT (BL.BList r)
 pBlocks p =  p `BL.sepBy1` exact [nextLine]
+
+-- | Parse a some of something separated by the token (Special '.'), or nothing
+pBlocks' :: Parser TT r -> Parser TT (BL.BList r)
+pBlocks' p =  pBlocks p <|> pure BL.nil
+
 
 -- | Parse a block of some something separated by the tok (Special '.')
 pBlockOf :: Parser TT [(Exp TT)] -> Parser TT (Exp TT)

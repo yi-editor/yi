@@ -11,7 +11,7 @@
 module Parser.Incremental (Process, 
                            recoverWith, symbol, eof, lookNext, testNext, run,
                            mkProcess, profile, pushSyms, pushEof, evalL, evalR, feedZ,
-                           Parser(Look, Pure, Enter), countWidth, fullLog, LogEntry(..),
+                           Parser(Look, Pure, Enter, Yuck), countWidth, fullLog, LogEntry(..),
                            evalL'
                           ) where
 
