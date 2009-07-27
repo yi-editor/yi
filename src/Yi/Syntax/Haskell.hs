@@ -395,7 +395,7 @@ pOP op r = Bin <$> pAtom op <*> r
 
 ppOP op r = Bin <$> ppAtom op <*> r
 
--- | Parse comments
+-- | Parse comments
 pComments :: Parser TT [TT]
 pComments = many $ sym $ uncurry (||) . (&&&) isComment (== CppDirective)
 
@@ -687,14 +687,13 @@ pGuard = PGuard
      <$> some (PGuard' <$> pCAtom [ReservedOp Pipe] pEmpty <*>
                -- comments are by default parsed after this
                pTr' at
-               <*> please (pCAtom [(ReservedOp Equal),(ReservedOp RightArrow)]
+               <*> please (pCAtom [ReservedOp Equal,ReservedOp RightArrow]
                            pEmpty)
                -- comments are by default parsed after this
                -- this must be -> if used in case
                <*> pTr' at')
-  where at   = [(ReservedOp RightArrow),(ReservedOp Equal)
-               , (ReservedOp Pipe)]
-        at'  = [(ReservedOp Pipe)]
+  where at   = [ReservedOp RightArrow, ReservedOp Equal, ReservedOp Pipe]
+        at'  = [ReservedOp Pipe]
 
 pFunRHS :: [Token] -> Parser TT (Exp TT)
 pFunRHS at = Bin <$> (pGuard
@@ -710,9 +709,9 @@ pFunRHS at = Bin <$> (pGuard
 pFunDecl :: [Token] -> Parser TT [(Exp TT)]
 pFunDecl at = (:) <$> beginLine
           <*> (pTypeSig
-               <|> pTr (at `union` [(Special ',') -- here we know that
+               <|> pTr (at `union` [Special ',' -- here we know that
                                     -- arguments will follow
-                                   , (ReservedOp DoubleColon)])
+                                   ,ReservedOp DoubleColon])
                <|> ((:) <$> pAtom [Special ','] -- here we know that it is
                                                 -- a type signature
                     <*> (pFunDecl at <|> pEmpty)))
@@ -726,7 +725,7 @@ pFunDecl at = (:) <$> beginLine
 
 pEq :: [Token] -> Parser TT (Exp TT)
 pEq at = RHS <$> pCAtom [ReservedOp Equal] pEmpty
-       <*> pTr' ([(ReservedOp Equal), (ReservedOp Pipe)] `union` at)
+       <*> pTr' ([ReservedOp Equal, ReservedOp Pipe] `union` at)
 
 -- | Parse many of something
 pMany :: Parser TT (Exp TT) -> Parser TT (Exp TT)
@@ -734,7 +733,7 @@ pMany = (<$>) Expr . many
 
 pDTree :: Parser TT [(Exp TT)]
 pDTree = pTopDecl atom
-    where atom = [(ReservedOp Equal), (ReservedOp Pipe)]
+    where atom = [ReservedOp Equal, ReservedOp Pipe]
 
 -- | Parse a some of something separated by the token (Special '.')
 pBlocks :: Parser TT r -> Parser TT (BL.BList r)
@@ -809,7 +808,7 @@ pTree at
 pTypeSig :: Parser TT [(Exp TT)]
 pTypeSig = pToList (TS <$>  exact [ReservedOp (DoubleColon)]
                     <*> pTr []) <* pTestTok pEol
-    where pEol = [startBlock, endBlock, nextLine]-- , (Special ')')]
+    where pEol = [startBlock, endBlock, nextLine]
 
 -- | List of things that allways should be parsed as errors
 isNoiseErr :: [Token] -> [Token]
