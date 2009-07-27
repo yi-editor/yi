@@ -534,7 +534,7 @@ pData = PData <$> pAtom [Reserved Data]
               <*> pComments
           pEol = [(Special ';'), nextLine, endBlock]
 
--- | Parse second half of the data declaration, if there is one
+-- | Parse second half of the data declaration, if there is one
 pDataRHS :: Parser TT (Exp TT)
 pDataRHS = PData' <$> pAtom eqW -- either we have standard data
                                 -- or we have GADT:s
@@ -790,8 +790,8 @@ pTr' at = pEmpty
 -- | Parse an expression, as a list of "things".
 pTree :: [Token] -> Parser TT (Exp TT)
 pTree at
-    = pCParen (pTr  (at \\ [Special ','])) pEmpty
-  <|> pCBrack (pTr' (at \\ notAtom)) pEmpty
+    = pCParen (pTr  (at \\ [Special ','])) pEmpty -- might be a tuple, so accept commas
+  <|> pCBrack (pTr' (at \\ notAtom)) pEmpty       
   <|> pCBrace (pTr' (at \\ notAtom)) pEmpty
   <|> pLet
   <|> (PError <$> recoverWith
