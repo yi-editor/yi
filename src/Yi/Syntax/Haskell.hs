@@ -526,9 +526,9 @@ pData = PData <$> pAtom [Reserved Data]
               <$> recoverWith (sym $ not .
                                uncurry (||) . (&&&) isComment
                                (flip elem [ CppDirective
-                                          , (ReservedOp Equal)
-                                          , (Reserved Deriving)
-                                          , (Reserved Where)])
+                                          , ReservedOp Equal
+                                          , Reserved Deriving
+                                          , Reserved Where])
                               )
               <*> pure (newT '!')
               <*> pComments
@@ -543,7 +543,7 @@ pDataRHS = PData' <$> pAtom eqW -- either we have standard data
                           `BL.sepBy1` exact [nextLine]))
       <*> pOpt pDeriving
       <|> pDeriving
-    where eqW = [(ReservedOp Equal),(Reserved Where)]
+    where eqW = [ReservedOp Equal, Reserved Where]
 
 -- | Parse an GADT declaration
 pGadt :: Parser TT (Exp TT)
@@ -632,12 +632,13 @@ pEModule ::Parser TT (Exp TT)
 pEModule = pKW [Reserved Module]
          $ please (Modid <$> exact [ConsIdent] <*> pComments)
 
+pipeEqual = [ReservedOp Equal,ReservedOp Pipe]
+
 -- | Parse a Let expression
 pLet :: Parser TT (Exp TT)
 pLet = PLet <$> pAtom [Reserved Let]
    <*> (pBlockOf'
-        (Block <$> pBlocks 
-         (pTr [(ReservedOp Pipe),(ReservedOp Equal)]))
+        (Block <$> pBlocks (pFunDecl pipeEqual))
         <|> (pEmptyBL <* pTestTok pEol))
    <*>  pOpt (pCAtom [Reserved In] pEmpty)
     where pEol = [endBlock]
@@ -652,10 +653,9 @@ pClass = PClass <$> pAtom [Reserved Class]
      <*> ppAtom [VarIdent]
      <*> (Bin <$> (pMany pErr <* pTestTok pEol) <*> pOpt pW)
         where pW = PWhere <$> pAtom [Reserved Where]
-               <*> (Bin <$> please (pBlockOf $ pWBlock atom')
-                    <*> (Expr <$> pWBlock atom'))
-              pEol = [nextLine, endBlock, startBlock, (Reserved Where)]
-              atom' = [(ReservedOp Equal),(ReservedOp Pipe)]
+               <*> (Bin <$> please (pBlockOf $ pWBlock pipeEqual)
+                    <*> (Expr <$> pWBlock pipeEqual))
+              pEol = [nextLine, endBlock, startBlock, Reserved Where]
 
 pSContext :: Parser TT (Exp TT)
 pSContext = Bin <$> pAtom [ConsIdent] <*> ppAtom [VarIdent]
@@ -670,14 +670,13 @@ pInstance = PInstance <$> pAtom [Reserved Instance]
         <*> pInst
         <*> (Bin <$> (pMany pErr <* pTestTok pEol) <*> please pW)
         where pW = PWhere <$> pAtom [Reserved Where]
-               <*> (Bin <$> please (pBlockOf $ pWBlock atom')
-                    <*> (Expr <$> pWBlock atom'))
+               <*> (Bin <$> please (pBlockOf $ pWBlock pipeEqual)
+                    <*> (Expr <$> pWBlock pipeEqual))
               pInst = please
                     ( pAtom [ConsIdent]
                       <|> pParen (many $ pTree [])
                       <|> pBrack (many $ pTree []))
               pEol = [nextLine, startBlock, endBlock, (Reserved Where)]
-              atom' = [(ReservedOp Equal),(ReservedOp Pipe)]
 
 -- check if pEq can be used here instead problem with optional ->
 pGuard :: Parser TT (Exp TT)
@@ -729,9 +728,8 @@ pEq at = RHS <$> pCAtom [ReservedOp Equal] pEmpty
 pMany :: Parser TT (Exp TT) -> Parser TT (Exp TT)
 pMany = (<$>) Expr . many
 
-pDTree :: Parser TT [(Exp TT)]
-pDTree = pTopDecl atom
-    where atom = [ReservedOp Equal, ReservedOp Pipe]
+pDTree :: Parser TT [Exp TT]
+pDTree = pTopDecl [ReservedOp Equal, ReservedOp Pipe]
 
 -- | Parse a some of something separated by the token (Special '.')
 pBlocks :: Parser TT r -> Parser TT (BL.BList r)
@@ -783,22 +781,21 @@ pTr at = pEmpty
 pTr' :: [Token] -> Parser TT [(Exp TT)]
 pTr' at = pEmpty
       <|> (:) <$> (pTree at
-                   <|> pBlockOf (pTr ((atom' `union` at)
+                   <|> pBlockOf (pTr ((pipeEqual `union` at)
                                       \\ [(ReservedOp DoubleColon)
                                          , (ReservedOp RightArrow)]
                                      )))
       <*> pTr' at
-    where atom' = [(ReservedOp Equal),(ReservedOp Pipe)]
 
 -- | Parse an expression, as a list of "things".
 pTree :: [Token] -> Parser TT (Exp TT)
 pTree at
-    = pCParen (pTr (at \\ [Special ','])) pEmpty
+    = pCParen (pTr  (at \\ [Special ','])) pEmpty
   <|> pCBrack (pTr' (at \\ notAtom)) pEmpty
   <|> pCBrace (pTr' (at \\ notAtom)) pEmpty
   <|> pLet
   <|> (PError <$> recoverWith
-       (sym $ flip elem $ isNoiseErr at) <*>  pure (newT '!') <*> pEmpty)
+       (sym $ flip elem $ isNoiseErr at) <*> pure (newT '!') <*> pEmpty)
   <|> (PAtom <$> sym (flip notElem (isNotNoise at)) <*> pEmpty)
         where notAtom = [(Special ','), (ReservedOp Pipe), (ReservedOp Equal)]
 
