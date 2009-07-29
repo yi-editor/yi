@@ -646,6 +646,9 @@ pDo :: Parser TT (Exp TT)
 pDo = Bin <$> pAtom [Reserved Do]
           <*> pBlock (pExpr (recognizedSometimes \\ [ReservedOp LeftArrow]))
 
+-- | Parse part of a lambda binding.
+pLambda = Bin <$> pAtom [ReservedOp BackSlash] <*> (Bin <$> (Expr <$> pPattern) <*> please (pAtom [ReservedOp RightArrow]))
+
 -- | Parse an Of block
 pOf :: Parser TT (Exp TT)
 pOf = Bin <$> pAtom [Reserved Of]
@@ -808,12 +811,15 @@ recognizedSometimes = [ReservedOp DoubleDot,
                        ReservedOp Equal,
                        ReservedOp LeftArrow,
                        ReservedOp RightArrow,
-                       ReservedOp DoubleRightArrow
+                       ReservedOp DoubleRightArrow,
+                       ReservedOp BackSlash
                       ]
 
 -- | Parse an expression, as a concatenation of elements.
 pExpr :: [Token] -> Parser TT [Exp TT]
 pExpr at = many (pElem at)
+
+
 
 -- | Parse an "element" of an expression
 pElem :: [Token] -> Parser TT (Exp TT)
@@ -825,7 +831,7 @@ pElem at
   <|> (PError <$> recoverWith
        (sym $ flip elem $ isNoiseErr at) <*> pure (newT '!') <*> pEmpty)
   <|> (PAtom <$> sym (flip notElem (isNotNoise at)) <*> pEmpty)
-  <|> pLet <|> pDo <|> pOf -- note that these cannot appear in a pattern.
+  <|> pLet <|> pDo <|> pOf <|> pLambda -- note that these cannot appear in a pattern.
   -- TODO: support type expressions
 
 -- | Parse a typesignature 
