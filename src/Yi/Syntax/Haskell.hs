@@ -712,7 +712,7 @@ pFunRHS equalSign at = Bin <$> (pGuard equalSign <|> pEq equalSign at) <*> pOpt 
 
 
 -- Note that this can both parse an equation and a type declaration.
--- Since they can start with the same token the left part (beginLine)
+-- Since they can start with the same token, the left part (beginLine)
 -- is factored here.
 pFunDecl :: [Token] -> Parser TT [Exp TT]
 pFunDecl at = (:) <$> beginLine
@@ -800,28 +800,36 @@ pTr at = pEmpty
      <|> pToList (pFunRHS (ReservedOp Equal) (at \\ [Special ',', ReservedOp DoubleColon]))
 
 -- | A "normal" expression, where none of the following symbols are acceptable.
-pExpr' = pExpr [Special ',', ReservedOp Pipe, ReservedOp Equal, ReservedOp RightArrow]
+pExpr' = pExpr recognizedSometimes
 
--- | Parse an expression, as a list of "things".
+recognizedSometimes = [ReservedOp DoubleDot, 
+                       Special ',', 
+                       ReservedOp Pipe,
+                       ReservedOp Equal,
+                       ReservedOp LeftArrow,
+                       ReservedOp DoubleRightArrow
+                      ]
+
+-- | Parse an expression, as a concatenation of elements.
 pExpr :: [Token] -> Parser TT [Exp TT]
 pExpr at = many (pElem at)
 
 -- | Parse an "element" of an expression
 pElem :: [Token] -> Parser TT (Exp TT)
 pElem at
-    = pCParen (pExpr (at \\ [Special ','])) pEmpty -- might be a tuple, so accept commas as noise
-  <|> pCBrack (pExpr (at \\ notAtom)) pEmpty -- list thing
-  <|> pCBrace (pExpr (at \\ notAtom)) pEmpty -- record
-  <|> pLet <|> pDo <|> pOf
-  <|> (Yuck $ Enter "incorrectly placed block" $ pBlockOf (pExpr at))
+    = pCParen (pExpr (recognizedSometimes \\ [Special ','])) pEmpty -- might be a tuple, so accept commas as noise
+  <|> pCBrack (pExpr (recognizedSometimes \\ [ReservedOp DoubleDot, ReservedOp Pipe, ReservedOp LeftArrow, Special ','])) pEmpty -- list thing
+  <|> pCBrace (pExpr (recognizedSometimes \\ [ReservedOp Equal, Special ',', ReservedOp Pipe])) pEmpty -- record: TODO: improve
+  <|> (Yuck $ Enter "incorrectly placed block" $ pBlockOf (pExpr recognizedSometimes))
   <|> (PError <$> recoverWith
        (sym $ flip elem $ isNoiseErr at) <*> pure (newT '!') <*> pEmpty)
   <|> (PAtom <$> sym (flip notElem (isNotNoise at)) <*> pEmpty)
-        where notAtom = [(Special ','), (ReservedOp Pipe), (ReservedOp Equal)]
+  <|> pLet <|> pDo <|> pOf -- note that these cannot appear in a pattern.
+  -- TODO: support type expressions
 
 -- | Parse a typesignature 
 pTypeSig :: Parser TT [(Exp TT)]
-pTypeSig = pToList (TS <$>  exact [ReservedOp (DoubleColon)]
+pTypeSig = pToList (TS <$> exact [ReservedOp (DoubleColon)]
                     <*> pTr []) <* pTestTok pEol
     where pEol = [startBlock, endBlock, nextLine]
 
