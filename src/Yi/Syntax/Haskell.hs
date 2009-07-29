@@ -649,8 +649,10 @@ pDo = Bin <$> pAtom [Reserved Do]
 -- | Parse an Of block
 pOf :: Parser TT (Exp TT)
 pOf = Bin <$> pAtom [Reserved Of]
-          <*> pBlock (pExpr [ReservedOp Pipe])
+          <*> pBlock (pToList pAlternative)
 
+pAlternative = Bin <$> (Expr <$> pExpr') -- pattern
+                   <*> please (pFunRHS (ReservedOp RightArrow) [])
 
 -- | Parse a class decl
 pClass :: Parser TT (Exp TT)
@@ -688,23 +690,22 @@ pInstance = PInstance <$> pAtom [Reserved Instance]
               pEol = [nextLine, startBlock, endBlock, (Reserved Where)]
 
 -- | Parse some guards and a where clause
--- check if pEq can be used here instead problem with optional ->
-pGuard :: Parser TT (Exp TT)
-pGuard = PGuard
+-- TODO: pEq can be used here
+pGuard :: Token -> Parser TT (Exp TT)
+pGuard equalSign = PGuard
      <$> some (PGuard' <$> pCAtom [ReservedOp Pipe] pEmpty <*>
                -- comments are by default parsed after this
                pExpr at
-               <*> please (pCAtom [ReservedOp Equal,ReservedOp RightArrow]
-                           pEmpty)
+               <*> please (pCAtom [equalSign] pEmpty)
                -- comments are by default parsed after this
                -- this must be -> if used in case
                <*> pExpr at')
   where at   = [ReservedOp RightArrow, ReservedOp Equal, ReservedOp Pipe]
         at'  = [ReservedOp Pipe]
 
--- | Right-hand-side of a function declaration.
-pFunRHS :: [Token] -> Parser TT (Exp TT)
-pFunRHS at = Bin <$> (pGuard <|> pEq at) <*> pOpt pst
+-- | Right-hand-side of a function or case equation (after the pattern)
+pFunRHS :: Token -> [Token] -> Parser TT (Exp TT)
+pFunRHS equalSign at = Bin <$> (pGuard equalSign <|> pEq equalSign at) <*> pOpt pst
     where pst = Expr <$> ((:) <$> (PWhere <$> pAtom [Reserved Where]
                                    <*> please (pBlockOf $ pFunDecl at))
                           <*> pExpr at)
@@ -731,9 +732,9 @@ pFunDecl at = (:) <$> beginLine
                            <*> pure (newT '!') <*> pEmpty)
 
 -- | The RHS of an equation.
-pEq :: [Token] -> Parser TT (Exp TT)
-pEq at = RHS <$> pCAtom [ReservedOp Equal] pEmpty
-       <*> pExpr ([ReservedOp Equal, ReservedOp Pipe] `union` at)
+pEq :: Token -> [Token] -> Parser TT (Exp TT)
+pEq equalSign at = RHS <$> pCAtom [equalSign] pEmpty
+       <*> pExpr ([ReservedOp Equal, ReservedOp RightArrow, ReservedOp Pipe] `union` at)
 
 -- | Parse many of something
 pMany :: Parser TT (Exp TT) -> Parser TT (Exp TT)
@@ -796,15 +797,14 @@ pTr at = pEmpty
                    <|> pBlockOf (pTr (at \\ [(Special ',')])))
           <*> pTr (at \\ [ReservedOp DoubleColon, Special ','
                          ,ReservedOp RightArrow]))
-     <|> pToList (pFunRHS (at \\ [Special ',', ReservedOp DoubleColon]))
+     <|> pToList (pFunRHS (ReservedOp Equal) (at \\ [Special ',', ReservedOp DoubleColon]))
+
+-- | A "normal" expression, where none of the following symbols are acceptable.
+pExpr' = pExpr [Special ',', ReservedOp Pipe, ReservedOp Equal, ReservedOp RightArrow]
 
 -- | Parse an expression, as a list of "things".
 pExpr :: [Token] -> Parser TT [Exp TT]
-pExpr at = many (pElem at
-                   <|> pBlockOf (pExpr (([ReservedOp Equal] `union` at)
-                                       -- there may be guards here (case), so Pipe is still no well recognized
-                                      \\ [ReservedOp DoubleColon, ReservedOp RightArrow]
-                                     )))
+pExpr at = many (pElem at)
 
 -- | Parse an "element" of an expression
 pElem :: [Token] -> Parser TT (Exp TT)
@@ -813,6 +813,7 @@ pElem at
   <|> pCBrack (pExpr (at \\ notAtom)) pEmpty -- list thing
   <|> pCBrace (pExpr (at \\ notAtom)) pEmpty -- record
   <|> pLet <|> pDo <|> pOf
+  <|> (Yuck $ Enter "incorrectly placed block" $ pBlockOf (pExpr at))
   <|> (PError <$> recoverWith
        (sym $ flip elem $ isNoiseErr at) <*> pure (newT '!') <*> pEmpty)
   <|> (PAtom <$> sym (flip notElem (isNotNoise at)) <*> pEmpty)
