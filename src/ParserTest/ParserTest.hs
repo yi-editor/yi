@@ -95,7 +95,7 @@ parse flags (fName, input) = do
       option thisFar xs = if (List.elem "-oneBy" flags) then -- Choose to go stepwise or all in
                               oneByOne thisFar xs
                               else ([], pushSyms xs $ thisFar)
-      write toks (msgs,log) = case (find (isPrefixOf "-Tree=") flags) of
+      write toks ~(msgs,log) = case (find (isPrefixOf "-Tree=") flags) of
           Nothing -> return ()
           Just x ->do print msgs
                       writeTree toks (drop 6 x) log
