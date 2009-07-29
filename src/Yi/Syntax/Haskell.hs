@@ -749,14 +749,15 @@ pBlocks p =  p `BL.sepBy1` exact [nextLine]
 pBlocks' :: Parser TT r -> Parser TT (BL.BList r)
 pBlocks' p =  pBlocks p <|> pure BL.nil
 
-
 -- | Parse a block of some something separated by the tok (Special '.')
 pBlockOf :: Parser TT [(Exp TT)] -> Parser TT (Exp TT)
 pBlockOf p  = Block <$> pBlockOf' (pBlocks p) -- see HACK above
 
 
 pBlock :: Parser TT [Exp TT] -> Parser TT (Exp TT)
-pBlock p = pBlockOf' (Block <$> pBlocks' p) <|> (Yuck $ Enter "block expected" $ pEmptyBL)
+pBlock p = pBlockOf' (Block <$> pBlocks' p) 
+       <|> pBrace (concat <$> (p `sepBy1` exact [Special ';']) <|> pure [])
+       <|> (Yuck $ Enter "block expected" $ pEmptyBL)
 
 -- | Parse something surrounded by (Special '<') and (Special '>')
 pBlockOf' :: Parser TT a -> Parser TT a
