@@ -687,6 +687,7 @@ pInstance = PInstance <$> pAtom [Reserved Instance]
                       <|> pBrack (many $ pElem []))
               pEol = [nextLine, startBlock, endBlock, (Reserved Where)]
 
+-- | Parse some guards and a where clause
 -- check if pEq can be used here instead problem with optional ->
 pGuard :: Parser TT (Exp TT)
 pGuard = PGuard
@@ -809,8 +810,8 @@ pExpr at = many (pElem at
 pElem :: [Token] -> Parser TT (Exp TT)
 pElem at
     = pCParen (pExpr (at \\ [Special ','])) pEmpty -- might be a tuple, so accept commas as noise
-  <|> pCBrack (pExpr (at \\ notAtom)) pEmpty       
-  <|> pCBrace (pExpr (at \\ notAtom)) pEmpty
+  <|> pCBrack (pExpr (at \\ notAtom)) pEmpty -- list thing
+  <|> pCBrace (pExpr (at \\ notAtom)) pEmpty -- record
   <|> pLet <|> pDo <|> pOf
   <|> (PError <$> recoverWith
        (sym $ flip elem $ isNoiseErr at) <*> pure (newT '!') <*> pEmpty)
