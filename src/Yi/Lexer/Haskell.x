@@ -45,9 +45,6 @@ $nl        = [\n\r]
         then|family|foreign|export|dynamic|
         safe|threadsafe|unsafe|stdcall|ccall|dotnet
 
-@layoutReservedId =
-    of|let|do|mdo
-
 @varid  = $small $idchar* [\#]?
 @conid  = $large $idchar* [\#]?
 @anyid = (@varid | @conid)
@@ -118,9 +115,10 @@ haskell :-
   "qualified"                                   { c (Reserved Qualified) }
   "let"                                         { c (Reserved Let) }
   "in"                                          { c (Reserved In) }
+  "of"                                          { c (Reserved Of) }
+  "do" | "mdo"                                  { c (Reserved Do) }
   "class"                                       { c (Reserved Class) }
   "instance"                                    { c (Reserved Instance) }
-  @layoutReservedId                             { c (Reserved OtherLayout) }
   `@qual @varid`                                { cs $ Operator . init . tail }
   `@qual @conid`                                { cs $ ConsOperator . init . tail }
   @qual @varid                                  { c VarIdent }
@@ -161,7 +159,7 @@ data CommentType = Open | Close | Text | Line
     deriving (Eq, Show)
 
 data ReservedType = Hiding | Qualified | As | Import | Data | NewType | Type | Where
-                  | Let | In | OtherLayout | Deriving | Module | Forall | Other | Class | Instance
+                  | Let | In | Do | Of | OtherLayout | Deriving | Module | Forall | Other | Class | Instance
     deriving (Eq, Show)
 
 data OpType = Pipe | Equal | BackSlash | LeftArrow | RightArrow | DoubleRightArrow | DoubleColon | DoubleDot | Arobase | Tilda
@@ -232,9 +230,11 @@ tokenToText (Operator "neg") = Just " ¬ "
 tokenToText (Reserved Forall) = Just "    ∀ "
 tokenToText _ = Nothing
 
-startsLayout (Reserved OtherLayout) = True
+startsLayout (Reserved Do) = True
+startsLayout (Reserved Of) = True
 startsLayout (Reserved Where) = True
 startsLayout (Reserved Let) = True
+startsLayout (Reserved OtherLayout) = True
 startsLayout _ = False
 
 isComment (Comment _) = True

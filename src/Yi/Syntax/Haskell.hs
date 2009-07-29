@@ -641,6 +641,17 @@ pLet = PLet <$> pAtom [Reserved Let]
    <*> (pBlock (pFunDecl pipeEqual) <|> (Enter "let block expected" $ Yuck pEmptyBL))
    <*> pOpt (pCAtom [Reserved In] pEmpty)
 
+-- | Parse a Do block
+pDo :: Parser TT (Exp TT)
+pDo = Bin <$> pAtom [Reserved Do]
+          <*> pBlock (pExpr pipeEqual)
+
+-- | Parse an Of block
+pOf :: Parser TT (Exp TT)
+pOf = Bin <$> pAtom [Reserved Of]
+          <*> pBlock (pExpr [ReservedOp Pipe])
+
+
 -- | Parse a class decl
 pClass :: Parser TT (Exp TT)
 pClass = PClass <$> pAtom [Reserved Class]
@@ -799,7 +810,7 @@ pElem at
     = pCParen (pExpr (at \\ [Special ','])) pEmpty -- might be a tuple, so accept commas as noise
   <|> pCBrack (pExpr (at \\ notAtom)) pEmpty       
   <|> pCBrace (pExpr (at \\ notAtom)) pEmpty
-  <|> pLet
+  <|> pLet <|> pDo <|> pOf
   <|> (PError <$> recoverWith
        (sym $ flip elem $ isNoiseErr at) <*> pure (newT '!') <*> pEmpty)
   <|> (PAtom <$> sym (flip notElem (isNotNoise at)) <*> pEmpty)
@@ -828,6 +839,8 @@ isNotNoise r = recognizedSymbols ++ r
 recognizedSymbols = 
     [ (Reserved Let)
     , (Reserved In)
+    , (Reserved Do)
+    , (Reserved Of)
     , (Reserved Class)
     , (Reserved Instance)
     , (Reserved Module)
