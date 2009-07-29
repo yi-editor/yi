@@ -582,8 +582,8 @@ pAtype = pAtype'
 
 pAtype' :: Parser TT (Exp TT)
 pAtype' = pQvarid
-      <|> pParen (many $ pTree [])
-      <|> pBrack (many $ pTree [])
+      <|> pParen (many $ pElem [])
+      <|> pBrack (many $ pElem [])
 
 pContext :: Parser TT (Exp TT)
 pContext = Context <$> pOpt pForAll
@@ -672,8 +672,8 @@ pInstance = PInstance <$> pAtom [Reserved Instance]
                     <*> (Expr <$> pWBlock pipeEqual))
               pInst = please
                     ( pAtom [ConsIdent]
-                      <|> pParen (many $ pTree [])
-                      <|> pBrack (many $ pTree []))
+                      <|> pParen (many $ pElem [])
+                      <|> pBrack (many $ pElem []))
               pEol = [nextLine, startBlock, endBlock, (Reserved Where)]
 
 -- check if pEq can be used here instead problem with optional ->
@@ -681,12 +681,12 @@ pGuard :: Parser TT (Exp TT)
 pGuard = PGuard
      <$> some (PGuard' <$> pCAtom [ReservedOp Pipe] pEmpty <*>
                -- comments are by default parsed after this
-               pTr' at
+               pExpr at
                <*> please (pCAtom [ReservedOp Equal,ReservedOp RightArrow]
                            pEmpty)
                -- comments are by default parsed after this
                -- this must be -> if used in case
-               <*> pTr' at')
+               <*> pExpr at')
   where at   = [ReservedOp RightArrow, ReservedOp Equal, ReservedOp Pipe]
         at'  = [ReservedOp Pipe]
 
@@ -695,7 +695,7 @@ pFunRHS :: [Token] -> Parser TT (Exp TT)
 pFunRHS at = Bin <$> (pGuard <|> pEq at) <*> pOpt pst
     where pst = Expr <$> ((:) <$> (PWhere <$> pAtom [Reserved Where]
                                    <*> please (pBlockOf $ pFunDecl at))
-                          <*> pTr' at)
+                          <*> pExpr at)
 
 
 -- Note that this can both parse an equation and a type declaration.
@@ -721,7 +721,7 @@ pFunDecl at = (:) <$> beginLine
 -- | The RHS of an equation.
 pEq :: [Token] -> Parser TT (Exp TT)
 pEq at = RHS <$> pCAtom [ReservedOp Equal] pEmpty
-       <*> pTr' ([ReservedOp Equal, ReservedOp Pipe] `union` at)
+       <*> pExpr ([ReservedOp Equal, ReservedOp Pipe] `union` at)
 
 -- | Parse many of something
 pMany :: Parser TT (Exp TT) -> Parser TT (Exp TT)
@@ -765,12 +765,12 @@ pTopDecl at = pFunDecl at
 -- | The pWBlock describes what extra things are allowed in a where clause
 pWBlock :: [Token] -> Parser TT [(Exp TT)]
 pWBlock at = pTopDecl at
-         <|> ((:) <$> pCBrack (pTr' (at \\ [(Special ',')
+         <|> ((:) <$> pCBrack (pExpr (at \\ [(Special ',')
                                            , (ReservedOp Pipe)
                                            , (ReservedOp Equal)])) pEmpty
               <*> pTr (at `union` [(Special ',')
                                   , (ReservedOp DoubleColon)]))
-         <|> ((:) <$> pCBrace (pTr' (at \\ [(Special ','),(ReservedOp Pipe)
+         <|> ((:) <$> pCBrace (pExpr (at \\ [(Special ','),(ReservedOp Pipe)
                                            , (ReservedOp Equal)])) pEmpty
               <*> pTr (at `union` [ (Special ',')
                                   , (ReservedOp (DoubleColon))]))
@@ -779,26 +779,26 @@ pWBlock at = pTopDecl at
 --  but parse a where
 pTr :: [Token] -> Parser TT [(Exp TT)]
 pTr at = pEmpty
-     <|> ((:) <$> (pTree at
+     <|> ((:) <$> (pElem at
                    <|> pBlockOf (pTr (at \\ [(Special ',')])))
           <*> pTr (at \\ [ReservedOp DoubleColon, Special ','
                          ,ReservedOp RightArrow]))
      <|> pToList (pFunRHS (at \\ [Special ',', ReservedOp DoubleColon]))
 
--- | Parse something where guards are not allowed
-pTr' :: [Token] -> Parser TT [Exp TT]
-pTr' at = many (pTree at
-                   <|> pBlockOf (pTr ((pipeEqual `union` at)
-                                      \\ [ReservedOp DoubleColon
-                                         ,ReservedOp RightArrow]
+-- | Parse an expression, as a list of "things".
+pExpr :: [Token] -> Parser TT [Exp TT]
+pExpr at = many (pElem at
+                   <|> pBlockOf (pExpr (([ReservedOp Equal] `union` at)
+                                       -- there may be guards here (case), so Pipe is still no well recognized
+                                      \\ [ReservedOp DoubleColon, ReservedOp RightArrow]
                                      )))
 
--- | Parse an expression, as a list of "things".
-pTree :: [Token] -> Parser TT (Exp TT)
-pTree at
-    = pCParen (pTr  (at \\ [Special ','])) pEmpty -- might be a tuple, so accept commas
-  <|> pCBrack (pTr' (at \\ notAtom)) pEmpty       
-  <|> pCBrace (pTr' (at \\ notAtom)) pEmpty
+-- | Parse an "element" of an expression
+pElem :: [Token] -> Parser TT (Exp TT)
+pElem at
+    = pCParen (pExpr (at \\ [Special ','])) pEmpty -- might be a tuple, so accept commas as noise
+  <|> pCBrack (pExpr (at \\ notAtom)) pEmpty       
+  <|> pCBrace (pExpr (at \\ notAtom)) pEmpty
   <|> pLet
   <|> (PError <$> recoverWith
        (sym $ flip elem $ isNoiseErr at) <*> pure (newT '!') <*> pEmpty)
