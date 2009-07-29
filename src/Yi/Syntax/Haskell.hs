@@ -351,13 +351,14 @@ pEmpty :: Applicative f =>  f [a]
 pEmpty = pure []
 
 pToList :: Applicative f =>  f a -> f [a]
-pToList = (<*>) $ flip (:) <$> pEmpty
+pToList = (box <$>)
+    where box x = [x]
 
 -- | @sym f@ returns a parser parsing @f@ as a special symbol
 sym :: (Token -> Bool) -> Parser TT TT
 sym f = symbol (f . tokT)
 
--- | @exact tokList@ parse anything that is in @tokList@
+-- | @exact tokList@ parse anything that is in @tokList@
 exact :: [Token] -> Parser TT TT
 exact = sym . flip elem
 
@@ -431,7 +432,7 @@ pSepBy p sep = pEmpty
 pParenSep :: Parser TT (Exp TT) -> Parser TT (Exp TT)
 pParenSep = pParen . flip pSepBy pComma
 
--- | Parse a comma separator
+-- | Parse a comma separator
 pComma :: Parser TT (Exp TT)
 pComma = pAtom [Special ',']
 
@@ -474,7 +475,7 @@ pTestTok f = testNext (uncurry (||) . (&&&) isNothing
 pImports :: Parser TT [PImport TT]
 pImports = many (pImport
                  <* pTestTok pEol
-                 <* optional (some $ exact [nextLine,(Special ';')]))
+                 <* optional (some $ exact [nextLine, Special ';']))
         where pEol = [(Special ';'), nextLine, endBlock]
  
 -- | Parse one import
@@ -594,7 +595,7 @@ pContext = Context <$> pOpt pForAll
                         <|> pParen ((:) <$> please pVarId
                                     <*> many pAtype'))
 
--- | Parse for all
+-- | Parse for all
 pForAll :: Parser TT (Exp TT)
 pForAll = pKW [Reserved Forall]
           (Bin <$> pVars <*> ppAtom [Operator "."])
@@ -637,11 +638,8 @@ pipeEqual = [ReservedOp Equal,ReservedOp Pipe]
 -- | Parse a Let expression
 pLet :: Parser TT (Exp TT)
 pLet = PLet <$> pAtom [Reserved Let]
-   <*> (pBlockOf'
-        (Block <$> pBlocks' (pFunDecl pipeEqual))
-        <|> (Enter "let block expected" $ Yuck pEmptyBL))
-   <*>  pOpt (pCAtom [Reserved In] pEmpty)
-    where pEol = [endBlock]
+   <*> (pBlock (pFunDecl pipeEqual) <|> (Enter "let block expected" $ Yuck pEmptyBL))
+   <*> pOpt (pCAtom [Reserved In] pEmpty)
 
 -- | Parse a class decl
 pClass :: Parser TT (Exp TT)
@@ -692,9 +690,9 @@ pGuard = PGuard
   where at   = [ReservedOp RightArrow, ReservedOp Equal, ReservedOp Pipe]
         at'  = [ReservedOp Pipe]
 
+-- | Right-hand-side of a function declaration.
 pFunRHS :: [Token] -> Parser TT (Exp TT)
-pFunRHS at = Bin <$> (pGuard
-                      <|> pEq at) <*> pOpt pst
+pFunRHS at = Bin <$> (pGuard <|> pEq at) <*> pOpt pst
     where pst = Expr <$> ((:) <$> (PWhere <$> pAtom [Reserved Where]
                                    <*> please (pBlockOf $ pFunDecl at))
                           <*> pTr' at)
@@ -703,7 +701,7 @@ pFunRHS at = Bin <$> (pGuard
 -- Note that this can both parse an equation and a type declaration.
 -- Since they can start with the same token the left part (beginLine)
 -- is factored here.
-pFunDecl :: [Token] -> Parser TT [(Exp TT)]
+pFunDecl :: [Token] -> Parser TT [Exp TT]
 pFunDecl at = (:) <$> beginLine
           <*> (pTypeSig
                <|> pTr (at `union` [Special ',' -- here we know that
@@ -720,16 +718,17 @@ pFunDecl at = (:) <$> beginLine
                            (sym $ flip elem $ isNoiseErr [])
                            <*> pure (newT '!') <*> pEmpty)
 
+-- | The RHS of an equation.
 pEq :: [Token] -> Parser TT (Exp TT)
 pEq at = RHS <$> pCAtom [ReservedOp Equal] pEmpty
        <*> pTr' ([ReservedOp Equal, ReservedOp Pipe] `union` at)
 
 -- | Parse many of something
 pMany :: Parser TT (Exp TT) -> Parser TT (Exp TT)
-pMany = (<$>) Expr . many
+pMany p = Expr <$> many p
 
 pDTree :: Parser TT [Exp TT]
-pDTree = pTopDecl [ReservedOp Equal, ReservedOp Pipe]
+pDTree = pTopDecl pipeEqual
 
 -- | Parse a some of something separated by the token (Special '.')
 pBlocks :: Parser TT r -> Parser TT (BL.BList r)
@@ -743,6 +742,10 @@ pBlocks' p =  pBlocks p <|> pure BL.nil
 -- | Parse a block of some something separated by the tok (Special '.')
 pBlockOf :: Parser TT [(Exp TT)] -> Parser TT (Exp TT)
 pBlockOf p  = Block <$> pBlockOf' (pBlocks p) -- see HACK above
+
+
+pBlock :: Parser TT [Exp TT] -> Parser TT (Exp TT)
+pBlock p = pBlockOf' (Block <$> pBlocks' p)
 
 -- | Parse something surrounded by (Special '<') and (Special '>')
 pBlockOf' :: Parser TT a -> Parser TT a
@@ -778,19 +781,17 @@ pTr :: [Token] -> Parser TT [(Exp TT)]
 pTr at = pEmpty
      <|> ((:) <$> (pTree at
                    <|> pBlockOf (pTr (at \\ [(Special ',')])))
-          <*> pTr (at \\ [(ReservedOp DoubleColon), (Special ',')
-                         , (ReservedOp RightArrow)]))
-     <|> pToList (pFunRHS (at \\ [(Special ','),(ReservedOp DoubleColon)]))
+          <*> pTr (at \\ [ReservedOp DoubleColon, Special ','
+                         ,ReservedOp RightArrow]))
+     <|> pToList (pFunRHS (at \\ [Special ',', ReservedOp DoubleColon]))
 
 -- | Parse something where guards are not allowed
-pTr' :: [Token] -> Parser TT [(Exp TT)]
-pTr' at = pEmpty
-      <|> (:) <$> (pTree at
+pTr' :: [Token] -> Parser TT [Exp TT]
+pTr' at = many (pTree at
                    <|> pBlockOf (pTr ((pipeEqual `union` at)
-                                      \\ [(ReservedOp DoubleColon)
-                                         , (ReservedOp RightArrow)]
+                                      \\ [ReservedOp DoubleColon
+                                         ,ReservedOp RightArrow]
                                      )))
-      <*> pTr' at
 
 -- | Parse an expression, as a list of "things".
 pTree :: [Token] -> Parser TT (Exp TT)
