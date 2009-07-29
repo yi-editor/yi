@@ -644,14 +644,14 @@ pLet = PLet <$> pAtom [Reserved Let]
 -- | Parse a Do block
 pDo :: Parser TT (Exp TT)
 pDo = Bin <$> pAtom [Reserved Do]
-          <*> pBlock (pExpr pipeEqual)
+          <*> pBlock (pExpr (recognizedSometimes \\ [ReservedOp LeftArrow]))
 
 -- | Parse an Of block
 pOf :: Parser TT (Exp TT)
 pOf = Bin <$> pAtom [Reserved Of]
           <*> pBlock (pToList pAlternative)
 
-pAlternative = Bin <$> (Expr <$> pExpr') -- pattern
+pAlternative = Bin <$> (Expr <$> pPattern)
                    <*> please (pFunRHS (ReservedOp RightArrow) [])
 
 -- | Parse a class decl
@@ -695,20 +695,18 @@ pGuard :: Token -> Parser TT (Exp TT)
 pGuard equalSign = PGuard
      <$> some (PGuard' <$> pCAtom [ReservedOp Pipe] pEmpty <*>
                -- comments are by default parsed after this
-               pExpr at
+               pExpr (recognizedSometimes \\ [ReservedOp LeftArrow, Special ',']) -- those two symbols can appear in guards.
                <*> please (pCAtom [equalSign] pEmpty)
                -- comments are by default parsed after this
                -- this must be -> if used in case
-               <*> pExpr at')
-  where at   = [ReservedOp RightArrow, ReservedOp Equal, ReservedOp Pipe]
-        at'  = [ReservedOp Pipe]
+               <*> pExpr')
 
 -- | Right-hand-side of a function or case equation (after the pattern)
 pFunRHS :: Token -> [Token] -> Parser TT (Exp TT)
 pFunRHS equalSign at = Bin <$> (pGuard equalSign <|> pEq equalSign at) <*> pOpt pst
     where pst = Expr <$> ((:) <$> (PWhere <$> pAtom [Reserved Where]
-                                   <*> please (pBlockOf $ pFunDecl at))
-                          <*> pExpr at)
+                                          <*> please (pBlockOf $ pFunDecl at))
+                          <*> pExpr') -- FIXME: why is there an expression here?
 
 
 -- Note that this can both parse an equation and a type declaration.
@@ -734,7 +732,7 @@ pFunDecl at = (:) <$> beginLine
 -- | The RHS of an equation.
 pEq :: Token -> [Token] -> Parser TT (Exp TT)
 pEq equalSign at = RHS <$> pCAtom [equalSign] pEmpty
-       <*> pExpr ([ReservedOp Equal, ReservedOp RightArrow, ReservedOp Pipe] `union` at)
+       <*> pExpr'
 
 -- | Parse many of something
 pMany :: Parser TT (Exp TT) -> Parser TT (Exp TT)
@@ -799,6 +797,8 @@ pTr at = pEmpty
                          ,ReservedOp RightArrow]))
      <|> pToList (pFunRHS (ReservedOp Equal) (at \\ [Special ',', ReservedOp DoubleColon]))
 
+pPattern = pExpr'
+
 -- | A "normal" expression, where none of the following symbols are acceptable.
 pExpr' = pExpr recognizedSometimes
 
@@ -807,6 +807,7 @@ recognizedSometimes = [ReservedOp DoubleDot,
                        ReservedOp Pipe,
                        ReservedOp Equal,
                        ReservedOp LeftArrow,
+                       ReservedOp RightArrow,
                        ReservedOp DoubleRightArrow
                       ]
 
