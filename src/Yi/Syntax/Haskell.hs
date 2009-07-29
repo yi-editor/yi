@@ -638,7 +638,7 @@ pipeEqual = [ReservedOp Equal,ReservedOp Pipe]
 -- | Parse a Let expression
 pLet :: Parser TT (Exp TT)
 pLet = PLet <$> pAtom [Reserved Let]
-   <*> (pBlock (pFunDecl pipeEqual) <|> (Enter "let block expected" $ Yuck pEmptyBL))
+   <*> pBlock (pFunDecl pipeEqual)
    <*> pOpt (pCAtom [Reserved In] pEmpty)
 
 -- | Parse a Do block
@@ -756,7 +756,7 @@ pBlockOf p  = Block <$> pBlockOf' (pBlocks p) -- see HACK above
 
 
 pBlock :: Parser TT [Exp TT] -> Parser TT (Exp TT)
-pBlock p = pBlockOf' (Block <$> pBlocks' p)
+pBlock p = pBlockOf' (Block <$> pBlocks' p) <|> (Yuck $ Enter "block expected" $ pEmptyBL)
 
 -- | Parse something surrounded by (Special '<') and (Special '>')
 pBlockOf' :: Parser TT a -> Parser TT a
