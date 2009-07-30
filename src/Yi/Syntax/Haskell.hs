@@ -714,24 +714,12 @@ pFunRHS equalSign at = Bin <$> (pGuard equalSign <|> pEq equalSign) <*> pOpt pst
 
 
 -- Note that this can both parse an equation and a type declaration.
--- Since they can start with the same token, the left part (beginLine)
--- is factored here.
+-- Since they can start with the same token, the left part is factored here.
 pFunDecl :: [Token] -> Parser TT [Exp TT]
-pFunDecl at = (:) <$> beginLine
-          <*> (pTypeSig
-               <|> pTr (at `union` [Special ',' -- here we know that
-                                    -- arguments will follow
-                                   ,ReservedOp DoubleColon])
-               <|> ((:) <$> pAtom [Special ','] -- here we know that it is
-                                                -- a type signature
-                    <*> (pFunDecl at <|> pEmpty)))
-        where beginLine = pCParen (pTr at) pEmpty
-                      <|> pCBrack (pTr at) pEmpty
-                      <|> (PAtom <$> sym (flip notElem $ isNotNoise [])
-                           <*> pEmpty)
-                      <|> (PError <$> recoverWith
-                           (sym $ flip elem $ isNoiseErr [])
-                           <*> pure (newT '!') <*> pEmpty)
+pFunDecl _ = pure [] 
+             <|> ((:) <$> pElem False recognizedSometimes          <*> pFunDecl [])
+             <|> ((:) <$> (TS <$> exact [ReservedOp DoubleColon] <*> pTypeExpr') <*> pure [])
+             <|> ((:) <$> pFunRHS (ReservedOp Equal) recognizedSometimes <*> pure [])
 
 -- | The RHS of an equation.
 pEq :: Token -> Parser TT (Exp TT)
@@ -775,7 +763,7 @@ pTopDecl at = pFunDecl at
           <|> pToList pData
           <|> pToList pClass
           <|> pToList pInstance
-          <|> pEmpty
+--        <|> pEmpty: is matched by pFunDecl
 
 -- | The pWBlock describes what extra things are allowed in a where clause
 pWBlock :: [Token] -> Parser TT [(Exp TT)]
