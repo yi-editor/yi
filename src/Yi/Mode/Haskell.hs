@@ -231,7 +231,7 @@ cleverAutoIndentHaskellC' e behaviour = do
                                                        -- offer to align with let only if this is an "in"
       stopsOf (t@(Hask.Block _):ts') = [shiftBlock + colOf' t] ++ stopsOf ts' 
                                        -- offer add another statement in the block
-      stopsOf ((Hask.PGuard' (PAtom pipe  _) _ _ (e':_expr)):ts') = [tokCol pipe | lineStartsWith (ReservedOp Haskell.Pipe)]
+      stopsOf ((Hask.PGuard' (PAtom pipe  _) _ _):ts') = [tokCol pipe | lineStartsWith (ReservedOp Haskell.Pipe)]
                                                                  -- offer to align against another guard
       stopsOf (d@(Hask.PData _ _ _ r):ts') = colOf' d + indentLevel
                                            : stopsOf ts' --FIXME!

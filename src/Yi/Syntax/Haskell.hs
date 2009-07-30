@@ -146,7 +146,7 @@ data Exp t
     | Context (Exp t) (Exp t) (PAtom t) -- ^
     | PGuard [PGuard t] -- ^ Righthandside of functions with |
       -- the PAtom in PGuard' does not contain any comments
-    | PGuard' (PAtom t) [Exp t] (PAtom t) [Exp t]
+    | PGuard' (PAtom t) [Exp t] (PAtom t)
       -- type constructor is just a wrapper to indicate which highlightning to
       -- use.
     | TC (Exp t) -- ^ Type constructor
@@ -184,10 +184,9 @@ instance SubTree (Exp TT) where
                                     <> work e
                                     <> work e'
               work (PGuard l) = foldMap work l
-              work (PGuard' t e t' e') = work t
+              work (PGuard' t e t') = work t
                                       <> foldMap work e
                                       <> work t'
-                                      <> foldMap work e'
               work (PAtom t c)  = f t <> fold' c
               work (PError t' t c) = f t' <> f t <> fold' c
               work (TS t e) = f t <> foldMap work e
@@ -254,7 +253,7 @@ instance IsTree Exp where
        (PData' a b c) -> [a,b,c] 
        (Context a b c) -> [a,b,c]
        (PGuard xs) -> xs
-       (PGuard' a b c d) -> a:b ++ c:d
+       (PGuard' a b c) -> a:b ++ [c]
        (TC e) -> [e]
        (DC e) -> [e]
        _              -> []
@@ -689,16 +688,13 @@ pInstance = PInstance <$> pAtom [Reserved Instance]
               pEol = [nextLine, startBlock, endBlock, (Reserved Where)]
 
 -- | Parse some guards and a where clause
--- TODO: pEq can be used here
 pGuard :: Token -> Parser TT (Exp TT)
 pGuard equalSign = PGuard
      <$> some (PGuard' <$> pCAtom [ReservedOp Pipe] pEmpty <*>
                -- comments are by default parsed after this
                pExpr (recognizedSometimes \\ [ReservedOp LeftArrow, Special ',']) -- those two symbols can appear in guards.
-               <*> please (pCAtom [equalSign] pEmpty)
-               -- comments are by default parsed after this
+               <*> please (pEq equalSign))
                -- this must be -> if used in case
-               <*> pExpr')
 
 -- | Right-hand-side of a function or case equation (after the pattern)
 pFunRHS :: Token -> Parser TT (Exp TT)
@@ -713,6 +709,7 @@ pFunDecl = pure []
              <|> ((:) <$> pElem False recognizedSometimes          <*> pFunDecl)
              <|> ((:) <$> (TS <$> exact [ReservedOp DoubleColon] <*> pTypeExpr') <*> pure [])
              <|> ((:) <$> pFunRHS (ReservedOp Equal) <*> pure [])
+
 
 -- | The RHS of an equation.
 pEq :: Token -> Parser TT (Exp TT)
@@ -863,4 +860,3 @@ pParen = flip pCParen pComments
 pBrace = flip pCBrace pComments
 
 pBrack = flip pCBrack pComments
-

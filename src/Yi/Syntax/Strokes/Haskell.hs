@@ -109,8 +109,8 @@ getStr tk point begin _end t0 = getStrokes' t0
           getStrokes' (DC (PAtom l c)) = tkDConst l <> com c
           getStrokes' (DC r) = getStrokes' r -- do not color operator dc
           getStrokes' (PGuard ls) = getStrokesL ls
-          getStrokes' g@(PGuard' t e t' e')
-              = pKW g t <> getStrokesL e <> getStrokes' t' <> getStrokesL e'
+          getStrokes' g@(PGuard' t e t')
+              = pKW g t <> getStrokesL e <> getStrokes' t'
           getStrokes' cl@(PClass e e' exp exp' e'')
               = pKW cl e <> getStrokes' e'
              <> getStrokes' exp <> getStrokes' exp'
