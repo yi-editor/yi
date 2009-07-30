@@ -804,11 +804,14 @@ pElem isExpresssion at
   -- TODO: support type expressions
 
 pTypeExpr at = many (pTypeElem at)
-pTypeExpr' = pTypeExpr (recognizedSometimes \\ [ReservedOp RightArrow])
+pTypeExpr' = pTypeExpr (recognizedSometimes \\ [ReservedOp RightArrow, 
+                                                ReservedOp DoubleRightArrow])
 
 pTypeElem :: [Token] -> Parser TT (Exp TT)
 pTypeElem at 
-    = pCParen (pTypeExpr (recognizedSometimes \\ [ReservedOp RightArrow, Special ','])) pEmpty -- might be a tuple, so accept commas as noise
+    = pCParen (pTypeExpr (recognizedSometimes \\ [ReservedOp RightArrow,
+                                                  ReservedOp DoubleRightArrow,
+                                                  Special ','])) pEmpty -- might be a tuple, so accept commas as noise
   <|> pCBrack pTypeExpr' pEmpty
   <|> pCBrace pTypeExpr' pEmpty -- TODO: this is an error: mark as such.
   <|> (Yuck $ Enter "incorrectly placed block" $ pBlockOf (pExpr recognizedSometimes))
