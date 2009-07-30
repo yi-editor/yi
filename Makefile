@@ -6,6 +6,10 @@ interactive:
 # autogen -> Paths_
 # dist/build/yi/yi-tmp -> preprocessed lexers
 
+build:
+	cabal configure -ftesting -fhacking
+	cabal build
+
 # Test the source tree.
 test::
 	cabal configure -ftesting --disable-library-profiling
@@ -74,7 +78,7 @@ test-dist: sdist
 	cabal install &&\
 	cd ..;\
 
-HS := $(shell find Yi Shim Data HConf -type f -name '[^.]*.hs') Yi.hs Main.hs HConf.hs
+HS := $(shell find src/Yi src/Shim src/Data src/HConf -type f -name '[^.]*.hs') src/Yi.hs src/Main.hs src/HConf.hs
 tags: $(HS)
 	@ echo [tags]
 	@ echo '!_TAG_FILE_SORTED	0	~' > tags
