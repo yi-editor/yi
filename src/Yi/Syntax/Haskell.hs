@@ -656,36 +656,17 @@ pOf = Bin <$> pAtom [Reserved Of]
 pAlternative = Bin <$> (Expr <$> pPattern)
                    <*> please (pFunRHS (ReservedOp RightArrow))
 
--- | Parse a class decl
+-- | Parse classes and instances
+-- This is very imprecise, but shall suffice for now.
+-- At least is does not complain too often.
 pClass :: Parser TT (Exp TT)
-pClass = PClass <$> pAtom [Reserved Class]
-     <*> (TC <$> pOpt 
-          (Bin <$> (pSContext <|> pParenSep pSContext)
-           <*> ppAtom [ReservedOp DoubleRightArrow]))
-     <*> ppAtom [ConsIdent]
-     <*> ppAtom [VarIdent]
-     <*> (Bin <$> (pMany pErr <* pTestTok pEol) <*> pOpt pW)
-        where pW = pWhere pTopDecl
-              pEol = [nextLine, endBlock, startBlock, Reserved Where]
-
-pSContext :: Parser TT (Exp TT)
-pSContext = Bin <$> pAtom [ConsIdent] <*> ppAtom [VarIdent]
-
--- | Parse instances, no extensions are supported, but maybe
--- multi-parameter should be supported
-pInstance :: Parser TT (Exp TT)
-pInstance = PInstance <$> pAtom [Reserved Instance]
-        <*> (TC <$> pOpt (Bin <$> (pSContext <|> pParenSep pSContext)
-              <*> ppAtom [ReservedOp DoubleRightArrow]))
-        <*> ppAtom [ConsIdent]
-        <*> pInst
-        <*> (Bin <$> (pMany pErr <* pTestTok pEol) <*> please pW)
-        where pW = pWhere pTopDecl -- use topDecl since we have associated types and such.
-              pInst = please
-                    ( pAtom [ConsIdent]
-                      <|> pParen (many $ pExprElem [])
-                      <|> pBrack (many $ pExprElem []))
-              pEol = [nextLine, startBlock, endBlock, (Reserved Where)]
+pClass = PClass <$> pAtom [Reserved Class, Reserved Instance]
+                <*> (TC . Expr <$>  pTypeExpr')
+                <*> please (pWhere pTopDecl)
+                <*> pure (Expr [])
+                <*> pure (Expr [])
+                -- use topDecl since we have associated types and such.
+                      
 
 -- | Parse some guards and a where clause
 pGuard :: Token -> Parser TT (Exp TT)
@@ -749,7 +730,6 @@ pTopDecl = pFunDecl
           <|> pToList pType
           <|> pToList pData
           <|> pToList pClass
-          <|> pToList pInstance
 --        <|> pEmpty: is matched by pFunDecl
 
 
