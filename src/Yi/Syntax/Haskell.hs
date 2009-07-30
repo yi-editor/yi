@@ -414,6 +414,8 @@ recoverAtom = PAtom <$> recoverWith (pure $ newT '!') <*> pEmpty
 pCAtom :: [Token] -> Parser TT [TT] -> Parser TT (Exp TT)
 pCAtom r c = PAtom <$> exact r <*> c
 
+pBareAtom a = pCAtom a pEmpty
+
 -- | @pSepBy p sep@ parse /zero/ or more occurences of @p@, separated
 -- by @sep@, with optional ending @sep@,
 -- this is quite similar to the sepBy function provided in
@@ -632,13 +634,11 @@ pEModule ::Parser TT (Exp TT)
 pEModule = pKW [Reserved Module]
          $ please (Modid <$> exact [ConsIdent] <*> pComments)
 
-pipeEqual = [ReservedOp Equal,ReservedOp Pipe]
-
 -- | Parse a Let expression
 pLet :: Parser TT (Exp TT)
 pLet = PLet <$> pAtom [Reserved Let]
    <*> pBlock pFunDecl
-   <*> pOpt (pAtom [Reserved In])
+   <*> pOpt (pBareAtom [Reserved In])
 
 -- | Parse a Do block
 pDo :: Parser TT (Exp TT)
@@ -646,7 +646,7 @@ pDo = Bin <$> pAtom [Reserved Do]
           <*> pBlock (pExpr (recognizedSometimes \\ [ReservedOp LeftArrow]))
 
 -- | Parse part of a lambda binding.
-pLambda = Bin <$> pAtom [ReservedOp BackSlash] <*> (Bin <$> (Expr <$> pPattern) <*> please (pAtom [ReservedOp RightArrow]))
+pLambda = Bin <$> pAtom [ReservedOp BackSlash] <*> (Bin <$> (Expr <$> pPattern) <*> please (pBareAtom [ReservedOp RightArrow]))
 
 -- | Parse an Of block
 pOf :: Parser TT (Exp TT)
@@ -713,7 +713,7 @@ pFunDecl = pure []
 
 -- | The RHS of an equation.
 pEq :: Token -> Parser TT (Exp TT)
-pEq equalSign = RHS <$> pCAtom [equalSign] pEmpty <*> pExpr'
+pEq equalSign = RHS <$> pBareAtom [equalSign] <*> pExpr'
 
 -- | Parse many of something
 pMany :: Parser TT (Exp TT) -> Parser TT (Exp TT)
