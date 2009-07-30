@@ -287,7 +287,7 @@ pModBody = (exact [startBlock] *>
              <*> pBod))
        <|> (exact [nextLine] *> pBody)
        <|> Body <$> pEmpty <*> pEmptyBL <*> pEmptyBL
-    where pBod  = Block <$> pBlocks pDTree
+    where pBod  = Block <$> pBlocks pTopDecl
           elems = [(Special ';'), nextLine, startBlock]
 
 -- | @pEmptyBL@ A parser returning an empty block
@@ -296,8 +296,8 @@ pEmptyBL = Block <$> pure BL.nil
 
 -- | Parse a body of a program
 pBody :: Parser TT (PModule TT)
-pBody = Body <$> noImports <*> (Block <$> pBlocks pDTree) <*> pEmptyBL
-    <|> Body <$> pImports <*> ((pTestTok elems *> (Block <$> pBlocks pDTree))
+pBody = Body <$> noImports <*> (Block <$> pBlocks pTopDecl) <*> pEmptyBL
+    <|> Body <$> pImports <*> ((pTestTok elems *> (Block <$> pBlocks pTopDecl))
                                <|> pEmptyBL) <*> pEmptyBL
     where elems = [nextLine, startBlock]
 
@@ -638,8 +638,8 @@ pipeEqual = [ReservedOp Equal,ReservedOp Pipe]
 -- | Parse a Let expression
 pLet :: Parser TT (Exp TT)
 pLet = PLet <$> pAtom [Reserved Let]
-   <*> pBlock (pFunDecl pipeEqual)
-   <*> pOpt (pCAtom [Reserved In] pEmpty)
+   <*> pBlock pFunDecl
+   <*> pOpt (pAtom [Reserved In])
 
 -- | Parse a Do block
 pDo :: Parser TT (Exp TT)
@@ -655,7 +655,7 @@ pOf = Bin <$> pAtom [Reserved Of]
           <*> pBlock (pToList pAlternative)
 
 pAlternative = Bin <$> (Expr <$> pPattern)
-                   <*> please (pFunRHS (ReservedOp RightArrow) [])
+                   <*> please (pFunRHS (ReservedOp RightArrow))
 
 -- | Parse a class decl
 pClass :: Parser TT (Exp TT)
@@ -705,21 +705,21 @@ pGuard equalSign = PGuard
                <*> pExpr')
 
 -- | Right-hand-side of a function or case equation (after the pattern)
-pFunRHS :: Token -> [Token] -> Parser TT (Exp TT)
-pFunRHS equalSign at = Bin <$> (pGuard equalSign <|> pEq equalSign) <*> pOpt pst
+pFunRHS :: Token -> Parser TT (Exp TT)
+pFunRHS equalSign = Bin <$> (pGuard equalSign <|> pEq equalSign) <*> pOpt pst
     where pst = Expr <$> ((:) <$> (PWhere <$> pAtom [Reserved Where]
-                                          <*> please (pBlockOf $ pFunDecl at))
+                                          <*> please (pBlockOf $ pFunDecl))
                           <*> pExpr') -- FIXME: why is there an expression here?
                                       -- maybe just "eat up" everything
 
 
 -- Note that this can both parse an equation and a type declaration.
 -- Since they can start with the same token, the left part is factored here.
-pFunDecl :: [Token] -> Parser TT [Exp TT]
-pFunDecl _ = pure [] 
-             <|> ((:) <$> pElem False recognizedSometimes          <*> pFunDecl [])
+pFunDecl :: Parser TT [Exp TT]
+pFunDecl = pure [] 
+             <|> ((:) <$> pElem False recognizedSometimes          <*> pFunDecl)
              <|> ((:) <$> (TS <$> exact [ReservedOp DoubleColon] <*> pTypeExpr') <*> pure [])
-             <|> ((:) <$> pFunRHS (ReservedOp Equal) recognizedSometimes <*> pure [])
+             <|> ((:) <$> pFunRHS (ReservedOp Equal) <*> pure [])
 
 -- | The RHS of an equation.
 pEq :: Token -> Parser TT (Exp TT)
@@ -728,9 +728,6 @@ pEq equalSign = RHS <$> pCAtom [equalSign] pEmpty <*> pExpr'
 -- | Parse many of something
 pMany :: Parser TT (Exp TT) -> Parser TT (Exp TT)
 pMany p = Expr <$> many p
-
-pDTree :: Parser TT [Exp TT]
-pDTree = pTopDecl pipeEqual
 
 -- | Parse a some of something separated by the token (Special '.')
 pBlocks :: Parser TT r -> Parser TT (BL.BList r)
@@ -757,8 +754,8 @@ pBlockOf' p = exact [startBlock] *> p <* exact [endBlock] -- see HACK above
 -- we don't try to recover errors with them.
 
 -- | Parse something that can contain a data, type declaration or a class
-pTopDecl :: [Token] -> Parser TT [(Exp TT)]
-pTopDecl at = pFunDecl at
+pTopDecl :: Parser TT [(Exp TT)]
+pTopDecl = pFunDecl 
           <|> pToList pType
           <|> pToList pData
           <|> pToList pClass
@@ -767,7 +764,7 @@ pTopDecl at = pFunDecl at
 
 -- | The pWBlock describes what extra things are allowed in a where clause
 pWBlock :: [Token] -> Parser TT [(Exp TT)]
-pWBlock at = pTopDecl at
+pWBlock at = pTopDecl 
          <|> ((:) <$> pCBrack (pExpr (at \\ [(Special ',')
                                            , (ReservedOp Pipe)
                                            , (ReservedOp Equal)])) pEmpty
@@ -786,7 +783,7 @@ pTr at = pEmpty
                    <|> pBlockOf (pTr (at \\ [(Special ',')])))
           <*> pTr (at \\ [ReservedOp DoubleColon, Special ','
                          ,ReservedOp RightArrow]))
-     <|> pToList (pFunRHS (ReservedOp Equal) (at \\ [Special ',', ReservedOp DoubleColon]))
+     <|> pToList (pFunRHS (ReservedOp Equal))
 
 
 -- | A "normal" expression, where none of the following symbols are acceptable.
@@ -838,18 +835,12 @@ pTypeExpr' = pTypeExpr (recognizedSometimes \\ [ReservedOp RightArrow])
 pTypeElem :: [Token] -> Parser TT (Exp TT)
 pTypeElem at 
     = pCParen (pTypeExpr (recognizedSometimes \\ [ReservedOp RightArrow, Special ','])) pEmpty -- might be a tuple, so accept commas as noise
-  <|> pCBrack pTypeExpr' pEmpty -- list thing
+  <|> pCBrack pTypeExpr' pEmpty
   <|> pCBrace pTypeExpr' pEmpty -- TODO: this is an error: mark as such.
   <|> (Yuck $ Enter "incorrectly placed block" $ pBlockOf (pExpr recognizedSometimes))
   <|> (PError <$> recoverWith
        (sym $ flip elem $ isNoiseErr at) <*> pure (newT '!') <*> pEmpty)
   <|> (PAtom <$> sym (flip notElem (isNotNoise at)) <*> pEmpty)
-
--- | Parse a typesignature 
-pTypeSig :: Parser TT [(Exp TT)]
-pTypeSig = pToList (TS <$> exact [ReservedOp (DoubleColon)]
-                    <*> pTr []) <* pTestTok pEol
-    where pEol = [startBlock, endBlock, nextLine]
 
 -- | List of things that allways should be parsed as errors
 isNoiseErr :: [Token] -> [Token]
