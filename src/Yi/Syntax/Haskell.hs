@@ -666,9 +666,7 @@ pClass = PClass <$> pAtom [Reserved Class]
      <*> ppAtom [ConsIdent]
      <*> ppAtom [VarIdent]
      <*> (Bin <$> (pMany pErr <* pTestTok pEol) <*> pOpt pW)
-        where pW = PWhere <$> pAtom [Reserved Where]
-               <*> (Bin <$> please (pBlockOf $ pWBlock pipeEqual)
-                    <*> (Expr <$> pWBlock pipeEqual))
+        where pW = pWhere pTopDecl
               pEol = [nextLine, endBlock, startBlock, Reserved Where]
 
 pSContext :: Parser TT (Exp TT)
@@ -683,9 +681,7 @@ pInstance = PInstance <$> pAtom [Reserved Instance]
         <*> ppAtom [ConsIdent]
         <*> pInst
         <*> (Bin <$> (pMany pErr <* pTestTok pEol) <*> please pW)
-        where pW = PWhere <$> pAtom [Reserved Where]
-               <*> (Bin <$> please (pBlockOf $ pWBlock pipeEqual)
-                    <*> (Expr <$> pWBlock pipeEqual))
+        where pW = pWhere pTopDecl -- use topDecl since we have associated types and such.
               pInst = please
                     ( pAtom [ConsIdent]
                       <|> pParen (many $ pExprElem [])
@@ -707,11 +703,12 @@ pGuard equalSign = PGuard
 -- | Right-hand-side of a function or case equation (after the pattern)
 pFunRHS :: Token -> Parser TT (Exp TT)
 pFunRHS equalSign = Bin <$> (pGuard equalSign <|> pEq equalSign) <*> pOpt pst
-    where pst = Expr <$> ((:) <$> (PWhere <$> pAtom [Reserved Where]
-                                          <*> please (pBlockOf $ pFunDecl))
+    where pst = Expr <$> ((:) <$> pWhere pFunDecl
                           <*> pExpr') -- FIXME: why is there an expression here?
                                       -- maybe just "eat up" everything
 
+
+pWhere p = PWhere <$> pAtom [Reserved Where] <*> please (pBlock p)
 
 -- Note that this can both parse an equation and a type declaration.
 -- Since they can start with the same token, the left part is factored here.
@@ -761,29 +758,6 @@ pTopDecl = pFunDecl
           <|> pToList pClass
           <|> pToList pInstance
 --        <|> pEmpty: is matched by pFunDecl
-
--- | The pWBlock describes what extra things are allowed in a where clause
-pWBlock :: [Token] -> Parser TT [(Exp TT)]
-pWBlock at = pTopDecl 
-         <|> ((:) <$> pCBrack (pExpr (at \\ [(Special ',')
-                                           , (ReservedOp Pipe)
-                                           , (ReservedOp Equal)])) pEmpty
-              <*> pTr (at `union` [(Special ',')
-                                  , (ReservedOp DoubleColon)]))
-         <|> ((:) <$> pCBrace (pExpr (at \\ [(Special ','),(ReservedOp Pipe)
-                                           , (ReservedOp Equal)])) pEmpty
-              <*> pTr (at `union` [ (Special ',')
-                                  , (ReservedOp (DoubleColon))]))
-
--- | Parse something not containing a Type, Data declaration or a class kw
---  but parse a where
-pTr :: [Token] -> Parser TT [(Exp TT)]
-pTr at = pEmpty
-     <|> ((:) <$> (pExprElem at
-                   <|> pBlockOf (pTr (at \\ [(Special ',')])))
-          <*> pTr (at \\ [ReservedOp DoubleColon, Special ','
-                         ,ReservedOp RightArrow]))
-     <|> pToList (pFunRHS (ReservedOp Equal))
 
 
 -- | A "normal" expression, where none of the following symbols are acceptable.
