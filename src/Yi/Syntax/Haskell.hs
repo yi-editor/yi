@@ -811,16 +811,22 @@ recognizedSometimes = [ReservedOp DoubleDot,
                        ReservedOp LeftArrow,
                        ReservedOp RightArrow,
                        ReservedOp DoubleRightArrow,
-                       ReservedOp BackSlash
+                       ReservedOp BackSlash,
+                       ReservedOp DoubleColon
                       ]
 
 -- | Parse an expression, as a concatenation of elements.
 pExpr :: [Token] -> Parser TT [Exp TT]
-pExpr at = many (pElem True at) 
+pExpr = pExprOrPattern True
 
-pTypeExpr = many (pElem False (recognizedSometimes \\ [ReservedOp RightArrow]))
+-- | Parse an expression, as a concatenation of elements.
+pExprOrPattern :: Bool -> [Token] -> Parser TT [Exp TT]
+pExprOrPattern isExpresssion at = pure [] 
+       <|> ((:) <$> pElem isExpresssion at          <*> pExpr at)
+       <|> ((:) <$> (TS <$> exact [ReservedOp DoubleColon] <*> pTypeExpr') <*> pure [])
+     -- TODO: not really correct: in (x :: X , y :: Z), all after the first :: will be a "type".
 
-pPattern = many (pElem False recognizedSometimes)
+pPattern = pExprOrPattern False recognizedSometimes
 
 pExprElem = pElem True
 
@@ -828,17 +834,28 @@ pExprElem = pElem True
 -- "at" is a list of symbols that, if found, should be considered errors.
 pElem :: Bool -> [Token] -> Parser TT (Exp TT)
 pElem isExpresssion at
-    = pCParen (many $ pElem isExpresssion (recognizedSometimes \\ [Special ','])) pEmpty -- might be a tuple, so accept commas as noise
-  <|> pCBrack (many $ pElem isExpresssion (recognizedSometimes \\ [ReservedOp DoubleDot, ReservedOp Pipe, ReservedOp LeftArrow, Special ','])) pEmpty -- list thing
+    = pCParen (pExprOrPattern isExpresssion (recognizedSometimes \\ [Special ','])) pEmpty -- might be a tuple, so accept commas as noise
+  <|> pCBrack (pExprOrPattern isExpresssion (recognizedSometimes \\ [ReservedOp DoubleDot, ReservedOp Pipe, ReservedOp LeftArrow, Special ','])) pEmpty -- list thing
   <|> pCBrace (many $ pElem isExpresssion (recognizedSometimes \\ [ReservedOp Equal, Special ',', ReservedOp Pipe])) pEmpty -- record: TODO: improve
-  <|> (Yuck $ Enter "incorrectly placed block" $ pBlockOf (pExpr recognizedSometimes))
+  <|> (Yuck $ Enter "incorrectly placed block" $ pBlockOf (pExpr recognizedSometimes)) -- no error token, but the previous keyword will be one. (of, where, ...)
   <|> (PError <$> recoverWith
        (sym $ flip elem $ isNoiseErr at) <*> pure (newT '!') <*> pEmpty)
   <|> (PAtom <$> sym (flip notElem (isNotNoise at)) <*> pEmpty)
   <|> if isExpresssion then (pLet <|> pDo <|> pOf <|> pLambda) else empty
   -- TODO: support type expressions
 
+pTypeExpr at = many (pTypeElem at)
+pTypeExpr' = pTypeExpr (recognizedSometimes \\ [ReservedOp RightArrow])
 
+pTypeElem :: [Token] -> Parser TT (Exp TT)
+pTypeElem at 
+    = pCParen (pTypeExpr (recognizedSometimes \\ [ReservedOp RightArrow, Special ','])) pEmpty -- might be a tuple, so accept commas as noise
+  <|> pCBrack pTypeExpr' pEmpty -- list thing
+  <|> pCBrace pTypeExpr' pEmpty -- TODO: this is an error: mark as such.
+  <|> (Yuck $ Enter "incorrectly placed block" $ pBlockOf (pExpr recognizedSometimes))
+  <|> (PError <$> recoverWith
+       (sym $ flip elem $ isNoiseErr at) <*> pure (newT '!') <*> pEmpty)
+  <|> (PAtom <$> sym (flip notElem (isNotNoise at)) <*> pEmpty)
 
 -- | Parse a typesignature 
 pTypeSig :: Parser TT [(Exp TT)]
