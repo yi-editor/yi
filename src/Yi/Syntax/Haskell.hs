@@ -702,11 +702,7 @@ pGuard equalSign = PGuard
 
 -- | Right-hand-side of a function or case equation (after the pattern)
 pFunRHS :: Token -> Parser TT (Exp TT)
-pFunRHS equalSign = Bin <$> (pGuard equalSign <|> pEq equalSign) <*> pOpt pst
-    where pst = Expr <$> ((:) <$> pWhere pFunDecl
-                          <*> pExpr') -- FIXME: why is there an expression here?
-                                      -- maybe just "eat up" everything
-
+pFunRHS equalSign = Bin <$> (pGuard equalSign <|> pEq equalSign) <*> pOpt (pWhere pFunDecl)
 
 pWhere p = PWhere <$> pAtom [Reserved Where] <*> please (pBlock p)
 
