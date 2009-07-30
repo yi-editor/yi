@@ -706,10 +706,11 @@ pGuard equalSign = PGuard
 
 -- | Right-hand-side of a function or case equation (after the pattern)
 pFunRHS :: Token -> [Token] -> Parser TT (Exp TT)
-pFunRHS equalSign at = Bin <$> (pGuard equalSign <|> pEq equalSign at) <*> pOpt pst
+pFunRHS equalSign at = Bin <$> (pGuard equalSign <|> pEq equalSign) <*> pOpt pst
     where pst = Expr <$> ((:) <$> (PWhere <$> pAtom [Reserved Where]
                                           <*> please (pBlockOf $ pFunDecl at))
                           <*> pExpr') -- FIXME: why is there an expression here?
+                                      -- maybe just "eat up" everything
 
 
 -- Note that this can both parse an equation and a type declaration.
@@ -733,9 +734,8 @@ pFunDecl at = (:) <$> beginLine
                            <*> pure (newT '!') <*> pEmpty)
 
 -- | The RHS of an equation.
-pEq :: Token -> [Token] -> Parser TT (Exp TT)
-pEq equalSign at = RHS <$> pCAtom [equalSign] pEmpty
-       <*> pExpr'
+pEq :: Token -> Parser TT (Exp TT)
+pEq equalSign = RHS <$> pCAtom [equalSign] pEmpty <*> pExpr'
 
 -- | Parse many of something
 pMany :: Parser TT (Exp TT) -> Parser TT (Exp TT)
