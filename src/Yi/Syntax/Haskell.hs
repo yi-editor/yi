@@ -621,17 +621,20 @@ pWhere p = PWhere <$> pAtom [Reserved Where] <*> please (pBlock p)
 
 -- Note that this can both parse an equation and a type declaration.
 -- Since they can start with the same token, the left part is factored here.
-pDecl :: Parser TT [Exp TT] -> Parser TT [Exp TT]
-pDecl ending = pure [] 
-             <|> ((:) <$> pElem False recognizedSometimes <*> pDecl ending)
-             <|> ending 
+pDecl :: Bool -> Bool -> Parser TT [Exp TT]
+pDecl acceptType acceptEqu = (Yuck $ Enter "missing end of type or equation declaration" $ pure [])
+             <|> ((:) <$> pElem False recognizedSometimes <*> pDecl acceptType acceptEqu)
+             <|> ((:) <$> pBareAtom [Special ','] <*> pDecl acceptType False)
+                 -- if a comma is found, then the rest must be a type declaration.
+             <|> (if acceptType then pTypeEnding else empty)
+             <|> (if acceptEqu  then pEquEnding else empty)
+    where pTypeEnding = ((:) <$> (TS <$> exact [ReservedOp DoubleColon] <*> pTypeExpr') <*> pure [])
+          pEquEnding = ((:) <$> pFunRHS (ReservedOp Equal) <*> pure [])
 
-pFunDecl = pDecl (pTypeEnding <|> pEquEnding)
-pTypeDecl = pDecl pTypeEnding
-pEquation = pDecl pEquEnding
+pFunDecl = pDecl True True
+pTypeDecl = pDecl True False
+pEquation = pDecl False True
 
-pTypeEnding = ((:) <$> (TS <$> exact [ReservedOp DoubleColon] <*> pTypeExpr') <*> pure [])
-pEquEnding = ((:) <$> pFunRHS (ReservedOp Equal) <*> pure [])
 
 -- | The RHS of an equation.
 pEq :: Token -> Parser TT (Exp TT)
@@ -671,7 +674,7 @@ pTopDecl = pFunDecl
           <|> pToList pType
           <|> pToList pData
           <|> pToList pClass
---        <|> pEmpty: is matched by pFunDecl
+          <|> pEmpty
 
 
 -- | A "normal" expression, where none of the following symbols are acceptable.
