@@ -499,7 +499,7 @@ pImport = PImport  <$> pAtom [Reserved Import]
                           <|>  pQvarsym)
                      <*> pOpt pImpS
 
--- | Parse simple types
+-- | Parse simple type synonyms
 pType :: Parser TT (Exp TT)
 pType = PType <$> pAtom [Reserved Type]
      <*> (TC <$> ppCons) <*> pMany pQvarid
@@ -521,48 +521,21 @@ pSimpleType = Bin <$> (TC <$> ppCons) <*> pMany pQvarid
 -- | Parse data declarations
 pData :: Parser TT (Exp TT)
 pData = PData <$> pAtom [Reserved Data]
-     <*> pOpt (TC <$> pContext)
-     <*> (Bin <$> (TC <$> pSimpleType)   <*> pMany pErr')
-     <*> pOpt (Bin <$> pDataRHS <*> pMany pErr) <* pTestTok pEol
-    where pErr' = PError
-              <$> recoverWith (sym $ not .
-                               uncurry (||) . (&&&) isComment
-                               (flip elem [ CppDirective
-                                          , ReservedOp Equal
-                                          , Reserved Deriving
-                                          , Reserved Where])
-                              )
-              <*> pure (newT '!')
-              <*> pComments
-          pEol = [(Special ';'), nextLine, endBlock]
+     <*> (TC . Expr <$> pTypeExpr')
+     <*> pOpt (pDataRHS <|> pGadt)
+     <*> pOpt pDeriving
+
+
+pGadt = pWhere pFunDecl -- TODO: refuse equations, only accept types.
 
 -- | Parse second half of the data declaration, if there is one
 pDataRHS :: Parser TT (Exp TT)
-pDataRHS = PData' <$> pAtom eqW -- either we have standard data
-                                -- or we have GADT:s
-      <*> (please pConstrs
-           <|> pBlockOf' (Block <$> many pGadt
-                          `BL.sepBy1` exact [nextLine]))
-      <*> pOpt pDeriving
-      <|> pDeriving
-    where eqW = [ReservedOp Equal, Reserved Where]
+pDataRHS = PData' <$> pAtom [ReservedOp Equal]  <*> pConstrs <*> pure (Expr [])
 
--- | Parse an GADT declaration
-pGadt :: Parser TT (Exp TT)
-pGadt = Bin <$> (DC <$> pQtycon)
-    <*> ppOP [ReservedOp $ DoubleColon]
-         (Bin <$> pOpt pContext <*>
-          (pTypeRhs <|> pOP [Operator "!"] pAtype <|> pErr))
-    <|>  pErr
 
 -- | Parse a deriving
 pDeriving :: Parser TT (Exp TT)
-pDeriving = TC
-        <$> pKW [Reserved Deriving]
-            (please (pParen
-             ((:) <$> please pQtycon
-             <*> many (Bin <$> pComma <*> please pQtycon))
-             <|> pQtycon))
+pDeriving = pKW [Reserved Deriving] (TC . Expr <$> pTypeExpr')
 
 pAtype :: Parser TT (Exp TT)
 pAtype = pAtype'
@@ -622,7 +595,7 @@ pConstr = Bin <$> pOpt pForAll
 strictF :: Parser TT (Exp TT) -> Parser TT (Exp TT)
 strictF a = Bin <$> pOpt (pAtom [Operator "!"]) <*> a
 
-pFielddecl ::Parser TT (Exp TT)
+pFielddecl :: Parser TT (Exp TT)
 pFielddecl = Bin <$> pVars
          <*> pOpt (pOP [ReservedOp DoubleColon]
                    (pTypeRhs
@@ -813,6 +786,7 @@ recognizedSymbols =
     , (Reserved Of)
     , (Reserved Class)
     , (Reserved Instance)
+    , (Reserved Deriving)
     , (Reserved Module)
     , (Reserved Import)
     , (Reserved Type)
