@@ -507,13 +507,6 @@ pType = PType <$> pAtom [Reserved Type]
      <*> ppAtom [ReservedOp Equal]
      <*> (TC . Expr <$> pTypeExpr')
 
--- | Parse type-declaration inside something
-pTypeRhs :: Parser TT (Exp TT)
-pTypeRhs = Block <$> some pAtype `BL.sepBy1` pAtom [ReservedOp RightArrow]
-
-pSimpleType :: Parser TT (Exp TT)
-pSimpleType = Bin <$> (TC <$> ppCons) <*> pMany pQvarid
-          <|> pParen ((:) <$> (TC <$> ppCons) <*> many pQvarid)
 
 -- | Parse data declarations
 pData :: Parser TT (Exp TT)
@@ -584,20 +577,13 @@ pConstr = Bin <$> pOpt pForAll
       <|> Bin <$> lrHs <*> pMany (strictF pAtype)
       <|> pErr
     where lrHs = pOP [Operator "!"] pAtype
-          st = pBrace (pToList $ pOpt
-                       $ Bin <$> pFielddecl
-                       <*> pMany (Bin <$> pComma <*> pFielddecl))
+          st = pBrace ((Expr <$> pTypeDecl) `sepBy1` pBareAtom [Special ','])
+          -- named fields declarations
 
 -- | Parse optional strict variables
 strictF :: Parser TT (Exp TT) -> Parser TT (Exp TT)
 strictF a = Bin <$> pOpt (pAtom [Operator "!"]) <*> a
 
-pFielddecl :: Parser TT (Exp TT)
-pFielddecl = Bin <$> pVars
-         <*> pOpt (pOP [ReservedOp DoubleColon]
-                   (pTypeRhs
-                    <|> pKW [Operator "!"] pAtype
-                    <|> pErr))
 
 -- | Exporting module
 pEModule ::Parser TT (Exp TT)
