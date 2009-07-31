@@ -523,7 +523,7 @@ pData = PData <$> pAtom [Reserved Data]
      <*> pOpt pDeriving
 
 
-pGadt = pWhere pFunDecl -- TODO: refuse equations, only accept types.
+pGadt = pWhere pTypeDecl
 
 -- | Parse second half of the data declaration, if there is one
 pDataRHS :: Parser TT (Exp TT)
@@ -655,12 +655,17 @@ pWhere p = PWhere <$> pAtom [Reserved Where] <*> please (pBlock p)
 
 -- Note that this can both parse an equation and a type declaration.
 -- Since they can start with the same token, the left part is factored here.
-pFunDecl :: Parser TT [Exp TT]
-pFunDecl = pure [] 
-             <|> ((:) <$> pElem False recognizedSometimes          <*> pFunDecl)
-             <|> ((:) <$> (TS <$> exact [ReservedOp DoubleColon] <*> pTypeExpr') <*> pure [])
-             <|> ((:) <$> pFunRHS (ReservedOp Equal) <*> pure [])
+pDecl :: Parser TT [Exp TT] -> Parser TT [Exp TT]
+pDecl ending = pure [] 
+             <|> ((:) <$> pElem False recognizedSometimes <*> pDecl ending)
+             <|> ending 
 
+pFunDecl = pDecl (pTypeEnding <|> pEquEnding)
+pTypeDecl = pDecl pTypeEnding
+pEquation = pDecl pEquEnding
+
+pTypeEnding = ((:) <$> (TS <$> exact [ReservedOp DoubleColon] <*> pTypeExpr') <*> pure [])
+pEquEnding = ((:) <$> pFunRHS (ReservedOp Equal) <*> pure [])
 
 -- | The RHS of an equation.
 pEq :: Token -> Parser TT (Exp TT)
