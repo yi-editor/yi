@@ -502,13 +502,10 @@ pImport = PImport  <$> pAtom [Reserved Import]
 -- | Parse simple type synonyms
 pType :: Parser TT (Exp TT)
 pType = PType <$> pAtom [Reserved Type]
-     <*> (TC <$> ppCons) <*> pMany pQvarid
+     <*> (TC . Expr <$> pTypeExpr')
+     <*> pure (Expr [])
      <*> ppAtom [ReservedOp Equal]
-     <*> (TC <$> please pTypeRhs) <* pTestTok pEol
-    where pEol =[ startBlock
-                , (Special ';')
-                , nextLine
-                , endBlock]
+     <*> (TC . Expr <$> pTypeExpr')
 
 -- | Parse type-declaration inside something
 pTypeRhs :: Parser TT (Exp TT)
