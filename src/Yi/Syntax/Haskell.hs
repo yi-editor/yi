@@ -99,31 +99,21 @@ data Exp t
     = TS t [Exp t] -- ^ Type signature 
     | PType { typeKeyword :: (PAtom t)
             , typeCons    :: (Exp t)
-            , typeVars    :: (Exp t)
             , equal       :: (PAtom t)
             , btype       :: (Exp t)
             } -- ^ Type declaration
     | PData { dataKeyword :: (PAtom t)
             , dtypeCons   :: (Exp t)
-            , dContext    :: (Exp t)
+            , dEqual      :: (Exp t)
             , dataRhs     :: (Exp t)
             }  -- ^ Data declaration
     | PData' { dEqual    :: (PAtom t)
-             , dataCons  :: (Exp t)
-             , dDeriving :: (Exp t) -- ^ Data declaration RHS
+             , dataCons  :: (Exp t) -- ^ Data declaration RHS
              }
-    | PClass { classKeyword :: (PAtom t)
-             , cContext     :: (Exp t)
-             , cTycls       :: (Exp t)
-             , cTyVars      :: (Exp t)
+    | PClass { cKeyword :: (PAtom t) -- Can be class or instance
+             , cHead        :: (Exp t)
              , cwhere       :: (Exp t) -- ^ Class declaration
              }
-    | PInstance { instanceKeyword :: (PAtom t)
-                , iContext        :: (Exp t)
-                , iTycls          :: (Exp t)
-                , iTyVars         :: (Exp t)
-                , iwhere          :: (Exp t) -- ^ Instance
-                }
       -- declaration
       -- declarations and parts of them follow
     | Paren (PAtom t) [Exp t] (PAtom t) -- ^ A parenthesized, bracked or braced
@@ -171,18 +161,16 @@ instance SubTree (Exp TT) where
               work (Context e e' t) = work e
                                    <> work e'
                                    <> work t
-              work (PType kw e e' exp e'') = work kw
+              work (PType kw e e' exp) = work kw
                                              <> work e
                                              <> work e'
                                              <> work exp
-                                             <> work e''
               work (PData kw e e' e'') = work kw
                                        <> work e
                                        <> work e'
                                        <> work e''
-              work (PData' eq e e') = work eq
+              work (PData' eq e) = work eq
                                     <> work e
-                                    <> work e'
               work (PGuard l) = foldMap work l
               work (PGuard' t e t') = work t
                                       <> foldMap work e
@@ -198,11 +186,7 @@ instance SubTree (Exp TT) where
               work (PIn t l) = f t <> foldMap work l
               work (Block s) = BL.foldMapAfter
                                 begin (foldMapToksAfter begin f) s
-              work (PClass e e' e'' exp exp') = work e <> work e' <> work e''
-                                             <> work exp <> work exp'
-              work (PInstance e e' exp exp' e'' ) = work e <> work e'
-                                                 <> work exp <> work exp'
-                                                 <> work e''
+              work (PClass e e' e'') = work e <> work e' <> work e''
               fold' = foldMapToksAfter begin f
     foldMapToks = foldMap . foldMapToks
 
@@ -243,14 +227,13 @@ instance IsTree Exp where
        (PLet l s i)   -> l:s:[i]
        (PIn _ ts)     -> ts
        (Expr a)       -> a
-       (PClass a b c d e) -> [a,b,c,d,e]
-       (PInstance a b c d e) -> [a,b,c,d,e]
+       (PClass a b c) -> [a,b,c]
        (PWhere a b) -> [a,b]
        (Opt (Just x)) -> [x]
        (Bin a b) -> [a,b]
-       (PType a b c d e) -> [a,b,c,d,e]
+       (PType a b c d) -> [a,b,c,d]
        (PData a b c d) -> [a,b,c,d]
-       (PData' a b c) -> [a,b,c] 
+       (PData' a b) -> [a,b] 
        (Context a b c) -> [a,b,c]
        (PGuard xs) -> xs
        (PGuard' a b c) -> a:b ++ [c]
@@ -503,7 +486,6 @@ pImport = PImport  <$> pAtom [Reserved Import]
 pType :: Parser TT (Exp TT)
 pType = PType <$> pAtom [Reserved Type]
      <*> (TC . Expr <$> pTypeExpr')
-     <*> pure (Expr [])
      <*> ppAtom [ReservedOp Equal]
      <*> (TC . Expr <$> pTypeExpr')
 
@@ -520,7 +502,7 @@ pGadt = pWhere pTypeDecl
 
 -- | Parse second half of the data declaration, if there is one
 pDataRHS :: Parser TT (Exp TT)
-pDataRHS = PData' <$> pAtom [ReservedOp Equal]  <*> pConstrs <*> pure (Expr [])
+pDataRHS = PData' <$> pAtom [ReservedOp Equal]  <*> pConstrs
 
 
 -- | Parse a deriving
@@ -619,8 +601,6 @@ pClass :: Parser TT (Exp TT)
 pClass = PClass <$> pAtom [Reserved Class, Reserved Instance]
                 <*> (TC . Expr <$>  pTypeExpr')
                 <*> please (pWhere pTopDecl)
-                <*> pure (Expr [])
-                <*> pure (Expr [])
                 -- use topDecl since we have associated types and such.
                       
 

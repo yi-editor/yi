@@ -88,16 +88,15 @@ getStr tk point begin _end t0 = getStrokes' t0
           getStrokes' (PWhere e exp) = getStrokes' e <> getStrokes' exp
           getStrokes' (RHS eq g) = getStrokes' eq <> getStrokesL g
           getStrokes' (Bin l r) = getStrokes' l <> getStrokes' r
-          getStrokes' ty@(PType e na exp eq b)
+          getStrokes' ty@(PType e na eq b)
                = pKW ty e <> getStrokes' na
-              <> getStrokes' exp <> getStrokes' eq
+              <> getStrokes' eq
               <> getStrokes' b
           getStrokes' da@(PData kw na exp eq)
                = pKW da kw <> getStrokes' na
               <> getStrokes' exp <> getStrokes' eq
-          getStrokes' (PData' eq b d) =
+          getStrokes' (PData' eq b) =
                 getStrokes' eq <> getStrokes' b
-                               <> getStrokes' d
           getStrokes' (PLet l expr i) =
                 getStrokes' l <> getStrokes' expr <> getStrokes' i
           getStrokes' (PIn t l) = tk t <> getStrokesL l
@@ -111,14 +110,9 @@ getStr tk point begin _end t0 = getStrokes' t0
           getStrokes' (PGuard ls) = getStrokesL ls
           getStrokes' g@(PGuard' t e t')
               = pKW g t <> getStrokesL e <> getStrokes' t'
-          getStrokes' cl@(PClass e e' exp exp' e'')
+          getStrokes' cl@(PClass e e' exp)
               = pKW cl e <> getStrokes' e'
-             <> getStrokes' exp <> getStrokes' exp'
-             <> getStrokes' e''
-          getStrokes' ins@(PInstance e e' exp exp' e'')             
-              = pKW ins e <> getStrokes' e'
-                <> getStrokes' exp <> getStrokes' exp'
-                <> getStrokes' e''
+             <> getStrokes' exp 
           getStrokes' a = error (show a)
           getStrokesL = foldMap getStrokes'
           pKW b word | isErrN b = paintAtom errorStyle word
