@@ -56,6 +56,46 @@ tokenBasedAnnots tta t begin = catMaybes $ fmap tta $ toksAfter begin t
 tokenBasedStrokes :: SubTree tree =>(Element tree -> a) -> tree -> Point -> Point -> Point -> [a]
 tokenBasedStrokes tts t _point begin _end = foldMapToksAfter begin (\x ->(tts x:)) t []
 
+{-
+
+-- | Given a path to a leaf which is at the end or after the window, return a 
+-- node that encompasses the current window, and a path to a leaf
+-- which is at the end, or after the current window.
+fromLeafAfterToFinal :: Region -> Path -> tree t -> (Path, tree t)
+
+
+-- | Given a path to a leaf, return a path to a leaf which is at or after the given point
+fromLeafToLeafAfter :: Point -> Path -> tree t -> (Path, tree t)
+fromLeafToLeafAfter p xs t = firstThat (\s -> getFirstOffset s > p) $ allLeavesAfter xs t
+
+-- | Takes a list of (node, index of already inspected child), and return all leaves
+-- in this node after the said child).
+allLeavesAfter :: Path -> tree t -> [(Path, tree t)]
+allLeavesAfter xs t = concat $ zipWith fixPath $ map $ reverse $ allLeavesAfterChild xs t
+
+-- | Given a path, return all the nodes encountered along it, and the index of the child which comes next.
+nodesAndChildIndex :: Path -> tree t -> [(tree t, Int)]
+nodesAndChildIndex [] t = [(t,negate 1)]
+nodesAndChildIndex (x:xs) = case c of
+    Just c' -> (t, x) : nodesAndChildIndex xs c'
+    Nothing -> [(t,negate 1)]
+  where c = index x (subtrees t)
+          
+
+allLeavesAfterChild :: (tree t,Int) -> [(Path, tree t)]
+allLeavesAfterChild t x 
+    | null ts = [([], t)]
+    | otherwise = concat $ map allLeavesIn $ drop (x+1) $ subtrees t
+    where ts = subtrees t
+
+
+allLeavesIn :: tree t -> [(Path, tree t)]
+allLeavesIn t 
+    | null ts = [([], t)]
+    | otherwise = concat $ zipWith (\(xs,t') x -> (x:xs,t')) ts [0..]
+    where ts = subtrees t
+
+-}
 
 -- | Return all subtrees in a tree; each element of the return list
 -- contains paths to nodes. (Root is at the start of each path)
