@@ -93,8 +93,9 @@ p `inRegion` (Region _ start stop) = start <= p && p < stop
 nearRegion :: Point -> Region -> Bool
 p `nearRegion` (Region _ start stop) = start <= p && p <= stop
 
+-- | Returns if a region (1st arg) is  included in another (2nd arg)
 includedRegion :: Region -> Region -> Bool
-(Region _ start stop) `includedRegion` r = start `inRegion` r && stop `inRegion` r
+r0 `includedRegion` r = regionStart r <= regionStart r0 && regionEnd r0 <= regionEnd r
 
 regionIsEmpty :: Region -> Bool
 regionIsEmpty (Region _ start stop) = start >= stop
