@@ -581,7 +581,7 @@ pLet = PLet <$> pAtom [Reserved Let]
 -- | Parse a Do block
 pDo :: Parser TT (Exp TT)
 pDo = Bin <$> pAtom [Reserved Do]
-          <*> pBlock (pExpr (recognizedSometimes \\ [ReservedOp LeftArrow]))
+          <*> pBlock (pExpr ((Special ';' : recognizedSometimes) \\ [ReservedOp LeftArrow]))
 
 -- | Parse part of a lambda binding.
 pLambda = Bin <$> pAtom [ReservedOp BackSlash] <*> (Bin <$> (Expr <$> pPattern) <*> please (pBareAtom [ReservedOp RightArrow]))
