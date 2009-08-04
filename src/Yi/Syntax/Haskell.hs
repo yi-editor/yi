@@ -559,7 +559,7 @@ pConstr = Bin <$> pOpt pForAll
       <|> Bin <$> lrHs <*> pMany (strictF pAtype)
       <|> pErr
     where lrHs = pOP [Operator "!"] pAtype
-          st = pCBrace ((Expr <$> pTypeDecl) `sepBy1` pBareAtom [Special ',']) pEmpty
+          st = pEBrace ((Expr <$> pTypeDecl) `sepBy1` pBareAtom [Special ','])
           -- named fields declarations
 
 -- | Parse optional strict variables
@@ -785,3 +785,8 @@ pParen = flip pCParen pComments
 pBrace = flip pCBrace pComments
 
 pBrack = flip pCBrack pComments
+
+-- pEBrace parse an opening brace, followed by zero comments
+-- then followed by an closing brace and some comments
+pEBrace p = Paren  <$> pCAtom [Special '{'] pEmpty
+        <*> p <*> (recoverAtom <|> pCAtom [Special '}'] pComments)
