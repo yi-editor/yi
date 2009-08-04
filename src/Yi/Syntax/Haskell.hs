@@ -429,16 +429,8 @@ pModuleDecl = PModuleDecl <$> pAtom [Reserved Module]
           <*> pOpt (pParenSep pExport)
           <*> (optional (exact [nextLine]) *>
                (Bin <$> ppAtom [Reserved Where])
-               <*> pMany pErr') <* pTestTok elems
+               <*> pMany pErr) <* pTestTok elems
     where elems = [nextLine, startBlock, endBlock]
-          pErr' = PError <$>
-                  recoverWith (sym $ not . uncurry (||) . (&&&) isComment
-                               (flip elem [CppDirective
-                                          , startBlock
-                                          , endBlock
-                                          , nextLine]))
-              <*> pure (newT '!')
-              <*> pComments
 
 pExport :: Parser TT (Exp TT)
 pExport = optional (exact [nextLine]) *> please
@@ -511,20 +503,7 @@ pDeriving = pKW [Reserved Deriving] (TC . Expr <$> pTypeExpr')
 
 pAtype :: Parser TT (Exp TT)
 pAtype = pAtype'
-     <|> pErr'
-    where pErr' = PError
-              <$> recoverWith (sym $ not .
-                               uncurry (||) . (&&&) isComment
-                               (flip elem [ CppDirective
-                                          , (Special '(')
-                                          , (Special '[')
-                                          , VarIdent
-                                          , ConsIdent
-                                          , (Reserved Other)
-                                          , (Reserved As)])
-                               )
-              <*> pure (newT '!')
-              <*> pComments
+     <|> pErr
 
 pAtype' :: Parser TT (Exp TT)
 pAtype' = pQvarid
