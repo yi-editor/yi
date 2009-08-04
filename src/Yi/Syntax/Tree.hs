@@ -1,20 +1,31 @@
-{-# LANGUAGE TypeFamilies, NoMonomorphismRestriction #-}
+{-# LANGUAGE TypeFamilies, NoMonomorphismRestriction, FlexibleInstances, ScopedTypeVariables #-}
 {- Copyright JP Bernardy 2008 -}
 
 -- | Generic syntax tree handling functions
-module Yi.Syntax.Tree where
+module Yi.Syntax.Tree (IsTree(..), SubTree(..), toksAfter, allToks, tokAtOrBefore, toksInRegion,
+                       sepBy, sepBy1,
+                       getLastOffset, getFirstOffset,
+                       getFirstElement, getLastElement,
+                       getLastPath,
+                       getAllSubTrees,
+                       tokenBasedAnnots, tokenBasedStrokes) 
+  where
 
 -- Some of this might be replaced by a generic package
 -- such as multirec, uniplace, emgm, ...
 
-import Data.List (dropWhile, takeWhile, reverse)
+import Control.Monad (ap)
+import Data.List (dropWhile, takeWhile, reverse, filter, zip, zipWith, drop, length, splitAt)
 import Data.Maybe
 import Data.Monoid
-import Prelude ()
+import Prelude (curry)
 import Yi.Buffer.Basic
 import Yi.Lexer.Alex
 import Yi.Prelude
 import Yi.Region
+import Data.Accessor.Tuple
+import Test.QuickCheck
+
 
 class Foldable tree => IsTree tree where
     -- | Direct subtrees of a tree
@@ -56,51 +67,87 @@ tokenBasedAnnots tta t begin = catMaybes $ fmap tta $ toksAfter begin t
 tokenBasedStrokes :: SubTree tree =>(Element tree -> a) -> tree -> Point -> Point -> Point -> [a]
 tokenBasedStrokes tts t _point begin _end = foldMapToksAfter begin (\x ->(tts x:)) t []
 
-{-
+fromNodeToFinal :: IsTree tree => Region -> Node (tree (Tok t)) -> Node (tree (Tok t))
+fromNodeToFinal r = fromLeafAfterToFinal (regionStart r) . fromLeafToLeafAfter (regionEnd r)
 
--- | Given a path to a leaf which is at the end or after the window, return a 
--- node that encompasses the current window, and a path to a leaf
--- which is at the end, or after the current window.
-fromLeafAfterToFinal :: Region -> Path -> tree t -> (Path, tree t)
+-- | Return the first element that matches the predicate, or the head of the list
+-- if none matches.
+firstThat p [] = error "firstThat: empty list"
+firstThat p l@(x:xs) = head (filter p l ++ [x])
+
+-- | Given a path to a node, return a path+node which 
+-- node that encompasses the given node + a point before it.
+fromLeafAfterToFinal :: IsTree tree => Point -> Node (tree (Tok t)) -> Node (tree (Tok t))
+fromLeafAfterToFinal p n = (xs', snd n)
+    where (xs',_) = firstThat (\(_,s) -> getFirstOffset' s <= p) (reverse (nodesOnPath n))
 
 
--- | Given a path to a leaf, return a path to a leaf which is at or after the given point
-fromLeafToLeafAfter :: Point -> Path -> tree t -> (Path, tree t)
-fromLeafToLeafAfter p xs t = firstThat (\s -> getFirstOffset s > p) $ allLeavesAfter xs t
+-- | Search the tree in pre-order starting at a given node, until finding a leaf which is at
+-- or after the given point.
+fromLeafToLeafAfter :: (IsTree tree) => Point -> Node (tree (Tok t)) -> Node (tree (Tok t))
+fromLeafToLeafAfter p n = (xs', snd n)
+    where (xs',_) = firstThat (\(_,s) -> getFirstOffset' s >= p) $ allLeavesAfter n
+
+allLeavesAfter :: IsTree tree => Node (tree t) -> [(Path, tree t)]
+allLeavesAfter = allLeavesAfter' . reverse . nodesAndChildIndex
 
 -- | Takes a list of (node, index of already inspected child), and return all leaves
 -- in this node after the said child).
-allLeavesAfter :: Path -> tree t -> [(Path, tree t)]
-allLeavesAfter xs t = concat $ zipWith fixPath $ map $ reverse $ allLeavesAfterChild xs t
+allLeavesAfter' :: IsTree tree => [(Node (tree t), Int)] -> [(Path, tree t)]
+allLeavesAfter' l = [(xs ++ xs', t') | ((xs,t),c) <- l, (xs',t') <- allLeavesAfterChild c t] 
 
--- | Given a path, return all the nodes encountered along it, and the index of the child which comes next.
-nodesAndChildIndex :: Path -> tree t -> [(tree t, Int)]
-nodesAndChildIndex [] t = [(t,negate 1)]
-nodesAndChildIndex (x:xs) = case c of
-    Just c' -> (t, x) : nodesAndChildIndex xs c'
-    Nothing -> [(t,negate 1)]
-  where c = index x (subtrees t)
+-- | Given a root, return all the nodes encountered along it, their
+-- paths, and the index of the child which comes next.
+nodesAndChildIndex :: IsTree tree => Node (tree t) -> [(Node (tree t), Int)]
+nodesAndChildIndex ([],t) = [(([],t),negate 1)]
+nodesAndChildIndex (x:xs, t) = case index x (subtrees t) of
+    Just c' -> (([],t), x) : fmap (frst (frst (x:))) (nodesAndChildIndex (xs,c'))
+    Nothing -> [(([],t),negate 1)]
           
+nodesOnPath :: IsTree tree => Node (tree t) -> [Node (tree t)]
+nodesOnPath ([],t) = [([],t)]
+nodesOnPath (x:xs,t) = ([],t) : case index x (subtrees t) of
+                           Nothing -> []
+                           Just c -> fmap (frst (x:)) (nodesOnPath (xs,c))
 
-allLeavesAfterChild :: (tree t,Int) -> [(Path, tree t)]
-allLeavesAfterChild t x 
+frst :: (a -> b) -> (a,c) -> (b,c)
+frst f (x,y) = (f x, y)
+
+allLeavesAfterChild :: IsTree tree => Int -> tree t -> [(Path, tree t)]
+allLeavesAfterChild c t 
     | null ts = [([], t)]
-    | otherwise = concat $ map allLeavesIn $ drop (x+1) $ subtrees t
-    where ts = subtrees t
+    | otherwise = [(x:xs,t') | (x,ct) <- drop (c+1) (zip [0..] ts),
+                   (xs, t') <- allLeavesIn ct]
+   where ts = subtrees t                      
 
+-- | Return all leaves (with paths) inside a given root.
+allLeavesIn :: IsTree tree => tree t -> [Node (tree t)]
+allLeavesIn = allLeavesAfterChild (-1)
 
-allLeavesIn :: tree t -> [(Path, tree t)]
-allLeavesIn t 
-    | null ts = [([], t)]
-    | otherwise = concat $ zipWith (\(xs,t') x -> (x:xs,t')) ts [0..]
-    where ts = subtrees t
-
--}
 
 -- | Return all subtrees in a tree; each element of the return list
 -- contains paths to nodes. (Root is at the start of each path)
 getAllPaths :: IsTree tree => tree t -> [[tree t]]
 getAllPaths t = fmap (++[t]) ([] : concatMap getAllPaths (subtrees t))
+
+goDown :: IsTree tree => Int -> tree t -> Maybe (tree t)
+goDown i = (index i) . subtrees 
+
+index _ [] = Nothing
+index 0 (h:_) = Just h
+index n (_:t) = index (n-1) t
+
+type Path = [Int]
+
+
+type Node t = (Path, t)
+
+
+walkDown :: IsTree tree => Node (tree t) -> Maybe (tree t)
+walkDown ([],t) = return t
+walkDown (x:xs,t) = goDown x t >>= curry walkDown xs
+
+
 
 -- | Search the given list, and return the last tree before the given
 -- point; with path to the root. (Root is at the start of the path)
@@ -131,11 +178,18 @@ getLastElement :: Foldable t => t a -> Maybe a
 getLastElement tree = getLast $ foldMap (Last . Just) tree
 
 
-getLastOffset :: (Element a ~ Tok t, SubTree a) =>a -> Point
+getLastOffset :: (Element a ~ Tok t, SubTree a) => a -> Point
 getLastOffset = maybe 0 tokEnd . getLastTok
 
-getFirstOffset :: (Element a ~ Tok t, SubTree a) =>a -> Point
+
+getFirstOffset :: (Element a ~ Tok t, SubTree a) => a -> Point
 getFirstOffset = maybe 0 tokBegin . getFirstTok
+
+getLastOffset' = maybe 0 tokEnd . getLastElement
+getFirstOffset' = maybe 0 tokEnd . getFirstElement
+
+
+subtreeRegion t = mkRegion (getFirstOffset' t) (getLastOffset' t) 
 
 -- | Given a tree, return (first offset, number of lines).
 getSubtreeSpan :: (Foldable tree) => tree (Tok t) -> (Point, Int)
@@ -154,3 +208,128 @@ sepBy p s   = sepBy1 p s <|> pure []
 
 sepBy1     :: (Alternative f) => f a -> f v -> f [a]
 sepBy1 p s  = (:) <$> p <*> many (s *> p)
+
+
+----------------------------------------------------
+-- Testing code.
+
+
+data Test a = Leaf a | Bin (Test a) (Test a) deriving (Show, Eq)
+
+instance Foldable Test where
+    foldMap f (Leaf x) = f x
+    foldMap f (Bin l r) = foldMap f r <> foldMap f r
+
+instance IsTree Test where
+    subtrees (Leaf _) = []
+    subtrees (Bin l r) = [l,r]
+
+
+type TT = Tok ()
+
+
+
+
+instance Arbitrary (Test TT) where
+    arbitrary = sized $ \size -> do
+      arbitraryFromList [1..size+1]
+    shrink (Leaf x) = []
+    shrink (Bin l r) = [l,r] ++  (Bin <$> shrink l <*> pure r) ++  (Bin <$> pure l <*> shrink r)
+
+tAt idx =  Tok () 1 (Posn (idx * 2) 0 0)
+
+arbitraryFromList :: [Int] -> Gen (Test TT)
+arbitraryFromList [] = error "arbitraryFromList expects non empty lists"
+arbitraryFromList [x] = pure (Leaf (tAt (fromIntegral x)))
+arbitraryFromList xs = do
+  m <- choose (1,length xs - 1)
+  let len = length xs
+      (l,r) = splitAt m xs
+  Bin <$> arbitraryFromList l <*> arbitraryFromList r
+
+instance Eq (Tok a) where
+    x == y = tokPosn x == tokPosn y
+    
+instance Applicative Gen where
+    pure = return
+    (<*>) = ap
+
+instance Arbitrary Region where
+    arbitrary = sized $ \size -> do
+        x0 :: Int <- arbitrary
+        return $ mkRegion (fromIntegral x0) (fromIntegral (x0 + size))
+
+newtype NTTT = N (Node (Test TT)) deriving Show
+
+instance Arbitrary NTTT where
+    arbitrary = do
+      t <- arbitrary
+      p <- arbitraryPath t
+      return $ N (p,t)
+
+arbitraryPath (Leaf _) = return []
+arbitraryPath (Bin l r) = do
+  c <- choose (0,1)
+  let Just n' = index c [l,r]
+  (c :) <$> arbitraryPath n'
+
+regionInside r = do
+  b :: Int <- choose (fromIntegral $ regionStart r, fromIntegral $ regionEnd r)
+  e :: Int <- choose (b, fromIntegral $ regionEnd r)
+  return $ mkRegion (fromIntegral b) (fromIntegral e)
+
+pointInside :: Region -> Gen Point
+pointInside r = do
+  p :: Int <- choose (fromIntegral $ regionStart r, fromIntegral $ regionEnd r)
+  return (fromIntegral p)
+
+
+nodeRegion n = subtreeRegion t
+    where Just t = walkDown n
+
+
+prop_fromLeafAfterToFinal :: NTTT -> Property
+prop_fromLeafAfterToFinal (N n) = let
+    fullRegion = subtreeRegion $ snd n
+ in forAll (pointInside fullRegion) $ \p -> do
+   let final = fromLeafAfterToFinal p n
+       finalRegion = nodeRegion final
+       initialRegion = nodeRegion n
+       
+   whenFail (do putStrLn $ "final = " ++ show final
+                putStrLn $ "final reg = " ++ show finalRegion
+                putStrLn $ "initialReg = " ++ show initialRegion
+                putStrLn $ "p = " ++ show p
+            ) 
+     ((regionStart finalRegion <= p) && (initialRegion `includedRegion` finalRegion))
+
+
+prop_allLeavesAfter :: NTTT -> Property
+prop_allLeavesAfter (N n@(xs,t)) = do
+  let after = allLeavesAfter n
+  (xs',t') <- elements after
+  let t'' = walkDown (xs',t)
+  whenFail (do putStrLn $ "t' = " ++ show t'
+               putStrLn $ "t'' = " ++ show t''
+               putStrLn $ "xs' = " ++ show xs'
+           ) (Just t' == t'' && xs <= xs')
+      
+
+prop_fromNodeToLeafAfter :: NTTT -> Property
+prop_fromNodeToLeafAfter (N n) = forAll (pointInside (subtreeRegion $ snd n)) $ \p -> do
+   let after = fromLeafToLeafAfter p n
+       afterRegion = nodeRegion after
+   whenFail (do putStrLn $ "after = " ++ show after
+                putStrLn $ "after reg = " ++ show afterRegion
+            ) 
+     (regionStart afterRegion >= p)
+
+prop_fromNodeToFinal :: NTTT -> Property
+prop_fromNodeToFinal  (N t) = forAll (regionInside (subtreeRegion $ snd t)) $ \r -> do
+   let final = fromNodeToFinal r t
+       finalRegion = nodeRegion final
+   whenFail (do putStrLn $ "final = " ++ show final
+                putStrLn $ "final reg = " ++ show finalRegion
+                putStrLn $ "leaf after = " ++ show (fromLeafToLeafAfter (regionEnd r) t)
+            ) $ do
+     r `includedRegion` finalRegion
