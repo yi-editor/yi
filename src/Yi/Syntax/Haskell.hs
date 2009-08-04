@@ -559,7 +559,7 @@ pConstr = Bin <$> pOpt pForAll
       <|> Bin <$> lrHs <*> pMany (strictF pAtype)
       <|> pErr
     where lrHs = pOP [Operator "!"] pAtype
-          st = pBrace ((Expr <$> pTypeDecl) `sepBy1` pBareAtom [Special ','])
+          st = pCBrace ((Expr <$> pTypeDecl) `sepBy1` pBareAtom [Special ',']) pEmpty
           -- named fields declarations
 
 -- | Parse optional strict variables
