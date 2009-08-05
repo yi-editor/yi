@@ -1,5 +1,9 @@
 {-# LANGUAGE FlexibleInstances, FlexibleContexts #-}
 
+-- TODO:
+-- * User configuration.
+-- * Checking for side-effect-less code, e.g. "1;".
+
 module Yi.Verifier.JavaScript where
 
 import Control.Monad.Writer.Lazy (Writer, mapM_, MonadWriter, tell)
@@ -14,29 +18,25 @@ import Yi.Syntax.JavaScript hiding (res)
 
 -- * Types
 
-data ErrType = MultipleFunctionDeclaration String [Posn]
+data Error = MultipleFunctionDeclaration String [Posn]
+             deriving Eq
+
+data Warning = UnreachableCode Posn
                deriving Eq
 
-data WarnType = UnreachableCode Posn
-                deriving Eq
-
-data Report = Err  ErrType
-            | Warn WarnType
+data Report = Err  Error
+            | Warn Warning
               deriving Eq
 
 
 -- * Instances
 
--- | A real liar of an Eq instance.  Only compares the @Token@ in @Tok Token@.
-instance Eq (Tok Token) where
-    x == y = tokT x == tokT y
-
-instance Show ErrType where
+instance Show Error where
     show (MultipleFunctionDeclaration n ps) =
         "Function `" ++ n ++ "' declared more than once: " ++
                      concat (intersperse ", " $ map show ps)
 
-instance Show WarnType where
+instance Show Warning where
     show (UnreachableCode pos) =
         "Unreachable code at " ++ show pos
 
@@ -58,7 +58,7 @@ verify t = do
 --   declarations, including the functions' subfunctions.
 checkMultipleFuns :: [Statement TT] -> Writer (D.DList Report) ()
 checkMultipleFuns stmts = do
-  let dupFuns = dupsBy ((==) `on` funName) stmts
+  let dupFuns = dupsBy ((ttEq) `on` funName) stmts
   when (not $ null dupFuns)
     (say (Err (MultipleFunctionDeclaration
                (nameOf $ tokT $ funName $ head dupFuns)
@@ -75,6 +75,10 @@ checkUnreachable stmts = do
 
 -- * Helper functions
 
+-- | Given two @Tok t@, compares the @t@s.
+ttEq :: Eq t => Tok t -> Tok t -> Bool
+ttEq x y = tokT x == tokT y
+
 say :: MonadWriter (D.DList a) m => a -> m ()
 say = tell . D.singleton
 
@@ -89,7 +93,7 @@ findFunctions stmts = [ f | f@(FunDecl {}) <- stmts ]
 -- | Given a 'FunDecl', returns the token representing the name.
 funName :: Statement t -> t
 funName (FunDecl _ n _ _) = n
-funName _                 = trace "UNDEFINED: funName" undefined
+funName _                 = undefined
 
 -- | Given a 'FunDecl', returns its inner body as a list.
 funBody :: Statement t -> [Statement t]
@@ -98,12 +102,12 @@ funBody (FunDecl _ _ _ blk) =
       Block _ stmts _ -> toList stmts
       BlockOne stmt   -> [stmt]
       _               -> []
-funBody _ = trace "UNDEFINED: funBody" undefined
+funBody _ = undefined
 
 -- | Given a @ValidName@ returns the string representing the name.
 nameOf :: Token -> String
 nameOf (ValidName n) = n
-nameOf _             = trace "UNDEFINED: nameOf" undefined
+nameOf _             = undefined
 
 
 -- * Misc
