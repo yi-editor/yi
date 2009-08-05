@@ -11,8 +11,10 @@ increaseIndent = do
 
 main :: IO ()
 main = yi $ defaultEmacsConfig
-       {
-         defaultKm = Emacs.keymap <|>
-                       (ctrlCh '>') ?>>! increaseIndent
-         -- bind the function to Ctrl-> and mix with default Emacs keymap.
-       }
+  { defaultKm =
+      Emacs.mkKeymap $ override Emacs.defKeymap $ \parent _self ->
+        parent {
+           eKeymap = (eKeymap parent) ||> (metaCh '>' ?>>! increaseIndent)
+        }
+      -- bind M-> to increaseIndent and mix with default Emacs keymap.
+  }
