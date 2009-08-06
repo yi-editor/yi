@@ -344,22 +344,19 @@ sym f = symbol (f . tokT)
 exact :: [Token] -> Parser TT TT
 exact = sym . flip elem
 
--- | Create a special character symbol
-newT :: Char -> TT
-newT = tokFromT . Special
 
 -- | @please p@ returns a parser parsing either @p@ or recovers with the
 -- (Special '!') token.
 please :: Parser TT (Exp TT) -> Parser TT (Exp TT)
-please = (<|>) (PError <$> recoverWith (pure $ newT '!')
-                <*> pure (newT '!')
+please = (<|>) (PError <$> recoverWith errTok
+                <*> errTok
                 <*> pEmpty)
 
 -- | Parse anything that is an error
 pErr :: Parser TT (Exp TT)
 pErr = PError <$> recoverWith (sym $ not . uncurry (||) . (&&&) isComment
                                (== CppDirective))
-   <*> pure (newT '!')
+   <*> errTok
    <*> pComments
 
 -- | Parse an ConsIdent
@@ -391,7 +388,7 @@ pAtom = flip pCAtom pComments
 ppAtom at =  pAtom at <|> recoverAtom
 
 recoverAtom :: Parser TT (Exp TT)
-recoverAtom = PAtom <$> recoverWith (pure $ newT '!') <*> pEmpty
+recoverAtom = PAtom <$> recoverWith errTok <*> pEmpty
 
 -- | Parse an atom with optional comments
 pCAtom :: [Token] -> Parser TT [TT] -> Parser TT (Exp TT)
@@ -694,7 +691,7 @@ pElem isExpresssion at
   <|> pCBrace (many $ pElem isExpresssion (recognizedSometimes \\ [ReservedOp Equal, Special ',', ReservedOp Pipe])) pEmpty -- record: TODO: improve
   <|> (Yuck $ Enter "incorrectly placed block" $ pBlockOf (pExpr recognizedSometimes)) -- no error token, but the previous keyword will be one. (of, where, ...)
   <|> (PError <$> recoverWith
-       (sym $ flip elem $ isNoiseErr at) <*> pure (newT '!') <*> pEmpty)
+       (sym $ flip elem $ isNoiseErr at) <*> errTok <*> pEmpty)
   <|> (PAtom <$> sym (flip notElem (isNotNoise at)) <*> pEmpty)
   <|> if isExpresssion then (pLet <|> pDo <|> pOf <|> pLambda) else empty
   -- TODO: support type expressions
@@ -712,7 +709,7 @@ pTypeElem at
   <|> pCBrace pTypeExpr' pEmpty -- TODO: this is an error: mark as such.
   <|> (Yuck $ Enter "incorrectly placed block" $ pBlockOf (pExpr recognizedSometimes))
   <|> (PError <$> recoverWith
-       (sym $ flip elem $ isNoiseErr at) <*> pure (newT '!') <*> pEmpty)
+       (sym $ flip elem $ isNoiseErr at) <*> errTok <*> pEmpty)
   <|> (PAtom <$> sym (flip notElem (isNotNoise at)) <*> pEmpty)
 
 -- | List of things that allways should be parsed as errors
@@ -769,3 +766,13 @@ pBrack = flip pCBrack pComments
 -- then followed by an closing brace and some comments
 pEBrace p = Paren  <$> pCAtom [Special '{'] pEmpty
         <*> p <*> (recoverAtom <|> pCAtom [Special '}'] pComments)
+
+-- | Create a special error token. (e.g. fill in where there is no correct token to parse)
+-- Note that the position of the token has to be correct for correct computation of 
+-- node spans.
+errTok = mkTok <$> curPos
+   where curPos = tB <$> lookNext
+         tB Nothing = maxBound
+         tB (Just x) = tokBegin x
+         mkTok p = Tok (Special '!') 0 (startPosn {posnOfs = p})
+
