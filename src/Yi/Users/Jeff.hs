@@ -8,9 +8,9 @@ import Prelude ()
 import Yi
 
 import Yi.Keymap.Vim
-import Yi.Scion
 import Yi.Snippets
 import Yi.Snippets.Haskell
+import Yi.UI.Pango as Pango
 import Yi.UI.Vty as Vty
 
 main = yi $ defaultVimConfig
@@ -32,8 +32,6 @@ myVimKeymap = mkKeymap $ defKeymap `override` \super self -> super
              , meta (spec KLeft)  ?>>! prevWordB
              , meta (spec KRight) ?>>! nextWordB
              ]
-  -- :yi scion now works, as it's included in the default published actions
-  -- , v_ex_cmds = exCmds [("scion", const $ runScionWithLocation functionType, Nothing)]
   }
 
 deleteSnippets = True
