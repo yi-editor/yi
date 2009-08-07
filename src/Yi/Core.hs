@@ -74,7 +74,6 @@ import Yi.Buffer
 import Yi.Config
 import Yi.Dynamic
 import Yi.Editor
-import qualified Yi.Editor as Editor
 import qualified Yi.Interact as I
 import Yi.Keymap
 import Yi.Keymap.Keys

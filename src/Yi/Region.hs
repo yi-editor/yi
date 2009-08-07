@@ -100,6 +100,7 @@ r0 `includedRegion` r = regionStart r <= regionStart r0 && regionEnd r0 <= regio
 regionIsEmpty :: Region -> Bool
 regionIsEmpty (Region _ start stop) = start >= stop
 
+regionsOverlap :: Bool -> Region -> Region -> Bool
 regionsOverlap border (Region _ x1 y1) (Region _ x2 y2) =
     cmp x2 y1 y2 || cmp x2 x1 y2 ||
     cmp x1 y2 y1 || cmp x1 x2 y1
