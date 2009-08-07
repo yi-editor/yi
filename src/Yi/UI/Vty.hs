@@ -98,7 +98,9 @@ start cfg ch outCh editor = do
                   (EvResize x y) -> do
                       logPutStrLn $ "UI: EvResize: " ++ show (x,y)
                       writeIORef sz (y,x)
-                      outCh [makeAction (layoutAction result :: YiM ())]
+                      outCh [makeAction (layoutAction result :: YiM ())] 
+                      -- since any action will force a refresh, return () is probably 
+                      -- sufficient instead of "layoutAction result"
                       getKey
                   _ -> return (fromVtyEvent event)
           forkIO getcLoop
@@ -175,8 +177,11 @@ layout ui e = do
       cmdHeight = length niceCmd
       ws' = applyHeights (computeHeights (rows - tabBarHeight - cmdHeight + 1) ws) ws
       ws'' = fmap apply ws'
-      apply win = fix $ \self -> win {
-          getRegion = getRegionImpl self (configUI $ config ui) e cols (height self)
+      
+      apply win = win {
+                    -- Note that it is possible to pass the emptyEditor here, because
+                    -- the fields used in getRegionImpl won't make a difference on the layout.
+          getRegion = getRegionImpl win (configUI $ config ui) emptyEditor cols (height win)
         }
   return $ windowsA ^= ws'' $ e
 
@@ -248,7 +253,7 @@ scanrT (+*+) k t = fst $ runState (mapM f t) k
 
 getRegionImpl :: Window -> UIConfig -> Editor -> Int -> Int -> FBuffer -> Region
 getRegionImpl win cfg e w h b =
-  let (_,to) = drawWindow cfg e b undefined {-focus isn't used-} win w h
+  let (_,to) = drawWindow cfg e b (error "focus must not be used")  win w h
   in mkRegion (fst $ runBuffer win b (getMarkPointB =<< fromMark <$> askMarks)) to
 
 -- | Return a rendered wiew of the window.
