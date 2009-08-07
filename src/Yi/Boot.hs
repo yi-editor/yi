@@ -30,6 +30,7 @@ yi = Dyre.wrapMain $ Dyre.defaultParams
     , Dyre.showError    = showErrorsInConf
     , Dyre.configDir    = Just . getAppUserDataDirectory $ "yi"
     , Dyre.hidePackages = ["mtl"]
+    , Dyre.ghcOpts = ["-threaded", "-O2"]
     }
 
 reload :: YiM ()
