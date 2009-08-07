@@ -214,6 +214,8 @@ refreshEditor = onYiVar $ \yi var -> do
             visibleBuffers = fmap bufkey $ windows e0
         -- Find out if any file was modified "behind our back" by other processes.            
         -- FIXME: since we do IO here we must catch exceptions!
+
+        -- Update (visible) buffers if they have changed on disk.
         now <- getCurrentTime
         newBuffers <- forM (buffers e0) $ \b -> let nothing = return (b, Nothing) in 
           if bkey b `elem` visibleBuffers
@@ -232,18 +234,24 @@ refreshEditor = onYiVar $ \yi var -> do
                _ -> nothing
           else nothing  
     
+        -- show appropriate update message if applicable
         let e1 = case getFirst (foldMap (First . snd) newBuffers) of
                Just msg -> (statusLinesA ^: DelayList.insert msg) e0 {buffers = fmap fst newBuffers}
                Nothing -> e0
+            -- Hide selection, clear "syntax dirty" flag (as appropriate).
             e2 = buffersA ^: (fmap (clearSyntax . clearHighlight)) $ e1
+        -- Adjust window sizes according to UI info
         e3 <- UI.layout (yiUi yi) e2
         -- Adjust point according to the current layout
         let e4 = fst $ runEditor (yiConfig yi)
                                  (do ws <- getA windowsA
                                      mapM (flip withWindowE snapScreenB) ws)
                                  e3
+        -- Display
         UI.refresh (yiUi yi) e4
+        -- Clear "pending updates" from buffers.
         let e5 = buffersA ^: (fmap clearUpdates) $ e4
+        -- Terminate stale processes.
         terminateSubprocesses (staleProcess $ buffers e5) yi var {yiEditor = e5}
   where 
     clearUpdates fb = pendingUpdatesA ^= [] $ fb
@@ -253,6 +261,7 @@ refreshEditor = onYiVar $ \yi var -> do
           us = getVal pendingUpdatesA fb
       in highlightSelectionA ^= (h && null us) $ fb
     fileModTime f = posixSecondsToUTCTime . realToFrac . modificationTime <$> getFileStatus f
+    -- | Is this process stale? (associated with a deleted buffer)
     staleProcess bs p = not (bufRef p `M.member` bs)
     
 
