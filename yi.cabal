@@ -76,9 +76,6 @@ flag hacking
 flag testing
   Description: bake-in the self-checks
 
-flag cautiousWrites
-  Description: Use cautious-file to safely write to files.
-
 library
   hs-source-dirs: src
   if flag(hacking)
@@ -228,7 +225,7 @@ library
         Shim.SHM, Shim.SessionMonad, Shim.Hsinfo, Shim.GhcCompat,
         Shim.ExprSearch, Yi.GHC
 
-    if flag (cautiousWrites)
+    if !os(windows)
       cpp-options: -DCAUTIOUS_WRITES
 
     other-modules:
@@ -389,7 +386,7 @@ executable yi
           -- Shim uses old-time
           cpp-options: -DGHC_API
 
-        if flag (cautiousWrites)
+        if !os(windows)
           build-depends: cautious-file >= 0.1.5 && <0.2
           cpp-options: -DCAUTIOUS_WRITES
 

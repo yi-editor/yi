@@ -41,7 +41,7 @@ import qualified Data.ByteString.UTF8 as B
 import qualified Data.ByteString as B (append, concat, elemIndices)
 import qualified Data.ByteString as Byte 
 import Data.ByteString (ByteString)
-import qualified Data.ByteString.Lazy as LB (toChunks, fromChunks, writeFile, null, readFile)
+import qualified Data.ByteString.Lazy as LB (toChunks, fromChunks, null, readFile)
 import qualified Data.ByteString.Lazy.UTF8 as LB 
  
 import qualified Data.FingerTree as T
@@ -55,6 +55,8 @@ import Data.Int
 
 #ifdef CAUTIOUS_WRITES
 import System.IO.Cautious (writeFileL)
+#else
+import qualified Data.ByteString.Lazy as LB (writeFile)
 #endif
  
 defaultChunkSize :: Int
