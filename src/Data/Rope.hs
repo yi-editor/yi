@@ -38,7 +38,7 @@ import Prelude hiding (null, head, tail, length, take, drop, splitAt, head, tail
 import qualified Data.List as L
  
 import qualified Data.ByteString.UTF8 as B
-import qualified Data.ByteString as B (null, append, concat, elemIndices)
+import qualified Data.ByteString as B (append, concat, elemIndices)
 import qualified Data.ByteString as Byte 
 import Data.ByteString (ByteString)
 import qualified Data.ByteString.Lazy as LB (toChunks, fromChunks, writeFile, null, readFile)
@@ -169,9 +169,9 @@ splitAtLine n | n <= 0     = \r -> (empty, r)
 splitAtLine' :: Int -> Rope -> (Rope, Rope)
 splitAtLine' n (Rope t) =
    case T.viewl c of
-     c@(Chunk _ x) :< r ->
+     ch@(Chunk _ x) :< r ->
        let (lx, rx) = cutExcess excess x 
-           excess = lineIndex (measure l) + lineIndex (measure c) - n - 1
+           excess = lineIndex (measure l) + lineIndex (measure ch) - n - 1
        in (Rope $ l |- mkChunk lx, Rope $ mkChunk rx -| r)
      _ -> (Rope l, Rope c)
    where
