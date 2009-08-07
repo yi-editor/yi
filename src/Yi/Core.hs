@@ -44,46 +44,48 @@ module Yi.Core
   ) 
 where
 
+import Prelude (realToFrac)
+
 import Control.Concurrent
 import Control.Monad (when, forever)
 import Control.Monad.Error ()
 import Control.Monad.Reader (runReaderT, ask)
 import Control.Monad.Trans
 import Control.OldException
+import qualified Data.DelayList as DelayList
 import Data.List (intercalate, partition)
+import Data.List.Split (splitOn)
 import qualified Data.List.PointedList.Circular as PL
+import qualified Data.Map as M
 import Data.Maybe
 import Data.Monoid
 import Data.Time
 import Data.Time.Clock.POSIX
-import Prelude (realToFrac)
+import qualified Data.Rope as R
 import System.Directory (doesFileExist)
 import System.Exit
 import System.FilePath
 import System.IO (Handle, hWaitForInput, hPutStr)
+import qualified System.IO.UTF8 as UTF8
 import System.PosixCompat.Files
 import System.Process (terminateProcess, getProcessExitCode, ProcessHandle)
+
 import Yi.Buffer
 import Yi.Config
 import Yi.Dynamic
 import Yi.Editor
+import qualified Yi.Editor as Editor
+import qualified Yi.Interact as I
 import Yi.Keymap
 import Yi.Keymap.Keys
 import Yi.KillRing (krEndCmd)
 import Yi.Prelude
 import Yi.Process (popen, createSubprocess, readAvailable, SubprocessId, SubprocessInfo(..))
-import Data.List.Split (splitOn)
 import Yi.String
 import Yi.Style (errorStyle, strongHintStyle)
 import Yi.UI.Common as UI (UI)
-import Yi.Window (dummyWindow, bufkey)
-import qualified Data.DelayList as DelayList
-import qualified Data.Map as M
-import qualified System.IO.UTF8 as UTF8
-import qualified Yi.Editor as Editor
-import qualified Yi.Interact as I
 import qualified Yi.UI.Common as UI
-import qualified Data.Rope as R
+import Yi.Window (dummyWindow, bufkey)
 
 -- | Make an action suitable for an interactive run.
 -- UI will be refreshed.
