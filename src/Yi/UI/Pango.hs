@@ -455,8 +455,6 @@ newWindow e ui w b = mdo
 
     box <- if isMini w
      then do
-      widgetSetSizeRequest sw (-1) (-1)
-
       prompt <- labelNew (Just $ miniIdentString b)
       widgetModifyFont prompt (Just f)
 
