@@ -18,7 +18,7 @@ import Control.Monad.State (runState,modify)
 indexedAnnotatedStreamB :: Point -> BufferM [(Point, Char)]
 indexedAnnotatedStreamB p = do
     text <- indexedStreamB Forward p
-    annots <- gets (withSyntax0 modeGetAnnotations)
+    annots <- withSyntaxB modeGetAnnotations
     return $ spliceAnnots text (dropWhile (\s -> spanEnd s < p) (annots p))
        
 applyHeights :: Traversable t => [Int] -> t Window -> t Window

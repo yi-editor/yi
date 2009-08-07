@@ -392,7 +392,7 @@ waitForExit ph =
 withSyntax :: (Show x, YiAction a x) => (forall syntax. Mode syntax -> syntax -> a) -> YiM ()
 withSyntax f = do
             b <- gets currentBuffer
-            act <- withGivenBuffer b $ gets (withSyntax0 f)
+            act <- withGivenBuffer b $ withSyntaxB f
             runAction $ makeAction $ act
 
 userForceRefresh :: YiM ()

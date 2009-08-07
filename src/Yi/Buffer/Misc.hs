@@ -101,8 +101,8 @@ module Yi.Buffer.Misc
   , withModeB
   , withMode0
   , onMode
-  , withSyntax0
   , withSyntaxB
+  , withSyntaxB'
   , keymapProcessA
   , strokesRangesB
   , streamB
@@ -128,7 +128,6 @@ import Yi.Prelude
 import Yi.Region
 import System.FilePath
 import Yi.Buffer.Implementation
-import Yi.Region
 import Yi.Syntax
 import Yi.Buffer.Undo
 import Yi.Dynamic
@@ -272,8 +271,8 @@ instance Binary FBuffer where
     get = do
         mnm <- get
         FBuffer <$> pure (emptyMode {modeName = mnm}) <*> getStripped <*> get
-        where getStripped :: Get (BufferImpl ())
-              getStripped = get
+      where getStripped :: Get (BufferImpl ())
+            getStripped = get
 
 instance Binary SelectionStyle where
   put (SelectionStyle h r) = put h >> put r
@@ -630,7 +629,7 @@ indexedStreamB dir i = queryBuffer (getIndexedStream dir i)
 strokesRangesB :: Maybe SearchExp -> Region -> BufferM [[Stroke]]
 strokesRangesB regex r = do
     p <- pointB
-    getStrokes <- gets (withSyntax0 modeGetStrokes)
+    getStrokes <- withSyntaxB modeGetStrokes
     queryBuffer $ strokesRangesBI getStrokes regex r p
 
 ------------------------------------------------------------------------
@@ -773,14 +772,22 @@ withModeB f = do
     act <- gets (withMode0 f)
     act
            
-withSyntax0 :: (forall syntax. Mode syntax -> syntax -> a) -> FBuffer -> a
-withSyntax0 f FBuffer {bmode = m, rawbuf = rb} = f m (getAst rb)
+withSyntax0 :: Region -> (forall syntax. Mode syntax -> syntax -> a) -> FBuffer -> (FBuffer, a)
+withSyntax0 r f (FBuffer bm rb attrs) = (FBuffer bm rb' attrs, f bm ast)
+    where (rb', ast) = getAst r rb
 
-withSyntaxB :: (forall syntax. Mode syntax -> syntax -> BufferM x) -> BufferM x
+
+withSyntaxB :: (forall syntax. Mode syntax -> syntax -> a) -> BufferM a
 withSyntaxB f = do
-    act <- gets (withSyntax0 f)
-    act
-           
+    s <- getA id
+    r <- askWindow getRegion
+    let (s',a) = withSyntax0 (r s) f s
+    putA id s'
+    return a
+
+withSyntaxB' :: (forall syntax. Mode syntax -> syntax -> BufferM a) -> BufferM a
+withSyntaxB' f = join $ withSyntaxB f
+
 -- | Return indices of strings in buffer matched by regex in the
 -- given region.
 regexRegionB :: SearchExp -> Region -> BufferM [Region]
