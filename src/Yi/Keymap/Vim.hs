@@ -1500,7 +1500,7 @@ defKeymap = Proto template
      --    Needs to occur in another buffer
      --    fn ('!':f) = runProcessWithInput f []
 
-           fn "reload"     = reloadEditor >> return ()    -- not in vim
+           fn "reload"     = reload >> return ()    -- not in vim
 
            fn "redr"       = userForceRefresh
            fn "redraw"     = userForceRefresh

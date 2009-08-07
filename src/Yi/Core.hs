@@ -108,19 +108,20 @@ startEditor cfg st = do
 
     logPutStrLn "Starting Core"
 
-    -- restore the old state
-    let initEditor = maybe emptyEditor id st
+    -- Use an empty state unless resuming from an earlier session and one is already available
+    let editor = maybe emptyEditor id st
+
     -- Setting up the 1st window is a bit tricky because most functions assume there exists a "current window"
-    newSt <- newMVar $ YiVar initEditor [] 1 M.empty
+    newSt <- newMVar $ YiVar editor [] 1 M.empty
     (ui, runYi) <- mdo let handler exception = runYi $ (errorEditor (show exception) >> refreshEditor)
                            inF  ev  = handle handler (runYi (dispatch ev))
                            outF acts = handle handler (runYi (interactive acts))
-                       ui <- uiStart cfg inF outF initEditor
+                       ui <- uiStart cfg inF outF editor
                        let runYi f = runReaderT (runYiM f) yi
                            yi = Yi ui inF outF cfg newSt 
                        return (ui, runYi)
   
-    runYi $
+    runYi $ do
       if isNothing st 
          then postActions $ startActions cfg ++ [makeAction showErrors] -- process options if booting for the first time
          else withEditor $ modA buffersA (fmap (recoverMode (modeTable cfg))) -- otherwise: recover the mode of buffers

@@ -34,7 +34,7 @@ data-files:
   art/setup-script.png
   examples/yi.hs
   examples/yi-simple.hs
-extra-source-files: Yi/Lexer/alex.hsinc
+extra-source-files: Yi/Lexer/common.hsinc
 
 flag ghcInterpreter
   Description: Use the "hint" interpreter for extended commands (M-x) (experimental)
@@ -229,9 +229,6 @@ library
         Paths_yi,
         
         -- "Internal" modules that the user better not see.
-        HConf
-        HConf.Utils
-        HConf.Paths
         Yi.Buffer.Implementation
         Data.Prototype
 
@@ -301,10 +298,6 @@ executable parserTest
                 Yi.Syntax.Tree
 
                 Yi.Mode.Interactive
-
-                HConf
-                HConf.Utils
-                HConf.Paths
         include-dirs:   src/Yi/Lexer
 
 executable yi
@@ -325,6 +318,7 @@ executable yi
         build-depends: data-accessor-monads-fd == 0.2.*
         build-depends: data-accessor-template == 0.2.*
         build-depends: dlist >=0.4.1
+        build-depends: dyre >=0.6
         build-depends: filepath>=1.1 && <1.2
         build-depends: fingertree >= 0 && <0.1
         build-depends: ghc-paths ==0.1.*
@@ -491,9 +485,6 @@ executable yi
            Yi.KillRing
            Yi.IncrementalParse
            Yi.UI.Utils
-           HConf
-           HConf.Utils
-           HConf.Paths
            -- Should probably be split out to another package.
            Data.DelayList
 

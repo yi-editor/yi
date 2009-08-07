@@ -5,7 +5,6 @@ module Yi.Config.Default (defaultConfig, availableFrontends,
                           defaultEmacsConfig, defaultVimConfig, defaultCuaConfig,
                           toVimStyleConfig, toEmacsStyleConfig, toCuaStyleConfig) where
 
-import {-# source #-} Yi.Boot (reloadEditor)
 import Control.Monad (forever)
 import Data.Dynamic
 import Data.Either (rights)
@@ -15,6 +14,7 @@ import System.Directory
 import System.FilePath
 import System.IO (readFile)
 import Yi.Command (cabalBuildE, cabalConfigureE, grepFind, makeBuild, reloadProjectE, searchSources, shell)
+import {-# source #-} Yi.Boot
 import Yi.Config
 import Yi.Core
 import Yi.Dired
@@ -107,7 +107,7 @@ defaultPublishedActions = M.fromList $
     , ("regionOfB"              , box regionOfB)
     , ("regionOfPartB"          , box regionOfPartB)
     , ("regionOfPartNonEmptyB"  , box regionOfPartNonEmptyB)
-    , ("reloadEditor"           , box reloadEditor)
+    , ("reloadEditor"           , box reload)
     , ("reloadProjectE"         , box reloadProjectE)
     , ("replaceString"          , box replaceString)
     , ("revertE"                , box revertE)
@@ -222,7 +222,7 @@ nilKeymap = choice [
              char 'e' ?>>  openCfg (extractTopKeymap Emacs.keymap),
              char 'v' ?>>  openCfg (extractTopKeymap Vim.keymapSet),
              char 'q' ?>>! quitEditor,
-             char 'r' ?>>! reloadEditor,
+             char 'r' ?>>! reload,
              char 'h' ?>>! configHelp
             ] 
             <|| (anyEvent >>! errorEditor "Keymap not defined, 'q' to quit, 'h' for help.")

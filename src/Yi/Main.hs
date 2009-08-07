@@ -6,18 +6,26 @@
 -- | This is the main module of Yi, called with configuration from the user.
 -- Here we mainly process command line arguments.
 
-module Yi.Main (main, projectName) where
+module Yi.Main (main) where
 
 import Prelude ()
-import {-# SOURCE #-} Yi.Boot
+
+import Control.Monad.Error
+import Control.Monad.Trans.Error (Error(..))
+import Data.Char
+import Data.List (intercalate)
+import Distribution.Text (display)
+import System.Console.GetOpt
+import System.Environment (getArgs)
+import System.Exit
+#include "ghcconfig.h"
+
 import Yi.Config
 import Yi.Config.Default
 import Yi.Core
 import Yi.Dired
-import HConf (hconfOptions)
-import qualified HConf
 import Paths_yi
-import Distribution.Text (display)
+
 #ifdef TESTING
 import qualified TestSuite
 #endif
@@ -25,16 +33,6 @@ import qualified TestSuite
 #ifdef FRONTEND_COCOA
 import HOC (withAutoreleasePool)
 #endif
-
-import Data.Char
-import Data.List                ( intersperse, map )
-import Control.Monad.Error
-import Control.Monad.Trans.Error (Error(..))
-import Control.Monad (foldM)
-import System.Console.GetOpt
-import System.Environment       ( getArgs )
-import System.Exit
-#include "ghcconfig.h"
 
 frontendNames :: [String]
 frontendNames = fmap fst' availableFrontends
@@ -58,7 +56,6 @@ data Opts = Help
           | ConfigFile String
           | SelfCheck
           | Debug
-          | HConfOption
 
 -- | List of editors for which we provide an emulation.
 editors :: [(String,Config -> Config)]
@@ -67,26 +64,25 @@ editors = [("emacs", toEmacsStyleConfig),
            ("cua",   toCuaStyleConfig)]
 
 options :: [OptDescr Opts]
-options = [
-    Option []     ["self-check"]  (NoArg SelfCheck) "run self-checks",
-    Option ['f']  ["frontend"]    (ReqArg Frontend "[frontend]")
-        ("Select frontend, which can be one of:\n" ++
-         (concat . intersperse ", ") frontendNames),
-    Option ['y']  ["config-file"] (ReqArg ConfigFile  "path") "Specify a configuration file",
-    Option ['V']  ["version"]     (NoArg Version) "Show version information",
-    Option ['h']  ["help"]        (NoArg Help)    "Show this help",
-    Option []     ["debug"]       (NoArg Debug)   "Write debug information in a log file",
-    Option ['l']  ["line"]        (ReqArg LineNo "[num]") "Start on line number",
-    Option []     ["as"]          (ReqArg EditorNm "[editor]")
-        ("Start with editor keymap, where editor is one of:\n" ++
-                (concat . intersperse ", " . fmap fst) editors)
-    ] ++ (map (fmap $ const HConfOption) (hconfOptions defaultHConfParams))
+options =
+  [ Option []     ["self-check"]  (NoArg  SelfCheck)             "Run self-checks"
+  , Option ['f']  ["frontend"]    (ReqArg Frontend   "FRONTEND") frontendHelp
+  , Option ['y']  ["config-file"] (ReqArg ConfigFile "PATH")     "Specify a configuration file"
+  , Option ['V']  ["version"]     (NoArg  Version)               "Show version information"
+  , Option ['h']  ["help"]        (NoArg  Help)                  "Show this help"
+  , Option []     ["debug"]       (NoArg  Debug)                 "Write debug information in a log file"
+  , Option ['l']  ["line"]        (ReqArg LineNo     "NUM")      "Start on line number"
+  , Option []     ["as"]          (ReqArg EditorNm   "EDITOR")   editorHelp
+  ] where frontendHelp = ("Select frontend, which can be one of:\n"
+                             ++ intercalate ", " frontendNames)
+          editorHelp   = ("Start with editor keymap, where editor is one of:\n"
+                             ++ (intercalate ", " . fmap fst) editors)
 
 -- | usage string.
 usage, versinfo :: String
-usage = usageInfo ("Usage: " ++ projectName ++ " [option...] [file]") options
+usage = usageInfo ("Usage: yi [option...] [file]") options
 
-versinfo = projectName ++ ' ' : display version
+versinfo = "yi " ++ display version
 
 -- | Transform the config with options
 do_args :: Config -> [String] -> Either Err Config
