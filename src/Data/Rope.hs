@@ -1,4 +1,4 @@
-{-# LANGUAGE MultiParamTypeClasses, FlexibleInstances #-}
+{-# LANGUAGE CPP, MultiParamTypeClasses, FlexibleInstances #-}
 -- Consider splitting off as a separate package
 -- Copyright (c) 2008 Gustav Munkby
 -- Copyright (c) 2008 Jean-Philippe Bernardy
@@ -41,7 +41,7 @@ import qualified Data.ByteString.UTF8 as B
 import qualified Data.ByteString as B (null, append, concat, elemIndices)
 import qualified Data.ByteString as Byte 
 import Data.ByteString (ByteString)
-import qualified Data.ByteString.Lazy as LB (toChunks, fromChunks, null, readFile)
+import qualified Data.ByteString.Lazy as LB (toChunks, fromChunks, writeFile, null, readFile)
 import qualified Data.ByteString.Lazy.UTF8 as LB 
  
 import qualified Data.FingerTree as T
@@ -53,7 +53,9 @@ import Data.Monoid
 import Data.Foldable (toList)
 import Data.Int
 
+#ifdef CAUTIOUS_WRITES
 import System.IO.Cautious (writeFileL)
+#endif
  
 defaultChunkSize :: Int
 defaultChunkSize = 128 -- in chars! (chunkSize requires this to be <= 256)
@@ -189,9 +191,12 @@ instance Binary Rope where
      get = fromString `fmap` get
 
 
-
 writeFile :: FilePath -> Rope -> IO ()
+#ifdef CAUTIOUS_WRITES
 writeFile f r = writeFileL f $ toLazyByteString r
+#else
+writeFile f r = LB.writeFile f $ toLazyByteString r
+#endif
 
 readFile :: FilePath -> IO Rope
 readFile f = fromLazyByteString `fmap` LB.readFile f
