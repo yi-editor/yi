@@ -78,7 +78,7 @@ test-dist: sdist
 	cabal install &&\
 	cd ..;\
 
-HS := $(shell find src/Yi src/Shim src/Data src/HConf -type f -name '[^.]*.hs') src/Yi.hs src/Main.hs src/HConf.hs
+HS := $(shell find src/Yi src/Shim src/Data -type f -name '[^.]*.hs') src/Yi.hs src/Main.hs
 tags: $(HS)
 	@ echo [tags]
 	@ echo '!_TAG_FILE_SORTED	0	~' > tags
