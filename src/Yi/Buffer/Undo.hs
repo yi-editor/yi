@@ -72,7 +72,7 @@ data Change = SavedFilePoint
             deriving (Show)
 $(derive makeBinary ''Change)
 -- | A URList consists of an undo and a redo list.
-data URList = URList [Change] [Change]
+data URList = URList ![Change] ![Change]
             deriving (Show)
 $(derive makeBinary ''URList)
 
