@@ -176,8 +176,10 @@ layout ui e = do
       niceCmd = arrangeItems cmd cols (maxStatusHeight e)
       cmdHeight = length niceCmd
       ws' = applyHeights (computeHeights (rows - tabBarHeight - cmdHeight + 1) ws) ws
-      ws'' = fmap apply ws'
-      
+      ws'' = fmap (apply . discardOldRegion) ws'
+      discardOldRegion w = w { getRegion = const $ emptyRegion }
+                           -- Discard this field, otherwise we keep retaining reference to
+                           -- old Window objects (leak)
       apply win = win {
                     -- Note that it is possible to pass the emptyEditor here, because
                     -- the fields used in getRegionImpl won't make a difference on the layout.
