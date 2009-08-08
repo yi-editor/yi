@@ -305,4 +305,11 @@ mkAutomaton i = mkProcess i (const End)
 
 -- An automaton that produces its input
 idAutomaton :: (Ord a, PEq a) => P a a
-idAutomaton = mkAutomaton (forever (anyEvent >>= write))
+idAutomaton = Get Nothing Nothing $ \e -> Write e idAutomaton
+-- It would be much nicer to write:
+--    mkAutomaton (forever 0 (anyEvent >>= write))
+-- however this creates a memory leak. Unfortunately I don't understand why.
+-- To witness:
+--    dist/build/yi/yi +RTS -hyI -hd
+-- Then type some characters. (Binds grows linearly)
+
