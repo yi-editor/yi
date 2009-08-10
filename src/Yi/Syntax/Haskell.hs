@@ -473,7 +473,7 @@ pImport = PImport  <$> pAtom [Reserved Import]
 
 -- | Parse simple type synonyms
 pType :: Parser TT (Exp TT)
-pType = PType <$> pAtom [Reserved Type]
+pType = PType <$> (Bin <$> pAtom [Reserved Type] <*> pOpt (pAtom [Reserved Instance]))
      <*> (TC . Expr <$> pTypeExpr')
      <*> ppAtom [ReservedOp Equal]
      <*> (TC . Expr <$> pTypeExpr')

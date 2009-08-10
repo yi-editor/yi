@@ -89,7 +89,7 @@ getStr tk point begin _end t0 = getStrokes' t0
           getStrokes' (RHS eq g) = getStrokes' eq <> getStrokesL g
           getStrokes' (Bin l r) = getStrokes' l <> getStrokes' r
           getStrokes' ty@(PType e na eq b)
-               = pKW ty e <> getStrokes' na
+               = getStrokes' e <> getStrokes' na
               <> getStrokes' eq
               <> getStrokes' b
           getStrokes' da@(PData kw na exp eq)
