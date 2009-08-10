@@ -120,7 +120,7 @@ data Exp t
     | Block (BL.BList [Exp t]) -- ^ A block of things separated by layout
     | PAtom t [t] -- ^ An atom is a token followed by many comments
     | Expr [Exp t] -- ^
-    | PWhere (PAtom t) (Exp t) -- ^ Where clause
+    | PWhere (PAtom t) (Exp t) (Exp t) -- ^ Where clause
     | Bin (Exp t) (Exp t)
        -- an error with comments following so we never color comments in wrong
        -- color. The error has an extra token, the Special '!' token to
@@ -151,7 +151,7 @@ instance SubTree (Exp TT) where
     foldMapToksAfter begin f t0 = work t0
         where work (Paren e e' e'') = work e <> foldMap work e' <> work e''
               work (Expr e)     = foldMap work e
-              work (PWhere e' e) = work e' <> work e
+              work (PWhere e' e c) = work e' <> work e <> work c
               work (Bin e e')   = work e <> work e'
               work (RHS e l)    = work e <> foldMap work l
               work (Opt (Just t)) = work t
@@ -228,7 +228,7 @@ instance IsTree Exp where
        (PIn _ ts)     -> ts
        (Expr a)       -> a
        (PClass a b c) -> [a,b,c]
-       (PWhere a b) -> [a,b]
+       (PWhere a b c) -> [a,b,c]
        (Opt (Just x)) -> [x]
        (Bin a b) -> [a,b]
        (PType a b c d) -> [a,b,c,d]
@@ -352,7 +352,7 @@ please = (<|>) (PError <$> recoverWith errTok
                 <*> errTok
                 <*> pEmpty)
 
--- | Parse anything that is an error
+-- | Parse anything, as errors
 pErr :: Parser TT (Exp TT)
 pErr = PError <$> recoverWith (sym $ not . uncurry (||) . (&&&) isComment
                                (== CppDirective))
@@ -593,7 +593,7 @@ pGuard equalSign = PGuard
 pFunRHS :: Token -> Parser TT (Exp TT)
 pFunRHS equalSign = Bin <$> (pGuard equalSign <|> pEq equalSign) <*> pOpt (pWhere pFunDecl)
 
-pWhere p = PWhere <$> pAtom [Reserved Where] <*> please (pBlock p)
+pWhere p = PWhere <$> pAtom [Reserved Where] <*> please (pBlock p) <*> (pMany pErr)
 
 -- Note that this can both parse an equation and a type declaration.
 -- Since they can start with the same token, the left part is factored here.

@@ -85,7 +85,7 @@ getStr tk point begin _end t0 = getStrokes' t0
           getStrokes' (PError t _ c) = errStyle t <> com c
           getStrokes' (Block s) = BL.foldMapAfter begin getStrokesL s
           getStrokes' (Expr g) = getStrokesL g
-          getStrokes' (PWhere e exp) = getStrokes' e <> getStrokes' exp
+          getStrokes' (PWhere e exp c) = getStrokes' e <> getStrokes' exp <> getStrokes' c
           getStrokes' (RHS eq g) = getStrokes' eq <> getStrokesL g
           getStrokes' (Bin l r) = getStrokes' l <> getStrokes' r
           getStrokes' ty@(PType e na eq b)
