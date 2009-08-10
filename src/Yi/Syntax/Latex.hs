@@ -25,15 +25,15 @@ isNoise (Special _) = False
 isNoise (Begin _) = False
 isNoise (End _) = False
 
-type Expr t = BList (Tree t)
-
 type TT = Tok Token
 
+type Expr t = BList (Tree t)
 
 data Tree t
-    = Paren t (Expr t) t -- A parenthesized expression (maybe with [ ] ...)
+    = Paren t (Tree t) t -- A parenthesized expression (maybe with [ ] ...)
     | Atom t
     | Error t
+    | Expr (Expr t)
       deriving Show
 
 
@@ -44,7 +44,8 @@ data Tree t
 instance Foldable Tree where
     foldMap f (Atom t) = f t
     foldMap f (Error t ) = f t
-    foldMap f (Paren l g r) = f l <> foldMap (foldMap f) g <> f r
+    foldMap f (Paren l g r) = f l <> foldMap f g <> f r
+    foldMap f (Expr g) = foldMap (foldMap f) g
 
 --instance Traversable Tree where
 --    traverse f (Atom t) = Atom <$> f t
@@ -56,15 +57,17 @@ instance SubTree (Tree TT) where
     foldMapToksAfter begin f t0 = work t0
         where work (Atom t) = f t
               work (Error t) = f t
-              work (Paren l g r) = f l <> foldMapAfter begin (foldMapToksAfter begin f) g <> f r
+              work (Paren l g r) = f l <> foldMapToksAfter begin f g <> f r
+              work (Expr g) = foldMapAfter begin (foldMapToksAfter begin f) g
     foldMapToks f = foldMap (foldMapToks f)
 
 
 instance IsTree Tree where
-    subtrees (Paren _ g _) = toList g
+    subtrees (Paren _ g _) = [g]
+    subtrees (Expr g) = toList g
     subtrees _ = []
 
-parse :: P TT (Expr TT)
+parse :: P TT (Tree TT)
 parse = pExpr True <* eof
     where 
       -- | Create a special character symbol
@@ -82,7 +85,7 @@ parse = pExpr True <* eof
       -- pleaseSym' c = recoverWith errT <|> sym' c
 
       -- pExpr :: P TT [Expr TT]
-      pExpr = Yi.Syntax.BList.many . pTree
+      pExpr outsideMath = Expr <$> Yi.Syntax.BList.many (pTree outsideMath)
 
       parens = [(Special x, Special y) | (x,y) <- zip "({[" ")}]"]
       openParens = fmap fst parens
@@ -97,9 +100,10 @@ parse = pExpr True <* eof
           <|> (Atom <$> sym' isNoise)
           <|> (Error <$> recoverWith (sym' (not . ((||) <$> isNoise <*> (`elem` openParens)))))
 
-getStrokes :: Point -> Point -> Point -> Expr TT -> [Stroke]
+getStrokes :: Point -> Point -> Point -> Tree TT -> [Stroke]
 getStrokes point begin _end t0 = appEndo result []
     where getStrokes' :: Tree TT -> Endo [Stroke]
+          getStrokes' (Expr g) = getStrokesL g
           getStrokes' (Atom t) = ts id t
           getStrokes' (Error t) = ts (modStroke errorStyle) t -- paint in red
           getStrokes' (Paren l g r)
@@ -117,9 +121,9 @@ getStrokes point begin _end t0 = appEndo result []
               | (posnOfs $ tokPosn $ l) == point || (posnOfs $ tokPosn $ r) == point - 1
                = hintPaint
               | otherwise = normalPaint
-              where normalPaint = ts id l <> getStrokesL g <> tsEnd id l r
-                    hintPaint = ts (modStroke hintStyle) l <> getStrokesL g <> tsEnd (modStroke hintStyle) l r
-                    errPaint = ts (modStroke errorStyle) l <> getStrokesL g
+              where normalPaint = ts id l <> getStrokes' g <> tsEnd id l r
+                    hintPaint = ts (modStroke hintStyle) l <> getStrokes' g <> tsEnd (modStroke hintStyle) l r
+                    errPaint = ts (modStroke errorStyle) l <> getStrokes' g
 
           tsEnd _ (Tok{tokT = Begin b}) t@(Tok{tokT = End e}) 
               | b /= e = ts (modStroke errorStyle) t
@@ -129,7 +133,7 @@ getStrokes point begin _end t0 = appEndo result []
           ts f t 
               | isErrorTok (tokT t) = mempty
               | otherwise = Endo (f (tokenToStroke t) :)
-          result = getStrokesL t0
+          result = getStrokes' t0
 
 modStroke :: StyleName -> Stroke -> Stroke
 modStroke f = fmap (f `mappend`)
