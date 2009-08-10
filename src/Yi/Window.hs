@@ -21,9 +21,10 @@ type WindowRef = Int
 data Window = Window {
                       isMini    :: !Bool   -- ^ regular or mini window?
                      ,bufkey    :: !BufferRef -- ^ the buffer this window opens to
-                     ,bufAccessList :: ![BufferRef] -- ^ list of last accessed buffers. Last accessed one is first element
+                     ,bufAccessList :: ![BufferRef] -- ^ list of last accessed buffers (former bufKeys). Last accessed one is first element
                      ,height    :: Int    -- ^ height of the window (in number of lines displayed)
                      ,getRegion :: (FBuffer -> Region) -- ^ get view area
+                                                      -- WHY does this take a buffer parameter? There is only one buffer in the window...
                      ,wkey      :: !WindowRef -- ^ identifier for the window (for UI sync)
                      }
         deriving (Typeable)
