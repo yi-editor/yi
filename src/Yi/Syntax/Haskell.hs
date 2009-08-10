@@ -635,7 +635,7 @@ pBlockOf p  = Block <$> pBlockOf' (pBlocks p) -- see HACK above
 
 pBlock :: Parser TT [Exp TT] -> Parser TT (Exp TT)
 pBlock p = pBlockOf' (Block <$> pBlocks' p) 
-       <|> pBrace (concat <$> (p `sepBy1` exact [Special ';']) <|> pure [])
+       <|> pEBrace (concat <$> (p `sepBy1` exact [Special ';']) <|> pure [])
        <|> (Yuck $ Enter "block expected" $ pEmptyBL)
 
 -- | Parse something surrounded by (Special '<') and (Special '>')
