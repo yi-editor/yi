@@ -36,7 +36,7 @@ module Yi.Buffer.Implementation
   , delOverlayBI
   , delOverlayLayer
   , updateSyntax
-  , getAst
+  , getAst, focusAst
   , strokesRangesBI
   , getStream
   , getIndexedStream
@@ -379,7 +379,8 @@ getMarkDefaultPosBI name defaultPos fb@FBufferData {marks = mks, markNames = nms
            in (fb {marks = mks', markNames = nms'}, newMark)
 
 
-getAst :: Region -> BufferImpl syntax -> (BufferImpl syntax, syntax)
-getAst r b@FBufferData {hlCache = HLState s@(SynHL {hlGetTree = gt}) cache} = (b {hlCache = HLState s cache'},ast)
-    where (cache', ast) = gt r cache
+getAst :: BufferImpl syntax -> syntax
+getAst b@FBufferData {hlCache = HLState s@(SynHL {hlGetTree = gt}) cache} = gt cache
 
+focusAst :: Region -> BufferImpl syntax -> BufferImpl syntax
+focusAst r b@FBufferData {hlCache = HLState s@(SynHL {hlFocus = foc}) cache} = b {hlCache = HLState s (foc r cache)}

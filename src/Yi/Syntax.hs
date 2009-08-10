@@ -45,7 +45,8 @@ instance Functor Span where fmap = fmapDefault
 data Highlighter cache syntax = 
   SynHL { hlStartState :: cache -- ^ The start state for the highlighter.
         , hlRun :: Scanner Point Char -> Point -> cache -> cache
-        , hlGetTree :: Region -> cache -> (cache,syntax) 
+        , hlGetTree :: cache -> syntax
+        , hlFocus :: Region -> cache -> cache
         -- ^ focus at a given point, and return the coresponding node. (hint -- the root can always be returned, at the cost of performance.)
         }
 
@@ -87,8 +88,8 @@ mkHighlighter scanner =
   Yi.Syntax.SynHL 
         { hlStartState   = Cache [] emptyResult
         , hlRun          = updateCache
-        -- , hlGetTree      = \(Cache _ result) -> result
-        , hlGetTree       = \_ c@(Cache _ result) -> (c,result)
+        , hlGetTree      = \(Cache _ result) -> result
+        , hlFocus        = \_ c -> c
         }
     where startState :: state
           startState = scanInit    (scanner emptyFileScan)
@@ -109,7 +110,8 @@ mkHighlighter scanner =
 noHighlighter :: Highlighter () syntax
 noHighlighter = SynHL {hlStartState = (), 
                        hlRun = \_ _ a -> a,
-                       hlGetTree = \ _ _ -> ((),error "noHighlighter: tried to use syntax")
+                       hlFocus = \_ c -> c,
+                       hlGetTree = \ _ -> error "noHighlighter: tried to use syntax"
                       }
 
 

@@ -772,18 +772,15 @@ withModeB f = do
     act <- gets (withMode0 f)
     act
            
-withSyntax0 :: Region -> (forall syntax. Mode syntax -> syntax -> a) -> FBuffer -> (FBuffer, a)
-withSyntax0 r f (FBuffer bm rb attrs) = (FBuffer bm rb' attrs, f bm ast)
-    where (rb', ast) = getAst r rb
+withSyntax0 :: (forall syntax. Mode syntax -> syntax -> a) -> FBuffer -> a
+withSyntax0 f (FBuffer bm rb attrs) = f bm (getAst rb)
 
 
 withSyntaxB :: (forall syntax. Mode syntax -> syntax -> a) -> BufferM a
-withSyntaxB f = do
-    s <- getA id
-    r <- askWindow getRegion
-    let (s',a) = withSyntax0 (r s) f s
-    putA id s'
-    return a
+withSyntaxB f = withSyntax0 f <$> getA id
+
+focusSyntax :: Region -> FBuffer -> FBuffer
+focusSyntax r = modifyRawbuf (focusAst r)
 
 withSyntaxB' :: (forall syntax. Mode syntax -> syntax -> BufferM a) -> BufferM a
 withSyntaxB' f = join $ withSyntaxB f
