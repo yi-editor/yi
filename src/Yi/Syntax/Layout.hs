@@ -62,9 +62,9 @@ layoutHandler isSpecial parens isIgnored [openT, closeT, nextT] isGroupOpen lexS
           deepestIndent (Indent i:_) = i
           deepestIndent (_:levs) = deepestIndent levs
                                    
-          deepestParen [] = nextT -- HACK: nextT must not be found in parens.
-          deepestParen (Paren t:_) = t
-          deepestParen (_:levs) = deepestParen levs
+          deepestParen p [] = False
+          deepestParen p (Paren t:levs) = p == t || deepestParen p levs
+          deepestParen p (_:levs) = deepestParen p levs
 
           findParen f t = find ((== t) . f) parens
 
@@ -85,12 +85,16 @@ layoutHandler isSpecial parens isIgnored [openT, closeT, nextT] isGroupOpen lexS
                   -- handle the creation of another level.
 
             -- close, or prepare to close, a paren block
-            | isJust $ findParen id $ (deepestParen levels, tokT tok) -- check that the most nested paren matches.
+            | Just (openTok,_) <- findParen snd $ tokT tok,
+              deepestParen openTok levels
+
               = case levels of
                       Indent _:levs -> (st',tt closeT) : parse (IState levs False lastLine) toks 
                       -- close an indent level inside the paren block
-                      Paren _ :levs -> (st', tok)      : parse (IState levs False line)     tokss
-                      -- same as the otherwise case below.
+                      Paren openTok' :levs 
+                          | openTok == openTok' -> (st', tok) : parse (IState levs False line) tokss
+                          | otherwise           ->              parse (IState levs False line) toks
+                      -- close one level of nesting.
                       [] -> error $ "Parse: " ++ show iSt
 
             -- pop an indent block

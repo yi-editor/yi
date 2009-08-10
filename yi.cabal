@@ -165,6 +165,7 @@ library
         Yi.Style
         Yi.Style.Library
         Yi.Syntax
+        Yi.Syntax.Driver
         Yi.Syntax.BList
         Yi.Syntax.Haskell
         Yi.Syntax.JavaScript
@@ -292,6 +293,7 @@ executable parserTest
                 Yi.Lexer.Whitespace
 
                 Yi.Syntax
+                Yi.Syntax.Driver
                 Yi.Syntax.BList
                 Yi.Syntax.JavaScript
                 Yi.Syntax.Layout
@@ -441,6 +443,7 @@ executable yi
            Yi.Lexer.Whitespace
 
            Yi.Syntax
+           Yi.Syntax.Driver
            Yi.Syntax.BList
            Yi.Syntax.JavaScript
            Yi.Syntax.Layout

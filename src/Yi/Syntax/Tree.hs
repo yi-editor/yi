@@ -8,7 +8,8 @@ module Yi.Syntax.Tree (IsTree(..), SubTree(..), toksAfter, allToks, tokAtOrBefor
                        getFirstElement, getLastElement,
                        getLastPath,
                        getAllSubTrees,
-                       tokenBasedAnnots, tokenBasedStrokes) 
+                       tokenBasedAnnots, tokenBasedStrokes,
+                       fromLeafToLeafAfter, fromNodeToFinal) 
   where
 
 -- Some of this might be replaced by a generic package

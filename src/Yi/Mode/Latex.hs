@@ -12,7 +12,7 @@ import qualified Yi.Syntax.Latex as Latex
 import Yi.Syntax.OnlineTree as OnlineTree
 import qualified Yi.Lexer.Latex               as Latex
 import Yi.Modes (anyExtension, fundamentalMode)
-
+import qualified Yi.Syntax.Driver as Driver
 
 abstract :: forall syntax. Mode syntax
 abstract = fundamentalMode
@@ -39,6 +39,17 @@ latexMode2 = abstract
        mkHighlighter (IncrParser.scanner Latex.parse . latexLexer),
     modeGetStrokes = \t point begin end -> Latex.getStrokes point begin end t
   }
+
+-- | syntax-based latex mode
+latexMode3 :: Mode (Latex.Tree Latex.TT)
+latexMode3 = abstract
+  {
+    modeName = "latex",
+    modeHL = ExtHL $ 
+       Driver.mkHighlighter (IncrParser.scanner Latex.parse . latexLexer),
+    modeGetStrokes = \t point begin end -> Latex.getStrokes point begin end t
+  }
+
 
 latexLexer :: Scanner Point Char -> Scanner (Alex.AlexState Latex.HlState) (Alex.Tok Latex.Token)
 latexLexer = Alex.lexScanner Latex.alexScanToken Latex.initState
