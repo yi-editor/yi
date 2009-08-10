@@ -1,8 +1,8 @@
 {-# LANGUAGE FlexibleInstances, FlexibleContexts #-}
 
 -- TODO:
--- * User configuration.
--- * Checking for side-effect-less code, e.g. "1;".
+-- ! User configuration.
+-- ! Checking for side-effect-less code, e.g. "1;".
 
 module Yi.Verifier.JavaScript where
 
