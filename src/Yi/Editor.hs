@@ -395,7 +395,7 @@ switchToBufferE bk = do
         let newList = ((bufkey w):) . filter (bk/=) $ bufAccessList w
         in length newList `seq`
            w { bufkey = bk, 
-               bufAccessList = ((bufkey w):) . filter (bk/=) $ bufAccessList w })
+               bufAccessList = newList })
     withBuffer0 (scrollB 0)
 
 -- | Attach the specified buffer to some other window than the current one
