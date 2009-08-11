@@ -57,8 +57,10 @@ historyFinishGen :: String -> EditorM String -> EditorM ()
 historyFinishGen ident getCurValue = do
   (History _cur cont pref) <- getA (dynKeyA ident . dynA)
   curValue <- getCurValue
-  length curValue `seq` -- force this, otherwise we'll hold on to the buffer from which it's computed
-    putA (dynKeyA ident . dynA) $ History (-1) (nub $ dropWhile null $ (curValue:cont)) pref
+  let cont' = dropWhile (curValue==) . dropWhile null $ cont
+  length curValue `seq` -- force the new value, otherwise we'll hold on to the buffer from which it's computed
+    cont'         `seq` -- force checking the top of the history, otherwise we'll build up thunks
+    putA (dynKeyA ident . dynA) $ History (-1) (curValue:cont') pref
 
 -- historyGetGen :: String -> EditorM String
 -- historyGetGen ident = do
