@@ -74,7 +74,6 @@ import Yi.Buffer
 import Yi.Config
 import Yi.Dynamic
 import Yi.Editor
-import qualified Yi.Interact as I
 import Yi.Keymap
 import Yi.Keymap.Keys
 import Yi.KillRing (krEndCmd)
@@ -159,22 +158,22 @@ dispatch ev =
          keymap <- gets (withMode0 modeKeymap)
          p0 <- getA keymapProcessA
          let defKm = configTopLevelKeymap $ yiConfig $ yi
-         let freshP = I.Chain (configInputPreprocess $ yiConfig $ yi) (I.mkAutomaton $ forever $ keymap $ defKm)
+         let freshP = Chain (configInputPreprocess $ yiConfig $ yi) (mkAutomaton $ forever $ keymap $ defKm)
              -- Note the use of "forever": this has quite subtle implications, as it means that
              -- failures in one iteration can yield to jump to the next iteration seamlessly.
              -- eg. in emacs keybinding, failures in incremental search, like <left>, will "exit"
              -- incremental search and immediately move to the left.
-             p = case I.computeState p0 of
-                   I.Dead  -> freshP
-                   _      -> p0
-             (actions, p') = I.processOneEvent p ev
-             state = I.computeState p'
+             p = case computeState p0 of
+                   Dead  -> freshP
+                   _     -> p0
+             (actions, p') = processOneEvent p ev
+             state = computeState p'
              ambiguous = case state of 
-                 I.Ambiguous _ -> True
+                 Ambiguous _ -> True
                  _ -> False
          putA keymapProcessA (if ambiguous then freshP else p')
          let actions0 = case state of 
-                          I.Dead -> [makeAction $ do
+                          Dead -> [makeAction $ do
                                          evs <- getA pendingEventsA
                                          printMsg ("Unrecognized input: " ++ showEvs (evs ++ [ev]))]
                           _ -> actions
