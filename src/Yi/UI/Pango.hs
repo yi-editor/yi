@@ -11,6 +11,7 @@ module Yi.UI.Pango (start) where
 import Prelude (filter, map, round, FilePath, (/))
 
 import Control.Concurrent (yield)
+import Control.Exception (evaluate)
 import Control.Monad (ap)
 import Control.Monad.Reader (liftIO, when, MonadIO)
 import Data.Prototype
@@ -618,7 +619,9 @@ doLayout ui ePrev = do
           handleTabs ts e'
 
         handleTab :: TabInfo -> Editor -> IO Editor
-        handleTab tab e = mdo
+        handleTab tab e = mdo -- Windows depend on their layout and the layout
+                              -- depends on the windows. Recursion avoids
+                              -- filling the cache twice.
           logPutStrLn $ "Updating tab: " ++ show tab
           let updateWin w = w { height = height' w, getRegion = getRegion' w }
               e' = (windowsA ^: fmap updateWin) e
@@ -638,6 +641,10 @@ doLayout ui ePrev = do
               getRegion' w = case find ((w ==) . coreWin) wins of
                                    Nothing -> const emptyRegion
                                    Just win -> shownRegion ui f win
+          -- Don't leak references to the old window
+          evaluate $ foldr (\w n -> seq (height w) $
+                                    seq (getRegion w) n) ()
+                           (fmap coreWin wins)
           logPutStrLn $ "heights: " ++ show heights
           return e'
 
