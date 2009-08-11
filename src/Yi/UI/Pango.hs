@@ -297,20 +297,24 @@ setTabFocus ui t = do
     Just n  -> notebookSetCurrentPage (uiNotebook ui) n
     Nothing -> return ()
 
+-- Only set an attribute if has actually changed.
+-- This makes setting window titles much faster.
+update :: forall o a. (Eq a) => o -> ReadWriteAttr o a a -> a -> IO ()
+update w attr val = do oldVal <- get w attr
+                       when (val /= oldVal) $ set w [attr := val]
+
 setWindowFocus :: Editor -> UI -> TabInfo -> WinInfo -> IO ()
 setWindowFocus e ui t w = do
   let bufferName = shortIdentString (commonNamePrefix e) $ findBufferWith (bufkey $ coreWin w) e
       ml = askBuffer (coreWin w) (findBufferWith (bufkey $ coreWin w) e) $ getModeLine (commonNamePrefix e)
 
-  hasFocus <- get (textview w) widgetIsFocus
-  when (not hasFocus) $ widgetGrabFocus (textview w)
-
-  labelSetText (modeline w) ml
+  update (textview w) widgetIsFocus True
+  update (modeline w) labelText ml
 
   if isMini (coreWin w)
      then return ()
-     else do windowSetTitle (uiWindow ui) $ bufferName ++ " - Yi"
-             notebookSetTabLabelText (uiNotebook ui) (page t) (tabAbbrevTitle bufferName)
+       else do update (uiWindow ui) windowTitle $ bufferName ++ " - Yi"
+               update (uiNotebook ui) (notebookChildTabLabel (page t)) (tabAbbrevTitle bufferName)
 
 removeTab :: UI -> TabInfo -> IO ()
 removeTab ui  t = do
