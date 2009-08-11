@@ -1,6 +1,7 @@
 {-
 
-If Yi is called with parameter "time", it will insert 500 characters and exit.
+If Yi is called with parameter "--type", it will insert 500 characters and exit.
+With "--open", it will open a buffer, type, and kill the buffer, 50 times.
 Pango and Vty frontends are supported.
 
 Pango build, test, profile:
@@ -27,13 +28,13 @@ import qualified Yi.UI.Pango as Pango
 import Yi.Event (Event(Event),Key(KASCII,KEnter))
 import Yi.Mode.Latex
 
-import Control.Monad(unless)
 import Control.Concurrent (forkIO)
 import System.IO (readFile)
 import System.Environment
 import Data.Char
 import Graphics.UI.Gtk hiding (on, Region, Window, Action, Point, Style)
-
+import Control.Exception
+import qualified Data.List as L
 nil :: IO a -> IO ()
 nil = (() <$)
 
@@ -50,35 +51,64 @@ idleDo1 a b = nil $ idleAdd (a >> b >> return False) priorityDefaultIdle
 main :: IO ()
 main = do
   args <- getArgs
-  let timing = "time" `elem` args
+  when ("--debug" `elem` args) (initDebug ".yi.dbg")
+  let typing = "--type" `elem` args
+      opening = "--open" `elem` args
       pango = "-fpango" `elem` args
-  unless timing (initDebug ".yi.dbg")
+      testing = typing || opening
+
+  evs <- if typing then do typingEvs else openingEvs
+
   let mystart = if pango then Pango.start else Vty.start
   let idleDo  = if pango then idleDoPango else idleDoVty
-  withArgs (if timing then [] else args) . yi $
+  withArgs (if testing then [] else args) . yi $
     defaultEmacsConfig
     { defaultKm = keymap
     , startActions = []
-    , startFrontEnd = (if timing then timeStart idleDo else id) mystart
+    , startFrontEnd = (if testing then timeStart idleDo evs else id) mystart
     }
 
-timeStart :: IdleDo -> UIBoot -> UIBoot
-timeStart idleDo start p1 ch actionCh p4 = do
-  text <- take 500 <$> readFile "doc/haskell08/haskell039-bernardy.tex"
+timeStart :: IdleDo -> [Event] -> UIBoot -> UIBoot
+timeStart idleDo evs start p1 ch actionCh p4 = do
   ui <- start p1 ch actionCh p4
+  evaluate (L.length evs)
   return ui
     { Common.main = do
         actionCh . (:[]) . makeAction . withBuffer0 $ setMode Yi.Mode.Latex.fastMode
-        idleDo (fmap ch (actions text))
+        idleDo (fmap ch evs)
         Common.main ui
     }
 
-actions :: String -> [Event]
-actions text =
-    fmap (\x -> Yi.Event.Event (eventFromFile x) []) text
-    ++ [ Yi.Event.Event (Yi.Event.KASCII 'x') [MCtrl],
-       Yi.Event.Event (Yi.Event.KASCII 'c') [MCtrl] ]
+-- Test sequences
+typingEvs, openingEvs :: IO [Event]
 
-eventFromFile :: Char -> Key
-eventFromFile '\n' = KEnter
-eventFromFile x = KASCII x
+typingEvs = do
+  text <- take 500 <$> readFile "doc/haskell08/haskell039-bernardy.tex"
+  return (fmap (\x -> Yi.Event.Event (keyFromFile x) []) text ++ quit)
+
+openingEvs = return (times 50 openAndKill ++ quit)
+
+-- Event helpers
+times :: Int -> [a] -> [a]
+times n = concat . replicate n
+
+ckey, key :: Char -> Event
+ckey x = Event (Yi.Event.KASCII x) [MCtrl]
+key x = Event (Yi.Event.KASCII x) []
+
+ret :: Event
+ret = Event KEnter []
+
+quit, openAndKill, open, blah, killmessages, close, confirm :: [Event]
+quit = [ckey 'x', ckey 'c']
+openAndKill = open ++ blah ++ killmessages ++ close ++ confirm
+open = [ckey 'x', ckey 'f', key 'z', ret]
+blah = replicate 20 (key 'x')
+-- clear undo information from the *messages* buffer
+killmessages = [ckey 'x', key 'b', ret, ckey 'x', key 'k', ret]
+close = [ckey 'x', key 'k', ret]
+confirm = [key 'y']
+
+keyFromFile :: Char -> Key
+keyFromFile '\n' = KEnter
+keyFromFile x = KASCII x
