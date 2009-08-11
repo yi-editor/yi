@@ -449,9 +449,6 @@ fixCurrentWindow = do
     b <- gets currentBuffer
     modA (PL.focusA . PL.focusA . tabs_A) (\w -> w {bufkey = b})
 
-withWindow :: (Window -> a) -> EditorM a
-withWindow = getsA (PL.focusA . windowsA)
-
 withWindowE :: Window -> BufferM a -> EditorM a
 withWindowE w = withGivenBufferAndWindow0 w (bufkey w)
 
