@@ -87,9 +87,13 @@ b -| t | chunkSize b == 0 = t
 t |- b | chunkSize b == 0 = t
        | otherwise        = t |> b
  
+-- Newlines are preserved by UTF8 encoding and decoding
+newline :: Word8
+newline = fromIntegral (ord '\n')
+
 instance Measured Size Chunk where
    measure (Chunk l s) = Indices (fromIntegral l)  -- note that this is the length in characters, not bytes.
-                       (B.foldr (\c -> if c == '\n' then (1+) else id) 0 s)
+                                 (Byte.count newline s)
  
 toLazyByteString :: Rope -> LB.ByteString
 toLazyByteString = LB.fromChunks . fmap fromChunk . toList . fromRope
@@ -181,7 +185,7 @@ splitAtLine' n (Rope t) =
 
 
 cutExcess :: Int -> ByteString -> (ByteString, ByteString)
-cutExcess i s = let idx = gt i $ L.reverse $ Byte.elemIndices (fromIntegral $ ord $ '\n') s
+cutExcess i s = let idx = gt i $ L.reverse $ Byte.elemIndices newline s
                 in Byte.splitAt (idx+1) s -- take one extra byte to that the newline is found on the left.
     where gt _ []     = Byte.length s
           gt 0 (x:_ ) = x
