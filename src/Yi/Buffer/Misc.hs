@@ -91,6 +91,7 @@ module Yi.Buffer.Misc
   , revertPendingUpdatesB
   , askWindow
   , clearSyntax
+  , focusSyntaxB
   , Mode (..)
   , AnyMode (..)
   , IndentBehaviour (..)
@@ -779,8 +780,10 @@ withSyntax0 f (FBuffer bm rb attrs) = f bm (getAst rb)
 withSyntaxB :: (forall syntax. Mode syntax -> syntax -> a) -> BufferM a
 withSyntaxB f = withSyntax0 f <$> getA id
 
-focusSyntax :: Region -> FBuffer -> FBuffer
-focusSyntax r = modifyRawbuf (focusAst r)
+focusSyntaxB :: BufferM ()
+focusSyntaxB = do
+    r <- askWindow winRegion
+    modifyBuffer (focusAst r)
 
 withSyntaxB' :: (forall syntax. Mode syntax -> syntax -> BufferM a) -> BufferM a
 withSyntaxB' f = join $ withSyntaxB f

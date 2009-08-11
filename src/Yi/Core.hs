@@ -216,8 +216,9 @@ refreshEditor = onYiVar $ \yi var -> do
 
         -- Update (visible) buffers if they have changed on disk.
         now <- getCurrentTime
-        newBuffers <- forM (buffers e0) $ \b -> let nothing = return (b, Nothing) in 
-          if bkey b `elem` visibleBuffers
+        newBuffers <- forM (buffers e0) $ \b -> 
+          let nothing = return (b, Nothing) 
+          in if bkey b `elem` visibleBuffers
           then do
             case b ^.identA of
                Right fname -> do 
@@ -241,10 +242,14 @@ refreshEditor = onYiVar $ \yi var -> do
             e2 = buffersA ^: (fmap (clearSyntax . clearHighlight)) $ e1
         -- Adjust window sizes according to UI info
         e3 <- UI.layout (yiUi yi) e2
-        -- Adjust point according to the current layout
+        -- Adjust point according to the current layout;
+        -- Focus syntax tree on the current window.
+        -- FIXME: This optimisation won't do any good if a buffer is open in two windows,
+        -- because both window will compete for the focus. There should be one focus per window.
         let e4 = fst $ runEditor (yiConfig yi)
                                  (do ws <- getA windowsA
-                                     mapM (flip withWindowE snapScreenB) ws)
+                                     forM_ ws $ flip withWindowE (snapScreenB >> focusSyntaxB))
+        
                                  e3
         -- Display
         UI.refresh (yiUi yi) e4

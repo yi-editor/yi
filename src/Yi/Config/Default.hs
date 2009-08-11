@@ -150,7 +150,7 @@ defaultConfig =
          , publishedActions = defaultPublishedActions
          , modeTable = [AnyMode Haskell.cleverMode,
                         AnyMode Haskell.preciseMode,
-                        AnyMode Latex.latexMode2,
+                        AnyMode Latex.latexMode3,
                         AnyMode Latex.fastMode,
                         AnyMode Abella.abellaModeEmacs,
                         AnyMode cMode,

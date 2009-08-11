@@ -1,5 +1,5 @@
 {-# LANGUAGE Rank2Types #-}
-module Yi.Mode.Latex (latexMode2, fastMode) where
+module Yi.Mode.Latex (latexMode3, latexMode2, fastMode) where
 
 import Prelude ()
 import Yi.Buffer
