@@ -623,7 +623,7 @@ doLayout ui ePrev = do
                               -- depends on the windows. Recursion avoids
                               -- filling the cache twice.
           logPutStrLn $ "Updating tab: " ++ show tab
-          let updateWin w = w { height = height' w, getRegion = getRegion' w }
+          let updateWin w = w { height = height' w, winRegion = getRegion' w }
               e' = (windowsA ^: fmap updateWin) e
 
           -- This gets called here, but also in refresh; are both necessary?
@@ -639,11 +639,12 @@ doLayout ui ePrev = do
                                 Nothing -> 0
                                 Just (_,h) -> h
               getRegion' w = case find ((w ==) . coreWin) wins of
-                                   Nothing -> const emptyRegion
-                                   Just win -> shownRegion ui f win
+                                   Nothing -> emptyRegion
+                                   Just win -> shownRegion ui f win b0
+                    where b0 = findBufferWith (bufkey w) e
           -- Don't leak references to the old window
           evaluate $ foldr (\w n -> seq (height w) $
-                                    seq (getRegion w) n) ()
+                                    seq (winRegion w) n) ()
                            (fmap coreWin wins)
           logPutStrLn $ "heights: " ++ show heights
           return e'

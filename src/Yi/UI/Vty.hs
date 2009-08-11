@@ -177,14 +177,13 @@ layout ui e = do
       cmdHeight = length niceCmd
       ws' = applyHeights (computeHeights (rows - tabBarHeight - cmdHeight + 1) ws) ws
       ws'' = fmap (apply . discardOldRegion) ws'
-      discardOldRegion w = w { getRegion = const $ emptyRegion }
+      discardOldRegion w = w { winRegion = emptyRegion }
                            -- Discard this field, otherwise we keep retaining reference to
                            -- old Window objects (leak)
       apply win = win {
-                    -- Note that it is possible to pass the emptyEditor here, because
-                    -- the fields used in getRegionImpl won't make a difference on the layout.
-          getRegion = getRegionImpl win (configUI $ config ui) emptyEditor cols (height win)
+          winRegion = getRegionImpl win (configUI $ config ui) e cols (height win)
         }
+
   return $ windowsA ^= ws'' $ e
 
 -- Do Vty layout inside the Yi event loop
@@ -253,23 +252,22 @@ scanrT (+*+) k t = fst $ runState (mapM f t) k
                    put s'
                    return s
 
-getRegionImpl :: Window -> UIConfig -> Editor -> Int -> Int -> FBuffer -> Region
-getRegionImpl win cfg e w h b =
-  let (_,to) = drawWindow cfg e b (error "focus must not be used")  win w h
-  in mkRegion (fst $ runBuffer win b (getMarkPointB =<< fromMark <$> askMarks)) to
+getRegionImpl :: Window -> UIConfig -> Editor -> Int -> Int -> Region
+getRegionImpl win cfg e w h = snd $
+                              drawWindow cfg e (error "focus must not be used")  win w h
 
 -- | Return a rendered wiew of the window.
 renderWindow :: UIConfig -> Editor -> Int -> (Window, Bool) -> Rendered
 renderWindow cfg e width (win,hasFocus) =
-    let b0 = findBufferWith (bufkey win) e
-        (rendered,_) = drawWindow cfg e b0 hasFocus win width (height win)
+    let (rendered,_) = drawWindow cfg e hasFocus win width (height win)
     in rendered
 
 -- | Draw a window
 -- TODO: horizontal scrolling.
-drawWindow :: UIConfig -> Editor -> FBuffer -> Bool -> Window -> Int -> Int -> (Rendered, Point)
-drawWindow cfg e b focused win w h = (Rendered { picture = pict,cursor = cur}, toMarkPoint')
+drawWindow :: UIConfig -> Editor -> Bool -> Window -> Int -> Int -> (Rendered, Region)
+drawWindow cfg e focused win w h = (Rendered { picture = pict,cursor = cur}, mkRegion fromMarkPoint toMarkPoint')
     where
+        b = findBufferWith (bufkey win) e
         sty = configStyle cfg
         
         notMini = not (isMini win)
@@ -291,6 +289,9 @@ drawWindow cfg e b focused win w h = (Rendered { picture = pict,cursor = cur}, t
         (text, _)    = runBuffer win b (indexedAnnotatedStreamB fromMarkPoint) -- read chars from the buffer, lazily
         
         (attributes, _) = runBuffer win b $ attributesPictureAndSelB sty (currentRegex e) region 
+        -- TODO: I suspect that this costs quite a lot of CPU in the "dry run" which determines the window size;
+        -- In that case, since attributes are also useless there, it might help to replace the call by a dummy value.
+        -- This is also approximately valid of the call to "indexedAnnotatedStreamB".
         colors = map (second (($ attr) . attributesToAttr)) attributes
         bufData = -- trace (unlines (map show text) ++ unlines (map show $ concat strokes)) $ 
                   paintChars attr colors text

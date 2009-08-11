@@ -25,12 +25,10 @@ import Yi.Buffer.Misc
 import Yi.Prelude
 import Prelude ()
 import Data.List (length, sort)
-import Yi.Window (getRegion)
-
-import Control.Monad.RWS.Strict (get)
+import Yi.Window (winRegion)
 
 winRegionB :: BufferM Region
-winRegionB = askWindow getRegion <*> get
+winRegionB = askWindow winRegion
 
 -- | Delete an arbitrary part of the buffer
 deleteRegionB :: Region -> BufferM ()

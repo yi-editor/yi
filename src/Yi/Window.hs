@@ -9,7 +9,6 @@ module Yi.Window where
 import Data.Binary
 import Data.Typeable
 import Yi.Buffer.Basic (BufferRef)
-import {-# source #-} Yi.Buffer.Misc (FBuffer)
 import Yi.Region (Region,emptyRegion)
 import Control.Applicative
 
@@ -23,8 +22,7 @@ data Window = Window {
                      ,bufkey    :: !BufferRef -- ^ the buffer this window opens to
                      ,bufAccessList :: ![BufferRef] -- ^ list of last accessed buffers (former bufKeys). Last accessed one is first element
                      ,height    :: Int    -- ^ height of the window (in number of lines displayed)
-                     ,getRegion :: (FBuffer -> Region) -- ^ get view area
-                                                      -- WHY does this take a buffer parameter? There is only one buffer in the window...
+                     ,winRegion    :: Region -- ^ get view area
                      ,wkey      :: !WindowRef -- ^ identifier for the window (for UI sync)
                      }
         deriving (Typeable)
@@ -32,7 +30,7 @@ data Window = Window {
 instance Binary Window where
     put (Window mini bk bl _h _rgn key) = put mini >> put bk >> put bl >> put key
     get = Window <$> get <*> get <*> get
-                   <*> return 0 <*> return (const emptyRegion)
+                   <*> return 0 <*> return emptyRegion
                    <*> get
 
 
@@ -59,5 +57,5 @@ dummyWindowKey = (-1)
 
 -- | Return a "fake" window onto a buffer.
 dummyWindow :: BufferRef -> Window
-dummyWindow b = Window False b [] 0 (const emptyRegion) dummyWindowKey
+dummyWindow b = Window False b [] 0 emptyRegion dummyWindowKey
 
