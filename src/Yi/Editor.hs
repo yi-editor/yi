@@ -392,8 +392,10 @@ newWindowE mini bk = Window mini bk [] 0 emptyRegion <$> newRef
 switchToBufferE :: BufferRef -> EditorM ()
 switchToBufferE bk = do
     modA (PL.focusA . windowsA) (\w -> 
-        w { bufkey = bk, 
-            bufAccessList = ((bufkey w):) . filter (bk/=) $ bufAccessList w })
+        let newList = ((bufkey w):) . filter (bk/=) $ bufAccessList w
+        in length newList `seq`
+           w { bufkey = bk, 
+               bufAccessList = ((bufkey w):) . filter (bk/=) $ bufAccessList w })
     withBuffer0 (scrollB 0)
 
 -- | Attach the specified buffer to some other window than the current one
