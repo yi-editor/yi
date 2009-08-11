@@ -1,19 +1,20 @@
-{- 2>/dev/null
+{-
 
-# To time the insertion of 1000 characters:
-#
-# ln -s Yi/Users/Cmcq.hs HackerMain.hs
-# cabal build
-# sh HackerMain.hs
-#
-# This uses the 'empty' tool (on Debian, apt-get install empty-expect).
-#
-# See http://code.google.com/p/yi-editor/issues/detail?id=265
+If Yi is called with parameter "time", it will insert 500 characters and exit.
+Pango and Vty frontends are supported.
 
-empty -f -i in -o out -f dist/build/yi/yi time "$@" &&
-    time cat out >/dev/null
+Pango build, test, profile:
 
-exit 0
+    cabal build &&
+        dist/build/yi/yi -fpango time +RTS -hr &&
+        hp2ps -c yi.hp &&
+        evince yi.ps
+
+Vty timing using the "empty-expect" package on Debian:
+
+    empty -f -i in -o out -f dist/build/yi/yi time "$@" &&
+        time cat out >/dev/null
+
 -}
 
 import Yi
@@ -31,32 +32,52 @@ import Control.Concurrent (forkIO)
 import System.IO (readFile)
 import System.Environment
 import Data.Char
+import Graphics.UI.Gtk hiding (on, Region, Window, Action, Point, Style)
+
+nil :: IO a -> IO ()
+nil = (() <$)
+
+type IdleDo = [IO ()] -> IO ()
+idleDoVty :: IdleDo
+idleDoVty = nil . forkIO . sequence_
+
+-- Run in the background enough that the display refereshes
+idleDoPango :: IdleDo
+idleDoPango = foldr idleDo1 (return ())
+idleDo1 :: IO () -> IO () -> IO ()
+idleDo1 a b = nil $ idleAdd (a >> b >> return False) priorityDefaultIdle
 
 main :: IO ()
 main = do
   args <- getArgs
   let timing = "time" `elem` args
+      pango = "-fpango" `elem` args
   unless timing (initDebug ".yi.dbg")
-  let mystart = if "-fpango" `elem` args then Pango.start else Vty.start
+  let mystart = if pango then Pango.start else Vty.start
+  let idleDo  = if pango then idleDoPango else idleDoVty
   withArgs (if timing then [] else args) . yi $
     defaultEmacsConfig
     { defaultKm = keymap
-    , startFrontEnd = (if timing then timeStart else id) mystart
+    , startActions = []
+    , startFrontEnd = (if timing then timeStart idleDo else id) mystart
     }
 
-timeStart :: UIBoot -> UIBoot
-timeStart start p1 ch actionCh p4 = do
-  text <- take 1000 <$> readFile "doc/haskell08/haskell039-bernardy.tex"
+timeStart :: IdleDo -> UIBoot -> UIBoot
+timeStart idleDo start p1 ch actionCh p4 = do
+  text <- take 500 <$> readFile "doc/haskell08/haskell039-bernardy.tex"
   ui <- start p1 ch actionCh p4
   return ui
     { Common.main = do
         actionCh . (:[]) . makeAction . withBuffer0 $ setMode Yi.Mode.Latex.fastMode
-        forkIO $ do
-          forM_ text $ \x -> ch $ Yi.Event.Event (eventFromFile x) []
-          ch $ Yi.Event.Event (Yi.Event.KASCII 'x') [MCtrl]
-          ch $ Yi.Event.Event (Yi.Event.KASCII 'c') [MCtrl]
+        idleDo (fmap ch (actions text))
         Common.main ui
     }
+
+actions :: String -> [Event]
+actions text =
+    fmap (\x -> Yi.Event.Event (eventFromFile x) []) text
+    ++ [ Yi.Event.Event (Yi.Event.KASCII 'x') [MCtrl],
+       Yi.Event.Event (Yi.Event.KASCII 'c') [MCtrl] ]
 
 eventFromFile :: Char -> Key
 eventFromFile '\n' = KEnter
