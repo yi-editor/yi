@@ -24,11 +24,15 @@ main = do
     arg <- getArgs
     let (flags,rest) = partition (isPrefixOf "-") arg  -- flag begins with -
     case arg of
-        [] -> putStrLn $ "-js for javascript\n-hs for haskell\n-d for debug mode\n" ++
-                         "-r for recursive\notherwise a list of files/folders...\n" ++
-                         "-cmp to compare with Paren.hs parse\n-oneBy to parse one token at a time" ++
-                         "-Tree-Filename to get a Dot file with the Tree in graphical form the tree might be cut if too big" ++
-                         "-Toks-num to parse num tokens of the input."
+        [] -> putStrLn . unlines $ [ "-js for javascript\n-hs for haskell"
+                                   , "-d for debug mode"
+                                   , "-r for recursive"
+                                   , "otherwise a list of files/folders..."
+                                   , "-cmp to compare with Paren.hs parse"
+                                   , "-oneBy to parse one token at a time"
+                                   , "-Tree=<file> to output the tree in \"dot\" format to <file> (possibly truncated)"
+                                   , "-Toks=<num> to parse `num' tokens of the input."
+                                   ]
         _ -> mapM_ (dirs flags) rest
 
 -- | Find files to parse, recursively if flagged -r
