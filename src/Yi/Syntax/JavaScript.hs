@@ -69,7 +69,7 @@ data Block t = Block t (BList (Statement t)) t
 -- | Represents either a variable name or a variable name assigned to an
 --   expression.  @AssBeg@ is a variable name /maybe/ followed by an assignment.
 --   @AssRst@ is an equals sign and an expression.  @(AssBeg 'x' (Just (AssRst
---   '=' '5')))@ (pseudo-syntax of course) means @x = 5@.
+--   '=' '5')))@ means @x = 5@.
 data VarDecAss t = AssBeg t (Maybe (VarDecAss t))
                  | AssRst t (Expr t)
                  | AssErr t
@@ -577,6 +577,6 @@ isError _ = False
 toTT :: t -> Tok t
 toTT = tokFromT
 
--- | Better name for 'fromTT'.
+-- | Better name for 'tokT'.
 fromTT :: Tok t -> t
 fromTT = tokT
