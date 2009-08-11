@@ -9,6 +9,7 @@ module Yi.Syntax.Tree (IsTree(..), SubTree(..), toksAfter, allToks, tokAtOrBefor
                        getLastPath,
                        getAllSubTrees,
                        tokenBasedAnnots, tokenBasedStrokes,
+                       subtreeRegion,
                        fromLeafToLeafAfter, fromNodeToFinal) 
   where
 
@@ -71,17 +72,19 @@ tokenBasedStrokes tts t _point begin _end = foldMapToksAfter begin (\x ->(tts x:
 fromNodeToFinal :: IsTree tree => Region -> Node (tree (Tok t)) -> Node (tree (Tok t))
 fromNodeToFinal r = fromLeafAfterToFinal (regionStart r) . fromLeafToLeafAfter (regionEnd r)
 
--- | Return the first element that matches the predicate, or the head of the list
+-- | Return the first element that matches the predicate, or the last of the list
 -- if none matches.
 firstThat p [] = error "firstThat: empty list"
-firstThat p l@(x:xs) = head (filter p l ++ [x])
+firstThat p [x] = x
+firstThat p (x:xs) = if p x then x else firstThat p xs
 
 -- | Given a path to a node, return a path+node which 
 -- node that encompasses the given node + a point before it.
 fromLeafAfterToFinal :: IsTree tree => Point -> Node (tree (Tok t)) -> Node (tree (Tok t))
-fromLeafAfterToFinal p n = (xs', snd n)
-    where (xs',_) = firstThat (\(_,s) -> getFirstOffset' s <= p) (reverse (nodesOnPath n))
-
+fromLeafAfterToFinal p n = 
+    -- trace ("reg = " ++ show (fmap (subtreeRegion . snd) nsPth)) $ 
+      firstThat (\(_,s) -> getFirstOffset' s <= p) ns
+    where ns = (reverse (nodesOnPath n))
 
 -- | Search the tree in pre-order starting at a given node, until finding a leaf which is at
 -- or after the given point.
@@ -293,8 +296,8 @@ prop_fromLeafAfterToFinal :: NTTT -> Property
 prop_fromLeafAfterToFinal (N n) = let
     fullRegion = subtreeRegion $ snd n
  in forAll (pointInside fullRegion) $ \p -> do
-   let final = fromLeafAfterToFinal p n
-       finalRegion = nodeRegion final
+   let final@(finalPath, finalSubtree) = fromLeafAfterToFinal p n
+       finalRegion = subtreeRegion finalSubtree
        initialRegion = nodeRegion n
        
    whenFail (do putStrLn $ "final = " ++ show final
@@ -327,8 +330,8 @@ prop_fromNodeToLeafAfter (N n) = forAll (pointInside (subtreeRegion $ snd n)) $ 
 
 prop_fromNodeToFinal :: NTTT -> Property
 prop_fromNodeToFinal  (N t) = forAll (regionInside (subtreeRegion $ snd t)) $ \r -> do
-   let final = fromNodeToFinal r t
-       finalRegion = nodeRegion final
+   let final@(finalPath, finalSubtree) = fromNodeToFinal r t
+       finalRegion = subtreeRegion finalSubtree
    whenFail (do putStrLn $ "final = " ++ show final
                 putStrLn $ "final reg = " ++ show finalRegion
                 putStrLn $ "leaf after = " ++ show (fromLeafToLeafAfter (regionEnd r) t)

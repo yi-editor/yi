@@ -51,6 +51,7 @@ mkHighlighter scanner =
               trace ("path0 = " ++ show path) $ 
               trace ("after = " ++ show (fst $ fromLeafToLeafAfter (regionEnd r) (path,root))) $
               trace ("path1 = " ++ show path') $
+              -- trace ("reg   = " ++ show (subtreeRegion result)) $
               (Cache path' states root result)
               where (path', result) = fromNodeToFinal r (path,root) 
 
