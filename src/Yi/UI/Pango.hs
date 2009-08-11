@@ -280,7 +280,10 @@ syncWindows e ui tab (wfocused@(w,focused):ws) (c:cs)
         c' <- insertWindowBefore e ui tab w c
         when focused (setWindowFocus e ui tab c')
         return (c':) `ap` syncWindows e ui tab ws (c:cs)
-syncWindows e ui tab ws [] = mapM (insertWindowAtEnd e ui tab) (map fst ws)
+syncWindows e ui tab ws [] = mapM (\(w,focused) -> do c' <- insertWindowAtEnd e ui tab w
+                                                      when focused (setWindowFocus e ui tab c')
+                                                      return c')
+                                  ws
 syncWindows _ ui tab [] cs = mapM_ (removeWindow ui tab) cs >> return []
 
 syncWin :: Editor -> Window -> WinInfo -> IO WinInfo
@@ -529,8 +532,6 @@ insertWindow e ui tab win = do
               textview w `onButtonPress` handleClick ui w
               textview w `onScroll` handleScroll ui w
               widgetShowAll (widget w)
-
-              setWindowFocus e ui tab w
 
               return w
 
