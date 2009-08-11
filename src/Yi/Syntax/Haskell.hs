@@ -594,6 +594,8 @@ pFunRHS :: Token -> Parser TT (Exp TT)
 pFunRHS equalSign = Bin <$> (pGuard equalSign <|> pEq equalSign) <*> pOpt (pWhere pFunDecl)
 
 pWhere p = PWhere <$> pAtom [Reserved Where] <*> please (pBlock p) <*> (pMany pErr)
+-- After a where there might "misaligned" code that do not "belong" to anything.
+-- Here we swallow it as errors.
 
 -- Note that this can both parse an equation and a type declaration.
 -- Since they can start with the same token, the left part is factored here.
