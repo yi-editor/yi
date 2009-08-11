@@ -168,6 +168,13 @@ insertBuffer b = modify $
                            buffers = M.insert (bkey b) b (buffers e)}
                        
 
+-- Prevent possible space leaks in the editor structure
+forceFold1 :: (Foldable t) => t a -> t a
+forceFold1 x = foldr seq x x
+
+forceFold2 :: (Foldable t1, Foldable t2) => t1 (t2 a) -> t1 (t2 a)
+forceFold2 x = foldr (seq . forceFold1) x x
+
 -- | Delete a buffer (and release resources associated with it).
 deleteBuffer :: BufferRef -> EditorM ()
 deleteBuffer k = do
@@ -182,12 +189,13 @@ deleteBuffer k = do
               -- we delete the currently selected buffer: the next buffer will become active in
               -- the main window, therefore it must be assigned a new window.
               switchToBufferE nextB
-          modify $ \e -> e {bufferStack = filter (k /=) $ bufferStack e,
+          modify $ \e -> e {bufferStack = forceFold1 $ filter (k /=) $ bufferStack e,
                             buffers = M.delete k (buffers e),
-                            tabs_ = fmap (fmap pickOther) (tabs_ e)
+                            tabs_ = forceFold2 $ fmap (fmap pickOther) (tabs_ e)
                             -- all windows open on that buffer must switch to another buffer.
                            }
       _ -> return () -- Don't delete the last buffer.
+  modA windowsA (fmap (\w -> w { bufAccessList = forceFold1 . filter (k/=) $ bufAccessList w }))
 
 -- | Return the buffers we have, /in no particular order/
 bufferSet :: Editor -> [FBuffer]
@@ -392,10 +400,8 @@ newWindowE mini bk = Window mini bk [] 0 emptyRegion <$> newRef
 switchToBufferE :: BufferRef -> EditorM ()
 switchToBufferE bk = do
     modA (PL.focusA . windowsA) (\w -> 
-        let newList = ((bufkey w):) . filter (bk/=) $ bufAccessList w
-        in length newList `seq`
            w { bufkey = bk, 
-               bufAccessList = newList })
+               bufAccessList = forceFold1 $ ((bufkey w):) . filter (bk/=) $ bufAccessList w })
     withBuffer0 (scrollB 0)
 
 -- | Attach the specified buffer to some other window than the current one
