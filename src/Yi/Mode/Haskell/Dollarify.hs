@@ -63,7 +63,7 @@ dollarifyTop p@(Paren t1 e t2)
    | isNormalParen p = case stripComments e of
        [Paren _ _ _] -> [queueDelete t2, queueDelete t1]
        e'            -> dollarifyExpr e'
-dollarifyTop (Block bList) = dollarifyExpr . stripComments =<< toList bList
+dollarifyTop (Block list) = dollarifyExpr . stripComments =<< [x | Expr x <- list]
 dollarifyTop _ = []
 
 -- Expression must not contain comments
