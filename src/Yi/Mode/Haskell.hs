@@ -59,7 +59,7 @@ haskellAbstract = emptyMode
           shebangPattern = "^#![[:space:]]*/usr/bin/env[[:space:]]+runhaskell"
 
 -- | "Clever" haskell mode, using the paren-matching syntax.
-cleverMode :: Mode (Expr (Tok Haskell.Token))
+cleverMode :: Mode (Paren.Tree (Tok Haskell.Token))
 cleverMode = haskellAbstract
   {
     modeIndent = cleverAutoIndentHaskellB,
@@ -83,7 +83,7 @@ fastMode = haskellAbstract
     modeGetAnnotations = tokenBasedAnnots Paren.tokenToAnnot
  }
 
-literateMode :: Mode [Paren.Tree TT]
+literateMode :: Mode (Paren.Tree TT)
 literateMode = haskellAbstract
   { modeName = "literate haskell"
   , modeApplies = anyExtension ["lhs"]
@@ -115,7 +115,7 @@ haskellLexer = Alex.lexScanner Haskell.alexScanToken Haskell.initState
 literateHaskellLexer :: Scanner Point Char -> Scanner (Alex.AlexState LiterateHaskell.HlState) (Tok Token)
 literateHaskellLexer = Alex.lexScanner LiterateHaskell.alexScanToken LiterateHaskell.initState
 
-adjustBlock :: Expr (Tok Token) -> Int -> BufferM ()
+adjustBlock :: Paren.Tree (Tok Token) -> Int -> BufferM ()
 adjustBlock e len = do
   p <- pointB
   l <- curLn
@@ -143,7 +143,7 @@ insideGroup :: Token -> Bool
 insideGroup (Special c) = c `notElem` "',;})]"
 insideGroup _ = True
 
-cleverAutoIndentHaskellB :: Expr TT -> IndentBehaviour -> BufferM ()
+cleverAutoIndentHaskellB :: Paren.Tree TT -> IndentBehaviour -> BufferM ()
 cleverAutoIndentHaskellB e behaviour = do
   indentSettings <- indentSettingsB
   let indentLevel = shiftWidth indentSettings
@@ -186,7 +186,7 @@ cleverAutoIndentHaskellB e behaviour = do
               Just t -> posnCol . tokPosn $ t -- indent along that other token
           | otherwise = openCol
       groupIndent (Tok _ _ _) _ = error "unable to indent code"
-  case getLastPath e solPnt of
+  case getLastPath [e] solPnt of
     Nothing -> return ()
     Just path -> let stops = stopsOf path
                  in trace ("Stops = " ++ show stops) $

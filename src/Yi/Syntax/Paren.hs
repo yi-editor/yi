@@ -46,11 +46,13 @@ data Tree t
     | Block (BList (Expr t))      -- A list of things separated by layout (as in do; etc.)
     | Atom t
     | Error t
+    | Expr [Tree t]
       deriving Show
 
 $(derive makeFoldable ''Tree)
 instance IsTree Tree where
     subtrees (Paren _ g _) = g
+    subtrees (Expr g) = g
     subtrees (Block s) = concat s
     subtrees _ = []
 
@@ -61,14 +63,14 @@ instance IsTree Tree where
 
 -- TODO: this should be optimized by just giving the point of the end
 -- of the line
-getIndentingSubtree :: [Tree TT] -> Point -> Int -> Maybe (Tree TT)
-getIndentingSubtree roots offset line =
+getIndentingSubtree :: Tree TT -> Point -> Int -> Maybe (Tree TT)
+getIndentingSubtree root offset line =
     listToMaybe $ [t | (t,posn) <- takeWhile ((<= line) . posnLine . snd) $ allSubTreesPosn,
                    -- it's very important that we do a linear search
                    -- here (takeWhile), so that the tree is evaluated
                    -- lazily and therefore parsing it can be lazy.
                    posnOfs posn > offset, posnLine posn == line]
-    where allSubTreesPosn = [(t',posn) | root <- roots, t'@(Block _) <-filter (not . null . toList) (getAllSubTrees root), 
+    where allSubTreesPosn = [(t',posn) | t'@(Block _) <-filter (not . null . toList) (getAllSubTrees root), 
                              let (tok:_) = toList t',
                              let posn = tokPosn tok]
 
@@ -94,8 +96,8 @@ getSubtreeSpan tree = (posnOfs $ first, lastLine - firstLine)
 -- isBefore' l (Tok {tokPosn = Posn {posnLn = l'}}) = 
 
 
-parse :: P TT [Tree TT]
-parse = parse' tokT tokFromT
+parse :: P TT (Tree TT)
+parse = Expr <$> parse' tokT tokFromT
 
 parse' :: (TT -> Token) -> (Token -> TT) -> P TT [Tree TT]
 parse' toTok fromT = pExpr <* eof
@@ -134,15 +136,17 @@ instance SubTree (Tree TT) where
               work (Error t) = f t
               work (Block s) = foldMapAfter begin (foldMapToksAfter begin f) s
               work (Paren l g r) = f l <> foldMap work g <> f r
+              work (Expr g) = foldMap work g
     foldMapToks f = foldMap (foldMapToks f)
 
 
 -- TODO: (optimization) make sure we take in account the begin, so we don't return useless strokes
-getStrokes :: Point -> Point -> Point -> [Tree TT] -> [Stroke]
+getStrokes :: Point -> Point -> Point -> Tree TT -> [Stroke]
 getStrokes point begin _end t0 = trace (show t0) result 
     where getStrokes' (Atom t) = one (ts t)
           getStrokes' (Error t) = one (modStroke errorStyle (ts t)) -- paint in red
           getStrokes' (Block s) = foldMapAfter begin getStrokesL s
+          getStrokes' (Expr g) = getStrokesL g
           getStrokes' (Paren l g r)
               | isErrorTok $ tokT r = one (modStroke errorStyle (ts l)) <> getStrokesL g
               -- left paren wasn't matched: paint it in red.
@@ -154,7 +158,7 @@ getStrokes point begin _end t0 = trace (show t0) result
               | otherwise  = one (ts l) <> getStrokesL g <> one (ts r)
           getStrokesL = foldMap getStrokes'
           ts = tokenToStroke
-          result = appEndo (getStrokesL t0) []
+          result = appEndo (getStrokes' t0) []
           one x = Endo (x :)
           
 
