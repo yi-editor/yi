@@ -49,7 +49,6 @@ mkHighlighter scanner =
           focus r c@(Cache path states root focused) = 
               trace ("r = " ++ show r) $
               trace ("path0 = " ++ show path) $ 
-              trace ("after = " ++ show (fst $ fromLeafToLeafAfter (regionEnd r) (path,root))) $
               trace ("path1 = " ++ show path') $
               -- trace ("reg   = " ++ show (subtreeRegion result)) $
               (Cache path' states root result)

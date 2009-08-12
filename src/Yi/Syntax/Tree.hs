@@ -17,7 +17,7 @@ module Yi.Syntax.Tree (IsTree(..), SubTree(..), toksAfter, allToks, tokAtOrBefor
 -- such as multirec, uniplace, emgm, ...
 
 import Control.Monad (ap)
-import Data.List (dropWhile, takeWhile, reverse, filter, zip, zipWith, drop, length, splitAt)
+import Data.List (dropWhile, takeWhile, reverse, filter, zip, zipWith, take, drop, length, splitAt)
 import Data.Maybe
 import Data.Monoid
 import Prelude (curry)
@@ -70,7 +70,9 @@ tokenBasedStrokes :: SubTree tree =>(Element tree -> a) -> tree -> Point -> Poin
 tokenBasedStrokes tts t _point begin _end = foldMapToksAfter begin (\x ->(tts x:)) t []
 
 fromNodeToFinal :: IsTree tree => Region -> Node (tree (Tok t)) -> Node (tree (Tok t))
-fromNodeToFinal r = fromLeafAfterToFinal (regionStart r) . fromLeafToLeafAfter (regionEnd r)
+fromNodeToFinal r (xs,root) = (xs',leaf)
+    where n@(xs',_) = fromLeafToLeafAfter (regionEnd r) (xs,root)
+          (_,leaf) = fromLeafAfterToFinal (regionStart r) n
 
 -- | Return the first element that matches the predicate, or the last of the list
 -- if none matches.
@@ -87,18 +89,36 @@ fromLeafAfterToFinal p n =
     where ns = (reverse (nodesOnPath n))
 
 -- | Search the tree in pre-order starting at a given node, until finding a leaf which is at
--- or after the given point.
+-- or after the given point. An effort is also made to return a leaf as close as possible to @p@.
+-- TODO: rename to fromLeafToLeafAt
 fromLeafToLeafAfter :: (IsTree tree) => Point -> Node (tree (Tok t)) -> Node (tree (Tok t))
-fromLeafToLeafAfter p n = (xs', snd n)
-    where (xs',_) = firstThat (\(_,s) -> getFirstOffset' s >= p) $ allLeavesAfter n
+fromLeafToLeafAfter p (xs,root) = 
+    trace "fromLeafToLeafAfter:" $
+    trace ("xs = " ++ show xs) $
+    trace ("xsValid = " ++ show xsValid) $
+    trace ("p = " ++ show p) $
+    trace ("leafBeforeP = " ++ show leafBeforeP) $
+    trace ("leaf ~ " ++ show (subtreeRegion leaf)) $
+    result
+    where xs' = fst $ if leafBeforeP
+                      then firstThat (\(_,s) -> getFirstOffset' s >= p) $ allLeavesRelative afterChild n
+                      else firstThat (\(_,s) -> getFirstOffset' s <= p) $ allLeavesRelative beforeChild n
+          (xsValid,leaf) = wkDown (xs,root)
+          leafBeforeP = getFirstOffset' leaf <= p
+          n = (xsValid,root)
+          result = (xs',root)
+           
 
-allLeavesAfter :: IsTree tree => Node (tree t) -> [(Path, tree t)]
-allLeavesAfter = allLeavesAfter' . reverse . nodesAndChildIndex
+-- allLeavesAfter :: IsTree tree => Node (tree t) -> [(Path, tree t)]
+
+allLeavesRelative select = allLeavesRelative' select . reverse . nodesAndChildIndex
+
 
 -- | Takes a list of (node, index of already inspected child), and return all leaves
 -- in this node after the said child).
-allLeavesAfter' :: IsTree tree => [(Node (tree t), Int)] -> [(Path, tree t)]
-allLeavesAfter' l = [(xs ++ xs', t') | ((xs,t),c) <- l, (xs',t') <- allLeavesAfterChild c t] 
+-- allLeavesAfter' :: IsTree tree => [(Node (tree t), Int)] -> [(Path, tree t)]
+allLeavesRelative' select l 
+  = [(xs ++ xs', t') | ((xs,t),c) <- l, (xs',t') <- allLeavesRelativeChild select c t] 
 
 -- | Given a root, return all the nodes encountered along it, their
 -- paths, and the index of the child which comes next.
@@ -115,18 +135,26 @@ nodesOnPath (x:xs,t) = ([],t) : case index x (subtrees t) of
                            Just c -> fmap (frst (x:)) (nodesOnPath (xs,c))
 
 frst :: (a -> b) -> (a,c) -> (b,c)
-frst f (x,y) = (f x, y)
+frst f ~(x,y) = (f x, y)
 
-allLeavesAfterChild :: IsTree tree => Int -> tree t -> [(Path, tree t)]
-allLeavesAfterChild c t 
+
+afterChild c = drop (c+1)
+beforeChild (-1) = reverse -- (-1) indicates that all children should be taken.
+beforeChild c = reverse . take (c-1)
+
+
+-- allLeavesBeforeChild :: IsTree tree => Int -> tree t -> [(Path, tree t)]
+-- Return all leaves after or before child depending on the relation which is given.
+allLeavesRelativeChild select c t 
     | null ts = [([], t)]
-    | otherwise = [(x:xs,t') | (x,ct) <- drop (c+1) (zip [0..] ts),
-                   (xs, t') <- allLeavesIn ct]
+    | otherwise = [(x:xs,t') | (x,ct) <- select c (zip [0..] ts),
+                   (xs, t') <- allLeavesIn select ct]
    where ts = subtrees t                      
 
+
 -- | Return all leaves (with paths) inside a given root.
-allLeavesIn :: IsTree tree => tree t -> [Node (tree t)]
-allLeavesIn = allLeavesAfterChild (-1)
+-- allLeavesIn :: IsTree tree => tree t -> [Node (tree t)]
+allLeavesIn select = allLeavesRelativeChild select (-1)
 
 
 -- | Return all subtrees in a tree; each element of the return list
@@ -135,7 +163,7 @@ getAllPaths :: IsTree tree => tree t -> [[tree t]]
 getAllPaths t = fmap (++[t]) ([] : concatMap getAllPaths (subtrees t))
 
 goDown :: IsTree tree => Int -> tree t -> Maybe (tree t)
-goDown i = (index i) . subtrees 
+goDown i = index i . subtrees 
 
 index _ [] = Nothing
 index 0 (h:_) = Just h
@@ -151,6 +179,10 @@ walkDown :: IsTree tree => Node (tree t) -> Maybe (tree t)
 walkDown ([],t) = return t
 walkDown (x:xs,t) = goDown x t >>= curry walkDown xs
 
+wkDown ([],t) = ([],t)
+wkDown (x:xs,t) = case goDown x t of
+    Nothing -> ([],t)
+    Just t' -> frst (x:) $ wkDown (xs,t')
 
 
 -- | Search the given list, and return the last tree before the given
@@ -310,7 +342,7 @@ prop_fromLeafAfterToFinal (N n) = let
 
 prop_allLeavesAfter :: NTTT -> Property
 prop_allLeavesAfter (N n@(xs,t)) = do
-  let after = allLeavesAfter n
+  let after = allLeavesRelative afterChild n
   (xs',t') <- elements after
   let t'' = walkDown (xs',t)
   whenFail (do putStrLn $ "t' = " ++ show t'
@@ -318,6 +350,18 @@ prop_allLeavesAfter (N n@(xs,t)) = do
                putStrLn $ "xs' = " ++ show xs'
            ) (Just t' == t'' && xs <= xs')
       
+
+prop_allLeavesBefore :: NTTT -> Property
+prop_allLeavesBefore (N n@(xs,t)) = do
+  let after = allLeavesRelative beforeChild n
+  (xs',t') <- elements after
+  let t'' = walkDown (xs',t)
+  whenFail (do putStrLn $ "t' = " ++ show t'
+               putStrLn $ "t'' = " ++ show t''
+               putStrLn $ "xs' = " ++ show xs'
+           ) (Just t' == t'' && xs' <= xs)
+      
+
 
 prop_fromNodeToLeafAfter :: NTTT -> Property
 prop_fromNodeToLeafAfter (N n) = forAll (pointInside (subtreeRegion $ snd n)) $ \p -> do
