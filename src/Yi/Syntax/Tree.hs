@@ -32,6 +32,9 @@ import Test.QuickCheck
 class Foldable tree => IsTree tree where
     -- | Direct subtrees of a tree
     subtrees :: tree t -> [tree t]
+    subtrees = fst . uniplate
+    uniplate :: tree t -> ([tree t], [tree t] -> tree t)
+    emptyNode :: tree t
 
 class SubTree tree where
     type Element tree
@@ -69,10 +72,31 @@ tokenBasedAnnots tta t begin = catMaybes $ fmap tta $ toksAfter begin t
 tokenBasedStrokes :: SubTree tree =>(Element tree -> a) -> tree -> Point -> Point -> Point -> [a]
 tokenBasedStrokes tts t _point begin _end = foldMapToksAfter begin (\x ->(tts x:)) t []
 
-fromNodeToFinal :: IsTree tree => Region -> Node (tree (Tok t)) -> Node (tree (Tok t))
-fromNodeToFinal r (xs,root) = (xs',leaf)
+-- | Prune the nodes before the given point.
+-- The path is used to know which nodes we can force or not.
+pruneNodesBefore :: IsTree tree => Point -> Path -> tree (Tok t) -> tree (Tok t)
+pruneNodesBefore p [] t = t
+pruneNodesBefore p (x:xs) t = rebuild (left' ++ pruneNodesBefore p xs c : rights)
+    where (children,rebuild) = uniplate t
+          (left,c:rights) = splitAt x children
+          left' = fmap replaceEmpty left
+          replaceEmpty s = if getLastOffset' s < p then emptyNode else s
+
+-- | Given an approximate path to a leaf at the end of the region, return:
+-- (path to leaf at the end of the region,path from focused node to the leaf, small node encompassing the region)
+fromNodeToFinal :: IsTree tree => Region -> Node (tree (Tok t)) -> (Path,tree (Tok t))
+fromNodeToFinal r (xs,root) = 
+    trace ("r = " ++ show r) $
+    trace ("focused ~ " ++ show (subtreeRegion focused) ) $
+    trace ("pathFromFocusedToLeaf = " ++ show focusedToLeaf) $
+    trace ("pruned ~ " ++ show (subtreeRegion focused) ) $
+
+
+    (xs',pruned)
     where n@(xs',_) = fromLeafToLeafAfter (regionEnd r) (xs,root)
-          (_,leaf) = fromLeafAfterToFinal (regionStart r) n
+          (_,(focusedToLeaf,focused)) = fromLeafAfterToFinal p0 n
+          p0 = regionStart r
+          pruned = pruneNodesBefore p0 focusedToLeaf focused
 
 -- | Return the first element that matches the predicate, or the last of the list
 -- if none matches.
@@ -89,10 +113,10 @@ lastThat p (x:xs) = if p x then work x xs else x
 
 -- | Given a path to a node, return a path+node which 
 -- node that encompasses the given node + a point before it.
-fromLeafAfterToFinal :: IsTree tree => Point -> Node (tree (Tok t)) -> Node (tree (Tok t))
+fromLeafAfterToFinal :: IsTree tree => Point -> Node (tree (Tok t)) -> (Path,Node (tree (Tok t)))
 fromLeafAfterToFinal p n = 
     -- trace ("reg = " ++ show (fmap (subtreeRegion . snd) nsPth)) $ 
-      firstThat (\(_,s) -> getFirstOffset' s <= p) ns
+      firstThat (\(_,(_,s)) -> getFirstOffset' s <= p) ns
     where ns = (reverse (nodesOnPath n))
 
 -- | Search the tree in pre-order starting at a given node, until finding a leaf which is at
@@ -106,6 +130,7 @@ fromLeafToLeafAfter p (xs,root) =
     trace ("p = " ++ show p) $
     trace ("leafBeforeP = " ++ show leafBeforeP) $
     trace ("leaf ~ " ++ show (subtreeRegion leaf)) $
+    trace ("xs' = " ++ show xs') $
     result
     where xs' = fst $ if leafBeforeP
                       then firstThat (\(_,s) -> getFirstOffset' s >= p) $ allLeavesRelative afterChild n
@@ -114,7 +139,7 @@ fromLeafToLeafAfter p (xs,root) =
           leafBeforeP = getFirstOffset' leaf <= p
           n = (xsValid,root)
           result = (xs',root)
-           
+
 
 -- allLeavesAfter :: IsTree tree => Node (tree t) -> [(Path, tree t)]
 
@@ -135,10 +160,10 @@ nodesAndChildIndex (x:xs, t) = case index x (subtrees t) of
     Just c' -> (([],t), x) : fmap (frst (frst (x:))) (nodesAndChildIndex (xs,c'))
     Nothing -> [(([],t),negate 1)]
           
-nodesOnPath :: IsTree tree => Node (tree t) -> [Node (tree t)]
-nodesOnPath ([],t) = [([],t)]
-nodesOnPath (x:xs,t) = ([],t) : case index x (subtrees t) of
-                           Nothing -> []
+nodesOnPath :: IsTree tree => Node (tree t) -> [(Path, Node (tree t))]
+nodesOnPath ([],t) = [([],([],t))]
+nodesOnPath (x:xs,t) = ([],(x:xs,t)) : case index x (subtrees t) of
+                           Nothing -> error "nodesOnPath: non-existent path"
                            Just c -> fmap (frst (x:)) (nodesOnPath (xs,c))
 
 frst :: (a -> b) -> (a,c) -> (b,c)
@@ -229,7 +254,7 @@ getFirstOffset :: (Element a ~ Tok t, SubTree a) => a -> Point
 getFirstOffset = maybe 0 tokBegin . getFirstTok
 
 getLastOffset' = maybe 0 tokEnd . getLastElement
-getFirstOffset' = maybe 0 tokEnd . getFirstElement
+getFirstOffset' = maybe 0 tokBegin . getFirstElement
 
 
 subtreeRegion t = mkRegion (getFirstOffset' t) (getLastOffset' t) 
@@ -257,15 +282,16 @@ sepBy1 p s  = (:) <$> p <*> many (s *> p)
 -- Testing code.
 
 
-data Test a = Leaf a | Bin (Test a) (Test a) deriving (Show, Eq)
+data Test a = Empty | Leaf a | Bin (Test a) (Test a) deriving (Show, Eq)
 
 instance Foldable Test where
     foldMap f (Leaf x) = f x
     foldMap f (Bin l r) = foldMap f r <> foldMap f r
 
 instance IsTree Test where
-    subtrees (Leaf _) = []
-    subtrees (Bin l r) = [l,r]
+    uniplate (Bin l r) = ([l,r],\[l',r'] -> Bin l' r')
+    uniplate t = ([],\[] -> t)
+    emptyNode = Empty
 
 
 type TT = Tok ()
@@ -335,7 +361,7 @@ prop_fromLeafAfterToFinal :: NTTT -> Property
 prop_fromLeafAfterToFinal (N n) = let
     fullRegion = subtreeRegion $ snd n
  in forAll (pointInside fullRegion) $ \p -> do
-   let final@(finalPath, finalSubtree) = fromLeafAfterToFinal p n
+   let final@(finalPath, (pathFromSubtree, finalSubtree)) = fromLeafAfterToFinal p n
        finalRegion = subtreeRegion finalSubtree
        initialRegion = nodeRegion n
        

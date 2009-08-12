@@ -62,9 +62,10 @@ instance SubTree (Tree TT) where
 
 
 instance IsTree Tree where
-    subtrees (Paren _ g _) = [g]
-    subtrees (Expr g) = toList g
-    subtrees _ = []
+    uniplate (Paren l g r) = ([g], \[g'] -> Paren l g' r)
+    uniplate (Expr g) = (g, Expr)
+    uniplate t = ([],\_ -> t)
+    emptyNode = Expr []
 
 parse :: P TT (Tree TT)
 parse = pExpr True <* eof

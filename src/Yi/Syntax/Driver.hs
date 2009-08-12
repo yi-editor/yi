@@ -46,16 +46,13 @@ mkHighlighter scanner =
                   recomputed = scanRun newScan resumeState
                   newResult :: tree (Tok tt)
                   newResult = if null recomputed then oldResult else snd $ head $ recomputed
-          focus r c@(Cache path states root focused) = 
-              trace ("r = " ++ show r) $
-              trace ("path0 = " ++ show path) $ 
-              trace ("path1 = " ++ show path') $
-              -- trace ("reg   = " ++ show (subtreeRegion result)) $
-              (Cache path' states root result)
-              where (path', result) = fromNodeToFinal r (path,root) 
+          focus r c@(Cache path states root _focused) = 
+              (Cache path' states root $ focused)
+              where (path', focused) = fromNodeToFinal r (path,root) 
 
 emptyFileScan :: Scanner Point Char
 emptyFileScan = Scanner { scanInit = 0, 
                           scanRun = const [], 
                           scanLooked = id, 
                           scanEmpty = error "emptyFileScan: no scanEmpty" }
+
