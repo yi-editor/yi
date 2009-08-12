@@ -80,6 +80,13 @@ firstThat p [] = error "firstThat: empty list"
 firstThat p [x] = x
 firstThat p (x:xs) = if p x then x else firstThat p xs
 
+-- | Return the element before first element that violates the predicate, or the first of the list
+-- if that one violates the predicate.
+lastThat p [] = error "lastThat: empty list"
+lastThat p (x:xs) = if p x then work x xs else x
+    where work x0 [] = x0
+          work x0 (x:xs) = if p x then work x xs else x0
+
 -- | Given a path to a node, return a path+node which 
 -- node that encompasses the given node + a point before it.
 fromLeafAfterToFinal :: IsTree tree => Point -> Node (tree (Tok t)) -> Node (tree (Tok t))
@@ -102,7 +109,7 @@ fromLeafToLeafAfter p (xs,root) =
     result
     where xs' = fst $ if leafBeforeP
                       then firstThat (\(_,s) -> getFirstOffset' s >= p) $ allLeavesRelative afterChild n
-                      else firstThat (\(_,s) -> getFirstOffset' s <= p) $ allLeavesRelative beforeChild n
+                      else lastThat (\(_,s) -> getFirstOffset' s >= p) $ allLeavesRelative beforeChild n
           (xsValid,leaf) = wkDown (xs,root)
           leafBeforeP = getFirstOffset' leaf <= p
           n = (xsValid,root)
