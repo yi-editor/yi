@@ -28,6 +28,7 @@ import Yi.Prelude
 import Yi.Region
 import Yi.String
 import Yi.Syntax
+import qualified Yi.Syntax.Driver as Driver
 import Yi.Syntax.Haskell as Hask
 import Yi.Syntax.Strokes.Haskell as HS
 import Yi.Syntax.Paren as Paren
@@ -65,7 +66,7 @@ cleverMode = haskellAbstract
     modeIndent = cleverAutoIndentHaskellB,
     modeGetStrokes = \t point begin end -> Paren.getStrokes point begin end t,
     modeHL = ExtHL $
-    mkHighlighter (skipScanner 50 . IncrParser.scanner Paren.parse . Paren.indentScanner . haskellLexer)
+    Driver.mkHighlighter (skipScanner 50 . IncrParser.scanner Paren.parse . Paren.indentScanner . haskellLexer)
 
   , modeAdjustBlock = adjustBlock
   , modePrettify = (cleverPrettify . allToks)
