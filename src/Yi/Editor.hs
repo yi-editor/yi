@@ -194,8 +194,8 @@ deleteBuffer k = do
                             tabs_ = forceFold2 $ fmap (fmap pickOther) (tabs_ e)
                             -- all windows open on that buffer must switch to another buffer.
                            }
+          modA windowsA (fmap (\w -> w { bufAccessList = forceFold1 . filter (k/=) $ bufAccessList w }))
       _ -> return () -- Don't delete the last buffer.
-  modA windowsA (fmap (\w -> w { bufAccessList = forceFold1 . filter (k/=) $ bufAccessList w }))
 
 -- | Return the buffers we have, /in no particular order/
 bufferSet :: Editor -> [FBuffer]
