@@ -7,7 +7,6 @@ import Yi.Lexer.Alex
 import Yi.Lexer.Latex
 import Yi.Style
 import Yi.Syntax.Tree
-import Yi.Syntax.BList
 import Yi.Syntax
 import Yi.Prelude 
 import Prelude ()
@@ -27,7 +26,7 @@ isNoise (End _) = False
 
 type TT = Tok Token
 
-type Expr t = BList (Tree t)
+type Expr t = [Tree t]
 
 data Tree t
     = Paren t (Tree t) t -- A parenthesized expression (maybe with [ ] ...)
@@ -58,7 +57,7 @@ instance SubTree (Tree TT) where
         where work (Atom t) = f t
               work (Error t) = f t
               work (Paren l g r) = f l <> foldMapToksAfter begin f g <> f r
-              work (Expr g) = foldMapAfter begin (foldMapToksAfter begin f) g
+              work (Expr g) = foldMap (foldMapToksAfter begin f) g
     foldMapToks f = foldMap (foldMapToks f)
 
 
@@ -85,7 +84,7 @@ parse = pExpr True <* eof
       -- pleaseSym' c = recoverWith errT <|> sym' c
 
       -- pExpr :: P TT [Expr TT]
-      pExpr outsideMath = Expr <$> Yi.Syntax.BList.many (pTree outsideMath)
+      pExpr outsideMath = Expr <$> many (pTree outsideMath)
 
       parens = [(Special x, Special y) | (x,y) <- zip "({[" ")}]"]
       openParens = fmap fst parens
@@ -129,7 +128,7 @@ getStrokes point begin _end t0 = appEndo result []
               | b /= e = ts (modStroke errorStyle) t
           tsEnd f _ t = ts f t
           getStrokesL :: Expr TT -> Endo [Stroke]
-          getStrokesL = foldMapAfter begin  getStrokes'
+          getStrokesL = foldMap getStrokes'
           ts f t 
               | isErrorTok (tokT t) = mempty
               | otherwise = Endo (f (tokenToStroke t) :)
