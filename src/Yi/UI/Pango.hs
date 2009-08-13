@@ -314,11 +314,8 @@ setWindowFocus e ui t w = do
 
   update (textview w) widgetIsFocus True
   update (modeline w) labelText ml
-
-  if isMini (coreWin w)
-     then return ()
-       else do update (uiWindow ui) windowTitle $ bufferName ++ " - Yi"
-               update (uiNotebook ui) (notebookChildTabLabel (page t)) (tabAbbrevTitle bufferName)
+  update (uiWindow ui) windowTitle $ bufferName ++ " - Yi"
+  update (uiNotebook ui) (notebookChildTabLabel (page t)) (tabAbbrevTitle bufferName)
 
 removeTab :: UI -> TabInfo -> IO ()
 removeTab ui  t = do
