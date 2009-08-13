@@ -191,6 +191,13 @@ startNoMsg cfg ch outCh _ed = do
 
   let ui = UI win tabs status tc (outCh . singleton) (configUI cfg) fontRef
 
+  -- Keep the current tab focus up to date
+  let move n pl = maybe pl id (PL.move n pl)
+      runAction = uiActionCh ui . makeAction
+  -- why does this cause a hang without postGUIAsync?
+  onSwitchPage (uiNotebook ui) $ \n -> postGUIAsync $
+    runAction (modA tabsA (move n) :: EditorM ())
+
   return (mkUI ui)
 
 main :: UI -> IO ()
@@ -291,7 +298,7 @@ setTabFocus :: UI -> TabInfo -> IO ()
 setTabFocus ui t = do
   p <- notebookPageNum (uiNotebook ui) (page t)
   case p of
-    Just n  -> notebookSetCurrentPage (uiNotebook ui) n
+    Just n  -> update (uiNotebook ui) notebookPage n
     Nothing -> return ()
 
 -- Only set an attribute if has actually changed.
