@@ -243,12 +243,12 @@ refreshEditor = onYiVar $ \yi var -> do
         -- Adjust window sizes according to UI info
         let e2' = fst $ runEditor (yiConfig yi)
                                  (do ws <- getA windowsA
-                                     forM_ ws $ flip withWindowE snapScreenB)
+                                     forM_ ws $ flip withWindowE (snapScreenB False))
                                  e2
         e3 <- UI.layout (yiUi yi) e2'
         let e4 = fst $ runEditor (yiConfig yi)
                                  (do ws <- getA windowsA
-                                     forM_ ws $ flip withWindowE (snapInsB >> focusSyntaxB))
+                                     forM_ ws $ flip withWindowE (snapScreenB True >> snapInsB >> focusSyntaxB))
                                  e3
         -- Adjust point according to the current layout;
         -- Focus syntax tree on the current window.
