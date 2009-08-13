@@ -55,7 +55,7 @@ import System.PosixCompat.Files (fileExist)
 import System.Posix (fileExist)
 #endif
 import System.FilePath (FilePath)
-import System.Directory (getCurrentDirectory)
+import System.Directory (getCurrentDirectory, setCurrentDirectory)
 
 import Control.Monad.State hiding (mapM_, mapM, sequence)
 import Control.Arrow hiding (left, right)
@@ -1283,6 +1283,7 @@ defKeymap = Proto template
 
            f_complete = exSimpleComplete (matchingFileNames Nothing)
            b_complete = exSimpleComplete matchingBufferNames
+           ex_complete ('c':'d':' ':f)                         = f_complete f
            ex_complete ('e':' ':f)                             = f_complete f
            ex_complete ('e':'d':'i':'t':' ':f)                 = f_complete f
            ex_complete ('w':' ':f)                             = f_complete f
@@ -1309,7 +1310,7 @@ defKeymap = Proto template
                                 (userExCmds ++) $
                                 ("hoogle-word" :) $ ("hoogle-search" : )$ ("set ft=" :) $ ("set tags=" :) $ map (++ " ") $ words $
                                 "e edit r read saveas saveas! tabe tabnew tabm b buffer bd bd! bdelete bdelete! " ++
-                                "yi cabal nohlsearch pwd suspend stop undo redo redraw reload tag .! quit quitall " ++
+                                "yi cabal nohlsearch cd pwd suspend stop undo redo redraw reload tag .! quit quitall " ++
                                 "qall quit! quitall! qall! write wq wqall ascii xit exit next prev" ++
                                 "$ split new ball h help"
            cabalComplete = exSimpleComplete $ const $ return cabalCmds
@@ -1510,6 +1511,7 @@ defKeymap = Proto template
            fn "red"        = withBuffer' redoB
            fn "redo"       = withBuffer' redoB
 
+           fn ('c':'d':' ':f) = io . setCurrentDirectory . dropSpace $ f
            fn "pwd"        = (io $ getCurrentDirectory) >>= withEditor . printMsg
 
            fn "sus"        = suspendEditor
