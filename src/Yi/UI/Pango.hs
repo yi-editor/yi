@@ -11,7 +11,6 @@ module Yi.UI.Pango (start) where
 import Prelude (filter, map, round, FilePath, (/))
 
 import Control.Concurrent (yield)
-import Control.Exception (evaluate)
 import Control.Monad (ap)
 import Control.Monad.Reader (liftIO, when, MonadIO)
 import Data.Prototype
@@ -61,7 +60,7 @@ data UI = UI
 data TabInfo = TabInfo
     { coreTab     :: PL.PointedList Window
     , page        :: VBox
-    , windowCache :: IORef [WinInfo]
+    , windowCache :: [WinInfo]
     }
 
 instance Show TabInfo where
@@ -101,7 +100,7 @@ updateFont cfg fontRef tc status font = do
     widgetModifyFont status (Just font)
     tcs <- readIORef tc
     forM_ tcs $ \tabinfo -> do
-    wcs <- readIORef $ windowCache tabinfo
+    let wcs = windowCache tabinfo
     forM_ wcs $ \wininfo -> do
         layoutSetFontDescription (winLayout wininfo) (Just font)
         -- This will cause the textview to redraw
@@ -249,7 +248,7 @@ syncTabs :: Editor -> UI -> [(PL.PointedList Window, Bool)] -> [TabInfo] -> IO [
 syncTabs e ui (tfocused@(t,focused):ts) (c:cs)
     | t == coreTab c =
         do when focused $ setTabFocus ui c
-           wCache <- readRef $ windowCache c
+           let wCache = windowCache c
            (:) <$> syncTab e ui c t wCache <*> syncTabs e ui ts cs
     | t `elem` map coreTab cs =
         do removeTab ui c
@@ -258,14 +257,16 @@ syncTabs e ui (tfocused@(t,focused):ts) (c:cs)
         do c' <- insertTabBefore e ui t c
            when focused $ setTabFocus ui c'
            return (c':) `ap` syncTabs e ui ts (c:cs)
-syncTabs e ui ts [] = mapM (insertTab e ui) (map fst ts)
+syncTabs e ui ts [] = mapM (\(t,focused) -> do c' <- insertTab e ui t
+                                               when focused $ setTabFocus ui c'
+                                               return c')
+                           ts
 syncTabs _ ui [] cs = mapM_ (removeTab ui) cs >> return []
 
 syncTab :: Editor -> UI -> TabInfo -> PL.PointedList Window -> [WinInfo] -> IO TabInfo
 syncTab e ui tab ws cache = do
     wCache <- syncWindows e ui tab (toList $ PL.withFocus ws) cache
-    writeRef (windowCache tab) wCache
-    return tab
+    return tab { windowCache = wCache }
 
 -- | Synchronize the windows displayed by GTK with the status of windows in the Core.
 syncWindows :: Editor -> UI -> TabInfo -> [(Window, Bool)] -- ^ windows paired with their "isFocused" state.
@@ -273,7 +274,7 @@ syncWindows :: Editor -> UI -> TabInfo -> [(Window, Bool)] -- ^ windows paired w
 syncWindows e ui tab (wfocused@(w,focused):ws) (c:cs)
     | w == coreWin c =
         do when focused $ setWindowFocus e ui tab c
-           (:) <$> syncWin e w c <*> syncWindows e ui tab ws cs
+           (c:) <$> syncWindows e ui tab ws cs
     | w `elem` map coreWin cs =
         removeWindow ui tab c >> syncWindows e ui tab (wfocused:ws) cs
     | otherwise = do
@@ -285,10 +286,6 @@ syncWindows e ui tab ws [] = mapM (\(w,focused) -> do c' <- insertWindowAtEnd e 
                                                       return c')
                                   ws
 syncWindows _ ui tab [] cs = mapM_ (removeWindow ui tab) cs >> return []
-
-syncWin :: Editor -> Window -> WinInfo -> IO WinInfo
-syncWin _ w wi = do
-  return (wi {coreWin = w})
 
 setTabFocus :: UI -> TabInfo -> IO ()
 setTabFocus ui t = do
@@ -327,9 +324,21 @@ removeWindow :: UI -> TabInfo -> WinInfo -> IO ()
 removeWindow _ tab win = do
     containerRemove (page tab) (widget win)
 
-handleClick :: UI -> WinInfo -> Gdk.Events.Event -> IO Bool
-handleClick ui w event = do
-  -- logPutStrLn $ "Click: " ++ show (eventX e, eventY e, eventClick e)
+getWinInfo :: WindowRef -> [TabInfo] -> (Int, Int, WinInfo)
+getWinInfo ref tabInfos =
+  head [ (tabIx, winIx, winInfo)
+       | (tabIx, tabInfo) <- zip [0..] tabInfos
+       , (winIx, winInfo) <- zip [0..] (windowCache tabInfo)
+       , ref == (wkey . coreWin) winInfo
+       ]
+
+handleClick :: UI -> WindowRef -> Gdk.Events.Event -> IO Bool
+handleClick ui ref event = do
+  (_tabIdx,winIdx,w) <- getWinInfo ref <$> readIORef (tabCache ui)
+
+  logPutStrLn $ "Click: " ++ show (Gdk.Events.eventX event,
+                                   Gdk.Events.eventY event,
+                                   Gdk.Events.eventClick event)
 
   -- retrieve the clicked offset.
   (_,layoutIndex,_) <- io $ layoutXYToIndex (winLayout w) (Gdk.Events.eventX event) (Gdk.Events.eventY event)
@@ -338,18 +347,10 @@ handleClick ui w event = do
 
   -- maybe focus the window
   logPutStrLn $ "Clicked inside window: " ++ show w
-  {-
-  tCache <- readRef $ tabCache ui
-  ((w:_):_) <- forM tCache $ \tabinfo -> do
-    wCache <- readIORef $ windowCache tabinfo
-    return $ head $ forM wCache $ \wininfo -> do
-      if (winkey $ coreWin w) == (winkey $ coreWin wininfo)
-        then return w
-        else []
-  -}
-  let focusWindow = undefined
-  -- let Just idx = findIndex (((==) `on` (winkey . coreWin)) w) wCache
-  --    focusWindow = modA windowsA (fromJust . PL.move idx)
+
+  let focusWindow = do
+      -- TODO: check that tabIdx is the focus?
+      modA windowsA (fromJust . PL.move winIdx)
 
   case (Gdk.Events.eventClick event, Gdk.Events.eventButton event) of
      (Gdk.Events.SingleClick, Gdk.Events.LeftButton) -> do
@@ -381,7 +382,7 @@ handleClick ui w event = do
 
   return True
 
-handleScroll :: UI -> WinInfo -> Gdk.Events.Event -> IO Bool
+handleScroll :: UI -> WindowRef -> Gdk.Events.Event -> IO Bool
 handleScroll ui _ event = do
   let editorAction = do 
         withBuffer0 $ vimScrollB $ case Gdk.Events.eventDirection event of
@@ -434,14 +435,14 @@ handleMove ui w p0 event = do
   return True
 
 -- | Make a new tab.
-newTab :: Editor -> UI -> PL.PointedList Window -> IO TabInfo
-newTab _ _ ws = do
-    vb <- vBoxNew False 1
-    wc <- newIORef []
-    return $ TabInfo { coreTab = ws
+newTab :: Editor -> UI -> VBox -> PL.PointedList Window -> IO TabInfo
+newTab e ui vb ws = do
+    let t' = TabInfo { coreTab = ws
                      , page    = vb
-                     , windowCache = wc
+                     , windowCache = []
                      }
+    cache <- syncWindows e ui t' (toList $ PL.withFocus ws) []
+    return t' { windowCache = cache }
 
 -- | Make a new window.
 newWindow :: Editor -> UI -> Window -> FBuffer -> IO WinInfo
@@ -508,9 +509,10 @@ insertTabBefore e ui t _c = insertTab e ui t
 
 insertTab :: Editor -> UI -> PL.PointedList Window -> IO TabInfo
 insertTab e ui ws = do
-    t <- newTab e ui ws
-    notebookAppendPage (uiNotebook ui) (page t) "Title"
-    widgetShowAll $ page t
+    vb <- vBoxNew False 1
+    notebookAppendPage (uiNotebook ui) vb "Title"
+    widgetShowAll $ vb
+    t <- newTab e ui vb ws
     return t
 
 insertWindowBefore :: Editor -> UI -> TabInfo -> Window -> WinInfo -> IO WinInfo
@@ -532,9 +534,10 @@ insertWindow e ui tab win = do
                         else PackGrow
                 ]
 
-              textview w `onButtonRelease` handleClick ui w
-              textview w `onButtonPress` handleClick ui w
-              textview w `onScroll` handleScroll ui w
+              let ref = (wkey . coreWin) w
+              textview w `onButtonRelease` handleClick ui ref
+              textview w `onButtonPress` handleClick ui ref
+              textview w `onScroll` handleScroll ui ref
               widgetShowAll (widget w)
 
               return w
@@ -552,11 +555,9 @@ refresh ui e = do
     statusbarPop  (uiStatusbar ui) contextId
     statusbarPush (uiStatusbar ui) contextId $ intercalate "  " $ statusLine e
 
-    updateCache ui e
     cache <- readRef $ tabCache ui
     forM_ cache $ \t -> do
-        wins <- readRef $ windowCache t
-        forM_ wins $ \w -> do
+        forM_ (windowCache t) $ \w -> do
             let b = findBufferWith (bufkey (coreWin w)) e
             -- when (not $ null $ b ^. pendingUpdatesA) $
             do
@@ -612,47 +613,30 @@ render e ui b w _ev = do
   return True
 
 doLayout :: UI -> Editor -> IO Editor
-doLayout ui ePrev = do
+doLayout ui e = do
+    updateCache ui e
     tabs <- readRef $ tabCache ui
-    handleTabs tabs ePrev
-  where handleTabs :: [TabInfo] -> Editor -> IO Editor
-        handleTabs [] e = return e
-        handleTabs (t:ts) e = do
-          visible <- get (page t) widgetVisible
-          e' <- if visible then handleTab t e
-                           else return e
-          handleTabs ts e'
-
-        handleTab :: TabInfo -> Editor -> IO Editor
-        handleTab tab e = mdo -- Windows depend on their layout and the layout
-                              -- depends on the windows. Recursion avoids
-                              -- filling the cache twice.
-          logPutStrLn $ "Updating tab: " ++ show tab
-          let updateWin w = w { height = height' w, winRegion = getRegion' w }
-              e' = (windowsA ^: fmap updateWin) e
-
-          -- This gets called here, but also in refresh; are both necessary?
-          io $ updateCache ui e'
-          wins <- io $ readRef (windowCache tab)
-          heights <- io $ forM wins $ \w -> do
-                (_, h) <- widgetGetSize $ textview w
-                let metrics = winMetrics w
-                return (w, round ((fromIntegral h) / (ascent metrics + descent metrics)))
-
-          f <- readRef (uiFont ui)
-          let height' w = case find ((w ==) . coreWin . fst) heights of
-                                Nothing -> 0
-                                Just (_,h) -> h
-              getRegion' w = case find ((w ==) . coreWin) wins of
-                                   Nothing -> emptyRegion
-                                   Just win -> shownRegion ui f win b0
+    heights <- concat <$> mapM getHeightsInTab ts
+    f <- readRef (uiFont ui)
+    let e' = (tabsA ^: fmap (fmap updateWin)) e
+        updateWin w = case find ((w==) . coreWin . fst) heights of
+                          Nothing -> w
+                          Just (wi,h) -> w { height = h,
+                                             winRegion = winRegion' w wi }
+        winRegion' w wi = shownRegion ui f wi b0
                     where b0 = findBufferWith (bufkey w) e
-          -- Don't leak references to the old window
-          evaluate $ foldr (\w n -> seq (height w) $
-                                    seq (winRegion w) n) ()
-                           (fmap coreWin wins)
-          logPutStrLn $ "heights: " ++ show heights
-          return e'
+
+    -- Don't leak references to old Windows
+    let forceWin x w = height w `seq` winRegion w `seq` x
+    return $ (foldl . foldl) forceWin e' (e' ^. tabsA)
+
+getHeightsInTab :: TabInfo -> IO [(WinInfo,Int)]
+getHeightsInTab tab = do
+  forM (windowCache tab) $ \w -> do
+    (_, h) <- widgetGetSize $ textview w
+    let metrics = winMetrics w
+        lineHeight = ascent metrics + descent metrics
+    return (w, round $ fromIntegral h / lineHeight)
 
 shownRegion :: UI -> FontDescription -> WinInfo -> FBuffer -> Region
 shownRegion ui f w b =
