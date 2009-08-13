@@ -518,7 +518,13 @@ newWindow e ui w b = mdo
     return win
 
 insertTabBefore :: Editor -> UI -> PL.PointedList Window -> TabInfo -> IO TabInfo
-insertTabBefore e ui t _c = insertTab e ui t
+insertTabBefore e ui ws c = do
+    Just p <- notebookPageNum (uiNotebook ui) (page c)
+    vb <- vBoxNew False 1
+    notebookInsertPage (uiNotebook ui) vb "title" p
+    widgetShowAll $ vb
+    t <- newTab e ui vb ws
+    return t
 
 insertTab :: Editor -> UI -> PL.PointedList Window -> IO TabInfo
 insertTab e ui ws = do
