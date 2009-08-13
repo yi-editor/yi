@@ -521,7 +521,7 @@ insertTabBefore :: Editor -> UI -> PL.PointedList Window -> TabInfo -> IO TabInf
 insertTabBefore e ui ws c = do
     Just p <- notebookPageNum (uiNotebook ui) (page c)
     vb <- vBoxNew False 1
-    notebookInsertPage (uiNotebook ui) vb "title" p
+    notebookInsertPage (uiNotebook ui) vb "" p
     widgetShowAll $ vb
     t <- newTab e ui vb ws
     return t
@@ -529,7 +529,7 @@ insertTabBefore e ui ws c = do
 insertTab :: Editor -> UI -> PL.PointedList Window -> IO TabInfo
 insertTab e ui ws = do
     vb <- vBoxNew False 1
-    notebookAppendPage (uiNotebook ui) vb "Title"
+    notebookAppendPage (uiNotebook ui) vb ""
     widgetShowAll $ vb
     t <- newTab e ui vb ws
     return t
@@ -705,4 +705,3 @@ mkCol False Default = Color maxBound maxBound maxBound
 mkCol _ (RGB x y z) = Color (fromIntegral x * 256)
                             (fromIntegral y * 256)
                             (fromIntegral z * 256)
-
