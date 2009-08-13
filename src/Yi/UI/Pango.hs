@@ -441,6 +441,13 @@ handleMove ui w p0 event = do
 
   return True
 
+handleConfigure :: UI -> WindowRef -> Gdk.Events.Event -> IO Bool
+handleConfigure ui _ref _ev = do
+  -- trigger a layout
+  -- why does this cause a hang without postGUIAsync?
+  postGUIAsync $ uiActionCh ui (makeAction (return () :: EditorM ()))
+  return False -- allow event to be propagated
+
 -- | Make a new tab.
 newTab :: Editor -> UI -> VBox -> PL.PointedList Window -> IO TabInfo
 newTab e ui vb ws = do
@@ -545,6 +552,7 @@ insertWindow e ui tab win = do
               textview w `onButtonRelease` handleClick ui ref
               textview w `onButtonPress` handleClick ui ref
               textview w `onScroll` handleScroll ui ref
+              textview w `onConfigure` handleConfigure ui ref
               widgetShowAll (widget w)
 
               return w
