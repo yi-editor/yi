@@ -361,14 +361,23 @@ scrollB n = do
     moveTo =<< getMarkPointB fr
     gotoLnFrom n
     setMarkPointB fr =<< pointB
-  snapInsB
+  w <- askWindow wkey
+  modA pointFollowsWindowA (\old w' -> if w == w' then True else old w')
 
 -- | Move the point to inside the viewable region
 snapInsB :: BufferM ()
 snapInsB = do
-  r <- winRegionB
-  p <- pointB
-  moveTo $ max (regionStart r) $ min (regionEnd r - 1) $ p
+    r <- winRegionB
+    p <- pointB
+    moveTo $ max (regionStart r) $ min (regionEnd r - 1) $ p
+
+snapB :: BufferM ()
+snapB = do
+    movePoint <- getA pointFollowsWindowA
+    w <- askWindow wkey
+    if movePoint w then snapInsB else snapScreenB
+
+    
 
 -- | return index of Sol on line @n@ above current line
 indexOfSolAbove :: Int -> BufferM Point
@@ -384,6 +393,7 @@ snapScreenB = do
     i <- indexOfSolAbove gap
     f <- fromMark <$> askMarks
     setMarkPointB f i
+
 
 -- | Move to @n@ lines down from top of screen
 downFromTosB :: Int -> BufferM ()

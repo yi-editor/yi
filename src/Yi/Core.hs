@@ -242,23 +242,24 @@ refreshEditor = onYiVar $ \yi var -> do
             e2 = buffersA ^: (fmap (clearSyntax . clearHighlight)) $ e1
         -- Adjust window sizes according to UI info
         e3 <- UI.layout (yiUi yi) e2
+        let e4 = fst $ runEditor (yiConfig yi)
+                                 (do ws <- getA windowsA
+                                     forM_ ws $ flip withWindowE (snapB >> focusSyntaxB))
+        
+                                 e3
         -- Adjust point according to the current layout;
         -- Focus syntax tree on the current window.
         -- FIXME: This optimisation won't do any good if a buffer is open in two windows,
         -- because both window will compete for the focus. There should be one focus per window.
-        let e4 = fst $ runEditor (yiConfig yi)
-                                 (do ws <- getA windowsA
-                                     forM_ ws $ flip withWindowE (snapScreenB >> focusSyntaxB))
-        
-                                 e3
         -- Display
         UI.refresh (yiUi yi) e4
         -- Clear "pending updates" from buffers.
-        let e5 = buffersA ^: (fmap clearUpdates) $ e4
+        let e5 = buffersA ^: (fmap (clearUpdates . clearFollow)) $ e4
         -- Terminate stale processes.
         terminateSubprocesses (staleProcess $ buffers e5) yi var {yiEditor = e5}
   where 
-    clearUpdates fb = pendingUpdatesA ^= [] $ fb
+    clearUpdates = pendingUpdatesA ^= []
+    clearFollow = pointFollowsWindowA ^= const False
     clearHighlight fb =
       -- if there were updates, then hide the selection.
       let h = getVal highlightSelectionA fb

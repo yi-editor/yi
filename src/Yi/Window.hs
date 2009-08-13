@@ -22,7 +22,8 @@ data Window = Window {
                      ,bufkey    :: !BufferRef -- ^ the buffer this window opens to
                      ,bufAccessList :: ![BufferRef] -- ^ list of last accessed buffers (former bufKeys). Last accessed one is first element
                      ,height    :: Int    -- ^ height of the window (in number of lines displayed)
-                     ,winRegion    :: Region -- ^ get view area
+                     ,winRegion    :: Region -- ^ view area.
+                                              -- note that the top point is also available as a buffer mark.
                      ,wkey      :: !WindowRef -- ^ identifier for the window (for UI sync)
                      }
         deriving (Typeable)
