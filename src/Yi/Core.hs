@@ -241,11 +241,14 @@ refreshEditor = onYiVar $ \yi var -> do
             -- Hide selection, clear "syntax dirty" flag (as appropriate).
             e2 = buffersA ^: (fmap (clearSyntax . clearHighlight)) $ e1
         -- Adjust window sizes according to UI info
-        e3 <- UI.layout (yiUi yi) e2
+        let e2' = fst $ runEditor (yiConfig yi)
+                                 (do ws <- getA windowsA
+                                     forM_ ws $ flip withWindowE snapScreenB)
+                                 e2
+        e3 <- UI.layout (yiUi yi) e2'
         let e4 = fst $ runEditor (yiConfig yi)
                                  (do ws <- getA windowsA
-                                     forM_ ws $ flip withWindowE (snapB >> focusSyntaxB))
-        
+                                     forM_ ws $ flip withWindowE (snapInsB >> focusSyntaxB))
                                  e3
         -- Adjust point according to the current layout;
         -- Focus syntax tree on the current window.
@@ -257,7 +260,7 @@ refreshEditor = onYiVar $ \yi var -> do
         let e5 = buffersA ^: (fmap (clearUpdates . clearFollow)) $ e4
         -- Terminate stale processes.
         terminateSubprocesses (staleProcess $ buffers e5) yi var {yiEditor = e5}
-  where 
+  where
     clearUpdates = pendingUpdatesA ^= []
     clearFollow = pointFollowsWindowA ^= const False
     clearHighlight fb =
