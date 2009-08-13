@@ -616,7 +616,7 @@ doLayout :: UI -> Editor -> IO Editor
 doLayout ui e = do
     updateCache ui e
     tabs <- readRef $ tabCache ui
-    heights <- concat <$> mapM getHeightsInTab ts
+    heights <- concat <$> mapM getHeightsInTab tabs
     f <- readRef (uiFont ui)
     let e' = (tabsA ^: fmap (fmap updateWin)) e
         updateWin w = case find ((w==) . coreWin . fst) heights of
