@@ -369,7 +369,9 @@ handleClick ui ref event = do
     (Gdk.Events.SingleClick, Gdk.Events.LeftButton) -> runAction $ do
         b <- gets $ (bkey . findBufferWith (bufkey $ coreWin w))
         focusWindow
-        withGivenBufferAndWindow0 (coreWin w) b $ moveTo p1
+        withGivenBufferAndWindow0 (coreWin w) b $ do
+            moveTo p1
+            setVisibleSelection False
     (Gdk.Events.SingleClick, _) -> runAction focusWindow
     (Gdk.Events.ReleaseClick, Gdk.Events.MiddleButton) -> do
         disp <- widgetGetDisplay (textview w)
