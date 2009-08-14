@@ -141,9 +141,9 @@ fromLeafToLeafAfter p (xs,root) =
           result = (xs',root)
 
 
--- allLeavesAfter :: IsTree tree => Node (tree t) -> [(Path, tree t)]
-
-allLeavesRelative select = allLeavesRelative' select . reverse . nodesAndChildIndex
+allLeavesRelative select 
+   = filter (not . nullSubtree . snd) . allLeavesRelative' select . reverse . nodesAndChildIndex
+     -- we remove empty subtrees because their region is [0,0].
 
 
 -- | Takes a list of (node, index of already inspected child), and return all leaves
@@ -165,6 +165,8 @@ nodesOnPath ([],t) = [([],([],t))]
 nodesOnPath (x:xs,t) = ([],(x:xs,t)) : case index x (subtrees t) of
                            Nothing -> error "nodesOnPath: non-existent path"
                            Just c -> fmap (frst (x:)) (nodesOnPath (xs,c))
+
+
 
 frst :: (a -> b) -> (a,c) -> (b,c)
 frst f ~(x,y) = (f x, y)
@@ -236,6 +238,8 @@ getAllSubTrees t = t : concatMap getAllSubTrees (subtrees t)
 -- | Return the 1st token of a subtree.
 getFirstElement :: Foldable t => t a -> Maybe a
 getFirstElement tree = getFirst $ foldMap (First . Just) tree
+
+nullSubtree = null . toList
 
 getFirstTok, getLastTok :: (SubTree a) => a -> Maybe (Element a)
 getFirstTok = getFirst . foldMapToks (First . Just) 
