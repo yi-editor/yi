@@ -21,7 +21,7 @@ abstract = fundamentalMode
    modeToggleCommentSelection = toggleCommentSelectionB "% " "%"
  }
 
-fastMode :: Mode (OnlineTree.TreeAtPos Latex.TT)
+fastMode :: Mode (OnlineTree.Tree Latex.TT)
 fastMode = abstract
   {
     modeName = "fast latex",

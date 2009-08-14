@@ -17,7 +17,7 @@ atLastLine = savingPointB $ do
     moveToEol
     (==) <$> sizeB <*> pointB
 
-mode :: Mode (OnlineTree.TreeAtPos (Tok Token))
+mode :: Mode (OnlineTree.Tree (Tok Token))
 mode = Compilation.mode
   { modeApplies = modeNeverApplies,
     modeName = "interactive",

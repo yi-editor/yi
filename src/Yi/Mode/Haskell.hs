@@ -74,7 +74,7 @@ cleverMode = haskellAbstract
 
  }
 
-fastMode :: Mode (OnlineTree.TreeAtPos TT)
+fastMode :: Mode (OnlineTree.Tree TT)
 fastMode = haskellAbstract
   {
     modeName = "fast haskell",

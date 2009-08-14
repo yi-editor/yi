@@ -20,6 +20,7 @@ import Yi.Prelude
 import Yi.Style
 import Yi.Syntax
 import Yi.Syntax.Tree
+import qualified Yi.Syntax.Driver as Driver
 import Yi.Keymap
 import Yi.MiniBuffer
 import qualified Yi.Lexer.Alex       as Alex
@@ -38,7 +39,7 @@ import qualified Yi.Lexer.Whitespace  as Whitespace
 import Yi.Syntax.OnlineTree as OnlineTree
 import qualified Yi.IncrementalParse as IncrParser
 
-type TokenBasedMode tok = Mode (TreeAtPos (Tok tok))
+type TokenBasedMode tok = Mode (Tree (Tok tok))
 type StyleBasedMode = TokenBasedMode StyleName
 
 fundamentalMode :: Mode syntax
@@ -63,9 +64,10 @@ linearSyntaxMode :: forall lexerState t.
                                                           (IncrParser.AlexState lexerState,
                                                            Alex.AlexInput)))
                                                 -> (t -> StyleName)
-                                                -> Mode (TreeAtPos (Tok t))
+                                                -> Mode (Tree (Tok t))
 linearSyntaxMode initSt scanToken tokenToStyle 
     = fundamentalMode { 
+                        -- FIXME: use Driver.mkHighlighter
                         modeHL = ExtHL $ mkHighlighter (IncrParser.scanner OnlineTree.manyToks . lexer),
                         modeGetStrokes = tokenBasedStrokes tokenToStroke
                       }

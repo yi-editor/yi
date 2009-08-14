@@ -11,7 +11,7 @@ import qualified Yi.Lexer.Alex as Alex
 import qualified Yi.Lexer.Compilation         as Compilation
 import qualified Yi.Syntax.OnlineTree as OnlineTree
 
-mode :: Mode (OnlineTree.TreeAtPos (Tok Compilation.Token))
+mode :: Mode (OnlineTree.Tree (Tok Compilation.Token))
 mode = (linearSyntaxMode Compilation.initState Compilation.alexScanToken tokenToStyle)
   { 
    modeApplies = modeNeverApplies,
