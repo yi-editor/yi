@@ -19,7 +19,7 @@ import Data.List (drop, intercalate, nub, zip)
 import qualified Data.List.PointedList.Circular as PL
 import Data.Maybe
 import qualified Data.Map as M
-import System.IO.Unsafe
+import qualified Data.Rope as Rope
 
 import Graphics.UI.Gtk hiding (on, Region, Window, Action, Point, Style)
 import qualified Graphics.UI.Gtk.Gdk.Events as Gdk.Events
@@ -281,7 +281,7 @@ syncWindows :: Editor -> UI -> TabInfo -> [(Window, Bool)] -- ^ windows paired w
 syncWindows e ui tab (wfocused@(w,focused):ws) (c:cs)
     | w == coreWin c =
         do when focused $ setWindowFocus e ui tab c
-           (c:) <$> syncWindows e ui tab ws cs
+           (c { coreWin = w}:) <$> syncWindows e ui tab ws cs
     | w `elem` map coreWin cs =
         removeWindow ui tab c >> syncWindows e ui tab (wfocused:ws) cs
     | otherwise = do
@@ -494,7 +494,7 @@ newWindow e ui w b = mdo
                boxChildPacking ml := PackNatural]
       return (castToBox vb)
 
-    sig       <- newIORef =<< (v `onExpose` render e ui b win)
+    sig       <- newIORef =<< (v `onExpose` render e ui b (wkey w))
     tosRef    <- newIORef (askBuffer w b (getMarkPointB =<< fromMark <$> askMarks))
     context   <- widgetCreatePangoContext v
     layout    <- layoutEmpty context
@@ -503,6 +503,7 @@ newWindow e ui w b = mdo
     motionSig <- newIORef Nothing
 
     layoutSetFontDescription layout (Just f)
+    layoutSetText layout "" -- stops layoutGetText crashing (as of gtk2hs 0.10.1)
 
     let win = WinInfo { coreWin   = w
                       , winLayout = layout
@@ -583,20 +584,17 @@ refresh ui e = do
             do
                 sig <- readIORef (renderer w)
                 signalDisconnect sig
-                writeRef (renderer w) =<< (textview w `onExpose` render e ui b w)
+                writeRef (renderer w) =<< (textview w `onExpose` render e ui b (wkey (coreWin w)))
                 widgetQueueDraw (textview w)
 
-winEls :: Point -> Int -> BufferM Yi.Buffer.Size
-winEls tospnt h = savingPointB $ do
-             moveTo tospnt
-             gotoLnFrom (h-1)
-             moveToEol
-             p <- pointB
-             return (p ~- tospnt)
+render :: Editor -> UI -> FBuffer -> WindowRef -> t -> IO Bool
+render e ui b ref _ev = do
+  (_,_,w) <- getWinInfo ref <$> readIORef (tabCache ui)
+  let win = coreWin w
+  let tos = max 0 (regionStart (winRegion win))
+  let bos = regionEnd (winRegion win)
+  let (cur, _) = runBuffer win b pointB
 
-render :: Editor -> UI -> FBuffer -> WinInfo -> t -> IO Bool
-render e ui b w _ev = do
-  (tos,cur,bos) <- updatePango ui w b (winLayout w)
   writeRef (shownTos w) tos
   drawWindow    <- widgetGetDrawWindow $ textview w
 
@@ -636,63 +634,68 @@ doLayout :: UI -> Editor -> IO Editor
 doLayout ui e = do
     updateCache ui e
     tabs <- readRef $ tabCache ui
-    heights <- concat <$> mapM getHeightsInTab tabs
     f <- readRef (uiFont ui)
+    heights <- concat <$> mapM (getHeightsInTab ui f e) tabs
     let e' = (tabsA ^: fmap (fmap updateWin)) e
-        updateWin w = case find ((w==) . coreWin . fst) heights of
+        updateWin w = case find (\(ref,_,_) -> (wkey w == ref)) heights of
                           Nothing -> w
-                          Just (wi,h) -> w { height = h,
-                                             winRegion = winRegion' w wi }
-        winRegion' w wi = shownRegion ui f wi b0
-                    where b0 = findBufferWith (bufkey w) e
+                          Just (_,h,rgn) -> w { height = h, winRegion = rgn }
+    updateCache ui e'
 
     -- Don't leak references to old Windows
     let forceWin x w = height w `seq` winRegion w `seq` x
     return $ (foldl . foldl) forceWin e' (e' ^. tabsA)
 
-getHeightsInTab :: TabInfo -> IO [(WinInfo,Int)]
-getHeightsInTab tab = do
-  forM (windowCache tab) $ \w -> do
-    (_, h) <- widgetGetSize $ textview w
-    let metrics = winMetrics w
+getHeightsInTab :: UI -> FontDescription -> Editor -> TabInfo -> IO [(WindowRef,Int,Region)]
+getHeightsInTab ui f e tab = do
+  forM (windowCache tab) $ \wi -> do
+    (_, h) <- widgetGetSize $ textview wi
+    let metrics = winMetrics wi
         lineHeight = ascent metrics + descent metrics
-    return (w, round $ fromIntegral h / lineHeight)
+    let b0 = findBufferWith (bufkey (coreWin wi)) e
+    rgn <- shownRegion ui f wi b0
+    let ret= (wkey (coreWin wi), round $ fromIntegral h / lineHeight, rgn)
+    return ret
 
-shownRegion :: UI -> FontDescription -> WinInfo -> FBuffer -> Region
-shownRegion ui f w b =
-  -- PangoLayout operations should be functional
-  unsafePerformIO $ do
-  -- Don't use layoutCopy, it just segfaults (as of gtk2hs 0.10.1)
-  context <- widgetCreatePangoContext (textview w)
-  layout <- layoutEmpty context
-  layoutSetFontDescription layout (Just f)
-  (tos, _, bos) <- updatePango ui w b layout
-  return $ mkRegion tos bos
+shownRegion :: UI -> FontDescription -> WinInfo -> FBuffer -> IO Region
+shownRegion ui f w b = do
+   (tos, _, bos) <- updatePango ui f w b layout
+   return $ mkRegion tos bos
+  where layout = winLayout w
 
-updatePango :: UI -> WinInfo -> FBuffer -> PangoLayout -> IO (Point, Point, Point)
-updatePango ui w b layout = do
+updatePango :: UI -> FontDescription -> WinInfo -> FBuffer -> PangoLayout -> IO (Point, Point, Point)
+updatePango ui font w b layout = do
   (width', height') <- widgetGetSize $ textview w
+
+  oldFont <- layoutGetFontDescription layout
+  oldFontStr <- maybe (return Nothing) (fmap Just . fontDescriptionToString) oldFont
+  newFontStr <- Just <$> fontDescriptionToString font
+  when (oldFontStr /= newFontStr) (layoutSetFontDescription layout (Just font))
 
   let win                 = coreWin w
       [width'', height''] = map fromIntegral [width', height']
       metrics             = winMetrics w
-      winh                = round (height'' / (ascent metrics + descent metrics))
+      lineHeight          = ascent metrics + descent metrics
+      winh                = floor (height'' / lineHeight)
 
       (tos, point, text)  = askBuffer win b $ do
                               from     <- getMarkPointB =<< fromMark <$> askMarks
-                              numChars <- winEls from winh
+                              rope     <- streamB Forward from
                               p        <- pointB
-                              content  <- nelemsB (fromIntegral numChars) from
-                              return (from, p, content)
-
-  layoutSetText layout text
+                              let content = Rope.toString . fst $ Rope.splitAtLine winh rope
+                              return (from, p, content ++ "\n") -- the newline provides an index for layoutXYToIndex
 
   if configLineWrap $ uiConfig ui
-    then layoutSetWidth layout $ Just width''
+    then do oldWidth <- layoutGetWidth layout
+            when (oldWidth /= Just width'') (layoutSetWidth layout $ Just width'')
     else do (Rectangle px _py pwidth _pheight, _) <- layoutGetPixelExtents layout
             widgetSetSizeRequest (textview w) (px+pwidth) (-1)
 
-  (_, bosOffset, _) <- layoutXYToIndex layout width'' height''
+  -- optimize for cursor movement
+  oldText <- layoutGetText layout
+  when (oldText /= text) (layoutSetText layout text)
+
+  (_, bosOffset, _) <- layoutXYToIndex layout width'' (fromIntegral winh * lineHeight - 1)
   return (tos, point, tos + fromIntegral bosOffset + 1)
 
 reloadProject :: UI -> FilePath -> IO ()
