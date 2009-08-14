@@ -382,12 +382,11 @@ indexOfSolAbove :: Int -> BufferM Point
 indexOfSolAbove n = pointAt $ gotoLnFrom (negate n)
 
 -- | Move the visible region to include the point
-snapScreenB :: Bool -> BufferM ()
-snapScreenB applyAtEof = do
+snapScreenB :: BufferM ()
+snapScreenB = do
     movePoint <- getA pointFollowsWindowA
     w <- askWindow wkey
-    eof <- atEof
-    unless (movePoint w || eof /= applyAtEof) $ do
+    unless (movePoint w) $ do
         inWin <- pointInWindowB =<< pointB
         unless inWin $ do
             h <- askWindow height

@@ -47,7 +47,7 @@ where
 import Prelude (realToFrac)
 
 import Control.Concurrent
-import Control.Monad (when, forever)
+import Control.Monad (unless, when, forever)
 import Control.Monad.Error ()
 import Control.Monad.Reader (runReaderT, ask)
 import Control.Monad.Trans
@@ -240,16 +240,29 @@ refreshEditor = onYiVar $ \yi var -> do
                Nothing -> e0
             -- Hide selection, clear "syntax dirty" flag (as appropriate).
             e2 = buffersA ^: (fmap (clearSyntax . clearHighlight)) $ e1
+
+        --
         -- Adjust window sizes according to UI info
-        let e2' = fst $ runEditor (yiConfig yi)
-                                 (do ws <- getA windowsA
-                                     forM_ ws $ flip withWindowE (snapScreenB False))
-                                 e2
+        --
+
+        let runOnWins a = runEditor (yiConfig yi)
+                                    (do ws <- getA windowsA
+                                        forM ws $ flip withWindowE a)
+
+        -- The screen should scroll if the cursor has moved past the bottom
+        -- of the screen. But the window region is not yet up to date. So at
+        -- EOF another layout is required.
+        -- TODO: Perhaps the BOS should be a Mark with Forward direction?
+
+        let (e2',eofs) = runOnWins (do eof <- atEof
+                                       unless eof snapScreenB
+                                       return eof) e2
         e3 <- UI.layout (yiUi yi) e2'
-        let e4 = fst $ runEditor (yiConfig yi)
-                                 (do ws <- getA windowsA
-                                     forM_ ws $ flip withWindowE (snapScreenB True >> snapInsB >> focusSyntaxB))
-                                 e3
+        e3' <- if or eofs then UI.layout (yiUi yi) (fst $ runOnWins snapScreenB e3)
+                          else return e3
+        let e4 = fst $ runOnWins (snapInsB >> focusSyntaxB) e3'
+
+
         -- Adjust point according to the current layout;
         -- Focus syntax tree on the current window.
         -- FIXME: This optimisation won't do any good if a buffer is open in two windows,
