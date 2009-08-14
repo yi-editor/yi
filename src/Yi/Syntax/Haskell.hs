@@ -23,7 +23,6 @@ import Yi.Lexer.Alex
 import Yi.Lexer.Haskell
 import Yi.Syntax.Layout
 import Yi.Syntax.Tree
-import qualified Yi.Syntax.BList as BL
 import Yi.Syntax
 import Yi.Prelude
 import Prelude ()
@@ -61,6 +60,7 @@ type Tree = PModule
 type PAtom = Exp
 type Block = Exp
 type PGuard = Exp
+type BList  = Exp
 
 -- | A program is some comments followed by a module and a body
 data PModule t
@@ -117,7 +117,7 @@ data Exp t
       -- declaration
       -- declarations and parts of them follow
     | Paren (PAtom t) [Exp t] (PAtom t) -- ^ A parenthesized, bracked or braced
-    | Block (BL.BList [Exp t]) -- ^ A block of things separated by layout
+    | Block [Exp t] -- ^ A block of things separated by layout
     | PAtom t [t] -- ^ An atom is a token followed by many comments
     | Expr [Exp t] -- ^
     | PWhere (PAtom t) (Exp t) (Exp t) -- ^ Where clause
@@ -130,13 +130,13 @@ data Exp t
              , commentList :: [t] -- ^ An wrapper for errors
              }
       -- rhs that begins with Equal
-    | RHS (PAtom t) [Exp t] -- ^ Righthandside of functions with =
+    | RHS (PAtom t) (Exp t) -- ^ Righthandside of functions with =
     | Opt (Maybe (Exp t)) -- ^ An optional
     | Modid t [t] -- ^ Module identifier
     | Context (Exp t) (Exp t) (PAtom t) -- ^
     | PGuard [PGuard t] -- ^ Righthandside of functions with |
       -- the PAtom in PGuard' does not contain any comments
-    | PGuard' (PAtom t) [Exp t] (PAtom t)
+    | PGuard' (PAtom t) (Exp t) (PAtom t)
       -- type constructor is just a wrapper to indicate which highlightning to
       -- use.
     | TC (Exp t) -- ^ Type constructor
@@ -153,7 +153,7 @@ instance SubTree (Exp TT) where
               work (Expr e)     = foldMap work e
               work (PWhere e' e c) = work e' <> work e <> work c
               work (Bin e e')   = work e <> work e'
-              work (RHS e l)    = work e <> foldMap work l
+              work (RHS e l)    = work e <> work l
               work (Opt (Just t)) = work t
               work (Opt Nothing)  = mempty
               work (Modid t l)    = f t
@@ -173,7 +173,7 @@ instance SubTree (Exp TT) where
                                     <> work e
               work (PGuard l) = foldMap work l
               work (PGuard' t e t') = work t
-                                      <> foldMap work e
+                                      <> work e
                                       <> work t'
               work (PAtom t c)  = f t <> fold' c
               work (PError t' t c) = f t' <> f t <> fold' c
@@ -184,8 +184,7 @@ instance SubTree (Exp TT) where
                                 <> work e
                                 <> work e'
               work (PIn t l) = f t <> foldMap work l
-              work (Block s) = BL.foldMapAfter
-                                begin (foldMapToksAfter begin f) s
+              work (Block s) = foldMap (foldMapToksAfter begin f) s
               work (PClass e e' e'') = work e <> work e' <> work e''
               fold' = foldMapToksAfter begin f
     foldMapToks = foldMap . foldMapToks
@@ -196,10 +195,10 @@ instance SubTree (PModule TT) where
         where work (PModule m (Just p)) = foldMapToksAfter begin f m <> work p
               work (PModule m Nothing) = foldMapToksAfter begin f m
               work (ProgMod _ p) = work p
-              work (Body _ (Block t) (Block t')) = BL.foldMapAfter
-                                begin (foldMapToksAfter begin f) t
-                                       <> BL.foldMapAfter
-                                       begin (foldMapToksAfter begin f) t'
+              work (Body _ (Block t) (Block t')) = foldMap
+                                 (foldMapToksAfter begin f) t
+                                       <> foldMap
+                                        (foldMapToksAfter begin f) t'
               work _ = undefined
     foldMapToks = foldMap . foldMapToks
 
@@ -220,10 +219,11 @@ $(derive makeFoldable ''PModule)
 
 $(derive makeFoldable ''Exp)
 instance IsTree Exp where
+   emptyNode = Expr []
    subtrees tree = case tree of
        (Paren l g r)  -> l:g ++ [r]
-       (RHS l g)      -> l:g
-       (Block s)      -> concat s
+       (RHS l g)      -> [l,g]
+       (Block s)      -> s
        (PLet l s i)   -> l:s:[i]
        (PIn _ ts)     -> ts
        (Expr a)       -> a
@@ -236,7 +236,7 @@ instance IsTree Exp where
        (PData' a b) -> [a,b] 
        (Context a b c) -> [a,b,c]
        (PGuard xs) -> xs
-       (PGuard' a b c) -> a:b ++ [c]
+       (PGuard' a b c) -> a:b:c:[]
        (TC e) -> [e]
        (DC e) -> [e]
        _              -> []
@@ -274,7 +274,7 @@ pModBody = (exact [startBlock] *>
 
 -- | @pEmptyBL@ A parser returning an empty block
 pEmptyBL :: Parser TT (Exp TT)
-pEmptyBL = Block <$> pure BL.nil
+pEmptyBL = Block <$> pEmpty
 
 -- | Parse a body of a program
 pBody :: Parser TT (PModule TT)
@@ -487,6 +487,7 @@ pData = PData <$> pAtom [Reserved Data]
      <*> pOpt pDeriving
 
 
+pGadt :: Parser TT (Exp TT)
 pGadt = pWhere pTypeDecl
 
 -- | Parse second half of the data declaration, if there is one
@@ -535,7 +536,7 @@ pConstr = Bin <$> pOpt pForAll
       <|> Bin <$> lrHs <*> pMany (strictF pAtype)
       <|> pErr
     where lrHs = pOP [Operator "!"] pAtype
-          st = pEBrace ((Expr <$> pTypeDecl) `sepBy1` pBareAtom [Special ','])
+          st = pEBrace (pTypeDecl `sepBy1` pBareAtom [Special ','])
           -- named fields declarations
 
 -- | Parse optional strict variables
@@ -560,12 +561,13 @@ pDo = Bin <$> pAtom [Reserved Do]
           <*> pBlock (pExpr ((Special ';' : recognizedSometimes) \\ [ReservedOp LeftArrow]))
 
 -- | Parse part of a lambda binding.
+pLambda :: Parser TT (Exp TT)
 pLambda = Bin <$> pAtom [ReservedOp BackSlash] <*> (Bin <$> (Expr <$> pPattern) <*> please (pBareAtom [ReservedOp RightArrow]))
 
 -- | Parse an Of block
 pOf :: Parser TT (Exp TT)
 pOf = Bin <$> pAtom [Reserved Of]
-          <*> pBlock (pToList pAlternative)
+          <*> pBlock pAlternative
 
 pAlternative = Bin <$> (Expr <$> pPattern)
                    <*> please (pFunRHS (ReservedOp RightArrow))
@@ -593,19 +595,20 @@ pGuard equalSign = PGuard
 pFunRHS :: Token -> Parser TT (Exp TT)
 pFunRHS equalSign = Bin <$> (pGuard equalSign <|> pEq equalSign) <*> pOpt (pWhere pFunDecl)
 
+pWhere :: Parser TT (Exp TT) -> Parser TT (Exp TT)
 pWhere p = PWhere <$> pAtom [Reserved Where] <*> please (pBlock p) <*> (pMany pErr)
 -- After a where there might "misaligned" code that do not "belong" to anything.
 -- Here we swallow it as errors.
 
 -- Note that this can both parse an equation and a type declaration.
 -- Since they can start with the same token, the left part is factored here.
-pDecl :: Bool -> Bool -> Parser TT [Exp TT]
-pDecl acceptType acceptEqu = (Yuck $ Enter "missing end of type or equation declaration" $ pure [])
-             <|> ((:) <$> pElem False recognizedSometimes <*> pDecl acceptType acceptEqu)
-             <|> ((:) <$> pBareAtom [Special ','] <*> pDecl acceptType False)
+pDecl :: Bool -> Bool -> Parser TT (Exp TT)
+pDecl acceptType acceptEqu = Expr <$> ((Yuck $ Enter "missing end of type or equation declaration" $ pure [])
+             <|> ((:) <$> pElem False recognizedSometimes <*> pToList (pDecl acceptType acceptEqu))
+             <|> ((:) <$> pBareAtom [Special ','] <*> pToList (pDecl acceptType False))
                  -- if a comma is found, then the rest must be a type declaration.
              <|> (if acceptType then pTypeEnding else empty)
-             <|> (if acceptEqu  then pEquEnding else empty)
+             <|> (if acceptEqu  then pEquEnding else empty))
     where pTypeEnding = ((:) <$> (TS <$> exact [ReservedOp DoubleColon] <*> pTypeExpr') <*> pure [])
           pEquEnding = ((:) <$> pFunRHS (ReservedOp Equal) <*> pure [])
 
@@ -623,21 +626,21 @@ pMany :: Parser TT (Exp TT) -> Parser TT (Exp TT)
 pMany p = Expr <$> many p
 
 -- | Parse a some of something separated by the token (Special '.')
-pBlocks :: Parser TT r -> Parser TT (BL.BList r)
-pBlocks p =  p `BL.sepBy1` exact [nextLine]
+pBlocks :: Parser TT r -> Parser TT [r]
+pBlocks p =  p `sepBy1` exact [nextLine]
 
 -- | Parse a some of something separated by the token (Special '.'), or nothing
-pBlocks' :: Parser TT r -> Parser TT (BL.BList r)
-pBlocks' p =  pBlocks p <|> pure BL.nil
+-- pBlocks' :: Parser TT r -> Parser TT (BL.BList r)
+pBlocks' p =  pBlocks p <|> pure []
 
 -- | Parse a block of some something separated by the tok (Special '.')
-pBlockOf :: Parser TT [(Exp TT)] -> Parser TT (Exp TT)
+pBlockOf :: Parser TT (Exp TT) -> Parser TT (Exp TT)
 pBlockOf p  = Block <$> pBlockOf' (pBlocks p) -- see HACK above
 
 
-pBlock :: Parser TT [Exp TT] -> Parser TT (Exp TT)
+pBlock :: Parser TT (Exp TT) -> Parser TT (Exp TT)
 pBlock p = pBlockOf' (Block <$> pBlocks' p) 
-       <|> pEBrace (concat <$> (p `sepBy1` exact [Special ';']) <|> pure [])
+       <|> pEBrace (p `sepBy1` exact [Special ';'] <|> pure [])
        <|> (Yuck $ Enter "block expected" $ pEmptyBL)
 
 -- | Parse something surrounded by (Special '<') and (Special '>')
@@ -647,12 +650,12 @@ pBlockOf' p = exact [startBlock] *> p <* exact [endBlock] -- see HACK above
 -- we don't try to recover errors with them.
 
 -- | Parse something that can contain a data, type declaration or a class
-pTopDecl :: Parser TT [(Exp TT)]
-pTopDecl = pFunDecl 
-          <|> pToList pType
-          <|> pToList pData
-          <|> pToList pClass
-          <|> pEmpty
+pTopDecl :: Parser TT (Exp TT)
+pTopDecl =    pFunDecl 
+          <|> pType
+          <|> pData
+          <|> pClass
+          <|> pure emptyNode
 
 
 -- | A "normal" expression, where none of the following symbols are acceptable.
@@ -670,13 +673,13 @@ recognizedSometimes = [ReservedOp DoubleDot,
                       ]
 
 -- | Parse an expression, as a concatenation of elements.
-pExpr :: [Token] -> Parser TT [Exp TT]
-pExpr = pExprOrPattern True
+pExpr :: [Token] -> Parser TT (Exp TT)
+pExpr at = Expr <$> pExprOrPattern True at
 
 -- | Parse an expression, as a concatenation of elements.
 pExprOrPattern :: Bool -> [Token] -> Parser TT [Exp TT]
 pExprOrPattern isExpresssion at = pure [] 
-       <|> ((:) <$> pElem isExpresssion at          <*> pExpr at)
+       <|> ((:) <$> pElem isExpresssion at          <*> pExprOrPattern True at)
        <|> ((:) <$> (TS <$> exact [ReservedOp DoubleColon] <*> pTypeExpr') <*> pure [])
      -- TODO: not really correct: in (x :: X , y :: Z), all after the first :: will be a "type".
 

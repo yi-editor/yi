@@ -13,10 +13,9 @@ import Yi.Lexer.Alex (Stroke, Tok(..), tokToSpan, tokFromT)
 import Yi.Lexer.JavaScript ( TT, Token(..), Reserved(..), Operator(..)
                            , tokenToStyle, prefixOperators, infixOperators
                            , postfixOperators )
-import Yi.Prelude hiding (error, Const, many)
+import Yi.Prelude hiding (error, Const)
 import Yi.Style (errorStyle, StyleName)
-import Yi.Syntax.BList (BList, sepBy, sepBy1, many)
-import Yi.Syntax.Tree (IsTree(..))
+import Yi.Syntax.Tree (IsTree(..), sepBy1, sepBy)
 
 
 -- * Data types, classes and instances
@@ -30,6 +29,8 @@ class Strokable a where
 class Failable f where
     stupid :: t -> f t
     hasFailed :: f t -> Bool
+
+type BList a = [a]
 
 type Tree t = BList (Statement t)
 

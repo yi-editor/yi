@@ -128,7 +128,7 @@ dollarifyTopP p@(H.Paren (H.PAtom t1 _) e (H.PAtom t2 _))
    | isNormalParenP p = case stripCommentsP e of
        [H.Paren _ _ _] -> [queueDelete t2, queueDelete t1]
        e'            -> dollarifyExprP e'
-dollarifyTopP (H.Block bList) = dollarifyExprP . stripCommentsP =<< toList bList
+dollarifyTopP (H.Block bList) = dollarifyExprP . stripCommentsP $ bList
 dollarifyTopP _ = []
 
 -- Expression must not contain comments

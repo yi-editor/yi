@@ -5,7 +5,6 @@ import Data.Maybe
 import Yi.Lexer.Alex
 import Yi.Lexer.Haskell
 import Yi.Style
-import qualified Yi.Syntax.BList as BL
 import Yi.Syntax
 import Yi.Prelude
 import Prelude ()
@@ -83,10 +82,10 @@ getStr tk point begin _end t0 = getStrokes' t0
               | otherwise  = tk l <> com c <> getStrokesL g
                                   <> tk r <> com c'
           getStrokes' (PError t _ c) = errStyle t <> com c
-          getStrokes' (Block s) = BL.foldMapAfter begin getStrokesL s
+          getStrokes' (Block s) = getStrokesL s
           getStrokes' (Expr g) = getStrokesL g
           getStrokes' (PWhere e exp c) = getStrokes' e <> getStrokes' exp <> getStrokes' c
-          getStrokes' (RHS eq g) = getStrokes' eq <> getStrokesL g
+          getStrokes' (RHS eq g) = getStrokes' eq <> getStrokes' g
           getStrokes' (Bin l r) = getStrokes' l <> getStrokes' r
           getStrokes' ty@(PType e na eq b)
                = getStrokes' e <> getStrokes' na
@@ -109,7 +108,7 @@ getStr tk point begin _end t0 = getStrokes' t0
           getStrokes' (DC r) = getStrokes' r -- do not color operator dc
           getStrokes' (PGuard ls) = getStrokesL ls
           getStrokes' g@(PGuard' t e t')
-              = pKW g t <> getStrokesL e <> getStrokes' t'
+              = pKW g t <> getStrokes' e <> getStrokes' t'
           getStrokes' cl@(PClass e e' exp)
               = pKW cl e <> getStrokes' e'
              <> getStrokes' exp 

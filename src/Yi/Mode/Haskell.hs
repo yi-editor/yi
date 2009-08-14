@@ -236,7 +236,7 @@ cleverAutoIndentHaskellC' e behaviour = do
                                                                  -- offer to align against another guard
       stopsOf (d@(Hask.PData _ _ _ r):ts') = colOf' d + indentLevel
                                            : stopsOf ts' --FIXME!
-      stopsOf ((Hask.RHS (Hask.PAtom eq _) (exp:_)):ts')
+      stopsOf ((Hask.RHS (Hask.PAtom eq _) (exp)):ts')
           = [(case firstTokOnLine of
               Just (Operator op) -> opLength op (colOf' exp) -- Usually operators are aligned against the '=' sign
               -- case of an operator should check so that value always is at least 1 

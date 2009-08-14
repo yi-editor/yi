@@ -140,9 +140,9 @@ instance SubTree (Tree TT) where
     foldMapToks f = foldMap (foldMapToks f)
 
 
--- TODO: (optimization) make sure we take in account the begin, so we don't return useless strokes
 getStrokes :: Point -> Point -> Point -> Tree TT -> [Stroke]
-getStrokes point begin _end t0 = trace (show t0) result 
+getStrokes point _begin _end t0 = -- trace (show t0) 
+                                  result 
     where getStrokes' (Atom t) = one (ts t)
           getStrokes' (Error t) = one (modStroke errorStyle (ts t)) -- paint in red
           getStrokes' (Block s) = getStrokesL s
