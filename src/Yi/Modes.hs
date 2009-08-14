@@ -67,8 +67,7 @@ linearSyntaxMode :: forall lexerState t.
                                                 -> Mode (Tree (Tok t))
 linearSyntaxMode initSt scanToken tokenToStyle 
     = fundamentalMode { 
-                        -- FIXME: use Driver.mkHighlighter
-                        modeHL = ExtHL $ mkHighlighter (IncrParser.scanner OnlineTree.manyToks . lexer),
+                        modeHL = ExtHL $ Driver.mkHighlighter (IncrParser.scanner OnlineTree.manyToks . lexer),
                         modeGetStrokes = tokenBasedStrokes tokenToStroke
                       }
     where tokenToStroke = fmap tokenToStyle . tokToSpan

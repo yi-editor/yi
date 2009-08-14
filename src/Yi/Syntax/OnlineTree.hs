@@ -1,7 +1,6 @@
 {-# LANGUAGE ScopedTypeVariables, FlexibleInstances, TypeFamilies, CPP, NoMonomorphismRestriction #-}
 module Yi.Syntax.OnlineTree (Tree(..), manyToks, 
-                             tokAtOrBefore, 
-                             MaybeOneMore(..)) where
+                             tokAtOrBefore) where
 import Prelude ()
 
 import Control.Applicative
@@ -47,13 +46,6 @@ instance SubTree a => SubTree (Tree a) where
     foldMapToks f t = foldMap (foldMapToks f) t
     foldMapToksAfter begin f t = foldMap (foldMapToksAfter begin f) t
     
-instance Traversable f => Traversable (MaybeOneMore f) where
-    traverse _ None = pure None
-    traverse f (OneMore x xs) = OneMore <$> f x <*> traverse f xs
-
-instance Traversable f => Foldable (MaybeOneMore f) where foldMap = foldMapDefault
-instance Traversable f => Functor (MaybeOneMore f) where fmap = fmapDefault
-
 instance Traversable Tree where
     traverse f (Bin l r) = Bin <$> traverse f l <*> traverse f r
     traverse f (Leaf a) = Leaf <$> f a
