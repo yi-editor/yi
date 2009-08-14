@@ -402,7 +402,6 @@ switchToBufferE bk = do
     modA (PL.focusA . windowsA) (\w -> 
            w { bufkey = bk, 
                bufAccessList = forceFold1 $ ((bufkey w):) . filter (bk/=) $ bufAccessList w })
-    withBuffer0 (scrollB 0)
 
 -- | Attach the specified buffer to some other window than the current one
 switchToBufferOtherWindowE :: BufferRef -> EditorM ()
