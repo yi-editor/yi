@@ -26,7 +26,8 @@ import qualified Yi.UI.Common as Common
 import qualified Yi.UI.Vty as Vty
 import qualified Yi.UI.Pango as Pango
 import Yi.Event (Event(Event),Key(KASCII,KEnter))
-import Yi.Mode.Latex
+--import Yi.Mode.Latex
+import Yi.Mode.Haskell
 
 import Control.Concurrent (forkIO)
 import System.IO (readFile)
@@ -66,6 +67,7 @@ main = do
     { defaultKm = keymap
     , startActions = []
     , startFrontEnd = (if testing then timeStart idleDo evs else id) mystart
+    , configInputPreprocess = idAutomaton
     }
 
 timeStart :: IdleDo -> [Event] -> UIBoot -> UIBoot
@@ -74,7 +76,7 @@ timeStart idleDo evs start p1 ch actionCh p4 = do
   evaluate (L.length evs)
   return ui
     { Common.main = do
-        actionCh . (:[]) . makeAction . withBuffer0 $ setMode Yi.Mode.Latex.fastMode
+        actionCh . (:[]) . makeAction . withBuffer0 $ setMode Yi.Mode.Haskell.fastMode
         idleDo (fmap ch evs)
         Common.main ui
     }
@@ -83,7 +85,8 @@ timeStart idleDo evs start p1 ch actionCh p4 = do
 typingEvs, openingEvs :: IO [Event]
 
 typingEvs = do
-  text <- take 500 <$> readFile "doc/haskell08/haskell039-bernardy.tex"
+  --text <- take 500 <$> readFile "doc/haskell08/haskell039-bernardy.tex"
+  text <- readFile "src/Yi/Buffer.hs"
   return (fmap (\x -> Yi.Event.Event (keyFromFile x) []) text ++ quit)
 
 openingEvs = return (times 50 openAndKill ++ quit)
