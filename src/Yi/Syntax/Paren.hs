@@ -105,10 +105,7 @@ parse' toTok fromT = pExpr <* eof
       -- | parse a special symbol
       sym c = symbol (isSpecial [c] . toTok)
 
-      -- | Create a special character symbol
-      newT c = fromT (Special c)
-
-      pleaseSym c = (recoverWith (pure $ newT '!')) <|> sym c
+      pleaseSym c = (recoverWith errTok) <|> sym c
 
       pExpr :: P TT (Expr TT)
       pExpr = Yi.Prelude.many pTree
@@ -172,3 +169,11 @@ tokenToAnnot :: TT -> Maybe (Span String)
 tokenToAnnot = sequenceA . tokToSpan . fmap tokenToText
 
 
+-- | Create a special error token. (e.g. fill in where there is no correct token to parse)
+-- Note that the position of the token has to be correct for correct computation of 
+-- node spans.
+errTok = mkTok <$> curPos
+   where curPos = tB <$> lookNext
+         tB Nothing = maxBound
+         tB (Just x) = tokBegin x
+         mkTok p = Tok (Special '!') 0 (startPosn {posnOfs = p})
