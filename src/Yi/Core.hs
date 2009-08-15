@@ -47,7 +47,7 @@ where
 import Prelude (realToFrac)
 
 import Control.Concurrent
-import Control.Monad (unless, when, forever)
+import Control.Monad (when, forever)
 import Control.Monad.Error ()
 import Control.Monad.Reader (runReaderT, ask)
 import Control.Monad.Trans
@@ -241,26 +241,15 @@ refreshEditor = onYiVar $ \yi var -> do
             -- Hide selection, clear "syntax dirty" flag (as appropriate).
             e2 = buffersA ^: (fmap (clearSyntax . clearHighlight)) $ e1
 
-        --
         -- Adjust window sizes according to UI info
-        --
-
         let runOnWins a = runEditor (yiConfig yi)
                                     (do ws <- getA windowsA
                                         forM ws $ flip withWindowE a)
 
-        -- The screen should scroll if the cursor has moved past the bottom
-        -- of the screen. But the window region is not yet up to date. So at
-        -- EOF another layout is required.
-        -- TODO: Perhaps the BOS should be a Mark with Forward direction?
-
-        let (e2',eofs) = runOnWins (do eof <- atEof
-                                       unless eof snapScreenB
-                                       return eof) e2
-        e3 <- UI.layout (yiUi yi) e2'
-        e3' <- if or eofs then UI.layout (yiUi yi) (fst $ runOnWins snapScreenB e3)
-                          else return e3
-        let e4 = fst $ runOnWins (snapInsB >> focusSyntaxB) e3'
+        e3 <- UI.layout (yiUi yi) e2
+        let (e4, relayout) = runOnWins snapScreenB e3
+        e5 <- (if or relayout then UI.layout (yiUi yi) else return) e4
+        let e6 = fst $ runOnWins (snapInsB >> focusSyntaxB) e5
 
 
         -- Adjust point according to the current layout;
@@ -268,11 +257,11 @@ refreshEditor = onYiVar $ \yi var -> do
         -- FIXME: This optimisation won't do any good if a buffer is open in two windows,
         -- because both window will compete for the focus. There should be one focus per window.
         -- Display
-        UI.refresh (yiUi yi) e4
+        UI.refresh (yiUi yi) e6
         -- Clear "pending updates" from buffers.
-        let e5 = buffersA ^: (fmap (clearUpdates . clearFollow)) $ e4
+        let e7 = buffersA ^: (fmap (clearUpdates . clearFollow)) $ e6
         -- Terminate stale processes.
-        terminateSubprocesses (staleProcess $ buffers e5) yi var {yiEditor = e5}
+        terminateSubprocesses (staleProcess $ buffers e5) yi var {yiEditor = e7}
   where
     clearUpdates = pendingUpdatesA ^= []
     clearFollow = pointFollowsWindowA ^= const False

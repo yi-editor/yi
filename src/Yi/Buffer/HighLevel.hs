@@ -372,7 +372,7 @@ snapInsB = do
     when (movePoint w) $ do
         r <- winRegionB
         p <- pointB
-        moveTo $ max (regionStart r) $ min (regionEnd r - 1) $ p
+        moveTo $ max (regionStart r) $ min (regionEnd r) $ p
 
 
     
@@ -382,18 +382,19 @@ indexOfSolAbove :: Int -> BufferM Point
 indexOfSolAbove n = pointAt $ gotoLnFrom (negate n)
 
 -- | Move the visible region to include the point
-snapScreenB :: BufferM ()
+snapScreenB :: BufferM Bool
 snapScreenB = do
     movePoint <- getA pointFollowsWindowA
     w <- askWindow wkey
-    unless (movePoint w) $ do
+    if movePoint w then return False else do
         inWin <- pointInWindowB =<< pointB
-        unless inWin $ do
+        if inWin then return False else do
             h <- askWindow height
             let gap = h `div` 2
             i <- indexOfSolAbove gap
             f <- fromMark <$> askMarks
             setMarkPointB f i
+            return True
 
 
 -- | Move to @n@ lines down from top of screen

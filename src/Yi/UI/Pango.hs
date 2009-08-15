@@ -576,6 +576,7 @@ refresh ui e = do
     statusbarPop  (uiStatusbar ui) contextId
     statusbarPush (uiStatusbar ui) contextId $ intercalate "  " $ statusLine e
 
+    updateCache ui e -- The cursor may have changed since doLayout
     cache <- readRef $ tabCache ui
     forM_ cache $ \t -> do
         forM_ (windowCache t) $ \w -> do
@@ -640,7 +641,6 @@ doLayout ui e = do
         updateWin w = case find (\(ref,_,_) -> (wkey w == ref)) heights of
                           Nothing -> w
                           Just (_,h,rgn) -> w { height = h, winRegion = rgn }
-    updateCache ui e'
 
     -- Don't leak references to old Windows
     let forceWin x w = height w `seq` winRegion w `seq` x
@@ -676,14 +676,18 @@ updatePango ui font w b layout = do
       [width'', height''] = map fromIntegral [width', height']
       metrics             = winMetrics w
       lineHeight          = ascent metrics + descent metrics
-      winh                = floor (height'' / lineHeight)
+      winh                = max 1 $ floor (height'' / lineHeight)
 
       (tos, point, text)  = askBuffer win b $ do
                               from     <- getMarkPointB =<< fromMark <$> askMarks
                               rope     <- streamB Forward from
                               p        <- pointB
-                              let content = Rope.toString . fst $ Rope.splitAtLine winh rope
-                              return (from, p, content ++ "\n") -- the newline provides an index for layoutXYToIndex
+                              let content = fst $ Rope.splitAtLine winh rope
+                              -- allow BOS offset to be just after the last line
+                              let addNL = if Rope.countNewLines content == winh
+                                              then id
+                                              else (++"\n")
+                              return (from, p, addNL $ Rope.toString content)
 
   if configLineWrap $ uiConfig ui
     then do oldWidth <- layoutGetWidth layout
