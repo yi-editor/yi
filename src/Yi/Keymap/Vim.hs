@@ -441,6 +441,7 @@ defKeymap = Proto template
      -- the replace cmd, which consumes one char of input, and commands
      -- that switch modes.
      def_top_level = do write clrStatus
+                        write $ setInserting False
                         write $ setVisibleSelection False
                         -- if the keymap "crashed" we restart here
                         -- so we clear the status line to indicate whatever mode we were in

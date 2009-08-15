@@ -607,7 +607,7 @@ newB unique nm s =
             , lastActiveWindow = dummyWindow unique
             , lastSyncTime = epoch
             , readOnly = False
-            , inserting = False
+            , inserting = True
             , pointFollowsWindow = const False
             } }
 

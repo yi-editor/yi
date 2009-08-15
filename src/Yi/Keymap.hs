@@ -167,5 +167,5 @@ data KeymapSet = KeymapSet{ extractTopKeymap :: Keymap,
 modelessKeymapSet :: Keymap -> KeymapSet
 modelessKeymapSet k = KeymapSet
  { extractInsertKeymap = k
- , extractTopKeymap = write (setInserting True) >> forever k
+ , extractTopKeymap = k
  }
