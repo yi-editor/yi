@@ -60,7 +60,9 @@ keymap :: KeymapSet
 keymap = mkKeymap defKeymap
 
 mkKeymap :: Proto ModeMap -> KeymapSet
-mkKeymap = modelessKeymapSet . eKeymap . extractValue
+mkKeymap p = modelessKeymapSet km
+    where km = forever $ do write (setInserting True)
+                            eKeymap $ extractValue $ p
 
 defKeymap :: Proto ModeMap
 defKeymap = Proto template
@@ -69,7 +71,7 @@ defKeymap = Proto template
                             , completionCaseSensitive = False }
       where 
         emacsKeymap :: Keymap
-        emacsKeymap = write (setInserting True) >> selfInsertKeymap Nothing isDigit <|> completionKm (completionCaseSensitive self) <|>
+        emacsKeymap = selfInsertKeymap Nothing isDigit <|> completionKm (completionCaseSensitive self) <|>
              do univArg <- readUniversalArg
                 selfInsertKeymap univArg (not . isDigit) <|> emacsKeys univArg
 
