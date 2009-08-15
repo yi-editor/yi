@@ -158,7 +158,9 @@ dispatch ev =
          keymap <- gets (withMode0 modeKeymap)
          p0 <- getA keymapProcessA
          let defKm = configTopLevelKeymap $ yiConfig $ yi
-         let freshP = Chain (configInputPreprocess $ yiConfig $ yi) (mkAutomaton $ forever $ keymap $ defKm)
+         let freshP = Chain (configInputPreprocess $ yiConfig $ yi) $
+                      (mkAutomaton $ forever $ keymap defKm >> write done)
+             done = putA pendingEventsA [] :: EditorM ()
              -- Note the use of "forever": this has quite subtle implications, as it means that
              -- failures in one iteration can yield to jump to the next iteration seamlessly.
              -- eg. in emacs keybinding, failures in incremental search, like <left>, will "exit"
@@ -175,22 +177,26 @@ dispatch ev =
          let actions0 = case state of 
                           Dead -> [makeAction $ do
                                          evs <- getA pendingEventsA
-                                         printMsg ("Unrecognized input: " ++ showEvs (evs ++ [ev]))]
+                                         printMsg ("Unrecognized input: " ++ showEvs evs)
+                                         done]
                           _ -> actions
              actions1 = if ambiguous 
-                          then [makeAction $ printMsg "Keymap was in an ambiguous state! Resetting it."]
+                          then [makeAction $ do printMsg "Keymap was in an ambiguous state! Resetting it."
+                                                done]
                           else []
          return (actions0 ++ actions1,p')
        -- logPutStrLn $ "Processing: " ++ show ev
        -- logPutStrLn $ "Actions posted:" ++ show userActions
        -- logPutStrLn $ "New automation: " ++ show _p'
-       let decay, pendingFeedback :: EditorM ()
+       let decay, addPending :: EditorM ()
            decay = modA statusLinesA (DelayList.decrease 1)
-           pendingFeedback = do modA pendingEventsA (++ [ev])
-                                if null userActions
-                                    then printMsg . showEvs =<< getA pendingEventsA
-                                    else putA pendingEventsA []
-       postActions $ [makeAction decay] ++ userActions ++ [makeAction pendingFeedback]
+           addPending = modA pendingEventsA (++ [ev])
+           pendingFeedback = do evs <- getA pendingEventsA
+                                when (evs /= []) (printMsg (showEvs evs))
+
+       postActions $ [makeAction (decay >> addPending)]
+                     ++ userActions
+                     ++ [makeAction pendingFeedback]
 
 showEvs = intercalate " " . fmap prettyEvent
 showEvs :: [Event] -> String
