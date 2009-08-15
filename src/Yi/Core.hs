@@ -311,6 +311,7 @@ runAction (EditorA act) = do
 runAction (BufferA act) = do
   withBuffer act >>= msgEditor' . show
   return ()
+runAction (TaggedA _ act) = runAction act
 
 msgEditor :: String -> YiM ()
 msgEditor = withEditor . printMsg

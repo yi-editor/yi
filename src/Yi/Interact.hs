@@ -161,7 +161,7 @@ data P event w
     | Prior Int (P event w) -- low numbers indicate high priority
     | Best (P event w) (P event w)
     | End
-    | forall mid. PEq mid => Chain (P event mid) (P mid w)
+    | forall mid. (Show mid, PEq mid) => Chain (P event mid) (P mid w)
 
 accepted :: (Show ev) => Int -> P ev w -> [[String]]
 accepted 0 _ = [[]]
@@ -262,6 +262,7 @@ instance (Show w, Show ev) => Show (P ev w) where
     show (End) = "."
     show (Fail) = "*"
     show (Best p q) = "{" ++ show p ++ "|" ++ show q ++ "}"
+    show (Chain a b) = show a ++ ">>>" ++ show b
 
 -- ---------------------------------------------------------------------------
 -- Derived operations

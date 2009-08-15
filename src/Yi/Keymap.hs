@@ -27,6 +27,7 @@ import qualified Yi.UI.Common as UI
 data Action = forall a. Show a => YiA (YiM a)
             | forall a. Show a => EditorA (EditorM a)
             | forall a. Show a => BufferA (BufferM a)
+            | TaggedA String Action
 --            | InsertA String
 --             | TextA Direction Unit Operation
         deriving Typeable
@@ -41,6 +42,7 @@ instance Show Action where
     show (YiA _) = "@Y"
     show (EditorA _) = "@E"
     show (BufferA _) = "@B"
+    show (TaggedA s a) = s ++ show a
 
 type Interact ev a = I.I ev Action a
 
@@ -87,6 +89,8 @@ instance MonadEditor YiM where
 -- | @write a@ returns a keymap that just outputs the action @a@.
 write :: (I.MonadInteract m Action ev, YiAction a x, Show x) => a -> m ()
 write x = I.write (makeAction x)
+
+write' s x = I.write (TaggedA s (makeAction x))
 
 --------------------------------
 -- Uninteresting glue code
