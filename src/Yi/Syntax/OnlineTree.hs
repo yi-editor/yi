@@ -41,16 +41,10 @@ instance IsTree Tree where
     uniplate (Bin l r) = ([l,r],\[l,r] -> Bin l r)
     uniplate t = ([],\_->t)
 
-instance SubTree a => SubTree (Tree a) where
-    type Element (Tree a) = Element a
-    foldMapToks f t = foldMap (foldMapToks f) t
-    foldMapToksAfter begin f t = foldMap (foldMapToksAfter begin f) t
-    
 instance Traversable Tree where
     traverse f (Bin l r) = Bin <$> traverse f l <*> traverse f r
     traverse f (Leaf a) = Leaf <$> f a
     traverse _ Tip = pure Tip
-
 
 instance Foldable Tree where 
     foldMap _ Tip = mempty

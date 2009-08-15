@@ -126,17 +126,6 @@ parse' toTok fromT = pExpr <* eof
       -- note that, by construction, '<' and '>' will always be matched, so
       -- we don't try to recover errors with them.
 
-instance SubTree (Tree TT) where
-    type Element (Tree TT) = TT
-    foldMapToksAfter begin f t0 = work t0
-        where work (Atom t) = f t
-              work (Error t) = f t
-              work (Block s) = foldMap work s
-              work (Paren l g r) = f l <> foldMap work g <> f r
-              work (Expr g) = foldMap work g
-    foldMapToks f = foldMap (foldMapToks f)
-
-
 getStrokes :: Point -> Point -> Point -> Tree TT -> [Stroke]
 getStrokes point _begin _end t0 = -- trace (show t0) 
                                   result 

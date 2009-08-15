@@ -46,20 +46,6 @@ instance Foldable Tree where
     foldMap f (Paren l g r) = f l <> foldMap f g <> f r
     foldMap f (Expr g) = foldMap (foldMap f) g
 
---instance Traversable Tree where
---    traverse f (Atom t) = Atom <$> f t
---    traverse f (Error t) = Error <$> f t
---    traverse f (Paren l g r) = Paren <$> f l <*> traverse (traverse f) g <*> f r
-
-instance SubTree (Tree TT) where
-    type Element (Tree TT) = TT
-    foldMapToksAfter begin f t0 = work t0
-        where work (Atom t) = f t
-              work (Error t) = f t
-              work (Paren l g r) = f l <> foldMapToksAfter begin f g <> f r
-              work (Expr g) = foldMap (foldMapToksAfter begin f) g
-    foldMapToks f = foldMap (foldMapToks f)
-
 
 instance IsTree Tree where
     uniplate (Paren l g r) = ([g], \[g'] -> Paren l g' r)

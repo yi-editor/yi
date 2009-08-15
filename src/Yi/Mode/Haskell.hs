@@ -155,7 +155,7 @@ cleverAutoIndentHaskellB e behaviour = do
   let onThisLine ofs = ofs >= solPnt && ofs <= eolPnt
       firstTokNotOnLine = listToMaybe .
                               filter (not . onThisLine . posnOfs . tokPosn) .
-                              filter (not . isErrorTok . tokT) . allToks 
+                              filter (not . isErrorTok . tokT) . concatMap allToks 
   let stopsOf :: [Paren.Tree TT] -> [Int]
       stopsOf (g@(Paren.Paren open ctnt close):ts') 
           | isErrorTok (tokT close) || getLastOffset g >= solPnt
@@ -215,7 +215,7 @@ cleverAutoIndentHaskellC' e behaviour = do
   let onThisLine ofs = ofs >= solPnt && ofs <= eolPnt
       firstTokNotOnLine = listToMaybe .
                               filter (not . onThisLine . posnOfs . tokPosn) .
-                              filter (not . isErrorTok . tokT) . allToks
+                              filter (not . isErrorTok . tokT) . concatMap allToks
   let stopsOf :: [Hask.Exp TT] -> [Int]
       stopsOf (g@(Hask.Paren (Hask.PAtom open _) ctnt (Hask.PAtom close _)):ts)
           | isErrorTok (tokT close) || getLastOffset g >= solPnt
@@ -257,7 +257,7 @@ cleverAutoIndentHaskellC' e behaviour = do
       toksOnLine = fmap tokT $
           dropWhile ((solPnt >) . tokBegin) $
           takeWhile ((eolPnt >) . tokBegin) $ -- for laziness.
-          filter (not . isErrorTok . tokT) $ allToks e
+          filter (not . isErrorTok . tokT) $ concatMap allToks e
       shiftBlock = case firstTokOnLine of
         Just (Reserved t) | t `elem` [Where, Deriving] -> indentLevel
         Just (ReservedOp Haskell.Pipe) -> indentLevel

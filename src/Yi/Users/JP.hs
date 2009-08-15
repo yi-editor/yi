@@ -52,7 +52,7 @@ tokenToText (Hask.Operator "||") = Just "∨"
 tokenToText _ = Nothing
 
 
-haskellModeHooks :: (Tok Token ~ Element syntax, SubTree syntax) =>Mode syntax -> Mode syntax
+haskellModeHooks :: (Foldable tree) => Mode (tree (Tok Token)) -> Mode (tree (Tok Token))
 haskellModeHooks mode = 
                   -- uncomment for shim:
                   -- Shim.minorMode $ 
