@@ -60,9 +60,7 @@ keymap :: KeymapSet
 keymap = mkKeymap defKeymap
 
 mkKeymap :: Proto ModeMap -> KeymapSet
-mkKeymap p = modelessKeymapSet km
-    where km = forever $ do write (setInserting True)
-                            eKeymap $ extractValue $ p
+mkKeymap = modelessKeymapSet . eKeymap . extractValue
 
 defKeymap :: Proto ModeMap
 defKeymap = Proto template
