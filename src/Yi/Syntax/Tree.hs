@@ -138,7 +138,8 @@ fromLeafToLeafAfter p (xs,root) =
           (xsValid,leaf) = wkDown (xs,root)
           leafBeforeP = getFirstOffset' leaf <= p
           n = (xsValid,root)
-          result = (xs',root)
+          result = if nullSubtree root then (xs,root) else (xs',root)
+                   -- firstthat/lastthat do not handle properly empty lists, so special-case here.
 
 
 allLeavesRelative select 
