@@ -5,14 +5,10 @@
 -- NOTES:
 -- Note if the layout of the first line (not comments)
 -- is wrong the parser will only parse what is in the blocks given by Layout.hs
-module Yi.Syntax.Haskell ( PModule (..)
-                         , PModuleDecl (..)
-                         , PImport (..)
-                         , Exp (..)
+module Yi.Syntax.Haskell ( Exp (..)
                          , Tree
                          , parse
                          , indentScanner
-                         , getExprs
                          ) where
 
 import Prelude ()
@@ -61,10 +57,14 @@ type PAtom = Exp
 type Block = Exp
 type PGuard = Exp
 type BList  = Exp
+type PModule = Exp
+type PModuleDecl = Exp
+type PImport = Exp
 
--- | A program is some comments followed by a module and a body
-data PModule t
-    = PModule { comments :: [t]
+
+-- | Exp can be expression or declaration
+data Exp t
+     = PModule { comments :: [t]
               , progMod  :: (Maybe (PModule t))
               }
     | ProgMod { modDecl :: (PModuleDecl t)
@@ -74,29 +74,19 @@ data PModule t
            , content :: (Block t)
            , extraContent :: (Block t) -- ^ The body of the module
            }
-  deriving Show
-
--- | A module
-data PModuleDecl t = PModuleDecl { moduleKeyword :: (PAtom t)
+    | PModuleDecl { moduleKeyword :: (PAtom t)
                                  , name          :: (PAtom t)
                                  , exports       :: (Exp t)
                                  , whereKeyword  :: (Exp t)
-                                 }
-    deriving Show
-
--- | Imported things
-data PImport t = PImport { importKeyword :: (PAtom t)
+                                    }    
+    | PImport { importKeyword :: (PAtom t)
                          , qual          :: (Exp t)
                          , name'         :: (PAtom t)
                          , as            :: (Exp t)
                          , specification :: (Exp t)
                          }
-    deriving Show
 
--- | Exp can be expression or declaration
-data Exp t
-      -- Top declarations
-    = TS t [Exp t] -- ^ Type signature 
+    | TS t [Exp t] -- ^ Type signature 
     | PType { typeKeyword :: (PAtom t)
             , typeCons    :: (Exp t)
             , equal       :: (PAtom t)
@@ -146,14 +136,13 @@ data Exp t
     | PIn t [Exp t]
   deriving Show
 
-$(derive makeFoldable ''PImport)
-$(derive makeFoldable ''PModuleDecl)
-$(derive makeFoldable ''PModule)
-
 $(derive makeFoldable ''Exp)
 instance IsTree Exp where
    emptyNode = Expr []
    subtrees tree = case tree of
+       (PxorogMod _ b)     -> [b]
+       (Body _ exp exp') -> [exp, exp']
+       (PModule _ (Just e)) -> [e]
        (Paren l g r)  -> l:g ++ [r]
        (RHS l g)      -> [l,g]
        (Block s)      -> s
@@ -172,13 +161,9 @@ instance IsTree Exp where
        (PGuard' a b c) -> a:b:c:[]
        (TC e) -> [e]
        (DC e) -> [e]
+       PModuleDecl a b c d -> [a,b,c,d] 
+       PImport a b c d e -> [a,b,c,d,e]
        _              -> []
-
-getExprs :: PModule TT -> [Exp TT]
-getExprs (ProgMod _ b)     = getExprs b
-getExprs (Body _ exp exp') = [exp, exp']
-getExprs (PModule _ (Just e)) = getExprs e
-getExprs _                 = [] -- error "no match"
 
 -- | The parser
 parse :: P TT (Tree TT)
