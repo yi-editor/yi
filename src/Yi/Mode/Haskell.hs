@@ -168,7 +168,7 @@ cleverAutoIndentHaskellB e behaviour = do
       stopsOf ((Paren.Atom _):ts) = stopsOf ts
          -- any random part of expression, we ignore it.
       stopsOf (t@(Paren.Block _):ts) = shiftBlock + maybe 0 (posnCol . tokPosn) (getFirstElement t) : stopsOf ts
-      stopsOf (Paren.Error _:ts) = stopsOf ts
+      stopsOf (_:ts) = stopsOf ts
       stopsOf [] = []
       firstTokOnLine = fmap tokT $ listToMaybe $ 
           dropWhile ((solPnt >) . tokBegin) $ 
