@@ -61,7 +61,4 @@ configFundamentalMode = last . modeTable
 configTopLevelKeymap :: Config -> Keymap
 configTopLevelKeymap = extractTopKeymap . defaultKm
 
-configInsertKeymap :: Config -> Keymap
-configInsertKeymap = extractInsertKeymap . defaultKm
-
 type UIBoot = Config -> (Event -> IO ()) -> ([Action] -> IO ()) ->  Editor -> IO UI

@@ -170,7 +170,7 @@ data KeymapSet = KeymapSet
 
 $(nameDeriveAccessors ''KeymapSet $ Just.(++ "A"))
 
-extractTopKeymap, extractInsertKeymap :: KeymapSet -> Keymap
+extractTopKeymap :: KeymapSet -> Keymap
 
 extractTopKeymap kms = do
     startKeymap kms >> forever (topKeymap kms)
@@ -178,9 +178,6 @@ extractTopKeymap kms = do
              -- failures in one iteration can yield to jump to the next iteration seamlessly.
              -- eg. in emacs keybinding, failures in incremental search, like <left>, will "exit"
              -- incremental search and immediately move to the left.
-
-extractInsertKeymap kms = do
-    startKeymap kms >> forever (insertKeymap kms)
 
 
 modelessKeymapSet :: Keymap -> KeymapSet
