@@ -11,28 +11,12 @@ import Prelude ()
 import Data.Monoid
 import Data.Maybe
 import Yi.Syntax.Haskell
+import Yi.Syntax.Tree (subtrees)
 
 -- TODO: (optimization) make sure we take in account the begin, so we don't return useless strokes
 getStrokes :: Point -> Point -> Point -> Tree TT -> [Stroke]
 getStrokes point begin _end t0 = trace (show t0) result
-    where result = appEndo (getStrokeProg point begin _end t0) []
-
--- | getStroke Program
-getStrokeProg ::  Point -> Point -> Point -> Tree TT -> Endo [Stroke]
-getStrokeProg point begin _end prog
-    = case prog of
-        (PModule c m)
-            -> com c <> funPr m
-        (ProgMod m body)
-            -> getStrokeMod point begin _end m
-            <> getStrokeProg point begin _end body
-        (Body imps exps exps') 
-            -> funImp imps
-            <> getStr tkDConst point begin _end exps
-            <> getStr tkDConst point begin _end exps'
-  where funPr (Just pr)    = getStrokeProg point begin _end pr
-        funPr Nothing      = foldMap id []
-        funImp imps        = foldMap (getStrokeImp point begin _end) imps
+    where result = appEndo (getStr tkDConst point begin _end t0) []
 
 -- | Get strokes Module for module
 getStrokeMod :: Point -> Point -> Point -> PModuleDecl TT -> Endo [Stroke]
@@ -66,7 +50,10 @@ getStrokeImp point begin _end imp@(PImport m qu na t t')
 getStr :: (TT -> Endo [Stroke]) -> Point -> Point -> Point -> Exp TT 
           -> Endo [Stroke]
 getStr tk point begin _end t0 = getStrokes' t0
-    where getStrokes' ::Exp TT -> Endo [Stroke]
+    where getStrokes' :: Exp TT -> Endo [Stroke]
+          getStrokes' t@(PImport {}) = getStrokeImp point begin _end t
+          getStrokes' t@(PModuleDecl {}) = getStrokeMod point begin _end t
+          getStrokes' (PModule c m) = com c <> foldMap getStrokes' m
           getStrokes' (PAtom t c) = tk t <> com c
           getStrokes' (TS col ts') = tk col <> foldMap (getStr tkTConst point begin _end) ts'
           getStrokes' (Modid t c) = tkImport t <> com c
@@ -112,7 +99,7 @@ getStr tk point begin _end t0 = getStrokes' t0
           getStrokes' cl@(PClass e e' exp)
               = pKW cl e <> getStrokes' e'
              <> getStrokes' exp 
-          getStrokes' a = error (show a)
+          getStrokes' t = foldMap getStrokes' (subtrees t) -- by default deal with subtrees
           getStrokesL = foldMap getStrokes'
           pKW b word | isErrN b = paintAtom errorStyle word
                      | otherwise = getStrokes' word

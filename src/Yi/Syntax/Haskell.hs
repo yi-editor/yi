@@ -67,13 +67,13 @@ type PImport = Exp
 
 -- | Exp can be expression or declaration
 data Exp t
-     = PModule { comments :: [t]
+    = PModule { comments :: [t]
               , progMod  :: (Maybe (PModule t))
               }
     | ProgMod { modDecl :: (PModuleDecl t)
               , body    :: (PModule t)  -- ^ The module declaration part
               }
-    | Body { imports :: [PImport t]
+    | Body { imports :: Exp t -- [PImport t]
            , content :: (Block t)
            , extraContent :: (Block t) -- ^ The body of the module
            }
@@ -142,31 +142,31 @@ data Exp t
 $(derive makeFoldable ''Exp)
 instance IsTree Exp where
    emptyNode = Expr []
-   subtrees tree = case tree of
-       (ProgMod _ b)     -> [b]
-       (Body _ exp exp') -> [exp, exp']
-       (PModule _ (Just e)) -> [e]
-       (Paren l g r)  -> l:g ++ [r]
-       (RHS l g)      -> [l,g]
-       (Block s)      -> s
-       (PLet l s i)   -> l:s:[i]
-       (PIn _ ts)     -> ts
-       (Expr a)       -> a
-       (PClass a b c) -> [a,b,c]
-       (PWhere a b c) -> [a,b,c]
-       (Opt (Just x)) -> [x]
-       (Bin a b) -> [a,b]
-       (PType a b c d) -> [a,b,c,d]
-       (PData a b c d) -> [a,b,c,d]
-       (PData' a b) -> [a,b] 
-       (Context a b c) -> [a,b,c]
-       (PGuard xs) -> xs
-       (PGuard' a b c) -> a:b:c:[]
-       (TC e) -> [e]
-       (DC e) -> [e]
-       PModuleDecl a b c d -> [a,b,c,d] 
-       PImport a b c d e -> [a,b,c,d,e]
-       _              -> []
+   uniplate tree = case tree of
+       (ProgMod a b)     -> ([a,b], \[a,b] -> ProgMod a b)
+       (Body x exp exp') -> ([x, exp, exp'], \[x, exp, exp'] -> Body x exp exp')
+       (PModule x (Just e)) -> ([e],\[e] -> PModule x (Just e))
+       (Paren l g r)  -> (l:g ++ [r], \(l:gr) -> Paren l (init gr) (last gr)) -- TODO: improve
+       (RHS l g)      -> ([l,g],\[l,g] -> (RHS l g))
+       (Block s)      -> (s,Block)
+       (PLet l s i)   -> ([l,s,i],\[l,s,i] -> PLet l s i)
+       (PIn x ts)     -> (ts,PIn x)
+       (Expr a)       -> (a,Expr)
+       (PClass a b c) -> ([a,b,c],\[a,b,c] -> PClass a b c)
+       (PWhere a b c) -> ([a,b,c],\[a,b,c] -> PWhere a b c)
+       (Opt (Just x)) -> ([x],\[x] -> (Opt (Just x)))
+       (Bin a b) -> ([a,b],\[a,b] -> (Bin a b))
+       (PType a b c d) -> ([a,b,c,d],\[a,b,c,d] -> PType a b c d)
+       (PData a b c d) -> ([a,b,c,d],\[a,b,c,d] -> PData a b c d)
+       (PData' a b) -> ([a,b] ,\[a,b] -> PData' a b)
+       (Context a b c) -> ([a,b,c],\[a,b,c] -> Context a b c)
+       (PGuard xs) -> (xs,PGuard)
+       (PGuard' a b c) -> ([a,b,c],\[a,b,c] -> PGuard' a b c)
+       (TC e) -> ([e],\[e] -> TC e)
+       (DC e) -> ([e],\[e] -> DC e)
+       PModuleDecl a b c d -> ([a,b,c,d],\[a,b,c,d] -> PModuleDecl a b c d)
+       PImport a b c d e -> ([a,b,c,d,e],\[a,b,c,d,e] -> PImport a b c d e)
+       t              -> ([],\_->t)
 
 -- | The parser
 parse :: P TT (Tree TT)
@@ -189,7 +189,7 @@ pModBody = (exact [startBlock] *>
              <*> ((pBod <|> pEmptyBL) <* exact [endBlock])
              <*> pBod))
        <|> (exact [nextLine] *> pBody)
-       <|> Body <$> pEmpty <*> pEmptyBL <*> pEmptyBL
+       <|> Body <$> pure emptyNode <*> pEmptyBL <*> pEmptyBL
     where pBod  = Block <$> pBlocks pTopDecl
           elems = [(Special ';'), nextLine, startBlock]
 
@@ -204,8 +204,8 @@ pBody = Body <$> noImports <*> (Block <$> pBlocks pTopDecl) <*> pEmptyBL
                                <|> pEmptyBL) <*> pEmptyBL
     where elems = [nextLine, startBlock]
 
-noImports :: Parser TT [a]
-noImports = notNext [Reserved Import] *> pEmpty
+noImports :: Parser TT (Exp TT)
+noImports = notNext [Reserved Import] *> pure emptyNode
     where notNext f = testNext $ uncurry (||) . (&&&) isNothing
                       (flip notElem f . tokT . fromJust)
 
@@ -366,8 +366,8 @@ pTestTok f = testNext (uncurry (||) . (&&&) isNothing
                        (flip elem f . tokT . fromJust))
 
 -- | Parse several imports
-pImports :: Parser TT [PImport TT]
-pImports = many (pImport
+pImports :: Parser TT (Exp TT) -- [PImport TT]
+pImports = Expr <$> many (pImport
                  <* pTestTok pEol
                  <* optional (some $ exact [nextLine, Special ';']))
         where pEol = [(Special ';'), nextLine, endBlock]

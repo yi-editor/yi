@@ -194,18 +194,8 @@ cleverAutoIndentHaskellB e behaviour = do
                     trace ("firstTokOnLine = " ++ show firstTokOnLine) $
                     cycleIndentsB behaviour stops
 
-cleverAutoIndentHaskellC :: Hask.Tree TT -> IndentBehaviour -> BufferM ()
-cleverAutoIndentHaskellC (PModule _ (Just prog)) beh
-    = cleverAutoIndentHaskellC' (iMod prog) beh
-        where iMod (ProgMod (PModuleDecl _ _ expor _ ) r)
-                   = [expor] ++ iMod r
-              iMod (Body imps b b') = fmap iImp imps ++ [b, b']
-              iMod _ = []
-              iImp (PImport _ _ _ _ spec') = spec'
-cleverAutoIndentHaskellC _ _ = return ()
-
-cleverAutoIndentHaskellC' :: [Exp TT] -> IndentBehaviour -> BufferM ()
-cleverAutoIndentHaskellC' e behaviour = do
+cleverAutoIndentHaskellC :: Exp TT -> IndentBehaviour -> BufferM ()
+cleverAutoIndentHaskellC e behaviour = do
   indentSettings <- indentSettingsB
   let indentLevel = shiftWidth indentSettings
   previousIndent <- indentOfB =<< getNextNonBlankLineB Backward
@@ -257,7 +247,7 @@ cleverAutoIndentHaskellC' e behaviour = do
       toksOnLine = fmap tokT $
           dropWhile ((solPnt >) . tokBegin) $
           takeWhile ((eolPnt >) . tokBegin) $ -- for laziness.
-          filter (not . isErrorTok . tokT) $ concatMap allToks e
+          filter (not . isErrorTok . tokT) $ allToks e
       shiftBlock = case firstTokOnLine of
         Just (Reserved t) | t `elem` [Where, Deriving] -> indentLevel
         Just (ReservedOp Haskell.Pipe) -> indentLevel
@@ -273,7 +263,7 @@ cleverAutoIndentHaskellC' e behaviour = do
               Just t -> posnCol . tokPosn $ t -- indent along that other token
           | otherwise = openCol
       groupIndent (Tok _ _ _) _ = error "unable to indent code"
-  case getLastPath e solPnt of
+  case getLastPath [e] solPnt of
     Nothing -> return ()
     Just path ->let stops = stopsOf path
                 in trace ("Path = " ++ show path) $
