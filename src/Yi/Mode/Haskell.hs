@@ -104,7 +104,7 @@ preciseMode = haskellAbstract
   , modeIndent = cleverAutoIndentHaskellC
   , modeGetStrokes = \ast point begin end -> HS.getStrokes point begin end ast
   , modeHL = ExtHL $
-      mkHighlighter (IncrParser.scanner Hask.parse . Hask.indentScanner . haskellLexer)
+      Driver.mkHighlighter (IncrParser.scanner Hask.parse . Hask.indentScanner . haskellLexer)
 --   , modePrettify = cleverPrettify . allToks . getExprs
 --   , modeGetAnnotations = (tokenBasedAnnots Hask.tokenToAnnot) . getExprs
  }
