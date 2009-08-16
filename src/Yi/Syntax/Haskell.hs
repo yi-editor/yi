@@ -5,7 +5,10 @@
 -- NOTES:
 -- Note if the layout of the first line (not comments)
 -- is wrong the parser will only parse what is in the blocks given by Layout.hs
-module Yi.Syntax.Haskell ( Exp (..)
+module Yi.Syntax.Haskell ( PModule
+                         , PModuleDecl
+                         , PImport
+                         , Exp (..)
                          , Tree
                          , parse
                          , indentScanner
@@ -140,7 +143,7 @@ $(derive makeFoldable ''Exp)
 instance IsTree Exp where
    emptyNode = Expr []
    subtrees tree = case tree of
-       (PxorogMod _ b)     -> [b]
+       (ProgMod _ b)     -> [b]
        (Body _ exp exp') -> [exp, exp']
        (PModule _ (Just e)) -> [e]
        (Paren l g r)  -> l:g ++ [r]
