@@ -79,7 +79,7 @@ fastMode = haskellAbstract
   {
     modeName = "fast haskell",
     modeHL = ExtHL $
-    mkHighlighter (IncrParser.scanner OnlineTree.manyToks . haskellLexer),
+    Driver.mkHighlighter (IncrParser.scanner OnlineTree.manyToks . haskellLexer),
     modeGetStrokes = tokenBasedStrokes Paren.tokenToStroke,
     modeGetAnnotations = tokenBasedAnnots Paren.tokenToAnnot
  }
@@ -89,7 +89,7 @@ literateMode = haskellAbstract
   { modeName = "literate haskell"
   , modeApplies = anyExtension ["lhs"]
   , modeHL = ExtHL $
-    mkHighlighter (IncrParser.scanner Paren.parse . Paren.indentScanner . literateHaskellLexer)
+    Driver.mkHighlighter (IncrParser.scanner Paren.parse . Paren.indentScanner . literateHaskellLexer)
   , modeGetStrokes = \t point begin end -> Paren.getStrokes point begin end t
   , modeGetAnnotations = \t _begin -> catMaybes $ fmap Paren.tokenToAnnot $ allToks t -- FIXME I think that 'begin' should not be ignored
   , modeAdjustBlock = adjustBlock
