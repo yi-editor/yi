@@ -69,31 +69,13 @@ getStr tk point begin _end t0 = getStrokes' t0
               | otherwise  = tk l <> com c <> getStrokesL g
                                   <> tk r <> com c'
           getStrokes' (PError t _ c) = errStyle t <> com c
-          getStrokes' (Block s) = getStrokesL s
-          getStrokes' (Expr g) = getStrokesL g
-          getStrokes' (PWhere e exp c) = getStrokes' e <> getStrokes' exp <> getStrokes' c
-          getStrokes' (RHS eq g) = getStrokes' eq <> getStrokes' g
-          getStrokes' (Bin l r) = getStrokes' l <> getStrokes' r
-          getStrokes' ty@(PType e na eq b)
-               = getStrokes' e <> getStrokes' na
-              <> getStrokes' eq
-              <> getStrokes' b
           getStrokes' da@(PData kw na exp eq)
                = pKW da kw <> getStrokes' na
               <> getStrokes' exp <> getStrokes' eq
-          getStrokes' (PData' eq b) =
-                getStrokes' eq <> getStrokes' b
-          getStrokes' (PLet l expr i) =
-                getStrokes' l <> getStrokes' expr <> getStrokes' i
           getStrokes' (PIn t l) = tk t <> getStrokesL l
-          getStrokes' (Opt (Just l)) =  getStrokes' l
-          getStrokes' (Opt Nothing) = getStrokesL []
-          getStrokes' (Context fAll l arr) =
-                getStrokes' fAll <> getStrokes' l <> getStrokes' arr
           getStrokes' (TC l) = getStr tkTConst point begin _end l
           getStrokes' (DC (PAtom l c)) = tkDConst l <> com c
           getStrokes' (DC r) = getStrokes' r -- do not color operator dc
-          getStrokes' (PGuard ls) = getStrokesL ls
           getStrokes' g@(PGuard' t e t')
               = pKW g t <> getStrokes' e <> getStrokes' t'
           getStrokes' cl@(PClass e e' exp)
