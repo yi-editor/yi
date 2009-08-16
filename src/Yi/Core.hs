@@ -157,12 +157,8 @@ dispatch ev =
        (userActions,_p') <- withBuffer $ do
          keymap <- gets (withMode0 modeKeymap)
          p0 <- getA keymapProcessA
-         let defKm = configTopLevelKeymap $ yiConfig $ yi
-         let freshP = Chain (configInputPreprocess $ yiConfig $ yi) (mkAutomaton $ forever $ keymap $ defKm)
-             -- Note the use of "forever": this has quite subtle implications, as it means that
-             -- failures in one iteration can yield to jump to the next iteration seamlessly.
-             -- eg. in emacs keybinding, failures in incremental search, like <left>, will "exit"
-             -- incremental search and immediately move to the left.
+         let km = extractTopKeymap $ keymap $ defaultKm $ yiConfig $ yi
+         let freshP = Chain (configInputPreprocess $ yiConfig $ yi) (mkAutomaton km)
              p = case computeState p0 of
                    Dead  -> freshP
                    _     -> p0

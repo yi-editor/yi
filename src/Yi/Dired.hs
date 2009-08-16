@@ -230,7 +230,7 @@ diredRefresh = do
                     putA bufferDynamicValueA ds{diredFilePoints=ptsList,
                                                 diredNameCol   =namecol}
                     -- Colours for Dired come from overlays not syntax highlighting
-                    modifyMode $ \m -> m {modeKeymap = diredKeymap, modeName = "dired"}                    
+                    modifyMode $ \m -> m {modeKeymap = topKeymapA ^: diredKeymap, modeName = "dired"}                    
                     moveTo (p-2)
                     filenameColOf lineDown
 

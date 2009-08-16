@@ -23,5 +23,4 @@ type KeymapProcess = I.P Event Action
 
 data KeymapSet
 
-extractTopKeymap :: KeymapSet -> Keymap
-extractInsertKeymap :: KeymapSet -> Keymap
+extractTopKeymap, extractInsertKeymap :: KeymapSet -> Keymap

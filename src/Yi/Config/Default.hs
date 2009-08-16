@@ -218,9 +218,9 @@ openScratchBuffer = withEditor $ do
 
 nilKeymap :: Keymap
 nilKeymap = choice [
-             char 'c' ?>>  openCfg (extractTopKeymap Cua.keymap),
-             char 'e' ?>>  openCfg (extractTopKeymap Emacs.keymap),
-             char 'v' ?>>  openCfg (extractTopKeymap Vim.keymapSet),
+             char 'c' ?>>  openCfg (Cua.keymap),
+             char 'e' ?>>  openCfg (Emacs.keymap),
+             char 'v' ?>>  openCfg (Vim.keymapSet),
              char 'q' ?>>! quitEditor,
              char 'r' ?>>! reload,
              char 'h' ?>>! configHelp

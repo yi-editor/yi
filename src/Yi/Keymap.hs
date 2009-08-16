@@ -1,4 +1,4 @@
-{-# LANGUAGE FlexibleContexts, FlexibleInstances, TypeSynonymInstances, ExistentialQuantification, MultiParamTypeClasses, FunctionalDependencies, DeriveDataTypeable, StandaloneDeriving, GeneralizedNewtypeDeriving, Rank2Types #-}
+{-# LANGUAGE FlexibleContexts, FlexibleInstances, TypeSynonymInstances, ExistentialQuantification, MultiParamTypeClasses, FunctionalDependencies, DeriveDataTypeable, StandaloneDeriving, GeneralizedNewtypeDeriving, Rank2Types, TemplateHaskell #-}
 
 -- Copyright (c) Jean-Philippe Bernardy 2007,8.
 
@@ -23,6 +23,7 @@ import qualified Data.Map as M
 import qualified Yi.Editor as Editor
 import qualified Yi.Interact as I
 import qualified Yi.UI.Common as UI
+import Data.Accessor.Template
 
 data Action = forall a. Show a => YiA (YiM a)
             | forall a. Show a => EditorA (EditorM a)
@@ -161,11 +162,30 @@ instance YiAction Action () where
 instance I.PEq Event where
     equiv = (==)
 
-data KeymapSet = KeymapSet{ extractTopKeymap :: Keymap,
-                            extractInsertKeymap :: Keymap }
+data KeymapSet = KeymapSet
+    { topKeymap :: Keymap, -- ^ Content of the top-level loop.
+      insertKeymap :: Keymap, -- ^ For insertion-only modes 
+      startKeymap :: Keymap -- ^ Startup bit, to execute only once at the beginning.
+    }
+
+$(nameDeriveAccessors ''KeymapSet $ Just.(++ "A"))
+
+extractTopKeymap, extractInsertKeymap :: KeymapSet -> Keymap
+
+extractTopKeymap kms = do
+    startKeymap kms >> forever (topKeymap kms)
+             -- Note the use of "forever": this has quite subtle implications, as it means that
+             -- failures in one iteration can yield to jump to the next iteration seamlessly.
+             -- eg. in emacs keybinding, failures in incremental search, like <left>, will "exit"
+             -- incremental search and immediately move to the left.
+
+extractInsertKeymap kms = do
+    startKeymap kms >> forever (insertKeymap kms)
+
 
 modelessKeymapSet :: Keymap -> KeymapSet
 modelessKeymapSet k = KeymapSet
- { extractInsertKeymap = k
- , extractTopKeymap = k
+ { insertKeymap = k
+ , topKeymap = k
+ , startKeymap = return ()
  }

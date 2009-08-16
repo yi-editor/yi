@@ -25,7 +25,7 @@ import Yi.Event (Key(..), Event(..))
 import Yi.File (fwriteE)
 import Yi.IncrementalParse (scanner)
 import Yi.Interact (choice)
-import Yi.Keymap (YiM, Action(..), withBuffer, withGivenBuffer)
+import Yi.Keymap (YiM, Action(..), withBuffer, withGivenBuffer, topKeymapA)
 import Yi.Keymap.Keys (ctrlCh, (?>>), (?>>!), (<||))
 import Yi.Lexer.Alex (AlexState, Tok, lexScanner)
 import Yi.Lexer.JavaScript (alexScanToken, TT, initState, HlState, Token)
@@ -83,9 +83,9 @@ hooks :: Mode (Tree TT) -> Mode (Tree TT)
 hooks mode = mode
   {
     -- modeGetAnnotations = tokenBasedAnnots tta
-    modeKeymap = (choice [ctrlCh 'c' ?>> ctrlCh 'l' ?>>! withSyntax modeFollow,
-                          Event KEnter []           ?>>! newlineAndIndentB]
-                  <||)
+    modeKeymap = topKeymapA ^: (choice [ctrlCh 'c' ?>> ctrlCh 'l' ?>>! withSyntax modeFollow,
+                                        Event KEnter []           ?>>! newlineAndIndentB]
+                                <||)
   , modeFollow = YiA . jsCompile
   }
 

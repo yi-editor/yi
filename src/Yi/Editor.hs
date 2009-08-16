@@ -31,6 +31,7 @@ import qualified Data.DelayList as DelayList
 import qualified Data.List.PointedList as PL (atEnd)
 import qualified Data.List.PointedList.Circular as PL
 import qualified Data.Map as M
+import {-# source #-} Yi.Keymap (extractTopKeymap)
 
 type Status = ([String],StyleName)
 type Statuses = DelayList.DelayList Status
@@ -556,6 +557,6 @@ acceptedInputs :: EditorM [String]
 acceptedInputs = do
     cfg <- askCfg
     keymap <- withBuffer0 $ gets (withMode0 modeKeymap)
-    let l = I.accepted 3 $ I.mkAutomaton $ keymap $ configTopLevelKeymap cfg
+    let l = I.accepted 3 $ I.mkAutomaton $ extractTopKeymap $ keymap $ defaultKm cfg
     return $ fmap (intercalate " ") l
 

@@ -21,7 +21,7 @@ mode :: Mode (OnlineTree.Tree (Tok Token))
 mode = Compilation.mode
   { modeApplies = modeNeverApplies,
     modeName = "interactive",
-    modeKeymap = (<||)
+    modeKeymap = topKeymapA ^: ((<||)
      (choice
       [spec KHome ?>>! ghciHome,
        spec KEnter ?>>! do
@@ -31,7 +31,7 @@ mode = Compilation.mode
             else withSyntax modeFollow,
        meta (char 'p') ?>>! interactHistoryMove 1,
        meta (char 'n') ?>>! interactHistoryMove (-1)
-      ]) }
+      ])) }
 
 -- | The GHCi prompt always begins with ">"; this goes to just before it, or if one is already at the start
 -- of the prompt, goes to the beginning of the line. (If at the beginning of the line, this pushes you forward to it.)

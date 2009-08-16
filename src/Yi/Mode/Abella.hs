@@ -26,13 +26,13 @@ abellaModeGen abellaBinding =
   , modeApplies = anyExtension ["thm"]
   , modeGetAnnotations = tokenBasedAnnots (sequenceA . tokToSpan . fmap Abella.tokenToText)
   , modeToggleCommentSelection = toggleCommentSelectionB "% " "%"
-  , modeKeymap = (<||)
+  , modeKeymap = topKeymapA ^: ((<||)
      (choice
       [ abellaBinding 'p' ?*>>! sav abellaUndo
       , abellaBinding 'e' ?*>>! sav abellaEval
       , abellaBinding 'n' ?*>>! sav abellaNext
       , abellaBinding 'a' ?*>>! sav abellaAbort
-      ])
+      ]))
   }
   where sav f = savingCommandY (flip replicateM_ f) 1
 

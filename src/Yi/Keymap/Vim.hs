@@ -362,7 +362,16 @@ movePercentageFile i = do let f :: Double
                           firstNonSpaceB
 
 mkKeymap :: Proto ModeMap -> KeymapSet
-mkKeymap p = KeymapSet {extractTopKeymap = v_top_level v, extractInsertKeymap = v_ins_char v} 
+mkKeymap p = KeymapSet {
+                        -- if the keymap "crashed" we restart here
+                        -- so we clear the status line to indicate whatever mode we were in
+                        -- has been left
+                         startKeymap = do write clrStatus
+                                          write $ setInserting False
+                                          write $ setVisibleSelection False
+                         , topKeymap = v_top_level v
+                         , insertKeymap = v_ins_char v
+                       } 
     where v = extractValue p
 
 keymapSet :: KeymapSet
@@ -440,13 +449,7 @@ defKeymap = Proto template
      -- | Top level consists of simple commands that take a count arg,
      -- the replace cmd, which consumes one char of input, and commands
      -- that switch modes.
-     def_top_level = do write clrStatus
-                        write $ setInserting False
-                        write $ setVisibleSelection False
-                        -- if the keymap "crashed" we restart here
-                        -- so we clear the status line to indicate whatever mode we were in
-                        -- has been left
-                        choice [cmd_eval,cmd_move,cmd2other,cmd_op]
+     def_top_level = choice [cmd_eval,cmd_move,cmd2other,cmd_op]
 
      -- | Replace mode is like insert, except it performs writes, not inserts
      -- TODO repeat

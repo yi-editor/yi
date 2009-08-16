@@ -370,7 +370,7 @@ data Mode syntax = Mode
      modeApplies :: FilePath -> String -> Bool, -- ^ What type of files does this mode apply to?
      modeHL :: ExtHL syntax,          -- ^ Syntax highlighter
      modePrettify :: syntax -> BufferM (), -- ^ Prettify current "paragraph"
-     modeKeymap :: KeymapEndo, -- ^ Buffer-local keymap modification
+     modeKeymap :: KeymapSet -> KeymapSet, -- ^ Buffer-local keymap modification
      modeIndent :: syntax -> IndentBehaviour -> BufferM (), -- ^ emacs-style auto-indent line
      modeAdjustBlock :: syntax -> Int -> BufferM (), -- ^ adjust the indentation after modification
      modeFollow :: syntax -> Action, -- ^ Follow a "link" in the file. (eg. go to location of error message)

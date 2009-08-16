@@ -20,7 +20,7 @@ listBuffers = do
        bufRef <- stringToNewBuffer (Left "Buffer List")  $ fromString $ intercalate "\n" $ map identString bs
        switchToBufferE bufRef
      withBuffer $ do
-       modifyMode $ \m -> m {modeKeymap = bufferKeymap, modeName = "buffers"}
+       modifyMode $ \m -> m {modeKeymap = topKeymapA ^: bufferKeymap, modeName = "buffers"}
        putA readOnlyA True
 switch :: YiM ()
 switch =    do
