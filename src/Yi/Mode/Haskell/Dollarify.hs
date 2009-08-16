@@ -6,7 +6,7 @@ import Data.Maybe (fromMaybe)
 import Data.List (sortBy)
 import Yi.Prelude 
 import Yi.Syntax.Paren (Expr, Tree(..))
-import qualified Yi.Syntax.Haskell as H (Tree(..), Exp(..), getExprs)
+import qualified Yi.Syntax.Haskell as H (Tree(..), Exp(..))
 import Yi.Syntax.Tree (getAllSubTrees, getFirstOffset, getLastOffset,getLastPath)
 import Yi.Lexer.Alex (posnOfs, Tok(..))
 import Yi.Lexer.Haskell (isComment, TT, Token(..))
@@ -106,7 +106,7 @@ safeLast s  = return $ last s
 -- Here follows code for the precise haskell mode
 
 dollarifyP :: H.Tree TT -> BufferM ()
-dollarifyP e = maybe (return ()) dollarifyWithinP . selectedTreeP (H.getExprs e) =<< getSelectRegionB
+dollarifyP e = maybe (return ()) dollarifyWithinP . selectedTreeP [e] =<< getSelectRegionB
 
 dollarifyWithinP :: H.Exp TT -> BufferM ()
 dollarifyWithinP = trace . ("dollarifyWithin: " ++) . show <*> runQ . (dollarifyTopP =<<) . getAllSubTrees
