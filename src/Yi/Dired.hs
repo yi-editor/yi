@@ -163,6 +163,13 @@ instance Initializable DiredState where
                          , diredNameCol    = 0
                          }
 
+bypassReadOnly :: BufferM a -> BufferM a
+bypassReadOnly f = do ro <- getA readOnlyA
+                      putA readOnlyA False
+                      res <- f
+                      putA readOnlyA ro
+                      return res
+
 filenameColOf :: BufferM () -> BufferM ()
 filenameColOf f = getA bufferDynamicValueA >>= setPrefCol . Just . diredNameCol >> f
 
@@ -178,8 +185,8 @@ diredKeymap = do
              char '+'                   ?>>! diredCreateDir,     
              char 'q'                   ?>>! (deleteBuffer =<< gets currentBuffer),
              oneOf [ctrl $ char 'm', spec KEnter, char 'f'] >>! diredLoad,
-             spec KBS                   ?>>! diredUnmark]
-     <||)
+             oneOf [char 'u', spec KBS]  >>! diredUnmark]
+      <||)
 
 dired :: YiM ()
 dired = do
@@ -230,7 +237,8 @@ diredRefresh = do
                     putA bufferDynamicValueA ds{diredFilePoints=ptsList,
                                                 diredNameCol   =namecol}
                     -- Colours for Dired come from overlays not syntax highlighting
-                    modifyMode $ \m -> m {modeKeymap = topKeymapA ^: diredKeymap, modeName = "dired"}                    
+                    modifyMode $ \m -> m {modeKeymap = topKeymapA ^: diredKeymap, modeName = "dired"}
+                    putA readOnlyA True
                     moveTo (p-2)
                     filenameColOf lineDown
 
@@ -252,7 +260,7 @@ diredRefresh = do
 -- | Returns a tuple containing the textual region (the end of) which is used for 'click' detection
 --   and the FilePath of the file represented by that textual region
 insertDiredLine :: ([String], StyleName, String) -> BufferM (Point, Point, FilePath)
-insertDiredLine (fields, sty, filenm) = do
+insertDiredLine (fields, sty, filenm) = bypassReadOnly $ do
     insertN $ (concat $ intersperse " " (init fields))
     p1 <- pointB
     insertN (" " ++ last fields)
@@ -371,9 +379,9 @@ diredMarkDel :: BufferM ()
 diredMarkDel = diredMarkWithChar 'D' lineDown
 
 diredMarkWithChar :: Char -> BufferM () -> BufferM ()
-diredMarkWithChar c mv = do
-    moveToSol >> insertN [c] >> deleteN 1
-    filenameColOf mv
+diredMarkWithChar c mv = bypassReadOnly $ do
+                           moveToSol >> insertN [c] >> deleteN 1
+                           filenameColOf mv
 
 diredUnmark :: BufferM ()
 diredUnmark = diredMarkWithChar ' ' lineUp
