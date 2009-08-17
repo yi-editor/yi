@@ -399,10 +399,9 @@ pType = PType <$> (Bin <$> pAtom [Reserved Type] <*> pOpt (pAtom [Reserved Insta
      <*> ppAtom [ReservedOp Equal]
      <*> (TC . Expr <$> pTypeExpr')
 
-
 -- | Parse data declarations
 pData :: Parser TT (Exp TT)
-pData = PData <$> pAtom [Reserved Data]
+pData = PData <$> pAtom [Reserved Data, Reserved NewType]
      <*> (TC . Expr <$> pTypeExpr')
      <*> pOpt (pDataRHS <|> pGadt)
      <*> pOpt pDeriving
@@ -664,6 +663,7 @@ recognizedSymbols =
     , (Reserved Import)
     , (Reserved Type)
     , (Reserved Data)
+    , (Reserved NewType)
     , (Reserved Where)] ++ fmap Special "()[]{}<>."
 
 -- | Parse parenthesis, brackets and braces containing
