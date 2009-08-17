@@ -112,15 +112,16 @@ fromLeafToLeafAfter p (xs,root) =
     trace ("leaf ~ " ++ show (subtreeRegion leaf)) $
     trace ("xs' = " ++ show xs') $
     result
-    where xs' = fst $ if leafBeforeP
-                      then firstThat (\(_,s) -> getFirstOffset s >= p) $ allLeavesRelative afterChild n
-                      else lastThat (\(_,s) -> getFirstOffset s >= p) $ allLeavesRelative beforeChild n
+    where xs' = if null candidateLeaves 
+                      then []
+                      else fst $ firstOrLastThat (\(_,s) -> getFirstOffset s >= p) candidateLeaves
+          candidateLeaves = allLeavesRelative relChild n
+          (firstOrLastThat,relChild) = if leafBeforeP then (firstThat,afterChild)
+                                                      else (lastThat,beforeChild)
           (xsValid,leaf) = wkDown (xs,root)
           leafBeforeP = getFirstOffset leaf <= p
           n = (xsValid,root)
-          result = if nullSubtree root then (xs,root) else (xs',root)
-                   -- firstthat/lastthat do not handle properly empty lists, so special-case here.
-
+          result = (xs',root)
 
 allLeavesRelative select 
    = filter (not . nullSubtree . snd) . allLeavesRelative' select . reverse . nodesAndChildIndex
