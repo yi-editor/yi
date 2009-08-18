@@ -32,6 +32,7 @@ import Prelude (uncurry, catch, realToFrac)
 
 import Data.List hiding (find, maximum, concat)
 import Data.Maybe
+import Data.Char (toLower)
 import qualified Data.Map as M
 import System.Directory
 import System.FilePath
@@ -46,7 +47,7 @@ import Data.Time.Clock.POSIX
 import Text.Printf
 import Yi.Regex
 
-import Yi.MiniBuffer (withMinibufferGen, noHint)
+import Yi.MiniBuffer (withMinibufferGen, noHint, withMinibuffer)
 import Yi.Config
 import Yi.Core
 import Yi.Misc (getFolder)
@@ -148,7 +149,7 @@ data DiredEntry = DiredFile DiredFileInfo
 data DiredState = DiredState
   { diredPath :: FilePath -- ^ The full path to the directory being viewed
     -- FIXME Choose better data structure for Marks...
-   , diredMarks :: M.Map Char [FilePath] -- ^ Map values are just leafnames, not full paths
+   , diredMarks :: M.Map FilePath Char -- ^ Map values are just leafnames, not full paths
    , diredEntries :: M.Map FilePath DiredEntry -- ^ keys are just leafnames, not full paths
    , diredFilePoints :: [(Point,Point,FilePath)] -- ^ position in the buffer where filename is
    , diredNameCol :: Int -- ^ position on line where filename is (all pointA are this col)
@@ -184,8 +185,11 @@ diredKeymap = do
              char '^'                   ?>>! diredUpDir,
              char '+'                   ?>>! diredCreateDir,     
              char 'q'                   ?>>! (deleteBuffer =<< gets currentBuffer),
+             char 'x'                   ?>>! diredDoMarkedDel,
              oneOf [ctrl $ char 'm', spec KEnter, char 'f'] >>! diredLoad,
-             oneOf [char 'u', spec KBS]  >>! diredUnmark]
+             oneOf [char 'u', spec KBS]  >>! diredUnmark,
+             char 'D'                   ?>>! diredDoDel,
+             char 'U'                   ?>>! diredUnmarkAll]
       <||)
 
 dired :: YiM ()
@@ -212,12 +216,8 @@ diredRefresh = do
     Just dir <- withBuffer $ gets file
     -- Scan directory
     di <- io $ diredScanDir dir
-    let ds = DiredState { diredPath        = dir
-                        , diredMarks      = M.empty
-                        , diredEntries    = di
-                        , diredFilePoints = []
-                        , diredNameCol    = 0
-                        }
+    dState <- withBuffer $ getA bufferDynamicValueA
+    let ds = dState {diredPath = dir, diredEntries = di}
     -- Compute results
     let dlines = linesToDisplay ds
         (strss, stys, strs) = unzip3 dlines
@@ -227,6 +227,8 @@ diredRefresh = do
 
     -- Set buffer contents
     withBuffer $ do -- Clear buffer
+                    putA readOnlyA False
+                    ---- modifications begin here
                     deleteRegionB =<< regionOfB Document
                     -- Write Header
                     insertN $ dir ++ ":\n"
@@ -238,10 +240,11 @@ diredRefresh = do
                                                 diredNameCol   =namecol}
                     -- Colours for Dired come from overlays not syntax highlighting
                     modifyMode $ \m -> m {modeKeymap = topKeymapA ^: diredKeymap, modeName = "dired"}
+                    diredRefreshMark
+                    ---- no modifications after this line
                     putA readOnlyA True
                     moveTo (p-2)
                     filenameColOf lineDown
-
     where
     headStyle = const (withFg grey)
     doPadding :: [DRStrings] -> [String]
@@ -380,16 +383,92 @@ diredMarkDel = diredMarkWithChar 'D' lineDown
 
 diredMarkWithChar :: Char -> BufferM () -> BufferM ()
 diredMarkWithChar c mv = bypassReadOnly $ do
-                           moveToSol >> insertN [c] >> deleteN 1
+                           (fn, _de) <- fileFromPoint
+                           -- moveToSol >> insertN [c] >> deleteN 1
+                           modA bufferDynamicValueA (\ds -> ds {diredMarks = M.insert fn c $ diredMarks ds})
                            filenameColOf mv
+                           diredRefreshMark
+
+diredRefreshMark :: BufferM ()
+diredRefreshMark = do b <- pointB
+                      dState <- getA bufferDynamicValueA
+                      let posDict = diredFilePoints dState 
+                          markMap = diredMarks dState
+                          draw (pos, _, fn) = case M.lookup fn markMap of
+                                                Just mark -> do 
+                                                  moveTo pos >> moveToSol >> insertN [mark] >> deleteN 1
+                                                  e <- pointB
+                                                  addOverlayB $ mkOverlay UserLayer (mkRegion (e - 1) e) (styleOfMark mark)
+                                                Nothing -> do 
+                                                  -- for deleted marks
+                                                  moveTo pos >> moveToSol >> insertN [' '] >> deleteN 1
+                      Yi.Core.mapM_ draw posDict
+                      moveTo b
+    where
+      styleOfMark '*' = const (withFg green)
+      styleOfMark 'D' = const (withFg red)
+      styleOfMark  _  = defaultStyle
+      
 
 diredUnmark :: BufferM ()
-diredUnmark = diredMarkWithChar ' ' lineUp
+diredUnmark = bypassReadOnly $ do 
+                (fn, _de) <- fileFromPoint 
+                modA bufferDynamicValueA (\ds -> ds {diredMarks = M.delete fn $ diredMarks ds})
+                filenameColOf lineUp
+                diredRefreshMark
+
+diredUnmarkAll :: BufferM ()
+diredUnmarkAll = bypassReadOnly $ do
+                   modA bufferDynamicValueA (\ds -> ds {diredMarks = const M.empty $ diredMarks ds})
+                   filenameColOf $ return ()
+                   diredRefreshMark
+
+diredDoDel :: YiM ()
+diredDoDel = do
+  (Just dir) <- withBuffer $ gets file
+  (fn, de) <- withBuffer fileFromPoint
+  askDelFiles dir [(fn, de)]
+
+
+diredDoMarkedDel :: YiM ()
+diredDoMarkedDel = do
+  (Just dir) <- withBuffer $ gets file
+  fs <- markedFiles (flip Data.List.elem ['D'])
+  askDelFiles dir fs
+
+
+askDelFiles :: FilePath -> [(FilePath, DiredEntry)] -> YiM ()
+askDelFiles dir fs = withMinibuffer prompt noHint act
+    where
+      prompt = "Delete " ++ (show $ length fs) ++ " file(s)? (yes or no)"
+      act s = case map toLower s of
+                "yes" -> do cautiousDel fs
+                            diredRefresh
+                            msgEditor "Deletions done"
+                "no"  -> msgEditor "(No deletions performed)"
+                _     -> errorEditor "Please answer yes or no"
+      cautiousDel :: [(FilePath, DiredEntry)] -> YiM ()
+      cautiousDel r@(x:xs) = case snd x of
+                                   (DiredDir _dfi) -> do askDelRec r
+                                   _               -> do io $ removeFile (dir </> (fst x))
+                                                         cautiousDel xs
+                             -- TODO: consider other situations
+      cautiousDel [] = return ()
+      askDelRec r@(x:_) = withMinibuffer (delRecPrompt (fst x)) noHint (actRec r)
+      askDelRec [] = fail "Error: askDelFiles askDelRec"
+      delRecPrompt fn = "Delete directory " ++ fn ++ " recursively? (yes or no)"
+      actRec r@(x:xs) s = case map toLower s of
+                            "yes" -> do io $ removeDirectoryRecursive (dir </> (fst x))
+                                        cautiousDel xs
+                            "no"  -> do cautiousDel xs
+                            _     -> askDelRec r
+      actRec [] _s = fail "Error: askDelFiles actRec"
+
 
 diredLoad :: YiM ()
 diredLoad = do
     (Just dir) <- withBuffer $ gets file
-    (fn, de) <- fileFromPoint
+    (fn, de) <- withBuffer fileFromPoint
     let sel = dir </> fn
     case de of
             (DiredFile _dfi) -> do
@@ -421,12 +500,18 @@ diredLoad = do
             DiredNoInfo -> msgEditor $ "No File Info for:"++sel
 
 -- | Extract the filename at point. NB this may fail if the buffer has been edited. Maybe use Markers instead.
-fileFromPoint :: YiM (FilePath, DiredEntry)
+fileFromPoint :: BufferM (FilePath, DiredEntry)
 fileFromPoint = do
-    p <- withBuffer pointB
-    dState <- withBuffer $ getA bufferDynamicValueA
+    p <- pointB
+    dState <- getA bufferDynamicValueA
     let (_,_,f) = head $ filter (\(_,p2,_)->p<=p2) (diredFilePoints dState)
     return (f, M.findWithDefault DiredNoInfo f $ diredEntries dState)
+
+markedFiles :: (Char -> Bool) -> YiM [(FilePath, DiredEntry)]
+markedFiles cond = do
+  dState <- withBuffer $ getA bufferDynamicValueA
+  let fs = fst . unzip $ filter (cond . snd) (M.assocs $ diredMarks dState)
+  return $ map (\f -> (f, (diredEntries dState) M.! f)) fs
 
 diredUpDir :: YiM ()
 diredUpDir = do
