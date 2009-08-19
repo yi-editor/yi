@@ -1,4 +1,4 @@
-{-# LANGUAGE FlexibleContexts, DeriveDataTypeable, TemplateHaskell, CPP, PatternGuards #-}
+{-# LANGUAGE RelaxedPolyRec, FlexibleContexts, DeriveDataTypeable, TemplateHaskell, CPP, PatternGuards #-}
 
 -- Copyright (c) 2004-5 Don Stewart - http://www.cse.unsw.edu.au/~dons
 -- Copyright (c) 2008 Nicolas Pouillard
@@ -362,17 +362,22 @@ movePercentageFile i = do let f :: Double
                           firstNonSpaceB
 
 mkKeymap :: Proto ModeMap -> KeymapSet
-mkKeymap p = KeymapSet {
-                        -- if the keymap "crashed" we restart here
-                        -- so we clear the status line to indicate whatever mode we were in
-                        -- has been left
-                         startKeymap = do write clrStatus
-                                          write $ setInserting False
-                                          write $ setVisibleSelection False
-                         , topKeymap = v_top_level v
-                         , insertKeymap = v_ins_char v
-                       } 
-    where v = extractValue p
+mkKeymap p = KeymapSet
+  { -- if the keymap "crashed" we restart here
+    -- so we clear the status line to indicate whatever mode we were in
+    -- has been left
+    startTopKeymap = do
+      write clrStatus
+      write $ setInserting False
+      write $ setVisibleSelection False
+  , startInsertKeymap = do
+      write clrStatus
+      write $ setInserting True
+      write $ setVisibleSelection False
+      write $ setStatus (["-- INSERT --"], defaultStyle)
+  , topKeymap = v_top_level v
+  , insertKeymap = v_ins_char v
+  } where v = extractValue p
 
 keymapSet :: KeymapSet
 keymapSet = mkKeymap defKeymap
@@ -1627,16 +1632,20 @@ leave :: VimMode
 leave = oneOf [spec KEsc, ctrlCh 'c'] >> adjustPriority (-1) >> write clrStatus
 
 leaveInsRep :: VimMode
-leaveInsRep = do oneOf [spec KEsc, ctrlCh '[', ctrlCh 'c']
-                 adjustPriority (-1)
-                 write $ commitLastInsertionE >> withBuffer0 (setMarkHere '^') >> clrStatus
-
+leaveInsRep = do
+    oneOf [spec KEsc, ctrlCh '[', ctrlCh 'c']
+    adjustPriority (-1)
+    write $ commitLastInsertionE >> withBuffer0 (setMarkHere '^')
+    startTopKeymap keymapSet
 
 -- | Insert mode is either insertion actions, or the meta (\ESC) action
 -- TODO repeat
 ins_mode :: ModeMap -> VimMode
-ins_mode self = write (setStatus (["-- INSERT --"], defaultStyle) >> withBuffer0 (setInserting True)) >> many (v_ins_char self <|> kwd_mode (v_opts self) ) >>
-                  leaveInsRep >> write (moveXorSol 1 >> setInserting False)
+ins_mode self = do
+    startInsertKeymap keymapSet
+    many (v_ins_char self <|> kwd_mode (v_opts self))
+    leaveInsRep
+    write $ moveXorSol 1
 
 -- TODO refactor with beginInsB and beginInsE
 beginIns :: (Show x, YiAction a x) => ModeMap -> a -> I Event Action ()

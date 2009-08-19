@@ -163,26 +163,26 @@ instance I.PEq Event where
     equiv = (==)
 
 data KeymapSet = KeymapSet
-    { topKeymap :: Keymap, -- ^ Content of the top-level loop.
-      insertKeymap :: Keymap, -- ^ For insertion-only modes 
-      startKeymap :: Keymap -- ^ Startup bit, to execute only once at the beginning.
+    { topKeymap :: Keymap         -- ^ Content of the top-level loop.
+    , startInsertKeymap :: Keymap -- ^ Startup when entering insert mode
+    , insertKeymap :: Keymap      -- ^ For insertion-only modes 
+    , startTopKeymap :: Keymap    -- ^ Startup bit, to execute only once at the beginning.
     }
 
 $(nameDeriveAccessors ''KeymapSet $ Just.(++ "A"))
 
 extractTopKeymap :: KeymapSet -> Keymap
-
 extractTopKeymap kms = do
-    startKeymap kms >> forever (topKeymap kms)
-             -- Note the use of "forever": this has quite subtle implications, as it means that
-             -- failures in one iteration can yield to jump to the next iteration seamlessly.
-             -- eg. in emacs keybinding, failures in incremental search, like <left>, will "exit"
-             -- incremental search and immediately move to the left.
-
+    startTopKeymap kms >> forever (topKeymap kms)
+    -- Note the use of "forever": this has quite subtle implications, as it means that
+    -- failures in one iteration can yield to jump to the next iteration seamlessly.
+    -- eg. in emacs keybinding, failures in incremental search, like <left>, will "exit"
+    -- incremental search and immediately move to the left.
 
 modelessKeymapSet :: Keymap -> KeymapSet
 modelessKeymapSet k = KeymapSet
  { insertKeymap = k
+ , startInsertKeymap = return ()
  , topKeymap = k
- , startKeymap = return ()
+ , startTopKeymap = return ()
  }
