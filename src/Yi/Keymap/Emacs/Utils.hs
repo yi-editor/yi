@@ -42,8 +42,8 @@ where
 import Prelude (take)
 import Data.List ((\\))
 import Data.Maybe (maybe)
-import System.FriendlyPath
-import System.FilePath (addTrailingPathSeparator, takeDirectory, takeFileName, (</>))
+import System.FriendlyPath ()
+import System.FilePath (takeDirectory, takeFileName, (</>))
 import System.Directory
   ( doesDirectoryExist
   )
@@ -58,7 +58,7 @@ import Yi.Dired
 import Yi.Eval
 import Yi.File
 import Yi.MiniBuffer
-import Yi.Misc (getAppropriateFiles, getFolder, matchingFileNames)
+import Yi.Misc (promptFile)
 import Yi.Regex
 import Yi.Tag
 import Yi.Search
@@ -242,14 +242,6 @@ readUniversalArg =
            <|> (read <$> (some tt)))
            <|> pure Nothing
 
--- | Generic emacs prompt file action. Takes a @prompt and a continuation @act
---   and prompts the user with file hints
-promptFile :: String -> (String -> YiM ()) -> YiM ()
-promptFile prompt act = do maybePath <- withBuffer $ gets file
-                           startPath <- addTrailingPathSeparator <$> (liftIO $ canonicalizePath' =<< getFolder maybePath)
-                           -- TODO: Just call withMinibuffer
-                           withMinibufferGen startPath (findFileHint startPath) prompt (simpleComplete $ matchingFileNames (Just startPath)) act
-
 
 -- | Open a file using the minibuffer. We have to set up some stuff to allow hints
 --   and auto-completion.
@@ -265,11 +257,6 @@ findFileNewTab = promptFile "find file (new tab): " $ \filename -> do
                       msgEditor $ "loading " ++ filename
                       fnewE filename
 
--- | For use as the hint when opening a file using the minibuffer.
--- We essentially return all the files in the given directory which
--- have the given prefix.
-findFileHint :: String -> String -> YiM [String]
-findFileHint startPath s = snd <$> getAppropriateFiles (Just startPath) s
 
 scrollDownE :: UnivArgument -> BufferM ()
 scrollDownE a = case a of

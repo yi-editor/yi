@@ -28,7 +28,7 @@ module Yi.Dired (
        ,fnewE
     ) where
 
-import Prelude (uncurry, catch, realToFrac)
+import Prelude (uncurry, catch, realToFrac, sequence)
 
 import Data.List hiding (find, maximum, concat)
 import Data.Maybe
@@ -49,8 +49,8 @@ import Yi.Regex
 
 import Yi.MiniBuffer (withMinibufferGen, noHint, withMinibuffer)
 import Yi.Config
-import Yi.Core
-import Yi.Misc (getFolder)
+import Yi.Core hiding (sequence)
+import Yi.Misc (getFolder, promptFile)
 import Yi.Style
 import System.FriendlyPath
 import qualified Data.Rope as R
@@ -153,6 +153,7 @@ data DiredState = DiredState
    , diredEntries :: M.Map FilePath DiredEntry -- ^ keys are just leafnames, not full paths
    , diredFilePoints :: [(Point,Point,FilePath)] -- ^ position in the buffer where filename is
    , diredNameCol :: Int -- ^ position on line where filename is (all pointA are this col)
+   , diredCurrFile :: FilePath -- ^ keep the position of pointer (for refreshing dired buffer)
   }
   deriving (Show, Eq, Typeable)
 
@@ -162,6 +163,7 @@ instance Initializable DiredState where
                          , diredEntries    = M.empty
                          , diredFilePoints = []
                          , diredNameCol    = 0
+                         , diredCurrFile   = ""
                          }
 
 bypassReadOnly :: BufferM a -> BufferM a
@@ -217,7 +219,11 @@ diredRefresh = do
     -- Scan directory
     di <- io $ diredScanDir dir
     dState <- withBuffer $ getA bufferDynamicValueA
-    let ds = dState {diredPath = dir, diredEntries = di}
+    currFile <- if null (diredFilePoints dState)
+                then return ""
+                else do (fp, _) <- withBuffer fileFromPoint
+                        return fp
+    let ds = dState {diredPath = dir, diredEntries = di, diredCurrFile = currFile}
     -- Compute results
     let dlines = linesToDisplay ds
         (strss, stys, strs) = unzip3 dlines
@@ -243,9 +249,9 @@ diredRefresh = do
                     diredRefreshMark
                     ---- no modifications after this line
                     putA readOnlyA True
-                    moveTo (p-2)
-                    filenameColOf lineDown
+                    filenameColOf $ moveTo $ fromMaybe (p + 1) (getRow currFile ptsList)
     where
+    getRow fp recList = lookup fp (map (\(a,_b,c)->(c,a)) recList)
     headStyle = const (withFg grey)
     doPadding :: [DRStrings] -> [String]
     doPadding drs = map (pad ((maximum . map drlength) drs)) drs
@@ -437,33 +443,6 @@ diredDoMarkedDel = do
   askDelFiles dir fs
 
 
-askDelFiles :: FilePath -> [(FilePath, DiredEntry)] -> YiM ()
-askDelFiles dir fs = withMinibuffer prompt noHint act
-    where
-      prompt = "Delete " ++ (show $ length fs) ++ " file(s)? (yes or no)"
-      act s = case map toLower s of
-                "yes" -> do cautiousDel fs
-                            diredRefresh
-                            msgEditor "Deletions done"
-                "no"  -> msgEditor "(No deletions performed)"
-                _     -> errorEditor "Please answer yes or no"
-      cautiousDel :: [(FilePath, DiredEntry)] -> YiM ()
-      cautiousDel r@(x:xs) = case snd x of
-                                   (DiredDir _dfi) -> do askDelRec r
-                                   _               -> do io $ removeFile (dir </> (fst x))
-                                                         cautiousDel xs
-                             -- TODO: consider other situations
-      cautiousDel [] = return ()
-      askDelRec r@(x:_) = withMinibuffer (delRecPrompt (fst x)) noHint (actRec r)
-      askDelRec [] = fail "Error: askDelFiles askDelRec"
-      delRecPrompt fn = "Delete directory " ++ fn ++ " recursively? (yes or no)"
-      actRec r@(x:xs) s = case map toLower s of
-                            "yes" -> do io $ removeDirectoryRecursive (dir </> (fst x))
-                                        cautiousDel xs
-                            "no"  -> do cautiousDel xs
-                            _     -> askDelRec r
-      actRec [] _s = fail "Error: askDelFiles actRec"
-
 
 diredLoad :: YiM ()
 diredLoad = do
@@ -526,3 +505,108 @@ diredCreateDir = do
     msgEditor $ "Creating "++newdir++"..."
     io $ createDirectoryIfMissing True newdir
     diredRefresh
+
+
+-- | Possible dired operations. A command can be translated into a list of DiredOps
+data DiredOp = DiredRemoveFile FilePath
+             | DiredRemoveDir FilePath
+             | DiredRemoveBuffers FilePath
+             -- ^ remove the buffers that associate with the file
+             | DiredCopyFile FilePath FilePath
+             | DiredCopyDir FilePath FilePath
+             | DiredRenameFile FilePath FilePath
+             | DiredRenameDir FilePath FilePath
+             | DiredConfirm String DiredOp
+             -- ^ prompt a "yes/no" question. If yes, the embedded DiredOp is applied, otherwise ignored.
+             | DiredShowResult (DiredOpState -> YiM ())
+             | DiredNoOp
+             -- ^ confrim operation with yes or no, given the prompt string
+
+
+-- Have no idea how to keep track of this state better, so here it is ...
+data DiredOpState = DiredOpState
+    {
+      diredOpSucCnt :: !Int -- ^ keep track of the num of successful operations
+    }
+    deriving (Show, Eq, Typeable)
+
+instance Initializable DiredOpState where
+    initial = DiredOpState {diredOpSucCnt = 0}
+
+incDiredOpSucCnt :: BufferRef -> YiM ()
+incDiredOpSucCnt ref = withGivenBuffer ref $ modA bufferDynamicValueA (\ds -> ds { diredOpSucCnt = (diredOpSucCnt ds) + 1 })
+
+resetDiredOpState :: BufferRef -> YiM ()
+resetDiredOpState ref = withGivenBuffer ref $ modA bufferDynamicValueA (\_ds -> initial :: DiredOpState)
+
+getDiredOpState :: BufferRef -> YiM DiredOpState
+getDiredOpState ref = withGivenBuffer ref $ getA bufferDynamicValueA
+
+-- | execute the operations
+-- TODO: scrap the boilerplate
+procDiredOpB :: BufferRef -> Bool -> [DiredOp] -> YiM ()
+procDiredOpB ref counting ((DiredRemoveFile f):ops) = do io $ catch (removeFile f) handler
+                                                         when counting (incDiredOpSucCnt ref)
+                                                         procDiredOpB ref counting ops
+    where handler err = fail $ concat ["Remove file ", f, " failed: ", show err]
+procDiredOpB ref counting ((DiredRemoveDir d):ops) = do io $ catch (removeDirectoryRecursive d) handler
+                                                        when counting (incDiredOpSucCnt ref)
+                                                        procDiredOpB ref counting ops
+    where handler err = fail $ concat ["Remove directory ", d, " failed: ", show err]
+procDiredOpB ref counting ((DiredRemoveBuffers f):ops) = undefined -- TODO
+procDiredOpB ref counting  ((DiredCopyFile o n):ops) = do io $ catch (copyFile o n) handler
+                                                          when counting (incDiredOpSucCnt ref)
+                                                          procDiredOpB ref counting ops
+    where handler err = fail $ concat ["Copy file ", o, " to ", n, " failed: ", show err]
+procDiredOpB ref counting ((DiredCopyDir o n):ops) = undefined -- TODO
+procDiredOpB ref counting ((DiredRenameFile o n):ops) = do io $ catch (renameFile o n) handler
+                                                           when counting (incDiredOpSucCnt ref)
+                                                           procDiredOpB ref counting ops
+    where handler err = fail $ concat ["Move file ", o, " to ", n, " failed: ", show err]
+procDiredOpB ref counting ((DiredRenameDir o n):ops) = do io $ catch (renameDirectory o n) handler
+                                                          when counting (incDiredOpSucCnt ref)
+                                                          procDiredOpB ref counting ops
+    where handler err = fail $ concat ["Move directory ", o, " to ", n, "failed: ", show err]
+procDiredOpB ref counting r@((DiredConfirm prompt op):ops) = withMinibuffer (prompt ++ " (yes/no)") noHint act
+    where act s = case map toLower s of
+                    "yes" -> procDiredOpB ref counting (op:ops)
+                    "no"  -> procDiredOpB ref counting ops
+                    _     -> procDiredOpB ref counting r -- TODO: show an error msg
+procDiredOpB ref counting ((DiredNoOp):ops) = when counting (incDiredOpSucCnt ref) >> procDiredOpB ref counting ops
+procDiredOpB ref counting ((DiredShowResult op):ops) = getDiredOpState ref >>= op >> procDiredOpB ref counting ops
+procDiredOpB _ _ [] = return ()
+
+-- | move the files in a given directory to the target location
+askRenameFiles :: FilePath -> [(FilePath, DiredEntry)] -> FilePath -> YiM ()
+askRenameFiles = undefined
+
+-- | delete a list of file in the given directory
+askDelFiles :: FilePath -> [(FilePath, DiredEntry)] -> YiM ()
+askDelFiles dir fs = do ref <- gets currentBuffer
+                        case fs of
+                          (_x:_) -> withMinibuffer prompt noHint (act ref)
+                          []     -> msgEditor $ "(No deletions requested)"
+    where prompt = concat ["Delete ", show $ length fs, " file(s)? (yes/no)"]
+          act ref s = do case map toLower s of
+                           "yes" -> do
+                             resetDiredOpState ref
+                             opList <- io $ sequence ops
+                             procDiredOpB ref True (opList ++ [DiredShowResult showResult])
+                             --msgEditor $ show opList
+                           "no"  -> return ()
+                           _     -> askDelFiles dir fs -- TODO: show an error msg
+          ops = map opGenerator fs
+          showResult st = diredRefresh >> (msgEditor $ concat [show $ diredOpSucCnt st, " of ", show total, " deletions done"])
+          total = length fs
+          opGenerator :: (FilePath, DiredEntry) -> IO DiredOp
+          opGenerator (fn, de) = do exists <- do liftM2 (||) (doesFileExist path) (doesDirectoryExist path)
+                                    if exists then case de of
+                                                     (DiredDir _dfi) -> do isNull <- liftM nullDir $ getDirectoryContents path
+                                                                           return $ if isNull then (DiredConfirm recDelPrompt (DiredRemoveDir path))
+                                                                                               else (DiredRemoveDir path)
+                                                     _               -> return (DiredRemoveFile path)
+                                              else return DiredNoOp
+              where path = dir </> fn
+                    recDelPrompt = concat ["Recursive delete of ", fn, "?"]
+                    nullDir :: [FilePath] -> Bool
+                    nullDir contents = Data.List.any (not . flip Data.List.elem [".", ".."]) contents

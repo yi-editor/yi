@@ -25,6 +25,7 @@ import System.Directory
   ( doesDirectoryExist
   , getDirectoryContents
   , getCurrentDirectory
+  , canonicalizePath
   )
 
 import Control.Monad.Trans (MonadIO (..))
@@ -33,6 +34,12 @@ import Control.Monad.Trans (MonadIO (..))
 
 import Prelude ()
 import Yi.Core
+
+import Yi.MiniBuffer
+    ( withMinibuffer
+    , simpleComplete
+    , withMinibufferGen
+    )
 
 
 -- | Given a possible starting path (which if not given defaults to
@@ -90,3 +97,19 @@ adjBlock x = withSyntaxB' (\m s -> modeAdjustBlock m s x)
 adjIndent :: IndentBehaviour -> BufferM ()
 adjIndent ib = withSyntaxB' (\m s -> modeIndent m s ib)
 
+
+
+-- | Generic emacs style prompt file action. Takes a @prompt and a continuation @act
+--   and prompts the user with file hints
+promptFile :: String -> (String -> YiM ()) -> YiM ()
+promptFile prompt act = do maybePath <- withBuffer $ gets file
+                           startPath <- addTrailingPathSeparator <$> (liftIO $ canonicalizePath =<< getFolder maybePath)
+                           -- TODO: Just call withMinibuffer
+                           withMinibufferGen startPath (findFileHint startPath) prompt (simpleComplete $ matchingFileNames (Just startPath)) act
+
+
+-- | For use as the hint when opening a file using the minibuffer.
+-- We essentially return all the files in the given directory which
+-- have the given prefix.
+findFileHint :: String -> String -> YiM [String]
+findFileHint startPath s = snd <$> getAppropriateFiles (Just startPath) s
