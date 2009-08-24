@@ -12,8 +12,8 @@ import Yi.Lexer.Alex (posnOfs, Tok(..))
 import Yi.Lexer.Haskell (isComment, TT, Token(..))
 import Yi.Buffer hiding (Block)
 
-dollarify :: Expr TT -> BufferM ()
-dollarify e = maybe (return ()) dollarifyWithin . selectedTree e =<< getSelectRegionB
+dollarify :: Tree TT -> BufferM ()
+dollarify t = maybe (return ()) dollarifyWithin . selectedTree [t] =<< getSelectRegionB
 
 dollarifyWithin :: Tree TT -> BufferM ()
 dollarifyWithin = trace . ("dollarifyWithin: " ++) . show <*> runQ . (dollarifyTop =<<) . getAllSubTrees
