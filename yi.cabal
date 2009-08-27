@@ -349,7 +349,7 @@ executable yi
            build-depends: unix
 
         if flag (vty) && !os(windows)
-           build-depends: vty>=3.1.8 && < 4
+           build-depends: vty>=4.0.0 && < 5
            cpp-options: -DFRONTEND_VTY
 
         if flag (pango)

@@ -37,7 +37,7 @@ import qualified Yi.UI.Common as Common
 import Yi.Config
 import Yi.Window
 import Yi.Style as Style
-import Graphics.Vty as Vty hiding (refresh)
+import Graphics.Vty as Vty hiding (refresh, Default)
 import qualified Graphics.Vty as Vty
 import Yi.Keymap (makeAction, YiM)
 
@@ -79,8 +79,8 @@ start cfg ch outCh editor = do
           nattr <- getTerminalAttributes stdInput
           setTerminalAttributes stdInput (withoutMode nattr ExtendedFunctions) Immediately
           -- remove the above call to setTerminalAttributes when vty does it.
-          (x0,y0) <- Vty.getSize v
-          sz <- newIORef (y0,x0)
+          Vty.DisplayBounds x0 y0 <- Vty.display_bounds $ Vty.terminal v
+          sz <- newIORef (fromEnum y0, fromEnum x0)
           -- fork input-reading thread. important to block *thread* on getKey
           -- otherwise all threads will block waiting for input
           tid <- myThreadId
@@ -93,7 +93,7 @@ start cfg ch outCh editor = do
 
               -- | Read a key. UIs need to define a method for getting events.
               getKey = do 
-                event <- getEvent v
+                event <- Vty.next_event v
                 case event of 
                   (EvResize x y) -> do
                       logPutStrLn $ "UI: EvResize: " ++ show (x,y)
@@ -210,18 +210,19 @@ refresh ui e = do
   logPutStrLn "refreshing screen."
   logPutStrLn $ "startXs: " ++ show startXs
   Vty.update (vty $ ui) 
-      pic { pImage  = vertcat tabBarImages
-                      <->
-                      vertcat (toList wImages) 
-                      <-> 
-                      vertcat (fmap formatCmdLine niceCmd)
-          , pCursor = case cursor (PL.focus renders) of
-                        Just (y,x) -> Cursor x (y + PL.focus startXs) 
+      ( pic_for_image ( vertcat tabBarImages
+                        <->
+                        vertcat (toList wImages) 
+                        <-> 
+                        vertcat (fmap formatCmdLine niceCmd)
+                      )
+      ) { pic_cursor = case cursor (PL.focus renders) of
+                        Just (y,x) -> Cursor (toEnum x) (toEnum $ y + PL.focus startXs) 
                         -- Add the position of the window to the position of the cursor
                         Nothing -> NoCursor
                         -- This case can occur if the user resizes the window. 
                         -- Not really nice, but upon the next refresh the cursor will show.
-          }
+        }
 
   return ()
 
@@ -232,9 +233,9 @@ renderTabBar e ui xss =
     then [tabImages <|> extraImage]
     else []
   where tabImages       = foldr1 (<|>) $ fmap tabToVtyImage $ tabBarDescr e
-        extraImage      = withAttributes (tabBarAttributes uiStyle) (replicate (xss-totalTabWidth) ' ')
+        extraImage      = withAttributes (tabBarAttributes uiStyle) (replicate (xss - fromEnum totalTabWidth) ' ')
 
-        totalTabWidth   = imgWidth tabImages
+        totalTabWidth   = Vty.image_width tabImages
         uiStyle         = configStyle $ configUI $ config $ ui
         tabTitle text   = " " ++ text ++ " "
         tabAttributes f = appEndo ((if f then tabInFocusStyle else tabNotFocusedStyle) uiStyle) (tabBarAttributes uiStyle)
@@ -275,7 +276,7 @@ drawWindow cfg e focused win w h = (Rendered { picture = pict,cursor = cur}, mkR
         off = if notMini then 1 else 0
         h' = h - off
         ground = baseAttributes sty
-        wsty = attributesToAttr ground attr
+        wsty = attributesToAttr ground Vty.def_attr
         eofsty = appEndo (eofStyle sty) ground
         (point, _) = runBuffer win b pointB
         (eofPoint, _) = runBuffer win b sizeB
@@ -292,9 +293,9 @@ drawWindow cfg e focused win w h = (Rendered { picture = pict,cursor = cur}, mkR
         -- TODO: I suspect that this costs quite a lot of CPU in the "dry run" which determines the window size;
         -- In that case, since attributes are also useless there, it might help to replace the call by a dummy value.
         -- This is also approximately valid of the call to "indexedAnnotatedStreamB".
-        colors = map (second (($ attr) . attributesToAttr)) attributes
+        colors = map (second (($ Vty.def_attr) . attributesToAttr)) attributes
         bufData = -- trace (unlines (map show text) ++ unlines (map show $ concat strokes)) $ 
-                  paintChars attr colors text
+                  paintChars Vty.def_attr colors text
         tabWidth = tabSize . fst $ runBuffer win b indentSettingsB
         prompt = if isMini win then miniIdentString b else ""
 
@@ -341,10 +342,10 @@ drawText h w topPoint point tabWidth bufData
   colorChar (c, (a, _aPoint)) = renderChar a c
 
   fillColorLine :: [(Char, (Vty.Attr, Point))] -> Image
-  fillColorLine [] = renderHFill attr ' ' w
+  fillColorLine [] = char_fill Vty.def_attr ' ' w 1
   fillColorLine l = horzcat (map colorChar l) 
                     <|>
-                    renderHFill a ' ' (w - length l)
+                    char_fill a ' ' (w - length l) 1
                     where (_,(a,_x)) = last l
 
   -- | Cut a string in lines separated by a '\n' char. Note
@@ -369,7 +370,7 @@ drawText h w topPoint point tabWidth bufData
     | otherwise = [(c,p)]
 
 withAttributes :: Attributes -> String -> Image
-withAttributes sty str = horzcat $ fmap (renderChar (attributesToAttr sty attr)) str
+withAttributes sty str = horzcat $ fmap (renderChar (attributesToAttr sty Vty.def_attr)) str
 
 ------------------------------------------------------------------------
 
@@ -401,35 +402,35 @@ getY screenHeight numberOfWindows = screenHeight `quotRem` numberOfWindows
 ------------------------------------------------------------------------
 
 -- | Convert a Yi Attr into a Vty attribute change.
-colorToAttr :: (Vty.Color -> Vty.Attr -> Vty.Attr) -> (Vty.Color -> Vty.Attr -> Vty.Attr) -> Vty.Color -> Style.Color -> (Vty.Attr -> Vty.Attr)
-colorToAttr setVivid set unknown c =
+colorToAttr :: (Vty.Color -> Vty.Attr -> Vty.Attr) -> (Vty.Attr -> Vty.Attr) -> Vty.Color -> Style.Color -> (Vty.Attr -> Vty.Attr)
+colorToAttr set set_default unknown c =
   case c of 
-    RGB 0 0 0         -> set      Vty.black
-    RGB 128 128 128   -> setVivid Vty.black
-    RGB 139 0 0       -> set      Vty.red
-    RGB 255 0 0       -> setVivid Vty.red
-    RGB 0 100 0       -> set      Vty.green
-    RGB 0 128 0       -> setVivid Vty.green
-    RGB 165 42 42     -> set      Vty.yellow
-    RGB 255 255 0     -> setVivid Vty.yellow
-    RGB 0 0 139       -> set      Vty.blue
-    RGB 0 0 255       -> setVivid Vty.blue
-    RGB 128 0 128     -> set      Vty.magenta
-    RGB 255 0 255     -> setVivid Vty.magenta
-    RGB 0 139 139     -> set      Vty.cyan
-    RGB 0 255 255     -> setVivid Vty.cyan
-    RGB 165 165 165   -> set      Vty.white
-    RGB 255 255 255   -> setVivid Vty.white
-    Default           -> set      Vty.def
-    _                 -> set      unknown -- NB
+    RGB 0 0 0         -> set Vty.black
+    RGB 128 128 128   -> set Vty.bright_black
+    RGB 139 0 0       -> set Vty.red
+    RGB 255 0 0       -> set Vty.bright_red
+    RGB 0 100 0       -> set Vty.green
+    RGB 0 128 0       -> set Vty.bright_green
+    RGB 165 42 42     -> set Vty.yellow
+    RGB 255 255 0     -> set Vty.bright_yellow
+    RGB 0 0 139       -> set Vty.blue
+    RGB 0 0 255       -> set Vty.bright_blue
+    RGB 128 0 128     -> set Vty.magenta
+    RGB 255 0 255     -> set Vty.bright_magenta
+    RGB 0 139 139     -> set Vty.cyan
+    RGB 0 255 255     -> set Vty.bright_cyan
+    RGB 165 165 165   -> set Vty.white
+    RGB 255 255 255   -> set Vty.bright_white
+    Default           -> set_default 
+    _                 -> set unknown -- NB
 
 attributesToAttr :: Attributes -> (Vty.Attr -> Vty.Attr)
 attributesToAttr (Attributes fg bg reverse bd _itlc underline') =
-  (if reverse then setRV else id) .
-  (if bd then setBold else id) .
-  (if underline' then setUnderline else id) .
-  colorToAttr setFGVivid setFG Vty.black fg .
-  colorToAttr setBGVivid setBG Vty.white bg
+  (if reverse then (flip Vty.with_style Vty.reverse_video)  else id) .
+  (if bd then (flip Vty.with_style Vty.bold) else id) .
+  (if underline' then (flip Vty.with_style Vty.underline) else id) .
+  colorToAttr (flip Vty.with_fore_color) (\a -> a { Vty.fore_color = Vty.Default }) Vty.black fg .
+  colorToAttr (flip Vty.with_back_color) (\a -> a { Vty.back_color = Vty.Default }) Vty.white bg
 
 
 ---------------------------------
