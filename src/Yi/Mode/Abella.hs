@@ -1,7 +1,8 @@
 -- Copyright (c) 2009 Nicolas Pouillard
 {-# LANGUAGE GeneralizedNewtypeDeriving, DeriveDataTypeable #-}
 module Yi.Mode.Abella
-  (abellaModeVim, abellaModeEmacs, abella, abellaEval, abellaUndo, abellaGet, abellaSend)
+  ( abellaModeVim, abellaModeEmacs, abella
+  , abellaEval, abellaEvalFromProofPoint, abellaUndo, abellaGet, abellaSend)
 where
 
 import Prelude ()
@@ -32,6 +33,7 @@ abellaModeGen abellaBinding =
       , abellaBinding 'e' ?*>>! sav abellaEval
       , abellaBinding 'n' ?*>>! sav abellaNext
       , abellaBinding 'a' ?*>>! sav abellaAbort
+      , abellaBinding '\r' ?*>>! sav abellaEvalFromProofPoint
       ]))
   }
   where sav f = savingCommandY (flip replicateM_ f) 1
@@ -58,8 +60,16 @@ abellaEval = do reg <- withBuffer . savingPointB $ do
                           readRegionB =<< regionOfNonEmptyB unitSentence
                 abellaSend reg
 
+abellaEvalFromProofPoint :: YiM ()
+abellaEvalFromProofPoint = abellaSend =<< withBuffer f
+  where f = do mark <- getProofPointMark
+               p <- getMarkPointB mark
+               cur <- pointB
+               setMarkPointB mark cur
+               readRegionB $ mkRegion p cur
+
 abellaNext :: YiM ()
-abellaNext = do reg <- withBuffer $ readRegionB =<< regionOfNonEmptyB unitSentence
+abellaNext = do reg <- withBuffer $ rightB >> (readRegionB =<< regionOfNonEmptyB unitSentence)
                 abellaSend reg
                 withBuffer $ do moveB unitSentence Forward
                                 rightB
