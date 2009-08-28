@@ -339,7 +339,7 @@ drawText h w topPoint point tabWidth bufData
 
   -- fill lines with blanks, so the selection looks ok.
   rendered_lines = map fillColorLine lns0
-  colorChar (c, (a, _aPoint)) = renderChar a c
+  colorChar (c, (a, _aPoint)) = Vty.char a c
 
   fillColorLine :: [(Char, (Vty.Attr, Point))] -> Image
   fillColorLine [] = char_fill Vty.def_attr ' ' w 1
@@ -370,7 +370,7 @@ drawText h w topPoint point tabWidth bufData
     | otherwise = [(c,p)]
 
 withAttributes :: Attributes -> String -> Image
-withAttributes sty str = horzcat $ fmap (renderChar (attributesToAttr sty Vty.def_attr)) str
+withAttributes sty str = horzcat $ fmap (Vty.char (attributesToAttr sty Vty.def_attr)) str
 
 ------------------------------------------------------------------------
 
