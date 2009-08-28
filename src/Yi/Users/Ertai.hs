@@ -36,25 +36,27 @@ myModetable = [
                AnyMode . haskellModeHooks . removeAnnots $ Haskell.fastMode
               ]
 
-haskellModeHooks :: (Tok Haskell.Token ~ Tree.Element syntax, Tree.SubTree syntax) =>Mode syntax -> Mode syntax
-haskellModeHooks mode = 
-                  -- uncomment for shim:
-                  -- Shim.minorMode $ 
-                     mode {
-                        modeGetAnnotations = Tree.tokenBasedAnnots Haskell.tokenToAnnot,
 
-                        -- modeAdjustBlock = \_ _ -> return (),
-                        -- modeGetStrokes = \_ _ _ _ -> [],
-                        modeName = "my " ++ modeName mode,
-                        -- example of Mode-local rebinding
-                        modeKeymap =((char '\\' ?>> choice [char 'l' ?>>! Haskell.ghciLoadBuffer,
-                                                            char 'z' ?>>! Haskell.ghciGet,
-                                                            char 'h' ?>>! hoogle,
-                                                            char 'r' ?>>! Haskell.ghciSend ":r",
-                                                            char 't' ?>>! Haskell.ghciInferType
-                                                           ])
-                                      <||)
-                       }
+haskellModeHooks :: (Foldable f) => Endom (Mode (f Haskell.TT))
+haskellModeHooks mode =
+  -- uncomment for shim:
+  -- Shim.minorMode $ 
+     mode {
+        modeGetAnnotations = Tree.tokenBasedAnnots Haskell.tokenToAnnot,
+
+        -- modeAdjustBlock = \_ _ -> return (),
+        -- modeGetStrokes = \_ _ _ _ -> [],
+        modeName = "my " ++ modeName mode,
+        -- example of Mode-local rebinding
+        modeKeymap = topKeymapA ^:
+            ((char '\\' ?>> choice [char 'l' ?>>! Haskell.ghciLoadBuffer,
+                                    char 'z' ?>>! Haskell.ghciGet,
+                                    char 'h' ?>>! hoogle,
+                                    char 'r' ?>>! Haskell.ghciSend ":r",
+                                    char 't' ?>>! Haskell.ghciInferType
+                                   ])
+                      <||)
+     }
 
 main :: IO ()
 main = do args <- getArgs
