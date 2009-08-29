@@ -210,11 +210,11 @@ refresh ui e = do
   logPutStrLn "refreshing screen."
   logPutStrLn $ "startXs: " ++ show startXs
   Vty.update (vty $ ui) 
-      ( pic_for_image ( vertcat tabBarImages
+      ( pic_for_image ( vert_cat tabBarImages
                         <->
-                        vertcat (toList wImages) 
+                        vert_cat (toList wImages) 
                         <-> 
-                        vertcat (fmap formatCmdLine niceCmd)
+                        vert_cat (fmap formatCmdLine niceCmd)
                       )
       ) { pic_cursor = case cursor (PL.focus renders) of
                         Just (y,x) -> Cursor (toEnum x) (toEnum $ y + PL.focus startXs) 
@@ -311,7 +311,7 @@ drawWindow cfg e focused win w h = (Rendered { picture = pict,cursor = cur}, mkR
         modeStyle = (if focused then appEndo (modelineFocusStyle sty) else id) (modelineAttributes sty)
         filler = take w (configWindowFill cfg : repeat ' ')
     
-        pict = vertcat (take h' (rendered ++ repeat (withAttributes eofsty filler)) ++ modeLines)
+        pict = vert_cat (take h' (rendered ++ repeat (withAttributes eofsty filler)) ++ modeLines)
   
 -- | Renders text in a rectangle.
 -- This also returns 
@@ -343,7 +343,7 @@ drawText h w topPoint point tabWidth bufData
 
   fillColorLine :: [(Char, (Vty.Attr, Point))] -> Image
   fillColorLine [] = char_fill Vty.def_attr ' ' w 1
-  fillColorLine l = horzcat (map colorChar l) 
+  fillColorLine l = horiz_cat (map colorChar l) 
                     <|>
                     char_fill a ' ' (w - length l) 1
                     where (_,(a,_x)) = last l
@@ -370,7 +370,7 @@ drawText h w topPoint point tabWidth bufData
     | otherwise = [(c,p)]
 
 withAttributes :: Attributes -> String -> Image
-withAttributes sty str = horzcat $ fmap (Vty.char (attributesToAttr sty Vty.def_attr)) str
+withAttributes sty str = horiz_cat $ fmap (Vty.char (attributesToAttr sty Vty.def_attr)) str
 
 ------------------------------------------------------------------------
 
