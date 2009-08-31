@@ -79,7 +79,7 @@ start cfg ch outCh editor = do
           nattr <- getTerminalAttributes stdInput
           setTerminalAttributes stdInput (withoutMode nattr ExtendedFunctions) Immediately
           -- remove the above call to setTerminalAttributes when vty does it.
-          Vty.DisplayBounds x0 y0 <- Vty.display_bounds $ Vty.terminal v
+          Vty.DisplayRegion x0 y0 <- Vty.display_bounds $ Vty.terminal v
           sz <- newIORef (fromEnum y0, fromEnum x0)
           -- fork input-reading thread. important to block *thread* on getKey
           -- otherwise all threads will block waiting for input
