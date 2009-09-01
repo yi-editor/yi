@@ -42,7 +42,7 @@ import qualified Yi.Mode.Interactive as Interactive
 import Yi.Modes (anyExtension, extensionOrContentsMatch)
 import Yi.MiniBuffer
 
-haskellAbstract :: Mode syntax
+haskellAbstract :: Mode (tree TT)
 haskellAbstract = emptyMode 
   {
      modeApplies = extensionOrContentsMatch extensions shebangPattern,
