@@ -84,6 +84,7 @@ library
            -- the most insignificant module (with no dep) I can find.
   else
     exposed-modules:
+        Data.Rope
         Yi
         Yi.Boot
         Yi.Buffer
@@ -193,6 +194,7 @@ library
     if flag (pango)
       cpp-options: -DFRONTEND_PANGO
       exposed-modules: Yi.UI.Pango
+                       Yi.UI.Pango.Control
       other-modules: Yi.UI.Pango.ProjectTree
                      Yi.UI.Pango.Utils
       if flag(gnome)
@@ -236,7 +238,6 @@ library
         Data.Prototype
 
         -- Should probably be split out to another package.
-        Data.Rope
         Data.DelayList
         Data.Trie
         Parser.Incremental
