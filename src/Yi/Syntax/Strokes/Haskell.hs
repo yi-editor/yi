@@ -39,7 +39,7 @@ getStrokeImp point begin _end imp@(PImport m qu na t t')
           paintAs a = getStrokes' a
           paintQu (Opt (Just ((PAtom n c)))) = (one $ (fmap (const keywordStyle) . tokToSpan) n) <> com c
           paintQu a = getStrokes' a
-          paintHi (Bin (Bin (PAtom n c) tw) r) = (one $ (fmap (const keywordStyle) . tokToSpan) n)
+          paintHi (TC (Bin (Bin (PAtom n c) tw) r)) = (one $ (fmap (const keywordStyle) . tokToSpan) n)
                                              <> com c <> getStr tkImport point begin _end tw
                                              <> getStrokes' r
           paintHi a = getStrokes' a
