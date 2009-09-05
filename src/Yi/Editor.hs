@@ -54,11 +54,12 @@ data Editor = Editor {
        ,currentRegex         :: !(Maybe SearchExp) -- ^ currently highlighted regex (also most recent regex for use in vim bindings)
        ,searchDirection :: !Direction
        ,pendingEvents :: ![Event]                   -- ^ Processed events that didn't yield any action yet.
+       ,onCloseActions :: !(M.Map BufferRef (EditorM ()))
     }
     deriving Typeable
 
 instance Binary Editor where
-    put (Editor bss bs supply ts _dv _sl msh kr _re _dir _ev) = put bss >> put bs >> put supply >> put ts >> put msh >> put kr 
+    put (Editor bss bs supply ts _dv _sl msh kr _re _dir _ev _cwa ) = put bss >> put bs >> put supply >> put ts >> put msh >> put kr
     get = do
         bss <- get
         bs <- get
@@ -111,6 +112,7 @@ emptyEditor = Editor {
        ,killring     = krEmpty
        ,pendingEvents = []
        ,maxStatusHeight = 1
+       ,onCloseActions = M.empty
        }
         where buf = newB 0 (Left "console") (R.fromString "")
               win = (dummyWindow (bkey buf)) {wkey = 1, isMini = False}
@@ -179,6 +181,20 @@ forceFold2 x = foldr (seq . forceFold1) x x
 -- | Delete a buffer (and release resources associated with it).
 deleteBuffer :: BufferRef -> EditorM ()
 deleteBuffer k = do
+  -- If the buffer has an associated close action execute that now. Unless the buffer is the last
+  -- buffer in the editor. In which case it cannot be closed and, I think, the close action should
+  -- not be applied.
+  -- 
+  -- The close actions seem dangerous, but I know of no other simple way to resolve issues related
+  -- to what buffer receives actions after the minibuffer closes.
+  pure length <*> gets bufferStack 
+    >>= \l -> case l of
+        1 -> return ()
+        _ -> pure (M.lookup k) <*> gets onCloseActions 
+                >>= \m_action -> case m_action of
+                    Nothing -> return ()
+                    Just action -> action
+  -- Now try deleting the buffer. Checking, once again, that it is not the last buffer.
   bs <- gets bufferStack
   ws <- getA windowsA
   case bs of
@@ -427,8 +443,14 @@ getBufferWithNameOrCurrent nm = if null nm then gets currentBuffer else getBuffe
 -- | Close current buffer and window, unless it's the last one.
 closeBufferAndWindowE :: EditorM ()
 closeBufferAndWindowE = do
-  deleteBuffer =<< gets currentBuffer
+  -- Fetch the current buffer *before* closing the window. 
+  -- Required for the onCloseBufferE actions to work as expected by the minibuffer.
+  -- The tryCloseE, since it uses tabsA, will have the current buffer "fixed" to the buffer of the
+  -- window that is brought into focus. If the current buffer is accessed after the tryCloseE then
+  -- the current buffer may not be the same as the buffer before tryCloseE. This would be bad.
+  b <- gets currentBuffer
   tryCloseE
+  deleteBuffer b
 
 -- | Rotate focus to the next window
 nextWinE :: EditorM ()
@@ -469,6 +491,30 @@ windowsOnBufferE :: BufferRef -> EditorM [Window]
 windowsOnBufferE k = do
   ts <- getA tabsA
   return $ concatMap (concatMap (\win -> if (bufkey win == k) then [win] else [])) ts
+
+-- | bring the editor focus the window with the given key.
+--
+-- Fails if no window with the given key is found.
+focusWindowE :: WindowRef -> EditorM ()
+focusWindowE k = do
+    -- Find the tab index and window index
+    ts <- getA tabsA
+    let check (False, i) win = if wkey win == k 
+                                    then (True, i)
+                                    else (False, i + 1)
+        check r@(True, _) _win = r
+
+        searchWindowSet (False, tabIndex, _) ws = 
+            case foldl check (False, 0) ws of
+                (True, winIndex) -> (True, tabIndex, winIndex)
+                (False, _)       -> (False, tabIndex + 1, 0)
+        searchWindowSet r@(True, _, _) _ws = r
+
+    case foldl searchWindowSet  (False, 0, 0) ts of
+        (False, _, _) -> fail $ "No window with key " ++ show wkey ++ "found. (focusWindowE)"
+        (True, tabIndex, winIndex) -> do
+            putA tabsA (fromJust $ PL.move tabIndex ts) 
+            modA windowsA (\ws -> fromJust $ PL.move winIndex ws) 
 
 -- | Split the current window, opening a second window onto current buffer.
 -- TODO: unfold newWindowE here?
@@ -560,3 +606,14 @@ acceptedInputs = do
     let l = I.accepted 3 $ I.mkAutomaton $ extractTopKeymap $ keymap $ defaultKm cfg
     return $ fmap (intercalate " ") l
 
+-- | Defines an action to be executed when the current buffer is closed. 
+--
+-- Used by the minibuffer to assure the focus is restored to the buffer that spawned the minibuffer.
+--
+-- todo: These actions are not restored on reload.
+--
+-- todo: These actions should probably be very careful at what they do.
+onCloseBufferE :: BufferRef -> EditorM () -> EditorM ()
+onCloseBufferE b a = do
+    modA onCloseActionsA $ M.insertWith' (\_ old_a -> old_a >> a) b a
+    

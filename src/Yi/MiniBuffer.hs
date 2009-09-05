@@ -23,6 +23,7 @@ import Yi.Core
 import Yi.History
 import Yi.Completion (commonPrefix, infixMatch, prefixMatch, containsMatch', completeInList, completeInList')
 import Yi.Style (defaultStyle)
+import Yi.Window ( wkey )
 import qualified Yi.Core as Editor
 import Control.Monad.Reader
 import qualified Data.Rope as R
@@ -34,6 +35,14 @@ import qualified Data.Rope as R
 spawnMinibufferE :: String -> KeymapEndo -> EditorM BufferRef
 spawnMinibufferE prompt kmMod =
     do b <- stringToNewBuffer (Left prompt) (R.fromString "")
+       -- This assures the buffer and window in focus when the minibuffer is spawned is in focus
+       -- when the minibuffer is closed. This is required because of insertAtEnd.
+       --
+       -- todo: not true if the minibuffer keymap modifies the buffer associated with the current
+       -- window!
+       pure wkey <*> getA currentWindowA >>= \w -> onCloseBufferE b (focusWindowE w)
+
+       -- Now create the minibuffer keymap and switch to the minibuffer window
        withGivenBuffer0 b $ do
          modifyMode $ \m -> m { modeKeymap = \kms -> kms { topKeymap = kmMod (insertKeymap kms)
                                                          , startTopKeymap = kmMod (startInsertKeymap kms)
