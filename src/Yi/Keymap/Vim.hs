@@ -1537,7 +1537,10 @@ defKeymap = Proto template
            fn "help"       = help
            fn "tabm"       = withEditor (moveTab Nothing)
            fn ('t':'a':'b':'m':' ':n) = withEditor (moveTab $ Just (read n))
-           fn "tabnew"     = withEditor newTabE
+           fn "tabnew"     = withEditor $ do
+               newTabE
+               newTempBufferE
+               return ()
            fn ('t':'a':'b':'e':' ':f) = withEditor newTabE >> viFnewE f
 
            fn "ball"       = withEditor openAllBuffersE
