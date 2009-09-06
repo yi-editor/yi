@@ -1,4 +1,5 @@
 {-# LANGUAGE TemplateHaskell, GeneralizedNewtypeDeriving, DeriveDataTypeable, FlexibleContexts, StandaloneDeriving #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 
 -- Copyright (c) 2004-5, Don Stewart - http://www.cse.unsw.edu.au/~dons
 -- Copyright (c) 2007-8, JP Bernardy
@@ -401,6 +402,27 @@ newBufferE f s = do
     b <- stringToNewBuffer f s
     switchToBufferE b
     return b
+
+-- | Creates an in-memory buffer with a unique name. 
+-- 
+-- A hint for the buffer naming scheme can be specified in the dynamic variable TempBufferNameHint
+-- The new buffer always has a buffer ID that did not exist before newTempBufferE.
+newTempBufferE :: EditorM BufferRef
+newTempBufferE = do
+    next_tmp_name :: TempBufferNameHint <- getDynamic
+    b <- newBufferE (Left $ tmp_name_base next_tmp_name ++ "-" ++ show (tmp_name_index next_tmp_name))
+                    (R.fromString "")
+    setDynamic $ TempBufferNameHint (tmp_name_base next_tmp_name) (tmp_name_index next_tmp_name + 1)
+    return b
+
+-- | Specifies the hint for the next temp buffer's name.
+data TempBufferNameHint = TempBufferNameHint
+    { tmp_name_base :: String
+    , tmp_name_index :: Int
+    } deriving Typeable
+
+instance Initializable TempBufferNameHint where
+    initial = TempBufferNameHint "tmp" 0
 
 alternateBufferE :: Int -> EditorM ()
 alternateBufferE n = do
