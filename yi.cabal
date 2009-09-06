@@ -84,7 +84,6 @@ library
            -- the most insignificant module (with no dep) I can find.
   else
     exposed-modules:
-        Data.Rope
         Yi
         Yi.Boot
         Yi.Buffer
@@ -238,6 +237,7 @@ library
         Data.Prototype
 
         -- Should probably be split out to another package.
+        Data.Rope
         Data.DelayList
         Data.Trie
         Parser.Incremental

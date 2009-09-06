@@ -14,19 +14,23 @@ module Yi.UI.Pango.Control (
 ,   ControlM(..)
 ,   Buffer(..)
 ,   View(..)
+,   Iter(..)
 ,   newControl
 ,   runControl
 ,   newBuffer
 ,   newView
 ,   getBuffer
 ,   setBufferMode
+,   withBuffer
+,   setText
+,   getText
 ) where
 
 import Prelude (map)
 
 import Data.List (drop, zip, take)
 import qualified Data.Rope as Rope
-import Yi
+import Yi hiding(withBuffer)
 import Yi.Window
 import Yi.Editor
 import Yi.Monad
@@ -85,7 +89,7 @@ data View = View
     }
 
 data Iter = Iter
-    { iterfBufRef :: BufferRef
+    { iterFBufRef :: BufferRef
     , point       :: Point
     }
 
@@ -97,9 +101,9 @@ newControl config = do
 runControl :: ControlM a -> Control -> IO a
 runControl f s = runReaderT (runControl' f) s
 
-newBuffer :: BufferId -> Rope -> ControlM Buffer
-newBuffer id r = do
-    fBufRef <- liftEditor $ stringToNewBuffer id r
+newBuffer :: BufferId -> String -> ControlM Buffer
+newBuffer id text = do
+    fBufRef <- liftEditor $ stringToNewBuffer id $ Rope.fromString text
     return Buffer{..}
 
 newView :: Buffer -> ControlM View
@@ -194,7 +198,19 @@ setBufferMode f buffer = do
             liftIO $ putStrLn $ show (f, header, modeName newMode)
             liftEditor $ withGivenBuffer0 bufRef $ setMode newMode
 
+withBuffer :: Buffer -> BufferM a -> ControlM a
+withBuffer Buffer{fBufRef = b} f = liftEditor $ withGivenBuffer0 b f
+
+getBuffer :: View -> Buffer
 getBuffer view = Buffer {fBufRef = viewFBufRef view}
+
+setText :: Buffer -> String -> ControlM ()
+setText b text = withBuffer b $ do
+    r <- regionOfB Document
+    replaceRegionClever r text
+
+getText :: Buffer -> Iter -> Iter -> ControlM String
+getText b Iter{point = p1} Iter{point = p2} = withBuffer b $ readRegionB $ mkRegion p1 p2
 
 mkCol :: Bool -- ^ is foreground?
       -> Yi.Style.Color -> Gtk.Color
