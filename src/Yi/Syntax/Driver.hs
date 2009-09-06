@@ -28,7 +28,7 @@ mkHighlighter scanner =
   Yi.Syntax.SynHL 
         { hlStartState   = Cache [] [] emptyResult emptyResult
         , hlRun          = updateCache
-        , hlGetTree      = focused
+        , hlGetTree      = root
         , hlFocus        = focus
         }
     where startState :: state
