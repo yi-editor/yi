@@ -210,26 +210,27 @@ diredDir dir = diredDirBuffer dir >> return ()
 
 diredDirBuffer :: FilePath -> YiM BufferRef
 diredDirBuffer dir = do
-    b <- withEditor $ stringToNewBuffer (Right dir) (R.fromString "")
+    -- XXX Don't specify the path as the filename of the buffer.
+    b <- withEditor $ stringToNewBuffer (Left dir) (R.fromString "")
     withEditor $ switchToBufferE b
+    withBuffer $ modA bufferDynamicValueA $ \ds -> ds { diredPath = dir }
     diredRefresh
     return b
 
 -- | Write the contents of the supplied directory into the current buffer in dired format
 diredRefresh :: YiM ()
 diredRefresh = do
-    -- Get directory name
-    Just dir <- withBuffer $ gets file
+    dState <- withBuffer $ getA bufferDynamicValueA
+    let dir = diredPath dState
     -- Scan directory
     di <- io $ diredScanDir dir
-    dState <- withBuffer $ getA bufferDynamicValueA
     currFile <- if null (diredFilePoints dState)
                 then return ""
                 else do maybefile <- withBuffer fileFromPoint
                         case maybefile of
                           Just (fp, _) -> return fp
                           Nothing      -> return ""
-    let ds = dState {diredPath = dir, diredEntries = di, diredCurrFile = currFile}
+    let ds = dState {diredEntries = di, diredCurrFile = currFile}
     -- Compute results
     let dlines = linesToDisplay ds
         (strss, stys, strs) = unzip3 dlines
@@ -444,9 +445,14 @@ diredUnmarkAll = bypassReadOnly $ do
                    filenameColOf $ return ()
                    diredRefreshMark
 
+currentDir :: YiM FilePath
+currentDir = do
+  DiredState { diredPath = dir } <- withBuffer $ getA bufferDynamicValueA
+  return dir
+                   
 diredDoDel :: YiM ()
 diredDoDel = do
-  (Just dir) <- withBuffer $ gets file
+  dir <- currentDir
   maybefile <- withBuffer fileFromPoint
   case maybefile of
     Just (fn, de) -> askDelFiles dir [(fn, de)]
@@ -455,14 +461,14 @@ diredDoDel = do
 
 diredDoMarkedDel :: YiM ()
 diredDoMarkedDel = do
-  (Just dir) <- withBuffer $ gets file
+  dir <- currentDir
   fs <- markedFiles (flip Data.List.elem ['D'])
   askDelFiles dir fs
 
 
 diredRename :: YiM ()
 diredRename = do
-  (Just dir) <- withBuffer $ gets file
+  dir <- currentDir
   fs <- markedFiles (flip Data.List.elem ['*'])
   if null fs then do maybefile <- withBuffer fileFromPoint
                      case maybefile of
@@ -473,7 +479,7 @@ diredRename = do
 
 diredLoad :: YiM ()
 diredLoad = do
-    (Just dir) <- withBuffer $ gets file
+    dir <- currentDir
     maybefile <- withBuffer fileFromPoint
     case maybefile of 
       Just (fn, de) -> do let sel = dir </> fn
@@ -529,13 +535,13 @@ markedFiles cond = do
 
 diredUpDir :: YiM ()
 diredUpDir = do
-    (Just dir) <- withBuffer $ gets file
+    dir <- currentDir
     diredDir $ takeDirectory dir
 
 diredCreateDir :: YiM ()
 diredCreateDir = do
     withMinibufferGen "" noHint "Create Dir:" return $ \nm -> do
-    (Just dir) <- withBuffer $ gets file
+    dir <- currentDir
     let newdir = dir </> nm
     msgEditor $ "Creating "++newdir++"..."
     io $ createDirectoryIfMissing True newdir
