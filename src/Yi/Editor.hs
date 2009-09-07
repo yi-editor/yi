@@ -409,10 +409,19 @@ newBufferE f s = do
 -- The new buffer always has a buffer ID that did not exist before newTempBufferE.
 newTempBufferE :: EditorM BufferRef
 newTempBufferE = do
-    next_tmp_name :: TempBufferNameHint <- getDynamic
-    b <- newBufferE (Left $ tmp_name_base next_tmp_name ++ "-" ++ show (tmp_name_index next_tmp_name))
+    hint :: TempBufferNameHint <- getDynamic
+    e <- gets id
+    -- increment the index of the hint until no buffer is found with that name
+    let find_next in_name = 
+            case findBufferWithName (show in_name) e of
+                (b : _) -> find_next $ inc in_name
+                []      -> in_name
+        inc in_name = TempBufferNameHint (tmp_name_base in_name) (tmp_name_index in_name  + 1)
+        next_tmp_name = find_next hint
+        
+    b <- newBufferE (Left $ show next_tmp_name)
                     (R.fromString "")
-    setDynamic $ TempBufferNameHint (tmp_name_base next_tmp_name) (tmp_name_index next_tmp_name + 1)
+    setDynamic $ inc next_tmp_name
     return b
 
 -- | Specifies the hint for the next temp buffer's name.
@@ -423,6 +432,9 @@ data TempBufferNameHint = TempBufferNameHint
 
 instance Initializable TempBufferNameHint where
     initial = TempBufferNameHint "tmp" 0
+
+instance Show TempBufferNameHint where
+    show (TempBufferNameHint s i) = s ++ "-" ++ show i
 
 alternateBufferE :: Int -> EditorM ()
 alternateBufferE n = do
