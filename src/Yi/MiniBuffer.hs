@@ -35,24 +35,29 @@ import qualified Data.Rope as R
 spawnMinibufferE :: String -> KeymapEndo -> EditorM BufferRef
 spawnMinibufferE prompt kmMod =
     do b <- stringToNewBuffer (Left prompt) (R.fromString "")
-       -- This assures the buffer and window in focus when the minibuffer is spawned is in focus
-       -- when the minibuffer is closed. This is required because of insertAtEnd.
-       --
-       -- todo: not true if the minibuffer keymap modifies the buffer associated with the current
-       -- window!
-       pure wkey <*> getA currentWindowA >>= \w -> onCloseBufferE b (focusWindowE w)
-
        -- Now create the minibuffer keymap and switch to the minibuffer window
        withGivenBuffer0 b $ do
          modifyMode $ \m -> m { modeKeymap = \kms -> kms { topKeymap = kmMod (insertKeymap kms)
                                                          , startTopKeymap = kmMod (startInsertKeymap kms)
                                                          } }
-         -- setInserting True
+       -- The minibuffer window must not be moved from the position newWindowE places it!
+       -- First: This way the minibuffer is just below the window that was in focus when
+       -- the minibuffer was spawned. This clearly indicates what window is the target of
+       -- some actions. Such as searching or the :w (save) command in the Vim keymap.
+       -- Second: The users of the minibuffer expect the window and buffer that was in 
+       -- focus when the minibuffer was spawned to be in focus when the minibuffer is closed
+       -- Given that window focus works as follows:
+       --    - The new window is broguht into focus. 
+       --    - The previous window in focus is to the left of the new window in the window
+       --    set list.
+       --    - When a window is deleted and is in focus then the window to the left is brought
+       --    into focus.
+       --
+       -- If the minibuffer is moved then when the minibuffer is deleted the window brought
+       -- into focus may not be the window that spawned the minibuffer.
        w <- newWindowE True b
-       modA windowsA (insertAtEnd w)
+       modA windowsA (PL.insertRight w)
        return b
-  where insertAtEnd :: a -> PL.PointedList a -> PL.PointedList a
-        insertAtEnd w = PL.insertRight w . fromJust . (PL.move =<< pred . PL.length)
 
 -- | @withMinibuffer prompt completer act@: open a minibuffer with @prompt@. Once
 -- a string @s@ is obtained, run @act s@. @completer@ can be used to complete

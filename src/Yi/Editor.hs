@@ -606,10 +606,10 @@ tryCloseE :: EditorM ()
 tryCloseE = do
     n <- getsA windowsA PL.length
     if n == 1
-        -- Could the Maybe response from deleteRight be used instead of the
+        -- Could the Maybe response from deleteLeft be used instead of the
         -- initial 'if'?
-        then modA tabsA (fromJust . PL.deleteRight)
-        else modA windowsA (fromJust . PL.deleteRight)
+        then modA tabsA (fromJust . PL.deleteLeft)
+        else modA windowsA (fromJust . PL.deleteLeft)
 
 -- | Make the current window the only window on the screen
 closeOtherE :: EditorM ()
