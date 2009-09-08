@@ -1,4 +1,4 @@
-{-# LANGUAGE TypeFamilies, NoMonomorphismRestriction, FlexibleInstances, ScopedTypeVariables #-}
+{-# LANGUAGE CPP, TypeFamilies, NoMonomorphismRestriction, FlexibleInstances, ScopedTypeVariables #-}
 {- Copyright JP Bernardy 2008 -}
 
 -- | Generic syntax tree handling functions
@@ -26,8 +26,9 @@ import Yi.Lexer.Alex
 import Yi.Prelude
 import Yi.Region
 import Data.Accessor.Tuple
+#ifdef TESTING
 import Test.QuickCheck
-
+#endif
 
 class Foldable tree => IsTree tree where
     -- | Direct subtrees of a tree
@@ -260,6 +261,11 @@ sepBy1 p s  = (:) <$> p <*> many (s *> p)
 -- Testing code.
 
 
+#ifdef TESTING
+
+nodeRegion n = subtreeRegion t
+    where Just t = walkDown n
+
 data Test a = Empty | Leaf a | Bin (Test a) (Test a) deriving (Show, Eq)
 
 instance Foldable Test where
@@ -270,6 +276,7 @@ instance IsTree Test where
     uniplate (Bin l r) = ([l,r],\[l',r'] -> Bin l' r')
     uniplate t = ([],\[] -> t)
     emptyNode = Empty
+
 
 
 type TT = Tok ()
@@ -331,10 +338,6 @@ pointInside r = do
   return (fromIntegral p)
 
 
-nodeRegion n = subtreeRegion t
-    where Just t = walkDown n
-
-
 prop_fromLeafAfterToFinal :: NTTT -> Property
 prop_fromLeafAfterToFinal (N n) = let
     fullRegion = subtreeRegion $ snd n
@@ -392,3 +395,5 @@ prop_fromNodeToFinal  (N t) = forAll (regionInside (subtreeRegion $ snd t)) $ \r
                 putStrLn $ "leaf after = " ++ show (fromLeafToLeafAfter (regionEnd r) t)
             ) $ do
      r `includedRegion` finalRegion
+
+#endif
