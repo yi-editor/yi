@@ -238,8 +238,10 @@ renderTabBar e ui xss =
         totalTabWidth   = Vty.image_width tabImages
         uiStyle         = configStyle $ configUI $ config $ ui
         tabTitle text   = " " ++ text ++ " "
-        tabAttributes f = appEndo ((if f then tabInFocusStyle else tabNotFocusedStyle) uiStyle) (tabBarAttributes uiStyle)
-        tabToVtyImage _tab@(TabDescr text inFocus) = withAttributes (tabAttributes inFocus) (tabTitle text)
+        baseAttr b sty  = if b then attributesToAttr (appEndo (tabInFocusStyle uiStyle) sty) Vty.def_attr
+                               else attributesToAttr (appEndo (tabNotFocusedStyle uiStyle) sty) Vty.def_attr `Vty.with_style` Vty.underline
+        tabAttr b       = baseAttr b $ tabBarAttributes uiStyle
+        tabToVtyImage _tab@(TabDescr text inFocus) = Vty.string (tabAttr inFocus) (tabTitle text)
 
 -- | Determine whether it is necessary to render the tab bar
 hasTabBar :: Editor -> UI -> Bool
@@ -370,7 +372,7 @@ drawText h w topPoint point tabWidth bufData
     | otherwise = [(c,p)]
 
 withAttributes :: Attributes -> String -> Image
-withAttributes sty str = horiz_cat $ fmap (Vty.char (attributesToAttr sty Vty.def_attr)) str
+withAttributes sty str = Vty.string (attributesToAttr sty Vty.def_attr) str
 
 ------------------------------------------------------------------------
 
