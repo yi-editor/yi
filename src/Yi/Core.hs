@@ -230,6 +230,7 @@ refreshEditor = onYiVar $ \yi var -> do
                _ -> nothing
           else nothing  
     
+        -- TODO: rewrite this sequence as a pipeline, in order to get rid of the editor names. (e1..e8)
         -- show appropriate update message if applicable
         let e1 = case getFirst (foldMap (First . snd) newBuffers) of
                Just msg -> (statusLinesA ^: DelayList.insert msg) e0 {buffers = fmap fst newBuffers}
@@ -243,7 +244,9 @@ refreshEditor = onYiVar $ \yi var -> do
                                         forM ws $ flip withWindowE a)
 
         e3 <- UI.layout (yiUi yi) e2
+        -- Scroll windows to show current points as appropriate
         let (e4, relayout) = runOnWins snapScreenB e3
+        -- Do another layout pass if there was any scrolling;
         e5 <- (if or relayout then UI.layout (yiUi yi) else return) e4
         let e6 = fst $ runOnWins (snapInsB >> focusSyntaxB) e5
 

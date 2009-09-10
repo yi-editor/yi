@@ -55,7 +55,7 @@ data Editor = Editor {
        ,currentRegex         :: !(Maybe SearchExp) -- ^ currently highlighted regex (also most recent regex for use in vim bindings)
        ,searchDirection :: !Direction
        ,pendingEvents :: ![Event]                   -- ^ Processed events that didn't yield any action yet.
-       ,onCloseActions :: !(M.Map BufferRef (EditorM ()))
+       ,onCloseActions :: !(M.Map BufferRef (EditorM ())) -- ^ Actions to be run when the buffer is closed; should be scrapped.
     }
     deriving Typeable
 
@@ -407,6 +407,7 @@ newBufferE f s = do
 -- 
 -- A hint for the buffer naming scheme can be specified in the dynamic variable TempBufferNameHint
 -- The new buffer always has a buffer ID that did not exist before newTempBufferE.
+-- TODO: this probably a lot more complicated than it should be: why not count from zero every time?
 newTempBufferE :: EditorM BufferRef
 newTempBufferE = do
     hint :: TempBufferNameHint <- getDynamic
@@ -414,7 +415,7 @@ newTempBufferE = do
     -- increment the index of the hint until no buffer is found with that name
     let find_next in_name = 
             case findBufferWithName (show in_name) e of
-                (b : _) -> find_next $ inc in_name
+                (_b : _) -> find_next $ inc in_name
                 []      -> in_name
         inc in_name = TempBufferNameHint (tmp_name_base in_name) (tmp_name_index in_name  + 1)
         next_tmp_name = find_next hint
@@ -647,6 +648,8 @@ acceptedInputs = do
 -- todo: These actions are not restored on reload.
 --
 -- todo: These actions should probably be very careful at what they do.
+-- TODO: All in all, this is a very ugly way to achieve the purpose. The nice way to proceed
+-- is to somehow attach the miniwindow to the window that has spawned it.
 onCloseBufferE :: BufferRef -> EditorM () -> EditorM ()
 onCloseBufferE b a = do
     modA onCloseActionsA $ M.insertWith' (\_ old_a -> old_a >> a) b a
