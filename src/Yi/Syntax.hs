@@ -17,6 +17,7 @@ module Yi.Syntax
   ) 
 where
 
+import qualified  Data.Map as M
 import Control.Arrow
 import Yi.Style
 import Yi.Prelude
@@ -45,8 +46,8 @@ instance Functor Span where fmap = fmapDefault
 data Highlighter cache syntax = 
   SynHL { hlStartState :: cache -- ^ The start state for the highlighter.
         , hlRun :: Scanner Point Char -> Point -> cache -> cache
-        , hlGetTree :: cache -> syntax
-        , hlFocus :: Region -> cache -> cache
+        , hlGetTree :: cache -> Int -> syntax
+        , hlFocus :: M.Map Int Region -> cache -> cache
         -- ^ focus at a given point, and return the coresponding node. (hint -- the root can always be returned, at the cost of performance.)
         }
 
@@ -88,7 +89,7 @@ mkHighlighter scanner =
   Yi.Syntax.SynHL 
         { hlStartState   = Cache [] emptyResult
         , hlRun          = updateCache
-        , hlGetTree      = \(Cache _ result) -> result
+        , hlGetTree      = \(Cache _ result) _windowRef -> result
         , hlFocus        = \_ c -> c
         }
     where startState :: state

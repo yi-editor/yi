@@ -7,18 +7,21 @@ module Yi.Syntax.Driver where
 
 import Yi.Prelude
 import Prelude ()
-import Data.List (takeWhile)
+import Data.List (takeWhile, unzip)
 import Yi.Syntax hiding (Cache)
 import Yi.Syntax.Tree
 import Yi.Lexer.Alex (Tok)
 import Yi.Region
+import qualified  Data.Map as M
+import Data.Map (Map)
 
 type Path = [Int]
 
 data Cache state tree tt = Cache {
-                                   path :: Path,
+                                   path :: M.Map Int Path,
                                    cachedStates :: [state],
-                                   root, focused :: (tree (Tok tt))
+                                   root :: tree (Tok tt),
+                                   focused :: !(M.Map Int (tree (Tok tt)))
                                  }
 
 mkHighlighter :: forall state tree tt. (IsTree tree, Show state) => 
@@ -26,16 +29,16 @@ mkHighlighter :: forall state tree tt. (IsTree tree, Show state) =>
                      Highlighter (Cache state tree tt) (tree (Tok tt))
 mkHighlighter scanner =
   Yi.Syntax.SynHL 
-        { hlStartState   = Cache [] [] emptyResult emptyResult
+        { hlStartState   = Cache M.empty [] emptyResult M.empty
         , hlRun          = updateCache
-        , hlGetTree      = root
+        , hlGetTree      = \(Cache _ _ _ focused) w -> M.findWithDefault emptyResult w focused
         , hlFocus        = focus
         }
     where startState :: state
           startState = scanInit    (scanner emptyFileScan)
           emptyResult = scanEmpty (scanner emptyFileScan)
           updateCache :: Scanner Point Char -> Point -> Cache state tree tt -> Cache state tree tt
-          updateCache newFileScan dirtyOffset (Cache path cachedStates oldResult _) = Cache path newCachedStates newResult newResult
+          updateCache newFileScan dirtyOffset (Cache path cachedStates oldResult _) = Cache path newCachedStates newResult M.empty
             where newScan = scanner newFileScan
                   reused :: [state]
                   reused = takeWhile ((< dirtyOffset) . scanLooked (scanner newFileScan)) cachedStates
@@ -47,8 +50,15 @@ mkHighlighter scanner =
                   newResult :: tree (Tok tt)
                   newResult = if null recomputed then oldResult else snd $ head $ recomputed
           focus r c@(Cache path states root _focused) = 
-              (Cache path' states root $ focused)
-              where (path', focused) = fromNodeToFinal r (path,root) 
+              (Cache path' states root focused)
+              where (path', focused) = unzipFM $ zipWithFM (\newpath oldpath -> fromNodeToFinal newpath (oldpath,root)) [] r path
+
+unzipFM :: Ord k => [(k,(u,v))] -> (Map k u, Map k v)
+unzipFM l = (M.fromList mu, M.fromList mv) 
+    where (mu, mv) = unzip [((k,u),(k,v)) | (k,(u,v)) <- l]
+
+zipWithFM :: Ord k => (u -> v -> w) -> v -> Map k u -> Map k v -> [(k,w)]
+zipWithFM f v0 mu mv = [ (k,f u (M.findWithDefault v0 k mv) ) | (k,u) <- M.assocs mu]
 
 emptyFileScan :: Scanner Point Char
 emptyFileScan = Scanner { scanInit = 0, 

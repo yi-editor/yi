@@ -45,7 +45,7 @@ data Editor = Editor {
        ,buffers       :: !(M.Map BufferRef FBuffer)
        ,refSupply     :: !Int  -- ^ Supply for buffer and window ids.
 
-       ,tabs_          :: !(PL.PointedList (PL.PointedList Window))
+       ,tabs_          :: !(PL.PointedList (PL.PointedList Window)) -- ^ current tab contains the visible windows pointed list.
 
        ,dynamic       :: !(DynamicValues)              -- ^ dynamic components
 

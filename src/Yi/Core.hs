@@ -83,7 +83,7 @@ import Yi.String
 import Yi.Style (errorStyle, strongHintStyle)
 import Yi.UI.Common as UI (UI)
 import qualified Yi.UI.Common as UI
-import Yi.Window (dummyWindow, bufkey)
+import Yi.Window (dummyWindow, bufkey, wkey, winRegion)
 
 -- | Make an action suitable for an interactive run.
 -- UI will be refreshed.
@@ -248,19 +248,17 @@ refreshEditor = onYiVar $ \yi var -> do
         let (e4, relayout) = runOnWins snapScreenB e3
         -- Do another layout pass if there was any scrolling;
         e5 <- (if or relayout then UI.layout (yiUi yi) else return) e4
-        let e6 = fst $ runOnWins (snapInsB >> focusSyntaxB) e5
-
-
         -- Adjust point according to the current layout;
+        let e6 = fst $ runOnWins snapInsB e5
         -- Focus syntax tree on the current window.
-        -- FIXME: This optimisation won't do any good if a buffer is open in two windows,
-        -- because both window will compete for the focus. There should be one focus per window.
-        -- Display
-        UI.refresh (yiUi yi) e6
-        -- Clear "pending updates" from buffers.
-        let e7 = buffersA ^: (fmap (clearUpdates . clearFollow)) $ e6
+            regions b = M.fromList [(wkey w, winRegion w) | w <- toList $ windows e6, bufkey w == bkey b]
+            e7 = buffersA ^: (fmap (\b -> focusSyntax (regions b) b)) $ e6
+        -- Display the new state of the editor
+        UI.refresh (yiUi yi) e7
+        -- Clear "pending updates" and "followUp" from buffers.
+        let e8 = buffersA ^: (fmap (clearUpdates . clearFollow)) $ e7
         -- Terminate stale processes.
-        terminateSubprocesses (staleProcess $ buffers e5) yi var {yiEditor = e7}
+        terminateSubprocesses (staleProcess $ buffers e5) yi var {yiEditor = e8}
   where
     clearUpdates = pendingUpdatesA ^= []
     clearFollow = pointFollowsWindowA ^= const False

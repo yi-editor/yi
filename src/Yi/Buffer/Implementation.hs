@@ -379,8 +379,8 @@ getMarkDefaultPosBI name defaultPos fb@FBufferData {marks = mks, markNames = nms
            in (fb {marks = mks', markNames = nms'}, newMark)
 
 
-getAst :: BufferImpl syntax -> syntax
-getAst b@FBufferData {hlCache = HLState s@(SynHL {hlGetTree = gt}) cache} = gt cache
+getAst :: Int -> BufferImpl syntax -> syntax
+getAst w b@FBufferData {hlCache = HLState s@(SynHL {hlGetTree = gt}) cache} = gt cache w
 
-focusAst :: Region -> BufferImpl syntax -> BufferImpl syntax
+focusAst ::  M.Map Int Region -> BufferImpl syntax -> BufferImpl syntax
 focusAst r b@FBufferData {hlCache = HLState s@(SynHL {hlFocus = foc}) cache} = b {hlCache = HLState s (foc r cache)}
