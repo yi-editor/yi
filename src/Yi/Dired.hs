@@ -439,6 +439,10 @@ diredUnmark = bypassReadOnly $ do
                                        diredRefreshMark
                   Nothing        -> do filenameColOf lineUp
 
+
+diredUnmarkPath :: FilePath -> BufferM()
+diredUnmarkPath fn = do modA bufferDynamicValueA (\ds -> ds {diredMarks = M.delete fn $ diredMarks ds})
+
 diredUnmarkAll :: BufferM ()
 diredUnmarkAll = bypassReadOnly $ do
                    modA bufferDynamicValueA (\ds -> ds {diredMarks = const M.empty $ diredMarks ds})
@@ -554,7 +558,8 @@ diredCreateDir = do
 -- Logic and implementation of each operation are packaged in procDiredOp
 -- See askDelFiles for example.
 -- If new elem op is added, just add corresponding procDiredOp to handle it.
-data DiredOp = DORemove FilePath
+data DiredOp = DORemoveFile FilePath
+             | DORemoveDir FilePath
              | DOCopyFile FilePath FilePath
              | DOCopyDir FilePath FilePath
              | DORename FilePath FilePath
@@ -605,20 +610,35 @@ modDiredOpState f = withBuffer $ modA bufferDynamicValueA f
 -- | execute the operations
 -- Pass the list of remaining operations down, insert new ops at the head if needed
 procDiredOp :: Bool -> [DiredOp] -> YiM ()
-procDiredOp counting ((DORemove f):ops) = do io $ catch (removeLink f) handler
-                                             when counting incDiredOpSucCnt
-                                             procDiredOp counting ops
+procDiredOp counting ((DORemoveFile f):ops) = do io $ catch (removeLink f) handler
+                                                 when counting postproc
+                                                 procDiredOp counting ops
     where handler err = fail $ concat ["Remove file ", f, " failed: ", show err]
+          postproc = do incDiredOpSucCnt
+                        withBuffer $ diredUnmarkPath (takeFileName f)
+procDiredOp counting ((DORemoveDir f):ops) = do io $ catch (removeDirectoryRecursive f) handler
+                                                -- document suggests removeDirectoryRecursive will follow
+                                                -- symlinks in f, but it seems not the case, at least on OS X.
+                                                when counting postproc
+                                                procDiredOp counting ops
+    where handler err = fail $ concat ["Remove directory ", f, " failed: ", show err]
+          postproc = do incDiredOpSucCnt
+                        withBuffer $ diredUnmarkPath (takeFileName f)
 procDiredOp counting ((DORemoveBuffer f):ops) = undefined -- TODO
 procDiredOp counting  ((DOCopyFile o n):ops) = do io $ catch (copyFile o n) handler
-                                                  when counting incDiredOpSucCnt
+                                                  when counting postproc
                                                   procDiredOp counting ops
     where handler err = fail $ concat ["Copy file ", o, " to ", n, " failed: ", show err]
+          postproc = do incDiredOpSucCnt
+                        withBuffer $ diredUnmarkPath (takeFileName o)
+                        -- TODO: mark copied files with "C" if the target dir's dired buffer exists
 procDiredOp counting ((DOCopyDir o n):ops) = undefined -- TODO
 procDiredOp counting ((DORename o n):ops) = do io $ catch (rename o n) handler
-                                               when counting incDiredOpSucCnt
+                                               when counting postproc
                                                procDiredOp counting ops
     where handler err = fail $ concat ["Rename ", o, " to ", n, " failed: ", show err]
+          postproc = do incDiredOpSucCnt
+                        withBuffer $ diredUnmarkPath (takeFileName o)
 procDiredOp counting r@((DOConfirm prompt eops enops):ops) = withMinibuffer (prompt ++ " (yes/no)") noHint act
     where act s = case map toLower s of
                     "yes" -> procDiredOp counting (eops ++ ops)
@@ -638,7 +658,7 @@ procDiredOp counting ((DONoOp):ops) = procDiredOp counting ops
 procDiredOp counting ((DOFeedback f):ops) = getDiredOpState >>= f >> procDiredOp counting ops
 procDiredOp counting r@((DOChoice prompt op):ops) = do
   st <- getDiredOpState
-  if diredOpForAll st then yesAction
+  if diredOpForAll st then proceedYes
                       else do withEditor $ spawnMinibufferE msg (const askKeymap)
                               return ()
     where msg = concat [prompt, " (y/n/!/q/h)"]
@@ -709,8 +729,7 @@ askRenameFiles dir fs = case fs of
           existenceStr s = do exists <- fileExist s
                               return $ if exists then s else ""
           showResult st = msgEditor $ concat [show (diredOpSucCnt st),
-                                              " of ", show total, " files moved. DEBUG:",
-                                             show (diredOpForAll st)]
+                                              " of ", show total, " files moved."]
           showNothing _ = msgEditor $ "Quit"
           total = length fs
 
@@ -741,9 +760,9 @@ askDelFiles dir fs = do
                                   if exists then case de of
                                                    (DiredDir _dfi) -> do
                                                            isNull <- liftM nullDir $ getDirectoryContents path
-                                                           return $ if isNull then (DOConfirm recDelPrompt [DORemove path] [DONoOp])
-                                                                              else (DORemove path)
-                                                   _               -> return (DORemove path)
+                                                           return $ if isNull then (DOConfirm recDelPrompt [DORemoveDir path] [DONoOp])
+                                                                              else (DORemoveDir path)
+                                                   _               -> return (DORemoveFile path)
                                             else return DONoOp
               where path = dir </> fn
                     recDelPrompt = concat ["Recursive delete of ", fn, "?"]
