@@ -200,18 +200,12 @@ quitEditor = do
     onYiVar $ terminateSubprocesses (const True)
     withUI (flip UI.end True)
 
--- | Redraw
-refreshEditor :: YiM ()
-refreshEditor = onYiVar $ \yi var -> do
-        let e0 = yiEditor var 
-            msg1 = (1, (["File was changed by a concurrent process, reloaded!"], strongHintStyle))
-            msg2 = (1, (["Disk version changed by a concurrent process"], strongHintStyle))
-            visibleBuffers = fmap bufkey $ windows e0
-        -- Find out if any file was modified "behind our back" by other processes.            
-        -- FIXME: since we do IO here we must catch exceptions!
-
-        -- Update (visible) buffers if they have changed on disk.
+-- | Update (visible) buffers if they have changed on disk.
+-- FIXME: since we do IO here we must catch exceptions!
+checkFileChanges :: Editor -> IO Editor
+checkFileChanges e0 = do
         now <- getCurrentTime
+        -- Find out if any file was modified "behind our back" by other processes.            
         newBuffers <- forM (buffers e0) $ \b -> 
           let nothing = return (b, Nothing) 
           in if bkey b `elem` visibleBuffers
@@ -229,45 +223,67 @@ refreshEditor = onYiVar $ \yi var -> do
                      else nothing
                _ -> nothing
           else nothing  
-    
-        -- TODO: rewrite this sequence as a pipeline, in order to get rid of the editor names. (e1..e8)
         -- show appropriate update message if applicable
-        let e1 = case getFirst (foldMap (First . snd) newBuffers) of
+        return $ case getFirst (foldMap (First . snd) newBuffers) of
                Just msg -> (statusLinesA ^: DelayList.insert msg) e0 {buffers = fmap fst newBuffers}
                Nothing -> e0
-            -- Hide selection, clear "syntax dirty" flag (as appropriate).
-            e2 = buffersA ^: (fmap (clearSyntax . clearHighlight)) $ e1
+    where msg1 = (1, (["File was changed by a concurrent process, reloaded!"], strongHintStyle))
+          msg2 = (1, (["Disk version changed by a concurrent process"], strongHintStyle))
+          visibleBuffers = fmap bufkey $ windows e0
+          fileModTime f = posixSecondsToUTCTime . realToFrac . modificationTime <$> getFileStatus f
 
-        -- Adjust window sizes according to UI info
-        let runOnWins a = runEditor (yiConfig yi)
-                                    (do ws <- getA windowsA
-                                        forM ws $ flip withWindowE a)
 
-        e3 <- UI.layout (yiUi yi) e2
-        -- Scroll windows to show current points as appropriate
-        let (e4, relayout) = runOnWins snapScreenB e3
-        -- Do another layout pass if there was any scrolling;
-        e5 <- (if or relayout then UI.layout (yiUi yi) else return) e4
-        -- Adjust point according to the current layout;
-        let e6 = fst $ runOnWins snapInsB e5
-        -- Focus syntax tree on the current window.
-            regions b = M.fromList [(wkey w, winRegion w) | w <- toList $ windows e6, bufkey w == bkey b]
-            e7 = buffersA ^: (fmap (\b -> focusSyntax (regions b) b)) $ e6
-        -- Display the new state of the editor
-        UI.refresh (yiUi yi) e7
-        -- Clear "pending updates" and "followUp" from buffers.
-        let e8 = buffersA ^: (fmap (clearUpdates . clearFollow)) $ e7
-        -- Terminate stale processes.
-        terminateSubprocesses (staleProcess $ buffers e5) yi var {yiEditor = e8}
+-- | Hide selection, clear "syntax dirty" flag (as appropriate).
+clearAllSyntaxAndHideSelection :: Editor -> Editor
+clearAllSyntaxAndHideSelection = buffersA ^: (fmap (clearSyntax . clearHighlight))
   where
-    clearUpdates = pendingUpdatesA ^= []
-    clearFollow = pointFollowsWindowA ^= const False
     clearHighlight fb =
       -- if there were updates, then hide the selection.
       let h = getVal highlightSelectionA fb
           us = getVal pendingUpdatesA fb
       in highlightSelectionA ^= (h && null us) $ fb
-    fileModTime f = posixSecondsToUTCTime . realToFrac . modificationTime <$> getFileStatus f
+
+
+-- Focus syntax tree on the current window, for all visible buffers.
+focusAllSyntax :: Editor -> Editor
+focusAllSyntax e6 = buffersA ^: (fmap (\b -> focusSyntax (regions b) b)) $ e6
+    where regions b = M.fromList [(wkey w, winRegion w) | w <- toList $ windows e6, bufkey w == bkey b]
+          -- Why bother filtering the region list? After all the trees are lazily computed.
+          -- Answer: focusing is an incremental algorithm. Each "focused" path depends on the previous one.
+          -- If we left unforced focused paths, we'd create a long list of thunks: a memory leak.
+
+pureM :: Monad m => (a -> b) -> a -> m b
+pureM f = return . f
+
+-- | Redraw
+refreshEditor :: YiM ()
+refreshEditor = onYiVar $ \yi var -> do
+        let runOnWins a = runEditor (yiConfig yi)
+                                    (do ws <- getA windowsA
+                                        forM ws $ flip withWindowE a)
+        let scroll e3 = let (e4, relayout) = runOnWins snapScreenB e3 in
+                -- Scroll windows to show current points as appropriate
+                -- Do another layout pass if there was any scrolling;
+                (if or relayout then UI.layout (yiUi yi) else return) e4
+        
+        e7 <- return (yiEditor var) >>= 
+             checkFileChanges >>= 
+             pureM clearAllSyntaxAndHideSelection >>=
+             -- Adjust window sizes according to UI info
+             UI.layout (yiUi yi) >>=
+             scroll >>=
+             -- Adjust point according to the current layout;
+             pureM (fst . runOnWins snapInsB) >>=
+             pureM focusAllSyntax >>=
+             -- Clear "pending updates" and "followUp" from buffers.
+             pureM (buffersA ^: (fmap (clearUpdates . clearFollow)))
+        -- Display the new state of the editor
+        UI.refresh (yiUi yi) e7
+        -- Terminate stale processes.
+        terminateSubprocesses (staleProcess $ buffers e7) yi var {yiEditor = e7}
+  where
+    clearUpdates = pendingUpdatesA ^= []
+    clearFollow = pointFollowsWindowA ^= const False
     -- | Is this process stale? (associated with a deleted buffer)
     staleProcess bs p = not (bufRef p `M.member` bs)
     
