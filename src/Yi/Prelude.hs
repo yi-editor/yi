@@ -85,7 +85,6 @@ import Data.Rope (Rope)
 import Control.Category
 import Control.Monad.Reader
 import Control.Applicative
-import Control.Category
 import Data.Traversable 
 import Control.Monad
 import Data.Monoid
@@ -178,10 +177,6 @@ chain q (e1 : es@(e2 : _))
 
 ----------------------
 -- Accessors support
-
-instance Category Data.Accessor.Basic.T where
-    id = Data.Accessor.Basic.self
-    (.) = (<.)
 
 -- | Lift an accessor to a traversable structure. (This can be seen as a
 -- generalization of fmap)
