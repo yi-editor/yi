@@ -304,10 +304,6 @@ arbitraryFromList xs = do
 instance Eq (Tok a) where
     x == y = tokPosn x == tokPosn y
     
-instance Applicative Gen where
-    pure = return
-    (<*>) = ap
-
 instance Arbitrary Region where
     arbitrary = sized $ \size -> do
         x0 :: Int <- arbitrary
