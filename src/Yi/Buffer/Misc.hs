@@ -364,6 +364,11 @@ data IndentSettings = IndentSettings { expandTabs :: Bool -- ^ Insert spaces ins
 data AnyMode = forall syntax. AnyMode (Mode syntax)
   deriving Typeable
 
+{- | A Mode customizes the Yi interface for editing a particular data
+   format.  It specifies when the mode should be used and
+   controls file-specific syntax highlighting and command input, among
+   other things.
+-}
 data Mode syntax = Mode
     {
      modeName :: String,              -- ^ so this can be serialized, debugged.
@@ -376,7 +381,7 @@ data Mode syntax = Mode
      modeFollow :: syntax -> Action, -- ^ Follow a "link" in the file. (eg. go to location of error message)
      modeIndentSettings :: IndentSettings,
      modeToggleCommentSelection :: BufferM (),
-     modeGetStrokes :: syntax -> Point -> Point -> Point -> [Stroke],
+     modeGetStrokes :: syntax -> Point -> Point -> Point -> [Stroke], -- ^ Strokes that should be applied when displaying a syntax element
      modeGetAnnotations :: syntax -> Point -> [Span String],
      modePrintTree :: syntax -> BufferM (),
      -- should this be an Action instead?
