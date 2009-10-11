@@ -70,6 +70,9 @@ data UIStyle = UIStyle
   , makeFileRuleHead   :: Style      -- ^ makefile rule headers
   }
 
+-- | A StyleName determines what style to use, taking into account the
+-- set of rendering preferences given by a 'UIStyle'.  Typically, style
+-- names will be 'Style'-valued field names of 'UIStyle'.
 type StyleName = UIStyle -> Style
 
 withFg, withBg :: Color -> Style
