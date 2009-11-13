@@ -404,8 +404,8 @@ getY screenHeight numberOfWindows = screenHeight `quotRem` numberOfWindows
 ------------------------------------------------------------------------
 
 -- | Convert a Yi Attr into a Vty attribute change.
-colorToAttr :: (Vty.Color -> Vty.Attr -> Vty.Attr) -> (Vty.Attr -> Vty.Attr) -> Vty.Color -> Style.Color -> (Vty.Attr -> Vty.Attr)
-colorToAttr set set_default unknown c =
+colorToAttr :: (Vty.Color -> Vty.Attr -> Vty.Attr) -> Vty.Color -> Style.Color -> (Vty.Attr -> Vty.Attr)
+colorToAttr set unknown c =
   case c of 
     RGB 0 0 0         -> set Vty.black
     RGB 128 128 128   -> set Vty.bright_black
@@ -423,17 +423,16 @@ colorToAttr set set_default unknown c =
     RGB 0 255 255     -> set Vty.bright_cyan
     RGB 165 165 165   -> set Vty.white
     RGB 255 255 255   -> set Vty.bright_white
-    Default           -> set_default 
+    Default           -> id
     _                 -> set unknown -- NB
 
 attributesToAttr :: Attributes -> (Vty.Attr -> Vty.Attr)
 attributesToAttr (Attributes fg bg reverse bd _itlc underline') =
-  (if reverse then (flip Vty.with_style Vty.reverse_video)  else id) .
-  (if bd then (flip Vty.with_style Vty.bold) else id) .
-  (if underline' then (flip Vty.with_style Vty.underline) else id) .
-  colorToAttr (flip Vty.with_fore_color) (\a -> a { Vty.fore_color = Vty.Default }) Vty.black fg .
-  colorToAttr (flip Vty.with_back_color) (\a -> a { Vty.back_color = Vty.Default }) Vty.white bg
-
+    (if reverse then (flip Vty.with_style Vty.reverse_video)  else id) .
+    (if bd then (flip Vty.with_style Vty.bold) else id) .
+    (if underline' then (flip Vty.with_style Vty.underline) else id) .
+    colorToAttr (flip Vty.with_fore_color) Vty.black fg . 
+    colorToAttr (flip Vty.with_back_color) Vty.white bg
 
 ---------------------------------
 
