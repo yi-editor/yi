@@ -4,7 +4,9 @@ import Data.List (isPrefixOf)
 
 greek :: [(String, String)]
 greek = [(name, unicode) | (_,name,unicode) <- greekData] ++ 
-        [(['\'',shorthand],unicode) | (Just shorthand,_,unicode) <- greekData]
+        [ ([leading,shorthand],unicode)
+        | (Just shorthand,_,unicode) <- greekData
+        , leading                    <- ['\'', 'g'] ]
 
 -- | Triples: (shorthand, name, unicode)
 greekData :: [(Maybe Char, String, String)]
@@ -14,9 +16,10 @@ greekData = [(Just 'a', "alpha", "α")
             ,(Just 'G', "Gamma", "Γ")
             ,(Just 'd', "delta", "δ")
             ,(Just 'D', "Delta", "Δ")
-            ,(Nothing , "epsilon", "ε")
+            ,(Just 'e' , "epsilon", "ε")
             ,(Just 'z', "zeta", "ζ")
-            ,(Nothing , "eta", "η")
+            ,(Just 'N' , "eta", "η") -- N is close to n which is graphically close
+            ,(Just 'E' , "eta", "η") -- E is close to e which is the start of eta
             ,(Nothing , "theta", "θ")
             ,(Nothing , "Theta", "Θ")
             ,(Just 'i', "iota", "ι")
@@ -27,16 +30,16 @@ greekData = [(Just 'a', "alpha", "α")
             ,(Just 'n', "nu", "ν")
             ,(Just 'x', "xi", "ξ")
             ,(Just 'o', "omicron", "ο")
-            ,(Nothing , "pi", "π")
-            ,(Nothing , "Pi", "Π")
+            ,(Just 'p' , "pi", "π")
+            ,(Just 'P' , "Pi", "Π")
             ,(Just 'r', "rho", "ρ")
             ,(Just 's', "sigma", "σ")
             ,(Just 'S', "Sigma", "Σ")
             ,(Just 't', "tau", "τ")
-            ,(Nothing , "phi", "φ")
-            ,(Nothing , "Phi", "Φ")
-            ,(Nothing , "chi", "χ")
-            ,(Nothing , "Chi", "Χ")
+            ,(Just 'f' , "phi", "φ")
+            ,(Just 'F' , "Phi", "Φ")
+            ,(Just 'c', "chi", "χ")
+            ,(Just 'C', "Chi", "Χ")
             ,(Nothing , "psi", "ψ")
             ,(Nothing , "Psi", "Ψ")
             ,(Just 'w', "omega", "ω")
