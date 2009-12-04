@@ -90,12 +90,12 @@ better _ (PRes x) (PRes y) = if x <= y then (LT, PRes x) else (GT, PRes y)  -- t
 better lk xs@(PRes x) (y:>ys) = if x == 0 || y-x > dislikeThreshold lk then (LT, xs) else min x y +> better (lk+1) xs ys
 better lk (y:>ys) xs@(PRes x) = if x == 0 || y-x > dislikeThreshold lk then (GT, xs) else min x y +> better (lk+1) ys xs
 better lk (x:>xs) (y:>ys)
-    | x == 0 && y == 0 = rec -- never drop things with no error: this ensures to find a correct parse if it exists.
+    | x == 0 && y == 0 = recur -- never drop things with no error: this ensures to find a correct parse if it exists.
     | x - y > threshold = (GT, y:>ys)
     | y - x > threshold = (LT, x:>xs) -- if at any point something is too disliked, drop it.
-    | otherwise = rec
+    | otherwise = recur
     where threshold = dislikeThreshold lk
-          rec = min x y +> better (lk + 1) xs ys
+          recur = min x y +> better (lk + 1) xs ys
 
 (+>) :: Int -> (t, Profile) -> (t, Profile)
 x +> ~(ordering, xs) = (ordering, x :> xs)

@@ -311,13 +311,13 @@ executable yi
         -- haddock >= 2.2,
         -- it seems harsh to require haddock 2.2 to even configure Yi
 
-        build-depends: Cabal >= 1.6 && < 1.7
+        build-depends: Cabal >= 1.6 && < 1.9
         build-depends: Diff >=0.1 && <0.2
         build-depends: array, containers,  directory, process, old-locale
         build-depends: base >=4 && <5
         build-depends: binary == 0.5.*
         build-depends: bytestring >=0.9.1 && <0.9.2
-        build-depends: derive >=0.1 && <0.2 
+        build-depends: derive >=2 && <2.1 
         build-depends: data-accessor == 0.2.1.*
         build-depends: data-accessor-monads-fd == 0.2.*
         build-depends: data-accessor-template == 0.2.*

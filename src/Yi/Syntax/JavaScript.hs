@@ -5,6 +5,7 @@ module Yi.Syntax.JavaScript where
 
 import Data.DeriveTH
 import Data.Data (Data, Typeable)
+import qualified Data.Foldable
 import Data.Monoid (Endo(..), mempty)
 import Prelude (maybe)
 import Yi.Buffer.Basic (Point(..))

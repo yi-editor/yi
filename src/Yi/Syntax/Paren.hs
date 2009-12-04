@@ -17,6 +17,7 @@ import Data.DeriveTH
 import Data.Derive.Foldable
 import Data.Maybe
 import Data.List (filter, takeWhile)
+import qualified Data.Foldable
 
 indentScanner :: Scanner (AlexState lexState) (TT)
               -> Scanner (Yi.Syntax.Layout.State Token lexState) (TT)

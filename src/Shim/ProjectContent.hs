@@ -6,8 +6,8 @@
 --
 
 module Shim.ProjectContent
-         ( loadProject
-         , itemName
+         ( {- loadProject
+         , -} itemName
          , ProjectItem(..)
          , FileKind(..)
          , FolderKind(..)
@@ -89,7 +89,7 @@ data ModuleKind
   | HiddenModule
   deriving (Eq, Ord, Show)
 
-
+{-
 loadProject :: FilePath -> IO (Tree ProjectItem, Tree ProjectItem)
 loadProject projPath = do
   Right lbi <- tryGetConfigStateFile (projPath </> localBuildInfoFile defaultDistPref)
@@ -110,6 +110,7 @@ loadProject projPath = do
                             addFilePath LicenseText projPath (licenseFile pkgDescr)) tloc4
       tloc6 = execState (mapM_ (\item -> insertDown item >> up) (Set.toList mod_items)) tloc1
   return (tree tloc5, tree tloc6)
+-}
 
 getTop :: Tree a -> TreeLoc a
 getTop = fromTree

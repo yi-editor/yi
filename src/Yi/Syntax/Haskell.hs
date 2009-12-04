@@ -17,6 +17,7 @@ module Yi.Syntax.Haskell ( PModule
 import Prelude ()
 import Data.Maybe
 import Data.List (filter, union, takeWhile, (\\))
+import qualified Data.Foldable
 import Yi.IncrementalParse
 import Yi.Lexer.Alex
 import Yi.Lexer.Haskell
