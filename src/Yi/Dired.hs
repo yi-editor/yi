@@ -320,7 +320,7 @@ diredScanDir :: FilePath -> IO (M.Map FilePath DiredEntry)
 diredScanDir dir = do
     files <- getDirectoryContents dir
     -- The file strings as UTF-8 encoded on linux. They need to stay this way for functions that
-    -- stat these paths. However for display they need to be converted to ISO-10464 strings.
+    -- stat these paths. However for display they need to be converted to ISO-10646 strings.
     let filteredFiles = filter (not . diredOmitFile) files
     foldM (lineForFile dir) M.empty filteredFiles
     where
