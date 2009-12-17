@@ -1,6 +1,7 @@
 module Yi.Char.Unicode (greek, symbols, subscripts, superscripts, checkAmbs, disamb) where
 
 import Data.List (isPrefixOf)
+import Control.Applicative
 
 greek :: [(String, String)]
 greek = [(name, unicode) | (_,name,unicode) <- greekData] ++ 
@@ -82,11 +83,13 @@ symbols =
  ,("exists", "∃")
  ,("rA", "∀") -- reversed A
  ,("rE", "∃") -- reversed E
+ ,("/rE", "∄")
 
  -- operators
  ,("<|","◃")
  -- ,("<|","◁") alternative
  ,("|>","▹")
+ ,("><","⋈")
  ,("<)", "◅")
  ,("(>", "▻")
  ,("v","∨")
@@ -129,8 +132,22 @@ symbols =
  ,("c","⊂")
  ,("c-","∈")
  ,("/c-","∉")
+ ,("c/=","⊊")
+ ,("rc=","⊇") -- r for reversed
+ ,("rc","⊃") -- r for reversed
+ ,("rc-","∋") -- r for reversed
+ ,("r/c-","∌") -- r for reversed
+ ,("rc/=","⊋") -- r for reversed
  ,(">=","≥")
  ,("=<","≤")
+ ,("c[]","⊏")
+ ,("rc[]","⊐")
+ ,("c[]=","⊑")
+ ,("rc[]=","⊒")
+ ,("/c[]=","⋢")
+ ,("/rc[]=","⋣")
+ ,("c[]/=","⋤")
+ ,("rc[]/=","⋥")
 
  ---- equal signs
  ,("=def","≝")
@@ -155,6 +172,7 @@ symbols =
  ,("0", "∅")
  ,("*", "★") -- or "⋆"
  ,("/'l","ƛ")
+ ,("d","∂")
  ,("#b","♭") -- music bemol
  ,("#f","♮") -- music flat
  ,("##","♯") -- music #
@@ -238,12 +256,20 @@ disamb table = map f table
 
 -- More:
 -- arrows: ⇸ ⇆
--- set:  ⊇ ⊃
 -- circled operators: ⊕ ⊖ ⊗ ⊘ ⊙ ⊚ ⊛ ⊜ ⊝ ⍟  ⎊ ⎉
 -- squared operators: ⊞ ⊟ ⊠ ⊡
 -- turnstyles: ⊦ ⊧
+-- subscript: ₔ
 
+zipscripts :: Char -> String -> String -> [(String, String)]
+zipscripts c ascii unicode
+  = zip (fmap ((c:) . pure) ascii) (fmap pure unicode)
 
 subscripts, superscripts :: [(String, String)]
-subscripts   = zip (fmap (('_':). (:[])) "0123456789+-=()")  (fmap (:[]) "₀₁₂₃₄₅₆₇₈₉₊₋₌₍₎")
-superscripts = zip (fmap (('^':). (:[])) "0123456789+-=()n") (fmap (:[]) "⁰¹²³⁴⁵⁶⁷⁸⁹⁺⁻⁼⁽⁾ⁿ")
+
+subscripts   = zipscripts '_' "0123456789+-=()aeioruvx"
+                              "₀₁₂₃₄₅₆₇₈₉₊₋₌₍₎ₐₑᵢₒᵣᵤᵥₓ"
+
+superscripts = zipscripts '^' -- NOTE that qCFQSVXYZ are missing
+  "0123456789+-=()abcdefghijklmnoprstuvwxyzABDEGHIJKLMNOPRTUW"
+  "⁰¹²³⁴⁵⁶⁷⁸⁹⁺⁻⁼⁽⁾ᵃᵇᶜᵈᵉᶠᵍʰⁱʲᵏˡᵐⁿᵒᵖʳˢᵗᵘᵛʷˣʸᶻᴬᴮᴰᴱᴳᴴᴵᴶᴷᴸᴹᴺᴼᴾᴿᵀᵁᵂ"
