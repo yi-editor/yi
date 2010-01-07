@@ -45,6 +45,16 @@ getLatestArticle = fst . split -- we only want the article
 removeSetLast :: ArticleDB -> Article -> ArticleDB
 removeSetLast adb old = snd (split adb) |> old
 
+-- we move the last entry to  the entry 'length `div` n'from the beginning; so 'shift 1' would do nothing
+-- (eg. the last index is 50, 50 `div` 1 == 50, so the item would be moved to where it is)
+--  'shift 2' will move it to the middle of the list, though; last index = 50, then 50 `div` 2 will shift
+-- the item to index 25, and so on down to 50 `div` 50 - the head of the list/Seq.
+shift :: Int ->ArticleDB -> ArticleDB
+shift n adb = if n < 2 || lst < 2 then adb else (r |> lastentry) >< s'
+              where lst = S.length adb - 1
+                    (r,s) = S.splitAt (lst `div` n) adb
+                    (s' :> lastentry) = S.viewr s
+
 -- | Insert a new article with top priority (that is, at the front of the list).
 insertArticle :: ArticleDB -> Article -> ArticleDB
 insertArticle adb new = new <| adb
@@ -111,11 +121,11 @@ deleteAndNextArticle = do (oldb,_) <- oldDbNewArticle -- throw away changes,
 -- | The main action. We fetch the old database, we fetch the modified article from the buffer,
 -- then we call the function 'updateSetLast' which removes the first article and pushes our modified article
 -- to the end of the list.
-saveAndNextArticle :: YiM ()
-saveAndNextArticle = do (oldb,newa) <- oldDbNewArticle
-                        let newdb = removeSetLast oldb newa
-                        writeDB newdb
-                        setDisplayedArticle newdb
+saveAndNextArticle :: Int -> YiM ()
+saveAndNextArticle n = do (oldb,newa) <- oldDbNewArticle
+                          let newdb = shift n $ removeSetLast oldb newa
+                          writeDB newdb
+                          setDisplayedArticle newdb
 
 -- | Assume the buffer is an entirely new article just imported this second, and save it.
 -- We don't want to use 'updateSetLast' since that will erase an article.
