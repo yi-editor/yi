@@ -43,7 +43,7 @@ getLatestArticle = fst . split -- we only want the article
 -- | We remove the old first article, and we stick it on the end of the
 -- list using the presumably modified version.
 removeSetLast :: ArticleDB -> Article -> ArticleDB
-removeSetLast adb old = (snd $ split adb) |> old
+removeSetLast adb old = snd (split adb) |> old
 
 -- | Insert a new article with top priority (that is, at the front of the list).
 insertArticle :: ArticleDB -> Article -> ArticleDB
@@ -57,7 +57,7 @@ writeDB adb = do io . forkIO . join . fmap (flip encodeFile adb) $ dbLocation
 -- | Read in database from 'dbLocation' and then parse it into an 'ArticleDB'.
 readDB :: YiM ArticleDB
 readDB = io $ (dbLocation >>= r) `catch` (\_ -> return empty)
-          where r x = fmap (decode . BL.fromChunks . return) $ B.readFile x
+          where r = fmap (decode . BL.fromChunks . return) . B.readFile
                 -- We read in with strict bytestrings to guarantee the file is closed,
                 -- and then we convert it to the lazy bytestring data.binary expects.
                 -- This is inefficient, but alas...
@@ -68,7 +68,7 @@ dbLocation = getHomeDirectory >>= \home -> return (home ++ "/.yi/articles.db")
 
 -- | Returns the database as it exists on the disk, and the current Yi buffer contents.
 --   Note that the Initializable typeclass gives us an empty Seq. So first we try the buffer
---   state in the hope we can avoid a very expensive read from disk, and if we find nothing 
+--   state in the hope we can avoid a very expensive read from disk, and if we find nothing
 --   (that is, if we get an empty Seq), only then do we call 'readDB'.
 oldDbNewArticle :: YiM (ArticleDB, Article)
 oldDbNewArticle = do saveddb <- withBuffer $ getA bufferDynamicValueA
