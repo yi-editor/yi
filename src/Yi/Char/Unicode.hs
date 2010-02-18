@@ -80,6 +80,7 @@ symbols =
 
  -- quantifiers
  ,("forall", "∀")
+ ,("all", "∀")
  ,("exists", "∃")
  ,("rA", "∀") -- reversed A
  ,("rE", "∃") -- reversed E
@@ -131,6 +132,7 @@ symbols =
  ,("c=","⊆")
  ,("c","⊂")
  ,("c-","∈")
+ ,("in","∈")
  ,("/c-","∉")
  ,("c/=","⊊")
  ,("rc=","⊇") -- r for reversed
