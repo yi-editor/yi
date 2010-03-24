@@ -34,7 +34,7 @@ data-files:
   art/setup-script.png
   examples/yi.hs
   examples/yi-simple.hs
-extra-source-files: Yi/Lexer/common.hsinc
+extra-source-files: src/Yi/Lexer/common.hsinc
 
 flag ghcInterpreter
   Description: Use the "hint" interpreter for extended commands (M-x) (experimental)
