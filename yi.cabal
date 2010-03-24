@@ -1,5 +1,5 @@
 name:           yi
-version:        0.6.2.1
+version:        0.6.2.2
 category:       Development, Editor
 synopsis:       The Haskell-Scriptable Editor
 description:
@@ -11,8 +11,8 @@ author:         AUTHORS
 maintainer:     yi-devel@googlegroups.com
 homepage:       http://haskell.org/haskellwiki/Yi
 bug-reports:    http://code.google.com/p/yi-editor/issues/list
-Cabal-Version:  >= 1.8
-tested-with:    GHC==6.10.1
+Cabal-Version:  >= 1.6
+tested-with:    GHC==6.12.1
 build-type:     Simple
 data-files:
   art/yi+lambda-fat.pdf
