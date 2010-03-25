@@ -18,7 +18,7 @@ abstract = fundamentalMode { modeApplies = anyExtension ["irtxt"],
     where -- Default bindings.
           -- ikeys :: (MonadInteract f Yi.Keymap.Action Event) => f () -> f ()
           ikeys = (choice ([metaCh '`' ?>>! saveAsNewArticle,
-                           metaCh '\DEL' ?>>! deleteAndNextArticle] ++
+                           metaCh '0' ?>>! deleteAndNextArticle] ++
                            map (\x -> metaCh (intToDigit x) ?>>! saveAndNextArticle x) [1..9])
                             <||)
 
@@ -28,4 +28,4 @@ ireaderMode = abstract { modeName = "interactive reading of text" }
 ireadMode ::  YiM ()
 ireadMode = do withBuffer $ setAnyMode $ AnyMode ireaderMode
                nextArticle 
-               msgEditor "M-Del delete; M-` new; M-[1-9]: save with increasing priority"
+               msgEditor "M-` new; M-0 delete; M-[1-9]: save w/higher priority"
