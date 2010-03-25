@@ -374,11 +374,11 @@ data Mode syntax = Mode
      modeName :: String,              -- ^ so this can be serialized, debugged.
      modeApplies :: FilePath -> String -> Bool, -- ^ What type of files does this mode apply to?
      modeHL :: ExtHL syntax,          -- ^ Syntax highlighter
-     modePrettify :: syntax -> BufferM (), -- ^ Prettify current "paragraph"
+     modePrettify :: syntax -> BufferM (), -- ^ Prettify current \"paragraph\"
      modeKeymap :: KeymapSet -> KeymapSet, -- ^ Buffer-local keymap modification
      modeIndent :: syntax -> IndentBehaviour -> BufferM (), -- ^ emacs-style auto-indent line
      modeAdjustBlock :: syntax -> Int -> BufferM (), -- ^ adjust the indentation after modification
-     modeFollow :: syntax -> Action, -- ^ Follow a "link" in the file. (eg. go to location of error message)
+     modeFollow :: syntax -> Action, -- ^ Follow a \"link\" in the file. (eg. go to location of error message)
      modeIndentSettings :: IndentSettings,
      modeToggleCommentSelection :: BufferM (),
      modeGetStrokes :: syntax -> Point -> Point -> Point -> [Stroke], -- ^ Strokes that should be applied when displaying a syntax element
