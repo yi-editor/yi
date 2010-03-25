@@ -121,10 +121,10 @@ startEditor cfg st = do
                            yi = Yi ui inF outF cfg newSt 
                        return (ui, runYi)
   
-    runYi $ do
-      if isNothing st 
-         then postActions $ startActions cfg ++ [makeAction showErrors] -- process options if booting for the first time
-         else withEditor $ modA buffersA (fmap (recoverMode (modeTable cfg))) -- otherwise: recover the mode of buffers
+    runYi $ do if isNothing st
+                    then postActions $ startActions cfg -- process options if booting for the first time
+                    else withEditor $ modA buffersA (fmap (recoverMode (modeTable cfg))) -- otherwise: recover the mode of buffers
+               postActions $ initialActions cfg ++ [makeAction showErrors]
 
     runYi refreshEditor
 
@@ -141,11 +141,11 @@ postActions actions = do yi <- ask; liftIO $ output yi actions
 -- | Display the errors buffer if it is not already visible.
 showErrors :: YiM ()
 showErrors = withEditor $ do
-               bs <- gets $ findBufferWithName ".yi/yi.errors"
+               bs <- gets $ findBufferWithName "*errors*"
                case bs of
                  [] -> return ()
                  _  -> do splitE
-                          switchToBufferWithNameE ".yi/yi.errors"
+                          switchToBufferWithNameE "*errors*"
 
 -- | Process an event by advancing the current keymap automaton an
 -- execing the generated actions.

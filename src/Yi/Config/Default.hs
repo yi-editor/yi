@@ -147,6 +147,7 @@ defaultConfig =
            }
          , defaultKm        = modelessKeymapSet nilKeymap
          , startActions     = []
+         , initialActions   = []
          , publishedActions = defaultPublishedActions
          , modeTable = [AnyMode Haskell.cleverMode,
                         AnyMode Haskell.preciseMode,

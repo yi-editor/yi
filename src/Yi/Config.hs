@@ -38,6 +38,8 @@ data Config = Config {startFrontEnd :: UIBoot,
                       -- ^ UI-specific configuration.
                       startActions :: [Action],
                       -- ^ Actions to run when the editor is started.
+                      initialActions :: [Action],
+                      -- ^ Actions to run after startup (after startActions) or reload.
                       defaultKm :: KeymapSet,
                       -- ^ Default keymap to use.
                       configInputPreprocess :: I.P Event Event,
