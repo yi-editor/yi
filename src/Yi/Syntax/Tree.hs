@@ -16,19 +16,20 @@ module Yi.Syntax.Tree (IsTree(..), toksAfter, allToks, tokAtOrBefore, toksInRegi
 -- Some of this might be replaced by a generic package
 -- such as multirec, uniplace, emgm, ...
 
-import Control.Monad (ap)
-import Data.List (dropWhile, takeWhile, reverse, filter, zip, zipWith, take, drop, length, splitAt)
+import Prelude (curry)
+
+import Control.Arrow (first)
+import Data.List (dropWhile, takeWhile, reverse, filter, zip, take, drop, length, splitAt)
 import Data.Maybe
 import Data.Monoid
-import Prelude (curry)
+#ifdef TESTING
+import Test.QuickCheck
+#endif
+
 import Yi.Buffer.Basic
 import Yi.Lexer.Alex
 import Yi.Prelude
 import Yi.Region
-import Data.Accessor.Tuple
-#ifdef TESTING
-import Test.QuickCheck
-#endif
 
 class Foldable tree => IsTree tree where
     -- | Direct subtrees of a tree
@@ -140,19 +141,14 @@ allLeavesRelative' select l
 nodesAndChildIndex :: IsTree tree => Node (tree t) -> [(Node (tree t), Int)]
 nodesAndChildIndex ([],t) = [(([],t),negate 1)]
 nodesAndChildIndex (x:xs, t) = case index x (subtrees t) of
-    Just c' -> (([],t), x) : fmap (frst (frst (x:))) (nodesAndChildIndex (xs,c'))
+    Just c' -> (([],t), x) : fmap (first $ first (x:)) (nodesAndChildIndex (xs,c'))
     Nothing -> [(([],t),negate 1)]
           
 nodesOnPath :: IsTree tree => Node (tree t) -> [(Path, Node (tree t))]
 nodesOnPath ([],t) = [([],([],t))]
 nodesOnPath (x:xs,t) = ([],(x:xs,t)) : case index x (subtrees t) of
                            Nothing -> error "nodesOnPath: non-existent path"
-                           Just c -> fmap (frst (x:)) (nodesOnPath (xs,c))
-
-
-
-frst :: (a -> b) -> (a,c) -> (b,c)
-frst f ~(x,y) = (f x, y)
+                           Just c -> fmap (first (x:)) (nodesOnPath (xs,c))
 
 
 afterChild c = drop (c+1)
@@ -199,7 +195,7 @@ walkDown (x:xs,t) = goDown x t >>= curry walkDown xs
 wkDown ([],t) = ([],t)
 wkDown (x:xs,t) = case goDown x t of
     Nothing -> ([],t)
-    Just t' -> frst (x:) $ wkDown (xs,t')
+    Just t' -> first (x:) $ wkDown (xs,t')
 
 
 -- | Search the given list, and return the last tree before the given
