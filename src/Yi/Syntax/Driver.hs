@@ -7,13 +7,15 @@ module Yi.Syntax.Driver where
 
 import Yi.Prelude
 import Prelude ()
+
 import Data.List (takeWhile, unzip)
-import Yi.Syntax hiding (Cache)
-import Yi.Syntax.Tree
-import Yi.Lexer.Alex (Tok)
-import Yi.Region
 import qualified  Data.Map as M
 import Data.Map (Map)
+
+import Yi.Lexer.Alex (Tok)
+import Yi.Region
+import Yi.Syntax hiding (Cache)
+import Yi.Syntax.Tree
 
 type Path = [Int]
 
@@ -59,10 +61,4 @@ unzipFM l = (M.fromList mu, M.fromList mv)
 
 zipWithFM :: Ord k => (u -> v -> w) -> v -> Map k u -> Map k v -> [(k,w)]
 zipWithFM f v0 mu mv = [ (k,f u (M.findWithDefault v0 k mv) ) | (k,u) <- M.assocs mu]
-
-emptyFileScan :: Scanner Point Char
-emptyFileScan = Scanner { scanInit = 0, 
-                          scanRun = const [], 
-                          scanLooked = id, 
-                          scanEmpty = error "emptyFileScan: no scanEmpty" }
 

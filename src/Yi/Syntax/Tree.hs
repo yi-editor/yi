@@ -216,7 +216,6 @@ getLastPath roots offset =
 getAllSubTrees :: IsTree tree => tree t -> [tree t]
 getAllSubTrees t = t : concatMap getAllSubTrees (subtrees t)
 
-
 -- | Return the 1st token of a subtree.
 getFirstElement :: Foldable t => t a -> Maybe a
 getFirstElement tree = getFirst $ foldMap (First . Just) tree
@@ -386,3 +385,4 @@ prop_fromNodeToFinal  (N t) = forAll (regionInside (subtreeRegion $ snd t)) $ \r
      r `includedRegion` finalRegion
 
 #endif
+

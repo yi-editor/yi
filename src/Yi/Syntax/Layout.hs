@@ -1,4 +1,4 @@
-{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE PatternGuards, ScopedTypeVariables #-}
 -- Note: If the first line of the file has wrong indentation, some of the
 -- code might be left outside of the blocks
 module Yi.Syntax.Layout (layoutHandler, State) where
@@ -145,9 +145,3 @@ maxPosn = Posn (-1) (-1) 0
 -- OnlineTrees, which relies on the position of the last token to stop
 -- the parsing.
 
-
-  
-
-
-      
-      

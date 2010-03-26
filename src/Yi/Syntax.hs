@@ -11,7 +11,7 @@ module Yi.Syntax
   , Cache
   , Scanner (..)
   , ExtHL        ( .. )
-  , noHighlighter, mkHighlighter, skipScanner
+  , noHighlighter, mkHighlighter, skipScanner, emptyFileScan
   , Point(..), Size(..), Length, Stroke
   , Span(..)
   ) 
@@ -41,7 +41,7 @@ instance Functor Span where fmap = fmapDefault
 -- the required functions, and is parametrized on the type of the internal
 -- state.
 
--- FIXME: this is actually completelty abstrcted from sytnax HL, so the names are silly.
+-- FIXME: this is actually completetly abstrcted from sytnax HL, so the names are silly.
 
 data Highlighter cache syntax = 
   SynHL { hlStartState :: cache -- ^ The start state for the highlighter.

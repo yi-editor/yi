@@ -75,15 +75,13 @@ getIndentingSubtree root offset line =
                              let (tok:_) = toList t',
                              let posn = tokPosn tok]
 
-
--- | given a tree, return (first offset, number of lines).
+-- | Given a tree, return (first offset, number of lines).
 getSubtreeSpan :: Tree TT -> (Point, Int)
 getSubtreeSpan tree = (posnOfs $ first, lastLine - firstLine)
     where bounds@[first, _last] = fmap (tokPosn . assertJust) [getFirstElement tree, getLastElement tree]
           [firstLine, lastLine] = fmap posnLine bounds
           assertJust (Just x) = x
           assertJust _ = error "assertJust: Just expected"
-    
 
 -- $(derive makeFunctor ''Tree)
 
@@ -167,3 +165,4 @@ errTok = mkTok <$> curPos
          tB Nothing = maxBound
          tB (Just x) = tokBegin x
          mkTok p = Tok (Special '!') 0 (startPosn {posnOfs = p})
+
