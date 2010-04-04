@@ -6,7 +6,7 @@
 -- | This module defines a user interface implemented using gtk2hs and
 -- pango for direct text rendering.
 
-module Yi.UI.Pango (start) where
+module Yi.UI.Pango (start, processEvent) where
 
 import Prelude (filter, map, round, FilePath, (/))
 

@@ -40,6 +40,7 @@ module Yi.Core
   -- * Misc
   , runAction
   , withSyntax
+  , focusAllSyntax
 
   ) 
 where
