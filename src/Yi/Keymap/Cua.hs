@@ -1,6 +1,6 @@
 -- Copyright (c) 2008 Jean-Philippe Bernardy
 
-module Yi.Keymap.Cua (keymap, portableKeymap) where
+module Yi.Keymap.Cua (keymap, portableKeymap, cut, paste, copy, del) where
 
 import Prelude (length, take, drop)
 import Yi.Core

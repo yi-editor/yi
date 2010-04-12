@@ -49,7 +49,25 @@ import Yi.Keymap hiding(withBuffer)
 import Yi.Monad
 import Yi.Style
 import Yi.UI.Utils
-import Graphics.UI.Gtk as Gtk hiding(Action, Point, Region, get)
+import Graphics.UI.Gtk as Gtk
+       (Color(..), PangoRectangle(..), Rectangle(..), selectionDataSetText,
+        targetString, clipboardSetWithData, clipboardRequestText,
+        selectionPrimary, clipboardGetForDisplay, widgetGetDisplay,
+        onMotionNotify, drawRectangle, drawLine, newGCValues, gcSetValues,
+        layoutIndexToPos, layoutGetCursorPos, drawLayout, gcNew,
+        widgetGetDrawWindow, layoutSetAttributes, widgetGrabFocus,
+        scrolledWindowSetPolicy, scrolledWindowAddWithViewport,
+        scrolledWindowNew, contextGetMetrics, contextGetLanguage,
+        layoutSetFontDescription, layoutEmpty, widgetCreatePangoContext,
+        widgetModifyBg, drawingAreaNew, FontDescription, ScrolledWindow,
+        FontMetrics, Language, DrawingArea, layoutXYToIndex, layoutSetText,
+        layoutGetText, widgetSetSizeRequest, layoutGetPixelExtents,
+        layoutSetWidth, layoutGetWidth, layoutGetFontDescription,
+        PangoLayout, descent, ascent, widgetGetSize, widgetQueueDraw,
+        mainQuit, signalDisconnect, ConnectId(..), PolicyType(..),
+        StateType(..), EventMask(..), AttrOp(..), Weight(..),
+        PangoAttribute(..), Underline(..), FontStyle(..))
+import qualified Graphics.UI.Gtk as Gtk
 import qualified Graphics.UI.Gtk.Gdk.Events as Gdk.Events
 import System.Glib.GError
 import Control.Monad.Reader (liftIO, ask, asks, MonadReader(..))
