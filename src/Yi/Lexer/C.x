@@ -111,7 +111,7 @@ $charesc = [abfnrtv\\\"\'\&]
 @gap     = \\ $whitechar+ \\
 @string  = $graphic # [\"\\] | " " | @escape | @gap
 
-haskell :-
+c :-
 
 <0> $white+                                     { c defaultStyle } -- whitespace
 
@@ -119,14 +119,14 @@ haskell :-
   -- We could do nested comments like this
   -- "/*"                                       { m (subtract 1) blockCommentStyle }
   "*/"                                          { m (+1) blockCommentStyle }
-  $white+                                       { c defaultStyle } -- whitespace
+  $white+                                       ; -- Whitespace
   .                                             { c blockCommentStyle }
 }
 
 <0> {
   "//"[^\n]*                                    { c commentStyle }
 
- "/*"                                           { m (subtract 1) blockCommentStyle }
+ "/*" @reservedop*                              { m (subtract 1) blockCommentStyle }
 
  $special                                       { c defaultStyle }
 
