@@ -175,20 +175,22 @@ data Token = Number | CharTok | StringTok | VarIdent | ConsIdent
 
 tokenToStyle :: Token -> StyleName
 tokenToStyle tok = case tok of
-  CppDirective   -> preprocessorStyle
-  Number         -> numberStyle
-  CharTok        -> stringStyle
-  StringTok      -> stringStyle
-  VarIdent       -> variableStyle
-  ConsIdent      -> typeStyle
-  ReservedOp _   -> operatorStyle
-  Reserved _     -> keywordStyle
-  Special _      -> defaultStyle
-  ConsOperator _ -> operatorStyle
-  Operator _     -> operatorStyle
-  Comment _      -> commentStyle
-  THQuote        -> quoteStyle
-  Unrecognized   -> errorStyle
+  CppDirective       -> preprocessorStyle
+  Number             -> numberStyle
+  CharTok            -> stringStyle
+  StringTok          -> stringStyle
+  VarIdent           -> variableStyle
+  ConsIdent          -> typeStyle
+  ReservedOp _       -> operatorStyle
+  Reserved Import    -> importStyle
+  Reserved Qualified -> importStyle
+  Reserved _         -> keywordStyle
+  Special _          -> defaultStyle
+  ConsOperator _     -> operatorStyle
+  Operator _         -> operatorStyle
+  Comment _          -> commentStyle
+  THQuote            -> quoteStyle
+  Unrecognized       -> errorStyle
 
 tokenToText :: Token -> Maybe String
 tokenToText (ReservedOp BackSlash) = Just "λ"

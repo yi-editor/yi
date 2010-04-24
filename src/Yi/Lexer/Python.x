@@ -47,6 +47,8 @@ $longintegersuffix = [lL]
   | None
   | True
 
+@importst = import
+
 @reservedid = 
     @builtins
   | and
@@ -66,7 +68,6 @@ $longintegersuffix = [lL]
   | from
   | global
   | if
-  | import
   | in
   | is
   | lambda
@@ -127,6 +128,8 @@ main :-
  "#"[^\n]*                                      { c commentStyle }
 
  $special                                       { c defaultStyle }
+
+ @importst                                      { c importStyle  }
 
  @reservedid                                    { c keywordStyle }
  @varid                                         { c defaultStyle }

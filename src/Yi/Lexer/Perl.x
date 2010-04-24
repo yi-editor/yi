@@ -37,6 +37,10 @@ $hexit     = [0-9 A-F a-f]
 $idchar    = [$alpha $ascdigit]
 $nl        = [\n\r]
 
+@importId =
+      use
+    | require
+
 @reservedId = 
     if
     | while
@@ -56,8 +60,6 @@ $nl        = [\n\r]
     | else
     | sub
     | package
-    | use
-    | require
     | our
     | my
     | defined
@@ -141,8 +143,10 @@ perlHighlighterRules :-
     [^smqrty]^"#"[^\n]*                            { c commentStyle }
     ^"#"[^\n]*                                     { c commentStyle }
 
-    @seperator @reservedId / @seperator            { c keywordStyle }
-    ^ @reservedId / @seperator                     { c keywordStyle }
+    @seperator @reservedId / @seperator            { c importStyle  }
+    @seperator @importId   / @seperator            { c keywordStyle }
+    ^ @reservedId / @seperator                     { c importStyle  }
+    ^ @importId   / @seperator                     { c keywordStyle }
 
     @varTypeOp
         { m (\s -> HlInVariable 0 s) (const $ withFg darkcyan) }

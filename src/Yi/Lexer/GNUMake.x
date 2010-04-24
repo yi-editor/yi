@@ -32,7 +32,7 @@ import qualified Yi.Style as Style
 $varChar = $printable # [\: \# \= \ \{ \} \( \)]
 
 @directives = 
-      include 
+    include 
     | if
     | export
     | unexport
@@ -68,7 +68,7 @@ make :-
     --  One preceeded by a "-" 
     --  Another not preceeded by a "-"
     \-?"include"
-        { m (const IncludeDirective) Style.keywordStyle }
+        { m (const IncludeDirective) Style.importStyle }
 
     -- A variable expansion outside of a prerequisite can occur in three different forms.
     -- Inside a prerequisite they can occur in four different forms.
