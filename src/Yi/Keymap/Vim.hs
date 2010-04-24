@@ -61,7 +61,7 @@ import Control.Monad.State hiding (mapM_, mapM, sequence)
 import Control.Arrow hiding (left, right)
 
 import {-# source #-} Yi.Boot
-import Yi.Command (cabalRun)
+import Yi.Command (cabalRun, makeBuild, shellCommandV)
 import Yi.Core
 import Yi.Dired
 import Yi.Eval (execEditorAction, getAllNamesInScope)
@@ -1517,6 +1517,7 @@ defKeymap = Proto template
 
            fn "u"          = withBuffer' undoB
            fn "undo"       = withBuffer' undoB
+           fn "only"       = withEditor closeOtherE
            fn "red"        = withBuffer' redoB
            fn "redo"       = withBuffer' redoB
 
@@ -1529,6 +1530,9 @@ defKeymap = Proto template
            fn "stop"       = suspendEditor
 
            fn ('c':'a':'b':'a':'l':' ':s) = cabalRun s1 (const $ return ()) (CommandArguments $ words $ drop 1 s2) where (s1, s2) = break (==' ') s
+           fn "make"       = makeBuild $ CommandArguments []
+           fn ('m':'a':'k':'e':' ':s) = makeBuild (CommandArguments $ words s)
+           fn ('!':s)         = shellCommandV s
            fn ('y':'i':' ':s) = execEditorAction $ dropSpace s
 
            fn "hoogle-word" = hoogle >> return ()

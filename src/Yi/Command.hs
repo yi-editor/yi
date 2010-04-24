@@ -38,10 +38,15 @@ changeBufferNameE =
   strFun = withBuffer . putA identA . Left
 
 ----------------------------
--- | shell-command
+-- | shell-command with argument prompt
 shellCommandE :: YiM ()
 shellCommandE = do
-    withMinibufferFree "Shell command:" $ \cmd -> do
+    withMinibufferFree "Shell command:" shellCommandV
+
+----------------------------
+-- | shell-command with a known argument
+shellCommandV :: String -> YiM ()
+shellCommandV cmd = do
       (cmdOut,cmdErr,exitCode) <- liftIO $ runShellCommand cmd
       case exitCode of
         ExitSuccess -> withEditor $ newBufferE (Left "Shell Command Output") (R.fromString cmdOut) >> return ()
