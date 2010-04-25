@@ -127,6 +127,9 @@ modStroke f = fmap (f `mappend`)
 tokenToStroke :: TT -> Stroke
 tokenToStroke = fmap tokenToStyle . tokToSpan
 
+tokenToAnnot :: TT -> Maybe (Span String)
+tokenToAnnot = sequenceA . tokToSpan . fmap tokenToText
+
 tokenToStyle :: Token -> StyleName
 tokenToStyle t =
   case t of
