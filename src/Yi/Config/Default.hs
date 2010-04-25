@@ -219,9 +219,9 @@ openScratchBuffer = withEditor $ do
 
 nilKeymap :: Keymap
 nilKeymap = choice [
-             char 'c' ?>>  openCfg (Cua.keymap),
-             char 'e' ?>>  openCfg (Emacs.keymap),
-             char 'v' ?>>  openCfg (Vim.keymapSet),
+             char 'c' ?>>  openCfg (Cua.keymap)    "yi-cua.hs",
+             char 'e' ?>>  openCfg (Emacs.keymap)  "yi.hs",
+             char 'v' ?>>  openCfg (Vim.keymapSet) "yi-vim.hs",
              char 'q' ?>>! quitEditor,
              char 'r' ?>>! reload,
              char 'h' ?>>! configHelp
@@ -232,9 +232,9 @@ nilKeymap = choice [
                           "To get a standard reasonable keymap, you can run yi with either --as=cua, --as=vim or --as=emacs.",
                           "You should however create your own ~/.yi/yi.hs file: ",
                           "You can type 'c', 'e' or 'v' now to create and edit it using a temporary cua, emacs or vim keymap."]
-          openCfg km = write $ do
+          openCfg km kmName = write $ do
             dataDir <- io $ getDataDir
-            let exampleCfg = dataDir </> "examples" </> "yi.hs"
+            let exampleCfg = dataDir </> "examples" </> kmName
             homeDir <- io $ getHomeDirectory
             let cfgDir = homeDir </> ".yi"
                 cfgFile = cfgDir </> "yi.hs"

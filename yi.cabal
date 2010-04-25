@@ -33,6 +33,8 @@ data-files:
   art/setup-script.png
   art/setup-script.png
   examples/yi.hs
+  examples/yi-vim.hs
+  examples/yi-cua.hs
   examples/yi-simple.hs
 extra-source-files: src/Yi/Lexer/common.hsinc
 

@@ -6,6 +6,10 @@ import Yi.Style.Library
 import Yi.Prelude
 import Prelude ()
 
+-- import Yi.UI.Vty (start)
+-- import Yi.UI.Cocoa (start)
+-- import Yi.UI.Pango (start)
+
 -- Uncomment for Shim support
 -- import qualified Yi.Mode.Shim as Shim
 -- -- Shim.minorMode gives us emacs-like keybindings - what would be a good
