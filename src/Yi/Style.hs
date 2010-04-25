@@ -88,6 +88,8 @@ withBd c = Endo $ \s -> s { bold = c }
 withItlc c = Endo $ \s -> s { italic = c }
 -- | A style that sets the style to underlined
 withUnderline c = Endo $ \s -> s { underline = c }
+-- | A style that sets the style to underlined
+withReverse c = Endo $ \s -> s { reverseAttr = c }
 
 -- | The identity transform.
 defaultStyle :: StyleName
