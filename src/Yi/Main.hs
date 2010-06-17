@@ -11,7 +11,6 @@ module Yi.Main (main) where
 import Prelude ()
 
 import Control.Monad.Error
-import Control.Monad.Trans.Error (Error(..))
 import Data.Char
 import Data.List (intercalate)
 import Distribution.Text (display)

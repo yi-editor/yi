@@ -1,7 +1,7 @@
 -- Copyright (c) JP Bernardy 2008
 {-# OPTIONS -fglasgow-exts #-}
 module Yi.IncrementalParse (recoverWith, symbol, eof, lookNext, testNext,
-                            P, Parser(..), AlexState (..), scanner) where
+                            State, P, Parser(..), AlexState (..), scanner) where
 import Parser.Incremental hiding (run)
 import Yi.Lexer.Alex (AlexState (..))
 import Yi.Prelude
