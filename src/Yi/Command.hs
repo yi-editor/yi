@@ -1,8 +1,7 @@
 {-# LANGUAGE DeriveDataTypeable, GeneralizedNewtypeDeriving, TypeOperators #-}
 -- Copyright (c) 2008 Jean-Philippe Bernardy
 -- | Various high-level functions to further classify.
-module Yi.Command
-where
+module Yi.Command where
 
 {- Standard Library Module Imports -}
 import Data.Binary
@@ -14,6 +13,7 @@ import Control.Monad.Trans (MonadIO (..))
 {- Local (yi) module imports -}
 
 import Prelude ()
+import Yi.Prelude (discard)
 import Yi.Core
 import Yi.MiniBuffer
 import qualified Yi.Mode.Compilation as Compilation
@@ -109,9 +109,9 @@ searchSources = grepFind (Doc "*.hs")
 -- | Perform a find+grep operation
 grepFind :: String ::: FilePatternTag -> String ::: RegexTag -> YiM ()
 grepFind (Doc filePattern) (Doc searchedRegex) = withOtherWindow $ do
-    startSubprocess "find" [".", 
-                            "-name", "_darcs", "-prune", "-o", 
-                            "-name", filePattern, "-exec", "grep", "-Hnie", searchedRegex, "{}", ";"] (const $ return ())
+    discard $ startSubprocess "find" [".",
+                                      "-name", "_darcs", "-prune", "-o",
+                                      "-name", filePattern, "-exec", "grep", "-Hnie", searchedRegex, "{}", ";"] (const $ return ())
     withBuffer $ setMode Compilation.mode
     return ()
 

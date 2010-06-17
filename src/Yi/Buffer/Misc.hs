@@ -125,7 +125,7 @@ module Yi.Buffer.Misc
   )
 where
 
-import Prelude (ceiling, drop)
+import Prelude (drop)
 import Yi.Prelude
 import Yi.Region
 import System.FilePath
@@ -138,14 +138,11 @@ import Control.Monad.RWS.Strict hiding (mapM_, mapM, get, put, forM)
 import Data.Accessor.Template
 import Data.Binary
 import Data.DeriveTH
-import Data.Derive.Binary
 import qualified Data.Rope as R
 import Data.List (scanl, takeWhile, zip, length)
 import qualified Data.Map as M
 import Data.Maybe
-import Data.Typeable
 import {-# source #-} Yi.Keymap
-import Yi.Monad
 import Yi.Interact as I
 import Yi.Buffer.Basic
 import Data.Time

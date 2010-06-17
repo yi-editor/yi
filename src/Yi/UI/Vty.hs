@@ -17,13 +17,11 @@ import Control.Monad (forever)
 import Control.Monad.State (runState, get, put)
 import Control.Monad.Trans (liftIO, MonadIO)
 import Data.Char (ord,chr)
-import Data.Foldable
 import Data.IORef
 import Data.List (partition, sort, nub)
 import qualified Data.List.PointedList.Circular as PL
 import Data.Maybe
 import Data.Monoid
-import Data.Traversable
 import System.Exit
 import System.Posix.Signals (raiseSignal, sigTSTP)
 import System.Posix.Terminal
@@ -31,7 +29,6 @@ import System.Posix.IO (stdInput)
 import Yi.Buffer
 import Yi.Editor
 import Yi.Event
-import Yi.Monad
 import Yi.Style
 import qualified Yi.UI.Common as Common
 import Yi.Config
@@ -103,7 +100,7 @@ start cfg ch outCh editor = do
                       -- sufficient instead of "layoutAction result"
                       getKey
                   _ -> return (fromVtyEvent event)
-          forkIO getcLoop
+          discard $ forkIO getcLoop
           return (mkUI result)
 
 main :: UI -> IO ()
@@ -127,7 +124,7 @@ end :: UI -> Bool -> IO ()
 end i reallyQuit = do  
   Vty.shutdown (vty i)
   setTerminalAttributes stdInput (oAttrs i) Immediately
-  tryPutMVar (uiEnd i) ()
+  discard $ tryPutMVar (uiEnd i) ()
   when reallyQuit $ throwTo (uiThread i) ExitSuccess
   return ()
 
@@ -378,14 +375,6 @@ withAttributes sty str = Vty.string (attributesToAttr sty Vty.def_attr) str
 
 userForceRefresh :: UI -> IO ()
 userForceRefresh = Vty.refresh . vty
-
--- | Schedule a refresh of the UI.
-scheduleRefresh :: UI -> Editor -> IO ()
-scheduleRefresh ui e = do
-  writeRef (uiEditor ui) e
-  logPutStrLn "scheduleRefresh"
-  tryPutMVar (uiRefresh ui) ()
-  return ()
 
 -- | Calculate window heights, given all the windows and current height.
 -- (No specific code for modelines)

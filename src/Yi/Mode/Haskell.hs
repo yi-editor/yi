@@ -23,9 +23,6 @@ import Prelude (unwords, zipWith)
 import Yi.Core
 import Yi.File
 import Yi.Lexer.Alex (Tok(..),Posn(..),tokBegin,tokEnd,tokRegion)
-import Yi.Lexer.Haskell (Token(..), ReservedType(..), startsLayout)
-import Yi.Prelude
-import Yi.Region
 import Yi.String
 import Yi.Syntax
 import qualified Yi.Syntax.Driver as Driver

@@ -196,7 +196,7 @@ toEmacsStyleConfig cfg
 -- Useful for emacs lovers ;)
 escToMeta :: I.P Event Event
 escToMeta = mkAutomaton $ forever $ (anyEvent >>= I.write) ||> do
-    event (spec KEsc)
+    discard $ event (spec KEsc)
     c <- printableChar
     I.write (Event (KASCII c) [MMeta])
 
@@ -210,12 +210,10 @@ openScratchBuffer :: YiM ()
 openScratchBuffer = withEditor $ do 
       noFileBufOpen <- null . rights . fmap (getVal identA) . M.elems <$> getA buffersA
       when noFileBufOpen $ do
-           newBufferE (Left "scratch") $ R.fromString $ unlines
+           discard $ newBufferE (Left "scratch") $ R.fromString $ unlines
                    ["This buffer is for notes you don't want to save.", --, and for haskell evaluation" -- maybe someday?
                     "If you want to create a file, open that file,",
                     "then enter the text in that file's own buffer."]
-           return ()
-
 
 nilKeymap :: Keymap
 nilKeymap = choice [

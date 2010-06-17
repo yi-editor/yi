@@ -51,7 +51,6 @@ import Data.Char
 import Data.List (sort)
 import Control.Applicative
 import Control.Monad
-import Data.Typeable
 import Data.Accessor (Accessor)
 
 -- | Designate a given "unit" of text.

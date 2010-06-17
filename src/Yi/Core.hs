@@ -48,9 +48,9 @@ where
 import Prelude (realToFrac)
 
 import Control.Concurrent
-import Control.Monad (when, forever)
+import Control.Monad (forever)
 import Control.Monad.Error ()
-import Control.Monad.Reader (runReaderT, ask)
+import Control.Monad.Reader (ask)
 import Control.Monad.Trans
 import Control.OldException
 import qualified Data.DelayList as DelayList
@@ -82,7 +82,6 @@ import Yi.Prelude
 import Yi.Process (popen, createSubprocess, readAvailable, SubprocessId, SubprocessInfo(..))
 import Yi.String
 import Yi.Style (errorStyle, strongHintStyle)
-import Yi.UI.Common as UI (UI)
 import qualified Yi.UI.Common as UI
 import Yi.Window (dummyWindow, bufkey, wkey, winRegion)
 
@@ -357,7 +356,7 @@ onYiVar f = do
 terminateSubprocesses :: (SubprocessInfo -> Bool) -> Yi -> YiVar -> IO (YiVar, ())
 terminateSubprocesses shouldTerminate _yi var = do
         let (toKill, toKeep) = partition (shouldTerminate . snd) $ M.assocs $ yiSubprocesses var
-        forM toKill $ terminateProcess . procHandle . snd
+        discard $ forM toKill $ terminateProcess . procHandle . snd
         return (var {yiSubprocesses = M.fromList toKeep}, ())
 
 -- | Start a subprocess with the given command and arguments.
@@ -386,8 +385,7 @@ startSubprocessWatchers procid procinfo yi onExit = do
         append atMark s = withEditor $ appendToBuffer atMark (bufRef procinfo) s
         reportExit ec = send $ do append True ("Process exited with " ++ show ec)
                                   removeSubprocess procid
-                                  onExit ec
-                                  return ()
+                                  discard $ onExit ec
 
 removeSubprocess :: SubprocessId -> YiM ()
 removeSubprocess procid = modifiesRef yiVar (\v -> v {yiSubprocesses = M.delete procid $ yiSubprocesses v})

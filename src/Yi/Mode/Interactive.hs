@@ -8,7 +8,6 @@ import Yi.Core
 import Yi.History
 import Yi.Lexer.Alex (Tok)
 import Yi.Lexer.Compilation (Token)
-import Yi.Region
 import qualified Yi.Mode.Compilation as Compilation
 import qualified Yi.Syntax.OnlineTree as OnlineTree
 

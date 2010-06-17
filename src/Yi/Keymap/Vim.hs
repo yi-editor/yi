@@ -1753,4 +1753,3 @@ kwd_mode opts = some (ctrlCh 'n' ?>> write . viWordComplete $ completeCaseSensit
   where viWordComplete caseSensitive = 
           withEditor . withBuffer0 . (savingDeleteWordB Backward >>) . 
           savingInsertStringB =<< wordCompleteString' caseSensitive
-

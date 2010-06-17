@@ -323,8 +323,7 @@ scrollByB f n = do h <- askWindow height
 -- | Same as scrollB, but also moves the cursor
 vimScrollB :: Int -> BufferM ()
 vimScrollB n = do scrollB n
-                  lineMoveRel n
-                  return ()
+                  discard $ lineMoveRel n
 
 -- | Same as scrollByB, but also moves the cursor
 vimScrollByB :: (Int -> Int) -> Int -> BufferM ()
@@ -359,7 +358,7 @@ scrollB n = do
   MarkSet fr _ _ <- askMarks
   savingPointB $ do
     moveTo =<< getMarkPointB fr
-    gotoLnFrom n
+    discard $ gotoLnFrom n
     setMarkPointB fr =<< pointB
   w <- askWindow wkey
   modA pointFollowsWindowA (\old w' -> if w == w' then True else old w')
@@ -468,7 +467,7 @@ deleteBlankLinesB =
      when isThisBlank $ do
        p <- pointB
        -- go up to the 1st blank line in the group
-       whileB (isBlank <$> getNextLineB Backward) lineUp
+       discard $ whileB (isBlank <$> getNextLineB Backward) lineUp
        q <- pointB
        -- delete the whole blank region.
        deleteRegionB $ mkRegion p q

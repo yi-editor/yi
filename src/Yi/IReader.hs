@@ -21,7 +21,7 @@ import Yi.Buffer.Normal (regionOfB, TextUnit(Document))
 import Yi.Buffer.Region (readRegionB)
 import Yi.Dynamic (Initializable(initial))
 import Yi.Keymap (withBuffer, YiM)
-import Yi.Prelude (getA, putA, io)
+import Yi.Prelude (getA, putA, io, discard)
 
 type Article = B.ByteString
 type ArticleDB = Seq Article
@@ -61,8 +61,7 @@ insertArticle adb new = new <| adb
 
 -- | In the background, serialize given 'ArticleDB' out.
 writeDB :: ArticleDB -> YiM ()
-writeDB adb = do io . forkIO . join . fmap (flip encodeFile adb) $ dbLocation
-                 return ()
+writeDB adb = discard $ io . forkIO . join . fmap (flip encodeFile adb) $ dbLocation
 
 -- | Read in database from 'dbLocation' and then parse it into an 'ArticleDB'.
 readDB :: YiM ArticleDB
