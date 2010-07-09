@@ -22,8 +22,10 @@ import qualified Data.Map as M
 import qualified Data.Rope as Rope
 
 import Graphics.UI.Gtk hiding (on, Region, Window, Action, Point, Style)
+import Graphics.UI.Gtk.Gdk.GC hiding (foreground)
 import qualified Graphics.UI.Gtk.Gdk.Events as Gdk.Events
 import qualified Graphics.UI.Gtk as Gtk
+import qualified Graphics.UI.Gtk.Gdk.GC as Gtk
 import System.Glib.GError
 
 import Yi.Prelude
@@ -123,7 +125,7 @@ startNoMsg cfg ch outCh _ed = do
   windowSetDefaultSize win 900 700
   windowSetTitle win "Yi"
   ico <- loadIcon "yi+lambda-fat.32.png"
-  windowSetIcon win ico
+  windowSetIcon win (Just ico)
 
   onKeyPress win (processEvent ch)
 

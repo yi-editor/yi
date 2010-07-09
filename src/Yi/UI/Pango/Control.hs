@@ -53,8 +53,8 @@ import Graphics.UI.Gtk as Gtk
        (Color(..), PangoRectangle(..), Rectangle(..), selectionDataSetText,
         targetString, clipboardSetWithData, clipboardRequestText,
         selectionPrimary, clipboardGetForDisplay, widgetGetDisplay,
-        onMotionNotify, drawRectangle, drawLine, newGCValues, gcSetValues,
-        layoutIndexToPos, layoutGetCursorPos, drawLayout, gcNew,
+        onMotionNotify, drawRectangle, drawLine, 
+        layoutIndexToPos, layoutGetCursorPos, drawLayout,
         widgetGetDrawWindow, layoutSetAttributes, widgetGrabFocus,
         scrolledWindowSetPolicy, scrolledWindowAddWithViewport,
         scrolledWindowNew, contextGetMetrics, contextGetLanguage,
@@ -67,6 +67,8 @@ import Graphics.UI.Gtk as Gtk
         mainQuit, signalDisconnect, ConnectId(..), PolicyType(..),
         StateType(..), EventMask(..), AttrOp(..), Weight(..),
         PangoAttribute(..), Underline(..), FontStyle(..))
+import Graphics.UI.Gtk.Gdk.GC as Gtk
+	(newGCValues, gcSetValues, gcNew, foreground)
 import qualified Graphics.UI.Gtk as Gtk
 import qualified Graphics.UI.Gtk.Gdk.Events as Gdk.Events
 import System.Glib.GError

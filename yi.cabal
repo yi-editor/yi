@@ -347,15 +347,15 @@ executable yi
            cpp-options: -DFRONTEND_VTY
 
         if flag (pango)
-          build-depends: gtk==0.10.*
-          build-depends: glib==0.10.*
+          build-depends: gtk==0.11.*
+          build-depends: glib==0.11.*
           cpp-options: -DFRONTEND_PANGO
           other-modules: Yi.UI.Pango.ProjectTree
                          Yi.UI.Pango.Utils
                          Yi.UI.Pango
 
           if flag(gnome)
-            build-depends: gconf==0.10.*
+            build-depends: gconf==0.11.*
             cpp-options: -DGNOME_ENABLED
             other-modules: Yi.UI.Pango.Gnome
 
