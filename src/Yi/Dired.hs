@@ -27,7 +27,7 @@ module Yi.Dired (
        ,fnewE
     ) where
 
-import Prelude (catch, realToFrac, sequence)
+import Prelude (catch, realToFrac)
 
 import qualified Codec.Binary.UTF8.String as UTF8
 
@@ -647,7 +647,7 @@ procDiredOp counting ((DORemoveDir f):ops) = do
           postproc = do
             incDiredOpSucCnt
             withBuffer $ diredUnmarkPath (takeFileName f)
-procDiredOp counting ((DORemoveBuffer f):ops) = undefined -- TODO
+procDiredOp _counting ((DORemoveBuffer _):_) = undefined -- TODO
 procDiredOp counting  ((DOCopyFile o n):ops) = do
   io $ catch (copyFile o n) handler
   when counting postproc
@@ -719,9 +719,7 @@ procDiredOp counting ((DOFeedback f):ops) = do
 procDiredOp counting r@((DOChoice prompt op):ops) = do
   st <- getDiredOpState
   if diredOpForAll st then proceedYes
-                      else do
-                        withEditor $ spawnMinibufferE msg (const askKeymap)
-                        return ()
+                      else discard $ withEditor $ spawnMinibufferE msg (const askKeymap)
     where msg = concat [prompt, " (y/n/!/q/h)"]
           askKeymap = choice ([ char 'n' ?>>! noAction
                               , char 'y' ?>>! yesAction
@@ -782,7 +780,7 @@ askRenameFiles dir fs =
                                         new = t </> fn
                                     in DOCkOverwrite new (DORename old new)
           sOpIsDir t = [DOCheck (doesDirectoryExist t) posOps sOpDirRename]
-              where (fn, de) = head fs -- the only item
+              where (fn, _) = head fs -- the only item
                     posOps = [DOCkOverwrite new (DORename old new),
                               DOFeedback showResult]
                         where new = t </> fn
