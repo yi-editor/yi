@@ -72,57 +72,61 @@ fnewE f = fnewCanonicalized =<< io (userToCanonPath f)
 
 fnewCanonicalized :: FilePath -> YiM ()
 fnewCanonicalized f = do
-    bufs <- gets bufferSet
-        -- The file names associated with the list of current buffers
-    let bufsWithThisFilename = filter assocWithSameFile bufs
-        -- The names of the existing buffers
-    let fDirectory = takeDirectory f
-    de <- io $ doesDirectoryExist f
-    fe <- io $ doesFileExist f
-    dfe <- io $ doesDirectoryExist fDirectory
-    b <- case bufsWithThisFilename of
-        (h:_) -> return (bkey h)
-        [] -> 
-          if de then diredDirBuffer f else do
-            b <- if fe then 
-                   fileToNewBuffer f 
-                 else -- File does not exist
-                   do when (not dfe) $ do
-                        userWantMkDir <- return True -- TODO
-                        when userWantMkDir $ io $ createDirectoryIfMissing True fDirectory
-                      withEditor $ stringToNewBuffer (Right f) (R.fromString "") -- Create new empty buffer
-            -- adjust the mode
-            tbl <- asks (modeTable . yiConfig)
-            contents <- withGivenBuffer b $ elemsB
-            let header = take 1024 contents
-                hmode = case header =~ "\\-\\*\\- *([^ ]*) *\\-\\*\\-" of 
-                    AllTextSubmatches [_,m] ->m
-                    _ -> ""
-                Just mode = (find (\(AnyMode m)->modeName m == hmode) tbl) <|>
-                            (find (\(AnyMode m)->modeApplies m f contents) tbl) <|>
-                            Just (AnyMode emptyMode) 
-            case mode of
-                AnyMode newMode -> withGivenBuffer b $ setMode newMode
-            return b
-    withEditor $ switchToBufferE b
-    where
-    -- Determines whether or not a given buffer is associated with
-    -- the given file. Note that filepaths are always canonicalized.
-    assocWithSameFile :: FBuffer -> Bool
-    assocWithSameFile fbuffer =
-      case file fbuffer of
-        Nothing -> False
-        Just f2 -> equalFilePath f f2
+    -- Duplicate buffers have a matching filename
+    dupBufs <- filter ((maybe False (equalFilePath f)) . file) <$> gets bufferSet
 
+    dirExists  <- io $ doesDirectoryExist f
+    fileExists <- io $ doesFileExist f
 
+    (withEditor . switchToBufferE) =<< case dupBufs of
+      [] -> if dirExists
+             then diredDirBuffer f
+             else setupMode =<< if fileExists then fileToNewBuffer
+                                              else newEmptyBuffer
+      (h:_) -> return $ bkey h
+ where
+    parentDir :: FilePath
+    parentDir = takeDirectory f
 
-    -- The first argument is the buffer name
-    fileToNewBuffer :: FilePath -> YiM BufferRef
-    fileToNewBuffer path = do
-      contents <- io $ R.readFile path
+    -- We should never make directories here. It should ask when trying to save
+    -- the file. Now opening a file will create the parent dirs if they don't
+    -- exist, even if we immediately close the buffer.
+    makeParentDirs :: YiM Bool
+    makeParentDirs = return True
+
+    fileToNewBuffer :: YiM BufferRef
+    fileToNewBuffer = do
+      contents <- io $ R.readFile f
       now <- io getCurrentTime
-      b <- withEditor $ stringToNewBuffer (Right path) contents
+      b <- withEditor $ stringToNewBuffer (Right f) contents
       withGivenBuffer b $ markSavedB now
+      return b
+
+    newEmptyBuffer :: YiM BufferRef
+    newEmptyBuffer = do
+      parentExists <- io $ doesDirectoryExist parentDir
+      when (not parentExists) $ do
+        c <- makeParentDirs
+        when c $ io $ createDirectoryIfMissing True parentDir
+
+      -- Actually create the new empty buffer
+      withEditor $ stringToNewBuffer (Right f) (R.fromString "")
+
+    setupMode :: BufferRef -> YiM BufferRef
+    setupMode b = do
+      tbl <- asks (modeTable . yiConfig)
+      content <- withGivenBuffer b $ elemsB
+
+      let header = take 1024 content
+          hmode = case header =~ "\\-\\*\\- *([^ ]*) *\\-\\*\\-" of 
+              AllTextSubmatches [_,m] ->m
+              _ -> ""
+          Just mode = (find (\(AnyMode m)->modeName m == hmode) tbl) <|>
+                      (find (\(AnyMode m)->modeApplies m f content) tbl) <|>
+                      Just (AnyMode emptyMode) 
+      case mode of
+          AnyMode newMode -> withGivenBuffer b $ setMode newMode
+
       return b
 
 ------------------------------------------------
