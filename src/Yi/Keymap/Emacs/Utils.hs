@@ -248,14 +248,14 @@ readUniversalArg =
 findFile :: YiM ()
 findFile = promptFile "find file:" $ \filename -> do
                 msgEditor $ "loading " ++ filename
-                fnewE filename
+                discard $ editFile filename
 
 -- | Open a file in a new tab using the minibuffer.
 findFileNewTab :: YiM ()
 findFileNewTab = promptFile "find file (new tab): " $ \filename -> do
                       withEditor newTabE
                       msgEditor $ "loading " ++ filename
-                      fnewE filename
+                      discard $ editFile filename
 
 
 scrollDownE :: UnivArgument -> BufferM ()
@@ -338,7 +338,7 @@ gotoTag tag =
         case lookupTag tag tagTable of
           Nothing -> fail $ "No tags containing " ++ tag
           Just (filename, line) -> do
-            fnewE $ filename
+            editFile filename
             withBuffer $ gotoLn line
             return ()
 

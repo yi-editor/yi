@@ -20,117 +20,39 @@
 -- Fix the 'number of links' field to show actual values not just 1...
 -- Automatic support for browsing .zip, .gz files etc...
 
-module Yi.Dired (
-        dired
-       ,diredDir
-       ,diredDirBuffer
-       ,fnewE
-    ) where
+module Yi.Dired
+  ( dired
+  , diredDir
+  , diredDirBuffer
+  ) where
 
 import Prelude (catch, realToFrac)
 
 import qualified Codec.Binary.UTF8.String as UTF8
-
+import Control.Monad.Reader hiding (mapM)
 import Data.List hiding (find, maximum, concat)
 import Data.Maybe
 import Data.Char (toLower)
 import qualified Data.Map as M
+import qualified Data.Rope as R
+import Data.Time
+import Data.Time.Clock.POSIX
 import System.Directory
 import System.FilePath
+import System.FriendlyPath
 import System.Locale
 import System.PosixCompat.Files
 import System.PosixCompat.Types
 import System.PosixCompat.User
-import Control.Monad.Reader hiding (mapM)
-
-import Data.Time
-import Data.Time.Clock.POSIX
 import Text.Printf
-import Yi.Regex
 
-import Yi.MiniBuffer (spawnMinibufferE, withMinibufferGen, noHint, withMinibuffer)
 import Yi.Config
 import Yi.Core hiding (sequence, forM, notElem)
+import {-# source #-} Yi.File (editFile)
+import Yi.MiniBuffer (spawnMinibufferE, withMinibufferGen, noHint, withMinibuffer)
 import Yi.Misc (getFolder, promptFile)
+import Yi.Regex
 import Yi.Style
-import System.FriendlyPath
-import qualified Data.Rope as R
-
-
-------------------------------------------------
--- | If file exists, read contents of file into a new buffer, otherwise
--- creating a new empty buffer. Replace the current window with a new
--- window onto the new buffer.
---
--- If the file is already open, just switch to the corresponding buffer.
---
--- Need to clean up semantics for when buffers exist, and how to attach
--- windows to buffers.
---
-fnewE  :: FilePath -> YiM ()
-fnewE f = fnewCanonicalized =<< io (userToCanonPath f)
-
-fnewCanonicalized :: FilePath -> YiM ()
-fnewCanonicalized f = do
-    -- Duplicate buffers have a matching filename
-    dupBufs <- filter ((maybe False (equalFilePath f)) . file) <$> gets bufferSet
-
-    dirExists  <- io $ doesDirectoryExist f
-    fileExists <- io $ doesFileExist f
-
-    (withEditor . switchToBufferE) =<< case dupBufs of
-      [] -> if dirExists
-             then diredDirBuffer f
-             else setupMode =<< if fileExists then fileToNewBuffer
-                                              else newEmptyBuffer
-      (h:_) -> return $ bkey h
- where
-    parentDir :: FilePath
-    parentDir = takeDirectory f
-
-    -- We should never make directories here. It should ask when trying to save
-    -- the file. Now opening a file will create the parent dirs if they don't
-    -- exist, even if we immediately close the buffer.
-    makeParentDirs :: YiM Bool
-    makeParentDirs = return True
-
-    fileToNewBuffer :: YiM BufferRef
-    fileToNewBuffer = do
-      contents <- io $ R.readFile f
-      now <- io getCurrentTime
-      b <- withEditor $ stringToNewBuffer (Right f) contents
-      withGivenBuffer b $ markSavedB now
-      return b
-
-    newEmptyBuffer :: YiM BufferRef
-    newEmptyBuffer = do
-      parentExists <- io $ doesDirectoryExist parentDir
-      when (not parentExists) $ do
-        c <- makeParentDirs
-        when c $ io $ createDirectoryIfMissing True parentDir
-
-      -- Actually create the new empty buffer
-      withEditor $ stringToNewBuffer (Right f) (R.fromString "")
-
-    setupMode :: BufferRef -> YiM BufferRef
-    setupMode b = do
-      tbl <- asks (modeTable . yiConfig)
-      content <- withGivenBuffer b $ elemsB
-
-      let header = take 1024 content
-          hmode = case header =~ "\\-\\*\\- *([^ ]*) *\\-\\*\\-" of 
-              AllTextSubmatches [_,m] ->m
-              _ -> ""
-          Just mode = (find (\(AnyMode m)->modeName m == hmode) tbl) <|>
-                      (find (\(AnyMode m)->modeApplies m f content) tbl) <|>
-                      Just (AnyMode emptyMode) 
-      case mode of
-          AnyMode newMode -> withGivenBuffer b $ setMode newMode
-
-      return b
-
-------------------------------------------------
-
 
 data DiredFileInfo = DiredFileInfo {  permString :: String
                                     , numLinks :: Integer
@@ -206,7 +128,7 @@ dired = do
     msgEditor "Dired..."
     maybepath <- withBuffer $ gets file
     dir <- io $ getFolder maybepath
-    fnewE dir
+    discard $ editFile dir
 
 diredDir :: FilePath -> YiM ()
 diredDir dir = diredDirBuffer dir >> return ()
@@ -502,7 +424,7 @@ diredLoad = do
                           case de of
                             (DiredFile _dfi) -> do
                                     exists <- io $ doesFileExist sel
-                                    if exists then fnewE sel
+                                    if exists then discard $ editFile sel
                                               else msgEditor $ sel ++ " no longer exists"
                             (DiredDir _dfi)  -> do
                                     exists <- io $ doesDirectoryExist sel
@@ -513,7 +435,7 @@ diredLoad = do
                                     existsFile <- io $ doesFileExist target
                                     existsDir <- io $ doesDirectoryExist target
                                     msgEditor $ "Following link:"++target
-                                    if existsFile then fnewE target else
+                                    if existsFile then discard $ editFile target else
                                         if existsDir then diredDir target else
                                             msgEditor $ target ++ " does not exist"
                             (DiredSocket _dfi) -> do

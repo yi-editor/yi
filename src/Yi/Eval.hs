@@ -12,12 +12,14 @@ module Yi.Eval (
 import Data.Array
 import Data.List
 import Prelude hiding (error, (.))
-import Yi.Regex
-import Yi.Core  hiding (toDyn, concatMap)
-import Yi.Dired
 import qualified Language.Haskell.Interpreter as LHI
 import System.FilePath
 import System.Directory
+
+import Yi.Core  hiding (toDyn, concatMap)
+import Yi.Dired
+import Yi.File
+import Yi.Regex
 
 -- | Returns an Interpreter action that loads the desired modules and interprets the expression.
 execEditorAction :: String -> YiM ()
@@ -69,7 +71,7 @@ flattenExport (LHI.Data _ xs) = xs
 
 jumpToE :: String -> Int -> Int -> YiM ()
 jumpToE filename line column = do
-  fnewE filename
+  editFile filename
   withBuffer $ do _ <- gotoLn line
                   moveXorEol column
 

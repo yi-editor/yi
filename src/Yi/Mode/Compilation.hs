@@ -3,9 +3,9 @@ module Yi.Mode.Compilation where
 
 import Prelude ()
 import Yi.Core
+import Yi.File (editFile)
 import Yi.Lexer.Alex (Tok(..), Posn(..))
 import Yi.Style
-import Yi.Dired
 import Yi.Modes (linearSyntaxMode)
 import qualified Yi.Lexer.Alex as Alex
 import qualified Yi.Lexer.Compilation         as Compilation
@@ -26,7 +26,7 @@ mode = (linearSyntaxMode Compilation.initState Compilation.alexScanToken tokenTo
                  Just (t@Tok {tokT = Compilation.Report filename line col _message}) -> do
                      withBuffer $ moveTo $ posnOfs $ tokPosn $ t
                      shiftOtherWindow
-                     fnewE filename
+                     editFile filename
                      withBuffer $ do 
                          gotoLn line
                          rightN col

@@ -1,6 +1,8 @@
 module Yi.File 
  (
   -- * File-based actions
+  editFile,       -- :: YiM BufferRef
+
   viWrite, viWriteTo, viSafeWriteTo,
   fwriteE,        -- :: YiM ()
   fwriteBufferE,  -- :: BufferM ()
@@ -13,17 +15,83 @@ module Yi.File
   setFileName,
  ) where
 
+import Prelude (filter, take)
+
+import Control.Monad.Reader (asks)
+import Data.Maybe
 import Data.Time
 import Control.Monad.Trans
-import Prelude (filter)
-import Yi.Core
-import Yi.Buffer (file)
 import Control.Monad.State (gets)
 import System.Directory
 import System.IO.UTF8 as UTF8
 import System.FilePath
 import System.FriendlyPath
 import qualified Data.Rope as R
+
+import Yi.Buffer (file)
+import Yi.Config
+import Yi.Core
+import Yi.Dired
+import Yi.Regex
+
+-- | If file exists, read contents of file into a new buffer, otherwise
+-- creating a new empty buffer. Replace the current window with a new
+-- window onto the new buffer.
+--
+-- If the file is already open, just switch to the corresponding buffer.
+--
+-- Need to clean up semantics for when buffers exist, and how to attach
+-- windows to buffers.
+editFile :: FilePath -> YiM BufferRef
+editFile filename = do
+    f <- io $ userToCanonPath filename
+
+    dupBufs <- filter ((maybe False (equalFilePath f)) . file) <$> gets bufferSet
+
+    dirExists  <- io $ doesDirectoryExist f
+    fileExists <- io $ doesFileExist f
+
+    b <- case dupBufs of
+      [] -> if dirExists
+               then diredDirBuffer f
+               else setupMode f =<< if fileExists
+                                       then fileToNewBuffer f
+                                       else newEmptyBuffer f
+      (h:_) -> return $ bkey h
+
+    withEditor $ switchToBufferE b
+    return b
+  where
+    fileToNewBuffer :: FilePath -> YiM BufferRef
+    fileToNewBuffer f = do
+      now <- io getCurrentTime
+      contents <- io $ R.readFile f
+
+      b <- withEditor $ stringToNewBuffer (Right f) contents
+      withGivenBuffer b $ markSavedB now
+
+      return b
+
+    newEmptyBuffer :: FilePath -> YiM BufferRef
+    newEmptyBuffer f =
+      withEditor $ stringToNewBuffer (Right f) (R.fromString "")
+
+    setupMode :: FilePath -> BufferRef -> YiM BufferRef
+    setupMode f b = do
+      tbl <- asks (modeTable . yiConfig)
+      content <- withGivenBuffer b $ elemsB
+
+      let header = take 1024 content
+          hmode = case header =~ "\\-\\*\\- *([^ ]*) *\\-\\*\\-" of 
+              AllTextSubmatches [_,m] ->m
+              _ -> ""
+          Just mode = (find (\(AnyMode m)->modeName m == hmode) tbl) <|>
+                      (find (\(AnyMode m)->modeApplies m f content) tbl) <|>
+                      Just (AnyMode emptyMode) 
+      case mode of
+          AnyMode newMode -> withGivenBuffer b $ setMode newMode
+
+      return b
 
 -- | Revert to the contents of the file on disk
 revertE :: YiM ()

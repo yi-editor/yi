@@ -63,7 +63,6 @@ import Control.Arrow hiding (left, right)
 import {-# source #-} Yi.Boot
 import Yi.Command (cabalRun, makeBuild, shellCommandV)
 import Yi.Core
-import Yi.Dired
 import Yi.Eval (execEditorAction, getAllNamesInScope)
 import Yi.File
 import Yi.History
@@ -1474,8 +1473,8 @@ defKeymap = Proto template
            fn "edit"       = revertE
            fn ('e':' ':f)  = viFnewE f
            fn ('e':'d':'i':'t':' ':f) = viFnewE f
-           fn ('s':'a':'v':'e':'a':'s':' ':f)     = let f' = dropSpace f in viSafeWriteTo f' >> fnewE f'
-           fn ('s':'a':'v':'e':'a':'s':'!':' ':f) = let f' = dropSpace f in viWriteTo f' >> fnewE f'
+           fn ('s':'a':'v':'e':'a':'s':' ':f)     = let f' = dropSpace f in discard $ viSafeWriteTo f' >> editFile f'
+           fn ('s':'a':'v':'e':'a':'s':'!':' ':f) = let f' = dropSpace f in discard $ viWriteTo f' >> editFile f'
            fn ('r':' ':f)  = withBuffer' . insertN =<< io (readFile $ dropSpace f)
            fn ('r':'e':'a':'d':' ':f) = withBuffer' . insertN =<< io (readFile $ dropSpace f)
            fn ('s':'e':'t':' ':'f':'t':'=':ft)  = do (AnyMode m) <- anyModeByName (dropSpace ft) ; withBuffer $ setMode m
@@ -1603,7 +1602,7 @@ viWriteModified = do unchanged <- withBuffer' $ gets isUnchangedBuffer
                      unless unchanged viWrite
 
 viFnewE :: String -> YiM ()
-viFnewE = fnewE . dropSpace
+viFnewE f = discard (editFile $ dropSpace f)
 
 -- | viSearch is a doSearch wrapper that print the search outcome.
 -- TODO: consider merging with doSearch 

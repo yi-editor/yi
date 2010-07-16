@@ -238,7 +238,7 @@ nilKeymap = choice [
                 cfgFile = cfgDir </> "yi.hs"
             cfgExists <- io $ doesFileExist cfgFile
             io $ createDirectoryIfMissing True cfgDir -- so that the file can be saved.
-            fnewE cfgFile -- load config file
+            editFile cfgFile -- load config file
             -- locally override the keymap to the user choice
             withBuffer $ modifyMode (\m -> m {modeKeymap = const km})
             when (not cfgExists) $ do

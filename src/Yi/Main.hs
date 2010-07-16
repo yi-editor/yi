@@ -22,7 +22,7 @@ import System.Exit
 import Yi.Config
 import Yi.Config.Default
 import Yi.Core
-import Yi.Dired
+import Yi.File
 import Paths_yi
 
 #ifdef TESTING
@@ -103,7 +103,7 @@ getConfig cfg opt =
       LineNo l      -> case startActions cfg of
                          x : xs -> return cfg { startActions = x:makeAction (gotoLn (read l)):xs }
                          []     -> fail "The `-l' option must come after a file argument"
-      File filename -> prependAction (fnewE filename)
+      File filename -> prependAction (editFile filename)
       EditorNm emul -> case lookup (fmap toLower emul) editors of
              Just modifyCfg -> return $ modifyCfg cfg
              Nothing -> fail $ "Unknown emulation: " ++ show emul
