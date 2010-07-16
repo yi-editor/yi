@@ -2,13 +2,13 @@
 
 -- Copyright (c) Tuomo Valkonen 2004.
 -- Copyright (c) Don Stewart 2004-5. http://www.cse.unsw.edu.au/~dons
--- Copyright (c) Jean-Philippe Bernardy 2007-8 
+-- Copyright (c) Jean-Philippe Bernardy 2007-8
 
 -- | The core actions of yi. This module is the link between the editor
 -- and the UI. Key bindings, and libraries should manipulate Yi through
 -- the interface defined here.
 
-module Yi.Core 
+module Yi.Core
   ( module Yi.Dynamic
     -- * Keymap
   , module Yi.Keymap
@@ -19,13 +19,13 @@ module Yi.Core
   , module Yi.Keymap.Keys
 
   -- * Construction and destruction
-  , startEditor         
+  , startEditor
   , quitEditor          -- :: YiM ()
 
   -- * User interaction
   , refreshEditor       -- :: YiM ()
   , suspendEditor       -- :: YiM ()
-  , userForceRefresh  
+  , userForceRefresh
 
   -- * Global editor actions
   , msgEditor           -- :: String -> YiM ()
@@ -42,7 +42,7 @@ module Yi.Core
   , withSyntax
   , focusAllSyntax
 
-  ) 
+  )
 where
 
 import Prelude (realToFrac)
