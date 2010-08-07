@@ -319,7 +319,7 @@ executable yi
         build-depends: fingertree >= 0 && <0.1
         build-depends: ghc-paths ==0.1.*
         build-depends: hint > 0.3.1
-        build-depends: monads-fd
+        build-depends: monads-fd >= 0.1.0.1
         build-depends: pointedlist >= 0.3.5 && <0.4
         build-depends: pureMD5 >= 0.2.3
         build-depends: random
