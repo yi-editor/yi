@@ -22,6 +22,7 @@ import Graphics.UI.Gtk.ModelView.TreeView ( treeViewHeadersVisible
 import System.Glib.Attributes
 import Yi.Keymap
 import Yi.Dired
+import Yi.File (editFile)
 import Yi.UI.Pango.Utils
 
 projectTreeNew :: (Action -> IO ()) -> Gtk.TreeStore ProjectItem -> IO Gtk.TreeView
@@ -76,8 +77,8 @@ projectTreeNew post store = do
   onRowActivated projectTree $ \path _col -> do
     item <- MView.treeStoreGetValue store path
     case item of
-      FileItem  {itemFPath=path} -> post (makeAction (fnewE path))
-      ModuleItem{itemFPath=path} -> post (makeAction (fnewE path))
+      FileItem  {itemFPath=path} -> post (makeAction (editFile path))
+      ModuleItem{itemFPath=path} -> post (makeAction (editFile path))
       _                          -> return ()
 
   return projectTree
