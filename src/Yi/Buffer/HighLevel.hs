@@ -373,13 +373,22 @@ snapInsB = do
         p <- pointB
         moveTo $ max (regionStart r) $ min (regionEnd r) $ p
 
-
-    
-
 -- | return index of Sol on line @n@ above current line
 indexOfSolAbove :: Int -> BufferM Point
 indexOfSolAbove n = pointAt $ gotoLnFrom (negate n)
 
+data  RelPosition = Above | Below | Within
+  deriving (Show)
+
+-- | return relative position of the point @p@
+-- relative to the region defined by the points @rs@ and @re@
+pointScreenRelPosition :: Point -> Point -> Point -> RelPosition
+pointScreenRelPosition p rs re
+  | rs > p && p > re = Within
+  | p < rs = Above
+  | p > re = Below
+pointScreenRelPosition _ _ _ = Within -- just to disable the non-exhaustive pattern match warning
+ 
 -- | Move the visible region to include the point
 snapScreenB :: BufferM Bool
 snapScreenB = do
@@ -389,7 +398,12 @@ snapScreenB = do
         inWin <- pointInWindowB =<< pointB
         if inWin then return False else do
             h <- askWindow height
-            let gap = h `div` 2
+            r <- winRegionB
+            p <- pointB
+            let gap = case pointScreenRelPosition p (regionStart r) (regionEnd r) of
+                        Above  -> 0
+                        Below  -> h - 2
+                        Within -> 0 -- Impossible but handle it anyway
             i <- indexOfSolAbove gap
             f <- fromMark <$> askMarks
             setMarkPointB f i
