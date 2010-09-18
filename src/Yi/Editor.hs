@@ -444,9 +444,13 @@ alternateBufferE n = do
       then fail "no alternate buffer"
       else switchToBufferE $ lst!!n
 
+-- | Create a new zero size window on a given buffer
+newZeroSizeWindow ::Bool -> BufferRef -> WindowRef -> Window
+newZeroSizeWindow mini bk ref = Window mini bk [] 0 emptyRegion ref 0
+
 -- | Create a new window onto the given buffer.
 newWindowE :: Bool -> BufferRef -> EditorM Window
-newWindowE mini bk = Window mini bk [] 0 emptyRegion <$> newRef
+newWindowE mini bk = newZeroSizeWindow mini bk <$> newRef
 
 -- | Attach the specified buffer to the current window
 switchToBufferE :: BufferRef -> EditorM ()

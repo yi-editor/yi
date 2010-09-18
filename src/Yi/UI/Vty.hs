@@ -178,7 +178,8 @@ layout ui e = do
                            -- Discard this field, otherwise we keep retaining reference to
                            -- old Window objects (leak)
       apply win = win {
-          winRegion = getRegionImpl win (configUI $ config ui) e cols (height win)
+          winRegion   = getRegionImpl win (configUI $ config ui) e cols (height win)
+         ,actualLines = windowLinesDisp win (configUI $ config ui) e cols (height win) 
         }
 
   return $ windowsA ^= ws'' $ e
@@ -252,20 +253,25 @@ scanrT (+*+) k t = fst $ runState (mapM f t) k
                    put s'
                    return s
 
+windowLinesDisp :: Window -> UIConfig -> Editor -> Int -> Int -> Int
+windowLinesDisp win cfg e w h = dispCount
+  where (_,_,dispCount) = drawWindow cfg e (error "focus must not be used")  win w h
+
 getRegionImpl :: Window -> UIConfig -> Editor -> Int -> Int -> Region
-getRegionImpl win cfg e w h = snd $
-                              drawWindow cfg e (error "focus must not be used")  win w h
+getRegionImpl win cfg e w h = region
+  where (_,region,_) = drawWindow cfg e (error "focus must not be used")  win w h
 
 -- | Return a rendered wiew of the window.
 renderWindow :: UIConfig -> Editor -> Int -> (Window, Bool) -> Rendered
 renderWindow cfg e width (win,hasFocus) =
-    let (rendered,_) = drawWindow cfg e hasFocus win width (height win)
+    let (rendered,_,_) = drawWindow cfg e hasFocus win width (height win)
     in rendered
 
 -- | Draw a window
 -- TODO: horizontal scrolling.
-drawWindow :: UIConfig -> Editor -> Bool -> Window -> Int -> Int -> (Rendered, Region)
-drawWindow cfg e focused win w h = (Rendered { picture = pict,cursor = cur}, mkRegion fromMarkPoint toMarkPoint')
+-- TODO(jwall): Store display line counts so scrolling has all the necesary info
+drawWindow :: UIConfig -> Editor -> Bool -> Window -> Int -> Int -> (Rendered, Region, Int)
+drawWindow cfg e focused win w h = (Rendered { picture = pict,cursor = cur}, mkRegion fromMarkPoint toMarkPoint', dispLnCount)
     where
         b = findBufferWith (bufkey win) e
         sty = configStyle cfg
@@ -298,7 +304,7 @@ drawWindow cfg e focused win w h = (Rendered { picture = pict,cursor = cur}, mkR
         tabWidth = tabSize . fst $ runBuffer win b indentSettingsB
         prompt = if isMini win then miniIdentString b else ""
 
-        (rendered,toMarkPoint',cur) = drawText h' w
+        (rendered,toMarkPoint',cur,dispLnCount) = drawText h' w
                                 fromMarkPoint
                                 point 
                                 tabWidth
@@ -315,20 +321,23 @@ drawWindow cfg e focused win w h = (Rendered { picture = pict,cursor = cur}, mkR
 -- | Renders text in a rectangle.
 -- This also returns 
 -- * the index of the last character fitting in the rectangle
--- * the position of the Point in (x,y) coordinates, if in the window.
+-- * the position of the Point in (x,y) coordinates, if in the window,
+-- * the number of display lines for this drawing.
 drawText :: Int    -- ^ The height of the part of the window we are in
          -> Int    -- ^ The width of the part of the window we are in
          -> Point  -- ^ The position of the first character to draw
          -> Point  -- ^ The position of the cursor
          -> Int    -- ^ The number of spaces to represent a tab character with.
          -> [(Char,(Vty.Attr,Point))]  -- ^ The data to draw.
-         -> ([Image], Point, Maybe (Int,Int))
+         -> ([Image], Point, Maybe (Int,Int), Int)
 drawText h w topPoint point tabWidth bufData
-    | h == 0 || w == 0 = ([], topPoint, Nothing)
-    | otherwise        = (rendered_lines, bottomPoint, pntpos)
+    | h == 0 || w == 0 = ([], topPoint, Nothing, 0)
+    | otherwise        = (rendered_lines, bottomPoint, pntpos, h - (length wrapped - h))
   where 
 
-  lns0 = take h $ concatMap (wrapLine w) $ map (concatMap expandGraphic) $ take h $ lines' $ bufData
+  -- the actual lines to display, can get line count from here.
+  wrapped = concatMap (wrapLine w) $ map (concatMap expandGraphic) $ take h $ lines' $ bufData
+  lns0 = take h wrapped
 
   bottomPoint = case lns0 of 
                  [] -> topPoint 

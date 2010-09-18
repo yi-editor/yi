@@ -388,7 +388,7 @@ pointScreenRelPosition p rs re
   | p < rs = Above
   | p > re = Below
 pointScreenRelPosition _ _ _ = Within -- just to disable the non-exhaustive pattern match warning
- 
+
 -- | Move the visible region to include the point
 snapScreenB :: BufferM Bool
 snapScreenB = do
@@ -397,12 +397,13 @@ snapScreenB = do
     if movePoint w then return False else do
         inWin <- pointInWindowB =<< pointB
         if inWin then return False else do
-            h <- askWindow height
+            h <- askWindow actualLines
+            --h <- askWindow height
             r <- winRegionB
             p <- pointB
             let gap = case pointScreenRelPosition p (regionStart r) (regionEnd r) of
                         Above  -> 0
-                        Below  -> h - 2
+                        Below  -> h - 1
                         Within -> 0 -- Impossible but handle it anyway
             i <- indexOfSolAbove gap
             f <- fromMark <$> askMarks
@@ -435,7 +436,7 @@ middleB = do
 pointInWindowB :: Point -> BufferM Bool
 pointInWindowB p = nearRegion p <$> winRegionB
 --  do w <- winRegionB;  trace ("pointInWindowB " ++ show w ++ " p = " ++ show p)
-         
+          
 -----------------------------
 -- Region-related operations
 

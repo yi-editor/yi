@@ -21,18 +21,19 @@ data Window = Window {
                       isMini    :: !Bool   -- ^ regular or mini window?
                      ,bufkey    :: !BufferRef -- ^ the buffer this window opens to
                      ,bufAccessList :: ![BufferRef] -- ^ list of last accessed buffers (former bufKeys). Last accessed one is first element
-                     ,height    :: Int    -- ^ height of the window (in number of lines displayed)
+                     ,height    :: Int    -- ^ height of the window (in number of screen lines displayed)
                      ,winRegion    :: Region -- ^ view area.
                                               -- note that the top point is also available as a buffer mark.
                      ,wkey      :: !WindowRef -- ^ identifier for the window (for UI sync)
+                     ,actualLines :: Int-- ^ The actual number of lines displayed. Taking into account line wrapping
                      }
         deriving (Typeable)
 
 instance Binary Window where
-    put (Window mini bk bl _h _rgn key) = put mini >> put bk >> put bl >> put key
+    put (Window mini bk bl _h _rgn key lns) = put mini >> put bk >> put bl >> put key >> put lns
     get = Window <$> get <*> get <*> get
                    <*> return 0 <*> return emptyRegion
-                   <*> get
+                   <*> get <*> get
 
 
 -- | Get the identification of a window.
@@ -58,5 +59,5 @@ dummyWindowKey = (-1)
 
 -- | Return a "fake" window onto a buffer.
 dummyWindow :: BufferRef -> Window
-dummyWindow b = Window False b [] 0 emptyRegion dummyWindowKey
+dummyWindow b = Window False b [] 0 emptyRegion dummyWindowKey 0
 
