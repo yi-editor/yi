@@ -25,7 +25,12 @@ data Window = Window {
                      ,winRegion    :: Region -- ^ view area.
                                               -- note that the top point is also available as a buffer mark.
                      ,wkey      :: !WindowRef -- ^ identifier for the window (for UI sync)
-                     ,actualLines :: Int-- ^ The actual number of lines displayed. Taking into account line wrapping
+                     -- This is required for accurate scrolling.
+                     -- Scrolling depends on the actual number of buffer
+                     -- lines displayed. Line wrapping changes that number
+                     -- relative to the height so we can't use height for that
+                     -- purpose.
+                     ,actualLines :: Int-- ^ The actual number of buffer lines displayed. Taking into account line wrapping
                      }
         deriving (Typeable)
 

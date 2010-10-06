@@ -398,7 +398,6 @@ snapScreenB = do
         inWin <- pointInWindowB =<< pointB
         if inWin then return False else do
             h <- askWindow actualLines
-            --h <- askWindow height
             r <- winRegionB
             p <- pointB
             let gap = case pointScreenRelPosition p (regionStart r) (regionEnd r) of

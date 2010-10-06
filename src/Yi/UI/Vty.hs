@@ -179,6 +179,7 @@ layout ui e = do
                            -- old Window objects (leak)
       apply win = win {
           winRegion   = getRegionImpl win (configUI $ config ui) e cols (height win)
+          --
          ,actualLines = windowLinesDisp win (configUI $ config ui) e cols (height win) 
         }
 
@@ -253,6 +254,7 @@ scanrT (+*+) k t = fst $ runState (mapM f t) k
                    put s'
                    return s
 
+-- | Calculate the lines a window can display from a buffer.
 windowLinesDisp :: Window -> UIConfig -> Editor -> Int -> Int -> Int
 windowLinesDisp win cfg e w h = dispCount
   where (_,_,dispCount) = drawWindow cfg e (error "focus must not be used")  win w h
@@ -268,8 +270,8 @@ renderWindow cfg e width (win,hasFocus) =
     in rendered
 
 -- | Draw a window
+-- 
 -- TODO: horizontal scrolling.
--- TODO(jwall): Store display line counts so scrolling has all the necesary info
 drawWindow :: UIConfig -> Editor -> Bool -> Window -> Int -> Int -> (Rendered, Region, Int)
 drawWindow cfg e focused win w h = (Rendered { picture = pict,cursor = cur}, mkRegion fromMarkPoint toMarkPoint', dispLnCount)
     where
@@ -323,6 +325,9 @@ drawWindow cfg e focused win w h = (Rendered { picture = pict,cursor = cur}, mkR
 -- * the index of the last character fitting in the rectangle
 -- * the position of the Point in (x,y) coordinates, if in the window,
 -- * the number of display lines for this drawing.
+--
+-- We calculate the number of lines displayed for this window so that line
+-- wrapping doesn't break scrolling.
 drawText :: Int    -- ^ The height of the part of the window we are in
          -> Int    -- ^ The width of the part of the window we are in
          -> Point  -- ^ The position of the first character to draw
@@ -335,7 +340,8 @@ drawText h w topPoint point tabWidth bufData
     | otherwise        = (rendered_lines, bottomPoint, pntpos, h - (length wrapped - h))
   where 
 
-  -- the actual lines to display, can get line count from here.
+  -- the number of lines that taking wrapping into account,
+  -- we use this to calculate the number of lines displayed.
   wrapped = concatMap (wrapLine w) $ map (concatMap expandGraphic) $ take h $ lines' $ bufData
   lns0 = take h wrapped
 
