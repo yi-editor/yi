@@ -6,7 +6,6 @@
 -- \"incremental reading\", see <http://en.wikipedia.org/wiki/Incremental_reading>.
 module Yi.IReader where
 
-import Control.Concurrent (forkIO)
 import Control.Monad.State (join)
 import Data.Binary (decode, encodeFile)
 import Data.Sequence as S
@@ -59,9 +58,9 @@ shift n adb = if n < 2 || lst < 2 then adb else (r |> lastentry) >< s'
 insertArticle :: ArticleDB -> Article -> ArticleDB
 insertArticle adb new = new <| adb
 
--- | In the background, serialize given 'ArticleDB' out.
+-- | Serialize given 'ArticleDB' out.
 writeDB :: ArticleDB -> YiM ()
-writeDB adb = discard $ io . forkIO . join . fmap (flip encodeFile adb) $ dbLocation
+writeDB adb = discard $ io . join . fmap (flip encodeFile adb) $ dbLocation
 
 -- | Read in database from 'dbLocation' and then parse it into an 'ArticleDB'.
 readDB :: YiM ArticleDB
