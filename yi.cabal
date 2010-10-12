@@ -96,6 +96,7 @@ library
         Yi.Completion
         Yi.Config
         Yi.Config.Default
+        Yi.Config.Misc
         Yi.Core
         Yi.Debug
         Yi.Dired
