@@ -18,7 +18,7 @@ import Yi.Buffer.Normal
 import Yi.Buffer.Region
 import Yi.String
 import Yi.Window
-import Yi.Config.Misc (ScrollStyle)
+import Yi.Config.Misc (ScrollStyle(SingleLine))
 
 -- ---------------------------------------------------------------------
 -- Movement operations
@@ -401,12 +401,12 @@ snapScreenB style = do
             h <- askWindow actualLines
             r <- winRegionB
             p <- pointB
-            let gap = case pointScreenRelPosition p (regionStart r) (regionEnd r) of
-                        Above  -> 0
-                        Below  -> case style of
-                                    Nothing -> h `div` 2
-                                    _       -> h - 1
-                        Within -> 0 -- Impossible but handle it anyway
+            let gap = case style of
+                        Just SingleLine -> case pointScreenRelPosition p (regionStart r) (regionEnd r) of
+                                             Above  -> 0
+                                             Below  -> h - 1
+                                             Within -> 0 -- Impossible but handle it anyway
+                        _               -> h `div` 2
             i <- indexOfSolAbove gap
             f <- fromMark <$> askMarks
             setMarkPointB f i
