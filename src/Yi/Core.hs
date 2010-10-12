@@ -259,9 +259,11 @@ pureM f = return . f
 -- | Redraw
 refreshEditor :: YiM ()
 refreshEditor = onYiVar $ \yi var -> do
-        let runOnWins a = runEditor (yiConfig yi)
+        let cfg = yiConfig yi
+            runOnWins a = runEditor cfg
                                     (do ws <- getA windowsA
                                         forM ws $ flip withWindowE a)
+            style = configScrollStyle $ configUI $ cfg
         let scroll e3 = let (e4, relayout) = runOnWins snapScreenB e3 in
                 -- Scroll windows to show current points as appropriate
                 -- Do another layout pass if there was any scrolling;
