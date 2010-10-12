@@ -18,6 +18,7 @@ import Yi.Buffer.Normal
 import Yi.Buffer.Region
 import Yi.String
 import Yi.Window
+import Yi.Config.Misc (ScrollStyle)
 
 -- ---------------------------------------------------------------------
 -- Movement operations
@@ -390,8 +391,8 @@ pointScreenRelPosition p rs re
 pointScreenRelPosition _ _ _ = Within -- just to disable the non-exhaustive pattern match warning
 
 -- | Move the visible region to include the point
-snapScreenB :: BufferM Bool
-snapScreenB = do
+snapScreenB :: Maybe ScrollStyle ->BufferM Bool
+snapScreenB style = do
     movePoint <- getA pointFollowsWindowA
     w <- askWindow wkey
     if movePoint w then return False else do
@@ -402,7 +403,9 @@ snapScreenB = do
             p <- pointB
             let gap = case pointScreenRelPosition p (regionStart r) (regionEnd r) of
                         Above  -> 0
-                        Below  -> h - 1
+                        Below  -> case style of
+                                    Nothing -> h `div` 2
+                                    _       -> h - 1
                         Within -> 0 -- Impossible but handle it anyway
             i <- indexOfSolAbove gap
             f <- fromMark <$> askMarks

@@ -4,6 +4,7 @@ import qualified Data.Map as M
 import Data.Prototype
 
 import Yi.Buffer
+import Yi.Config.Misc
 import {-# source #-} Yi.Keymap
 import {-# source #-} Yi.Editor
 import Data.Dynamic
@@ -12,8 +13,6 @@ import Yi.Style
 import Yi.Style.Library
 import {-# source #-} Yi.UI.Common
 import qualified Yi.Interact as I
-
-data ScrollStyle = SnapToCenter | SingleLine
 
 data UIConfig = UIConfig {
    configVtyEscDelay :: Int,       

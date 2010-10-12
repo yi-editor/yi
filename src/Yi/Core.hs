@@ -264,7 +264,7 @@ refreshEditor = onYiVar $ \yi var -> do
                                     (do ws <- getA windowsA
                                         forM ws $ flip withWindowE a)
             style = configScrollStyle $ configUI $ cfg
-        let scroll e3 = let (e4, relayout) = runOnWins snapScreenB e3 in
+        let scroll e3 = let (e4, relayout) = runOnWins (snapScreenB style) e3 in
                 -- Scroll windows to show current points as appropriate
                 -- Do another layout pass if there was any scrolling;
                 (if or relayout then UI.layout (yiUi yi) else return) e4
