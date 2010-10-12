@@ -16,6 +16,7 @@ import System.IO (readFile)
 import Yi.Command (cabalBuildE, cabalConfigureE, grepFind, makeBuild, reloadProjectE, searchSources, shell)
 import {-# source #-} Yi.Boot
 import Yi.Config
+import Yi.Config.Misc
 import Yi.Core
 import Yi.Dired
 import Yi.File
@@ -186,7 +187,7 @@ defaultCuaConfig = toCuaStyleConfig defaultConfig
 toEmacsStyleConfig, toVimStyleConfig, toCuaStyleConfig :: Config -> Config
 toEmacsStyleConfig cfg 
     = cfg {
-            configUI = (configUI cfg) { configVtyEscDelay = 1000 },
+            configUI = (configUI cfg) { configVtyEscDelay = 1000 , configScrollStyle = Just SnapToCenter},
             defaultKm = Emacs.keymap,
             startActions = makeAction openScratchBuffer : startActions cfg,
             configInputPreprocess = escToMeta,
@@ -202,6 +203,7 @@ escToMeta = mkAutomaton $ forever $ (anyEvent >>= I.write) ||> do
     I.write (Event (KASCII c) [MMeta])
 
 toVimStyleConfig cfg = cfg { defaultKm = Vim.keymapSet
+                           , configUI = (configUI cfg) { configScrollStyle = Just SingleLine}
                            , configRegionStyle = Inclusive
                            , modeTable = AnyMode Abella.abellaModeVim : modeTable cfg }
 toCuaStyleConfig cfg = cfg {defaultKm = Cua.keymap}
