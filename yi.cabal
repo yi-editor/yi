@@ -54,6 +54,9 @@ flag ghcAPI
 flag vty
   Description: Provide Vty UI
 
+flag vte
+  Description: Provide Vte UI
+
 flag pango
   Description: Provide Pango UI
 
@@ -68,7 +71,7 @@ flag hacking
   Description:
      Hacking mode:
         * Create HackerMain.hs by copying your ~/.yi/yi.hs
-        * Skip most library compilation
+        * Skip library compilation
         * You can run yi in-place with dist/build/yi/yi
 
 flag testing
@@ -77,9 +80,7 @@ flag testing
 library
   hs-source-dirs: src
   if flag(hacking)
-    exposed-modules:
-           Yi.Monad
-           -- the most insignificant module (with no dep) I can find.
+    buildable: False
   else
     exposed-modules:
         Yi
@@ -186,8 +187,12 @@ library
 
     include-dirs:   src/Yi/Lexer
     if flag (vty) && !os(windows)
-       cpp-options: -DFRONTEND_VTY
-       exposed-modules: Yi.UI.Vty
+      cpp-options: -DFRONTEND_VTY
+      exposed-modules: Yi.UI.Vty
+
+    if flag(vte)
+      cpp-options: -DFRONTEND_VTE
+      exposed-modules: Yi.UI.Vte
        
     if flag (pango)
       cpp-options: -DFRONTEND_PANGO
@@ -341,15 +346,27 @@ executable yi
         ghc-prof-options:   -prof -auto-all
 
         if !os(mingw32)
-           build-depends: unix
+          build-depends: unix
 
         if flag (vty) && !os(windows)
-           build-depends: vty>=4.0.0 && < 5
-           cpp-options: -DFRONTEND_VTY
+          build-depends: vty>=4.0.0 && < 5
+          cpp-options: -DFRONTEND_VTY
+
+        if flag (vte)
+          -- Need executable path to call the version of Yi that's
+          -- currrently running
+          build-depends: executable-path
+          build-depends: gtk==0.11.*
+          build-depends: glib==0.11.*
+          build-depends: pango==0.11.*
+          build-depends: vte==0.11.*
+          cpp-options: -DFRONTEND_VTE
+          other-modules: Yi.UI.Vte
 
         if flag (pango)
           build-depends: gtk==0.11.*
           build-depends: glib==0.11.*
+          build-depends: pango==0.11.*
           cpp-options: -DFRONTEND_PANGO
           other-modules: Yi.UI.Pango.ProjectTree
                          Yi.UI.Pango.Utils
