@@ -18,7 +18,6 @@ import {-# source #-} Yi.Boot
 import Yi.Config
 import Yi.Config.Misc
 import Yi.Core
-import Yi.Dired
 import Yi.File
 import Yi.IReader (saveAsNewArticle)
 import Yi.Mode.IReader (ireaderMode, ireadMode)
