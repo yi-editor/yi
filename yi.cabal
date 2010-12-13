@@ -64,6 +64,7 @@ flag cocoa
   Description: Provide experimental Cocoa UI
 
 flag gnome
+  Default: False
   Description: Enable GNOME integration
 
 flag hacking
