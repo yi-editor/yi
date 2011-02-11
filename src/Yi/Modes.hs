@@ -204,7 +204,7 @@ hookModes p h = map $ \am@(AnyMode m) -> if p am
 applyModeHooks :: [(AnyMode -> Bool, BufferM ())] -> [AnyMode] -> [AnyMode]
 applyModeHooks hs ms = flip map ms $ \am -> case filter (($am) . fst) hs of
     [] -> am
-    ls -> flip onMode am $ \m -> m { modeOnLoad = foldr (>>) (modeOnLoad m) (map snd ls) }
+    ls -> onMode (\m -> m { modeOnLoad = foldr (>>) (modeOnLoad m) (map snd ls) }) am
 
 -- | Check whether a mode of the same name is already in modeTable and returns the
 -- original mode, if it isn't the case.

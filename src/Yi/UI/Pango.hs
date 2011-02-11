@@ -1,4 +1,4 @@
-{-# LANGUAGE CPP, BangPatterns, ExistentialQuantification, RecursiveDo,
+{-# LANGUAGE CPP, BangPatterns, ExistentialQuantification, DoRec,
     ParallelListComp #-}
 
 -- Copyright (c) 2007, 2008 Jean-Philippe Bernardy
@@ -461,7 +461,7 @@ newTab e ui vb ws = do
 
 -- | Make a new window.
 newWindow :: Editor -> UI -> Window -> FBuffer -> IO WinInfo
-newWindow e ui w b = mdo
+newWindow e ui w b = do
     f <- readIORef (uiFont ui)
 
     ml <- labelNew Nothing

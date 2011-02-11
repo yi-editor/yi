@@ -310,7 +310,7 @@ executable yi
         -- haddock >= 2.2,
         -- it seems harsh to require haddock 2.2 to even configure Yi
 
-        build-depends: Cabal >= 1.6 && < 1.9
+        build-depends: Cabal >= 1.6 && < 1.11
         build-depends: Diff >=0.1 && <0.2
         build-depends: array, containers,  directory, process, old-locale
         build-depends: base >=4 && <5
@@ -322,7 +322,7 @@ executable yi
         build-depends: data-accessor-template >= 0.2.1.3 && < 0.2.2
         build-depends: dlist >=0.4.1
         build-depends: dyre >=0.7
-        build-depends: filepath>=1.1 && <1.2
+        build-depends: filepath>=1.1 && <1.3
         build-depends: fingertree >= 0 && <0.1
         build-depends: ghc-paths ==0.1.*
         build-depends: hint > 0.3.1
@@ -334,11 +334,11 @@ executable yi
         build-depends: regex-tdfa == 1.1.*
         build-depends: rosezipper >= 0.1 && < 0.2
         build-depends: split == 0.1.*
-        build-depends: template-haskell >= 2.4 && < 2.5
-        build-depends: time == 1.1.*
+        build-depends: template-haskell >= 2.4 && < 2.6
+        build-depends: time >= 1.1 && < 1.3
         build-depends: utf8-string >= 0.3.1
         build-depends: uniplate
-        build-depends: unix-compat >=0.1 && <0.2
+        build-depends: unix-compat >=0.1 && <0.3
 
         ghc-options:   -Wall -fno-warn-orphans -threaded
         -- orphans are a performance warning, but 

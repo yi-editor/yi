@@ -1,5 +1,6 @@
 -- Copyright (c) JP Bernardy 2008
-{-# OPTIONS -Wall -fglasgow-exts #-}
+{-# OPTIONS -Wall #-}
+{-# LANGUAGE GADTs, RankNTypes, ScopedTypeVariables, TypeOperators #-}
 
 -- TODO:
 -- better interface
@@ -256,7 +257,7 @@ feedZ x = onRight (feed x)
 -- Move the zipper to right, and simplify if something is pushed in
 -- the left part.
 
-evalL :: Zip s output -> Zip s output
+evalL :: forall s output. Zip s output -> Zip s output
 evalL (Zip errs0 l0 r0) = help errs0 l0 r0
   where
       help :: [String] -> RPolish mid output -> Steps s mid -> Zip s output
@@ -271,6 +272,7 @@ evalL (Zip errs0 l0 r0) = help errs0 l0 r0
               GT -> help errs l q
               EQ -> reZip errs l rhs -- don't know where to go: don't speculate on evaluating either branch.
           _ -> reZip errs l rhs
+      reZip :: [String] -> RPolish mid output -> Steps s mid -> Zip s output
       reZip errs l r = l `seq` Zip errs l r
 
 evalL' :: Zip s output -> Zip s output
