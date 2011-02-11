@@ -18,10 +18,6 @@ import Yi.Core
 import Yi.MiniBuffer
 import qualified Yi.Mode.Compilation as Compilation
 import Yi.Process
-import Yi.Templates
-  ( addTemplate
-  , templateNames
-  )
 import Yi.UI.Common 
 import qualified Yi.Mode.Interactive as Interactive
 import qualified Data.Rope as R
@@ -114,8 +110,3 @@ grepFind (Doc filePattern) (Doc searchedRegex) = withOtherWindow $ do
                                       "-name", filePattern, "-exec", "grep", "-Hnie", searchedRegex, "{}", ";"] (const $ return ())
     withBuffer $ setMode Compilation.mode
     return ()
-
-     
--- | Inserting a template from the templates defined in Yi.Templates
-insertTemplate :: YiM ()
-insertTemplate = withMinibuffer "template-name:" (const $ return templateNames) $ withEditor . addTemplate
