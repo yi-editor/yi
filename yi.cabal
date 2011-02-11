@@ -176,7 +176,6 @@ library
         Yi.Syntax.Tree
         Yi.Syntax.Strokes.Haskell
         Yi.Tag
-        Yi.Templates
         Yi.TextCompletion,
         Yi.UI.Common
         Yi.UI.Batch
@@ -490,7 +489,6 @@ executable yi
            Yi.Search
            Yi.String
            Yi.Style
-           Yi.Templates
            Yi.TextCompletion
            Yi.Buffer.Undo
            Yi.Window
