@@ -13,7 +13,7 @@ DEPENDENCIES
 
 * Cabal 1.6
 
-* ghc 6.10.1
+* GHC 7.0.1
 
 * Alex (the haskell lexer generator) 
 	http://www.haskell.org/alex/
@@ -21,7 +21,7 @@ DEPENDENCIES
 * for vty frontend, vty 3.1.6
   * http://hackage.haskell.org/cgi-bin/hackage-scripts/package/vty
 
-* for pango frontend, gtk2hs 0.10
+* for pango frontend, gtk2hs 0.12
         http://haskell.org/gtk2hs/download/
 
 * for cocoa frontend
