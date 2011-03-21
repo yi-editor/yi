@@ -27,10 +27,27 @@ With the Haskell Platform installed, yi should be installed with cabal-install:
     $ cabal update
     $ cabal install yi
 
+You also need to install a frontend. The standard terminal frontend, vty, can be installed via the `yi-vty` package:
+
+    $ cabal install yi-vty
+
+Available frontends are `yi-vty`, `yi-cocoa`, `yi-vte`, and `yi-vte`.
+
+You can also install the `yi-contrib` package, which contains some extra contributed things (like user configs):
+
+    $ cabal install yi-contrib
+
+**Note**: You need to create a config file at `~/.yi/yi.hs`. Read the _Configuring Yi_ section below to learn how to create this file. Without it, you'll be running the batch UI built into Yi core, which doesn't support actual editing.
+
 If you're in the source repository, you can install yi from source:
 
     $ cabal update # Still update to get updated dependencies
-    $ cabal install
+    $ (cd yi && cabal install)
+
+And some of the other packages:
+
+    $ (cd yi-contrib && cabal install)
+    $ (cd frontends/vty && cabal install)
 
 ## Getting Source
 
@@ -54,7 +71,7 @@ Our mailing list is [yi-devel][], hosted at Google Groups. Please ask us questio
 
 Yi uses the [Dyre][dyre] package to have dynamic reconfiguration. You can configure Yi by creating `~/.yi/yi.hs`, and then Yi is reconfigured whenever you update this file. Example configuration files are in `yi/examples/` (copy any of these into `~/yi/` as `yi.hs` and restart Yi).
 
-You can also use the sample user configs in the _yi-contrib_ package (see the [list of user configs][userconfigs] in the source repository on GitHub). To use one of these configurations, install the package and then create a configuration file `~/.yi/yi.hs` like this:
+You can also use the sample user configs in the `yi-contrib` package (see the [list of user configs][userconfigs] in the source repository on GitHub). To use one of these configurations, install the package and then create a configuration file `~/.yi/yi.hs` like this:
 
     import Yi
     import Yi.Config.Users.Anders
