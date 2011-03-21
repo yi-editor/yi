@@ -1,0 +1,9 @@
+*.hi
+*.hi-boot
+*.o
+*.o-boot
+*.o.cmd
+*.swp
+Yi/Lexer/*.hs
+.yi.*.dbg
+dist/
