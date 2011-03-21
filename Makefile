@@ -17,7 +17,7 @@ test::
 	dist/build/yi/yi -fbatch --self-check 
 	cabal copy
 	cabal register
-	dist/build/yi/yi -fbatch --force-recompile -y examples/yi.hs
+	dist/build/yi/yi -fbatch -y examples/yi.hs
 # annoyingly, we do not know which interface will be compiled in, beside 'batch',
 # which is not good to put as default in the examples/yi.hs.
 

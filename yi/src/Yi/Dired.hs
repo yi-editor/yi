@@ -316,7 +316,7 @@ shortCalendarTimeToString = formatTime defaultTimeLocale "%b %d %H:%M"
 
 -- Default Filter: omit files ending in '~' or '#' and also '.' and '..'.
 diredOmitFile :: String -> Bool
-diredOmitFile = (=~".*~$|.*#$|^\\.$|^\\..$")
+diredOmitFile = (=~".*~$|.*#$|^\\.$|^\\..$|.*\\.pyc$")
 
 diredMark :: BufferM ()
 diredMark = diredMarkWithChar '*' lineDown
