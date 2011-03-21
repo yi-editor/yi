@@ -40,5 +40,7 @@ library
   cpp-options: -DFRONTEND_PANGO
 
   if flag(gnome)
+    build-depends:
+      gconf ==0.12.*
     cpp-options: -DGNOME_ENABLED
     exposed-modules: Yi.UI.Pango.Gnome
