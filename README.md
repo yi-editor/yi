@@ -39,7 +39,6 @@ Yi has mirrored source repositories on [GitHub][github] and [Google Code][google
 To get the git version,
 
     $ git clone git://github.com/yi-editor/yi.git
-    $ git clone git://github.com/yi-editor/yi-contrib.git
 
 (There may be more repositories in the future, as yi is split more.)
 
@@ -112,4 +111,4 @@ Of course, feel free to adjust those rules to your needs. If you go for the prof
 [issueslist]: http://code.google.com/p/yi-editor/issues/list
 [yi-devel]: http://groups.google.com/group/yi-devel
 [dyre]: http://hackage.haskell.org/package/dyre
-[userconfigs]: https://github.com/yi-editor/yi-contrib/tree/master/src/Yi/Config/Users
+[userconfigs]: https://github.com/yi-editor/yi/tree/master/yi-contrib/src/Yi/Config/Users
