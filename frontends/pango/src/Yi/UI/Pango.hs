@@ -41,7 +41,7 @@ import Yi.Style
 import Yi.Window
 
 import qualified Yi.UI.Common as Common
-import Yi.UI.Pango.Utils
+-- import Yi.UI.Pango.Utils
 import Yi.UI.TabBar
 import Yi.UI.Utils
 
@@ -124,8 +124,8 @@ startNoMsg cfg ch outCh _ed = do
   win <- windowNew
   windowSetDefaultSize win 900 700
   windowSetTitle win "Yi"
-  ico <- loadIcon "yi+lambda-fat.32.png"
-  windowSetIcon win (Just ico)
+  -- ico <- loadIcon "yi+lambda-fat.32.png"
+  -- windowSetIcon win (Just ico)
 
   onKeyPress win (processEvent ch)
 

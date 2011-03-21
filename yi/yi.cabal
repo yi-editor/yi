@@ -32,10 +32,6 @@ data-files:
   art/license-file.png
   art/setup-script.png
   art/setup-script.png
-  examples/yi.hs
-  examples/yi-vim.hs
-  examples/yi-cua.hs
-  examples/yi-simple.hs
 extra-source-files: src/Yi/Lexer/common.hsinc
 
 flag scion
@@ -50,22 +46,6 @@ flag ghcAPI
   --  * links against old/new version of bytestring
   --  * links against old version of Cabal
   -- ...
-
-flag vty
-  Description: Provide Vty UI
-
-flag vte
-  Description: Provide Vte UI
-
-flag pango
-  Description: Provide Pango UI
-
-flag cocoa
-  Description: Provide experimental Cocoa UI
-
-flag gnome
-  Default: False
-  Description: Enable GNOME integration
 
 flag hacking
   Default: False
@@ -185,32 +165,12 @@ library
         Yi.Window
         Yi.Char.Unicode
 
+        -- This is super bad. This shouldn't be exposed (and we should just
+        -- depend on a premade ropes library). Needed in yi-pango.
+        Data.Rope
+        Data.Prototype
+
     include-dirs:   src/Yi/Lexer
-    if flag (vty) && !os(windows)
-      cpp-options: -DFRONTEND_VTY
-      exposed-modules: Yi.UI.Vty
-
-    if flag(vte)
-      cpp-options: -DFRONTEND_VTE
-      exposed-modules: Yi.UI.Vte
-       
-    if flag (pango)
-      cpp-options: -DFRONTEND_PANGO
-      exposed-modules: Yi.UI.Pango
-                       Yi.UI.Pango.Control
-      other-modules: Yi.UI.Pango.ProjectTree
-                     Yi.UI.Pango.Utils
-      if flag(gnome)
-        cpp-options: -DGNOME_ENABLED
-        exposed-modules: Yi.UI.Pango.Gnome
-
-    if flag (cocoa)
-      cpp-options: -DFRONTEND_COCOA
-      exposed-modules: Yi.UI.Cocoa
-      other-modules: Yi.UI.Cocoa.Application
-                     Yi.UI.Cocoa.TextStorage
-                     Yi.UI.Cocoa.TextView
-                     Yi.UI.Cocoa.Utils
 
     if flag (scion)
       cpp-options: -DSCION
@@ -232,10 +192,8 @@ library
         
         -- "Internal" modules that the user better not see.
         Yi.Buffer.Implementation
-        Data.Prototype
 
         -- Should probably be split out to another package.
-        Data.Rope
         Data.DelayList
         Data.Trie
         Parser.Incremental
@@ -347,39 +305,6 @@ executable yi
 
         if !os(mingw32)
           build-depends: unix
-
-        if flag (vty) && !os(windows)
-          build-depends: vty>=4.0.0 && < 5
-          cpp-options: -DFRONTEND_VTY
-
-        if flag (vte)
-          -- Need executable path to call the version of Yi that's
-          -- currrently running
-          build-depends: executable-path
-          build-depends: gtk==0.12.*
-          build-depends: glib==0.12.*
-          build-depends: pango==0.12.*
-          build-depends: vte==0.12.*
-          cpp-options: -DFRONTEND_VTE
-          other-modules: Yi.UI.Vte
-
-        if flag (pango)
-          build-depends: gtk==0.12.*
-          build-depends: glib==0.12.*
-          build-depends: pango==0.12.*
-          cpp-options: -DFRONTEND_PANGO
-          other-modules: Yi.UI.Pango.ProjectTree
-                         Yi.UI.Pango.Utils
-                         Yi.UI.Pango
-
-          if flag(gnome)
-            build-depends: gconf==0.12.*
-            cpp-options: -DGNOME_ENABLED
-            other-modules: Yi.UI.Pango.Gnome
-
-        if flag (cocoa)
-          build-depends: HOC, HOC-AppKit, HOC-Foundation
-          cpp-options: -DFRONTEND_COCOA
 
         if flag (scion)
           build-depends: ghc == 6.10.*
