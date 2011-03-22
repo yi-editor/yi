@@ -12,7 +12,7 @@ maintainer:     yi-devel@googlegroups.com
 homepage:       http://haskell.org/haskellwiki/Yi
 bug-reports:    http://code.google.com/p/yi-editor/issues/list
 Cabal-Version:  >= 1.6
-tested-with:    GHC==7.0.1
+tested-with:    GHC==7.0.2
 build-type:     Simple
 data-files:
   art/yi+lambda-fat.pdf
@@ -42,7 +42,7 @@ flag ghcAPI
   Description: Enable linking with GHC API for advanced features.
   Default: False
   -- Can be useful to disable; ghc package is difficult to rebuild;
-  --  * normally not available for profiling.      
+  --  * normally not available for profiling.
   --  * links against old/new version of bytestring
   --  * links against old version of Cabal
   -- ...
@@ -64,111 +64,111 @@ library
     buildable: False
   else
     exposed-modules:
-        Yi
-        Yi.Boot
-        Yi.Buffer
-        Yi.Buffer.Basic
-        Yi.Buffer.HighLevel
-        Yi.Buffer.Indent
-        Yi.Buffer.Normal
-        Yi.Buffer.Misc
-        Yi.Buffer.Region
-        Yi.Buffer.Undo
-        Yi.Command
-        Yi.Completion
-        Yi.Config
-        Yi.Config.Default
-        Yi.Config.Misc
-        Yi.Core
-        Yi.Debug
-        Yi.Dired
-        Yi.Dynamic
-        Yi.Editor 
-        Yi.Eval
-        Yi.Event
-        Yi.File
-        Yi.History
-        Yi.Hoogle
-        Yi.IReader
-        Yi.IncrementalParse
-        Yi.Interact
-        Yi.Keymap
-        Yi.Keymap.Completion
-        Yi.Keymap.Cua
-        Yi.Keymap.Emacs
-        Yi.Keymap.Emacs.KillRing
-        Yi.Keymap.Emacs.Utils
-        Yi.Keymap.Keys
-        Yi.Keymap.Vim
-        Yi.KillRing
-        Yi.Lexer.Abella
-        Yi.Lexer.Alex
-        Yi.Lexer.Cabal
-        Yi.Lexer.Compilation
-        Yi.Lexer.C
-        Yi.Lexer.ObjectiveC
-        Yi.Lexer.Cplusplus
-        Yi.Lexer.Haskell
-        Yi.Lexer.JavaScript
-        Yi.Lexer.Latex 
-        Yi.Lexer.LiterateHaskell
-        Yi.Lexer.GNUMake
-        Yi.Lexer.OCaml
-        Yi.Lexer.Ott
-        Yi.Lexer.Perl
-        Yi.Lexer.Python
-        Yi.Lexer.Srmc
-        Yi.Lexer.SVNCommit
-        Yi.Lexer.Whitespace
-        Yi.Main
-        Yi.MiniBuffer
-        Yi.Misc
-        Yi.Mode.Abella
-        Yi.Mode.Buffers
-        Yi.Mode.Compilation
-        Yi.Mode.Haskell
-        Yi.Mode.Haskell.Dollarify
-        Yi.Mode.IReader
-        Yi.Mode.Interactive
-        Yi.Mode.JavaScript
-        Yi.Mode.Latex
-        Yi.Modes
-        Yi.Monad
-        Yi.Prelude
-        Yi.Process
-        Yi.Rectangle
-        Yi.Regex
-        Yi.Region
-        Yi.Snippets
-        Yi.Snippets.Haskell
-        Yi.Search
-        Yi.String
-        Yi.Style
-        Yi.Style.Library
-        Yi.Syntax
-        Yi.Syntax.Driver
-        Yi.Syntax.Haskell
-        Yi.Syntax.JavaScript
-        Yi.Syntax.Latex
-        Yi.Syntax.Layout
-        Yi.Syntax.OnlineTree
-        Yi.Syntax.Paren
-        Yi.Syntax.Tree
-        Yi.Syntax.Strokes.Haskell
-        Yi.Tag
-        Yi.TextCompletion,
-        Yi.UI.Common
-        Yi.UI.Batch
-        Yi.UI.Utils
-        Yi.UI.TabBar
-        Yi.Verifier.JavaScript
-        Yi.Window
-        Yi.Char.Unicode
+      Yi
+      Yi.Boot
+      Yi.Buffer
+      Yi.Buffer.Basic
+      Yi.Buffer.HighLevel
+      Yi.Buffer.Indent
+      Yi.Buffer.Normal
+      Yi.Buffer.Misc
+      Yi.Buffer.Region
+      Yi.Buffer.Undo
+      Yi.Command
+      Yi.Completion
+      Yi.Config
+      Yi.Config.Default
+      Yi.Config.Misc
+      Yi.Core
+      Yi.Debug
+      Yi.Dired
+      Yi.Dynamic
+      Yi.Editor
+      Yi.Eval
+      Yi.Event
+      Yi.File
+      Yi.History
+      Yi.Hoogle
+      Yi.IReader
+      Yi.IncrementalParse
+      Yi.Interact
+      Yi.Keymap
+      Yi.Keymap.Completion
+      Yi.Keymap.Cua
+      Yi.Keymap.Emacs
+      Yi.Keymap.Emacs.KillRing
+      Yi.Keymap.Emacs.Utils
+      Yi.Keymap.Keys
+      Yi.Keymap.Vim
+      Yi.KillRing
+      Yi.Lexer.Abella
+      Yi.Lexer.Alex
+      Yi.Lexer.Cabal
+      Yi.Lexer.Compilation
+      Yi.Lexer.C
+      Yi.Lexer.ObjectiveC
+      Yi.Lexer.Cplusplus
+      Yi.Lexer.Haskell
+      Yi.Lexer.JavaScript
+      Yi.Lexer.Latex 
+      Yi.Lexer.LiterateHaskell
+      Yi.Lexer.GNUMake
+      Yi.Lexer.OCaml
+      Yi.Lexer.Ott
+      Yi.Lexer.Perl
+      Yi.Lexer.Python
+      Yi.Lexer.Srmc
+      Yi.Lexer.SVNCommit
+      Yi.Lexer.Whitespace
+      Yi.Main
+      Yi.MiniBuffer
+      Yi.Misc
+      Yi.Mode.Abella
+      Yi.Mode.Buffers
+      Yi.Mode.Compilation
+      Yi.Mode.Haskell
+      Yi.Mode.Haskell.Dollarify
+      Yi.Mode.IReader
+      Yi.Mode.Interactive
+      Yi.Mode.JavaScript
+      Yi.Mode.Latex
+      Yi.Modes
+      Yi.Monad
+      Yi.Prelude
+      Yi.Process
+      Yi.Rectangle
+      Yi.Regex
+      Yi.Region
+      Yi.Snippets
+      Yi.Snippets.Haskell
+      Yi.Search
+      Yi.String
+      Yi.Style
+      Yi.Style.Library
+      Yi.Syntax
+      Yi.Syntax.Driver
+      Yi.Syntax.Haskell
+      Yi.Syntax.JavaScript
+      Yi.Syntax.Latex
+      Yi.Syntax.Layout
+      Yi.Syntax.OnlineTree
+      Yi.Syntax.Paren
+      Yi.Syntax.Tree
+      Yi.Syntax.Strokes.Haskell
+      Yi.Tag
+      Yi.TextCompletion,
+      Yi.UI.Common
+      Yi.UI.Batch
+      Yi.UI.Utils
+      Yi.UI.TabBar
+      Yi.Verifier.JavaScript
+      Yi.Window
+      Yi.Char.Unicode
 
-        -- This is super bad. This shouldn't be exposed (and we should just
-        -- depend on a premade ropes library). Needed in yi-pango.
-        Data.Rope
-        Data.Prototype
+      -- This is super bad. This shouldn't be exposed (and we should just
+      -- depend on a premade ropes library). Needed in yi-pango.
+      Data.Rope
+      Data.Prototype
 
     include-dirs:   src/Yi/Lexer
 
@@ -189,7 +189,7 @@ library
 
     other-modules:
         Paths_yi,
-        
+
         -- "Internal" modules that the user better not see.
         Yi.Buffer.Implementation
 
@@ -212,224 +212,224 @@ library
 
 executable parserTest
   hs-source-dirs: src
+
   if !flag(testing)
-          main-is:        Dummy.hs
+    buildable: False
   else
-          main-is:        ParserTest/ParserTest.hs
-          other-modules:
-                Yi
-                Yi.Modes
-                Yi.Mode.Abella
-                Yi.Mode.Compilation
-                Yi.Mode.Haskell
-                Yi.Mode.Haskell.Dollarify
-                Yi.UI.Common
+    main-is: ParserTest/ParserTest.hs
+    other-modules:
+      Yi
+      Yi.Modes
+      Yi.Mode.Abella
+      Yi.Mode.Compilation
+      Yi.Mode.Haskell
+      Yi.Mode.Haskell.Dollarify
+      Yi.UI.Common
 
-                Paths_yi
-                Yi.GHC
+      Paths_yi
+      Yi.GHC
 
-                Yi.Lexer.Abella
-                Yi.Lexer.Alex
-                Yi.Lexer.Compilation
-                Yi.Lexer.C
-                Yi.Lexer.ObjectiveC
-                Yi.Lexer.Cplusplus
-                Yi.Lexer.Haskell
-                Yi.Lexer.JavaScript
-                Yi.Lexer.LiterateHaskell
-                Yi.Lexer.Latex 
-                Yi.Lexer.Srmc
-                Yi.Lexer.Cabal
-                Yi.Lexer.GNUMake
-                Yi.Lexer.OCaml
-                Yi.Lexer.Ott
-                Yi.Lexer.Perl
-                Yi.Lexer.Python
-                Yi.Lexer.SVNCommit
-                Yi.Lexer.Whitespace
+      Yi.Lexer.Abella
+      Yi.Lexer.Alex
+      Yi.Lexer.Compilation
+      Yi.Lexer.C
+      Yi.Lexer.ObjectiveC
+      Yi.Lexer.Cplusplus
+      Yi.Lexer.Haskell
+      Yi.Lexer.JavaScript
+      Yi.Lexer.LiterateHaskell
+      Yi.Lexer.Latex 
+      Yi.Lexer.Srmc
+      Yi.Lexer.Cabal
+      Yi.Lexer.GNUMake
+      Yi.Lexer.OCaml
+      Yi.Lexer.Ott
+      Yi.Lexer.Perl
+      Yi.Lexer.Python
+      Yi.Lexer.SVNCommit
+      Yi.Lexer.Whitespace
 
-                Yi.Syntax
-                Yi.Syntax.Driver
-                Yi.Syntax.JavaScript
-                Yi.Syntax.Layout
-                Yi.Syntax.OnlineTree
-                Yi.Syntax.Paren
-                Yi.Syntax.Latex
-                Yi.Syntax.Tree
+      Yi.Syntax
+      Yi.Syntax.Driver
+      Yi.Syntax.JavaScript
+      Yi.Syntax.Layout
+      Yi.Syntax.OnlineTree
+      Yi.Syntax.Paren
+      Yi.Syntax.Latex
+      Yi.Syntax.Tree
 
-                Yi.Mode.Interactive
-        include-dirs:   src/Yi/Lexer
+      Yi.Mode.Interactive
+    include-dirs:   src/Yi/Lexer
 
 executable yi
-        hs-source-dirs: src
+  hs-source-dirs: src
 
-        build-tools:   alex >= 2.0.1 && < 3
-        -- haddock >= 2.2,
-        -- it seems harsh to require haddock 2.2 to even configure Yi
+  if flag(hacking)
+    main-is: HackerMain.hs
+  else
+    main-is: Main.hs
 
-        build-depends: Cabal >= 1.6 && < 1.11
-        build-depends: Diff >=0.1 && <0.2
-        build-depends: array, containers,  directory, process, old-locale
-        build-depends: base >=4 && <5
-        build-depends: binary == 0.5.*
-        build-depends: bytestring >=0.9.1 && <0.9.2
-        build-depends: derive >=2.4 && <2.5
-        build-depends: data-accessor >= 0.2.1.4 && < 0.3
-        build-depends: data-accessor-monads-fd == 0.2.*
-        build-depends: data-accessor-template >= 0.2.1.3 && < 0.2.2
-        build-depends: dlist >=0.4.1
-        build-depends: dyre >=0.7
-        build-depends: filepath>=1.1 && <1.3
-        build-depends: fingertree >= 0 && <0.1
-        build-depends: ghc-paths ==0.1.*
-        build-depends: hint > 0.3.1
-        build-depends: monads-fd >= 0.1.0.1
-        build-depends: pointedlist >= 0.3.5 && <0.4
-        build-depends: pureMD5 >= 0.2.3
-        build-depends: random
-        build-depends: regex-base ==0.93.*
-        build-depends: regex-tdfa == 1.1.*
-        build-depends: rosezipper >= 0.1 && < 0.2
-        build-depends: split == 0.1.*
-        build-depends: template-haskell >= 2.4 && < 2.6
-        build-depends: time >= 1.1 && < 1.3
-        build-depends: utf8-string >= 0.3.1
-        build-depends: uniplate
-        build-depends: unix-compat >=0.1 && <0.3
+  build-tools:   alex >= 2.0.1 && < 3
 
-        ghc-options:   -Wall -fno-warn-orphans -threaded
-        -- orphans are a performance warning, but 
-        -- we need this in Yi.
-        -- ghc-options later on get appended to the original
-        ghc-prof-options:   -prof -auto-all
+  build-depends:
+    Cabal >= 1.6 && < 1.11,
+    Diff >=0.1 && <0.2,
+    array, containers,  directory, process, old-locale,
+    base >=4 && <5,
+    binary == 0.5.*,
+    bytestring >=0.9.1 && <0.9.2,
+    derive >=2.4 && <2.5,
+    data-accessor >= 0.2.1.4 && < 0.3,
+    data-accessor-monads-fd == 0.2.*,
+    data-accessor-template >= 0.2.1.3 && < 0.2.2,
+    dlist >=0.4.1,
+    dyre >=0.7,
+    filepath>=1.1 && <1.3,
+    fingertree >= 0 && <0.1,
+    ghc-paths ==0.1.*,
+    hint > 0.3.1,
+    monads-fd >= 0.1.0.1,
+    pointedlist >= 0.3.5 && <0.4,
+    pureMD5 >= 0.2.3,
+    random,
+    regex-base ==0.93.*,
+    regex-tdfa == 1.1.*,
+    rosezipper >= 0.1 && < 0.2,
+    split == 0.1.*,
+    template-haskell >= 2.4 && < 2.6,
+    time >= 1.1 && < 1.3,
+    utf8-string >= 0.3.1,
+    uniplate,
+    unix-compat >=0.1 && <0.3
 
-        if !os(mingw32)
-          build-depends: unix
+  ghc-options:   -Wall -fno-warn-orphans -threaded
+  -- orphans are a performance warning, but 
+  -- we need this in Yi.
+  -- ghc-options later on get appended to the original
+  ghc-prof-options:   -prof -auto-all
 
-        if flag (scion)
-          build-depends: ghc == 6.10.*
-          build-depends: ghc-syb
-          build-depends: scion
-          cpp-options: -DSCION
+  if !os(mingw32)
+    build-depends: unix
 
-        if flag (ghcAPI)
-          build-depends: ghc == 6.8.3 || == 6.10.*
-          build-depends: old-time
-          -- Shim uses old-time
-          cpp-options: -DGHC_API
+  if flag (scion)
+    build-depends: ghc == 6.10.*
+    build-depends: ghc-syb
+    build-depends: scion
+    cpp-options: -DSCION
 
-        if !os(windows)
-          build-depends: cautious-file >= 0.1.5 && <0.2
-          cpp-options: -DCAUTIOUS_WRITES
+  if flag (ghcAPI)
+    build-depends: ghc == 6.8.3 || == 6.10.*
+    build-depends: old-time
+    -- Shim uses old-time
+    cpp-options: -DGHC_API
 
-        if flag(hacking)
-          main-is:        HackerMain.hs
-        else
-          main-is:        Main.hs
+  if !os(windows)
+    build-depends: cautious-file >= 0.1.5 && <0.2
+    cpp-options: -DCAUTIOUS_WRITES
 
-        other-modules:
-           Yi
-           Yi.Prelude
-           Yi.Boot
-           Yi.Keymap.Emacs
-           Yi.Keymap.Vim
-           Yi.Misc
-           Yi.Modes
-           Yi.Mode.Abella
-           Yi.Mode.Compilation
-           Yi.Mode.Haskell
-           Yi.Mode.Haskell.Dollarify
-           Yi.Buffer
-           Yi.Buffer.Basic
-           Yi.Keymap.Keys
-           Shim.CabalInfo
-           Shim.Utils
-           Shim.ProjectContent
-           System.FriendlyPath
-           Yi.UI.Common
-           Yi.UI.Batch
+  other-modules:
+    Yi
+    Yi.Prelude
+    Yi.Boot
+    Yi.Keymap.Emacs
+    Yi.Keymap.Vim
+    Yi.Misc
+    Yi.Modes
+    Yi.Mode.Abella
+    Yi.Mode.Compilation
+    Yi.Mode.Haskell
+    Yi.Mode.Haskell.Dollarify
+    Yi.Buffer
+    Yi.Buffer.Basic
+    Yi.Keymap.Keys
+    Shim.CabalInfo
+    Shim.Utils
+    Shim.ProjectContent
+    System.FriendlyPath
+    Yi.UI.Common
+    Yi.UI.Batch
 
-           Paths_yi
-           Yi.GHC
+    Paths_yi
+    Yi.GHC
 
-           Yi.Lexer.Abella
-           Yi.Lexer.Alex
-           Yi.Lexer.Compilation
-           Yi.Lexer.C
-           Yi.Lexer.ObjectiveC
-           Yi.Lexer.Cplusplus
-           Yi.Lexer.Haskell
-           Yi.Lexer.JavaScript
-           Yi.Lexer.LiterateHaskell
-           Yi.Lexer.Latex 
-           Yi.Lexer.Srmc
-           Yi.Lexer.Cabal
-           Yi.Lexer.GNUMake
-           Yi.Lexer.OCaml
-           Yi.Lexer.Ott
-           Yi.Lexer.Perl
-           Yi.Lexer.Python
-           Yi.Lexer.SVNCommit
-           Yi.Lexer.Whitespace
+    Yi.Lexer.Abella
+    Yi.Lexer.Alex
+    Yi.Lexer.Compilation
+    Yi.Lexer.C
+    Yi.Lexer.ObjectiveC
+    Yi.Lexer.Cplusplus
+    Yi.Lexer.Haskell
+    Yi.Lexer.JavaScript
+    Yi.Lexer.LiterateHaskell
+    Yi.Lexer.Latex 
+    Yi.Lexer.Srmc
+    Yi.Lexer.Cabal
+    Yi.Lexer.GNUMake
+    Yi.Lexer.OCaml
+    Yi.Lexer.Ott
+    Yi.Lexer.Perl
+    Yi.Lexer.Python
+    Yi.Lexer.SVNCommit
+    Yi.Lexer.Whitespace
 
-           Yi.Syntax
-           Yi.Syntax.Driver
-           Yi.Syntax.JavaScript
-           Yi.Syntax.Layout
-           Yi.Syntax.OnlineTree
-           Yi.Syntax.Paren
-           Yi.Syntax.Latex
-           Yi.Syntax.Tree
-           Yi.Syntax.Strokes.Haskell
+    Yi.Syntax
+    Yi.Syntax.Driver
+    Yi.Syntax.JavaScript
+    Yi.Syntax.Layout
+    Yi.Syntax.OnlineTree
+    Yi.Syntax.Paren
+    Yi.Syntax.Latex
+    Yi.Syntax.Tree
+    Yi.Syntax.Strokes.Haskell
 
-           Yi.Verifier.JavaScript
+    Yi.Verifier.JavaScript
 
-           Yi.Mode.Interactive
+    Yi.Mode.Interactive
 
-           Yi.Buffer.Indent
-           Yi.Buffer.HighLevel
-           Yi.Buffer.Implementation
-           Yi.Buffer.Normal
-           Yi.Buffer.Region
-           Yi.Completion
-           Yi.Core
-           Yi.Debug
-           Yi.Dired
-           Yi.Dynamic
-           Yi.Editor
-           Yi.Eval
-           Yi.Event
-           Data.Rope
-           Yi.History
-           Yi.Interact
-           Yi.Keymap
-           Yi.Keymap.Completion
-           Yi.Keymap.Emacs.KillRing
-           Yi.Keymap.Emacs.Utils
-           Yi.Main
-           Yi.Monad
-           Yi.Process
-           Yi.Snippets
-           Yi.Snippets.Haskell
-           Yi.Search
-           Yi.String
-           Yi.Style
-           Yi.TextCompletion
-           Yi.Buffer.Undo
-           Yi.Window
-           Yi.MiniBuffer
-           Yi.File
-           Yi.KillRing
-           Yi.IncrementalParse
-           Yi.UI.Utils
-           -- Should probably be split out to another package.
-           Data.DelayList
+    Yi.Buffer.Indent
+    Yi.Buffer.HighLevel
+    Yi.Buffer.Implementation
+    Yi.Buffer.Normal
+    Yi.Buffer.Region
+    Yi.Completion
+    Yi.Core
+    Yi.Debug
+    Yi.Dired
+    Yi.Dynamic
+    Yi.Editor
+    Yi.Eval
+    Yi.Event
+    Data.Rope
+    Yi.History
+    Yi.Interact
+    Yi.Keymap
+    Yi.Keymap.Completion
+    Yi.Keymap.Emacs.KillRing
+    Yi.Keymap.Emacs.Utils
+    Yi.Main
+    Yi.Monad
+    Yi.Process
+    Yi.Snippets
+    Yi.Snippets.Haskell
+    Yi.Search
+    Yi.String
+    Yi.Style
+    Yi.TextCompletion
+    Yi.Buffer.Undo
+    Yi.Window
+    Yi.MiniBuffer
+    Yi.File
+    Yi.KillRing
+    Yi.IncrementalParse
+    Yi.UI.Utils
+    -- Should probably be split out to another package.
+    Data.DelayList
 
-        include-dirs:   src/Yi/Lexer
+  include-dirs:   src/Yi/Lexer
 
-        if flag(testing)
-            cpp-options:    -DTESTING
-            hs-source-dirs: . tests/
-            other-modules: Driver, TestSuite
-            build-depends: QuickCheck >= 2.1.0.2
-            build-depends: random
+  if flag(testing)
+      cpp-options:    -DTESTING
+      hs-source-dirs: . tests/
+      other-modules: Driver, TestSuite
+      build-depends: QuickCheck >= 2.1.0.2
+      build-depends: random
