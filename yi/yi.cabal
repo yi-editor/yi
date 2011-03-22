@@ -34,6 +34,23 @@ data-files:
   art/setup-script.png
 extra-source-files: src/Yi/Lexer/common.hsinc
 
+-- Frontends
+flag cocoa
+  Default: False
+  Description: "Build with Cocoa frontend"
+
+flag pango
+  Default: False
+  Description: "Build with Pango frontend"
+
+flag vte
+  Default: False
+  Description: "Build with Vte frontend"
+
+flag vty
+  Default: False
+  Description: "Build with Vty frontend"
+
 flag scion
   Default: False
   Description: Use the scion library to provide extra commands that interface with GHC (experimental)
@@ -60,155 +77,173 @@ flag testing
 
 library
   hs-source-dirs: src
+
   if flag(hacking)
     buildable: False
-  else
-    exposed-modules:
-      Yi
-      Yi.Boot
-      Yi.Buffer
-      Yi.Buffer.Basic
-      Yi.Buffer.HighLevel
-      Yi.Buffer.Indent
-      Yi.Buffer.Normal
-      Yi.Buffer.Misc
-      Yi.Buffer.Region
-      Yi.Buffer.Undo
-      Yi.Command
-      Yi.Completion
-      Yi.Config
-      Yi.Config.Default
-      Yi.Config.Misc
-      Yi.Core
-      Yi.Debug
-      Yi.Dired
-      Yi.Dynamic
-      Yi.Editor
-      Yi.Eval
-      Yi.Event
-      Yi.File
-      Yi.History
-      Yi.Hoogle
-      Yi.IReader
-      Yi.IncrementalParse
-      Yi.Interact
-      Yi.Keymap
-      Yi.Keymap.Completion
-      Yi.Keymap.Cua
-      Yi.Keymap.Emacs
-      Yi.Keymap.Emacs.KillRing
-      Yi.Keymap.Emacs.Utils
-      Yi.Keymap.Keys
-      Yi.Keymap.Vim
-      Yi.KillRing
-      Yi.Lexer.Abella
-      Yi.Lexer.Alex
-      Yi.Lexer.Cabal
-      Yi.Lexer.Compilation
-      Yi.Lexer.C
-      Yi.Lexer.ObjectiveC
-      Yi.Lexer.Cplusplus
-      Yi.Lexer.Haskell
-      Yi.Lexer.JavaScript
-      Yi.Lexer.Latex
-      Yi.Lexer.LiterateHaskell
-      Yi.Lexer.GNUMake
-      Yi.Lexer.OCaml
-      Yi.Lexer.Ott
-      Yi.Lexer.Perl
-      Yi.Lexer.Python
-      Yi.Lexer.Srmc
-      Yi.Lexer.SVNCommit
-      Yi.Lexer.Whitespace
-      Yi.Main
-      Yi.MiniBuffer
-      Yi.Misc
-      Yi.Mode.Abella
-      Yi.Mode.Buffers
-      Yi.Mode.Compilation
-      Yi.Mode.Haskell
-      Yi.Mode.Haskell.Dollarify
-      Yi.Mode.IReader
-      Yi.Mode.Interactive
-      Yi.Mode.JavaScript
-      Yi.Mode.Latex
-      Yi.Modes
-      Yi.Monad
-      Yi.Prelude
-      Yi.Process
-      Yi.Rectangle
-      Yi.Regex
-      Yi.Region
-      Yi.Snippets
-      Yi.Snippets.Haskell
-      Yi.Search
-      Yi.String
-      Yi.Style
-      Yi.Style.Library
-      Yi.Syntax
-      Yi.Syntax.Driver
-      Yi.Syntax.Haskell
-      Yi.Syntax.JavaScript
-      Yi.Syntax.Latex
-      Yi.Syntax.Layout
-      Yi.Syntax.OnlineTree
-      Yi.Syntax.Paren
-      Yi.Syntax.Tree
-      Yi.Syntax.Strokes.Haskell
-      Yi.Tag
-      Yi.TextCompletion,
-      Yi.UI.Common
-      Yi.UI.Batch
-      Yi.UI.Utils
-      Yi.UI.TabBar
-      Yi.Verifier.JavaScript
-      Yi.Window
-      Yi.Char.Unicode
 
-      -- This is super bad. This shouldn't be exposed (and we should just
-      -- depend on a premade ropes library). Needed in yi-pango.
-      Data.Rope
-      Data.Prototype
+  exposed-modules:
+    Yi
+    Yi.Boot
+    Yi.Buffer
+    Yi.Buffer.Basic
+    Yi.Buffer.HighLevel
+    Yi.Buffer.Indent
+    Yi.Buffer.Normal
+    Yi.Buffer.Misc
+    Yi.Buffer.Region
+    Yi.Buffer.Undo
+    Yi.Command
+    Yi.Completion
+    Yi.Config
+    Yi.Config.Default
+    Yi.Config.Misc
+    Yi.Core
+    Yi.Debug
+    Yi.Dired
+    Yi.Dynamic
+    Yi.Editor
+    Yi.Eval
+    Yi.Event
+    Yi.File
+    Yi.History
+    Yi.Hoogle
+    Yi.IReader
+    Yi.IncrementalParse
+    Yi.Interact
+    Yi.Keymap
+    Yi.Keymap.Completion
+    Yi.Keymap.Cua
+    Yi.Keymap.Emacs
+    Yi.Keymap.Emacs.KillRing
+    Yi.Keymap.Emacs.Utils
+    Yi.Keymap.Keys
+    Yi.Keymap.Vim
+    Yi.KillRing
+    Yi.Lexer.Abella
+    Yi.Lexer.Alex
+    Yi.Lexer.Cabal
+    Yi.Lexer.Compilation
+    Yi.Lexer.C
+    Yi.Lexer.ObjectiveC
+    Yi.Lexer.Cplusplus
+    Yi.Lexer.Haskell
+    Yi.Lexer.JavaScript
+    Yi.Lexer.Latex
+    Yi.Lexer.LiterateHaskell
+    Yi.Lexer.GNUMake
+    Yi.Lexer.OCaml
+    Yi.Lexer.Ott
+    Yi.Lexer.Perl
+    Yi.Lexer.Python
+    Yi.Lexer.Srmc
+    Yi.Lexer.SVNCommit
+    Yi.Lexer.Whitespace
+    Yi.Main
+    Yi.MiniBuffer
+    Yi.Misc
+    Yi.Mode.Abella
+    Yi.Mode.Buffers
+    Yi.Mode.Compilation
+    Yi.Mode.Haskell
+    Yi.Mode.Haskell.Dollarify
+    Yi.Mode.IReader
+    Yi.Mode.Interactive
+    Yi.Mode.JavaScript
+    Yi.Mode.Latex
+    Yi.Modes
+    Yi.Monad
+    Yi.Prelude
+    Yi.Process
+    Yi.Rectangle
+    Yi.Regex
+    Yi.Region
+    Yi.Snippets
+    Yi.Snippets.Haskell
+    Yi.Search
+    Yi.String
+    Yi.Style
+    Yi.Style.Library
+    Yi.Syntax
+    Yi.Syntax.Driver
+    Yi.Syntax.Haskell
+    Yi.Syntax.JavaScript
+    Yi.Syntax.Latex
+    Yi.Syntax.Layout
+    Yi.Syntax.OnlineTree
+    Yi.Syntax.Paren
+    Yi.Syntax.Tree
+    Yi.Syntax.Strokes.Haskell
+    Yi.Tag
+    Yi.TextCompletion,
+    Yi.UI.Common
+    Yi.UI.Batch
+    Yi.UI.Utils
+    Yi.UI.TabBar
+    Yi.Verifier.JavaScript
+    Yi.Window
+    Yi.Char.Unicode
 
-    include-dirs:   src/Yi/Lexer
+    -- This is super bad. This shouldn't be exposed (and we should just
+    -- depend on a premade ropes library). Needed in yi-pango.
+    Data.Rope
+    Data.Prototype
 
-    if flag (scion)
-      cpp-options: -DSCION
-      exposed-modules:  Yi.Scion
+  include-dirs:   src/Yi/Lexer
 
-    if flag (ghcAPI)
-      cpp-options: -DGHC_API
+  -- Frontends
+  if flag(cocoa)
+    build-depends: yi-cocoa
+    cpp-options: -DFRONTEND_COCOA
 
-      exposed-modules:  Yi.Mode.Shim
-      other-modules:
-        Shim.SHM, Shim.SessionMonad, Shim.Hsinfo, Shim.GhcCompat,
-        Shim.ExprSearch, Yi.GHC
+  if flag(pango)
+    build-depends: yi-pango
+    cpp-options: -DFRONTEND_PANGO
 
-    if !os(windows)
-      cpp-options: -DCAUTIOUS_WRITES
+  if flag(vte)
+    build-depends: yi-pango
+    cpp-options: -DFRONTEND_VTE
 
+  if flag(vty)
+    build-depends: yi-vty
+    cpp-options: -DFRONTEND_VTY
+
+  if flag (scion)
+    cpp-options: -DSCION
+    exposed-modules:  Yi.Scion
+
+  if flag (ghcAPI)
+    cpp-options: -DGHC_API
+
+    exposed-modules:  Yi.Mode.Shim
     other-modules:
-        Paths_yi,
+      Shim.SHM, Shim.SessionMonad, Shim.Hsinfo, Shim.GhcCompat,
+      Shim.ExprSearch, Yi.GHC
 
-        -- "Internal" modules that the user better not see.
-        Yi.Buffer.Implementation
+  if !os(windows)
+    cpp-options: -DCAUTIOUS_WRITES
 
-        -- Should probably be split out to another package.
-        Data.DelayList
-        Data.Trie
-        Parser.Incremental
-        Shim.CabalInfo
-        Shim.Utils
-        Shim.ProjectContent
-        System.FriendlyPath
+  other-modules:
+    Paths_yi,
 
-        -- Broken.
---                Yi.Keymap.Ee,
---                Yi.Keymap.Gwern,
---                Yi.Keymap.Joe,
---                Yi.Keymap.Mg,
---                Yi.Keymap.Nano,
---                Yi.Keymap.Vi,
+    -- "Internal" modules that the user better not see.
+    Yi.Buffer.Implementation
+
+    -- Should probably be split out to another package.
+    Data.DelayList
+    Data.Trie
+    Parser.Incremental
+    Shim.CabalInfo
+    Shim.Utils
+    Shim.ProjectContent
+    System.FriendlyPath
+
+    -- Broken.
+--            Yi.Keymap.Ee,
+--            Yi.Keymap.Gwern,
+--            Yi.Keymap.Joe,
+--            Yi.Keymap.Mg,
+--            Yi.Keymap.Nano,
+--            Yi.Keymap.Vi,
 
 executable parserTest
   hs-source-dirs: src
@@ -310,6 +345,23 @@ executable yi
 
   if !os(mingw32)
     build-depends: unix
+
+  -- Frontends
+  if flag(cocoa)
+    build-depends: yi-cocoa
+    cpp-options: -DFRONTEND_COCOA
+
+  if flag(pango)
+    build-depends: yi-pango
+    cpp-options: -DFRONTEND_PANGO
+
+  if flag(vte)
+    build-depends: yi-pango
+    cpp-options: -DFRONTEND_VTE
+
+  if flag(vty)
+    build-depends: yi-vty
+    cpp-options: -DFRONTEND_VTY
 
   if flag (scion)
     build-depends: ghc == 6.10.*
