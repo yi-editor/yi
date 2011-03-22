@@ -7,7 +7,7 @@ Its features include
 * a purely functional editor core;
 * keybindings written as parsers of the input;
 * Emacs, Vim and Cua (subset) emulations provided by default;
-* Vty, Gtk2Hs, and, in development, Cocoa and Pango frontends.
+* Vty (terminal), Gtk-based Pango and Vte, UIs, as well as a Cocoa frontend in development.
 
 The long term goal of the project is to make Yi the editor of choice for the haskell hacker. The main short term goal is to maximize Yi's Fun Factor. This means that we want to
 
@@ -27,27 +27,24 @@ With the Haskell Platform installed, yi should be installed with cabal-install:
     $ cabal update
     $ cabal install yi
 
-You also need to install a frontend. The standard terminal frontend, vty, can be installed via the `yi-vty` package:
+You can specify frontends to compile, also:
 
-    $ cabal install yi-vty
+    $ cabal install yi -fvty -fpango
 
-Available frontends are `yi-vty`, `yi-cocoa`, `yi-vte`, and `yi-vte`.
+Options are `-fvty`, `-fvte`, `-fpango`, and `-fcocoa`. Some are likely broken.
 
 You can also install the `yi-contrib` package, which contains some extra contributed things (like user configs):
 
     $ cabal install yi-contrib
-
-**Note**: You need to create a config file at `~/.yi/yi.hs`. Read the _Configuring Yi_ section below to learn how to create this file. Without it, you'll be running the batch UI built into Yi core, which doesn't support actual editing.
 
 If you're in the source repository, you can install yi from source:
 
     $ cabal update # Still update to get updated dependencies
     $ (cd yi && cabal install)
 
-And some of the other packages:
+And the contrib package:
 
     $ (cd yi-contrib && cabal install)
-    $ (cd frontends/vty && cabal install)
 
 ## Getting Source
 
