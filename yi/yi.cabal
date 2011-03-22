@@ -110,7 +110,7 @@ library
       Yi.Lexer.Cplusplus
       Yi.Lexer.Haskell
       Yi.Lexer.JavaScript
-      Yi.Lexer.Latex 
+      Yi.Lexer.Latex
       Yi.Lexer.LiterateHaskell
       Yi.Lexer.GNUMake
       Yi.Lexer.OCaml
@@ -198,7 +198,7 @@ library
         Data.Trie
         Parser.Incremental
         Shim.CabalInfo
-        Shim.Utils 
+        Shim.Utils
         Shim.ProjectContent
         System.FriendlyPath
 
@@ -238,7 +238,7 @@ executable parserTest
       Yi.Lexer.Haskell
       Yi.Lexer.JavaScript
       Yi.Lexer.LiterateHaskell
-      Yi.Lexer.Latex 
+      Yi.Lexer.Latex
       Yi.Lexer.Srmc
       Yi.Lexer.Cabal
       Yi.Lexer.GNUMake
@@ -303,7 +303,7 @@ executable yi
     unix-compat >=0.1 && <0.3
 
   ghc-options:   -Wall -fno-warn-orphans -threaded
-  -- orphans are a performance warning, but 
+  -- orphans are a performance warning, but
   -- we need this in Yi.
   -- ghc-options later on get appended to the original
   ghc-prof-options:   -prof -auto-all
@@ -361,7 +361,7 @@ executable yi
     Yi.Lexer.Haskell
     Yi.Lexer.JavaScript
     Yi.Lexer.LiterateHaskell
-    Yi.Lexer.Latex 
+    Yi.Lexer.Latex
     Yi.Lexer.Srmc
     Yi.Lexer.Cabal
     Yi.Lexer.GNUMake
