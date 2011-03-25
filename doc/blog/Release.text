@@ -1,70 +1,76 @@
-# Yi 0.6.0 Release Notes
+# Yi 0.6.3 Release Notes
+
+## What's new?
+
+* New vte UI. This is a terminal UI inside a GUI, much like gvim. It depends
+  on Gtk2Hs for the GUI, and then launches the vty UI inside the terminal.
+* Compatibility with the latest Haskell Platform release
+* Start yi-contrib package. We intend to move more stuff here, to clean up the
+  core yi package.
 
 ## Yi
+
 Yi is a text editor written in Haskell and extensible in Haskell. The
 long-term goal of the Yi project is to provide the editor of
 choice for Haskell programmers.
 
-Yi is now a fully usable editor for the unix console. The community is growing:
-the #yi irc channel on freenode has about 20 people. They be able to help with your
-first steps!
+Yi now works relatively well in the terminal, using the vty package, and also
+has Gtk frontends using vte (which interfaces with the terminal interface) and
+a Pango frontend. There is also a Cocoa frontend under (slow) development.
 
 ## Installation
 
 Using cabal install:
 
-  cabal install yi-0.6.0 -fvty
+    $ cabal update
+    $ cabal install yi
+
+On Windows, you'll need to disable the default vty terminal UI, and use a Gtk
+UI instead (the vte UI requires vty, so you can't install that either):
+
+    $ cabal install yi -f-vty -fpango
+
+(Windows support is not well-tested, though.)
+
+Optionally also install the contrib package:
+
+    $ cabal install yi-contrib
 
 ## Features
+
 * A purely functional editor core
 * Key-bindings written as parsers of the input
 * Emacs, Vim and (partial) Cua emulations provided by default
 * Console front-end (Gtk2Hs and Cocoa front-ends in development)
 * Static configuration (XMonad style) for fast load
 * Haskell support:
-    * Lexical highlighting and (unicode-based) beautification.
-    * Layout-aware parenthesis-matching 
-    * Auto-indentation
-    * cabal-build within the editor
+  * Lexical highlighting and (unicode-based) beautification.
+  * Layout-aware parenthesis-matching
+  * Auto-indentation
+  * cabal-build within the editor
 * Syntax highlighting for a number of other languages (latex, python, perl, ...)
 
-## Links
-* [download](http://hackage.haskell.org/cgi-bin/hackage-scripts/package/yi)
-* [FAQ](http://haskell.org/haskellwiki/Yi/FAQ)
-* [homepage](http://haskell.org/haskellwiki/Yi)
-* [blog and release notes](http://yi-editor.blogspot.com/)
-* [check and report issues](http://code.google.com/p/yi-editor/issues/list)
-* [darcs repository](http://code.haskell.org/yi)
-* [get involved](mailto:yi-devel@googlegroups.com)
+## More Info
+
+Read the [README][] on GitHub for more information. The [source code][] is
+also hosted there.
 
 ## Credits
 
 This release is brought to you by:
 
-* Aleksandar Dimitrov (vim patches)
-* Anders Karlsson (parser testing)
-* Corey O'Connor (vty maintainer)
-* Daniel Schoepe
-* Deniz Dogan (javascript lexer)
-* Dennis Griffith
-* Gustav Munkby (cocoa frontend maintainter)
-* Gwern Branwen (article reader mode)
-* Jean-Philippe Bernardy (general maintainer)
-* Jeff Wheeler (UI work)
-* Kalman Noel
-* Kevin Ballard 
-* Krzysztof Goj (vim patches)
-* Michael Dagitses
-* Nicolas Pouillard (vim keymap maintainter)
-* Sasha Rush
-* Stanisław Pitucha
+* Alexey Levan
+* Gwern Branwen
+* Issac Trotts
+* Jean-Philippe Bernardy
+* Jeff Wheeler
+* Jeremy Wall
+* Maciej Piechotka
+* Malte Sommerkorn
 
 and all the contributors to the previous versions.
 
+Also, Yi would not exist without all the work put into the Haskell platform.
 
-Also, Yi would not exist without all the work put into the Haskell platform. It
-depends on many packages: Cabal, Diff, array, containers, directory, process,
-old-locale, base, binary, bytestring, derive, data-accessor,
-data-accessor-monads-fd, data-accessor-template, filepath, fingertree,
-ghc-paths, monads-fd, pointedlist, pureMD5, random, regex-base, regex-tdfa,
-rosezipper, split, time, transformers, utf8-string, uniplate, unix-compat, vty
+[README]: https://github.com/yi-editor/yi/blob/master/README.md
+[source code]: https://github.com/yi-editor/yi
