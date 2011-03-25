@@ -208,7 +208,7 @@ library
     uniplate,
     unix-compat >=0.1 && <0.3
 
-  ghc-options: -Wall -fno-warn-orphans -threaded
+  ghc-options: -Wall -fno-warn-orphans
   if flag(hacking)
     ghc-prof-options: -prof -auto-all
 
@@ -337,13 +337,8 @@ executable yi
   else
     main-is: Main.hs
 
-  -- build-tools: alex >= 2.0.1 && < 3
-
   build-depends:
     base >=4 && <5,
     yi
 
-  -- orphans are a performance warning, but
-  -- we need this in Yi.
-  -- ghc-options later on get appended to the original
-
+  ghc-options: -threaded
