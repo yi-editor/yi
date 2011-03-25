@@ -38,33 +38,33 @@ import qualified Yi.Mode.Latex as Latex
 import qualified Yi.Interact as I
 import qualified Data.Rope as R
 
+#ifdef FRONTEND_VTE
+import qualified Yi.UI.Vte
+#endif
 #ifdef FRONTEND_VTY
 import qualified Yi.UI.Vty
-#endif
-#ifdef FRONTEND_COCOA
-import qualified Yi.UI.Cocoa
 #endif
 #ifdef FRONTEND_PANGO
 import qualified Yi.UI.Pango
 #endif
-#ifdef FRONTEND_GTK
-import qualified Yi.UI.Gtk
+#ifdef FRONTEND_COCOA
+import qualified Yi.UI.Cocoa
 #endif
 import qualified Yi.UI.Batch
 
 availableFrontends :: [(String, UIBoot)]
 availableFrontends =
+#ifdef FRONTEND_VTE
+   ("vte", Yi.UI.Vte.start) :
+#endif
 #ifdef FRONTEND_VTY
    ("vty", Yi.UI.Vty.start) :
-#endif
-#ifdef FRONTEND_COCOA
-   ("cocoa", Yi.UI.Cocoa.start) :
 #endif
 #ifdef FRONTEND_PANGO
    ("pango", Yi.UI.Pango.start) :
 #endif
-#ifdef FRONTEND_GTK
-   ("gtk", Yi.UI.Gtk.start) :
+#ifdef FRONTEND_COCOA
+   ("cocoa", Yi.UI.Cocoa.start) :
 #endif
    ("batch", Yi.UI.Batch.start) :
    []
@@ -234,17 +234,17 @@ nilKeymap = choice [
                           "You can type 'c', 'e' or 'v' now to create and edit it using a temporary cua, emacs or vim keymap."]
           openCfg km kmName = write $ do
             dataDir <- io $ getDataDir
-            let exampleCfg = dataDir </> "examples" </> kmName
+            let exampleCfg = dataDir </> "example-configs" </> kmName
             homeDir <- io $ getHomeDirectory
             let cfgDir = homeDir </> ".yi"
                 cfgFile = cfgDir </> "yi.hs"
             cfgExists <- io $ doesFileExist cfgFile
+            -- io $ print cfgExists
             io $ createDirectoryIfMissing True cfgDir -- so that the file can be saved.
-            editFile cfgFile -- load config file
+            discard $ editFile cfgFile -- load config file
             -- locally override the keymap to the user choice
             withBuffer $ modifyMode (\m -> m {modeKeymap = const km})
             when (not cfgExists) $ do
                  -- file did not exist, load a reasonable default
                  defCfg <- io $ readFile exampleCfg
                  withBuffer $ insertN defCfg
-
