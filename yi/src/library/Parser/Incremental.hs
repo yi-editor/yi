@@ -1,5 +1,4 @@
 -- Copyright (c) JP Bernardy 2008
-{-# OPTIONS -Wall #-}
 {-# LANGUAGE GADTs, RankNTypes, ScopedTypeVariables, TypeOperators #-}
 
 -- TODO:
