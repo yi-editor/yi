@@ -1,5 +1,5 @@
 name:           yi
-version:        0.6.2.5
+version:        0.6.3.0
 category:       Development, Editor
 synopsis:       The Haskell-Scriptable Editor
 description:
@@ -14,24 +14,11 @@ bug-reports:    http://code.google.com/p/yi-editor/issues/list
 Cabal-Version:  >= 1.10
 tested-with:    GHC==7.0.2
 build-type:     Simple
+
 data-files:
-  art/yi+lambda-fat.pdf
-  art/yi+lambda-fat.32.png
-  art/dependencies.png
-  art/plain-folder.png
-  art/hs-source-folder.png
-  art/exposed-module.png
-  art/hidden-module.png
-  art/exposed-file-module.png
-  art/hidden-file-module.png
-  art/package.png
-  art/project.png
-  art/c-source.png
-  art/h-source.png
-  art/text-file.png
-  art/license-file.png
-  art/setup-script.png
-  art/setup-script.png
+  art/*.png
+  example-configs/*.hs
+
 extra-source-files: src/library/Yi/Lexer/common.hsinc
 
 -- Frontends
@@ -221,6 +208,7 @@ library
     uniplate,
     unix-compat >=0.1 && <0.3
 
+  ghc-options: -Wall -fno-warn-orphans -threaded
   if flag(hacking)
     ghc-prof-options: -prof -auto-all
 
@@ -259,6 +247,8 @@ library
     exposed-modules:
       Yi.UI.Pango
       Yi.UI.Pango.Control
+    other-modules:
+      Yi.UI.Pango.Utils
     build-depends:
       gtk ==0.12.*,
       glib ==0.12.*,
@@ -272,7 +262,8 @@ library
       gtk ==0.12.*,
       glib ==0.12.*,
       pango ==0.12.*,
-      vte ==0.12.*
+      vte ==0.12.*,
+      executable-path
     cpp-options: -DFRONTEND_VTE
 
   if flag(vty)
@@ -335,7 +326,7 @@ executable parserTest
     containers,
     directory,
     filepath>=1.1 && <1.3,
-    yi ==0.6.2.5
+    yi
 
 executable yi
   hs-source-dirs: src/executable
@@ -350,9 +341,8 @@ executable yi
 
   build-depends:
     base >=4 && <5,
-    yi ==0.6.2.5
+    yi
 
-  ghc-options:   -Wall -fno-warn-orphans -threaded
   -- orphans are a performance warning, but
   -- we need this in Yi.
   -- ghc-options later on get appended to the original
