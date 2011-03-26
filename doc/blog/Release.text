@@ -25,6 +25,10 @@ Using cabal install:
     $ cabal update
     $ cabal install yi
 
+The default UI depends on the vty package, which will only compile with the
+ncurses development headers available. On Ubuntu, you need to install the
+`libncurses5-dev` package.
+
 On Windows, you'll need to disable the default vty terminal UI, and use a Gtk
 UI instead (the vte UI requires vty, so you can't install that either):
 
