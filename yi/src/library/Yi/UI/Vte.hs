@@ -5,6 +5,7 @@ import Yi.Prelude
 
 import Graphics.UI.Gtk
 import Graphics.UI.Gtk.Vte.Vte
+import System.Environment
 import System.Environment.Executable
 import System.Glib
 
@@ -17,7 +18,7 @@ start cfg ch outCh editor =
     catchGError (initUI cfg ch outCh editor) (\(GError _dom _code msg) -> fail msg)
 
 initUI :: UIBoot
-initUI cfg ch outCh editor = do
+initUI cfg _ch _outCh _editor = do
     discard unsafeInitGUIForThreadedRTS
     setApplicationName "Yi"
 
@@ -28,7 +29,7 @@ initUI cfg ch outCh editor = do
     -- Setup vte
     exe  <- getExecutablePath
     term <- terminalNew
-    Graphics.UI.Gtk.on term childExited $ end False
+    discard $ Graphics.UI.Gtk.on term childExited $ end False
 
     -- Set default colors
     terminalSetColors term
@@ -38,8 +39,9 @@ initUI cfg ch outCh editor = do
         0
 
     -- Start running Yi
+    args <- getArgs
     discard $ terminalForkCommand term
-        (Just exe) (Just [exe, "-fvty"]) Nothing Nothing False False False
+        (Just exe) (Just $ exe : args ++ ["-fvty"]) Nothing Nothing False False False
 
     discard $ set win [ containerChild := term ]
     widgetShowAll win
@@ -55,6 +57,8 @@ main = mainGUI
 end :: Bool -> IO ()
 end = const mainQuit
 
+getBaseAttrColor :: (Attributes -> Yi.Style.Color) -> Yi.Style.Color
+                 -> Config -> Graphics.UI.Gtk.Color
 getBaseAttrColor p d cfg = mkCol $
     case p $ baseAttributes $ configStyle $ configUI cfg of
       Default -> d
