@@ -200,7 +200,7 @@ library
     random,
     regex-base ==0.93.*,
     regex-tdfa == 1.1.*,
-    rosezipper >= 0.1 && < 0.3,
+    rosezipper >= 0.1 && < 0.2,
     split == 0.1.*,
     template-haskell >= 2.4 && < 2.6,
     time >= 1.1 && < 1.3,
