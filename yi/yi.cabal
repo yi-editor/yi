@@ -116,6 +116,7 @@ library
     Yi.Lexer.Cplusplus
     Yi.Lexer.Haskell
     Yi.Lexer.JavaScript
+    Yi.Lexer.Java
     Yi.Lexer.Latex
     Yi.Lexer.LiterateHaskell
     Yi.Lexer.GNUMake

@@ -167,6 +167,7 @@ defaultConfig =
                         AnyMode perlMode,
                         AnyMode (JS.hooks JS.javaScriptMode),
                         AnyMode pythonMode,
+                        AnyMode javaMode,
                         AnyMode ireaderMode,
                         AnyMode svnCommitMode,
                         AnyMode whitespaceMode,
