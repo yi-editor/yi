@@ -25,7 +25,6 @@ import System.Directory
   ( doesDirectoryExist
   , getDirectoryContents
   , getCurrentDirectory
-  , canonicalizePath
   )
 
 import Control.Monad.Trans (MonadIO (..))
@@ -40,7 +39,7 @@ import Yi.MiniBuffer
     , simpleComplete
     , withMinibufferGen
     )
-
+import System.FriendlyPath (canonicalizePathFix)
 
 -- | Given a possible starting path (which if not given defaults to
 --   the current directory) and a fragment of a path we find all
@@ -103,7 +102,7 @@ adjIndent ib = withSyntaxB' (\m s -> modeIndent m s ib)
 --   and prompts the user with file hints
 promptFile :: String -> (String -> YiM ()) -> YiM ()
 promptFile prompt act = do maybePath <- withBuffer $ gets file
-                           startPath <- addTrailingPathSeparator <$> (liftIO $ canonicalizePath =<< getFolder maybePath)
+                           startPath <- addTrailingPathSeparator <$> (liftIO $ canonicalizePathFix =<< getFolder maybePath)
                            -- TODO: Just call withMinibuffer
                            withMinibufferGen startPath (findFileHint startPath) prompt (simpleComplete $ matchingFileNames (Just startPath)) act
 

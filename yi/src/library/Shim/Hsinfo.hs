@@ -19,7 +19,6 @@ import Control.Monad.State
 import Data.List ( isPrefixOf, find, nubBy, sort, (\\) )
 import Data.Maybe
 import System.Directory
-import System.Directory (canonicalizePath)
 import System.FilePath ( takeDirectory, (</>), (<.>), dropFileName, takeExtension, equalFilePath )
 import System.Time ( getClockTime, ClockTime )
 import qualified Data.ByteString.Lazy.Char8 as BC
