@@ -11,7 +11,7 @@ import Data.List
 -- eg. @x/y@ can become @x@, and we do not want that.
 canonicalizePathFix :: FilePath -> IO FilePath
 canonicalizePathFix f = do
-    de <- doesDirectoryExist (takeDirectory f)
+    de <- doesFileExist f
     if de then canonicalizePath f else makeAbsolute f
 
 
