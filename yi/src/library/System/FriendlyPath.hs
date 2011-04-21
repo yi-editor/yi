@@ -1,8 +1,15 @@
-module System.FriendlyPath where
-import System.FilePath
-import System.Directory
-import Data.List
+module System.FriendlyPath
+  ( canonicalizePathFix
+  , userToCanonPath
+  , expandTilda
+  , isAbsolute'
+  ) where
 
+import Control.Applicative
+import Data.List
+import System.FilePath
+import System.Posix.User (getUserEntryForName, homeDirectory)
+import System.Directory
 
 -- | A version of canonicalizePath that works.
 
