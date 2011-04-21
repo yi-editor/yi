@@ -48,10 +48,13 @@ canonicalizePath' f = recoverTilda =<< canonicalizePathFix f
 
 -- | Turn a user-friendly path into a computer-friendly path by expanding the leading tilda.
 expandTilda :: String -> IO FilePath
-expandTilda "~" = getHomeDirectory
-expandTilda s0 = do
-  home <- getHomeDirectory
-  return $ if (['~',pathSeparator] `isPrefixOf` s0) then home </> drop 2 s0 else s0
+expandTilda ('~':path)
+  | (null path) || (head path == pathSeparator) = (++ path) <$> getHomeDirectory
+  -- Home directory of another user, e.g. ~root/
+  | otherwise = let username = takeWhile (/= pathSeparator) path
+                    dirname = drop (length username) path
+                in  (normalise . (++ dirname) . homeDirectory) <$> getUserEntryForName username
+expandTilda path = return path
 
 -- | Is a user-friendly path absolute?
 isAbsolute' :: String -> Bool
