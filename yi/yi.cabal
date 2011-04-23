@@ -299,6 +299,7 @@ library
     Shim.CabalInfo
     Shim.Utils
     Shim.ProjectContent
+    System.CanonicalizePath
     System.FriendlyPath
 
     -- Broken.
