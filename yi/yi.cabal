@@ -17,6 +17,7 @@ build-type:     Simple
 
 data-files:
   art/*.png
+  art/*.pdf
   example-configs/*.hs
 
 extra-source-files: src/library/Yi/Lexer/common.hsinc
