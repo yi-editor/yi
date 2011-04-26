@@ -37,8 +37,9 @@ import qualified Data.Map as M
 import qualified Data.Rope as R
 import Data.Time
 import Data.Time.Clock.POSIX
-import System.Directory
+import System.Directory hiding (canonicalizePath)
 import System.FilePath
+import System.CanonicalizePath (canonicalizePath)
 import System.FriendlyPath
 import System.Locale
 import System.PosixCompat.Files
@@ -134,7 +135,9 @@ diredDir :: FilePath -> YiM ()
 diredDir dir = diredDirBuffer dir >> return ()
 
 diredDirBuffer :: FilePath -> YiM BufferRef
-diredDirBuffer dir = do
+diredDirBuffer d = do
+    -- Emacs doesn't follow symlinks, probbably Yi shouldn't do too
+    dir <- io $ canonicalizePath d
     -- XXX Don't specify the path as the filename of the buffer.
     b <- withEditor $ stringToNewBuffer (Left dir) (R.fromString "")
     withEditor $ switchToBufferE b
@@ -247,8 +250,7 @@ diredScanDir dir = do
     files <- getDirectoryContents dir
     -- The file strings as UTF-8 encoded on linux. They need to stay this way for functions that
     -- stat these paths. However for display they need to be converted to ISO-10646 strings.
-    let filteredFiles = filter (not . diredOmitFile) files
-    foldM (lineForFile dir) M.empty filteredFiles
+    foldM (lineForFile dir) M.empty files
     where
     lineForFile :: String -> M.Map FilePath DiredEntry -> String -> IO (M.Map FilePath DiredEntry)
     lineForFile d m f = do
@@ -315,8 +317,9 @@ shortCalendarTimeToString :: UTCTime -> String
 shortCalendarTimeToString = formatTime defaultTimeLocale "%b %d %H:%M"
 
 -- Default Filter: omit files ending in '~' or '#' and also '.' and '..'.
-diredOmitFile :: String -> Bool
-diredOmitFile = (=~".*~$|.*#$|^\\.$|^\\..$|.*\\.pyc$")
+-- TODO: customizable filters?
+--diredOmitFile :: String -> Bool
+--diredOmitFile = undefined
 
 diredMark :: BufferM ()
 diredMark = diredMarkWithChar '*' lineDown
