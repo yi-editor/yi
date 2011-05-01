@@ -14,7 +14,7 @@ import Data.List ( (!!) )
 import Yi.Prelude
 import Prelude ()
 
-data Modifier = MShift | MCtrl | MMeta | MSuper
+data Modifier = MShift | MCtrl | MMeta | MSuper | MHyper
                 deriving (Show,Eq,Ord)
 
 data Key = KEsc | KFun Int | KPrtScr | KPause | KASCII Char | KBS | KIns
