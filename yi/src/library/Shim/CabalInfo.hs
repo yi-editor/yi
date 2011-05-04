@@ -12,8 +12,9 @@ import Distribution.ModuleName
 import Distribution.PackageDescription
 import qualified Distribution.PackageDescription as Library (Library(..))
 import qualified Distribution.PackageDescription as BuildInfo (BuildInfo(..))
-import System.Directory
+import System.Directory hiding (canonicalizePath)
 import System.FriendlyPath
+import System.CanonicalizePath
 
 guessCabalFile :: String -> IO (Maybe FilePath)
 guessCabalFile sourcefile = do
@@ -40,7 +41,7 @@ guessCabalStanza projpath sourcefile pkg_descr = do
         moduleFiles modl = [toFilePath modl <.> ext | ext <- ["hs", "lhs"] ]
         allStanzas' = [(name, [projpath </> dir </> file | dir <- hsSourceDirs bi, file <- files ++ concatMap moduleFiles (BuildInfo.otherModules bi)], bi)
                        | (name, files, bi) <- allStanzas, buildable bi]
-        eqPath p1 p2 = equalFilePath <$> canonicalizePathFix p1 <*> canonicalizePathFix p2
+        eqPath p1 p2 = equalFilePath <$> canonicalizePath p1 <*> canonicalizePath p2
         matchingStanza (_,files,_) = or <$> mapM (eqPath sourcefile) files
 
 
