@@ -42,6 +42,7 @@ import Yi.Prelude
 import Yi.Core (startEditor, focusAllSyntax)
 import Yi.Buffer
 import Yi.Config
+import Yi.Tab
 import Yi.Window as Yi
 import Yi.Editor
 import Yi.Event
@@ -95,7 +96,7 @@ data Control = Control
 --    }
 
 data TabInfo = TabInfo
-    { coreTab     :: PL.PointedList Yi.Window
+    { coreTab     :: Tab
 --    , page        :: VBox
     }
 
@@ -220,14 +221,14 @@ doLayout e = do
     cacheRef <- asks tabCache
     tabs <- liftIO $ readRef cacheRef
     heights <- concat <$> mapM (getHeightsInTab e) tabs
-    let e' = (tabsA ^: fmap (fmap updateWin)) e
+    let e' = (tabsA ^: fmap (mapWindows updateWin)) e
         updateWin w = case find (\(ref,_,_) -> (wkey w == ref)) heights of
                           Nothing -> w
                           Just (_,h,rgn) -> w { height = h, winRegion = rgn }
 
     -- Don't leak references to old Windows
     let forceWin x w = height w `seq` winRegion w `seq` x
-    return $ (foldl . foldl) forceWin e' (e' ^. tabsA)
+    return $ (foldl . tabFoldl) forceWin e' (e' ^. tabsA)
 
 getHeightsInTab :: Editor -> TabInfo -> ControlM [(WindowRef,Int,Region)]
 getHeightsInTab e tab = do
@@ -243,7 +244,7 @@ getHeightsInTab e tab = do
                 let ret= (windowRef v, round $ fromIntegral h / lineHeight, rgn)
                 return $ a ++ [ret]
             Nothing -> return a)
-      [] (coreTab tab)
+      [] (tabWindows $ coreTab tab)
 
 shownRegion :: Editor -> View -> FBuffer -> ControlM Region
 shownRegion e v b = do
@@ -299,7 +300,7 @@ updateCache e = do
     cache' <- syncTabs e (toList $ PL.withFocus tabs) cache
     liftIO $ writeRef cacheRef cache'
 
-syncTabs :: Editor -> [(PL.PointedList Yi.Window, Bool)] -> [TabInfo] -> ControlM [TabInfo]
+syncTabs :: Editor -> [(Tab, Bool)] -> [TabInfo] -> ControlM [TabInfo]
 syncTabs e (tfocused@(t,focused):ts) (c:cs)
     | t == coreTab c =
         do when focused $ setTabFocus c
@@ -318,7 +319,7 @@ syncTabs e ts [] = mapM (\(t,focused) -> do
         return c') ts
 syncTabs _ [] cs = mapM_ removeTab cs >> return []
 
-syncTab :: Editor -> TabInfo -> PL.PointedList Yi.Window -> ControlM TabInfo
+syncTab :: Editor -> TabInfo -> Tab -> ControlM TabInfo
 syncTab e tab ws = do
     -- TODO Maybe do something here
     return tab
@@ -356,13 +357,13 @@ removeView tab view = do
   return ()
 
 -- | Make a new tab.
-newTab :: Editor -> PL.PointedList Yi.Window -> ControlM TabInfo
+newTab :: Editor -> Tab -> ControlM TabInfo
 newTab e ws = do
     let t' = TabInfo { coreTab = ws }
 --    cache <- syncWindows e t' (toList $ PL.withFocus ws) []
     return t' -- { views = cache }
 
-insertTabBefore :: Editor -> PL.PointedList Yi.Window -> TabInfo -> ControlM TabInfo
+insertTabBefore :: Editor -> Tab -> TabInfo -> ControlM TabInfo
 insertTabBefore e ws c = do
     -- Just p <- notebookPageNum (uiNotebook ui) (page c)
     -- vb <- vBoxNew False 1
@@ -371,7 +372,7 @@ insertTabBefore e ws c = do
     t <- newTab e ws
     return t
 
-insertTab :: Editor -> PL.PointedList Yi.Window -> ControlM TabInfo
+insertTab :: Editor -> Tab -> ControlM TabInfo
 insertTab e ws = do
     -- vb <- vBoxNew False 1
     -- notebookAppendPage (uiNotebook ui) vb ""
@@ -575,7 +576,10 @@ newView buffer font = do
 
     tabsRef <- asks tabCache
     ts <- liftIO $ readRef tabsRef
-    liftIO $ writeRef tabsRef (TabInfo (PL.singleton newWindow):ts)
+    -- TODO: the Tab idkey should be assigned using
+    -- Yi.Editor.newRef. But we can't modify that here, since our
+    -- access to 'Yi' is readonly.
+    liftIO $ writeRef tabsRef (TabInfo (Tab 0 (PL.singleton newWindow)):ts)
 
     viewsRef <- asks views
     vs <- liftIO $ readRef viewsRef

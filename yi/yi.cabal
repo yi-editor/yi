@@ -163,6 +163,7 @@ library
     Yi.Syntax.Paren
     Yi.Syntax.Tree
     Yi.Syntax.Strokes.Haskell
+    Yi.Tab
     Yi.Tag
     Yi.TextCompletion,
     Yi.UI.Common

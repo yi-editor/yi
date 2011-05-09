@@ -26,6 +26,7 @@ import Yi.Interact as I
 import Yi.KillRing
 import Yi.Prelude
 import Yi.Style (StyleName, defaultStyle)
+import Yi.Tab
 import Yi.Window
 import qualified Data.Rope as R
 import qualified Data.DelayList as DelayList
@@ -43,9 +44,9 @@ data Editor = Editor {
                                                     -- Invariant: never empty
                                                     -- Invariant: first buffer is the current one.
        ,buffers       :: !(M.Map BufferRef FBuffer)
-       ,refSupply     :: !Int  -- ^ Supply for buffer and window ids.
+       ,refSupply     :: !Int  -- ^ Supply for buffer, window and tab ids.
 
-       ,tabs_          :: !(PL.PointedList (PL.PointedList Window)) -- ^ current tab contains the visible windows pointed list.
+       ,tabs_          :: !(PL.PointedList Tab) -- ^ current tab contains the visible windows pointed list.
 
        ,dynamic       :: !(DynamicValues)              -- ^ dynamic components
 
@@ -103,9 +104,9 @@ instance MonadEditor EditorM where
 emptyEditor :: Editor
 emptyEditor = Editor {
         buffers      = M.singleton (bkey buf) buf
-       ,tabs_        = PL.singleton (PL.singleton win)
+       ,tabs_        = PL.singleton tab
        ,bufferStack  = [bkey buf]
-       ,refSupply    = 2
+       ,refSupply    = 3
        ,currentRegex = Nothing
        ,searchDirection = Forward
        ,dynamic      = M.empty
@@ -117,6 +118,7 @@ emptyEditor = Editor {
        }
         where buf = newB 0 (Left "console") (R.fromString "")
               win = (dummyWindow (bkey buf)) {wkey = 1, isMini = False}
+              tab = Tab 2 (PL.singleton win)
 
 -- ---------------------------------------------------------------------
 
@@ -128,12 +130,12 @@ $(nameDeriveAccessors ''Editor (\n -> Just (n ++ "A")))
 
 -- TODO: replace this by accessor
 windows :: Editor -> PL.PointedList Window
-windows editor = PL.focus $ tabs_ editor
+windows editor = tabWindows . PL.focus $ tabs_ editor
 
 windowsA :: Accessor Editor (PL.PointedList Window)
-windowsA =  PL.focusA . tabsA
+windowsA =  tabWindowsA . PL.focusA . tabsA
 
-tabsA :: Accessor Editor (PL.PointedList (PL.PointedList Window))
+tabsA :: Accessor Editor (PL.PointedList Tab)
 tabsA = tabs_A . fixCurrentBufferA_
 
 dynA :: Initializable a => Accessor Editor a
@@ -176,8 +178,8 @@ insertBuffer b = modify $
 forceFold1 :: (Foldable t) => t a -> t a
 forceFold1 x = foldr seq x x
 
-forceFold2 :: (Foldable t1, Foldable t2) => t1 (t2 a) -> t1 (t2 a)
-forceFold2 x = foldr (seq . forceFold1) x x
+forceFoldTabs :: Foldable t => t Tab -> t Tab
+forceFoldTabs x = foldr (seq . forceTab) x x
 
 -- | Delete a buffer (and release resources associated with it).
 deleteBuffer :: BufferRef -> EditorM ()
@@ -209,7 +211,7 @@ deleteBuffer k = do
               switchToBufferE nextB
           modify $ \e -> e {bufferStack = forceFold1 $ filter (k /=) $ bufferStack e,
                             buffers = M.delete k (buffers e),
-                            tabs_ = forceFold2 $ fmap (fmap pickOther) (tabs_ e)
+                            tabs_ = forceFoldTabs $ fmap (mapWindows pickOther) (tabs_ e)
                             -- all windows open on that buffer must switch to another buffer.
                            }
           modA windowsA (fmap (\w -> w { bufAccessList = forceFold1 . filter (k/=) $ bufAccessList w }))
@@ -516,7 +518,7 @@ fixCurrentBufferA_ = fromSetGet (\new _old -> let
 fixCurrentWindow :: EditorM ()
 fixCurrentWindow = do
     b <- gets currentBuffer
-    modA (PL.focusA . PL.focusA . tabs_A) (\w -> w {bufkey = b})
+    modA (PL.focusA . windowsA) (\w -> w {bufkey = b})
 
 withWindowE :: Window -> BufferM a -> EditorM a
 withWindowE w = withGivenBufferAndWindow0 w (bufkey w)
@@ -529,7 +531,7 @@ findWindowWith k e =
 windowsOnBufferE :: BufferRef -> EditorM [Window]
 windowsOnBufferE k = do
   ts <- getA tabsA
-  return $ concatMap (concatMap (\win -> if (bufkey win == k) then [win] else [])) ts
+  return $ concatMap (concatMap (\win -> if (bufkey win == k) then [win] else []) . tabWindows) ts
 
 -- | bring the editor focus the window with the given key.
 --
@@ -544,7 +546,7 @@ focusWindowE k = do
         check r@(True, _) _win = r
 
         searchWindowSet (False, tabIndex, _) ws = 
-            case foldl check (False, 0) ws of
+            case foldl check (False, 0) (tabWindows ws) of
                 (True, winIndex) -> (True, tabIndex, winIndex)
                 (False, _)       -> (False, tabIndex + 1, 0)
         searchWindowSet r@(True, _, _) _ws = r
@@ -576,7 +578,8 @@ newTabE :: EditorM ()
 newTabE = do
     bk <- gets currentBuffer
     win <- newWindowE False bk
-    modA tabsA (PL.insertRight (PL.singleton win))
+    ref <- newRef
+    modA tabsA (PL.insertRight (Tab ref (PL.singleton win)))
 
 -- | Moves to the next tab in the round robin set of tabs
 nextTabE :: EditorM ()

@@ -38,6 +38,7 @@ import Yi.Event
 import Yi.Keymap
 import Yi.Monad
 import Yi.Style
+import Yi.Tab
 import Yi.Window
 
 import qualified Yi.UI.Common as Common
@@ -60,7 +61,7 @@ data UI = UI
     }
 
 data TabInfo = TabInfo
-    { coreTab     :: PL.PointedList Window
+    { coreTab     :: Tab
     , page        :: VBox
     , windowCache :: [WinInfo]
     }
@@ -253,7 +254,7 @@ keyTable = M.fromList
 end :: IO ()
 end = mainQuit
 
-syncTabs :: Editor -> UI -> [(PL.PointedList Window, Bool)] -> [TabInfo] -> IO [TabInfo]
+syncTabs :: Editor -> UI -> [(Tab, Bool)] -> [TabInfo] -> IO [TabInfo]
 syncTabs e ui (tfocused@(t,focused):ts) (c:cs)
     | t == coreTab c =
         do when focused $ setTabFocus ui c
@@ -272,9 +273,9 @@ syncTabs e ui ts [] = mapM (\(t,focused) -> do c' <- insertTab e ui t
                            ts
 syncTabs _ ui [] cs = mapM_ (removeTab ui) cs >> return []
 
-syncTab :: Editor -> UI -> TabInfo -> PL.PointedList Window -> [WinInfo] -> IO TabInfo
+syncTab :: Editor -> UI -> TabInfo -> Tab -> [WinInfo] -> IO TabInfo
 syncTab e ui tab ws cache = do
-    wCache <- syncWindows e ui tab (toList $ PL.withFocus ws) cache
+    wCache <- syncWindows e ui tab (toList . PL.withFocus . tabWindows $ ws) cache
     return tab { windowCache = wCache }
 
 -- | Synchronize the windows displayed by GTK with the status of windows in the Core.
@@ -450,13 +451,13 @@ handleConfigure ui _ref _ev = do
   return False -- allow event to be propagated
 
 -- | Make a new tab.
-newTab :: Editor -> UI -> VBox -> PL.PointedList Window -> IO TabInfo
+newTab :: Editor -> UI -> VBox -> Tab -> IO TabInfo
 newTab e ui vb ws = do
     let t' = TabInfo { coreTab = ws
                      , page    = vb
                      , windowCache = []
                      }
-    cache <- syncWindows e ui t' (toList $ PL.withFocus ws) []
+    cache <- syncWindows e ui t' (toList . PL.withFocus . tabWindows $ ws) []
     return t' { windowCache = cache }
 
 -- | Make a new window.
@@ -520,7 +521,7 @@ newWindow e ui w b = do
 
     return win
 
-insertTabBefore :: Editor -> UI -> PL.PointedList Window -> TabInfo -> IO TabInfo
+insertTabBefore :: Editor -> UI -> Tab -> TabInfo -> IO TabInfo
 insertTabBefore e ui ws c = do
     Just p <- notebookPageNum (uiNotebook ui) (page c)
     vb <- vBoxNew False 1
@@ -529,7 +530,7 @@ insertTabBefore e ui ws c = do
     t <- newTab e ui vb ws
     return t
 
-insertTab :: Editor -> UI -> PL.PointedList Window -> IO TabInfo
+insertTab :: Editor -> UI -> Tab -> IO TabInfo
 insertTab e ui ws = do
     vb <- vBoxNew False 1
     notebookAppendPage (uiNotebook ui) vb ""
@@ -639,14 +640,14 @@ doLayout ui e = do
     tabs <- readRef $ tabCache ui
     f <- readRef (uiFont ui)
     heights <- concat <$> mapM (getHeightsInTab ui f e) tabs
-    let e' = (tabsA ^: fmap (fmap updateWin)) e
+    let e' = (tabsA ^: fmap (mapWindows updateWin)) e
         updateWin w = case find (\(ref,_,_) -> (wkey w == ref)) heights of
                           Nothing -> w
                           Just (_,h,rgn) -> w { height = h, winRegion = rgn }
 
     -- Don't leak references to old Windows
     let forceWin x w = height w `seq` winRegion w `seq` x
-    return $ (foldl . foldl) forceWin e' (e' ^. tabsA)
+    return $ (foldl . tabFoldl) forceWin e' (e' ^. tabsA)
 
 getHeightsInTab :: UI -> FontDescription -> Editor -> TabInfo -> IO [(WindowRef,Int,Region)]
 getHeightsInTab ui f e tab = do
