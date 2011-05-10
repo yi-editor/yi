@@ -17,6 +17,7 @@ build-type:     Simple
 
 data-files:
   art/*.png
+  art/*.pdf
   example-configs/*.hs
 
 extra-source-files: src/library/Yi/Lexer/common.hsinc
@@ -116,6 +117,7 @@ library
     Yi.Lexer.Cplusplus
     Yi.Lexer.Haskell
     Yi.Lexer.JavaScript
+    Yi.Lexer.Java
     Yi.Lexer.Latex
     Yi.Lexer.LiterateHaskell
     Yi.Lexer.GNUMake
@@ -161,6 +163,7 @@ library
     Yi.Syntax.Paren
     Yi.Syntax.Tree
     Yi.Syntax.Strokes.Haskell
+    Yi.Tab
     Yi.Tag
     Yi.TextCompletion,
     Yi.UI.Common
@@ -200,7 +203,7 @@ library
     random,
     regex-base ==0.93.*,
     regex-tdfa == 1.1.*,
-    rosezipper >= 0.1 && < 0.3,
+    rosezipper >= 0.1 && < 0.2,
     split == 0.1.*,
     template-haskell >= 2.4 && < 2.6,
     time >= 1.1 && < 1.3,
@@ -299,6 +302,7 @@ library
     Shim.CabalInfo
     Shim.Utils
     Shim.ProjectContent
+    System.CanonicalizePath
     System.FriendlyPath
 
     -- Broken.
