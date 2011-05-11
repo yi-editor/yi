@@ -211,7 +211,7 @@ library
     unix-compat >=0.1 && <0.3
 
   build-tools: alex
-  ghc-options: -Wall -fno-warn-orphans  -fno-warn-unused-do-bind
+  ghc-options: -Wall -fno-warn-orphans
   if flag(hacking)
     ghc-prof-options: -prof -auto-all
 
@@ -249,7 +249,7 @@ library
   if flag(pango)
     exposed-modules:
       Yi.UI.Pango
---      Yi.UI.Pango.Control
+      Yi.UI.Pango.Control
     other-modules:
       Yi.UI.Pango.Utils
     build-depends:
