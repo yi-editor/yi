@@ -53,11 +53,7 @@ import Data.Monoid
 import Data.Foldable (toList)
 import Data.Int
 
--- #ifdef CAUTIOUS_WRITES
--- import System.IO.Cautious (writeFileL)
--- #else
-import qualified Data.ByteString.Lazy as LB (writeFile)
--- #endif
+import System.IO.Cautious (writeFileL)
  
 defaultChunkSize :: Int
 defaultChunkSize = 128 -- in chars! (chunkSize requires this to be <= 256)
@@ -198,11 +194,7 @@ instance Binary Rope where
 
 
 writeFile :: FilePath -> Rope -> IO ()
--- #ifdef CAUTIOUS_WRITES
--- writeFile f r = writeFileL f $ toLazyByteString r
--- #else
-writeFile f r = LB.writeFile f $ toLazyByteString r
--- #endif
+writeFile f = writeFileL f . toLazyByteString
 
 readFile :: FilePath -> IO Rope
 readFile f = fromLazyByteString `fmap` LB.readFile f
