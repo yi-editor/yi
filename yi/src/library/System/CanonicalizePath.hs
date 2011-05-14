@@ -14,20 +14,24 @@ import Control.Applicative
 import Control.Monad
 import Data.List.Split     (splitOn)
 import System.FilePath     ((</>), isAbsolute, takeDirectory, pathSeparator)
+import System.Directory    (getCurrentDirectory)
 import System.Posix.Files  (readSymbolicLink)
 
 
 -- | Removes `/./` `//` and `/../` sequences from path,
 -- doesn't follow symlinks
-normalisePath :: FilePath -> FilePath
-normalisePath = foldl combinePath "/" . splitPath
+normalisePath :: FilePath -> IO FilePath
+normalisePath path = do 
+  absPath <- makeAbsolute path
+  return $ foldl combinePath "/" $ splitPath absPath
 
 -- | Returns absolute name of the file, which doesn't contain
 -- any `/./`, `/../`, `//` sequences or symlinks
 canonicalizePath :: FilePath -> IO FilePath
-canonicalizePath =
+canonicalizePath path = do
 #if !defined(mingw32_HOST_OS)
-  foldM (\x y -> expandSym $ combinePath x y) "/" . splitPath
+  absPath <- makeAbsolute path
+  foldM (\x y -> expandSym $ combinePath x y) "/" $ splitPath absPath
 #else
   Win32.getFullPathName . normalise
 #endif
@@ -43,6 +47,13 @@ expandSym fpath = do
     Just slink -> if isAbsolute slink then expandSym slink
                   else expandSym $ foldl combinePath (takeDirectory fpath) $ splitPath slink
     Nothing -> return fpath
+  
+
+-- | Make a path absolute.
+makeAbsolute :: FilePath -> IO FilePath
+makeAbsolute f
+    | not (null f) && head f `elem` ['~', pathSeparator] = return f
+    | otherwise = fmap (</> f) getCurrentDirectory
 
 -- | Combines two paths, moves up one level on ..
 combinePath :: FilePath -> String -> FilePath
