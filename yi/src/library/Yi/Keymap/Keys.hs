@@ -7,9 +7,9 @@ module Yi.Keymap.Keys
     (
      module Yi.Event,
      module Yi.Interact,
-     printableChar, charOf, shift, meta, ctrl, super, spec, char,
+     printableChar, charOf, shift, meta, ctrl, super, hyper, spec, char,
      (>>!), (>>=!), (?>>), (?>>!), (?*>>), (?*>>!),
-     ctrlCh, metaCh,
+     ctrlCh, metaCh, hyperCh,
      optMod,
      pString
     ) where
@@ -38,7 +38,7 @@ charOf modifier l h =
     do Event (KASCII c) _ <- eventBetween (modifier $ char l) (modifier $ char h)
        return c
 
-shift,ctrl,meta,super :: Event -> Event
+shift,ctrl,meta,super,hyper :: Event -> Event
 shift (Event (KASCII c) ms) | isAlpha c = Event (KASCII (toUpper c)) ms
                            | otherwise = error "shift: unhandled event"
 shift (Event k ms) = Event k $ nub $ sort (MShift:ms)
@@ -48,6 +48,8 @@ ctrl (Event k ms) = Event k $ nub $ sort (MCtrl:ms)
 meta (Event k ms) = Event k $ nub $ sort (MMeta:ms)
 
 super (Event k ms) = Event k $ nub $ sort (MSuper:ms)
+
+hyper (Event k ms) = Event k $ nub $ sort (MHyper:ms)
 
 char :: Char -> Event
 char '\t' = Event KTab []
@@ -60,6 +62,9 @@ ctrlCh = ctrl . char
 
 metaCh :: Char -> Event
 metaCh = meta . char
+
+hyperCh :: Char -> Event
+hyperCh = hyper . char
 
 -- | @optMod f ev@ produces a 'MonadInteract' that consumes @ev@ or @f ev@
 optMod ::(MonadInteract m w Event) => (Event -> Event) -> Event -> m Event
