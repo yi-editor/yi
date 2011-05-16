@@ -218,9 +218,9 @@ library
 
   if !os(windows)
     build-depends:
-      cautious-file >= 0.1.5 && <0.2,
       unix
-    cpp-options: -DCAUTIOUS_WRITES
+  build-depends:
+    cautious-file == 1.0.*
 
   include-dirs:   src/library/Yi/Lexer
 
