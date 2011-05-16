@@ -34,7 +34,7 @@ import Prelude (map)
 
 import Data.Maybe (maybe, fromJust)
 import Data.IORef
-import Data.List (drop, zip, take, length)
+import Data.List (nub, filter, drop, zip, take, length)
 import Data.Prototype
 import qualified Data.Rope as Rope
 import qualified Data.Map as Map
@@ -82,7 +82,6 @@ import qualified Data.List.PointedList as  PL (insertRight, withFocus, PointedLi
 import Yi.Regex
 import System.FilePath
 import qualified Yi.UI.Common as Common
-import Yi.UI.Pango (processEvent)
 
 data Control = Control
     { controlYi :: Yi
@@ -749,3 +748,45 @@ handleMove view p0 event = do
 
   liftIO $ widgetQueueDraw (drawArea view)
   return True
+
+processEvent :: (Event -> IO ()) -> Gdk.Events.Event -> IO Bool
+processEvent ch ev = do
+  -- logPutStrLn $ "Gtk.Event: " ++ show ev
+  -- logPutStrLn $ "Event: " ++ show (gtkToYiEvent ev)
+  case gtkToYiEvent ev of
+    Nothing -> logPutStrLn $ "Event not translatable: " ++ show ev
+    Just e -> ch e
+  return True
+
+gtkToYiEvent :: Gdk.Events.Event -> Maybe Event
+gtkToYiEvent (Gdk.Events.Key {Gdk.Events.eventKeyName = key, Gdk.Events.eventModifier = evModifier, Gdk.Events.eventKeyChar = char})
+    = fmap (\k -> Event k $ (nub $ (if isShift then filter (/= MShift) else id) $ concatMap modif evModifier)) key'
+      where (key',isShift) =
+                case char of
+                  Just c -> (Just $ KASCII c, True)
+                  Nothing -> (Map.lookup key keyTable, False)
+            modif Gdk.Events.Control = [MCtrl]
+            modif Gdk.Events.Alt = [MMeta]
+            modif Gdk.Events.Shift = [MShift]
+            modif _ = []
+gtkToYiEvent _ = Nothing
+
+-- | Map GTK long names to Keys
+keyTable :: Map.Map String Key
+keyTable = Map.fromList
+    [("Down",       KDown)
+    ,("Up",         KUp)
+    ,("Left",       KLeft)
+    ,("Right",      KRight)
+    ,("Home",       KHome)
+    ,("End",        KEnd)
+    ,("BackSpace",  KBS)
+    ,("Delete",     KDel)
+    ,("Page_Up",    KPageUp)
+    ,("Page_Down",  KPageDown)
+    ,("Insert",     KIns)
+    ,("Escape",     KEsc)
+    ,("Return",     KEnter)
+    ,("Tab",        KTab)
+    ,("ISO_Left_Tab", KTab)
+    ]

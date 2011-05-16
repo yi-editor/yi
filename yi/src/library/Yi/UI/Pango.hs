@@ -1,42 +1,37 @@
-{-# LANGUAGE CPP, BangPatterns, ExistentialQuantification, DoRec,
-    ParallelListComp #-}
+{-# LANGUAGE CPP, ExistentialQuantification, DoRec #-}
 
 -- Copyright (c) 2007, 2008 Jean-Philippe Bernardy
 
 -- | This module defines a user interface implemented using gtk2hs and
 -- pango for direct text rendering.
+module Yi.UI.Pango (start) where
 
-module Yi.UI.Pango (start, processEvent) where
-
-import Prelude (filter, map, round, FilePath, (/))
+import Prelude (catch)
 
 import Control.Concurrent (yield)
 import Control.Monad (ap)
-import Control.Monad.Reader (liftIO, when, MonadIO)
 import Data.Prototype
 import Data.IORef
-import Data.List (drop, intercalate, nub, zip)
+import Data.List (drop, intercalate, zip)
 import qualified Data.List.PointedList.Circular as PL
 import Data.Maybe
 import qualified Data.Map as M
 import qualified Data.Rope as Rope
 
-import Graphics.UI.Gtk hiding (on, Region, Window, Action, Point, Style)
+import Graphics.UI.Gtk hiding (Region, Window, Action, Point, Style, Modifier)
 import Graphics.UI.Gtk.Gdk.GC hiding (foreground)
-import qualified Graphics.UI.Gtk.Gdk.Events as Gdk.Events
+import qualified Graphics.UI.Gtk.Gdk.EventM as EventM
 import qualified Graphics.UI.Gtk as Gtk
 import qualified Graphics.UI.Gtk.Gdk.GC as Gtk
 import System.Glib.GError
 
-import Yi.Prelude
+import Yi.Prelude hiding (on)
 
 import Yi.Buffer
 import Yi.Config
-import qualified Yi.Editor as Editor
-import Yi.Editor hiding (windows)
+import Yi.Editor
 import Yi.Event
 import Yi.Keymap
-import Yi.Monad
 import Yi.Style
 import Yi.Tab
 import Yi.Window
@@ -58,6 +53,7 @@ data UI = UI
     , uiActionCh  :: Action -> IO ()
     , uiConfig    :: UIConfig
     , uiFont      :: IORef FontDescription
+    , uiInput     :: IMContext
     }
 
 data TabInfo = TabInfo
@@ -73,7 +69,7 @@ data WinInfo = WinInfo
     { coreWin         :: Window
     , shownTos        :: IORef Point
     , renderer        :: IORef (ConnectId DrawingArea)
-    , winMotionSignal :: IORef (Maybe (ConnectId DrawingArea))
+    , lButtonPressed  :: IORef Bool 
     , winLayout       :: PangoLayout
     , winMetrics      :: FontMetrics
     , textview        :: DrawingArea
@@ -84,14 +80,17 @@ data WinInfo = WinInfo
 instance Show WinInfo where
     show w = show (coreWin w)
 
+instance Ord EventM.Modifier where
+  x <= y = fromEnum x <= fromEnum y
+
 mkUI :: UI -> Common.UI
 mkUI ui = Common.dummyUI
-    { Common.main          = main ui
+    { Common.main          = main
     , Common.end           = const end
     , Common.suspend       = windowIconify (uiWindow ui)
     , Common.refresh       = refresh ui
     , Common.layout        = doLayout ui
-    , Common.reloadProject = reloadProject ui
+    , Common.reloadProject = const reloadProject
     }
 
 updateFont :: UIConfig -> IORef FontDescription -> IORef [TabInfo] -> Statusbar
@@ -122,60 +121,34 @@ startNoMsg cfg ch outCh _ed = do
   logPutStrLn "startNoMsg"
   unsafeInitGUIForThreadedRTS
 
-  win <- windowNew
-  windowSetDefaultSize win 900 700
-  windowSetTitle win "Yi"
-  ico <- loadIcon "yi+lambda-fat-32.png"
-  windowSetIcon win (Just ico)
+  win   <- windowNew
+  ico   <- loadIcon "yi+lambda-fat-32.png"
+  vb    <- vBoxNew False 1    -- Top-level vbox
+    
+  im <- imMulticontextNew
+  imContextSetUsePreedit im False  -- handler for preedit string not implemented  
+  im `on` imContextCommit $ mapM_ (\k -> ch $ Event (KASCII k) [])  -- Yi.Buffer.Misc.insertN for atomic input?
 
-  onKeyPress win (processEvent ch)
-
+  set win [ windowDefaultWidth  := 700
+          , windowDefaultHeight := 900
+          , windowTitle         := "Yi"
+          , windowIcon          := Just ico
+          , containerChild      := vb
+          ]
+  win `on` deleteEvent $ io $ mainQuit >> return True
+  win `on` keyPressEvent $ handleKeypress ch im
+  
   paned <- hPanedNew
-
-  vb <- vBoxNew False 1  -- Top-level vbox
-
-  -- Disable the left pane (file/module browser) until Shim/Scion discussion has
-  -- concluded. Shim causes crashes, but it's not worth fixing if we'll soon
-  -- replace it.
-
-  {-
-  tabs' <- notebookNew
-  widgetSetSizeRequest tabs' 200 (-1)
-  notebookSetTabPos tabs' PosBottom
-  panedAdd1 paned tabs'
-
-  -- Create the tree views for files and modules
-  (filesProject, modulesProject) <- loadProject =<< getCurrentDirectory
-
-  filesStore   <- treeStoreNew [filesProject]
-  modulesStore <- treeStoreNew [modulesProject]
-
-  filesTree   <- projectTreeNew (outCh . singleton) filesStore
-  modulesTree <- projectTreeNew (outCh . singleton) modulesStore
-
-  scrlProject <- scrolledWindowNew Nothing Nothing
-  scrolledWindowAddWithViewport scrlProject filesTree
-  scrolledWindowSetPolicy scrlProject PolicyAutomatic PolicyAutomatic
-  notebookAppendPage tabs scrlProject "Project"
-
-  scrlModules <- scrolledWindowNew Nothing Nothing
-  scrolledWindowAddWithViewport scrlModules modulesTree
-  scrolledWindowSetPolicy scrlModules PolicyAutomatic PolicyAutomatic
-  notebookAppendPage tabs scrlModules "Modules"
-  -}
-
   tabs <- notebookNew
   panedAdd2 paned tabs
 
-  set win [ containerChild := vb ]
-  onDestroy win mainQuit
-
   status  <- statusbarNew
-  statusbarGetContextId status "global"
+  -- statusbarGetContextId status "global"
 
-  set vb [ containerChild := paned,
-           containerChild := status,
-           boxChildPacking status := PackNatural ]
+  set vb [ containerChild := paned
+         , containerChild := status
+         , boxChildPacking status := PackNatural
+         ]
 
   fontRef <- newIORef undefined
   tc <- newIORef []
@@ -192,7 +165,7 @@ startNoMsg cfg ch outCh _ed = do
 
   widgetShowAll win
 
-  let ui = UI win tabs status tc (outCh . singleton) (configUI cfg) fontRef
+  let ui = UI win tabs status tc (outCh . singleton) (configUI cfg) fontRef im
 
   -- Keep the current tab focus up to date
   let move n pl = maybe pl id (PL.move n pl)
@@ -203,52 +176,9 @@ startNoMsg cfg ch outCh _ed = do
 
   return (mkUI ui)
 
-main :: UI -> IO ()
-main _ui =
-    do logPutStrLn "GTK main loop running"
-       mainGUI
 
-processEvent :: (Event -> IO ()) -> Gdk.Events.Event -> IO Bool
-processEvent ch ev = do
-  -- logPutStrLn $ "Gtk.Event: " ++ show ev
-  -- logPutStrLn $ "Event: " ++ show (gtkToYiEvent ev)
-  case gtkToYiEvent ev of
-    Nothing -> logPutStrLn $ "Event not translatable: " ++ show ev
-    Just e -> ch e
-  return True
-
-gtkToYiEvent :: Gdk.Events.Event -> Maybe Event
-gtkToYiEvent (Gdk.Events.Key {Gdk.Events.eventKeyName = key, Gdk.Events.eventModifier = evModifier, Gdk.Events.eventKeyChar = char})
-    = fmap (\k -> Event k $ (nub $ (if isShift then filter (/= MShift) else id) $ concatMap modif evModifier)) key'
-      where (key',isShift) =
-                case char of
-                  Just c -> (Just $ KASCII c, True)
-                  Nothing -> (M.lookup key keyTable, False)
-            modif Gdk.Events.Control = [MCtrl]
-            modif Gdk.Events.Alt = [MMeta]
-            modif Gdk.Events.Shift = [MShift]
-            modif _ = []
-gtkToYiEvent _ = Nothing
-
--- | Map GTK long names to Keys
-keyTable :: M.Map String Key
-keyTable = M.fromList
-    [("Down",       KDown)
-    ,("Up",         KUp)
-    ,("Left",       KLeft)
-    ,("Right",      KRight)
-    ,("Home",       KHome)
-    ,("End",        KEnd)
-    ,("BackSpace",  KBS)
-    ,("Delete",     KDel)
-    ,("Page_Up",    KPageUp)
-    ,("Page_Down",  KPageDown)
-    ,("Insert",     KIns)
-    ,("Escape",     KEsc)
-    ,("Return",     KEnter)
-    ,("Tab",        KTab)
-    ,("ISO_Left_Tab", KTab)
-    ]
+main :: IO ()
+main = logPutStrLn "GTK main loop running" >> mainGUI
 
 -- | Clean up and go home
 end :: IO ()
@@ -260,7 +190,7 @@ syncTabs e ui (tfocused@(t,focused):ts) (c:cs)
         do when focused $ setTabFocus ui c
            let wCache = windowCache c
            (:) <$> syncTab e ui c t wCache <*> syncTabs e ui ts cs
-    | t `elem` map coreTab cs =
+    | t `elem` fmap coreTab cs =
         do removeTab ui c
            syncTabs e ui (tfocused:ts) cs
     | otherwise =
@@ -285,7 +215,7 @@ syncWindows e ui tab (wfocused@(w,focused):ws) (c:cs)
     | w == coreWin c =
         do when focused $ setWindowFocus e ui tab c
            (c { coreWin = w}:) <$> syncWindows e ui tab ws cs
-    | w `elem` map coreWin cs =
+    | w `elem` fmap coreWin cs =
         removeWindow ui tab c >> syncWindows e ui tab (wfocused:ws) cs
     | otherwise = do
         c' <- insertWindowBefore e ui tab w c
@@ -314,11 +244,15 @@ setWindowFocus :: Editor -> UI -> TabInfo -> WinInfo -> IO ()
 setWindowFocus e ui t w = do
   let bufferName = shortIdentString (commonNamePrefix e) $ findBufferWith (bufkey $ coreWin w) e
       ml = askBuffer (coreWin w) (findBufferWith (bufkey $ coreWin w) e) $ getModeLine (commonNamePrefix e)
+      im = uiInput ui
 
   update (textview w) widgetIsFocus True
   update (modeline w) labelText ml
   update (uiWindow ui) windowTitle $ bufferName ++ " - Yi"
   update (uiNotebook ui) (notebookChildTabLabel (page t)) (tabAbbrevTitle bufferName)
+  drawW <- catch (fmap Just $ widgetGetDrawWindow $ textview w) (const (return Nothing))
+  imContextSetClientWindow im drawW
+  imContextFocusIn im
 
 removeTab :: UI -> TabInfo -> IO ()
 removeTab ui  t = do
@@ -328,8 +262,7 @@ removeTab ui  t = do
         Nothing -> return ()
 
 removeWindow :: UI -> TabInfo -> WinInfo -> IO ()
-removeWindow _ tab win = do
-    containerRemove (page tab) (widget win)
+removeWindow _ tab win = containerRemove (page tab) (widget win)
 
 getWinInfo :: WindowRef -> [TabInfo] -> (Int, Int, WinInfo)
 getWinInfo ref tabInfos =
@@ -338,117 +271,6 @@ getWinInfo ref tabInfos =
        , (winIx, winInfo) <- zip [0..] (windowCache tabInfo)
        , ref == (wkey . coreWin) winInfo
        ]
-
-handleClick :: UI -> WindowRef -> Gdk.Events.Event -> IO Bool
-handleClick ui ref event = do
-  (_tabIdx,winIdx,w) <- getWinInfo ref <$> readIORef (tabCache ui)
-
-  logPutStrLn $ "Click: " ++ show (Gdk.Events.eventX event,
-                                   Gdk.Events.eventY event,
-                                   Gdk.Events.eventClick event)
-
-  -- retrieve the clicked offset.
-  (_,layoutIndex,_) <- io $ layoutXYToIndex (winLayout w) (Gdk.Events.eventX event) (Gdk.Events.eventY event)
-  tos <- readRef (shownTos w)
-  let p1 = tos + fromIntegral layoutIndex
-
-  -- maybe focus the window
-  logPutStrLn $ "Clicked inside window: " ++ show w
-
-  let focusWindow = do
-      -- TODO: check that tabIdx is the focus?
-      modA windowsA (fromJust . PL.move winIdx)
-
-  case (Gdk.Events.eventClick event, Gdk.Events.eventButton event) of
-     (Gdk.Events.SingleClick, Gdk.Events.LeftButton) -> do
-       writeRef (winMotionSignal w) =<< Just <$> onMotionNotify (textview w) False (handleMove ui w p1)
-
-     _ -> do maybe (return ()) signalDisconnect =<< readRef (winMotionSignal w)
-             writeRef (winMotionSignal w) Nothing
-             
-
-  let runAction = uiActionCh ui . makeAction
-  case (Gdk.Events.eventClick event, Gdk.Events.eventButton event) of
-    (Gdk.Events.SingleClick, Gdk.Events.LeftButton) -> runAction $ do
-        b <- gets $ (bkey . findBufferWith (bufkey $ coreWin w))
-        focusWindow
-        withGivenBufferAndWindow0 (coreWin w) b $ do
-            moveTo p1
-            setVisibleSelection False
-    (Gdk.Events.SingleClick, _) -> runAction focusWindow
-    (Gdk.Events.ReleaseClick, Gdk.Events.MiddleButton) -> do
-        disp <- widgetGetDisplay (textview w)
-        cb <- clipboardGetForDisplay disp selectionPrimary
-        let cbHandler Nothing = return ()
-            cbHandler (Just txt) = runAction $ do
-                b <- gets $ (bkey . findBufferWith (bufkey $ coreWin w))
-                withGivenBufferAndWindow0 (coreWin w) b $ do
-                pointB >>= setSelectionMarkPointB
-                moveTo p1
-                insertN txt
-        clipboardRequestText cb cbHandler
-    _ -> return ()
-
-  return True
-
-handleScroll :: UI -> WindowRef -> Gdk.Events.Event -> IO Bool
-handleScroll ui _ event = do
-  let editorAction = do 
-        withBuffer0 $ vimScrollB $ case Gdk.Events.eventDirection event of
-                        Gdk.Events.ScrollUp   -> (-1)
-                        Gdk.Events.ScrollDown -> 1
-                        _ -> 0 -- Left/right scrolling not supported
-
-  uiActionCh ui (makeAction editorAction)
-  return True
-
-handleMove :: UI -> WinInfo -> Point -> Gdk.Events.Event -> IO Bool
-handleMove ui w p0 event = do
-  logPutStrLn $ "Motion: " ++ show (Gdk.Events.eventX event, Gdk.Events.eventY event)
-
-  -- retrieve the clicked offset.
-  (_,layoutIndex,_) <- layoutXYToIndex (winLayout w) (Gdk.Events.eventX event) (Gdk.Events.eventY event)
-  tos <- readRef (shownTos w)
-  let p1 = tos + fromIntegral layoutIndex
-
-
-  let editorAction = do
-        txt <- withBuffer0 $ do
-           if p0 /= p1 
-            then Just <$> do
-              m <- selMark <$> askMarks
-              setMarkPointB m p0
-              moveTo p1
-              setVisibleSelection True
-              readRegionB =<< getSelectRegionB
-            else return Nothing
-        maybe (return ()) setRegE txt
-
-  uiActionCh ui (makeAction editorAction)
-  -- drawWindowGetPointer (textview w) -- be ready for next message.
-
-  -- Relies on uiActionCh being synchronous
-  selection <- newIORef ""
-  let yiAction = do
-      txt <- withEditor (withBuffer0 (readRegionB =<< getSelectRegionB))
-             :: YiM String
-      liftIO $ writeIORef selection txt
-  uiActionCh ui (makeAction yiAction)
-  txt <- readIORef selection
-
-  disp <- widgetGetDisplay (textview w)
-  cb <- clipboardGetForDisplay disp selectionPrimary
-  clipboardSetWithData cb [(targetString,0)]
-      (\0 -> selectionDataSetText txt >> return ()) (return ())
-
-  return True
-
-handleConfigure :: UI -> WindowRef -> Gdk.Events.Event -> IO Bool
-handleConfigure ui _ref _ev = do
-  -- trigger a layout
-  -- why does this cause a hang without postGUIAsync?
-  postGUIAsync $ uiActionCh ui (makeAction (return () :: EditorM ()))
-  return False -- allow event to be propagated
 
 -- | Make a new tab.
 newTab :: Editor -> UI -> VBox -> Tab -> IO TabInfo
@@ -503,20 +325,20 @@ newWindow e ui w b = do
     layout    <- layoutEmpty context
     language  <- contextGetLanguage context
     metrics   <- contextGetMetrics context f language
-    motionSig <- newIORef Nothing
-
+    ifLButton <- newIORef False
+      
     layoutSetFontDescription layout (Just f)
     layoutSetText layout "" -- stops layoutGetText crashing (as of gtk2hs 0.10.1)
 
     let win = WinInfo { coreWin   = w
-                      , winLayout = layout
+                      , winLayout  = layout
                       , winMetrics = metrics
-                      , winMotionSignal = motionSig
                       , textview  = v
                       , modeline  = ml
                       , widget    = box
                       , renderer  = sig
                       , shownTos  = tosRef
+                      , lButtonPressed = ifLButton
                       }
 
     return win
@@ -526,7 +348,7 @@ insertTabBefore e ui ws c = do
     Just p <- notebookPageNum (uiNotebook ui) (page c)
     vb <- vBoxNew False 1
     notebookInsertPage (uiNotebook ui) vb "" p
-    widgetShowAll $ vb
+    widgetShowAll vb
     t <- newTab e ui vb ws
     return t
 
@@ -547,24 +369,31 @@ insertWindowAtEnd e ui tab w = insertWindow e ui tab w
 insertWindow :: Editor -> UI -> TabInfo -> Window -> IO WinInfo
 insertWindow e ui tab win = do
   let buf = findBufferWith (bufkey win) e
-  liftIO $ do w <- newWindow e ui win buf
-
-              set (page tab) $ 
-                [ containerChild := widget w
-                , boxChildPacking (widget w) :=
-                    if isMini (coreWin w)
-                        then PackNatural
-                        else PackGrow
-                ]
-
-              let ref = (wkey . coreWin) w
-              textview w `onButtonRelease` handleClick ui ref
-              textview w `onButtonPress` handleClick ui ref
-              textview w `onScroll` handleScroll ui ref
-              textview w `onConfigure` handleConfigure ui ref
-              widgetShowAll (widget w)
-
-              return w
+  io $ do w <- newWindow e ui win buf
+          set (page tab) $
+            [ containerChild := widget w
+            , boxChildPacking (widget w) :=
+              if isMini (coreWin w)
+              then PackNatural
+              else PackGrow
+                   
+            , widgetEvents := [ ButtonPressMask
+                              , ButtonReleaseMask
+                              , Button1MotionMask
+                              , ScrollMask
+                              ]
+            ]
+  
+          let ref = (wkey . coreWin) w
+                
+          textview w `on` buttonPressEvent   $ handleButtonClick   ui ref
+          textview w `on` buttonReleaseEvent $ handleButtonRelease ui w
+          textview w `on` scrollEvent        $ handleScroll        ui w
+          textview w `on` configureEvent     $ handleConfigure     ui
+          textview w `on` motionNotifyEvent  $ handleMove          ui w
+          
+          widgetShowAll (widget w)
+          return w
 
 updateCache :: UI -> Editor -> IO ()
 updateCache ui e = do
@@ -605,7 +434,7 @@ render e ui b ref _ev = do
   -- add color attributes.
   let picture = askBuffer (coreWin w) b $ attributesPictureAndSelB sty (currentRegex e) (mkRegion tos bos)
       sty = extractValue $ configTheme (uiConfig ui)
-      strokes = [(start',s,end') | ((start', s), end') <- zip picture (drop 1 (map fst picture) ++ [bos]),
+      strokes = [(start',s,end') | ((start', s), end') <- zip picture (drop 1 (fmap fst picture) ++ [bos]),
                   s /= emptyAttributes]
       rel p = fromIntegral (p - tos)
       allAttrs = concat $ do
@@ -620,16 +449,22 @@ render e ui b ref _ev = do
 
   layoutSetAttributes layout allAttrs
 
-  (PangoRectangle curx cury curw curh, _) <- layoutGetCursorPos layout (rel cur)
-  PangoRectangle chx chy chw chh          <- layoutIndexToPos layout (rel cur)
-
+  (PangoRectangle _curX _curY _curW _curH, _) <- layoutGetCursorPos layout (rel cur)
+  PangoRectangle chx chy chw chh              <- layoutIndexToPos layout (rel cur)
+  let curX = round _curX
+      curY = round _curY
+      curW = round _curW
+      curH = round _curH
+    
+  imContextSetCursorLocation (uiInput ui) $ Rectangle curX curY curW curH
+  
   gc <- gcNew drawWindow
   drawLayout drawWindow gc 0 0 layout
 
   -- paint the cursor   
   gcSetValues gc (newGCValues { Gtk.foreground = mkCol True $ Yi.Style.foreground $ baseAttributes $ configStyle $ uiConfig ui })
   if askBuffer (coreWin w) b $ getA insertingA
-     then do drawLine drawWindow gc (round curx, round cury) (round $ curx + curw, round $ cury + curh) 
+     then do drawLine drawWindow gc (curX, curY) (curX + curW, curY + curH) 
      else do drawRectangle drawWindow gc False (round chx) (round chy) (if chw > 0 then round chw else 8) (round chh)
 
   return True
@@ -676,7 +511,7 @@ updatePango ui font w b layout = do
   when (oldFontStr /= newFontStr) (layoutSetFontDescription layout (Just font))
 
   let win                 = coreWin w
-      [width'', height''] = map fromIntegral [width', height']
+      [width'', height''] = fmap fromIntegral [width', height']
       metrics             = winMetrics w
       lineHeight          = ascent metrics + descent metrics
       winh                = max 1 $ floor (height'' / lineHeight)
@@ -705,8 +540,8 @@ updatePango ui font w b layout = do
   (_, bosOffset, _) <- layoutXYToIndex layout width'' (fromIntegral winh * lineHeight - 1)
   return (tos, point, tos + fromIntegral bosOffset + 1)
 
-reloadProject :: UI -> FilePath -> IO ()
-reloadProject _ _ = return ()
+reloadProject :: IO ()
+reloadProject = return ()
 
 mkCol :: Bool -- ^ is foreground?
       -> Yi.Style.Color -> Gtk.Color
@@ -715,3 +550,208 @@ mkCol False Default = Color maxBound maxBound maxBound
 mkCol _ (RGB x y z) = Color (fromIntegral x * 256)
                             (fromIntegral y * 256)
                             (fromIntegral z * 256)
+
+-- * GTK Event handlers
+
+-- | Process GTK keypress if IM fails
+handleKeypress :: (Event -> IO ()) -- ^ Event dispatcher (Yi.Core.dispatch)
+                  -> IMContext
+                  -> EventM EKey Bool
+handleKeypress ch im = do
+  gtkMods <- eventModifier
+  gtkKey  <- eventKeyVal
+  ifIM    <- imContextFilterKeypress im
+  let char = keyToChar gtkKey
+      mods | isJust char && gtkMods == [EventM.Shift] = []
+           | otherwise = M.keys $ M.filter (`elem` gtkMods) modTable
+      key  = case char of
+        Just c  -> Just $ KASCII c
+        Nothing -> M.lookup (keyName gtkKey) keyTable
+  
+  case (ifIM, key) of
+    (True, _   ) -> return ()
+    (_, Nothing) -> logPutStrLn $ "Event not translatable: " ++ show key
+    (_, Just k ) -> io $ ch $ Event k mods
+  return True
+
+-- | Map GTK long names to Keys
+keyTable :: M.Map String Key
+keyTable = M.fromList
+    [("Down",       KDown)
+    ,("Up",         KUp)
+    ,("Left",       KLeft)
+    ,("Right",      KRight)
+    ,("Home",       KHome)
+    ,("End",        KEnd)
+    ,("BackSpace",  KBS)
+    ,("Delete",     KDel)
+    ,("Page_Up",    KPageUp)
+    ,("Page_Down",  KPageDown)
+    ,("Insert",     KIns)
+    ,("Escape",     KEsc)
+    ,("Return",     KEnter)
+    ,("Tab",        KTab)
+    ,("ISO_Left_Tab", KTab)
+    ]
+
+-- | Map Yi modifiers to GTK 
+modTable :: M.Map Modifier EventM.Modifier
+modTable = M.fromList
+    [ (MShift, EventM.Shift  )
+    , (MCtrl,  EventM.Control)
+    , (MMeta,  EventM.Alt    )
+    , (MSuper, EventM.Super  )
+    , (MHyper, EventM.Hyper  )
+    ]
+
+handleButtonClick :: UI -> WindowRef -> EventM EButton Bool
+handleButtonClick ui ref = do
+  (x, y) <- eventCoordinates
+  click  <- eventClick
+  button <- eventButton
+  io $ do
+    (_, winIdx, w) <- getWinInfo ref <$> readIORef (tabCache ui)
+    point <- pointToOffset (x, y) w
+    
+    -- TODO: check that tabIdx is the focus?
+    let focusWindow = modA windowsA (fromJust . PL.move winIdx)
+        runAction = uiActionCh ui . makeAction
+    
+    runAction focusWindow
+    case (click, button) of
+      (SingleClick, LeftButton) ->  do
+        io $ writeIORef (lButtonPressed w) True
+        runAction $ do
+          b <- gets $ bkey . findBufferWith (bufkey $ coreWin w)
+          withGivenBufferAndWindow0 (coreWin w) b $ do
+            m <- selMark <$> askMarks
+            setMarkPointB m point
+            moveTo point
+            setVisibleSelection False
+      _ -> return ()
+    
+    return True
+
+handleButtonRelease :: UI -> WinInfo -> EventM EButton Bool
+handleButtonRelease ui w = do
+  (x, y)   <- eventCoordinates
+  button   <- eventButton
+  io $ do
+    point <- pointToOffset (x, y) w
+    disp  <- widgetGetDisplay $ textview w
+    cb    <- clipboardGetForDisplay disp selectionPrimary
+    case button of
+         MiddleButton -> pasteSelectionClipboard ui w point cb
+         LeftButton   -> setSelectionClipboard   ui w cb >>
+                         writeIORef (lButtonPressed w) False
+         _            -> return ()
+  return True
+
+handleScroll :: UI -> WinInfo -> EventM EScroll Bool
+handleScroll ui w = do
+  scrollDirection <- eventScrollDirection
+  xy <- eventCoordinates
+  io $ do
+    ifPressed <- readIORef $ lButtonPressed w
+    -- query new coordinates
+    let editorAction = do
+          withBuffer0 $ scrollB $ case scrollDirection of
+            ScrollUp   -> -1
+            ScrollDown -> 1
+            _          -> 0 -- Left/right scrolling not supported
+    uiActionCh ui (makeAction editorAction)
+    if ifPressed
+     then selectArea ui w xy
+     else return ()
+  return True
+
+handleConfigure :: UI -> EventM EConfigure Bool
+handleConfigure ui = do
+  -- trigger a layout
+  -- why does this cause a hang without postGUIAsync?
+  io $ postGUIAsync $ uiActionCh ui (makeAction (return () :: EditorM()))
+  return False -- allow event to be propagated
+  
+handleMove :: UI -> WinInfo -> EventM EMotion Bool
+handleMove ui w = eventCoordinates >>= (io . selectArea ui w) >>
+                  return True
+
+-- | Convert point coordinates to offset in Yi window
+pointToOffset :: (Double, Double) -> WinInfo -> IO Point
+pointToOffset (x,y) w = do
+  (_, charOffsetX, _) <- layoutXYToIndex (winLayout w) x y
+  tos <- readIORef $ shownTos w
+  return $ tos + fromIntegral charOffsetX
+
+selectArea :: UI -> WinInfo -> (Double, Double) -> IO ()
+selectArea ui w (x,y) = do
+  p <- pointToOffset (x,y) w
+  let editorAction = do
+        txt <- withBuffer0 $ do
+          moveTo p
+          setVisibleSelection True
+          readRegionB =<< getSelectRegionB
+        setRegE txt
+  
+  uiActionCh ui (makeAction editorAction)
+  -- drawWindowGetPointer (textview w) -- be ready for next message.
+
+pasteSelectionClipboard :: UI -> WinInfo -> Point -> Clipboard -> IO ()
+pasteSelectionClipboard ui w p cb = do
+  let cbHandler Nothing    = return ()
+      cbHandler (Just txt) = uiActionCh ui $ makeAction $ do
+        b <- gets $ bkey . findBufferWith (bufkey $ coreWin w)
+        withGivenBufferAndWindow0 (coreWin w) b $ do
+          pointB >>= setSelectionMarkPointB
+          moveTo p
+          insertN txt
+  clipboardRequestText cb cbHandler
+
+-- | Set selection clipboard contents to current selection
+setSelectionClipboard :: UI -> WinInfo -> Clipboard -> IO ()
+setSelectionClipboard ui _w cb = do
+  -- Why uiActionCh doesn't allow returning values?
+  selection <- newIORef ""
+  let yiAction = do
+        txt <- withEditor $ withBuffer0 $ readRegionB =<< getSelectRegionB :: YiM String
+        io $ writeIORef selection txt
+  uiActionCh ui $ makeAction yiAction
+  txt <- readIORef selection
+  
+  if (not . null) txt
+    then clipboardSetText cb txt
+    else return () 
+
+
+
+-- Some useful stuff from `startNoMsg`
+--
+-- Disable the left pane (file/module browser) until Shim/Scion discussion has
+-- concluded. Shim causes crashes, but it's not worth fixing if we'll soon
+-- replace it.
+
+{-
+tabs' <- notebookNew
+widgetSetSizeRequest tabs' 200 (-1)
+notebookSetTabPos tabs' PosBottom
+panedAdd1 paned tabs'
+
+-- Create the tree views for files and modules
+(filesProject, modulesProject) <- loadProject =<< getCurrentDirectory
+
+filesStore   <- treeStoreNew [filesProject]
+modulesStore <- treeStoreNew [modulesProject]
+
+filesTree   <- projectTreeNew (outCh . singleton) filesStore
+modulesTree <- projectTreeNew (outCh . singleton) modulesStore
+
+scrlProject <- scrolledWindowNew Nothing Nothing
+scrolledWindowAddWithViewport scrlProject filesTree
+scrolledWindowSetPolicy scrlProject PolicyAutomatic PolicyAutomatic
+notebookAppendPage tabs scrlProject "Project"
+
+scrlModules <- scrolledWindowNew Nothing Nothing
+scrolledWindowAddWithViewport scrlModules modulesTree
+scrolledWindowSetPolicy scrlModules PolicyAutomatic PolicyAutomatic
+notebookAppendPage tabs scrlModules "Modules"
+-}
