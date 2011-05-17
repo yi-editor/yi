@@ -14,7 +14,7 @@ import GHC
 import HscTypes
 import qualified Outputable as O
 import Scion
-import Scion.Types hiding (gets) 
+import Scion.Types
 import Scion.Utils
 import Outputable
 import GHC.SYB.Utils
@@ -74,9 +74,9 @@ thingsAtPoint pt fn = do
     mss <- modulesInDepOrder
     show <$> forM mss (\ms -> do
       mod <- typecheckModule =<< parseModule ms
-      let Just (grp, _, _, _, _) = renamedSource mod
+      let Just (grp, _, _, _) = renamedSource mod
       let bnds = typecheckedSource mod
-      let tyclds = thingsAroundPoint pt (hs_tyclds grp)
+      let tyclds = thingsAroundPoint pt $ concat $ hs_tyclds grp
       let ValBindsOut valds _ = hs_valds grp
   
       return $ showData TypeChecker 2 bnds)

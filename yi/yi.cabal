@@ -281,6 +281,9 @@ library
   if flag (scion)
     cpp-options: -DSCION
     exposed-modules: Yi.Scion
+    build-depends: scion == 0.1.*,
+      ghc >= 7,
+      ghc-syb-utils
 
   if flag (ghcAPI)
     cpp-options: -DGHC_API
