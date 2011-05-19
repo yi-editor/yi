@@ -108,6 +108,7 @@ library
     Yi.Keymap.Keys
     Yi.Keymap.Vim
     Yi.KillRing
+    Yi.Layout
     Yi.Lexer.Abella
     Yi.Lexer.Alex
     Yi.Lexer.Cabal
@@ -252,6 +253,7 @@ library
       Yi.UI.Pango
       Yi.UI.Pango.Control
     other-modules:
+      Yi.UI.Pango.Layouts
       Yi.UI.Pango.Utils
     build-depends:
       gtk ==0.12.*,

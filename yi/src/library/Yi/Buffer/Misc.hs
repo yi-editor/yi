@@ -343,7 +343,7 @@ rectangleSelectionA =
 keymapProcessA :: Accessor FBuffer KeymapProcess
 keymapProcessA = processAA . attrsA
 
-winMarksA :: Accessor FBuffer (M.Map Int WinMarks)
+winMarksA :: Accessor FBuffer (M.Map WindowRef WinMarks)
 winMarksA = winMarksAA . attrsA
 
 {- | Currently duplicates some of Vim's indent settings. Allowing a buffer to
@@ -499,7 +499,7 @@ runBufferFull w b f =
             ms <- getMarks w
             when (isNothing ms) $ do
                 -- this window has no marks for this buffer yet; have to create them.
-                newMarkValues <- if wkey (b ^. lastActiveWindowA) == dummyWindowKey
+                newMarkValues <- if wkey (b ^. lastActiveWindowA) == initial
                     then return
                         -- no previous window, create some marks from scratch.
                          MarkSet { insMark = MarkValue 0 Forward,

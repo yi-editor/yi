@@ -4,6 +4,7 @@ import qualified Data.Map as M
 import Data.Prototype
 
 import Yi.Buffer
+import Yi.Layout
 import Yi.Config.Misc
 import {-# source #-} Yi.Keymap
 import {-# source #-} Yi.Editor
@@ -57,7 +58,9 @@ data Config = Config {startFrontEnd :: UIBoot,
                       configKillringAccumulate :: Bool,
                       -- ^ Set to 'True' for an emacs-like behaviour, where 
                       -- all deleted text is accumulated in a killring.
-                      bufferUpdateHandler :: [([Update] -> BufferM ())]
+                      bufferUpdateHandler :: [([Update] -> BufferM ())],
+                      layoutManagers :: [AnyLayoutManager]
+                      -- ^ List of layout managers for 'cycleLayoutManagersNext'
                      }
 
 configFundamentalMode :: Config -> AnyMode
