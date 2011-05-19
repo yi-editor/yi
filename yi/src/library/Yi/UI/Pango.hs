@@ -87,6 +87,7 @@ data WinInfo = WinInfo
     , shownTos        :: IORef Point
     , renderer        :: IORef (ConnectId DrawingArea)
     , lButtonPressed  :: IORef Bool 
+    , insertingMode   :: IORef Bool
     , winLayout       :: PangoLayout
     , winMetrics      :: FontMetrics
     , textview        :: DrawingArea
@@ -230,8 +231,7 @@ updateTabInfo e ui tab tabInfo = do
     wCacheOld <- readIORef (windowCache tabInfo)
     wCacheNew <- mapFromFoldable <$> (forM (tab ^. tabWindowsA) $ \w ->
       case M.lookup (wkey w) wCacheOld of
-        -- TODO updateWindow?
-        Just wInfo -> writeIORef (coreWin wInfo) w >> return (wkey w, wInfo)
+        Just wInfo -> updateWindow e ui w wInfo >> return (wkey w, wInfo)
         Nothing -> (wkey w,) <$> newWindow e ui w)
     writeIORef (windowCache tabInfo) wCacheNew
 
@@ -247,6 +247,11 @@ updateTabInfo e ui tab tabInfo = do
 
     -- set focus
     setWindowFocus e ui tabInfo . lookupWin . wkey . tabFocus $ tab
+
+updateWindow :: Editor -> UI -> Window -> WinInfo -> IO ()
+updateWindow e ui win wInfo = do
+    writeIORef (coreWin wInfo) win
+    writeIORef (insertingMode wInfo) (askBuffer win (findBufferWith (bufkey win) e) $ getA insertingA)
 
 setWindowFocus :: Editor -> UI -> TabInfo -> WinInfo -> IO ()
 setWindowFocus e ui t w = do
@@ -347,6 +352,7 @@ newWindow e ui w = do
     language  <- contextGetLanguage context
     metrics   <- contextGetMetrics context f language
     ifLButton <- newIORef False
+    imode     <- newIORef False
     winRef    <- newIORef w
 
     layoutSetFontDescription layout (Just f)
@@ -363,7 +369,9 @@ newWindow e ui w = do
                       , renderer  = sig
                       , shownTos  = tosRef
                       , lButtonPressed = ifLButton
+                      , insertingMode = imode
                       }
+    updateWindow e ui w win
 
     v `on` buttonPressEvent   $ handleButtonClick   ui ref
     v `on` buttonReleaseEvent $ handleButtonRelease ui win
@@ -435,7 +443,8 @@ render e ui b ref _ev = do
 
   -- paint the cursor   
   gcSetValues gc (newGCValues { Gtk.foreground = mkCol True $ Yi.Style.foreground $ baseAttributes $ configStyle $ uiConfig ui })
-  if askBuffer win b $ getA insertingA
+  im <- readIORef (insertingMode w)
+  if im
      then do drawLine drawWindow gc (curX, curY) (curX + curW, curY + curH) 
      else do drawRectangle drawWindow gc False (round chx) (round chy) (if chw > 0 then round chw else 8) (round chh)
 
@@ -656,9 +665,10 @@ handleDividerMove actionCh ref pos = actionCh (makeAction (setDividerPosE ref po
 -- | Convert point coordinates to offset in Yi window
 pointToOffset :: (Double, Double) -> WinInfo -> IO Point
 pointToOffset (x,y) w = do
+  im <- readIORef (insertingMode w)
   (_, charOffsetX, extra) <- layoutXYToIndex (winLayout w) x y
   tos <- readIORef $ shownTos w
-  return $ tos + fromIntegral (charOffsetX + extra)
+  return $ tos + fromIntegral (charOffsetX + if im then extra else 0)
 
 selectArea :: UI -> WinInfo -> (Double, Double) -> IO ()
 selectArea ui w (x,y) = do
