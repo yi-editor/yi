@@ -30,6 +30,7 @@ String,
 commonPrefix,
 discard,
 every,
+findPL,
 fromIntegral,
 fst,
 fst3,
@@ -42,6 +43,7 @@ last,
 lookup,
 mapAdjust',
 mapAlter',
+mapFromFoldable,
 module Control.Applicative,
 module Control.Category,
 module Data.Accessor, 
@@ -65,6 +67,7 @@ seq,
 singleton,
 snd,
 snd3,
+swapFocus,
 tail,
 trd3,
 undefined,
@@ -96,6 +99,7 @@ import qualified Data.Accessor.Basic as Accessor
 import Data.Accessor ((<.), accessor, getVal, setVal, Accessor,(^.),(^:),(^=))
 import qualified Data.Accessor.Monad.FD.State as Accessor.FD
 import Data.Accessor.Monad.FD.State ((%:), (%=))
+import qualified Data.List.PointedList as PL
     
 type Endom a = a -> a
 
@@ -157,6 +161,9 @@ mapAlter' f = Map.alter f' where
     -- the structure.
 
 
+-- | Generalisation of 'Map.fromList' to arbitrary foldables.
+mapFromFoldable :: (Foldable t, Ord k) => t (k, a) -> Map.Map k a
+mapFromFoldable = foldMap (uncurry Map.singleton)
 
 -- | Alternative to groupBy.
 --
@@ -209,10 +216,18 @@ commonPrefix strings
           prefix = head heads
 -- for an alternative implementation see GHC's InteractiveUI module.
 
+---------------------- PointedList stuff
+-- | Finds the first element satisfying the predicate, and returns a zipper pointing at it.
+findPL :: (a -> Bool) -> [a] -> Maybe (PL.PointedList a)
+findPL pred xs = go [] xs where
+  go ls [] = Nothing
+  go ls (f:rs) | pred f    = Just (PL.PointedList ls f rs)
+               | otherwise = go (f:ls) rs
 
-
-
------------------------
+-- | Given a function which moves the focus from index A to index B, return a function which swaps the elements at indexes A and B and then moves the focus. See Yi.Editor.swapWinWithFirstE for an example.
+swapFocus :: (PL.PointedList a -> PL.PointedList a) -> (PL.PointedList a -> PL.PointedList a)
+swapFocus moveFocus xs = PL.focusA ^= (xs ^. PL.focusA) $ moveFocus $ PL.focusA ^= (moveFocus xs ^. PL.focusA) $ xs
+----------------------
 -- Acessor stuff
 
 putA :: CMSC.MonadState r m => Accessor.T r a -> a -> m ()

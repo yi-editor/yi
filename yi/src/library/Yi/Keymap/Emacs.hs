@@ -159,6 +159,19 @@ emacsKeys univArg =
 
          -- All the keybindings of the form "C-M-c" where 'c' is some character
          , ( ctrl $ metaCh 'w') ?>>! appendNextKillE
+         , ( ctrl $ metaCh ' ') ?>>! layoutManagersNextE
+         , ( ctrl $ metaCh ',') ?>>! layoutManagerNextVariantE
+         , ( ctrl $ metaCh '.') ?>>! layoutManagerPreviousVariantE
+         , ( ctrl $ metaCh 'j') ?>>! nextWinE
+         , ( ctrl $ metaCh 'k') ?>>! prevWinE
+         , ( ctrl $ meta $ spec KEnter) ?>>! swapWinWithFirstE
+
+
+-- All the keybindings of the form "S-C-M-c" where 'c' is some key
+         , ( shift $ ctrl $ metaCh 'j') ?>>! moveWinNextE
+         , ( shift $ ctrl $ metaCh 'k') ?>>! moveWinPrevE
+         , ( shift $ ctrl $ meta $ spec KEnter) ?>>! pushWinToFirstE
+         , ( Event (KASCII ' ') [MShift,MCtrl,MMeta]) ?>>! layoutManagersPreviousE
 
          -- All the key-bindings which are preceded by a 'C-x'
          , ctrlCh 'x' ?>>      ctrlX
