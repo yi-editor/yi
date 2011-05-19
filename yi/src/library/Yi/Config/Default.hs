@@ -166,6 +166,7 @@ defaultConfig =
                         AnyMode javaMode,
                         AnyMode ireaderMode,
                         AnyMode svnCommitMode,
+                        AnyMode gitCommitMode,
                         AnyMode whitespaceMode,
                         AnyMode fundamentalMode]
          , debugMode = False
