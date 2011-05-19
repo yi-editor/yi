@@ -679,9 +679,9 @@ handleMove ui w = eventCoordinates >>= (io . selectArea ui w) >>
 -- | Convert point coordinates to offset in Yi window
 pointToOffset :: (Double, Double) -> WinInfo -> IO Point
 pointToOffset (x,y) w = do
-  (_, charOffsetX, _) <- layoutXYToIndex (winLayout w) x y
+  (_, charOffsetX, extra) <- layoutXYToIndex (winLayout w) x y
   tos <- readIORef $ shownTos w
-  return $ tos + fromIntegral charOffsetX
+  return $ tos + fromIntegral (charOffsetX + extra)
 
 selectArea :: UI -> WinInfo -> (Double, Double) -> IO ()
 selectArea ui w (x,y) = do
