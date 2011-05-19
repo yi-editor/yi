@@ -5,6 +5,7 @@ module Yi.Buffer.Basic where
 import Prelude (reverse)
 import Data.Binary    
 import Yi.Prelude
+import Yi.Dynamic(Initializable(..))
 import qualified Data.Rope as R
 import Data.Typeable
 import Data.DeriveTH
@@ -67,3 +68,10 @@ instance SemiNum Point Size where
 
 fromString :: String -> Rope
 fromString = R.fromString
+
+-- | Window references
+newtype WindowRef = WindowRef { unWindowRef :: Int }
+  deriving(Eq, Ord, Enum, Show, Typeable, Binary)
+
+instance Initializable WindowRef where initial = WindowRef (-1)
+

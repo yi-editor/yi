@@ -1,4 +1,4 @@
-{-# LANGUAGE DeriveDataTypeable, TemplateHaskell #-}
+{-# LANGUAGE DeriveDataTypeable, TemplateHaskell, GeneralizedNewtypeDeriving #-}
 
 --
 -- Copyright (c) 2008 JP Bernardy
@@ -8,14 +8,13 @@
 module Yi.Window where
 import Data.Binary
 import Data.Typeable
-import Yi.Buffer.Basic (BufferRef)
+import Yi.Buffer.Basic (BufferRef, WindowRef)
 import Yi.Region (Region,emptyRegion)
+import Yi.Dynamic(Initializable(..))
 import Control.Applicative
 
 ------------------------------------------------------------------------
 -- | A window onto a buffer.
-
-type WindowRef = Int
 
 data Window = Window {
                       isMini    :: !Bool   -- ^ regular or mini window?
@@ -59,10 +58,7 @@ pointInWindow :: Point -> Window -> Bool
 pointInWindow point win = tospnt win <= point && point <= bospnt win
 -}
 
-dummyWindowKey :: Int
-dummyWindowKey = (-1)
-
 -- | Return a "fake" window onto a buffer.
 dummyWindow :: BufferRef -> Window
-dummyWindow b = Window False b [] 0 emptyRegion dummyWindowKey 0
+dummyWindow b = Window False b [] 0 emptyRegion initial 0
 

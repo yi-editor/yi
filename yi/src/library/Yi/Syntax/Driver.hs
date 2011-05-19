@@ -12,6 +12,7 @@ import Data.List (takeWhile, unzip)
 import qualified  Data.Map as M
 import Data.Map (Map)
 
+import Yi.Buffer.Basic(WindowRef)
 import Yi.Lexer.Alex (Tok)
 import Yi.Region
 import Yi.Syntax hiding (Cache)
@@ -20,10 +21,10 @@ import Yi.Syntax.Tree
 type Path = [Int]
 
 data Cache state tree tt = Cache {
-                                   path :: M.Map Int Path,
+                                   path :: M.Map WindowRef Path,
                                    cachedStates :: [state],
                                    root :: tree (Tok tt),
-                                   focused :: !(M.Map Int (tree (Tok tt)))
+                                   focused :: !(M.Map WindowRef (tree (Tok tt)))
                                  }
 
 mkHighlighter :: forall state tree tt. (IsTree tree, Show state) => 

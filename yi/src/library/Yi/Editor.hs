@@ -24,6 +24,7 @@ import Yi.Dynamic
 import Yi.Event (Event)
 import Yi.Interact as I
 import Yi.KillRing
+import Yi.Layout
 import Yi.Prelude
 import Yi.Style (StyleName, defaultStyle)
 import Yi.Tab
@@ -117,8 +118,8 @@ emptyEditor = Editor {
        ,onCloseActions = M.empty
        }
         where buf = newB 0 (Left "console") (R.fromString "")
-              win = (dummyWindow (bkey buf)) {wkey = 1, isMini = False}
-              tab = Tab 2 (PL.singleton win)
+              win = (dummyWindow (bkey buf)) {wkey = WindowRef 1, isMini = False}
+              tab = makeTab1 2 win
 
 -- ---------------------------------------------------------------------
 
@@ -128,15 +129,17 @@ runEditor cfg f e = let (a, e',()) = runRWS (fromEditorM f) cfg e in (e',a)
 $(nameDeriveAccessors ''Editor (\n -> Just (n ++ "A")))
 
 
--- TODO: replace this by accessor
 windows :: Editor -> PL.PointedList Window
-windows editor = tabWindows . PL.focus $ tabs_ editor
+windows e = e ^. windowsA
 
 windowsA :: Accessor Editor (PL.PointedList Window)
-windowsA =  tabWindowsA . PL.focusA . tabsA
+windowsA =  tabWindowsA . currentTabA
 
 tabsA :: Accessor Editor (PL.PointedList Tab)
 tabsA = tabs_A . fixCurrentBufferA_
+
+currentTabA :: Accessor Editor Tab
+currentTabA = PL.focusA . tabsA
 
 dynA :: Initializable a => Accessor Editor a
 dynA = dynamicValueA . dynamicA
@@ -452,7 +455,7 @@ newZeroSizeWindow mini bk ref = Window mini bk [] 0 emptyRegion ref 0
 
 -- | Create a new window onto the given buffer.
 newWindowE :: Bool -> BufferRef -> EditorM Window
-newWindowE mini bk = newZeroSizeWindow mini bk <$> newRef
+newWindowE mini bk = newZeroSizeWindow mini bk . WindowRef <$> newRef
 
 -- | Attach the specified buffer to the current window
 switchToBufferE :: BufferRef -> EditorM ()
@@ -501,6 +504,26 @@ nextWinE = modA windowsA PL.next
 prevWinE :: EditorM ()
 prevWinE = modA windowsA PL.previous
 
+-- | Swaps the focused window with the first window. Useful for layouts such as 'HPairOneStack', for which the first window is the largest.
+swapWinWithFirstE :: EditorM ()
+swapWinWithFirstE = modA windowsA (swapFocus (fromJust . PL.move 0))
+
+-- | Moves the focused window to the first window, and moves all other windows down the stack.
+pushWinToFirstE :: EditorM ()
+pushWinToFirstE = modA windowsA pushToFirst
+  where
+      pushToFirst ws = case PL.delete ws of
+          Nothing -> ws
+          Just ws' -> PL.insertLeft (ws ^. PL.focusA) (fromJust $ PL.move 0 ws')
+
+-- | Swap focused window with the next one
+moveWinNextE :: EditorM ()
+moveWinNextE = modA windowsA (swapFocus PL.next)
+
+-- | Swap focused window with the previous one
+moveWinPrevE :: EditorM ()
+moveWinPrevE = modA windowsA (swapFocus PL.previous)
+
 -- | A "fake" accessor that fixes the current buffer after a change of the current
 -- window. 
 -- Enforces invariant that top of buffer stack is the buffer of the current window.
@@ -531,7 +554,7 @@ findWindowWith k e =
 windowsOnBufferE :: BufferRef -> EditorM [Window]
 windowsOnBufferE k = do
   ts <- getA tabsA
-  return $ concatMap (concatMap (\win -> if (bufkey win == k) then [win] else []) . tabWindows) ts
+  return $ concatMap (concatMap (\win -> if (bufkey win == k) then [win] else []) . (^. tabWindowsA)) ts
 
 -- | bring the editor focus the window with the given key.
 --
@@ -546,7 +569,7 @@ focusWindowE k = do
         check r@(True, _) _win = r
 
         searchWindowSet (False, tabIndex, _) ws = 
-            case foldl check (False, 0) (tabWindows ws) of
+            case foldl check (False, 0) (ws ^. tabWindowsA) of
                 (True, winIndex) -> (True, tabIndex, winIndex)
                 (False, _)       -> (False, tabIndex + 1, 0)
         searchWindowSet r@(True, _, _) _ws = r
@@ -565,6 +588,33 @@ splitE = do
   w <- newWindowE False b
   modA windowsA (PL.insertRight w)
 
+-- | Cycle to the next layout manager, or the first one if the current one is nonstandard.
+layoutManagersNextE :: EditorM ()
+layoutManagersNextE = withLMStack PL.next
+
+-- | Cycle to the previous layout manager, or the first one if the current one is nonstandard.
+layoutManagersPreviousE :: EditorM ()
+layoutManagersPreviousE = withLMStack PL.previous
+
+-- | Helper function for 'layoutManagersNext' and 'layoutManagersPrevious'
+withLMStack :: (PL.PointedList AnyLayoutManager -> PL.PointedList AnyLayoutManager) -> EditorM ()
+withLMStack f = askCfg >>= \cfg -> modA (tabLayoutManagerA . currentTabA) (go (layoutManagers cfg))
+  where
+     go [] lm = lm
+     go lms lm =
+       case findPL (layoutManagerSameType lm) lms of
+         Nothing -> head lms
+         Just lmsPL -> f lmsPL ^. PL.focusA
+
+-- | Next variant of the current layout manager, as given by 'nextVariant'
+layoutManagerNextVariantE :: EditorM ()
+layoutManagerNextVariantE = modA (tabLayoutManagerA . currentTabA) nextVariant
+
+-- | Previous variant of the current layout manager, as given by 'previousVariant'
+layoutManagerPreviousVariantE :: EditorM ()
+layoutManagerPreviousVariantE = modA (tabLayoutManagerA . currentTabA) previousVariant
+
+
 -- | Enlarge the current window
 enlargeWinE :: EditorM ()
 enlargeWinE = error "enlargeWinE: not implemented"
@@ -573,13 +623,17 @@ enlargeWinE = error "enlargeWinE: not implemented"
 shrinkWinE :: EditorM ()
 shrinkWinE = error "shrinkWinE: not implemented"
 
+-- | Sets the given divider position on the current tab
+setDividerPosE :: DividerRef -> DividerPosition -> EditorM ()
+setDividerPosE ref pos = putA (tabDividerPositionA ref . currentTabA) pos
+
 -- | Creates a new tab containing a window that views the current buffer.
 newTabE :: EditorM ()
 newTabE = do
     bk <- gets currentBuffer
     win <- newWindowE False bk
     ref <- newRef
-    modA tabsA (PL.insertRight (Tab ref (PL.singleton win)))
+    modA tabsA (PL.insertRight (makeTab1 ref win))
 
 -- | Moves to the next tab in the round robin set of tabs
 nextTabE :: EditorM ()

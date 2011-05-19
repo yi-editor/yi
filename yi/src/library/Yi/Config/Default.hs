@@ -21,6 +21,7 @@ import Yi.Core
 import Yi.File
 import Yi.IReader (saveAsNewArticle)
 import Yi.Mode.IReader (ireaderMode, ireadMode)
+import Yi.Layout
 import Yi.Modes
 #ifdef SCION
 import Yi.Scion
@@ -177,6 +178,7 @@ defaultConfig =
          , configRegionStyle = Exclusive
          , configInputPreprocess = I.idAutomaton
          , bufferUpdateHandler = []
+         , layoutManagers = [hPairNStack 1, vPairNStack 1, tall, wide]
          }
 
 defaultEmacsConfig, defaultVimConfig, defaultCuaConfig :: Config

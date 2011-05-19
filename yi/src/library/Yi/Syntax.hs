@@ -46,8 +46,8 @@ instance Functor Span where fmap = fmapDefault
 data Highlighter cache syntax = 
   SynHL { hlStartState :: cache -- ^ The start state for the highlighter.
         , hlRun :: Scanner Point Char -> Point -> cache -> cache
-        , hlGetTree :: cache -> Int -> syntax
-        , hlFocus :: M.Map Int Region -> cache -> cache
+        , hlGetTree :: cache -> WindowRef -> syntax
+        , hlFocus :: M.Map WindowRef Region -> cache -> cache
         -- ^ focus at a given point, and return the coresponding node. (hint -- the root can always be returned, at the cost of performance.)
         }
 

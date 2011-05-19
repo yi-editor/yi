@@ -243,7 +243,7 @@ getHeightsInTab e tab = do
                 let ret= (windowRef v, round $ fromIntegral h / lineHeight, rgn)
                 return $ a ++ [ret]
             Nothing -> return a)
-      [] (tabWindows $ coreTab tab)
+      [] (coreTab tab ^. tabWindowsA)
 
 shownRegion :: Editor -> View -> FBuffer -> ControlM Region
 shownRegion e v b = do
@@ -578,7 +578,7 @@ newView buffer font = do
     -- TODO: the Tab idkey should be assigned using
     -- Yi.Editor.newRef. But we can't modify that here, since our
     -- access to 'Yi' is readonly.
-    liftIO $ writeRef tabsRef (TabInfo (Tab 0 (PL.singleton newWindow)):ts)
+    liftIO $ writeRef tabsRef (TabInfo (makeTab1 0 newWindow):ts)
 
     viewsRef <- asks views
     vs <- liftIO $ readRef viewsRef
