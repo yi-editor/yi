@@ -1,4 +1,4 @@
-{-# LANGUAGE TypeSynonymInstances #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving, DeriveDataTypeable #-}
 -- | This module defines a list type and operations on it; it further
 -- provides functions which write in and out the list.
 -- The goal is to make it easy for the user to store a large number of text buffers
@@ -7,7 +7,7 @@
 module Yi.IReader where
 
 import Control.Monad.State (join)
-import Data.Binary (decode, encodeFile)
+import Data.Binary (Binary, decode, encodeFile)
 import Data.Sequence as S
 import Data.Typeable (Typeable)
 import System.Directory (getHomeDirectory)
@@ -18,21 +18,23 @@ import Yi.Buffer.HighLevel (replaceBufferContent, topB)
 import Yi.Buffer.Misc (bufferDynamicValueA, BufferM)
 import Yi.Buffer.Normal (regionOfB, TextUnit(Document))
 import Yi.Buffer.Region (readRegionB)
-import Yi.Dynamic (Initializable(initial))
+import Yi.Dynamic
 import Yi.Keymap (withBuffer, YiM)
-import Yi.Prelude (getA, putA, io, discard)
+import Yi.Prelude (getA, putA, io, discard, Initializable(..))
 
 type Article = B.ByteString
-type ArticleDB = Seq Article
+newtype ArticleDB = ADB { unADB :: Seq Article }
+  deriving(Typeable, Binary)
 
-instance (Typeable a) => Initializable (Seq a) where
-    initial = S.empty
+instance Initializable ArticleDB where
+    initial = ADB S.empty
+instance YiVariable ArticleDB
 
 -- | Take an 'ArticleDB', and return the first 'Article' and an ArticleDB - *without* that article.
 split :: ArticleDB -> (Article, ArticleDB)
-split adb = case viewl adb of
-               EmptyL -> (B.pack "", S.empty)
-               (a :< b) -> (a, b)
+split (ADB adb) = case viewl adb of
+               EmptyL -> (B.pack "", initial)
+               (a :< b) -> (a, ADB b)
 
 -- | Get the first article in the list. We use the list to express relative priority;
 -- the first is the most, the last least. We then just cycle through - every article gets equal time.
@@ -42,21 +44,21 @@ getLatestArticle = fst . split -- we only want the article
 -- | We remove the old first article, and we stick it on the end of the
 -- list using the presumably modified version.
 removeSetLast :: ArticleDB -> Article -> ArticleDB
-removeSetLast adb old = snd (split adb) |> old
+removeSetLast adb old = ADB (unADB (snd (split adb)) |> old)
 
 -- we move the last entry to  the entry 'length `div` n'from the beginning; so 'shift 1' would do nothing
 -- (eg. the last index is 50, 50 `div` 1 == 50, so the item would be moved to where it is)
 --  'shift 2' will move it to the middle of the list, though; last index = 50, then 50 `div` 2 will shift
 -- the item to index 25, and so on down to 50 `div` 50 - the head of the list/Seq.
 shift :: Int ->ArticleDB -> ArticleDB
-shift n adb = if n < 2 || lst < 2 then adb else (r |> lastentry) >< s'
-              where lst = S.length adb - 1
-                    (r,s) = S.splitAt (lst `div` n) adb
+shift n adb = if n < 2 || lst < 2 then adb else ADB $ (r |> lastentry) >< s'
+              where lst = S.length (unADB adb) - 1
+                    (r,s) = S.splitAt (lst `div` n) (unADB adb)
                     (s' :> lastentry) = S.viewr s
 
 -- | Insert a new article with top priority (that is, at the front of the list).
 insertArticle :: ArticleDB -> Article -> ArticleDB
-insertArticle adb new = new <| adb
+insertArticle (ADB adb) new = ADB (new <| adb)
 
 -- | Serialize given 'ArticleDB' out.
 writeDB :: ArticleDB -> YiM ()
@@ -64,7 +66,7 @@ writeDB adb = discard $ io . join . fmap (flip encodeFile adb) $ dbLocation
 
 -- | Read in database from 'dbLocation' and then parse it into an 'ArticleDB'.
 readDB :: YiM ArticleDB
-readDB = io $ (dbLocation >>= r) `catch` (\_ -> return empty)
+readDB = io $ (dbLocation >>= r) `catch` (\_ -> return initial)
           where r = fmap (decode . BL.fromChunks . return) . B.readFile
                 -- We read in with strict bytestrings to guarantee the file is closed,
                 -- and then we convert it to the lazy bytestring data.binary expects.
@@ -81,7 +83,7 @@ dbLocation = getHomeDirectory >>= \home -> return (home ++ "/.yi/articles.db")
 oldDbNewArticle :: YiM (ArticleDB, Article)
 oldDbNewArticle = do saveddb <- withBuffer $ getA bufferDynamicValueA
                      newarticle <-fmap B.pack $ withBuffer getBufferContents
-                     if not $ S.null saveddb
+                     if not $ S.null (unADB saveddb)
                       then return (saveddb, newarticle)
                       else do olddb <- readDB
                               return (olddb, newarticle)
@@ -110,7 +112,7 @@ nextArticle = do (oldb,_) <- oldDbNewArticle
 -- | Delete current article (the article as in the database), and go to next one.
 deleteAndNextArticle :: YiM ()
 deleteAndNextArticle = do (oldb,_) <- oldDbNewArticle -- throw away changes,
-                          let ndb = case viewl oldb of     -- drop 1st article
+                          let ndb = ADB $ case viewl (unADB oldb) of     -- drop 1st article
                                 EmptyL -> empty
                                 (_ :< b) -> b
                           writeDB ndb

@@ -1,4 +1,4 @@
-{-# LANGUAGE DeriveDataTypeable #-}
+{-# LANGUAGE DeriveDataTypeable, TemplateHaskell #-}
 
 -- Copyright (c) 2007, 2008, 2009 Ben Moseley, Wen Pu
 
@@ -30,9 +30,11 @@ import Prelude (catch, realToFrac)
 
 import qualified Codec.Binary.UTF8.String as UTF8
 import Control.Monad.Reader hiding (mapM)
+import Data.Binary
 import Data.List hiding (find, maximum, concat)
 import Data.Maybe
 import Data.Char (toLower)
+import Data.DeriveTH
 import qualified Data.Map as M
 import qualified Data.Rope as R
 import Data.Time
@@ -93,6 +95,7 @@ instance Initializable DiredState where
                          , diredNameCol    = 0
                          , diredCurrFile   = ""
                          }
+instance YiVariable DiredState
 
 bypassReadOnly :: BufferM a -> BufferM a
 bypassReadOnly f = do ro <- getA readOnlyA
@@ -537,6 +540,7 @@ data DiredOpState = DiredOpState
 
 instance Initializable DiredOpState where
     initial = DiredOpState {diredOpSucCnt = 0, diredOpForAll = False}
+instance YiVariable DiredOpState
 
 incDiredOpSucCnt :: YiM ()
 incDiredOpSucCnt = withBuffer $ modA bufferDynamicValueA (\ds -> ds { diredOpSucCnt = (diredOpSucCnt ds) + 1 })
@@ -814,3 +818,5 @@ askDelFiles dir fs = do
                     -- Test the emptyness of a folder
                     nullDir :: [FilePath] -> Bool
                     nullDir contents = Data.List.any (not . flip Data.List.elem [".", ".."]) contents
+
+$(derives [makeBinary] [''DiredState, ''DiredEntry, ''DiredFileInfo, ''DiredOpState])

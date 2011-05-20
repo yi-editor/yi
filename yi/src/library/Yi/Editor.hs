@@ -12,6 +12,7 @@ import Control.Monad.RWS hiding (get, put, mapM, forM_)
 import Data.Accessor.Basic (fromSetGet)
 import Data.Accessor.Template
 import Data.Binary
+import Data.DeriveTH
 import Data.Either (rights)
 import Data.List (nub, delete, (\\), (!!), intercalate, take, drop, cycle)
 import Data.Maybe
@@ -49,7 +50,7 @@ data Editor = Editor {
 
        ,tabs_          :: !(PL.PointedList Tab) -- ^ current tab contains the visible windows pointed list.
 
-       ,dynamic       :: !(DynamicValues)              -- ^ dynamic components
+       ,dynamic       :: !DynamicValues              -- ^ dynamic components
 
        ,statusLines   :: !Statuses
        ,maxStatusHeight :: !Int
@@ -62,18 +63,20 @@ data Editor = Editor {
     deriving Typeable
 
 instance Binary Editor where
-    put (Editor bss bs supply ts _dv _sl msh kr _re _dir _ev _cwa ) = put bss >> put bs >> put supply >> put ts >> put msh >> put kr
+    put (Editor bss bs supply ts dv _sl msh kr _re _dir _ev _cwa ) = put bss >> put bs >> put supply >> put ts >> put dv >> put msh >> put kr
     get = do
         bss <- get
         bs <- get
         supply <- get
         ts <- get
+        dv <- get
         msh <- get
         kr <- get
         return $ emptyEditor {bufferStack = bss,
                               buffers = bs,
                               refSupply = supply,
                               tabs_ = ts,
+                              dynamic = dv,
                               maxStatusHeight = msh,
                               killring = kr
                              }
@@ -110,7 +113,7 @@ emptyEditor = Editor {
        ,refSupply    = 3
        ,currentRegex = Nothing
        ,searchDirection = Forward
-       ,dynamic      = M.empty
+       ,dynamic      = initial
        ,statusLines  = DelayList.insert (maxBound, ([""], defaultStyle)) []
        ,killring     = krEmpty
        ,pendingEvents = []
@@ -141,7 +144,7 @@ tabsA = tabs_A . fixCurrentBufferA_
 currentTabA :: Accessor Editor Tab
 currentTabA = PL.focusA . tabsA
 
-dynA :: Initializable a => Accessor Editor a
+dynA :: YiVariable a => Accessor Editor a
 dynA = dynamicValueA . dynamicA
 
 -- ---------------------------------------------------------------------
@@ -381,11 +384,11 @@ getRegE = getsA killringA krGet
 --
 
 -- | Retrieve a value from the extensible state
-getDynamic :: Initializable a => EditorM a
+getDynamic :: YiVariable a => EditorM a
 getDynamic = getA (dynamicValueA . dynamicA)
 
 -- | Insert a value into the extensible state, keyed by its type
-setDynamic :: Initializable a => a -> EditorM ()
+setDynamic :: YiVariable a => a -> EditorM ()
 setDynamic x = putA (dynamicValueA . dynamicA) x
 
 -- | Attach the next buffer in the buffer stack to the current window.
@@ -438,6 +441,8 @@ data TempBufferNameHint = TempBufferNameHint
 
 instance Initializable TempBufferNameHint where
     initial = TempBufferNameHint "tmp" 0
+
+instance YiVariable TempBufferNameHint
 
 instance Show TempBufferNameHint where
     show (TempBufferNameHint s i) = s ++ "-" ++ show i
@@ -715,3 +720,6 @@ onCloseBufferE :: BufferRef -> EditorM () -> EditorM ()
 onCloseBufferE b a = do
     modA onCloseActionsA $ M.insertWith' (\_ old_a -> old_a >> a) b a
     
+-- put the template haskell at the end, to avoid 'variable not found' compile errors
+$(derive makeBinary ''TempBufferNameHint)
+

@@ -1,7 +1,11 @@
+{-# LANGUAGE TemplateHaskell #-}
+
 module Data.Trie where
 
 -- Trie module. Partly taken from http://www.haskell.org/haskellwiki/Haskell_Quiz/Word_Search/Solution_Sjanssen
 
+import Data.Binary
+import Data.DeriveTH
 import qualified Data.Map as Map
 import Control.Monad
 
@@ -60,3 +64,5 @@ possibleSuffixes prefix fulltrie =
 certainSuffix :: String -> Trie -> String
 certainSuffix prefix fulltrie =
     lookupPrefix prefix fulltrie >>= forcedNext
+
+$(derive makeBinary ''Trie)

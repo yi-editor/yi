@@ -216,14 +216,13 @@ data Attributes = Attributes
 
 $(nameDeriveAccessors ''Attributes (\n -> Just (n ++ "AA")))
 
--- unfortunately the dynamic stuff can't be read.
 instance Binary Attributes where
-    put (Attributes n b u _bd pc pu selectionStyle_ _proc wm law lst ro ins _pfw) = do
-          put n >> put b >> put u
+    put (Attributes n b u bd pc pu selectionStyle_ _proc wm law lst ro ins _pfw) = do
+          put n >> put b >> put u >> put bd
           put pc >> put pu >> put selectionStyle_ >> put wm
           put law >> put lst >> put ro >> put ins
     get = Attributes <$> get <*> get <*> get <*> 
-          pure emptyDV <*> get <*> get <*> get <*> pure I.End <*> get <*> get <*> get <*> get <*> get <*> pure (const False)
+          get <*> get <*> get <*> get <*> pure I.End <*> get <*> get <*> get <*> get <*> get <*> pure (const False)
 
 instance Binary UTCTime where
     put (UTCTime x y) = put (fromEnum x) >> put (fromEnum y)
@@ -601,7 +600,7 @@ newB unique nm s =
             , bkey__ = unique
             , undos  = emptyU
             , preferCol = Nothing
-            , bufferDynamic = emptyDV 
+            , bufferDynamic = initial 
             , pendingUpdates = []
             , selectionStyle = SelectionStyle False False
             , process = I.End
@@ -974,7 +973,7 @@ gotoLnFrom x = do
 --
 -- > putA bufferDynamicValueA updatedvalue
 -- > value <- getA bufferDynamicValueA
-bufferDynamicValueA :: Initializable a => Accessor FBuffer a
+bufferDynamicValueA :: YiVariable a => Accessor FBuffer a
 bufferDynamicValueA = dynamicValueA . bufferDynamicA
 
 -- | perform a @BufferM a@, and return to the current point. (by using a mark)

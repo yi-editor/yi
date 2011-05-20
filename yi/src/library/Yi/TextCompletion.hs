@@ -32,11 +32,13 @@ newtype Completion = Completion
 --       Point    -- beginning of the thing we try to complete
       [String] -- the list of all possible things we can complete to.
                -- (this seems very inefficient; but we use lazyness to our advantage)
-    deriving Typeable
+    deriving (Typeable, Binary)
 
 -- TODO: put this in keymap state instead
 instance Initializable Completion where
     initial = Completion []
+
+instance YiVariable Completion
 
 -- | Switch out of completion mode.
 resetComplete :: EditorM ()

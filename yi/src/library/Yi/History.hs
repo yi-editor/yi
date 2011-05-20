@@ -1,4 +1,4 @@
-{-# LANGUAGE ScopedTypeVariables, DeriveDataTypeable #-}
+{-# LANGUAGE ScopedTypeVariables, DeriveDataTypeable, TemplateHaskell, FlexibleInstances #-}
 
 -- Copyright (c) 2005,2007,2008 Jean-Philippe Bernardy
 
@@ -7,6 +7,8 @@
 module Yi.History where
 
 import Yi.Buffer
+import Data.Binary
+import Data.DeriveTH
 import Data.List
 import Data.Accessor.Container
 import Yi.Dynamic
@@ -26,6 +28,9 @@ data History = History {_historyCurrent :: Int,
     deriving (Show, Typeable)
 instance Initializable History where
     initial = (History (-1) [] "")
+$(derive makeBinary ''History)
+
+instance YiVariable (M.Map String History)
 
 dynKeyA :: (Initializable v, Ord k) => k -> Accessor (M.Map k v) v
 dynKeyA = mapDefault initial

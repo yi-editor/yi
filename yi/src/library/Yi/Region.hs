@@ -1,4 +1,4 @@
-{-# LANGUAGE DeriveDataTypeable #-}
+{-# LANGUAGE DeriveDataTypeable, TemplateHaskell #-}
 -- Copyright (C) 2008 JP Bernardy
 
 -- | This module defines the Region ADT
@@ -23,6 +23,8 @@ module Yi.Region
 where
 import Yi.Buffer.Basic
 import Data.Typeable
+import Data.Binary
+import Data.DeriveTH
 import Yi.Prelude
 import Prelude ()
 
@@ -32,6 +34,8 @@ import Prelude ()
 data Region = Region {regionDirection :: !Direction,
                       regionStart, regionEnd :: !Point} 
                  deriving (Typeable)
+
+$(derive makeBinary ''Region)
 
 instance Show Region where
     show r = show (regionStart r) ++ 

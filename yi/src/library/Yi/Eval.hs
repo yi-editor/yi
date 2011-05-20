@@ -1,4 +1,4 @@
-{-# LANGUAGE CPP, ScopedTypeVariables, TypeOperators, DeriveDataTypeable #-}
+{-# LANGUAGE CPP, ScopedTypeVariables, TypeOperators, DeriveDataTypeable, GeneralizedNewtypeDeriving #-}
 
 module Yi.Eval (
         -- * Eval\/Interpretation
@@ -16,7 +16,7 @@ import qualified Language.Haskell.Interpreter as LHI
 import System.FilePath
 import System.Directory
 
-import Yi.Core  hiding (toDyn, concatMap)
+import Yi.Core  hiding (concatMap)
 import Yi.Dired
 import Yi.File
 import Yi.Regex
@@ -42,9 +42,10 @@ execEditorAction s = do
        Left err -> errorEditor (show err)
        Right action -> runAction action
 
-data NamesCache = NamesCache [String] deriving Typeable
+newtype NamesCache = NamesCache [String] deriving (Typeable, Binary)
 instance Initializable NamesCache where
     initial = NamesCache []
+instance YiVariable NamesCache
  
 getAllNamesInScope :: YiM [String]
 getAllNamesInScope = do 

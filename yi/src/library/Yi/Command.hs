@@ -55,6 +55,7 @@ shellCommandV cmd = do
 newtype CabalBuffer = CabalBuffer {cabalBuffer :: Maybe BufferRef}
     deriving (Initializable, Typeable, Binary)
 
+instance YiVariable CabalBuffer
 
 ----------------------------
 -- | cabal-configure

@@ -1,4 +1,4 @@
-{-# LANGUAGE DeriveDataTypeable #-}
+{-# LANGUAGE DeriveDataTypeable, TemplateHaskell #-}
 --
 -- Copyright (C) 2008 JP Bernardy
 --
@@ -43,6 +43,8 @@ module Yi.Buffer.Normal (TextUnit(Character, Line, VLine, Document),
                         , regionStyleA
                         ) where
 
+import Prelude(length, subtract)
+import Yi.Prelude
 import Yi.Buffer.Basic
 import Yi.Buffer.Misc
 import Yi.Buffer.Region
@@ -52,6 +54,9 @@ import Data.List (sort)
 import Control.Applicative
 import Control.Monad
 import Data.Accessor (Accessor)
+
+import Data.Binary
+import Data.DeriveTH
 
 -- | Designate a given "unit" of text.
 data TextUnit = Character -- ^ a single character
@@ -404,9 +409,13 @@ data RegionStyle = LineWise
                  | Block
   deriving (Eq, Typeable, Show)
 
+$(derive makeBinary ''RegionStyle)
+
 -- TODO: put in the buffer state proper.
 instance Initializable RegionStyle where
   initial = Inclusive
+
+instance YiVariable RegionStyle
 
 regionStyleA :: Accessor FBuffer RegionStyle
 regionStyleA = bufferDynamicValueA

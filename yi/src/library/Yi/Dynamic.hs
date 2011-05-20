@@ -1,61 +1,148 @@
-{-# LANGUAGE ScopedTypeVariables, MagicHash, ExistentialQuantification #-}
+{-# LANGUAGE ScopedTypeVariables, MagicHash, ExistentialQuantification, GeneralizedNewtypeDeriving, DeriveDataTypeable #-}
 -- Copyright (c) Jean-Philippe Bernardy 2005-2007.
 
 module Yi.Dynamic 
  (
-  Initializable(..),
-  toDyn, fromDynamic, dynamicValueA, emptyDV,
-  Typeable, Dynamic, DynamicValues
+  -- * Nonserializable (\"config\") dynamics
+  YiConfigVariable(..),
+  ConfigVariables, configVariableA,
+  -- * Serializable dynamics
+  YiVariable(..), 
+  DynamicValues, dynamicValueA,
  )
   where
 
 import Prelude ()
 import Yi.Prelude
 
-import GHC.Exts
 import Data.Accessor
-import Data.Maybe
-import Data.Typeable
-import Data.Map as M
--- ---------------------------------------------------------------------
--- | Class of values that can go in the extensible state component
+import Data.Maybe(fromJust)
+import Data.HashMap.Strict as M
+import Data.Monoid
+import Data.ConcreteTypeRep
+import Data.Binary
+import Data.Typeable(Typeable, cast)
+import Data.ByteString.Lazy(ByteString)
+import Data.IORef
+import System.IO.Unsafe(unsafePerformIO)
+import qualified Data.Dynamic as D
+
+--------------------------------- Nonserializable dynamics
+-- | Class of values that can go in a 'ConfigDynamic' or a 'ConfigDynamicValues'.
+-- These will typically go in a 'Config'. As the 'Config' has no mutable state,
+-- there is no need to serialize these values: if needed, they will be set in the
+-- user's configuration file. The 'Initializable' constraint ensures that, even if
+-- the user hasn't customised this config variable, a value is stil available.
+class (Initializable a, Typeable a) => YiConfigVariable a
+
+-- | An \"extensible record\" of 'YiConfigVariable's. Can be constructed and accessed with 'initial' and 'configVariableA'.
 --
+-- This type can be thought of as a record containing /all/ 'YiConfigVariable's in existence.
+newtype ConfigVariables = CV (M.HashMap ConcreteTypeRep D.Dynamic)
+  deriving(Monoid)
 
+instance Initializable ConfigVariables where initial = mempty
 
--- | The default value. If a function tries to get a copy of the state, but the state
---   hasn't yet been created, 'initial' will be called to supply *some* value. The value
---   of initial will probably be something like Nothing,  \[\], \"\", or 'Data.Sequence.empty' - compare 
---   the 'mempty' of "Data.Monoid".
-class (Typeable a) => Initializable a where
-    initial :: a
+-- | Accessor for any 'YiConfigVariable'. Neither reader nor writer can fail:
+-- if the user's config file hasn't set a value for a 'YiConfigVariable',
+-- then the default value is used.
+configVariableA :: forall a. YiConfigVariable a => Accessor ConfigVariables a
+configVariableA = accessor getCV setCV
+  where
+      setCV v (CV m) = CV (M.insert (cTypeOf (undefined :: a)) (D.toDyn v) m)
+      getCV (CV m) = 
+         case M.lookup (cTypeOf (undefined :: a)) m of
+             Nothing -> initial
+             Just x -> fromJust $ D.fromDynamic x
 
--- Unfortunately, this is not serializable: there is no way to recover a type from a TypeRep.
-data Dynamic = forall a. Initializable a => Dynamic a
+-- | Class of values that can go in a 'Dynamic' or a 'DynamicValues'. These are
+-- typically for storing custom state in a 'FBuffer' or an 'Editor'.
+class (Initializable a, Binary a, Typeable a) => YiVariable a
 
--- | An extensible record, indexed by type
-type DynamicValues = M.Map String Dynamic
+--------------------------- Serializable dynamics
+{-
+[Serialization and the use of unsafePerformIO]
+To implement deserialization, we store the value as a ByteString (i.e. in its
+serialized form) until someone tries to read from the Dynamic (at which time we
+have access to the deserializer). To avoid having to repeatedly deserialize when
+reading, we cheat (unsafePerformIO) and cache the deserialized value.
 
-toDyn :: Initializable a => a -> Dynamic
-toDyn = Dynamic
+A pure implementation would be possible if we omitted this caching, which gives
+at least some justification for the impurity.
+-}
 
-fromDynamic :: forall a. Typeable a => Dynamic -> Maybe a
-fromDynamic (Dynamic b) = if typeOf (undefined :: a) == typeOf b then Just (unsafeCoerce# b) else Nothing
+{-
+Currently, we don't export 'Dynamic' as there are no users of it in Yi. It is 
+hard to see where a 'Dynamic' would be preferable to a 'DynamicValues'.
+-}
 
-instance (Typeable a) => Initializable (Maybe a) where
-    initial = Nothing
+-- | Serializable, initializable dynamically-typed values.
+newtype Dynamic = D (IORef DynamicHelper)
+  deriving(Typeable)
 
--- | Accessor for a dynamic component
-dynamicValueA :: Initializable a => Accessor DynamicValues a
+data DynamicHelper
+  = forall a. YiVariable a => Dynamic !a
+  | Serial !ConcreteTypeRep !ByteString
+
+-- | Build a 'Dynamic'
+toDyn :: YiVariable a => a -> Dynamic
+toDyn a = D (unsafePerformIO (newIORef $! Dynamic a))
+
+-- | Try to extract a value from the 'Dynamic'.
+fromDynamic :: forall a. YiVariable a => Dynamic -> Maybe a
+fromDynamic (D r) = unsafePerformIO (readIORef r >>= f) where
+   f (Dynamic b) = return $ cast b
+   f (Serial tr bs) = 
+      if cTypeOf (undefined :: a) == tr 
+      then do
+          let b = decode bs
+          writeIORef r (Dynamic b)
+          return (Just b)
+      else return Nothing
+
+-- | Converts a dynamic to a serializable value
+toSerialRep :: Dynamic -> (ConcreteTypeRep, ByteString)
+toSerialRep (D r) = 
+  case unsafePerformIO (readIORef r) of
+      Dynamic a -> (cTypeOf a, encode a)
+      Serial ctr bs -> (ctr, bs)
+
+-- | Converts a serializable value to a dynamic.
+fromSerialRep :: (ConcreteTypeRep, ByteString) -> Dynamic
+fromSerialRep (ctr, bs) = D (unsafePerformIO (newIORef (Serial ctr bs)))
+
+instance Binary Dynamic where
+    put = put . toSerialRep
+    get = fromSerialRep <$> get
+
+---------------------- Dynamic records
+-- | An extensible record, indexed by type.
+newtype DynamicValues = DV (M.HashMap ConcreteTypeRep Dynamic)
+  deriving(Typeable, Monoid)
+
+-- | Accessor for a dynamic component. If the component is not found, the value 'initial' is used.
+dynamicValueA :: forall a. YiVariable a => Accessor DynamicValues a
 dynamicValueA = accessor getDynamicValue setDynamicValue
     where
-      setDynamicValue :: forall a. Initializable a => a -> DynamicValues -> DynamicValues
-      setDynamicValue v = M.insert (show $ typeOf (undefined::a)) (toDyn v)
+      setDynamicValue :: a -> DynamicValues -> DynamicValues
+      setDynamicValue v (DV dv) = DV (M.insert (cTypeOf (undefined :: a)) (toDyn v) dv)
 
-      getDynamicValue :: forall a. Initializable a => DynamicValues -> a
-      getDynamicValue dv = case M.lookup (show $ typeOf (undefined::a)) dv of
-                             Nothing -> initial
-                             Just x -> fromJust $ fromDynamic x
+      getDynamicValue :: DynamicValues -> a
+      getDynamicValue (DV dv) = case M.lookup (cTypeOf (undefined::a)) dv of
+                                   Nothing -> initial
+                                   Just x -> fromJust $ fromDynamic x
 
--- | The empty record
-emptyDV :: DynamicValues
-emptyDV = M.empty
+instance Binary DynamicValues where
+    put (DV dv) = put dv
+    get = DV <$> get
+
+instance Initializable DynamicValues where  initial = mempty
+
+
+{-
+TODO: since a 'DynamicValues' is now serialisable, it could potentially
+exist for a long time (days/months?). No operations are provided to remove
+entries from a 'DynamicValues'. If these start accumulating a lot of junk,
+it may be necessary to prune them (perhaps keep track of access date for
+'YiVariable's and remove the ones more than a month old?).
+-}

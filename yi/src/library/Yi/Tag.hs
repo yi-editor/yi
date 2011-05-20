@@ -33,16 +33,18 @@ import Data.List.Split (splitOn)
 
 import Data.Typeable
 import qualified Data.Trie as Trie
+import Data.Binary
+import Data.DeriveTH
 
 newtype Tags  = Tags (Maybe TagTable) deriving Typeable
 instance Initializable Tags where
     initial = Tags Nothing
-
+instance YiVariable Tags
 
 newtype TagsFileList  = TagsFileList [FilePath] deriving Typeable
 instance Initializable TagsFileList where
     initial = TagsFileList ["tags"]
-
+instance YiVariable TagsFileList
 
 type Tag = String
 
@@ -123,3 +125,6 @@ getTagsFileList :: EditorM [FilePath]
 getTagsFileList = do 
   TagsFileList fps <- getDynamic
   return fps
+
+-- template haskell at the end to avoid 'not found' compilation errors
+$(derives [makeBinary] [''Tags, ''TagTable, ''TagsFileList])

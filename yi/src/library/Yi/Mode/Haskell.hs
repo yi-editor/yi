@@ -344,6 +344,7 @@ autoIndentHaskellB =
 newtype GhciBuffer = GhciBuffer {_ghciBuffer :: Maybe BufferRef}
     deriving (Initializable, Typeable, Binary)
 
+instance YiVariable GhciBuffer
 -- | Start GHCi in a buffer
 ghci :: YiM BufferRef
 ghci = do 

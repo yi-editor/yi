@@ -9,6 +9,7 @@ import Yi.Config.Misc
 import {-# source #-} Yi.Keymap
 import {-# source #-} Yi.Editor
 import Data.Dynamic
+import Yi.Dynamic(ConfigVariables)
 import Yi.Event
 import Yi.Style
 import Yi.Style.Library
@@ -59,8 +60,9 @@ data Config = Config {startFrontEnd :: UIBoot,
                       -- ^ Set to 'True' for an emacs-like behaviour, where 
                       -- all deleted text is accumulated in a killring.
                       bufferUpdateHandler :: [([Update] -> BufferM ())],
-                      layoutManagers :: [AnyLayoutManager]
+                      layoutManagers :: [AnyLayoutManager],
                       -- ^ List of layout managers for 'cycleLayoutManagersNext'
+                      configVars :: ConfigVariables
                      }
 
 configFundamentalMode :: Config -> AnyMode

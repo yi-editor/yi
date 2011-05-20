@@ -46,6 +46,7 @@ abellaModeEmacs = abellaModeGen (\ch -> [ctrlCh 'c', ctrlCh ch])
 
 newtype AbellaBuffer = AbellaBuffer {_abellaBuffer :: Maybe BufferRef}
     deriving (Initializable, Typeable, Binary)
+instance YiVariable AbellaBuffer
 
 getProofPointMark :: BufferM Mark
 getProofPointMark = getMarkB $ Just "p"

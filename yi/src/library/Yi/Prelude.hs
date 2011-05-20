@@ -5,7 +5,9 @@ module Yi.Prelude
 (<>),
 (++), -- consider scrapping this and replacing it by the above
 (=<<),
+($!),
 Double,
+Binary,
 Char,
 Either(..),
 Endom,
@@ -13,6 +15,7 @@ Eq(..),
 Fractional(..),
 Functor(..),
 IO,
+Initializable(..),
 Integer,
 Integral(..),
 Bounded(..),
@@ -27,8 +30,11 @@ RealFrac(..),
 ReaderT(..),
 SemiNum(..),
 String,
+Typeable,
 commonPrefix,
 discard,
+dummyPut,
+dummyGet,
 every,
 findPL,
 fromIntegral,
@@ -82,14 +88,18 @@ import Yi.Monad
 import qualified Data.Accessor.Basic
 import Text.Show
 import Data.Bool
+import Data.Binary
 import Data.Foldable
 import Data.Function hiding ((.), id)
+import qualified Data.HashMap.Strict as HashMap
+import Data.Hashable(Hashable)
 import Data.Int
 import Data.Rope (Rope)
 import Control.Category
 import Control.Monad.Reader
 import Control.Applicative
 import Data.Traversable 
+import Data.Typeable
 import Control.Monad
 import Data.Monoid
 import qualified Data.Set as Set
@@ -238,4 +248,28 @@ getA = Accessor.FD.get
 
 modA :: CMSC.MonadState r m => Accessor.T r a -> (a -> a) -> m ()
 modA = Accessor.FD.modify
+
+-------------------- Initializable typeclass
+-- | The default value. If a function tries to get a copy of the state, but the state
+--   hasn't yet been created, 'initial' will be called to supply *some* value. The value
+--   of initial will probably be something like Nothing,  \[\], \"\", or 'Data.Sequence.empty' - compare 
+--   the 'mempty' of "Data.Monoid".
+class Initializable a where
+    initial :: a
+
+instance Initializable (Maybe a) where
+    initial = Nothing
+
+-- | Write nothing. Use with 'dummyGet'
+dummyPut :: a -> Put
+dummyPut _ = return ()
+
+-- | Read nothing, and return 'initial'. Use with 'dummyPut'.
+dummyGet :: Initializable a => Get a
+dummyGet = return initial
+
+----------------- Orphan 'Binary' instances
+instance (Eq k, Hashable k, Binary k, Binary v) => Binary (HashMap.HashMap k v) where
+    put x = put (HashMap.toList x)
+    get = HashMap.fromList <$> get
 

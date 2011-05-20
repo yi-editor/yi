@@ -1,4 +1,4 @@
-{-# LANGUAGE RelaxedPolyRec, FlexibleContexts, DeriveDataTypeable, TemplateHaskell, CPP, PatternGuards #-}
+{-# LANGUAGE RelaxedPolyRec, FlexibleContexts, DeriveDataTypeable, TemplateHaskell, CPP, PatternGuards, GeneralizedNewtypeDeriving, FlexibleInstances #-}
 
 -- Copyright (c) 2004-5 Don Stewart - http://www.cse.unsw.edu.au/~dons
 -- Copyright (c) 2008 Nicolas Pouillard
@@ -39,7 +39,9 @@ module Yi.Keymap.Vim (keymapSet,
                       ) where
 
 import Prelude (maybe, length, filter, map, drop, break, uncurry, reads)
+import Yi.Prelude
 
+import Data.Binary
 import Data.Char
 import Data.List (nub, take, words, dropWhile, takeWhile, intersperse, reverse)
 import Data.Maybe (fromMaybe, isJust)
@@ -132,8 +134,13 @@ data ViCmd = ArbCmd !(Int -> YiM ()) !Int
            | NoOp
   deriving (Typeable)
 
+instance Binary ViCmd where
+    put = dummyPut
+    get = dummyGet
+
 instance Initializable ViCmd where
   initial = NoOp
+instance YiVariable ViCmd
 
 data ViInsertion = ViIns { viActFirst  :: Maybe (EditorM ()) -- ^ The action performed first
                          , viActBefore :: BufferM () -- ^ The action performed before insertion
@@ -143,7 +150,16 @@ data ViInsertion = ViIns { viActFirst  :: Maybe (EditorM ()) -- ^ The action per
                          }
   deriving (Typeable)
 
+newtype MViInsertion = MVI { unMVI :: Maybe ViInsertion }
+  deriving(Typeable, Initializable)
+
+instance Binary MViInsertion where
+    put = dummyPut
+    get = dummyGet
+instance YiVariable MViInsertion
+
 $(nameDeriveAccessors ''ViInsertion $ Just.(++ "A"))
+$(nameDeriveAccessors ''MViInsertion $ Just.(++ "_A"))
 
 data VimOpts = VimOpts { tildeop :: Bool
                        , completeCaseSensitive :: Bool
@@ -158,10 +174,12 @@ data VimExCmd = VimExCmd { cmdNames :: [String]
 type VimExCmdMap = [VimExCmd] -- very simple implementation yet
 
 newtype VimTagStack = VimTagStack { tagsStack :: [(FilePath, Point)] }
-    deriving (Typeable)
+    deriving (Typeable, Binary)
 
 instance Initializable VimTagStack where
     initial = VimTagStack []
+
+instance YiVariable VimTagStack
 
 getTagStack :: EditorM VimTagStack
 getTagStack = getDynamic
@@ -214,7 +232,7 @@ lastViCommandA :: Accessor Editor ViCmd
 lastViCommandA = dynA
 
 currentViInsertionA :: Accessor FBuffer (Maybe ViInsertion)
-currentViInsertionA = bufferDynamicValueA
+currentViInsertionA = unMVI_A . bufferDynamicValueA
 
 applyViCmd :: Maybe Int -> ViCmd -> YiM ()
 applyViCmd _  NoOp = return ()

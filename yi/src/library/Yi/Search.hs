@@ -54,7 +54,6 @@ import Data.Char
 import Data.Maybe
 import Data.Either
 import Data.List (span, takeWhile, take, length)
-
 import Yi.Core
 import Yi.Core as Editor
 import Yi.History
@@ -195,7 +194,8 @@ searchAndRepUnit re str g unit = searchAndRepRegion re str g =<< (withBuffer0 $ 
 -- Incremental search
 
 
-newtype Isearch = Isearch [(String, Region, Direction)] deriving Typeable
+newtype Isearch = Isearch [(String, Region, Direction)] 
+  deriving (Typeable, Binary)
 -- This contains: (string currently searched, position where we
 -- searched it, direction, overlay for highlighting searched text)
 
@@ -204,6 +204,8 @@ newtype Isearch = Isearch [(String, Region, Direction)] deriving Typeable
 
 instance Initializable Isearch where
     initial = (Isearch [])
+
+instance YiVariable Isearch
 
 isearchInitE :: Direction -> EditorM ()
 isearchInitE dir = do

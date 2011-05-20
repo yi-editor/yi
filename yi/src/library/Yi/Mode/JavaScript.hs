@@ -17,7 +17,7 @@ import Yi.Buffer.Misc (Mode(..), BufferM, IndentBehaviour, file, pointAt, shiftW
 import Yi.Core ( (.), Mode, emptyMode, modeApplies, modeName
                , modeToggleCommentSelection, toggleCommentSelectionB, modeHL
                , Char, modeGetStrokes, ($), withSyntax )
-import Yi.Dynamic (Initializable)
+import Yi.Dynamic
 -- import Yi.Debug (traceM, traceM_)
 import Yi.Editor (withEditor, withOtherWindow, getDynamic, stringToNewBuffer
                  , findBuffer, switchToBufferE)
@@ -90,7 +90,9 @@ hooks mode = mode
   }
 
 newtype JSBuffer = JSBuffer (Maybe BufferRef)
-    deriving (Initializable, Typeable)
+    deriving (Initializable, Typeable, Binary)
+
+instance YiVariable JSBuffer
 
 -- | The "compiler."
 jsCompile :: Tree TT -> YiM ()

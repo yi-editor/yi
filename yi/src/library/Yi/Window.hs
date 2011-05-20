@@ -6,11 +6,13 @@
 --
 
 module Yi.Window where
+
+import qualified Prelude
+import Yi.Prelude
 import Data.Binary
 import Data.Typeable
 import Yi.Buffer.Basic (BufferRef, WindowRef)
 import Yi.Region (Region,emptyRegion)
-import Yi.Dynamic(Initializable(..))
 import Control.Applicative
 
 ------------------------------------------------------------------------
