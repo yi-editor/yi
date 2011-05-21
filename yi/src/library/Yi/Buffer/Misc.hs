@@ -94,6 +94,20 @@ module Yi.Buffer.Misc
   , clearSyntax
   , focusSyntax
   , Mode (..)
+  , modeNameA
+  , modeAppliesA
+  , modeHLA
+  , modePrettifyA
+  , modeKeymapA
+  , modeIndentA
+  , modeAdjustBlock
+  , modeFollowA
+  , modeIndentSettingsA
+  , modeToggleCommentSelection
+  , modeGetStrokesA
+  , modeGetAnnotationsA
+  , modePrintTreeA
+  , modeOnLoadA
   , AnyMode (..)
   , IndentBehaviour (..)
   , IndentSettings (..)
@@ -1003,3 +1017,5 @@ pointAt f = savingPointB (f *> pointB)
 
 askWindow :: (Window -> a) -> BufferM a
 askWindow = asks
+
+$(nameDeriveAccessors ''Mode (\n -> Just (n ++ "A")))

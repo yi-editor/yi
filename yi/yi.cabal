@@ -86,6 +86,7 @@ library
     Yi.Config
     Yi.Config.Default
     Yi.Config.Misc
+    Yi.Config.Simple
     Yi.Core
     Yi.Debug
     Yi.Dired

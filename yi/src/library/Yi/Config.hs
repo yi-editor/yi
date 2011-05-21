@@ -1,7 +1,10 @@
+{-# LANGUAGE TemplateHaskell #-}
+
 module Yi.Config where
 
 import qualified Data.Map as M
 import Data.Prototype
+import Data.Accessor.Template
 
 import Yi.Buffer
 import Yi.Layout
@@ -63,6 +66,7 @@ data Config = Config {startFrontEnd :: UIBoot,
                       layoutManagers :: [AnyLayoutManager],
                       -- ^ List of layout managers for 'cycleLayoutManagersNext'
                       configVars :: ConfigVariables
+                      -- ^ Custom configuration, containing the 'YiConfigVariable's. Configure with 'configVariableA'.
                      }
 
 configFundamentalMode :: Config -> AnyMode
@@ -72,3 +76,6 @@ configTopLevelKeymap :: Config -> Keymap
 configTopLevelKeymap = extractTopKeymap . defaultKm
 
 type UIBoot = Config -> (Event -> IO ()) -> ([Action] -> IO ()) ->  Editor -> IO UI
+
+$(nameDeriveAccessors ''Config (\n -> Just (n ++ "A")))
+$(nameDeriveAccessors ''UIConfig (\n -> Just (n ++ "A")))
