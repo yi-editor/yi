@@ -20,7 +20,7 @@ realMain config = do
 
 showErrorsInConf :: Config -> String -> Config
 showErrorsInConf conf errs
-    = conf { initialActions = (makeAction $ newBufferE (Left "*errors*") (R.fromString errs)) : initialActions conf }
+    = conf { initialActions = (makeAction $ splitE >> newBufferE (Left "*errors*") (R.fromString errs)) : initialActions conf }
 
 yi, yiDriver :: Config -> IO ()
 
