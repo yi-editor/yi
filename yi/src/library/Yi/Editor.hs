@@ -439,11 +439,6 @@ data TempBufferNameHint = TempBufferNameHint
     , tmp_name_index :: Int
     } deriving Typeable
 
-instance Initializable TempBufferNameHint where
-    initial = TempBufferNameHint "tmp" 0
-
-instance YiVariable TempBufferNameHint
-
 instance Show TempBufferNameHint where
     show (TempBufferNameHint s i) = s ++ "-" ++ show i
 
@@ -722,4 +717,13 @@ onCloseBufferE b a = do
     
 -- put the template haskell at the end, to avoid 'variable not found' compile errors
 $(derive makeBinary ''TempBufferNameHint)
+
+-- For GHC 7.0 with template-haskell 2.5 (at least on my computer - coconnor) the Binary instance
+-- needs to be defined before the YiVariable instance. 
+--
+-- GHC 7.1 does not appear to have this issue.
+instance Initializable TempBufferNameHint where
+    initial = TempBufferNameHint "tmp" 0
+
+instance YiVariable TempBufferNameHint
 

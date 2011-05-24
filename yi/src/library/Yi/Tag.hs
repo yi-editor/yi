@@ -38,12 +38,10 @@ import Data.DeriveTH
 newtype Tags  = Tags (Maybe TagTable) deriving Typeable
 instance Initializable Tags where
     initial = Tags Nothing
-instance YiVariable Tags
 
 newtype TagsFileList  = TagsFileList [FilePath] deriving Typeable
 instance Initializable TagsFileList where
     initial = TagsFileList ["tags"]
-instance YiVariable TagsFileList
 
 type Tag = String
 
@@ -127,3 +125,12 @@ getTagsFileList = do
 
 -- template haskell at the end to avoid 'not found' compilation errors
 $(derives [makeBinary] [''Tags, ''TagTable, ''TagsFileList])
+
+-- For GHC 7.0 with template-haskell 2.5 (at least on my computer - coconnor) the Binary instance
+-- needs to be defined before the YiVariable instance. 
+--
+-- GHC 7.1 does not appear to have this issue.
+instance YiVariable Tags
+
+instance YiVariable TagsFileList
+
