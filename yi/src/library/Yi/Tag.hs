@@ -31,7 +31,6 @@ import System.FriendlyPath
 import Data.Map (Map, fromList, lookup, keys)
 import Data.List.Split (splitOn)
 
-import Data.Typeable
 import qualified Data.Trie as Trie
 import Data.Binary
 import Data.DeriveTH

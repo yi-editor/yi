@@ -14,7 +14,6 @@ import Yi.Prelude
 import Prelude ()
 import Data.Monoid
 import Data.DeriveTH
-import Data.Derive.Foldable
 import Data.Maybe
 import Data.List (filter, takeWhile)
 import qualified Data.Foldable
@@ -24,7 +23,7 @@ indentScanner :: Scanner (AlexState lexState) (TT)
 indentScanner = layoutHandler startsLayout [(Special '(', Special ')'),
                                             (Special '[', Special ']'),
                                             (Special '{', Special '}')] ignoredToken
-                         (fmap Special ['<', '>', '.']) isBrace
+                         (Special '<', Special '>', Special '.') isBrace
 
 -- HACK: We insert the Special '<', '>', '.', that don't occur in normal haskell
 -- parsing.
@@ -52,8 +51,8 @@ data Tree t
 $(derive makeFoldable ''Tree)
 instance IsTree Tree where
     emptyNode = Expr []
-    uniplate (Paren l g r) = (g,\g -> Paren l g r)
-    uniplate (Expr g) = (g,\g -> Expr g)
+    uniplate (Paren l g r) = (g,\g' -> Paren l g' r)
+    uniplate (Expr g) = (g,\g' -> Expr g')
     uniplate (Block s) = (s,\s' -> Block s')
     uniplate t = ([],\_ -> t)
 
@@ -99,7 +98,7 @@ parse :: P TT (Tree TT)
 parse = Expr <$> parse' tokT tokFromT
 
 parse' :: (TT -> Token) -> (Token -> TT) -> P TT [Tree TT]
-parse' toTok fromT = pExpr <* eof
+parse' toTok _ = pExpr <* eof
     where 
       -- | parse a special symbol
       sym c = symbol (isSpecial [c] . toTok)
@@ -160,6 +159,7 @@ tokenToAnnot = sequenceA . tokToSpan . fmap tokenToText
 -- | Create a special error token. (e.g. fill in where there is no correct token to parse)
 -- Note that the position of the token has to be correct for correct computation of 
 -- node spans.
+errTok :: Parser (Tok t) (Tok Token)
 errTok = mkTok <$> curPos
    where curPos = tB <$> lookNext
          tB Nothing = maxBound

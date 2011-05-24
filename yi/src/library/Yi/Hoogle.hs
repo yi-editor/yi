@@ -10,7 +10,6 @@ import System.Exit (ExitCode(ExitFailure))
 
 import Yi.Core
 import Yi.Process (runProgCommand)
-import Yi.Buffer (replaceRegionB, unitWord)
 
 -- | Remove anything starting with uppercase letter. These denote either module names or types.
 caseSensitize :: [String] -> [String]

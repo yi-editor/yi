@@ -51,9 +51,7 @@ import Yi.Buffer.Region
 import Yi.Dynamic
 import Data.Char
 import Data.List (sort)
-import Control.Applicative
 import Control.Monad
-import Data.Accessor (Accessor)
 
 import Data.Binary
 import Data.DeriveTH

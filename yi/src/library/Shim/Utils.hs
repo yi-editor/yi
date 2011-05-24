@@ -48,7 +48,7 @@ processGetContents :: FilePath -> [String] -> IO String
 processGetContents cmd args = do
   (_,out,_,pid) <- runInteractiveProcess cmd args Nothing Nothing
   s <- hGetContents out
-  waitForProcess pid
+  _ <- waitForProcess pid
   return s
 
 recurseDir :: (Monad m) => (FilePath -> m (Maybe a)) -> FilePath -> m (Maybe a)

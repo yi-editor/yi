@@ -7,7 +7,6 @@ import Yi.File (editFile)
 import Yi.Lexer.Alex (Tok(..), Posn(..))
 import Yi.Style
 import Yi.Modes (linearSyntaxMode)
-import qualified Yi.Lexer.Alex as Alex
 import qualified Yi.Lexer.Compilation         as Compilation
 import qualified Yi.Syntax.OnlineTree as OnlineTree
 
@@ -26,9 +25,9 @@ mode = (linearSyntaxMode Compilation.initState Compilation.alexScanToken tokenTo
                  Just (t@Tok {tokT = Compilation.Report filename line col _message}) -> do
                      withBuffer $ moveTo $ posnOfs $ tokPosn $ t
                      shiftOtherWindow
-                     editFile filename
+                     discard $ editFile filename
                      withBuffer $ do 
-                         gotoLn line
+                         discard $ gotoLn line
                          rightN col
                  _ -> return ()
 

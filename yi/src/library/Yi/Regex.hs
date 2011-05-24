@@ -1,4 +1,5 @@
 {-# LANGUAGE FlexibleContexts, TemplateHaskell #-}
+{-# OPTIONS_GHC -fno-warn-incomplete-patterns #-} -- uniplate uses incomplete patterns
 -- Copyright (c) Jean-Philippe Bernardy 2008
 module Yi.Regex 
   (

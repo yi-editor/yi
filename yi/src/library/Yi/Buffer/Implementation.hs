@@ -77,9 +77,10 @@ data OvlLayer = UserLayer | HintLayer
   deriving (Ord, Eq)
 data Overlay = Overlay {
                         overlayLayer :: OvlLayer,
-                        overlayBegin :: MarkValue,
-                        overlayEnd :: MarkValue,
-                        overlayStyle :: StyleName
+                        -- underscores to avoid 'defined but not used'. Remove if desired
+                        _overlayBegin :: MarkValue,
+                        _overlayEnd :: MarkValue,
+                        _overlayStyle :: StyleName
                        }
 instance Eq Overlay where
     Overlay a b c _ == Overlay a' b' c' _ = a == a' && b == b' && c == c'

@@ -22,7 +22,6 @@ import Yi.UI.Common
 import qualified Data.Map as M
 import qualified Yi.Editor as Editor
 import qualified Yi.Interact as I
-import qualified Yi.UI.Common as UI
 import Data.Accessor.Template
 
 data Action = forall a. Show a => YiA (YiM a)
@@ -91,6 +90,7 @@ instance MonadEditor YiM where
 write :: (I.MonadInteract m Action ev, YiAction a x, Show x) => a -> m ()
 write x = I.write (makeAction x)
 
+write' :: (I.MonadInteract m Action e, YiAction a x, Show x) => String -> a -> m ()
 write' s x = I.write (TaggedA s (makeAction x))
 
 --------------------------------

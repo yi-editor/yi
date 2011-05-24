@@ -21,14 +21,12 @@ import Control.Monad.Reader (asks)
 import Data.Maybe
 import Data.Time
 import Control.Monad.Trans
-import Control.Monad.State (gets)
 import System.Directory
 import System.IO.UTF8 as UTF8
 import System.FilePath
 import System.FriendlyPath
 import qualified Data.Rope as R
 
-import Yi.Buffer (file)
 import Yi.Config
 import Yi.Core
 import Yi.Dired

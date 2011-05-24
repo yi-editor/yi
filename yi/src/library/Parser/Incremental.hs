@@ -16,7 +16,6 @@ module Parser.Incremental (Process,
                           ) where
 
 import Control.Applicative
-import Data.List hiding (map, minimumBy)
 import Data.Tree
 
 -- Local versions of our Control.Arrow friends (also make sure they are lazy enough)

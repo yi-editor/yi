@@ -21,11 +21,9 @@ import Data.String (IsString)
 import Yi.Config
 import Yi.Core
 import Yi.History
-import Yi.Completion (commonPrefix, infixMatch, prefixMatch, containsMatch', completeInList, completeInList')
+import Yi.Completion (infixMatch, prefixMatch, containsMatch', completeInList, completeInList')
 import Yi.Style (defaultStyle)
-import Yi.Window ( wkey )
 import qualified Yi.Core as Editor
-import Control.Monad.Reader
 import qualified Data.Rope as R
 
 -- | Open a minibuffer window with the given prompt and keymap
@@ -130,7 +128,7 @@ withMinibufferGen proposal getHint prompt completer act = do
   showMatchingsOf ""
   withEditor $ do 
       historyStartGen prompt
-      spawnMinibufferE (prompt ++ " ") (\bindings -> rebindings <|| (bindings >> write showMatchings))
+      discard $ spawnMinibufferE (prompt ++ " ") (\bindings -> rebindings <|| (bindings >> write showMatchings))
       withBuffer0 $ replaceBufferContent proposal
 
 

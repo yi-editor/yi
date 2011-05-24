@@ -5,6 +5,8 @@
 -- already configured Cabal package.
 --
 
+-- TODO: much of this module was commented out to avoid 'defined but not used' warnings. The commented functions should either be exported or removed.
+
 module Shim.ProjectContent
          ( {- loadProject
          , -} itemName
@@ -14,23 +16,21 @@ module Shim.ProjectContent
          , ModuleKind(..)
          ) where
 
+{-
 import Control.Monad.State
 import Data.Tree
 import Data.Tree.Zipper
 import qualified Data.Set as Set
-import Data.List (partition)
+import Distribution.PackageDescription
+import Distribution.Simple.Utils(findFileWithExtension')
+import Distribution.Simple.PreProcess(knownSuffixHandlers)
+import System.FilePath
+import System.Directory
+-}
 import Distribution.ModuleName
 import Distribution.Version
 import Distribution.Package
-import Distribution.PackageDescription
-import Distribution.Simple.LocalBuildInfo
-import Distribution.Simple.Configure
-import Distribution.Simple.Utils(findFileWithExtension')
-import Distribution.Simple.PreProcess(knownSuffixHandlers)
-import Distribution.Simple.Setup (defaultDistPref)
 import Distribution.Text
-import System.FilePath
-import System.Directory
 
 data ProjectItem
   = ProjectItem
@@ -112,6 +112,7 @@ loadProject projPath = do
   return (tree tloc5, tree tloc6)
 -}
 
+{-
 getTop :: Tree a -> TreeLoc a
 getTop = fromTree
 
@@ -124,20 +125,28 @@ up = modify' parent
 modify' :: (a -> Maybe a) -> State a ()
 modify' f = modify (\x -> maybe (error "impossible movement!") id (f x))
 
-
+addLibraryTree :: FilePath
+               -> (Set.Set ProjectItem, TreeLoc ProjectItem)
+               -> Library
+               -> IO (Set.Set ProjectItem, TreeLoc ProjectItem)
 addLibraryTree projPath (mod_items,tloc) (Library {libBuildInfo=binfo, exposedModules=exp_mods}) = do
-  (exp_mods,hid_mods,mod_items1,tloc1) <- foldM (\st dir -> addSourceDir projPath dir st)
+  (_exp_mods,_hid_mods,mod_items1,tloc1) <- foldM (\st dir -> addSourceDir projPath dir st)
                                                 (exp_mods,otherModules binfo,mod_items,tloc)
                                                 (hsSourceDirs binfo)
   return $ (mod_items1,execState (mapM_ (addFilePath CSource projPath) (cSources binfo)) tloc1)
   
+addExecutableTree :: FilePath
+                  -> (Set.Set ProjectItem, TreeLoc ProjectItem)
+                  -> Executable
+                  -> IO (Set.Set ProjectItem, TreeLoc ProjectItem)
 addExecutableTree projPath (mod_items,tloc) (Executable {modulePath=mainIs, buildInfo=binfo}) = do
   let tloc1 = execState (addFilePath (HsSource ExposedModule) projPath mainIs) tloc
-  (exp_mods,hid_mods,mod_items2,tloc2) <- foldM (\st dir -> addSourceDir projPath dir st)
+  (_exp_mods,_hid_mods,mod_items2,tloc2) <- foldM (\st dir -> addSourceDir projPath dir st)
                                                 ([],otherModules binfo,mod_items,tloc1)
                                                 (hsSourceDirs binfo)
   return $ (mod_items2,execState (mapM_ (addFilePath CSource projPath) (cSources binfo)) tloc2)
 
+addDependenciesTree :: [PackageIdentifier] -> State (TreeLoc ProjectItem) ()
 addDependenciesTree deps = do
   insertDown (DependenciesItem "Dependencies")
   mapM_ addDependency deps
@@ -156,8 +165,8 @@ addSourceDir projPath srcDir (exp_mods,hid_mods,mod_items,tloc) = do
   (exp_paths,exp_mods) <- findModules dir exp_mods
   (hid_paths,hid_mods) <- findModules dir hid_mods
   let tloc1 = execState (addFilePath' (\c -> FolderItem c HsSourceFolder) (splitPath' srcDir)
-                            (mapM_ (\(mod,loc) -> addFilePath (HsSource ExposedModule) dir loc) exp_paths >>
-                             mapM_ (\(mod,loc) -> addFilePath (HsSource HiddenModule)  dir loc) hid_paths))
+                            (mapM_ (\(_mod,loc) -> addFilePath (HsSource ExposedModule) dir loc) exp_paths >>
+                             mapM_ (\(_mod,loc) -> addFilePath (HsSource HiddenModule)  dir loc) hid_paths))
                         tloc
       mod_items1 = foldr (\(mod,loc) -> Set.insert (ModuleItem mod (dir </> loc) ExposedModule)) mod_items  exp_paths
       mod_items2 = foldr (\(mod,loc) -> Set.insert (ModuleItem mod (dir </> loc) HiddenModule )) mod_items1 hid_paths
@@ -169,7 +178,7 @@ addFilePath kind root fpath = addFilePath' (\c -> FileItem c (root </> fpath) ki
 addFilePath' :: (String -> ProjectItem) -> [String] 
              -> State (TreeLoc ProjectItem) ()
              -> State (TreeLoc ProjectItem) ()
-addFilePath' mkItem []     cont = cont
+addFilePath' _      []     cont = cont
 addFilePath' mkItem (c:cs) cont
   | c == "."  = addFilePath' mkItem cs cont
   | otherwise = do let item | null cs   = mkItem c
@@ -192,8 +201,10 @@ addFilePath' mkItem (c:cs) cont
                    then modify $ insertRight $ simpleNode item
                    else modify' right >> insertItem c item
 
+simpleNode :: a -> Tree a
 simpleNode item = Node item []
 
+splitPath' :: FilePath -> [String]
 splitPath' fpath = [removeSlash c | c <- splitPath fpath]
   where
     removeSlash c
@@ -201,6 +212,7 @@ splitPath' fpath = [removeSlash c | c <- splitPath fpath]
       | isPathSeparator (last c) = init c
       | otherwise                = c
 
+checkAndAddFile :: FilePath -> FilePath -> FileKind -> TreeLoc ProjectItem -> IO (TreeLoc ProjectItem)
 checkAndAddFile projPath fpath kind tloc = do
   let fullPath = projPath </> fpath
   exists <- doesFileExist fullPath
@@ -215,7 +227,7 @@ checkAndAddFile projPath fpath kind tloc = do
 findModules :: FilePath                           -- ^source directory location
             -> [ModuleName]                           -- ^module names
             -> IO ([(ModuleName,FilePath)],[ModuleName])  -- ^found modules and unknown modules
-findModules location []         = return ([],[])
+findModules _        []         = return ([],[])
 findModules location (mod:mods) = do
   mb_paths <- findFileWithExtension' (map fst knownSuffixHandlers ++ ["hs", "lhs"]) [location] (toFilePath mod)
   (locs,unks) <- findModules location mods
@@ -230,3 +242,4 @@ findFirstFile file = findFirst
                               if exists
                                 then return (Just x)
                                 else findFirst xs
+-}

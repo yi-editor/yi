@@ -57,10 +57,8 @@ module Yi.Buffer.Undo (
   , Change(AtomicChange, InteractivePoint)
    ) where
 
-import Control.Monad (ap)
 import Data.Binary
 import Data.DeriveTH
-import Data.Derive.Binary
 import Yi.Buffer.Implementation            
 
 data Change = SavedFilePoint

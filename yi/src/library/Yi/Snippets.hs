@@ -1,6 +1,7 @@
 {-# LANGUAGE DeriveDataTypeable, FlexibleContexts, FlexibleInstances,
     FunctionalDependencies, GeneralizedNewtypeDeriving, MultiParamTypeClasses,
     NoMonomorphismRestriction, TypeSynonymInstances, TemplateHaskell #-}
+{-# OPTIONS_GHC -fno-warn-missing-signatures -fno-warn-incomplete-patterns -fno-warn-name-shadowing #-}
 module Yi.Snippets where
 
 import Prelude ()
@@ -141,7 +142,7 @@ runSnippet deleteLast s = do
         moveToNextBufferMark deleteLast
     return a
   where
-    len1 (x:[]) = True
+    len1 (_:[]) = True
     len1 _      = False
     
     belongTogether a b = userIndex a == userIndex b
@@ -213,7 +214,7 @@ withSimpleRegion (SimpleMarkInfo _ s) f = do
       then return $ mkRegion p p  -- return empty region
       else f =<< regionOfPartNonEmptyAtB unitViWordOnLine Forward p
         
-markRegion m@(SimpleMarkInfo _ s) = withSimpleRegion m $ \r -> do
+markRegion m@SimpleMarkInfo{} = withSimpleRegion m $ \r -> do
     os <- findOverlappingMarksWith safeMarkRegion concat True r m
     rOs <- mapM safeMarkRegion os
     return . mkRegion (regionStart r) $ foldl' minEnd (regionEnd r) rOs

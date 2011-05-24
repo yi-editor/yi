@@ -17,7 +17,6 @@ import System.FilePath
 import System.Directory
 
 import Yi.Core  hiding (concatMap)
-import Yi.Dired
 import Yi.File
 import Yi.Regex
 
@@ -72,7 +71,7 @@ flattenExport (LHI.Data _ xs) = xs
 
 jumpToE :: String -> Int -> Int -> YiM ()
 jumpToE filename line column = do
-  editFile filename
+  discard $ editFile filename
   withBuffer $ do _ <- gotoLn line
                   moveXorEol column
 

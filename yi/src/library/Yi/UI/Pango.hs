@@ -10,7 +10,6 @@ module Yi.UI.Pango (start) where
 import Prelude (catch)
 
 import Control.Concurrent (yield)
-import Control.Monad (ap)
 import Data.Prototype
 import Data.IORef
 import Data.List (drop, intercalate, zip)
@@ -19,7 +18,7 @@ import Data.Maybe
 import qualified Data.Map as M
 import qualified Data.Rope as Rope
 
-import Graphics.UI.Gtk hiding (Region, Window, Action, Point, Style, Modifier)
+import Graphics.UI.Gtk hiding (Region, Window, Action, Point, Style, Modifier, on)
 import Graphics.UI.Gtk.Gdk.GC hiding (foreground)
 import qualified Graphics.UI.Gtk.Gdk.EventM as EventM
 import qualified Graphics.UI.Gtk as Gtk
@@ -142,7 +141,7 @@ start cfg ch outCh ed = catchGError (startNoMsg cfg ch outCh ed) (\(GError _dom 
 startNoMsg :: UIBoot
 startNoMsg cfg ch outCh ed = do
   logPutStrLn "startNoMsg"
-  unsafeInitGUIForThreadedRTS
+  discard unsafeInitGUIForThreadedRTS
 
   win   <- windowNew
   ico   <- loadIcon "yi+lambda-fat-32.png"
@@ -186,7 +185,7 @@ startNoMsg cfg ch outCh ed = do
   watchFont $ updateFont (configUI cfg) fontRef tc status
 
   -- use our magic threads thingy (http://haskell.org/gtk2hs/archives/2005/07/24/writing-multi-threaded-guis/)
-  timeoutAddFull (yield >> return True) priorityDefaultIdle 50
+  discard $ timeoutAddFull (yield >> return True) priorityDefaultIdle 50
 
   widgetShowAll win
 
@@ -254,7 +253,7 @@ updateTabInfo e ui tab tabInfo = do
     setWindowFocus e ui tabInfo . lookupWin . wkey . tabFocus $ tab
 
 updateWindow :: Editor -> UI -> Window -> WinInfo -> IO ()
-updateWindow e ui win wInfo = do
+updateWindow e _ui win wInfo = do
     writeIORef (coreWin wInfo) win
     writeIORef (insertingMode wInfo) (askBuffer win (findBufferWith (bufkey win) e) $ getA insertingA)
 
@@ -383,7 +382,7 @@ newWindow e ui w = do
     v `on` scrollEvent        $ handleScroll        ui win
     v `on` configureEvent     $ handleConfigure     ui  -- todo: allocate event rather than configure?
     v `on` motionNotifyEvent  $ handleMove          ui win
-    v `onExpose` render ui win
+    discard $ v `onExpose` render ui win
     return win
 
 refresh :: UI -> Editor -> IO ()
@@ -483,7 +482,7 @@ render ui w _event = do
   cursor <- readIORef (cursorLoc w)
   case cursor of
     CursorLine p1 p2 -> drawLine drawWindow gc p1 p2
-    CursorRectangle x y w h -> drawRectangle drawWindow gc False x y w h
+    CursorRectangle rx ry rw rh -> drawRectangle drawWindow gc False rx ry rw rh
 
   return True
 
@@ -623,6 +622,10 @@ modTable = M.fromList
     , (MSuper, EventM.Super  )
     , (MHyper, EventM.Hyper  )
     ]
+
+-- | Same as Gtk.on, but discards the ConnectId
+on :: object -> Signal object callback -> callback -> IO ()
+on widget signal handler = discard $ Gtk.on widget signal handler
 
 handleButtonClick :: UI -> WindowRef -> EventM EButton Bool
 handleButtonClick ui ref = do

@@ -1,4 +1,5 @@
 {-# LANGUAGE CPP, TypeFamilies, NoMonomorphismRestriction, FlexibleInstances, ScopedTypeVariables #-}
+{-# OPTIONS_GHC -fno-warn-unused-binds -fno-warn-incomplete-patterns #-} -- the CPP seems to confuse GHC; we have uniplate patterns
 {- Copyright JP Bernardy 2008 -}
 
 -- | Generic syntax tree handling functions
@@ -241,8 +242,8 @@ subtreeRegion t = mkRegion (getFirstOffset t) (getLastOffset t)
 
 -- | Given a tree, return (first offset, number of lines).
 getSubtreeSpan :: (Foldable tree) => tree (Tok t) -> (Point, Int)
-getSubtreeSpan tree = (posnOfs $ first, lastLine - firstLine)
-    where bounds@[first, _last] = fmap (tokPosn . assertJust) [getFirstElement tree, getLastElement tree]
+getSubtreeSpan tree = (posnOfs $ firstOff, lastLine - firstLine)
+    where bounds@[firstOff, _last] = fmap (tokPosn . assertJust) [getFirstElement tree, getLastElement tree]
           [firstLine, lastLine] = fmap posnLine bounds
           assertJust (Just x) = x
           assertJust _ = error "assertJust: Just expected"
@@ -269,6 +270,7 @@ nodeRegion n = subtreeRegion t
 data Test a = Empty | Leaf a | Bin (Test a) (Test a) deriving (Show, Eq)
 
 instance Foldable Test where
+    foldMap _ Empty = mempty
     foldMap f (Leaf x) = f x
     foldMap f (Bin _ r) = foldMap f r <> foldMap f r
 
@@ -334,7 +336,7 @@ prop_fromLeafAfterToFinal :: NTTT -> Property
 prop_fromLeafAfterToFinal (N n) = let
     fullRegion = subtreeRegion $ snd n
  in forAll (pointInside fullRegion) $ \p -> do
-   let final@(finalPath, (pathFromSubtree, finalSubtree)) = fromLeafAfterToFinal p n
+   let final@(_, (_, finalSubtree)) = fromLeafAfterToFinal p n
        finalRegion = subtreeRegion finalSubtree
        initialRegion = nodeRegion n
        
@@ -376,7 +378,7 @@ prop_fromNodeToLeafAfter (N n) = forAll (pointInside (subtreeRegion $ snd n)) $ 
 
 prop_fromNodeToFinal :: NTTT -> Property
 prop_fromNodeToFinal  (N t) = forAll (regionInside (subtreeRegion $ snd t)) $ \r -> do
-   let final@(finalPath, finalSubtree) = fromNodeToFinal r t
+   let final@(_, finalSubtree) = fromNodeToFinal r t
        finalRegion = subtreeRegion finalSubtree
    whenFail (do putStrLn $ "final = " ++ show final
                 putStrLn $ "final reg = " ++ show finalRegion

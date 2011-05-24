@@ -1,4 +1,5 @@
 {-# LANGUAGE FlexibleInstances, TypeFamilies #-}
+{-# OPTIONS_GHC -fno-warn-incomplete-patterns #-} -- uniplate patterns
 -- Copyright (c) JP Bernardy 2008
 module Yi.Syntax.Latex where
 
@@ -87,7 +88,7 @@ parse = pExpr True <* eof
           <|> (Error <$> recoverWith (sym' (not . ((||) <$> isNoise <*> (`elem` openParens)))))
 
 getStrokes :: Point -> Point -> Point -> Tree TT -> [Stroke]
-getStrokes point begin _end t0 = appEndo result []
+getStrokes point _begin _end t0 = appEndo result []
     where getStrokes' :: Tree TT -> Endo [Stroke]
           getStrokes' (Expr g) = getStrokesL g
           getStrokes' (Atom t) = ts id t

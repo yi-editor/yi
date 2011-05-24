@@ -1,4 +1,5 @@
 {-# LANGUAGE ScopedTypeVariables, FlexibleInstances, TypeFamilies, CPP, NoMonomorphismRestriction #-}
+{-# OPTIONS_GHC -fno-warn-incomplete-patterns #-} -- uniplate patterns
 module Yi.Syntax.OnlineTree (Tree(..), manyToks, 
                              tokAtOrBefore) where
 import Prelude ()
@@ -6,12 +7,9 @@ import Prelude ()
 import Control.Applicative
 import Data.Traversable
 import Data.Foldable
-import Data.List hiding (foldr, mapAccumL, concat)
-import Data.Maybe (maybeToList)
 import Data.Monoid
 
 #ifdef TESTING
-import System.Random
 import Test.QuickCheck 
 import Parser.Incremental
 #endif
@@ -38,7 +36,7 @@ data Tree a = Bin (Tree a) (Tree a)
 
 instance IsTree Tree where
     emptyNode = Tip
-    uniplate (Bin l r) = ([l,r],\[l,r] -> Bin l r)
+    uniplate (Bin l r) = ([l,r],\[l',r'] -> Bin l' r')
     uniplate t = ([],\_->t)
 
 instance Traversable Tree where
@@ -62,10 +60,10 @@ manyToks' :: Int -> P a (Tree a)
 manyToks' n = Look (pure Tip) (\_ -> Bin <$> subTree n <*> manyToks' (n * 2))
 
 subTree :: Int -> P a (Tree a)
-subTree n = Look (pure Tip) (\s -> 
+subTree n = Look (pure Tip) (\_ -> 
    case n of
        0 -> pure Tip
        1 -> Leaf <$> symbol (const True)
-       n -> let m = n `div` 2 in Bin <$> subTree m <*> subTree m)
+       _ -> let m = n `div` 2 in Bin <$> subTree m <*> subTree m)
 
 

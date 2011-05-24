@@ -2,15 +2,12 @@
 
 module Driver where
 
-import Data.Maybe
 import System.Environment
 import Control.Monad
 import Test.QuickCheck hiding (promote)
-import System.IO
 import System.Random hiding (next)
 import Text.Printf
 import Data.List            (sort,group,intersperse)
-import qualified Data.List as L
 
 -- Following code shamelessly stolen from XMonad.
 main :: (Read t, Num t, PrintfArg t1, Num b, PrintfArg b) =>
@@ -19,7 +16,7 @@ main tests  = do
     args <- fmap (drop 1) getArgs
     let n = if null args then 100 else read (head args)
     (results, passed) <- fmap unzip $ mapM (\(s,a) -> printf "%-25s: " s >> a n) tests
-    printf "Passed %d tests!\n" (sum passed)
+    printf "Passed %d tests!\n" (sum passed) :: IO ()
     when (not . and $ results) $ fail "Not all tests passed!"
 
 ------------------------------------------------------------------------

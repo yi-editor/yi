@@ -6,7 +6,6 @@ module Yi.Keymap.Emacs.KillRing where
 
 import Prelude ()
 import Yi.Prelude 
-import Yi.Monad
 import Yi.Keymap
 import Yi.Buffer
 import Yi.Editor

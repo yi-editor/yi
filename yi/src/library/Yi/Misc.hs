@@ -35,8 +35,7 @@ import Prelude ()
 import Yi.Core
 
 import Yi.MiniBuffer
-    ( withMinibuffer
-    , simpleComplete
+    ( simpleComplete
     , withMinibufferGen
     )
 import System.CanonicalizePath (canonicalizePath)

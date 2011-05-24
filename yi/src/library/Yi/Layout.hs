@@ -45,7 +45,6 @@ module Yi.Layout
 import Prelude()
 import Data.Accessor.Basic
 import Yi.Prelude
-import Yi.Dynamic
 import Data.Typeable
 import Data.Maybe
 import Data.List(length, splitAt)
@@ -354,8 +353,8 @@ pair o p (LayoutM l1) (LayoutM l2) = LayoutM $ do
     Pair o p ref <$> l1 <*> l2
 
 stack :: Orientation -> [(LayoutM a, RelativeSize)] -> LayoutM a
-stack o [] = error "Yi.Layout: Length-0 stack"
-stack o [l] = fst l
+stack _ [] = error "Yi.Layout: Length-0 stack"
+stack _ [l] = fst l
 stack o ls = LayoutM (Stack o <$> mapM (\(LayoutM lm,rs) -> (,rs) <$> lm) ls)
 
 -- | Special case of 'stack' with all 'RelativeSize's equal.

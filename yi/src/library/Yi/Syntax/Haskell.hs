@@ -1,5 +1,8 @@
 {-# LANGUAGE FlexibleInstances, TypeFamilies
   , TemplateHaskell, DeriveDataTypeable #-}
+{-# OPTIONS_GHC -fno-warn-missing-signatures -fno-warn-incomplete-patterns -fno-warn-name-shadowing #-} 
+-- we have lots of parsers which don't want signatures; and we have uniplate patterns
+
 -- Copyright (c) Anders Karlsson 2009
 -- Copyright (c) JP Bernardy 2009
 -- NOTES:
@@ -16,7 +19,7 @@ module Yi.Syntax.Haskell ( PModule
 
 import Prelude ()
 import Data.Maybe
-import Data.List (filter, union, takeWhile, (\\))
+import Data.List ((\\))
 import qualified Data.Foldable
 import Yi.IncrementalParse
 import Yi.Lexer.Alex
@@ -26,10 +29,7 @@ import Yi.Syntax.Tree
 import Yi.Syntax
 import Yi.Prelude
 import Prelude ()
-import Data.Monoid
 import Data.DeriveTH
-import Data.Derive.Foldable
-import Data.Maybe
 import Data.Tuple (uncurry)
 import Control.Arrow ((&&&))
 
@@ -40,7 +40,7 @@ indentScanner = layoutHandler startsLayout [(Special '(', Special ')'),
                                             (Special '[', Special ']'),
                                             (Special '{', Special '}')]
                          ignoredToken
-                         [(Special '<'), (Special '>'), (Special '.')]
+                         ((Special '<'), (Special '>'), (Special '.'))
                          isBrace
 
 -- HACK: We insert the Special '<', '>', '.',
@@ -60,7 +60,6 @@ type Tree = PModule
 type PAtom = Exp
 type Block = Exp
 type PGuard = Exp
-type BList  = Exp
 type PModule = Exp
 type PModuleDecl = Exp
 type PImport = Exp
@@ -290,10 +289,10 @@ pKW :: [Token] -> Parser TT (Exp TT) -> Parser TT (Exp TT)
 pKW k r = Bin <$> pAtom k <*> r
 
 -- | Parse an unary operator with and without using please
-pOP, ppOP :: [Token] -> Parser TT (Exp TT) -> Parser TT (Exp TT)
+pOP :: [Token] -> Parser TT (Exp TT) -> Parser TT (Exp TT)
 pOP op r = Bin <$> pAtom op <*> r
 
-ppOP op r = Bin <$> ppAtom op <*> r
+--ppOP op r = Bin <$> ppAtom op <*> r
 
 -- | Parse comments
 pComments :: Parser TT [TT]
@@ -535,7 +534,7 @@ pDecl acceptType acceptEqu = Expr <$> ((Yuck $ Enter "missing end of type or equ
 
 pFunDecl = pDecl True True
 pTypeDecl = pDecl True False
-pEquation = pDecl False True
+--pEquation = pDecl False True
 
 
 -- | The RHS of an equation.
@@ -551,7 +550,7 @@ pBlocks :: Parser TT r -> Parser TT [r]
 pBlocks p =  p `sepBy1` exact [nextLine]
 
 -- | Parse a some of something separated by the token (Special '.'), or nothing
--- pBlocks' :: Parser TT r -> Parser TT (BL.BList r)
+--pBlocks' :: Parser TT r -> Parser TT (BL.BList r)
 pBlocks' p =  pBlocks p <|> pure []
 
 -- | Parse a block of some something separated by the tok (Special '.')
@@ -681,11 +680,11 @@ pCBrace p c = Paren  <$> pCAtom [Special '{'] c
 pCBrack p c = Paren  <$>  pCAtom [Special '['] c
           <*> p <*> (recoverAtom <|> pCAtom [Special ']'] c)
 
-pParen, pBrace, pBrack :: Parser TT [Exp TT] -> Parser TT (Exp TT)
+pParen, pBrack :: Parser TT [Exp TT] -> Parser TT (Exp TT)
 
 pParen = flip pCParen pComments
 
-pBrace = flip pCBrace pComments
+--pBrace = flip pCBrace pComments
 
 pBrack = flip pCBrack pComments
 

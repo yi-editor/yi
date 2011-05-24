@@ -54,7 +54,6 @@ import Control.Monad.Trans (MonadIO (..))
 import Control.Monad (filterM, replicateM_)
 import Yi.Command (cabalConfigureE, cabalBuildE, reloadProjectE)
 import Yi.Core
-import Yi.Dired
 import Yi.Eval
 import Yi.File
 import Yi.MiniBuffer
@@ -171,7 +170,7 @@ searchKeymap = selfSearchKeymap <|> choice
 isearchKeymap :: Direction -> Keymap
 isearchKeymap dir = 
   do write $ isearchInitE dir
-     many searchKeymap
+     discard $ many searchKeymap
      choice [ ctrl (char 'g') ?>>! isearchCancelE
             , oneOf [ctrl (char 'm'), spec KEnter] >>! isearchFinishE
             ] 
@@ -193,7 +192,7 @@ queryReplaceE = do
         Right re = makeSearchOptsM [] replaceWhat
     withEditor $ do
        setRegexE re
-       spawnMinibufferE
+       discard $ spawnMinibufferE
             ("Replacing " ++ replaceWhat ++ " with " ++ replaceWith ++ " (y,n,q,!):")
             (const replaceKm)
        qrNext win b re
@@ -203,7 +202,7 @@ executeExtendedCommandE = withMinibuffer "M-x" (const getAllNamesInScope) execEd
 
 evalRegionE :: YiM ()
 evalRegionE = do
-  withBuffer (getSelectRegionB >>= readRegionB) >>= return -- FIXME: do something sensible.
+  discard $ withBuffer (getSelectRegionB >>= readRegionB) >>= return -- FIXME: do something sensible.
   return ()
 
 -- * Code for various commands
@@ -338,8 +337,8 @@ gotoTag tag =
         case lookupTag tag tagTable of
           Nothing -> fail $ "No tags containing " ++ tag
           Just (filename, line) -> do
-            editFile filename
-            withBuffer $ gotoLn line
+            discard $ editFile filename
+            discard $ withBuffer $ gotoLn line
             return ()
 
 -- | Call continuation @act@ with the TagTable. Uses the global table
@@ -359,5 +358,8 @@ visitTagTable act = do
                        withEditor $ setTags tagTable
                        act tagTable
 
+{-
+TODO: export or remove
 resetTagTable :: YiM ()
 resetTagTable = withEditor resetTags
+-}

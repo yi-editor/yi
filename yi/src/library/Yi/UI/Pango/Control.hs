@@ -1,5 +1,6 @@
 {-# LANGUAGE RecordWildCards, ScopedTypeVariables, MultiParamTypeClasses, DeriveDataTypeable,
     StandaloneDeriving, GeneralizedNewtypeDeriving #-}
+{-# OPTIONS_GHC -w #-} -- this module isn't finished, and there's heaps of warnings.
 -----------------------------------------------------------------------------
 --
 -- Module      :  Yi.UI.Pango.Control
@@ -76,7 +77,7 @@ import System.Glib.GError
 import Control.Monad.Reader (liftIO, ask, asks, MonadReader(..))
 import Control.Monad.State (liftM, ap, get, put, modify)
 import Control.Monad.Writer (MonadIO(..))
-import Control.Concurrent (newMVar, modifyMVar, MVar(..), newEmptyMVar, putMVar, readMVar, isEmptyMVar)
+import Control.Concurrent (newMVar, modifyMVar, MVar, newEmptyMVar, putMVar, readMVar, isEmptyMVar)
 import Data.Typeable
 import qualified Data.List.PointedList as  PL (insertRight, withFocus, PointedList(..), singleton)
 import Yi.Regex

@@ -69,7 +69,7 @@ logError s = logPutStrLn $ "error: " ++ s
 logStream :: Show a => String -> Chan a -> IO ()
 logStream msg ch = do
   logPutStrLn $ "Logging stream " ++ msg
-  forkIO $ logStreamThread msg  ch
+  _ <- forkIO $ logStreamThread msg  ch
   return ()
 
 logStreamThread :: Show a => String -> Chan a -> IO ()

@@ -11,10 +11,8 @@ module Yi.KillRing (Killring
                    ) 
     where
 
-import Control.Monad (ap)
 import Data.Binary
 import Data.DeriveTH
-import Data.Derive.Binary
 import Yi.Buffer.Basic
 
 data Killring = Killring { krKilled :: Bool

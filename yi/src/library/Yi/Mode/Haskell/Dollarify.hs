@@ -6,7 +6,7 @@ import Data.Maybe (fromMaybe)
 import Data.List (sortBy)
 import Yi.Prelude 
 import Yi.Syntax.Paren (Expr, Tree(..))
-import qualified Yi.Syntax.Haskell as H (Tree(..), Exp(..))
+import qualified Yi.Syntax.Haskell as H (Tree, Exp(..))
 import Yi.Syntax.Tree (getAllSubTrees, getFirstOffset, getLastOffset,getLastPath)
 import Yi.Lexer.Alex (posnOfs, Tok(..))
 import Yi.Lexer.Haskell (isComment, TT, Token(..))
@@ -63,7 +63,7 @@ dollarifyTop p@(Paren t1 e t2)
    | isNormalParen p = case stripComments e of
        [Paren _ _ _] -> [queueDelete t2, queueDelete t1]
        e'            -> dollarifyExpr e'
-dollarifyTop (Block list) = dollarifyExpr . stripComments =<< [x | Expr x <- list]
+dollarifyTop (Block blk) = dollarifyExpr . stripComments =<< [x | Expr x <- blk]
 dollarifyTop _ = []
 
 -- Expression must not contain comments

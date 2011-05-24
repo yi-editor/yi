@@ -5,7 +5,6 @@ import Shim.Utils
 import qualified Control.OldException as CE
 import System.FilePath
 import Control.Monad.State
-import Data.Maybe
 
 import Control.Applicative
 import Distribution.ModuleName
@@ -13,7 +12,6 @@ import Distribution.PackageDescription
 import qualified Distribution.PackageDescription as Library (Library(..))
 import qualified Distribution.PackageDescription as BuildInfo (BuildInfo(..))
 import System.Directory hiding (canonicalizePath)
-import System.FriendlyPath
 import System.CanonicalizePath
 
 guessCabalFile :: String -> IO (Maybe FilePath)

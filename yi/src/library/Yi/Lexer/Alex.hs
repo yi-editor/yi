@@ -150,6 +150,7 @@ lexScanner l st0 src = Scanner
                              -- (this is to support ^,$ in regexes)
                              [] -> []
                              ((_,ch):rest) -> unfoldLexer l (st, (ch, rest))
+                  , scanEmpty = error "Yi.Lexer.Alex.lexScanner: scanEmpty"
                  }
 
 -- | unfold lexer function into a function that returns a stream of (state x token)

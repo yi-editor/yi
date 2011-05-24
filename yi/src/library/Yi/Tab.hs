@@ -21,12 +21,10 @@ module Yi.Tab
 import qualified Prelude
 import Yi.Prelude
 import qualified Data.Binary as Binary
-import Data.Typeable
 import Data.Accessor.Basic
 import qualified Data.List.PointedList as PL
 
 import Yi.Buffer.Basic(WindowRef)
-import Yi.Dynamic
 import Yi.Layout
 import Yi.Window
 

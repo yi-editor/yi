@@ -85,7 +85,6 @@ writeFile -- because Data.Derive uses it.
 import Prelude hiding (any, all)
 import Yi.Debug
 import Yi.Monad
-import qualified Data.Accessor.Basic
 import Text.Show
 import Data.Bool
 import Data.Binary
@@ -97,10 +96,9 @@ import Data.Int
 import Data.Rope (Rope)
 import Control.Category
 import Control.Monad.Reader
-import Control.Applicative
+import Control.Applicative hiding((<$))
 import Data.Traversable 
 import Data.Typeable
-import Control.Monad
 import Data.Monoid
 import qualified Data.Set as Set
 import qualified Data.Map as Map
@@ -229,9 +227,9 @@ commonPrefix strings
 ---------------------- PointedList stuff
 -- | Finds the first element satisfying the predicate, and returns a zipper pointing at it.
 findPL :: (a -> Bool) -> [a] -> Maybe (PL.PointedList a)
-findPL pred xs = go [] xs where
-  go ls [] = Nothing
-  go ls (f:rs) | pred f    = Just (PL.PointedList ls f rs)
+findPL p xs = go [] xs where
+  go _  [] = Nothing
+  go ls (f:rs) | p f    = Just (PL.PointedList ls f rs)
                | otherwise = go (f:ls) rs
 
 -- | Given a function which moves the focus from index A to index B, return a function which swaps the elements at indexes A and B and then moves the focus. See Yi.Editor.swapWinWithFirstE for an example.

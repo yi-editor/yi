@@ -40,9 +40,9 @@ type State t lexState = (IState t, AlexState lexState)
 
 layoutHandler :: forall t lexState. (Show t, Eq t) => (t -> Bool) -> [(t,t)] ->
             (Tok t -> Bool) ->                 
-            [t] -> (Tok t -> Bool) ->
+            (t,t,t) -> (Tok t -> Bool) ->
             Scanner (AlexState lexState) (Tok t) -> Scanner (State t lexState) (Tok t)
-layoutHandler isSpecial parens isIgnored [openT, closeT, nextT] isGroupOpen lexSource = Scanner 
+layoutHandler isSpecial parens isIgnored (openT, closeT, nextT) isGroupOpen lexSource = Scanner 
   {
    scanLooked = scanLooked lexSource . snd,
    scanEmpty = error "layoutHandler: scanEmpty",
@@ -62,7 +62,7 @@ layoutHandler isSpecial parens isIgnored [openT, closeT, nextT] isGroupOpen lexS
           deepestIndent (Indent i:_) = i
           deepestIndent (_:levs) = deepestIndent levs
                                    
-          deepestParen p [] = False
+          deepestParen _ [] = False
           deepestParen p (Paren t:levs) = p == t || deepestParen p levs
           deepestParen p (_:levs) = deepestParen p levs
 

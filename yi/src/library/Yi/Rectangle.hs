@@ -5,8 +5,6 @@ module Yi.Rectangle where
 import Yi.Prelude
 import Prelude (subtract)
 import Data.List (splitAt, unzip)
-import Control.Applicative
-import Data.Char
 import Data.List (sort, length, zipWith, transpose)
 
 import Yi.Buffer

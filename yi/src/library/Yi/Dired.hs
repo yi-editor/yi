@@ -42,19 +42,16 @@ import Data.Time.Clock.POSIX
 import System.Directory hiding (canonicalizePath)
 import System.FilePath
 import System.CanonicalizePath (canonicalizePath)
-import System.FriendlyPath
 import System.Locale
 import System.PosixCompat.Files
 import System.PosixCompat.Types
 import System.PosixCompat.User
 import Text.Printf
 
-import Yi.Config
 import Yi.Core hiding (sequence, forM, notElem)
 import {-# source #-} Yi.File (editFile)
 import Yi.MiniBuffer (spawnMinibufferE, withMinibufferGen, noHint, withMinibuffer)
 import Yi.Misc (getFolder, promptFile)
-import Yi.Regex
 import Yi.Style
 
 data DiredFileInfo = DiredFileInfo {  permString :: String

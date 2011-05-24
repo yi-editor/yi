@@ -100,10 +100,10 @@ module Yi.Buffer.Misc
   , modePrettifyA
   , modeKeymapA
   , modeIndentA
-  , modeAdjustBlock
+  , modeAdjustBlockA
   , modeFollowA
   , modeIndentSettingsA
-  , modeToggleCommentSelection
+  , modeToggleCommentSelectionA
   , modeGetStrokesA
   , modeGetAnnotationsA
   , modePrintTreeA

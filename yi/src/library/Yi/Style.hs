@@ -81,7 +81,7 @@ withFg c = Endo $ \s -> s { foreground = c }
 -- | A style that sets the background.
 withBg c = Endo $ \s -> s { background = c }
 
-withBd, withItlc, withUnderline :: Bool -> Style
+withBd, withItlc, withUnderline, withReverse :: Bool -> Style
 -- | A style that sets the font to bold
 withBd c = Endo $ \s -> s { bold = c }
 -- | A style that sets the style to italics

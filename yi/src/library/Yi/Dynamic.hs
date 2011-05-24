@@ -4,10 +4,10 @@
 module Yi.Dynamic 
  (
   -- * Nonserializable (\"config\") dynamics
-  YiConfigVariable(..),
+  YiConfigVariable,
   ConfigVariables, configVariableA,
   -- * Serializable dynamics
-  YiVariable(..), 
+  YiVariable, 
   DynamicValues, dynamicValueA,
  )
   where
@@ -15,13 +15,12 @@ module Yi.Dynamic
 import Prelude ()
 import Yi.Prelude
 
-import Data.Accessor
 import Data.Maybe(fromJust)
 import Data.HashMap.Strict as M
 import Data.Monoid
 import Data.ConcreteTypeRep
 import Data.Binary
-import Data.Typeable(Typeable, cast)
+import Data.Typeable(cast)
 import Data.ByteString.Lazy(ByteString)
 import Data.IORef
 import System.IO.Unsafe(unsafePerformIO)

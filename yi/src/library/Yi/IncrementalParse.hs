@@ -1,5 +1,6 @@
 -- Copyright (c) JP Bernardy 2008
-{-# OPTIONS -fglasgow-exts #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+
 module Yi.IncrementalParse (recoverWith, symbol, eof, lookNext, testNext,
                             State, P, Parser(..), AlexState (..), scanner) where
 import Parser.Incremental hiding (run)

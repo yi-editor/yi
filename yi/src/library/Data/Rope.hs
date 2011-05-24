@@ -38,7 +38,7 @@ import Prelude hiding (null, head, tail, length, take, drop, splitAt, head, tail
 import qualified Data.List as L
  
 import qualified Data.ByteString.UTF8 as B
-import qualified Data.ByteString as B (append, concat, elemIndices)
+import qualified Data.ByteString as B (append, concat)
 import qualified Data.ByteString as Byte 
 import Data.ByteString (ByteString)
 import qualified Data.ByteString.Lazy as LB (toChunks, fromChunks, null, readFile)
@@ -51,7 +51,6 @@ import Data.Binary
 import Data.Char (ord)
 import Data.Monoid
 import Data.Foldable (toList)
-import Data.Int
 
 import System.IO.Cautious (writeFileL)
  

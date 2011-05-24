@@ -15,8 +15,9 @@ import qualified Control.OldException as Control.Exception
 import Foreign.Marshal.Alloc(allocaBytes)
 import Foreign.C.String
 
+import Prelude(length, catch)
+import Yi.Prelude
 import Yi.Buffer (BufferRef)
-import Yi.Monad(repeatUntilM)
 
 #ifndef mingw32_HOST_OS
 import System.Posix.IO
@@ -46,8 +47,8 @@ popen file args minput =
     --  data gets pulled as it becomes available. you have to force the
     --  output strings before waiting for the process to terminate.
     --
-    forkIO (Control.Exception.evaluate (length output) >> return ())
-    forkIO (Control.Exception.evaluate (length errput) >> return ())
+    discard $ forkIO (Control.Exception.evaluate (length output) >> return ())
+    discard $ forkIO (Control.Exception.evaluate (length errput) >> return ())
 
     -- And now we wait. We must wait after we read, unsurprisingly.
     exitCode <- waitForProcess pid -- blocks without -threaded, you're warned.
@@ -66,7 +67,7 @@ runProgCommand prog args = do loc <- findExecutable prog
 -- | Run a command using the system shell, returning stdout, stderr and exit code
 
 shellFileName :: IO String
-shellFileName = Prelude.catch (getEnv "SHELL") (const $ return "/bin/sh")
+shellFileName = catch (getEnv "SHELL") (const $ return "/bin/sh")
 
 shellCommandSwitch :: String
 shellCommandSwitch = "-c"

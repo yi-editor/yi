@@ -156,6 +156,7 @@ fromVtyKey (Vty.KDown    ) = Yi.Event.KDown
 fromVtyKey (Vty.KRight   ) = Yi.Event.KRight    
 fromVtyKey (Vty.KEnter   ) = Yi.Event.KEnter    
 fromVtyKey (Vty.KBackTab ) = error "This should be handled in fromVtyEvent"
+fromVtyKey (Vty.KBegin   ) = error "Yi.UI.Vty.fromVtyKey: can't handle KBegin"
 
 fromVtyMod :: Vty.Modifier -> Yi.Event.Modifier
 fromVtyMod Vty.MShift = Yi.Event.MShift

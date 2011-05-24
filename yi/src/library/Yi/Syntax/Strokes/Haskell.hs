@@ -1,3 +1,5 @@
+{-# OPTIONS_GHC -fno-warn-incomplete-patterns #-}
+
 module Yi.Syntax.Strokes.Haskell (getStrokes, tokenToAnnot) where
 
 import Prelude ()
@@ -9,7 +11,6 @@ import Yi.Syntax
 import Yi.Prelude
 import Prelude ()
 import Data.Monoid
-import Data.Maybe
 import Yi.Syntax.Haskell
 import Yi.Syntax.Tree (subtrees)
 

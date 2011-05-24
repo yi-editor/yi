@@ -6,9 +6,7 @@ import Prelude (reverse)
 import Data.Binary    
 import Yi.Prelude
 import qualified Data.Rope as R
-import Data.Typeable
 import Data.DeriveTH
-import Data.Derive.Binary
 import Data.Ix
 
 -- | Direction of movement inside a buffer

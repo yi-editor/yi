@@ -222,9 +222,9 @@ cleverAutoIndentHaskellC e behaviour = do
                                        -- offer add another statement in the block
       stopsOf ((Hask.PGuard' (PAtom pipe  _) _ _):ts') = [tokCol pipe | lineStartsWith (ReservedOp Haskell.Pipe)] ++ stopsOf ts'
                                                                  -- offer to align against another guard
-      stopsOf (d@(Hask.PData _ _ _ r):ts') = colOf' d + indentLevel
+      stopsOf (d@(Hask.PData {}):ts') = colOf' d + indentLevel
                                            : stopsOf ts' --FIXME!
-      stopsOf ((Hask.RHS (Hask.PAtom eq _) (exp)):ts')
+      stopsOf ((Hask.RHS (Hask.PAtom{}) (exp)):ts')
           = [(case firstTokOnLine of
               Just (Operator op) -> opLength op (colOf' exp) -- Usually operators are aligned against the '=' sign
               -- case of an operator should check so that value always is at least 1 
@@ -237,7 +237,6 @@ cleverAutoIndentHaskellC e behaviour = do
                        in  if l > 0 then l else 1
 
       lineStartsWith tok = firstTokOnLine == Just tok
-      lineIsEquation     = any (== ReservedOp Haskell.Equal) toksOnLine
       lineIsExpression   = all (`notElem` [ReservedOp Haskell.Pipe, ReservedOp Haskell.Equal, ReservedOp RightArrow]) toksOnLine
                            && not (lineStartsWith (Reserved Haskell.In))
       -- TODO: check the tree instead of guessing by looking at tokens
@@ -274,6 +273,7 @@ cleverAutoIndentHaskellC e behaviour = do
 colOf' :: Foldable t => t TT -> Int
 colOf' = maybe 0 tokCol . getFirstElement
 
+tokCol :: Tok t -> Int
 tokCol = posnCol . tokPosn
 
 
@@ -312,31 +312,32 @@ tokTyp :: Token -> Maybe Haskell.CommentType
 tokTyp (Comment t) = Just t
 tokTyp _ = Nothing
 
--- | Keyword-based auto-indenter for haskell.
-autoIndentHaskellB :: IndentBehaviour -> BufferM ()
-autoIndentHaskellB =
-  autoIndentWithKeywordsB [ "if"
-                          , "then"
-                          , "else"
-                          , "|"
-                          , "->"
-                          , "case" -- hmm
-                          , "in"
-                          -- Note tempted by having '=' in here that would
-                          -- potentially work well for 'data' declarations
-                          -- but I think '=' is so common in other places
-                          -- that it would introduce many spurious/annoying
-                          -- hints.
-                          ]
-                          [ "where"
-                          , "let"
-                          , "do"
-                          , "mdo"
-                          , "{-"
-                          , "{-|"
-                          , "--"
-                          ]
-
+-- TODO: export or remove
+-- -- | Keyword-based auto-indenter for haskell.
+-- autoIndentHaskellB :: IndentBehaviour -> BufferM ()
+-- autoIndentHaskellB =
+--   autoIndentWithKeywordsB [ "if"
+--                           , "then"
+--                           , "else"
+--                           , "|"
+--                           , "->"
+--                           , "case" -- hmm
+--                           , "in"
+--                           -- Note tempted by having '=' in here that would
+--                           -- potentially work well for 'data' declarations
+--                           -- but I think '=' is so common in other places
+--                           -- that it would introduce many spurious/annoying
+--                           -- hints.
+--                           ]
+--                           [ "where"
+--                           , "let"
+--                           , "do"
+--                           , "mdo"
+--                           , "{-"
+--                           , "{-|"
+--                           , "--"
+--                           ]
+--
 ---------------------------
 -- * Interaction with GHCi
 
@@ -385,15 +386,15 @@ ghciLoadBuffer = do
 -- Tells ghci to infer the type of the identifier at point. Doesn't check for errors (yet)
 ghciInferType :: YiM ()
 ghciInferType = do
-    name <- withBuffer $ readUnitB unitWord
-    when (not $ null name) $ 
-        withMinibufferGen name noHint "Insert type of which identifier?" return ghciInferTypeOf
+    nm <- withBuffer $ readUnitB unitWord
+    when (not $ null nm) $ 
+        withMinibufferGen nm noHint "Insert type of which identifier?" return ghciInferTypeOf
 
 ghciInferTypeOf :: String -> YiM ()
-ghciInferTypeOf name = do
+ghciInferTypeOf nm = do
     buf <- ghciGet
-    result <- Interactive.queryReply buf (":t " ++ name)
-    let successful = (not . null) name &&and (zipWith (==) name result)
+    result <- Interactive.queryReply buf (":t " ++ nm)
+    let successful = (not . null) nm &&and (zipWith (==) nm result)
     when successful $
          withBuffer $ moveToSol *> insertB '\n' *> leftB *> insertN result *> rightB
 
