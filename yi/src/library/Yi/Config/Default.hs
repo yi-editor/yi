@@ -6,7 +6,6 @@ module Yi.Config.Default (defaultConfig, availableFrontends,
                           toVimStyleConfig, toEmacsStyleConfig, toCuaStyleConfig) where
 
 import Control.Monad (forever)
-import Data.Dynamic
 import Data.Either (rights)
 import Paths_yi
 import Prelude ()
@@ -18,6 +17,7 @@ import {-# source #-} Yi.Boot
 import Yi.Config
 import Yi.Config.Misc
 import Yi.Core
+import Yi.Eval(publishedActions)
 import Yi.File
 import Yi.IReader (saveAsNewArticle)
 import Yi.Mode.IReader (ireaderMode, ireadMode)
@@ -29,6 +29,7 @@ import Yi.Scion
 import Yi.Search
 import Yi.Style.Library
 import qualified Data.Map as M
+import qualified Data.HashMap.Strict as HM
 import qualified Yi.Keymap.Cua  as Cua
 import qualified Yi.Keymap.Emacs  as Emacs
 import qualified Yi.Keymap.Vim  as Vim
@@ -77,16 +78,10 @@ availableFrontends =
 -- ... so we can hope getting rid of this someday.
 -- Failing to conform to this rule exposes the code to instant deletion.
 
-defaultPublishedActions :: M.Map String [Data.Dynamic.Dynamic]
-defaultPublishedActions = M.fromList $ 
-    [ ("Backward"               , box Backward)
-    , ("Character"              , box Character)
-    , ("Document"               , box Document)
-    , ("Forward"                , box Forward)
-    , ("Line"                   , box Line)
-    , ("unitWord"               , box unitWord)
-    , ("Point"                  , box Point)
-    , ("atBoundaryB"            , box atBoundaryB)
+defaultPublishedActions :: HM.HashMap String Action
+defaultPublishedActions = HM.fromList $ 
+    [ 
+      ("atBoundaryB"            , box atBoundaryB)
     , ("cabalBuildE"            , box cabalBuildE)
     , ("cabalConfigureE"        , box cabalConfigureE)
     , ("closeBufferE"           , box closeBufferE)
@@ -100,7 +95,7 @@ defaultPublishedActions = M.fromList $
     , ("leftB"                  , box leftB)
     , ("linePrefixSelectionB"   , box linePrefixSelectionB)
     , ("lineStreamB"            , box lineStreamB)
-    , ("mkRegion"               , box mkRegion)
+--    , ("mkRegion"               , box mkRegion) -- can't make 'instance Promptable Region'
     , ("makeBuild"              , box makeBuild)
     , ("moveB"                  , box moveB)
     , ("numberOfB"              , box numberOfB)
@@ -117,8 +112,6 @@ defaultPublishedActions = M.fromList $
     , ("setAnyMode"             , box setAnyMode)
     , ("sortLines"              , box sortLines)
     , ("unLineCommentSelectionB", box unLineCommentSelectionB)
-    , ("unitParagraph"          , box unitParagraph)
-    , ("unitViWord"             , box unitViWord)
     , ("writeB"                 , box writeB)
     , ("ghciGet"                , box Haskell.ghciGet)
     , ("abella"                 , box Abella.abella)
@@ -127,11 +120,14 @@ defaultPublishedActions = M.fromList $
 #endif
     ]
 
-  where box x = [Data.Dynamic.toDyn x]
+  where 
+    box :: (Show x, YiAction a x) => a -> Action
+    box = makeAction
 
 
 defaultConfig :: Config
 defaultConfig = 
+  publishedActions ^= defaultPublishedActions $ 
   Config { startFrontEnd    = case availableFrontends of
              [] -> error "panic: no frontend compiled in! (configure with -fvty or another frontend.)"
              ((_,f):_) -> f
@@ -150,7 +146,6 @@ defaultConfig =
          , defaultKm        = modelessKeymapSet nilKeymap
          , startActions     = []
          , initialActions   = []
-         , publishedActions = defaultPublishedActions
          , modeTable = [AnyMode Haskell.cleverMode,
                         AnyMode Haskell.preciseMode,
                         AnyMode Latex.latexMode3,

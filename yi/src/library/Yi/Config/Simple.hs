@@ -18,7 +18,12 @@ module Yi.Config.Simple (
   modeBindKeys,
   addMode,
   modifyMode,
+  -- * Evaluation of commands
+  evaluator,
+  ghciEvaluator,
+  publishedActionsEvaluator,
   publishAction,
+  publishedActions,
   -- * Appearance
   fontName,
   fontSize,
@@ -44,18 +49,15 @@ module Yi.Config.Simple (
   defaultKm,
   inputPreprocess,
   modes,
-  publishedActions,
   regionStyle,
   killringAccumulate,
   bufferUpdateHandler,
-  customVariable,
   -- * Module exports
   -- we can't just export 'module Yi', because then we would get clashes with Yi.Config
   module Yi.Boot,
 --  module Yi.Buffer.Misc,
   module Yi.Core,
   module Yi.Dired,
-  module Yi.Eval,
   module Yi.File,
   module Yi.Config,
   module Yi.Config.Default,
@@ -76,6 +78,7 @@ import Yi.Boot
 import Yi.Core hiding(modifyMode, (%=))
 import Yi.Config.Default
 import Yi.Config.Misc
+import Yi.Config.Simple.Types
 import Yi.Dired
 import Yi.Eval
 import Yi.File
@@ -90,15 +93,13 @@ import Yi.Scion
 #endif
 
 import Prelude hiding((.))
-import qualified Data.Map as M
-import Data.Dynamic
 
 import Control.Monad.State hiding (modify, get)
 
 -- we do explicit imports because we reuse a lot of the names
 import Yi.Config(Config, UIConfig,
                  startFrontEndA, configUIA, startActionsA, initialActionsA, defaultKmA, 
-                 configInputPreprocessA, modeTableA, publishedActionsA, debugModeA,
+                 configInputPreprocessA, modeTableA, debugModeA,
                  configRegionStyleA, configKillringAccumulateA, bufferUpdateHandlerA,
                  configVtyEscDelayA, configFontNameA, configFontSizeA, configScrollStyleA,
                  configLeftSideScrollBarA, configAutoHideScrollBarA, configAutoHideTabBarA,
@@ -134,15 +135,13 @@ bar = do
 
 
 --------------- Main interface
--- | The configuration monad. Run it with 'configMain'.
-newtype ConfigM a = ConfigM { runConfigM :: StateT Config IO a } deriving(Monad, MonadState Config, MonadIO)
+-- newtype ConfigM a   (imported)
 
 -- | Starts with the given initial config, makes the described modifications, then starts yi.
 configMain :: Config -> ConfigM () -> IO ()
 configMain c m = yi =<< execStateT (runConfigM m) c
 
--- | Fields that can be modified with ('%='), 'get' and 'modify'.
-type Field a = Accessor Config a
+-- type Field a (imported
 
 -- | Set a field.
 (%=) :: Field a -> a -> ConfigM ()
@@ -194,10 +193,6 @@ modifyMode name f = modify modeTableA (fmap (onMode g))
       g :: forall syntax. Mode syntax -> Mode syntax
       g m | modeName m == name = f m
           | otherwise          = m
-
--- | Publish action for the interpreter (the published actions are currently ignored by Yi).
-publishAction :: Typeable a => String -> a -> ConfigM ()
-publishAction name a = modify publishedActionsA (M.insertWith (++) name [toDyn a])
 
 --------------------- Appearance
 -- | 'Just' the font name, or 'Nothing' for default.
@@ -298,10 +293,6 @@ inputPreprocess = configInputPreprocessA
 modes :: Field [AnyMode]
 modes = modeTableA
 
--- | Actions available in the \"interpreter\" (currently unused). Consider using 'publishAction' instead.
-publishedActions :: Field (M.Map String [Dynamic])
-publishedActions = publishedActionsA
-
 -- | Set to 'Exclusive' for an emacs-like behaviour. Consider starting with 'defaultEmacsConfig', 'defaultVimConfig', or 'defaultCuaConfig' to instead.
 regionStyle :: Field RegionStyle
 regionStyle = configRegionStyleA
@@ -314,20 +305,3 @@ killringAccumulate = configKillringAccumulateA
 bufferUpdateHandler :: Field [[Update] -> BufferM ()]
 bufferUpdateHandler = bufferUpdateHandlerA
 
-{- | Accessor for any 'YiConfigVariable', to be used by modules defining
-'YiConfigVariable's. Such modules should provide a custom-named field.
-For instance, take the following hypothetical 'YiConfigVariable':
-
-@newtype UserName = UserName { unUserName :: String }
-  deriving(Typeable, Binary, Initializable)
-instance YiConfigVariable UserName
-
-$(nameDeriveAccessors ''UserName (\n -> Just (n ++ \"A\")))
-
-userName :: 'Field' 'String'
-userName = unUserNameA '.' 'customVariable'@
-
-Here, the hypothetical library would provide the field @userName@ to be used in preference to @customVariable@.
--}
-customVariable :: YiConfigVariable a => Field a
-customVariable = configVariableA . configVarsA

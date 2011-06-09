@@ -12,7 +12,7 @@ import Data.Ix
 -- | Direction of movement inside a buffer
 data Direction = Backward
                | Forward
-                 deriving (Eq,Ord,Typeable,Show)
+                 deriving (Eq,Ord,Typeable,Show,Bounded,Enum)
 
 $(derive makeBinary ''Direction)
 

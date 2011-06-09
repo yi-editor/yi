@@ -2,7 +2,6 @@
 
 module Yi.Config where
 
-import qualified Data.Map as M
 import Data.Prototype
 import Data.Accessor.Template
 
@@ -11,7 +10,6 @@ import Yi.Layout
 import Yi.Config.Misc
 import {-# source #-} Yi.Keymap
 import {-# source #-} Yi.Editor
-import Data.Dynamic
 import Yi.Dynamic(ConfigVariables)
 import Yi.Event
 import Yi.Style
@@ -53,8 +51,6 @@ data Config = Config {startFrontEnd :: UIBoot,
                       configInputPreprocess :: I.P Event Event,
                       modeTable :: [AnyMode],
                       -- ^ List modes by order of preference.
-                      publishedActions :: M.Map String [Data.Dynamic.Dynamic],
-                      -- ^ Actions available in the "interpreter" (akin to M-x in emacs)
                       debugMode :: Bool,
                       -- ^ Produce a .yi.dbg file with a lot of debug information.
                       configRegionStyle :: RegionStyle,

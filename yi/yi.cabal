@@ -87,6 +87,7 @@ library
     Yi.Config.Default
     Yi.Config.Misc
     Yi.Config.Simple
+    Yi.Config.Simple.Types
     Yi.Core
     Yi.Debug
     Yi.Dired
@@ -97,6 +98,7 @@ library
     Yi.File
     Yi.History
     Yi.Hoogle
+    Yi.Hooks
     Yi.IReader
     Yi.IncrementalParse
     Yi.Interact
