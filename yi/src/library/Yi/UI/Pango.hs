@@ -1,4 +1,4 @@
-{-# LANGUAGE CPP, ExistentialQuantification, DoRec, TupleSections #-}
+{-# LANGUAGE CPP, ExistentialQuantification, DoRec, TupleSections, NamedFieldPuns #-}
 {-# OPTIONS_GHC -funbox-strict-fields #-}
 
 -- Copyright (c) 2007, 2008 Jean-Philippe Bernardy
@@ -9,7 +9,7 @@ module Yi.UI.Pango (start) where
 
 import Prelude (catch)
 
-import Control.Concurrent (yield)
+import Control.Concurrent
 import Data.Prototype
 import Data.IORef
 import Data.List (drop, intercalate, zip)
@@ -87,17 +87,21 @@ data WinInfo = WinInfo
     , shownTos        :: IORef Point
     , lButtonPressed  :: IORef Bool 
     , insertingMode   :: IORef Bool
-    , cursorLoc       :: IORef CursorLocation
-    , winLayout       :: PangoLayout
+    , winLayoutInfo   :: MVar WinLayoutInfo
     , winMetrics      :: FontMetrics
     , textview        :: DrawingArea
     , modeline        :: Label
     , winWidget       :: Widget -- ^ Top-level widget for this window.
     }
 
-data CursorLocation 
-  = CursorLine !Gtk.Point !Gtk.Point 
-  | CursorRectangle !Int !Int !Int !Int
+data WinLayoutInfo = WinLayoutInfo {
+   winLayout :: !PangoLayout,
+   tos :: !Point,
+   bos :: !Point,
+   cur :: !Point,
+   buffer :: !FBuffer,
+   regex :: !(Maybe SearchExp)
+ }
 
 instance Show WinInfo where
     show w = show (coreWinKey w)
@@ -126,7 +130,7 @@ updateFont cfg fontRef tc status font = do
     forM_ tcs $ \tabinfo -> do
       wcs <- readIORef (windowCache tabinfo)
       forM_ wcs $ \wininfo -> do
-        layoutSetFontDescription (winLayout wininfo) (Just font)
+        withMVar (winLayoutInfo wininfo) $ \WinLayoutInfo{winLayout} -> layoutSetFontDescription winLayout (Just font)
         -- This will cause the textview to redraw
         widgetModifyFont (textview wininfo) (Just font)
         widgetModifyFont (modeline wininfo) (Just font)
@@ -349,10 +353,10 @@ newWindow e ui w = do
                boxChildPacking ml := PackNatural]
       return (castToBox vb)
 
-    cursorRef <- newIORef (CursorRectangle 0 0 0 0)
     tosRef    <- newIORef (askBuffer w b (getMarkPointB =<< fromMark <$> askMarks))
     context   <- widgetCreatePangoContext v
     layout    <- layoutEmpty context
+    layoutRef <- newMVar (WinLayoutInfo layout 0 0 0 (findBufferWith (bufkey w) e) Nothing)
     language  <- contextGetLanguage context
     metrics   <- contextGetMetrics context f language
     ifLButton <- newIORef False
@@ -365,7 +369,7 @@ newWindow e ui w = do
     let ref = wkey w
         win = WinInfo { coreWinKey = ref
                       , coreWin   = winRef
-                      , winLayout = layout
+                      , winLayoutInfo = layoutRef
                       , winMetrics = metrics
                       , textview  = v
                       , modeline  = ml
@@ -373,7 +377,6 @@ newWindow e ui w = do
                       , shownTos  = tosRef
                       , lButtonPressed = ifLButton
                       , insertingMode = imode
-                      , cursorLoc = cursorRef
                       }
     updateWindow e ui w win
 
@@ -400,44 +403,24 @@ refresh ui e = do
             updateWinInfoForRendering e ui w
             widgetQueueDraw (textview w)
 
-{- | Updates the 'WinInfo' with the information needed for rendering. 
-This involves:
+{- | Record all the information we need for rendering.
 
-  * setting the text display attributes in the 'PangoLayout'
-
-  * calculating the cursor position.
-
-It is not necessary to set the text content, as this has already
-been done in the previous 'layout' run. 
-(See the note on 'layout' and 'refresh' in "Yi.UI.Common").
-
-We calculate this information synchronously in the 'refresh' loop,
-as the information is guaranteed to be current at this time. If
-this were instead calculating during rendering, then:
-
-  * we would need to recalculate the cursor position on every render
-
-  * the renderer is run by the Gtk event loop, so the sequencing 
-    guarantees of the note in "Yi.UI.Common" may not hold. In particular,
-    in a multithreaded environment it is possible that the text underlying 
-    the 'PangoLayout' has changed before the renderer has had a chance to
-    run, in which case the cursor position calculation will be wrong,
-    and indeed may lead to Pango assertion failures.
+This information is kept in an MVar so that the PangoLayout and tos/bos/buffer are in sync.
 -}
+
 updateWinInfoForRendering :: Editor -> UI -> WinInfo -> IO ()
-updateWinInfoForRendering e ui w = do
+updateWinInfoForRendering e _ui w = modifyMVar_ (winLayoutInfo w) $ \wli -> do
+  win <- readIORef (coreWin w)
+  return $! wli{buffer=findBufferWith (bufkey win) e,regex=currentRegex e}
+
+-- | Tell the 'PangoLayout' what colours to draw, and draw the 'PangoLayout' and the cursor onto the screen
+render :: UI -> WinInfo -> t -> IO Bool
+render ui w _event = withMVar (winLayoutInfo w) $ \WinLayoutInfo{winLayout=layout,tos,bos,cur,buffer=b,regex} -> do
   -- read the information
   win <- readIORef (coreWin w)
-  let b = findBufferWith (bufkey win) e
-      tos = max 0 (regionStart (winRegion win))
-      bos = regionEnd (winRegion win)
-      (cur, _) = runBuffer win b pointB
-
-  -- remember the tos (for handling mouse clicks)
-  writeRef (shownTos w) tos
 
   -- add color attributes.
-  let picture = askBuffer win b $ attributesPictureAndSelB sty (currentRegex e) (mkRegion tos bos)
+  let picture = askBuffer win b $ attributesPictureAndSelB sty regex (mkRegion tos bos)
       sty = extractValue $ configTheme (uiConfig ui)
       strokes = [(start',s,end') | ((start', s), end') <- zip picture (drop 1 (fmap fst picture) ++ [bos]),
                   s /= emptyAttributes]
@@ -450,39 +433,29 @@ updateWinInfoForRendering e ui w = do
                  , AttrUnderline  (rel p1) (rel p2) (if udrl then UnderlineSingle else UnderlineNone)
                  , AttrWeight     (rel p1) (rel p2) (if bd   then WeightBold      else WeightNormal)
                  ]
-      layout = winLayout w
 
   layoutSetAttributes layout allAttrs
+
+  drawWindow <- widgetGetDrawWindow $ textview w
+  gc <- gcNew drawWindow
+
+  -- draw the layout
+  drawLayout drawWindow gc 0 0 layout
 
   -- calculate the cursor position
   im <- readIORef (insertingMode w)
   (PangoRectangle curX curY curW curH, _) <- layoutGetCursorPos layout (rel cur)
   -- tell the input method
   imContextSetCursorLocation (uiInput ui) (Rectangle (round curX) (round curY) (round curW) (round curH))
-  -- tell the renderer
-  writeIORef (cursorLoc w) =<<
-    if im 
-      then -- if we are inserting, we just want a line
-         return (CursorLine (round curX, round curY) (round $ curX + curW, round $ curY + curH))
-      else do -- if we aren't inserting, we want a rectangle around the current character
-         PangoRectangle chx chy chw chh <- layoutIndexToPos layout (rel cur)
-         return (CursorRectangle (round chx) (round chy) (if chw > 0 then round chw else 8) (round chh))
-    
--- | draw the 'PangoLayout' and the cursor onto the screen
-render :: UI -> WinInfo -> t -> IO Bool
-render ui w _event = do
-  drawWindow <- widgetGetDrawWindow $ textview w
-  gc <- gcNew drawWindow
-
-  -- draw the layout
-  drawLayout drawWindow gc 0 0 (winLayout w)
-
-  -- paint the cursor   
+  -- paint the cursor
   gcSetValues gc (newGCValues { Gtk.foreground = mkCol True $ Yi.Style.foreground $ baseAttributes $ configStyle $ uiConfig ui })
-  cursor <- readIORef (cursorLoc w)
-  case cursor of
-    CursorLine p1 p2 -> drawLine drawWindow gc p1 p2
-    CursorRectangle rx ry rw rh -> drawRectangle drawWindow gc False rx ry rw rh
+  -- tell the renderer
+  if im 
+  then -- if we are inserting, we just want a line
+    drawLine drawWindow gc (round curX, round curY) (round $ curX + curW, round $ curY + curH)
+  else do -- if we aren't inserting, we want a rectangle around the current character
+    PangoRectangle chx chy chw chh <- layoutIndexToPos layout (rel cur)
+    drawRectangle drawWindow gc False (round chx) (round chy) (if chw > 0 then round chw else 8) (round chh)
 
   return True
 
@@ -515,11 +488,15 @@ getHeightsInTab ui f e tab = do
     return ret
 
 shownRegion :: UI -> FontDescription -> WinInfo -> FBuffer -> IO Region
-shownRegion ui f w b = do
-   (tos, _, bos) <- updatePango ui f w b layout
-   return $ mkRegion tos bos
-  where layout = winLayout w
+shownRegion ui f w b = modifyMVar (winLayoutInfo w) $ \wli -> do
+   (tos, cur, bos) <- updatePango ui f w b (winLayout wli)
+   return (wli{tos,cur=clampTo tos bos cur,bos}, mkRegion tos bos)
+ where clampTo lo hi x = max lo (min hi x)
+-- during scrolling, cur might not lie between tos and bos, so we clamp it to avoid Pango errors
 
+-- we update the regex and the buffer to avoid holding on to potential garbage.
+-- These will be overwritten with correct values soon, in
+-- updateWinInfoForRendering.
 updatePango :: UI -> FontDescription -> WinInfo -> FBuffer -> PangoLayout -> IO (Point, Point, Point)
 updatePango ui font w b layout = do
   (width', height') <- widgetGetSize $ textview w
@@ -704,10 +681,9 @@ handleDividerMove actionCh ref pos = actionCh (makeAction (setDividerPosE ref po
 
 -- | Convert point coordinates to offset in Yi window
 pointToOffset :: (Double, Double) -> WinInfo -> IO Point
-pointToOffset (x,y) w = do
+pointToOffset (x,y) w = withMVar (winLayoutInfo w) $ \WinLayoutInfo{winLayout,tos} -> do
   im <- readIORef (insertingMode w)
-  (_, charOffsetX, extra) <- layoutXYToIndex (winLayout w) x y
-  tos <- readIORef $ shownTos w
+  (_, charOffsetX, extra) <- layoutXYToIndex winLayout x y
   return $ tos + fromIntegral (charOffsetX + if im then extra else 0)
 
 selectArea :: UI -> WinInfo -> (Double, Double) -> IO ()
