@@ -63,6 +63,13 @@ flag hacking
 flag testing
   Description: bake-in the self-checks
 
+flag dochack
+  Default: False
+  Description:
+      Hack to get Haddock documentation, by disabling executables.
+         * this is a workaround for a cabal bug; see Issue #347
+         * do a 'cabal install yi -fdochack' followed by 'cabal install yi' to get yi and the documentation
+
 library
   hs-source-dirs: src/library
   default-language: Haskell2010
@@ -330,7 +337,7 @@ executable parserTest
   hs-source-dirs: src/parsertest
   default-language: Haskell2010
 
-  if !flag(hacking)
+  if !flag(hacking) || flag(dochack)
     buildable: False
 
   main-is: ParserTest/ParserTest.hs
@@ -340,12 +347,16 @@ executable parserTest
     array,
     containers,
     directory,
-    filepath>=1.1 && <1.3,
-    yi
+    filepath>=1.1 && <1.3
+  if !flag(dochack)
+    build-depends: yi
 
 executable yi
   hs-source-dirs: src/executable
   default-language: Haskell2010
+
+  if flag(dochack)
+    buildable: False
 
   if flag(hacking)
     main-is: HackerMain.hs
@@ -353,8 +364,8 @@ executable yi
     main-is: Main.hs
 
   build-depends:
-    base >=4 && <5,
-    yi
-
+    base >=4 && <5
+  if !flag(dochack)
+    build-depends: yi
   build-tools: alex
   ghc-options: -threaded
