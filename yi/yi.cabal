@@ -131,6 +131,7 @@ library
     Yi.Lexer.Java
     Yi.Lexer.Latex
     Yi.Lexer.LiterateHaskell
+    Yi.Lexer.GitCommit
     Yi.Lexer.GNUMake
     Yi.Lexer.OCaml
     Yi.Lexer.Ott
