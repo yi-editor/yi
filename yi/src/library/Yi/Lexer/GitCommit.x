@@ -21,14 +21,14 @@ gitCommit :-
 -- The first line of a git commit message is the digest that is
 -- displayed as a summary of the commit in virtually all git tools.
 <0> {
-^.*$                           { c Style.regexStyle }
+.+                             { c Style.regexStyle }
 $nl                            { m (const SecondLine) Style.defaultStyle }
 }
 
 -- There should never be anything on the second line of a git commit message
 -- so it is styled in a deliberately hideous color scheme.
 <secondLine> {
-.*                             { c (const $ Style.withFg Style.red `mappend` Style.withBg Style.brown) }
+.+                             { c (const $ Style.withFg Style.red `mappend` Style.withBg Style.brown) }
 $nl                            { m (const MessageLine) Style.defaultStyle }
 }
 
