@@ -10,7 +10,7 @@ module Yi.Modes (TokenBasedMode, fundamentalMode,
                 ) where
 
 import Prelude ()
-import Data.List ( isPrefixOf, isSuffixOf, map, filter )
+import Data.List ( isPrefixOf, map, filter )
 import Data.Maybe
 import System.FilePath
 import Text.Regex.TDFA ((=~))
@@ -116,7 +116,7 @@ gitCommitMode = (linearSyntaxMode GitCommit.initState GitCommit.alexScanToken id
   {
     modeName = "git-commit",
     modeApplies = \path _ -> takeFileName path == "COMMIT_EDITMSG" &&
-                             ".git" `isSuffixOf`(takeDirectory path)
+                             takeFileName (takeDirectory path) == ".git"
   }
 
 svnCommitMode = (linearSyntaxMode SVNCommit.initState SVNCommit.alexScanToken id)
