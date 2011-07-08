@@ -5,11 +5,12 @@ module Yi.Modes (TokenBasedMode, fundamentalMode,
                  perlMode, pythonMode, javaMode, anyExtension,
                  extensionOrContentsMatch, linearSyntaxMode,
                  svnCommitMode, hookModes, applyModeHooks,
-                 lookupMode, whitespaceMode, removeAnnots
+                 lookupMode, whitespaceMode, removeAnnots,
+                 gitCommitMode
                 ) where
 
 import Prelude ()
-import Data.List ( isPrefixOf, map, filter )
+import Data.List ( isPrefixOf, isSuffixOf, map, filter )
 import Data.Maybe
 import System.FilePath
 import Text.Regex.TDFA ((=~))
@@ -36,6 +37,7 @@ import qualified Yi.Lexer.Python     as Python
 import qualified Yi.Lexer.Java       as Java
 import qualified Yi.Lexer.Srmc       as Srmc
 import qualified Yi.Lexer.SVNCommit  as SVNCommit
+import qualified Yi.Lexer.GitCommit  as GitCommit
 import qualified Yi.Lexer.Whitespace  as Whitespace
 import Yi.Syntax.OnlineTree as OnlineTree
 import qualified Yi.IncrementalParse as IncrParser
@@ -108,6 +110,13 @@ srmcMode = (linearSyntaxMode Srmc.initState Srmc.alexScanToken id)
     modeName = "srmc",
     modeApplies = anyExtension ["pepa", -- pepa is a subset of srmc    
                                 "srmc"]
+  }
+
+gitCommitMode = (linearSyntaxMode GitCommit.initState GitCommit.alexScanToken id)
+  {
+    modeName = "git-commit",
+    modeApplies = \path _ -> takeFileName path == "COMMIT_EDITMSG" &&
+                             ".git" `isSuffixOf`(takeDirectory path)
   }
 
 svnCommitMode = (linearSyntaxMode SVNCommit.initState SVNCommit.alexScanToken id)
