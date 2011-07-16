@@ -327,6 +327,7 @@ miniwindowDisplaySet mwd ws = do
   when (ws /= curWs) $ do
     forM_ curWs $ containerRemove (mwdMainWidget mwd)
     forM_ ws $ \w -> boxPackEnd (mwdMainWidget mwd) w PackNatural 0
+    widgetShowAll $ mwdMainWidget mwd
     writeIORef (mwdWidgets mwd) ws
 
 
