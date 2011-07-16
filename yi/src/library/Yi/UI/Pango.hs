@@ -7,7 +7,7 @@
 -- pango for direct text rendering.
 module Yi.UI.Pango (start) where
 
-import Prelude (catch)
+import Prelude (catch, filter)
 
 import Control.Concurrent
 import Data.Prototype
@@ -558,8 +558,9 @@ handleKeypress ch im = do
   gtkKey  <- eventKeyVal
   ifIM    <- imContextFilterKeypress im
   let char = keyToChar gtkKey
-      mods | isJust char && gtkMods == [EventM.Shift] = []
-           | otherwise = M.keys $ M.filter (`elem` gtkMods) modTable
+      modsWithShift = M.keys $ M.filter (`elem` gtkMods) modTable
+      mods | isJust char = filter (/= MShift) modsWithShift
+           | otherwise   = modsWithShift
       key  = case char of
         Just c  -> Just $ KASCII c
         Nothing -> M.lookup (keyName gtkKey) keyTable
