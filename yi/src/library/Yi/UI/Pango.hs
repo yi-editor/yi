@@ -98,6 +98,7 @@ data WinLayoutInfo = WinLayoutInfo {
    winLayout :: !PangoLayout,
    tos :: !Point,
    bos :: !Point,
+   bufEnd :: !Point,
    cur :: !Point,
    buffer :: !FBuffer,
    regex :: !(Maybe SearchExp)
@@ -356,7 +357,7 @@ newWindow e ui w = do
     tosRef    <- newIORef (askBuffer w b (getMarkPointB =<< fromMark <$> askMarks))
     context   <- widgetCreatePangoContext v
     layout    <- layoutEmpty context
-    layoutRef <- newMVar (WinLayoutInfo layout 0 0 0 (findBufferWith (bufkey w) e) Nothing)
+    layoutRef <- newMVar (WinLayoutInfo layout 0 0 0 0 (findBufferWith (bufkey w) e) Nothing)
     language  <- contextGetLanguage context
     metrics   <- contextGetMetrics context f language
     ifLButton <- newIORef False
@@ -489,15 +490,15 @@ getHeightsInTab ui f e tab = do
 
 shownRegion :: UI -> FontDescription -> WinInfo -> FBuffer -> IO Region
 shownRegion ui f w b = modifyMVar (winLayoutInfo w) $ \wli -> do
-   (tos, cur, bos) <- updatePango ui f w b (winLayout wli)
-   return (wli{tos,cur=clampTo tos bos cur,bos}, mkRegion tos bos)
+   (tos, cur, bos, bufEnd) <- updatePango ui f w b (winLayout wli)
+   return (wli{tos,cur=clampTo tos bos cur,bos,bufEnd}, mkRegion tos bos)
  where clampTo lo hi x = max lo (min hi x)
 -- during scrolling, cur might not lie between tos and bos, so we clamp it to avoid Pango errors
 
 -- we update the regex and the buffer to avoid holding on to potential garbage.
 -- These will be overwritten with correct values soon, in
 -- updateWinInfoForRendering.
-updatePango :: UI -> FontDescription -> WinInfo -> FBuffer -> PangoLayout -> IO (Point, Point, Point)
+updatePango :: UI -> FontDescription -> WinInfo -> FBuffer -> PangoLayout -> IO (Point, Point, Point, Point)
 updatePango ui font w b layout = do
   (width', height') <- widgetGetSize $ textview w
 
@@ -512,16 +513,17 @@ updatePango ui font w b layout = do
       lineHeight          = ascent metrics + descent metrics
       winh                = max 1 $ floor (height'' / lineHeight)
 
-      (tos, point, text)  = askBuffer win b $ do
+      (tos, size, point, text)  = askBuffer win b $ do
                               from     <- getMarkPointB =<< fromMark <$> askMarks
                               rope     <- streamB Forward from
                               p        <- pointB
+                              bufEnd     <- sizeB
                               let content = fst $ Rope.splitAtLine winh rope
                               -- allow BOS offset to be just after the last line
                               let addNL = if Rope.countNewLines content == winh
                                               then id
                                               else (++"\n")
-                              return (from, p, addNL $ Rope.toString content)
+                              return (from, bufEnd, p, addNL $ Rope.toString content)
 
   if configLineWrap $ uiConfig ui
     then do oldWidth <- layoutGetWidth layout
@@ -534,7 +536,7 @@ updatePango ui font w b layout = do
   when (oldText /= text) (layoutSetText layout text)
 
   (_, bosOffset, _) <- layoutXYToIndex layout width'' (fromIntegral winh * lineHeight - 1)
-  return (tos, point, tos + fromIntegral bosOffset + 1)
+  return (tos, point, tos + fromIntegral bosOffset + 1, size)
 
 reloadProject :: IO ()
 reloadProject = return ()
@@ -682,10 +684,10 @@ handleDividerMove actionCh ref pos = actionCh (makeAction (setDividerPosE ref po
 
 -- | Convert point coordinates to offset in Yi window
 pointToOffset :: (Double, Double) -> WinInfo -> IO Point
-pointToOffset (x,y) w = withMVar (winLayoutInfo w) $ \WinLayoutInfo{winLayout,tos} -> do
+pointToOffset (x,y) w = withMVar (winLayoutInfo w) $ \WinLayoutInfo{winLayout,tos,bufEnd} -> do
   im <- readIORef (insertingMode w)
   (_, charOffsetX, extra) <- layoutXYToIndex winLayout x y
-  return $ tos + fromIntegral (charOffsetX + if im then extra else 0)
+  return $ min bufEnd (tos + fromIntegral (charOffsetX + if im then extra else 0))
 
 selectArea :: UI -> WinInfo -> (Double, Double) -> IO ()
 selectArea ui w (x,y) = do
