@@ -50,7 +50,6 @@ import Data.FingerTree hiding (null, empty, reverse)
 import Data.Binary
 import Data.Char (ord)
 import Data.Monoid
-import Data.Foldable (toList)
 
 import System.IO.Cautious (writeFileL)
  
@@ -61,10 +60,10 @@ defaultChunkSize = 128 -- in chars! (chunkSize requires this to be <= 256)
 -- means that the length of chunks often have to be recomputed.
 mkChunk :: ByteString -> Chunk
 mkChunk s = Chunk (fromIntegral $ B.length s) s
-data Chunk = Chunk { chunkSize :: !Word8, fromChunk :: !ByteString }
+data Chunk = Chunk { chunkSize :: {-# UNPACK #-} !Word8, fromChunk :: {-# UNPACK #-} !ByteString }
   deriving (Eq, Show)
 
-data Size = Indices {charIndex :: !Int, lineIndex :: Int} -- lineIndex is lazy because we do not often want the line count.
+data Size = Indices {charIndex :: {-# UNPACK #-} !Int, lineIndex :: {-# UNPACK #-} !Int} -- lineIndex is lazy because we do not often want the line count. However, we need this to avoid stack overflows on large files!
   deriving Show
 
 instance Monoid Size where
@@ -90,6 +89,13 @@ instance Measured Size Chunk where
    measure (Chunk l s) = Indices (fromIntegral l)  -- note that this is the length in characters, not bytes.
                                  (Byte.count newline s)
  
+-- | The 'Foldable' instance of 'FingerTree' only defines 'foldMap', so the 'foldr' needed for 'toList' is inefficient,
+-- and can cause stack overflows. So, we roll our own (somewhat inefficient) version of 'toList' to avoid this.
+toList :: Measured v a => FingerTree v a -> [a]
+toList t = case viewl t of
+              c :< cs -> c : toList cs
+              EmptyL -> []
+
 toLazyByteString :: Rope -> LB.ByteString
 toLazyByteString = LB.fromChunks . fmap fromChunk . toList . fromRope
 
@@ -103,17 +109,21 @@ toString :: Rope -> String
 toString = LB.toString . toLazyByteString
  
 fromLazyByteString :: LB.ByteString -> Rope
-fromLazyByteString = Rope . toTree
+fromLazyByteString = Rope . toTree T.empty
    where
-     toTree b | LB.null b = T.empty
-     toTree b = let (h,t) = LB.splitAt (fromIntegral defaultChunkSize) b in (mkChunk $ B.concat $ LB.toChunks $ h) <| toTree t
+     toTree acc b | LB.null b = acc
+                  | otherwise = let (h,t) = LB.splitAt (fromIntegral defaultChunkSize) b
+                                    chunk = mkChunk $ B.concat $ LB.toChunks $ h
+                                in acc `seq` chunk `seq` toTree (acc |> chunk) t
 
  
 fromString :: String -> Rope
-fromString = Rope . toTree
+fromString = Rope . toTree T.empty
    where
-     toTree [] = T.empty
-     toTree b = let (h,t) = L.splitAt defaultChunkSize b in (mkChunk $ B.fromString h) <| toTree t
+     toTree acc [] = acc
+     toTree acc b  = let (h,t) = L.splitAt defaultChunkSize b 
+                         chunk = mkChunk $ B.fromString h
+                     in acc `seq` chunk `seq` toTree (acc |> chunk) t
  
 null :: Rope -> Bool
 null (Rope a) = T.null a

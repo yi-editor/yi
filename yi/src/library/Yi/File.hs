@@ -22,7 +22,6 @@ import Data.Maybe
 import Data.Time
 import Control.Monad.Trans
 import System.Directory
-import System.IO.UTF8 as UTF8
 import System.FilePath
 import System.FriendlyPath
 import qualified Data.Rope as R
@@ -98,7 +97,7 @@ revertE = do
             case mfp of
                      Just fp -> do
                              now <- io getCurrentTime
-                             s <- liftIO $ UTF8.readFile fp
+                             s <- liftIO $ R.readFile fp
                              withBuffer $ revertB s now
                              msgEditor ("Reverted from " ++ show fp)
                      Nothing -> do
@@ -143,9 +142,9 @@ fwriteBufferE :: BufferRef -> YiM ()
 fwriteBufferE bufferKey = 
   do nameContents <- withGivenBuffer bufferKey ((,) <$> gets file <*> streamB Forward 0)
      case nameContents of
-       (Just f, contents) -> do now <- io getCurrentTime
+       (Just f, contents) -> do liftIO $ R.writeFile f contents
+                                now <- io getCurrentTime
                                 withGivenBuffer bufferKey (markSavedB now)
-                                liftIO $ R.writeFile f contents
        (Nothing, _c)      -> msgEditor "Buffer not associated with a file"
 
 -- | Write current buffer to disk as @f@. The file is also set to @f@

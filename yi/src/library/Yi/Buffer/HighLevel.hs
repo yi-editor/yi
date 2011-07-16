@@ -621,8 +621,13 @@ sortLines :: BufferM ()
 sortLines = modifyExtendedSelectionB Line (onLines sort)
 
 -- | Helper function: revert the buffer contents to its on-disk version
-revertB :: String -> UTCTime -> BufferM ()
+revertB :: Rope -> UTCTime -> BufferM ()
 revertB s now = do
     r <- regionOfB Document
-    replaceRegionClever r s
+    if R.length s <= smallBufferSize -- for large buffers, we must avoid building strings, because we'll end up using huge amounts of memory
+    then replaceRegionClever r (R.toString s)
+    else replaceRegionB' r s
     markSavedB now
+
+smallBufferSize :: Int
+smallBufferSize = 1000000

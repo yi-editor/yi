@@ -42,6 +42,7 @@ module Yi.Buffer.Misc
   , leftN
   , rightN
   , insertN
+  , insertNAt'
   , insertNAt
   , insertB
   , deleteN
@@ -711,10 +712,12 @@ newlineB :: BufferM ()
 newlineB = insertB '\n'
 
 ------------------------------------------------------------------------
+insertNAt' :: Rope -> Point -> BufferM ()
+insertNAt' rope pnt = applyUpdate (Insert pnt Forward $ rope)
 
 -- | Insert the list at specified point, extending size of buffer
 insertNAt :: String -> Point -> BufferM ()
-insertNAt cs pnt = applyUpdate (Insert pnt Forward $ R.fromString cs)
+insertNAt cs pnt = insertNAt' (R.fromString cs) pnt
 
 -- | Insert the list at current point, extending size of buffer
 insertN :: String -> BufferM ()

@@ -9,6 +9,7 @@ module Yi.Buffer.Region
   , swapRegionsB
   , deleteRegionB
   , replaceRegionB
+  , replaceRegionB'
   , replaceRegionClever
   , readRegionB
   , mapRegionB
@@ -44,6 +45,14 @@ replaceRegionB :: Region -> String -> BufferM ()
 replaceRegionB r s = do
   deleteRegionB r
   insertNAt s (regionStart r)
+
+-- | Replace a region with a given rope.
+replaceRegionB' :: Region -> Rope -> BufferM ()
+replaceRegionB' r s = do
+  deleteRegionB r
+  insertNAt' s (regionStart r)
+
+-- TODO: reimplement 'getGroupedDiff' for Ropes, so we can use 'replaceRegionClever' on large regions.
 
 -- | As 'replaceRegionB', but do a minimal edition instead of deleting the whole
 -- region and inserting it back.
