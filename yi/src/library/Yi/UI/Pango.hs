@@ -700,9 +700,10 @@ handleScroll ui w = do
     -- query new coordinates
     let editorAction = do
           withBuffer0 $ scrollB $ case scrollDirection of
-            ScrollUp   -> -1
-            ScrollDown -> 1
+            ScrollUp   -> negate configAmount
+            ScrollDown -> configAmount
             _          -> 0 -- Left/right scrolling not supported
+        configAmount = configScrollWheelAmount $ uiConfig ui
     uiActionCh ui (makeAction editorAction)
     if ifPressed
      then selectArea ui w xy

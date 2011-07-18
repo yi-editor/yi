@@ -134,6 +134,7 @@ defaultConfig =
          , configUI         =  UIConfig 
            { configFontSize = Nothing
            , configFontName = Nothing
+           , configScrollWheelAmount = 4
            , configScrollStyle = Nothing
            , configCursorStyle = FatWhenFocusedAndInserting
            , configLineWrap = True

@@ -30,6 +30,7 @@ module Yi.Config.Simple (
   -- * Appearance
   fontName,
   fontSize,
+  scrollWheelAmount,
   scrollStyle,
   ScrollStyle(..),
   cursorStyle,
@@ -107,8 +108,8 @@ import Yi.Config(Config, UIConfig,
                  startFrontEndA, configUIA, startActionsA, initialActionsA, defaultKmA, 
                  configInputPreprocessA, modeTableA, debugModeA,
                  configRegionStyleA, configKillringAccumulateA, bufferUpdateHandlerA,
-                 configVtyEscDelayA, configFontNameA, configFontSizeA, configScrollStyleA,
-                 configCursorStyleA, CursorStyle(..),
+                 configVtyEscDelayA, configFontNameA, configFontSizeA, configScrollWheelAmountA,
+                 configScrollStyleA, configCursorStyleA, CursorStyle(..),
                  configLeftSideScrollBarA, configAutoHideScrollBarA, configAutoHideTabBarA,
                  configLineWrapA, configWindowFillA, configThemeA, layoutManagersA, configVarsA,
                 )
@@ -243,6 +244,10 @@ fontName = configFontNameA . configUIA
 -- | 'Just' the font size, or 'Nothing' for default.
 fontSize :: Field (Maybe Int)
 fontSize = configFontSizeA . configUIA
+
+-- | Amount to move the buffer when using the scroll wheel.
+scrollWheelAmount :: Field Int
+scrollWheelAmount = configScrollWheelAmountA . configUIA
 
 -- | 'Just' the scroll style, or 'Nothing' for default.
 scrollStyle :: Field (Maybe ScrollStyle)
