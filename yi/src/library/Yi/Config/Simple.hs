@@ -1,4 +1,5 @@
 {-# LANGUAGE Rank2Types, CPP, GeneralizedNewtypeDeriving #-}
+{-# OPTIONS_GHC -fno-warn-duplicate-exports #-} -- for good documentation, we want control over our export list, which occasionally gives us duplicate exports
 
 {- | A simplified configuration interface for Yi. -}
 module Yi.Config.Simple (
@@ -28,6 +29,9 @@ module Yi.Config.Simple (
   fontName,
   fontSize,
   scrollStyle,
+  ScrollStyle(..),
+  cursorStyle,
+  CursorStyle(..),
   Side(..),
   scrollBarSide,
   autoHideScrollBar,
@@ -61,7 +65,6 @@ module Yi.Config.Simple (
   module Yi.File,
   module Yi.Config,
   module Yi.Config.Default,
-  module Yi.Config.Misc,
   module Yi.Layout,
   module Yi.Search,
   module Yi.Style,
@@ -102,6 +105,7 @@ import Yi.Config(Config, UIConfig,
                  configInputPreprocessA, modeTableA, debugModeA,
                  configRegionStyleA, configKillringAccumulateA, bufferUpdateHandlerA,
                  configVtyEscDelayA, configFontNameA, configFontSizeA, configScrollStyleA,
+                 configCursorStyleA, CursorStyle(..),
                  configLeftSideScrollBarA, configAutoHideScrollBarA, configAutoHideTabBarA,
                  configLineWrapA, configWindowFillA, configThemeA, layoutManagersA, configVarsA,
                 )
@@ -206,6 +210,10 @@ fontSize = configFontSizeA . configUIA
 -- | 'Just' the scroll style, or 'Nothing' for default.
 scrollStyle :: Field (Maybe ScrollStyle)
 scrollStyle = configScrollStyleA . configUIA
+
+-- | See 'CursorStyle' for documentation.
+cursorStyle :: Field CursorStyle
+cursorStyle = configCursorStyleA . configUIA
 
 data Side = LeftSide | RightSide
 

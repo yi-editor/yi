@@ -1,4 +1,4 @@
-{-# LANGUAGE CPP, ExistentialQuantification, DoRec, TupleSections, NamedFieldPuns #-}
+{-# LANGUAGE CPP, ExistentialQuantification, DoRec, TupleSections, NamedFieldPuns, ViewPatterns #-}
 {-# OPTIONS_GHC -funbox-strict-fields #-}
 
 -- Copyright (c) 2007, 2008 Jean-Philippe Bernardy
@@ -87,6 +87,7 @@ data WinInfo = WinInfo
     , shownTos        :: IORef Point
     , lButtonPressed  :: IORef Bool 
     , insertingMode   :: IORef Bool
+    , inFocus         :: IORef Bool
     , winLayoutInfo   :: MVar WinLayoutInfo
     , winMetrics      :: FontMetrics
     , textview        :: DrawingArea
@@ -259,6 +260,7 @@ updateTabInfo e ui tab tabInfo = do
 
 updateWindow :: Editor -> UI -> Window -> WinInfo -> IO ()
 updateWindow e _ui win wInfo = do
+    writeIORef (inFocus wInfo) False -- see also 'setWindowFocus'
     writeIORef (coreWin wInfo) win
     writeIORef (insertingMode wInfo) (askBuffer win (findBufferWith (bufkey win) e) $ getA insertingA)
 
@@ -269,6 +271,7 @@ setWindowFocus e ui t w = do
       ml = askBuffer win (findBufferWith (bufkey win) e) $ getModeLine (commonNamePrefix e)
       im = uiInput ui
 
+  writeIORef (inFocus w) True -- see also 'updateWindow'
   update (textview w) widgetIsFocus True
   update (modeline w) labelText ml
   writeIORef (fullTitle t) bufferName
@@ -362,6 +365,7 @@ newWindow e ui w = do
     metrics   <- contextGetMetrics context f language
     ifLButton <- newIORef False
     imode     <- newIORef False
+    focused   <- newIORef False
     winRef    <- newIORef w
 
     layoutSetFontDescription layout (Just f)
@@ -378,6 +382,7 @@ newWindow e ui w = do
                       , shownTos  = tosRef
                       , lButtonPressed = ifLButton
                       , insertingMode = imode
+                      , inFocus = focused
                       }
     updateWindow e ui w win
 
@@ -387,6 +392,11 @@ newWindow e ui w = do
     v `on` configureEvent     $ handleConfigure     ui  -- todo: allocate event rather than configure?
     v `on` motionNotifyEvent  $ handleMove          ui win
     discard $ v `onExpose` render ui win
+    -- also redraw when the window receives/loses focus
+    (uiWindow ui) `on` focusInEvent $ io (widgetQueueDraw v) >> return False 
+    (uiWindow ui) `on` focusOutEvent $ io (widgetQueueDraw v) >> return False 
+    -- todo: consider adding an 'isDirty' flag to WinLayoutInfo,
+    -- so that we don't have to recompute the Attributes when focus changes.
     return win
 
 refresh :: UI -> Editor -> IO ()
@@ -440,22 +450,37 @@ render ui w _event = withMVar (winLayoutInfo w) $ \WinLayoutInfo{winLayout=layou
   drawWindow <- widgetGetDrawWindow $ textview w
   gc <- gcNew drawWindow
 
+  -- see Note [PangoLayout width]
   -- draw the layout
-  drawLayout drawWindow gc 0 0 layout
+  drawLayout drawWindow gc 1 0 layout
 
   -- calculate the cursor position
   im <- readIORef (insertingMode w)
-  (PangoRectangle curX curY curW curH, _) <- layoutGetCursorPos layout (rel cur)
+
+  -- check focus, and decide whether we want a wide cursor
+  bufferFocused <- readIORef (inFocus w)
+  uiFocused <- Gtk.windowHasToplevelFocus (uiWindow ui)
+  let focused = bufferFocused && uiFocused
+      wideCursor = 
+       case configCursorStyle (uiConfig ui) of
+         AlwaysFat -> True
+         NeverFat -> False
+         FatWhenFocused -> focused
+         FatWhenFocusedAndInserting -> focused && im
+ 
+
+  (PangoRectangle (succ -> curX) curY curW curH, _) <- layoutGetCursorPos layout (rel cur)
   -- tell the input method
   imContextSetCursorLocation (uiInput ui) (Rectangle (round curX) (round curY) (round curW) (round curH))
   -- paint the cursor
-  gcSetValues gc (newGCValues { Gtk.foreground = mkCol True $ Yi.Style.foreground $ baseAttributes $ configStyle $ uiConfig ui })
+  gcSetValues gc (newGCValues { Gtk.foreground = mkCol True $ Yi.Style.foreground $ baseAttributes $ configStyle $ uiConfig ui,
+                                Gtk.lineWidth = if wideCursor then 2 else 1 })
   -- tell the renderer
   if im 
   then -- if we are inserting, we just want a line
     drawLine drawWindow gc (round curX, round curY) (round $ curX + curW, round $ curY + curH)
   else do -- if we aren't inserting, we want a rectangle around the current character
-    PangoRectangle chx chy chw chh <- layoutIndexToPos layout (rel cur)
+    PangoRectangle (succ -> chx) chy chw chh <- layoutIndexToPos layout (rel cur)
     drawRectangle drawWindow gc False (round chx) (round chy) (if chw > 0 then round chw else 8) (round chh)
 
   return True
@@ -495,12 +520,28 @@ shownRegion ui f w b = modifyMVar (winLayoutInfo w) $ \wli -> do
  where clampTo lo hi x = max lo (min hi x)
 -- during scrolling, cur might not lie between tos and bos, so we clamp it to avoid Pango errors
 
+{-
+Note [PangoLayout width]
+~~~~~~~~~~~~~~~~~~~~~~~~
+
+We start rendering the PangoLayout one pixel from the left of the rendering area, which means a few +/-1 offsets in Pango rendering and point lookup code.
+The reason for this is to support the "wide cursor", which is 2 pixels wide. If we started rendering the PangoLayout 
+directly from the left of the rendering area instead of at a 1-pixel offset, then the "wide cursor" would only be half-displayed
+when the cursor is at the beginning of the line, and would then be a "thin cursor".
+
+An alternative would be to special-case the wide cursor rendering at the beginning of the line, and draw it one pixel to
+the right of where it "should" be. I haven't tried this out to see how it looks.
+
+Reiner
+-}
+
 -- we update the regex and the buffer to avoid holding on to potential garbage.
 -- These will be overwritten with correct values soon, in
 -- updateWinInfoForRendering.
 updatePango :: UI -> FontDescription -> WinInfo -> FBuffer -> PangoLayout -> IO (Point, Point, Point, Point)
 updatePango ui font w b layout = do
-  (width', height') <- widgetGetSize $ textview w
+  (width_', height') <- widgetGetSize $ textview w
+  let width' = max 0 (width_' - 1) -- see Note [PangoLayout width]
 
   oldFont <- layoutGetFontDescription layout
   oldFontStr <- maybe (return Nothing) (fmap Just . fontDescriptionToString) oldFont
@@ -686,7 +727,7 @@ handleDividerMove actionCh ref pos = actionCh (makeAction (setDividerPosE ref po
 pointToOffset :: (Double, Double) -> WinInfo -> IO Point
 pointToOffset (x,y) w = withMVar (winLayoutInfo w) $ \WinLayoutInfo{winLayout,tos,bufEnd} -> do
   im <- readIORef (insertingMode w)
-  (_, charOffsetX, extra) <- layoutXYToIndex winLayout x y
+  (_, charOffsetX, extra) <- layoutXYToIndex winLayout (max 0 (x-1)) y -- see Note [PangoLayout width]
   return $ min bufEnd (tos + fromIntegral (charOffsetX + if im then extra else 0))
 
 selectArea :: UI -> WinInfo -> (Double, Double) -> IO ()

@@ -27,11 +27,18 @@ data UIConfig = UIConfig {
    configAutoHideScrollBar :: Bool, -- ^ Hide scrollbar automatically if text fits on one page.
    configAutoHideTabBar :: Bool,    -- ^ Hide the tabbar automatically if only one tab is present
    configLineWrap :: Bool,          -- ^ Wrap lines at the edge of the window if too long to display.
+   configCursorStyle :: CursorStyle,
    configWindowFill :: Char,
    -- ^ The char with which to fill empty window space.  Usually '~' for vi-like
    -- editors, ' ' for everything else.
    configTheme :: Theme             -- ^ UI colours
   }
+
+-- | When should we use a \"fat\" cursor (i.e. 2 pixels wide, rather than 1)? Fat cursors have only been implemented for the Pango frontend.
+data CursorStyle = AlwaysFat
+                 | NeverFat
+                 | FatWhenFocused
+                 | FatWhenFocusedAndInserting
 
 configStyle :: UIConfig -> UIStyle
 configStyle = extractValue . configTheme

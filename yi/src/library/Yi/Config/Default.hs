@@ -135,6 +135,7 @@ defaultConfig =
            { configFontSize = Nothing
            , configFontName = Nothing
            , configScrollStyle = Nothing
+           , configCursorStyle = FatWhenFocusedAndInserting
            , configLineWrap = True
            , configLeftSideScrollBar = True
            , configAutoHideScrollBar = False
