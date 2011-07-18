@@ -11,7 +11,7 @@ import Yi.Dynamic
 import Control.Monad.State hiding (modify, get)
 
 -- | The configuration monad. Run it with 'configMain'.
-newtype ConfigM a = ConfigM { runConfigM :: StateT Config IO a } deriving(Monad, MonadState Config, MonadIO)
+newtype ConfigM a = ConfigM { runConfigM :: StateT Config IO a } deriving(Monad, Functor, Applicative, MonadState Config, MonadIO)
 
 -- | Fields that can be modified with ('%='), 'get' and 'modify'.
 type Field a = Accessor Config a

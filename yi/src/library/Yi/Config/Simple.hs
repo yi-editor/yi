@@ -17,8 +17,10 @@ module Yi.Config.Simple (
   -- * Modes, commands, and keybindings
   globalBindKeys,
   modeBindKeys,
+  modeBindKeysByName,
   addMode,
   modifyMode,
+  modifyModeByName,
   -- * Evaluation of commands
   evaluator,
   ghciEvaluator,
@@ -95,6 +97,7 @@ import Yi.Mode.Haskell
 import Yi.Scion
 #endif
 
+import Text.Printf(printf)
 import Prelude hiding((.))
 
 import Control.Monad.State hiding (modify, get)
@@ -120,12 +123,13 @@ selecting modes, choosing the frontend) have been given special commands ('globa
 A simple configuration might look like the following:
 
 @import Yi.Config.Simple
+import qualified Yi.Mode.Haskell as Haskell
 -- note: don't import "Yi", or else there will be name clashes
 
 main = 'configMain' 'defaultEmacsConfig' $ do
   'setFrontendPreferences' ["pango", "vte", "vty"]
   'fontSize' '%=' 'Just' 10
-  'modeBindKeys' "haskell" ('metaCh' \'q\' '?>>!' 'reload')
+  'modeBindKeys' Haskell.cleverMode ('metaCh' \'q\' '?>>!' 'reload')
   'globalBindKeys' ('metaCh' \'r\' '?>>!' 'reload')@
 
 A lot of the fields here are specified with the 'Field' type. To write a field, use ('%='). To read, use 'get'. For modification, use ('modify'). For example, the functions @foo@ and @bar@ are equivalent:
@@ -179,9 +183,17 @@ setFrontend f = maybe (return ()) (startFrontEndA %=) (lookup f availableFronten
 globalBindKeys :: Keymap -> ConfigM ()
 globalBindKeys a = modify (topKeymapA . defaultKmA) (||> a)
 
--- | @modeBindKeys name keys@ adds the keybindings in @keys@ to the mode with name @name@ (if it is registered).
-modeBindKeys :: String -> Keymap -> ConfigM ()
-modeBindKeys name k = modifyMode name (modeKeymapA ^: f) where
+-- | @modeBindKeys mode keys@ adds the keybindings in @keys@ to all modes with the same name as @mode@.
+--
+-- As with 'modifyMode', a mode by the given name must already be registered, or the function will
+-- have no effect, and issue a command-line warning.
+modeBindKeys :: Mode syntax -> Keymap -> ConfigM ()
+modeBindKeys mode keys = ensureModeRegistered "modeBindKeys" (modeName mode) $ modeBindKeysByName (modeName mode) keys
+
+-- | @modeBindKeysByName name keys@ adds the keybindings in @keys@ to all modes with name @name@ (if it is registered). Consider using 'modeBindKeys' instead.
+modeBindKeysByName :: String -> Keymap -> ConfigM ()
+modeBindKeysByName name k = ensureModeRegistered "modeBindKeysByName" name $ modifyModeByName name (modeKeymapA ^: f) 
+ where
   f :: (KeymapSet -> KeymapSet) -> (KeymapSet -> KeymapSet)
   f mkm km = topKeymapA ^: (||> k) $ mkm km
 -- (modeKeymapA ^: ((topKeymap ^: (||> k)) .))
@@ -190,13 +202,38 @@ modeBindKeys name k = modifyMode name (modeKeymapA ^: f) where
 addMode :: Mode syntax -> ConfigM ()
 addMode m = modify modeTableA (AnyMode m :)
 
--- | @modifyMode name f@ modifies the mode with name @name@ using the function @f@.
-modifyMode :: String -> (forall syntax. Mode syntax -> Mode syntax) -> ConfigM ()
-modifyMode name f = modify modeTableA (fmap (onMode g))
+-- | @modifyMode mode f@ modifies all modes with the same name as @mode@, using the function @f@. 
+--
+-- Note that the @mode@ argument is only used by its 'modeName'. In particular, a mode by the given name
+-- must already be registered, or this function will have no effect, and issue a command-line warning.
+--
+-- @'modifyMode' mode f = 'modifyModeByName' ('modeName' mode) f@
+modifyMode :: Mode syntax -> (forall syntax'. Mode syntax' -> Mode syntax') -> ConfigM ()
+modifyMode mode f = ensureModeRegistered "modifyMode" (modeName mode) $ modifyModeByName (modeName mode) f
+
+-- | @modifyModeByName name f@ modifies the mode with name @name@ using the function @f@. Consider using 'modifyMode' instead.
+modifyModeByName :: String -> (forall syntax. Mode syntax -> Mode syntax) -> ConfigM ()
+modifyModeByName name f = ensureModeRegistered "modifyModeByName" name $ modify modeTableA (fmap (onMode g))
   where
       g :: forall syntax. Mode syntax -> Mode syntax
       g m | modeName m == name = f m
           | otherwise          = m
+
+-- helper functions
+warn :: String -> String -> ConfigM ()
+warn caller msg = io $ putStrLn $ printf "Warning: %s: %s" caller msg
+-- the putStrLn shouldn't be necessary, but it doesn't print anything if it's not there...
+
+isModeRegistered :: String -> ConfigM Bool
+isModeRegistered name = (Prelude.any (\(AnyMode mode) -> modeName mode == name)) <$> get modeTableA
+
+-- ensure the given mode is registered, and if it is, then run the given action.
+ensureModeRegistered :: String -> String -> ConfigM () -> ConfigM ()
+ensureModeRegistered caller name m = do
+  isRegistered <- isModeRegistered name
+  if isRegistered
+   then m
+   else warn caller (printf "mode \"%s\" is not registered." name)   
 
 --------------------- Appearance
 -- | 'Just' the font name, or 'Nothing' for default.
