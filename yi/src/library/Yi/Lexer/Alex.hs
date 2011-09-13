@@ -20,7 +20,8 @@ module Yi.Lexer.Alex (
                        ASI,
                        (+~), (~-), Size(..),
                        Stroke,
-                       tokToSpan
+                       tokToSpan,
+                       alexGetByte
                       ) where
 
 import Yi.Syntax hiding (mkHighlighter)
@@ -29,6 +30,8 @@ import Prelude ()
 import Yi.Region
 import Data.Ord (comparing)
 import Data.Ix
+import Data.Word (Word8)
+import Data.Char (ord)
 
 type IndexedStr = [(Point, Char)]
 type AlexInput = (Char, IndexedStr)
@@ -100,6 +103,12 @@ moveCh (Posn o l c) _    = Posn (o+1) l       (c+1)
 alexGetChar :: AlexInput -> Maybe (Char, AlexInput)
 alexGetChar (_,[]) = Nothing
 alexGetChar (_,(_,c):rest) = Just (c, (c,rest))
+
+first :: (a -> b) -> (a, c) -> (b, c)
+first f (a, c) = (f a, c)
+
+alexGetByte :: AlexInput -> Maybe (Word8, AlexInput)
+alexGetByte = fmap (first (fromIntegral . ord)) . alexGetChar
 
 alexCollectChar :: AlexInput -> [Char]
 alexCollectChar (_, []) = []
