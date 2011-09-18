@@ -398,7 +398,8 @@ data Mode syntax = Mode
      modeGetAnnotations :: syntax -> Point -> [Span String],
      modePrintTree :: syntax -> BufferM (),
      -- should this be an Action instead?
-     modeOnLoad :: BufferM () -- ^ An action that is to be executed when this mode is set
+     modeOnLoad :: BufferM (), -- ^ An action that is to be executed when this mode is set
+     modeModeLine :: [String] -> BufferM String -- ^ buffer-local modeline formatting method
     }
 
 instance Binary (Mode syntax) where
@@ -442,8 +443,13 @@ instance Show FBuffer where
 -- N.B. the contents of modelines should be specified by user, and
 -- not hardcoded.
 --
+
 getModeLine :: [String] -> BufferM String
-getModeLine prefix = do
+getModeLine prefix = withModeB (\m -> (modeModeLine m) prefix)
+
+defaultModeLine :: [String] -> BufferM String
+defaultModeLine prefix = do
+    col <- curCol
     col <- curCol
     pos <- pointB
     ln <- curLn
@@ -607,7 +613,8 @@ emptyMode = Mode
    modeGetStrokes = \_ _ _ _ -> [],
    modeGetAnnotations = \_ _ -> [],
    modePrintTree = \_ -> return (),
-   modeOnLoad = return ()
+   modeOnLoad = return (),
+   modeModeLine = defaultModeLine
   }
 
 -- | Create buffer named @nm@ with contents @s@
