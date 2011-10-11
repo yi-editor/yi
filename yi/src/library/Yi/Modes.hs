@@ -6,7 +6,7 @@ module Yi.Modes (TokenBasedMode, fundamentalMode,
                  extensionOrContentsMatch, linearSyntaxMode,
                  svnCommitMode, hookModes, applyModeHooks,
                  lookupMode, whitespaceMode, removeAnnots,
-                 gitCommitMode
+                 gitCommitMode, rubyMode
                 ) where
 
 import Prelude ()
@@ -35,6 +35,7 @@ import qualified Yi.Lexer.Ott        as Ott
 import qualified Yi.Lexer.Perl       as Perl
 import qualified Yi.Lexer.Python     as Python
 import qualified Yi.Lexer.Java       as Java
+import qualified Yi.Lexer.Ruby       as Ruby
 import qualified Yi.Lexer.Srmc       as Srmc
 import qualified Yi.Lexer.SVNCommit  as SVNCommit
 import qualified Yi.Lexer.GitCommit  as GitCommit
@@ -46,7 +47,7 @@ type TokenBasedMode tok = Mode (Tree (Tok tok))
 type StyleBasedMode = TokenBasedMode StyleName
 
 fundamentalMode :: Mode syntax
-svnCommitMode, cMode, objectiveCMode, cppMode, cabalMode, srmcMode, ottMode, gnuMakeMode, perlMode, pythonMode, javaMode :: StyleBasedMode
+svnCommitMode, cMode, objectiveCMode, cppMode, cabalMode, srmcMode, ottMode, gnuMakeMode, perlMode, pythonMode, javaMode, rubyMode :: StyleBasedMode
 ocamlMode :: TokenBasedMode (OCaml.Token)
 
 fundamentalMode = emptyMode
@@ -135,6 +136,12 @@ perlMode = (linearSyntaxMode Perl.initState Perl.alexScanToken id)
   {
     modeName = "perl",
     modeApplies = anyExtension ["t", "pl", "pm"]
+  }
+
+rubyMode = (linearSyntaxMode Ruby.initState Ruby.alexScanToken id)
+  {
+    modeName = "ruby",
+    modeApplies = anyExtension ["rb", "ru"]
   }
 
 pythonMode = base

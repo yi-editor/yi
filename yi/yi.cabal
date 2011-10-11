@@ -137,6 +137,7 @@ library
     Yi.Lexer.Ott
     Yi.Lexer.Perl
     Yi.Lexer.Python
+    Yi.Lexer.Ruby
     Yi.Lexer.Srmc
     Yi.Lexer.SVNCommit
     Yi.Lexer.Whitespace
