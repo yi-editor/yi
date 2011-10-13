@@ -125,6 +125,7 @@ c :-
 
 <0> {
   "//"[^\n]*                                    { c commentStyle }
+  "/*".*"*/"                                    { c blockCommentStyle }
 
  "/*" @reservedop*                              { m (subtract 1) blockCommentStyle }
 
