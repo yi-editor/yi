@@ -38,7 +38,7 @@ import Yi.MiniBuffer
     ( simpleComplete
     , withMinibufferGen
     )
-import System.CanonicalizePath (canonicalizePath)
+import System.CanonicalizePath (canonicalizePath, replaceShorthands)
 
 -- | Given a possible starting path (which if not given defaults to
 --   the current directory) and a fragment of a path we find all
@@ -49,12 +49,13 @@ import System.CanonicalizePath (canonicalizePath)
 --   we return all of the filenames then we get a 'hint' which is way too
 --   long to be particularly useful.
 getAppropriateFiles :: Maybe String -> String -> YiM (String, [ String ])
-getAppropriateFiles start s = do
+getAppropriateFiles start s' = do
   curDir <- case start of
             Nothing -> do bufferPath <- withBuffer $ gets file
                           liftIO $ getFolder bufferPath
             (Just path) -> return path
-  let sDir = if hasTrailingPathSeparator s then s else takeDirectory s
+  let s = replaceShorthands s'
+      sDir = if hasTrailingPathSeparator s then s else takeDirectory s
       searchDir = if null sDir then curDir
                   else if isAbsolute' sDir then sDir
                   else curDir </> sDir
@@ -103,7 +104,8 @@ promptFile :: String -> (String -> YiM ()) -> YiM ()
 promptFile prompt act = do maybePath <- withBuffer $ gets file
                            startPath <- addTrailingPathSeparator <$> (liftIO $ canonicalizePath =<< getFolder maybePath)
                            -- TODO: Just call withMinibuffer
-                           withMinibufferGen startPath (findFileHint startPath) prompt (simpleComplete $ matchingFileNames (Just startPath)) act
+                           withMinibufferGen startPath (findFileHint startPath) prompt (simpleComplete $ matchingFileNames (Just startPath))
+                             (act . replaceShorthands)
 
 
 -- | For use as the hint when opening a file using the minibuffer.

@@ -4,6 +4,7 @@
 module System.CanonicalizePath
   ( canonicalizePath
   , normalisePath
+  , replaceShorthands
   ) where
 
 #ifdef mingw32_HOST_OS
@@ -12,8 +13,8 @@ import qualified System.Win32 as Win32
 
 import Control.Applicative
 import Control.Monad
-import Data.List.Split     (splitOn)
-import System.FilePath     ((</>), isAbsolute, takeDirectory, pathSeparator)
+import Data.List.Split     (splitOn, splitOneOf)
+import System.FilePath     ((</>), isAbsolute, takeDirectory, pathSeparator, pathSeparators)
 import System.Directory    (getCurrentDirectory)
 import System.Posix.Files  (readSymbolicLink)
 
@@ -61,6 +62,17 @@ combinePath x "."  = x
 combinePath x ".." = takeDirectory x
 combinePath x y = x </> y
 
+replaceInit :: [a] -> [[a]] -> [a]
+replaceInit init [] = []
+replaceInit init [a] = a
+replaceInit init (a:as) = init ++ last as
+
+-- replace utility shorthands, similar to Emacs
+--   somepath//someotherpath is equivalent to /someotherpath
+--   somepath/~/someotherpath is equivalent to ~/someotherpath
+replaceShorthands :: FilePath -> FilePath
+replaceShorthands = replaceInit "~" . splitOn "/~" . replaceInit "/" . splitOn "//"
+
 -- | Splits path into parts by path separator
 splitPath :: FilePath -> [String]
-splitPath = filter (not . null) . splitOn [pathSeparator]
+splitPath = filter (not . null) . splitOneOf pathSeparators
