@@ -62,16 +62,18 @@ combinePath x "."  = x
 combinePath x ".." = takeDirectory x
 combinePath x y = x </> y
 
-replaceInit :: [a] -> [[a]] -> [a]
-replaceInit init [] = []
-replaceInit init [a] = a
-replaceInit init (a:as) = init ++ last as
+replaceUpTo :: Eq a => [a] -> [a] -> [a] -> [a]
+replaceUpTo srch rep as =
+  case splitOn srch as of
+    [] -> []
+    [a] -> a
+    (a:as) -> rep ++ last as
 
 -- replace utility shorthands, similar to Emacs
 --   somepath//someotherpath is equivalent to /someotherpath
 --   somepath/~/someotherpath is equivalent to ~/someotherpath
 replaceShorthands :: FilePath -> FilePath
-replaceShorthands = replaceInit "~" . splitOn "/~" . replaceInit "/" . splitOn "//"
+replaceShorthands = replaceUpTo "/~" "~" . replaceUpTo "//" "/" 
 
 -- | Splits path into parts by path separator
 splitPath :: FilePath -> [String]
