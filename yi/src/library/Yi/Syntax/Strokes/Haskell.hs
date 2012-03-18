@@ -10,7 +10,7 @@ import Yi.Style
 import Yi.Syntax
 import Yi.Prelude
 import Prelude ()
-import Data.Monoid
+import Data.Monoid hiding ((<>))
 import Yi.Syntax.Haskell
 import Yi.Syntax.Tree (subtrees)
 

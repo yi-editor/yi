@@ -7,6 +7,7 @@
 
 {
 {-# OPTIONS -w  #-}
+{-# LANGUAGE BangPatterns  #-}
 module Yi.Lexer.OCaml ( initState, alexScanToken, tokenToStyle, Token(..) ) where
 import Yi.Lexer.Alex
 import Yi.Style

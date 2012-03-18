@@ -7,6 +7,7 @@
 
 {
 {-# OPTIONS -w  #-}
+{-# LANGUAGE BangPatterns  #-}
 module Yi.Lexer.Python ( initState, alexScanToken ) where
 
 import Yi.Lexer.Alex

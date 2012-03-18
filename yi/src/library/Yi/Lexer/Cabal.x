@@ -9,6 +9,7 @@
 
 {
 {-# OPTIONS -w  #-}
+{-# LANGUAGE BangPatterns  #-}
 module Yi.Lexer.Cabal
   ( initState, alexScanToken ) 
 where

@@ -10,6 +10,7 @@
 
 {
 {-# OPTIONS -w  #-}
+{-# LANGUAGE BangPatterns  #-}
 module Yi.Lexer.LiterateHaskell ( initState, alexScanToken, HlState ) where
 import Yi.Lexer.Alex
 import Yi.Lexer.Haskell hiding (initState, alexScanToken, HlState)

@@ -53,7 +53,7 @@ mapFromFoldable,
 module Control.Applicative,
 module Control.Category,
 module Data.Accessor, 
-module Data.Accessor.Monad.FD.State, putA, getA, modA, 
+module Data.Accessor.Monad.MTL.State, putA, getA, modA, 
 module Data.Bool,
 module Data.Foldable,
 module Data.Function,
@@ -99,14 +99,14 @@ import Control.Monad.Reader
 import Control.Applicative hiding((<$))
 import Data.Traversable 
 import Data.Typeable
-import Data.Monoid
+import Data.Monoid hiding ((<>))
 import qualified Data.Set as Set
 import qualified Data.Map as Map
 import qualified Control.Monad.State.Class as CMSC
 import qualified Data.Accessor.Basic as Accessor
 import Data.Accessor ((<.), accessor, getVal, setVal, Accessor,(^.),(^:),(^=))
-import qualified Data.Accessor.Monad.FD.State as Accessor.FD
-import Data.Accessor.Monad.FD.State ((%:), (%=))
+import qualified Data.Accessor.Monad.MTL.State as Accessor.MTL
+import Data.Accessor.Monad.MTL.State ((%:), (%=))
 import qualified Data.List.PointedList as PL
     
 type Endom a = a -> a
@@ -239,13 +239,13 @@ swapFocus moveFocus xs = PL.focusA ^= (xs ^. PL.focusA) $ moveFocus $ PL.focusA 
 -- Acessor stuff
 
 putA :: CMSC.MonadState r m => Accessor.T r a -> a -> m ()
-putA = Accessor.FD.set
+putA = Accessor.MTL.set
 
 getA :: CMSC.MonadState r m => Accessor.T r a -> m a
-getA = Accessor.FD.get
+getA = Accessor.MTL.get
 
 modA :: CMSC.MonadState r m => Accessor.T r a -> (a -> a) -> m ()
-modA = Accessor.FD.modify
+modA = Accessor.MTL.modify
 
 -------------------- Initializable typeclass
 -- | The default value. If a function tries to get a copy of the state, but the state

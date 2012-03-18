@@ -9,6 +9,7 @@
 
 {
 {-# OPTIONS -w  #-}
+{-# LANGUAGE BangPatterns  #-}
 module Yi.Lexer.Latex ( initState, alexScanToken, Token(..), HlState, tokenToText ) where
 import Yi.Lexer.Alex
 import Yi.Style

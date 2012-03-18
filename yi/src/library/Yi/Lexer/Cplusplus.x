@@ -3,6 +3,7 @@
 
 {
 {-# OPTIONS -w  #-}
+{-# LANGUAGE BangPatterns  #-}
 module Yi.Lexer.Cplusplus ( initState, alexScanToken ) where
 {- Standard Library Modules Imported -}
 import Yi.Lexer.Alex

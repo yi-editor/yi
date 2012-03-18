@@ -7,6 +7,7 @@
 
 {
 {-# OPTIONS -w  #-}
+{-# LANGUAGE BangPatterns  #-}
 module Yi.Lexer.Abella ( initState, alexScanToken, tokenToStyle,
                          tokenToText, TT,
                          isComment, Token(..), HlState, Reserved(..), ReservedOp(..) ) where

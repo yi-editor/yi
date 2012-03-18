@@ -4,6 +4,7 @@
 -- http://www.gnu.org/software/make/manual/make.html
 -- Maintainer: Corey O'Connor
 {
+{-# LANGUAGE BangPatterns  #-}
 {-# OPTIONS -w  #-}
 module Yi.Lexer.GNUMake
   ( initState, alexScanToken ) 

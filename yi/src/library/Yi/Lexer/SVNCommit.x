@@ -2,6 +2,7 @@
 -- Maintainer: Corey O'Connor
 {
 {-# OPTIONS -w  #-}
+{-# LANGUAGE BangPatterns  #-}
 module Yi.Lexer.SVNCommit
   ( initState, alexScanToken )
 where
