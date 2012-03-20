@@ -161,6 +161,8 @@ import {-# source #-} Yi.Keymap
 import Yi.Interact as I
 import Yi.Buffer.Basic
 import Data.Time
+import Numeric(showHex)
+import Data.Char(ord)
 
 #ifdef TESTING
 -- TODO: make this compile.
@@ -396,7 +398,8 @@ data Mode syntax = Mode
      modeGetAnnotations :: syntax -> Point -> [Span String],
      modePrintTree :: syntax -> BufferM (),
      -- should this be an Action instead?
-     modeOnLoad :: BufferM () -- ^ An action that is to be executed when this mode is set
+     modeOnLoad :: BufferM (), -- ^ An action that is to be executed when this mode is set
+     modeModeLine :: [String] -> BufferM String -- ^ buffer-local modeline formatting method
     }
 
 instance Binary (Mode syntax) where
@@ -440,25 +443,33 @@ instance Show FBuffer where
 -- N.B. the contents of modelines should be specified by user, and
 -- not hardcoded.
 --
+
 getModeLine :: [String] -> BufferM String
-getModeLine prefix = do
+getModeLine prefix = withModeB (\m -> (modeModeLine m) prefix)
+
+defaultModeLine :: [String] -> BufferM String
+defaultModeLine prefix = do
+    col <- curCol
     col <- curCol
     pos <- pointB
     ln <- curLn
     p <- pointB
     s <- sizeB
+    curChar <-readB
     ro <-getA readOnlyA
     modeNm <- gets (withMode0 modeName)
     unchanged <- gets isUnchangedBuffer
     let pct = if pos == 1 then "Top" else getPercent p s
         chg = if unchanged then "-" else "*"
         roStr = if ro  then "%" else chg
+        hexChar = "0x" ++ Numeric.showHex (Data.Char.ord curChar) ""
 
     nm <- gets $ shortIdentString prefix
     return $
            roStr ++ chg ++ " "
            ++ nm ++
            replicate 5 ' ' ++
+           hexChar ++ "  " ++
            "L" ++ show ln ++ "  " ++ "C" ++ show col ++
            "  " ++ pct ++
            "  " ++ modeNm ++
@@ -602,7 +613,8 @@ emptyMode = Mode
    modeGetStrokes = \_ _ _ _ -> [],
    modeGetAnnotations = \_ _ -> [],
    modePrintTree = \_ -> return (),
-   modeOnLoad = return ()
+   modeOnLoad = return (),
+   modeModeLine = defaultModeLine
   }
 
 -- | Create buffer named @nm@ with contents @s@
