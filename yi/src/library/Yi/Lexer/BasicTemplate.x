@@ -1,6 +1,7 @@
 -- -*- haskell -*-
 {
 {-# OPTIONS -w  #-}
+{-# LANGUAGE BangPatterns  #-}
 module Yi.Lexer.BasicTemplate
   ( initState, alexScanToken )
 where

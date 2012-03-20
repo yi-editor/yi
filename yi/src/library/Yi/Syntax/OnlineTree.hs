@@ -7,7 +7,7 @@ import Prelude ()
 import Control.Applicative
 import Data.Traversable
 import Data.Foldable
-import Data.Monoid
+import Data.Monoid hiding ((<>))
 
 #ifdef TESTING
 import Test.QuickCheck 

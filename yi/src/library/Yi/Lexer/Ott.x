@@ -4,6 +4,7 @@
 {- The Ott website: http://www.cl.cam.ac.uk/~pes20/ott -}
 
 {-# OPTIONS -w  #-}
+{-# LANGUAGE BangPatterns  #-}
 module Yi.Lexer.Ott
   ( initState, alexScanToken )
 where

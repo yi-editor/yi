@@ -25,6 +25,7 @@
 
 {
 
+{-# LANGUAGE BangPatterns  #-}
 {-# OPTIONS -w  #-}
 
 module Yi.Lexer.JavaScript ( initState, alexScanToken, tokenToStyle,

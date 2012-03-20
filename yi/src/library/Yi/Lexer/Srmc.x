@@ -9,6 +9,7 @@
 
 {
 {-# OPTIONS -w  #-}
+{-# LANGUAGE BangPatterns  #-}
 module Yi.Lexer.Srmc ( initState, alexScanToken ) where
 {- Local Modules Imported -}
 import Yi.Lexer.Alex

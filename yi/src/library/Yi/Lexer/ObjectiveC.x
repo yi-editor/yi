@@ -3,6 +3,7 @@
 
 {
 {-# OPTIONS -w  #-} -- Alex generate warnings-ridden code.
+{-# LANGUAGE BangPatterns  #-}
 module Yi.Lexer.ObjectiveC ( initState, alexScanToken ) where
 
 {- Standard Library Modules Imported -}

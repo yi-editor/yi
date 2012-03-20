@@ -7,6 +7,7 @@
 --
 
 {
+{-# LANGUAGE BangPatterns  #-}
 {-# OPTIONS -w  #-}
 module Yi.Lexer.Haskell ( initState, alexScanToken, tokenToStyle, 
                           tokenToText,

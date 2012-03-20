@@ -4,6 +4,7 @@
 --
 
 {
+{-# LANGUAGE BangPatterns  #-}
 {-# OPTIONS -w  #-}
 module Yi.Lexer.Compilation (initState, alexScanToken, Token(..)) where
 import Yi.Lexer.Alex

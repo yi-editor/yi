@@ -4,6 +4,7 @@
 -- Maintainer: Corey O'Connor
 {
 {-# OPTIONS -w  #-}
+{-# LANGUAGE BangPatterns  #-}
 module Yi.Lexer.Perl ( initState, alexScanToken ) where
 {- Standard Library Modules Imported -}
 import Yi.Lexer.Alex

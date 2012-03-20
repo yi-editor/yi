@@ -4,6 +4,7 @@
 {
 
 {-# OPTIONS -w  #-}
+{-# LANGUAGE BangPatterns  #-}
 
 module Yi.Lexer.Whitespace ( initState, alexScanToken ) where
 
