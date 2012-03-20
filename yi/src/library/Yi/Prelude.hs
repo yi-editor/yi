@@ -99,7 +99,7 @@ import Control.Monad.Reader
 import Control.Applicative hiding((<$))
 import Data.Traversable 
 import Data.Typeable
-import Data.Monoid
+import Data.Monoid (Monoid, mappend)
 import qualified Data.Set as Set
 import qualified Data.Map as Map
 import qualified Control.Monad.State.Class as CMSC

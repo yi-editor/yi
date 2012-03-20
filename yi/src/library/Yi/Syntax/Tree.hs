@@ -22,7 +22,7 @@ import Prelude (curry)
 import Control.Arrow (first)
 import Data.List (dropWhile, takeWhile, reverse, filter, zip, take, drop, length, splitAt)
 import Data.Maybe
-import Data.Monoid
+import Data.Monoid (First(..), Last(..), getFirst, getLast, mempty)
 #ifdef TESTING
 import Test.QuickCheck
 #endif
