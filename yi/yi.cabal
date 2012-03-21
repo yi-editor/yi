@@ -194,44 +194,47 @@ library
     Parser.Incremental
 
   build-depends:
-    Cabal >= 1.10 && < 1.13,
+    Cabal >= 1.10 && < 1.15,
     Diff >=0.1 && <0.2,
     array, containers,  directory, process, old-locale,
-    base >=4 && <5,
+    base >= 4 && < 5,
     binary == 0.5.*,
-    bytestring >=0.9.1 && <0.9.3,
+    bytestring >= 0.9.1 && < 0.9.3,
     cautious-file == 1.0.*,
     concrete-typerep == 0.1.*,
-    derive >=2.4 && <2.6,
+    derive >=2.4 && <2.7,
     data-accessor >= 0.2.1.4 && < 0.3,
-    data-accessor-monads-fd == 0.2.*,
+    data-accessor-mtl == 0.2.*,
     data-accessor-template >= 0.2.1.3 && < 0.2.2,
     dlist >=0.4.1,
     dyre >=0.7,
-    filepath>=1.1 && <1.3,
+    filepath>=1.1 && <1.4,
     fingertree >= 0 && <0.1,
     ghc-paths ==0.1.*,
     hashable < 1.2,
     hint > 0.3.1,
-    monads-fd >= 0.1.0.1,
+    mtl >= 0.1.0.1,
     pointedlist >= 0.3.5 && <0.4,
     pureMD5 >= 0.2.3,
     random,
     regex-base ==0.93.*,
     regex-tdfa == 1.1.*,
-    rosezipper >= 0.1 && < 0.2,
+    rosezipper >= 0.1 && < 0.3,
     split == 0.1.*,
-    template-haskell >= 2.4 && < 2.7,
-    time >= 1.1 && < 1.3,
+    template-haskell >= 2.4 && < 2.8,
+    time >= 1.1 && < 1.5,
     utf8-string >= 0.3.1,
     uniplate,
-    unix-compat >=0.1 && <0.3,
-    unordered-containers >= 0.1.3 && < 0.2
+    unix-compat >=0.1 && <0.4,
+    unordered-containers >= 0.1.3 && < 0.3
 
   build-tools: alex
   ghc-options: -Wall -fno-warn-orphans
   if flag(hacking)
     ghc-prof-options: -prof -auto-all
+
+  if impl(ghc >=7.2)
+     extensions: NondecreasingIndentation
 
   if impl(ghc >=7.2)
      extensions: NondecreasingIndentation
@@ -293,8 +296,8 @@ library
     exposed-modules:
       Yi.UI.Vty
     build-depends:
-      unix-compat >=0.1 && <0.3,
-      vty >=4.0.0 && <5
+      unix-compat >=0.1 && <0.4,
+      vty >= 4.7.0.0 && <5
     cpp-options: -DFRONTEND_VTY
 
   if flag (scion)
@@ -352,7 +355,7 @@ executable parserTest
     array,
     containers,
     directory,
-    filepath>=1.1 && <1.3
+    filepath>=1.1 && <1.4
   if !flag(dochack)
     build-depends: yi
 
