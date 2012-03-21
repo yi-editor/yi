@@ -109,6 +109,7 @@ module Yi.Buffer.Misc
   , modeGetAnnotationsA
   , modePrintTreeA
   , modeOnLoadA
+  , modeModeLineA
   , AnyMode (..)
   , IndentBehaviour (..)
   , IndentSettings (..)
