@@ -1,5 +1,5 @@
 name:           yi
-version:        0.6.4.0
+version:        0.6.5.0
 category:       Development, Editor
 synopsis:       The Haskell-Scriptable Editor
 description:
@@ -200,7 +200,7 @@ library
     base >= 4 && < 5,
     binary == 0.5.*,
     bytestring >= 0.9.1 && < 0.9.3,
-    cautious-file == 1.0.*,
+    cautious-file >= 1.0.1,
     concrete-typerep == 0.1.*,
     derive >=2.4 && <2.7,
     data-accessor >= 0.2.1.4 && < 0.3,
@@ -234,10 +234,10 @@ library
     ghc-prof-options: -prof -auto-all
 
   if impl(ghc >=7.2)
-     extensions: NondecreasingIndentation
+     default-extensions: NondecreasingIndentation
 
   if impl(ghc >=7.2)
-     extensions: NondecreasingIndentation
+     default-extensions: NondecreasingIndentation
 
   if !os(windows)
     build-depends:
