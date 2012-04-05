@@ -7,3 +7,4 @@
 Yi/Lexer/*.hs
 .yi.*.dbg
 dist/
+Setup

@@ -1,0 +1,25 @@
+name:           yi
+version:        0.6.5.0
+category:       Development, Editor
+synopsis:       The Haskell-Scriptable Editor
+description:
+  Yi is a text editor written in Haskell and extensible in Haskell. The goal of the Yi project is
+  to provide a flexible, powerful, and correct editor for haskell hacking.
+license:        GPL
+license-file:   LICENSE
+author:         AUTHORS
+maintainer:     yi-devel@googlegroups.com
+homepage:       http://haskell.org/haskellwiki/Yi
+bug-reports:    http://code.google.com/p/yi-editor/issues/list
+Cabal-Version:  >= 1.10
+tested-with:    GHC==7.4.1
+build-type:     Simple
+
+executable yi
+  hs-source-dirs: src/executable src/library
+  default-language: Haskell2010
+  main-is: Main.hs
+  build-depends:
+    base >=4 && <5
+  build-tools: alex >= 3
+  ghc-options: -threaded
