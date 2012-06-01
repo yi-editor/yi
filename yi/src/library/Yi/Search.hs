@@ -93,6 +93,7 @@ type SearchMatch = Region
 data SearchResult = PatternFound
                   | PatternNotFound
                   | SearchWrapped
+  deriving Eq
 
 doSearch :: Maybe String        -- ^ @Nothing@ means used previous
                                 -- pattern, if any. Complain otherwise.
