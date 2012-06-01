@@ -28,7 +28,7 @@ flag cocoa
   Description: "Build with Cocoa frontend"
 
 flag pango
-  Default: True
+  Default: False
   Description: "Build with Pango frontend"
 
 flag vte
@@ -36,7 +36,7 @@ flag vte
   Description: "Build with Vte frontend"
 
 flag vty
-  Default: False
+  Default: True
   Description: "Build with Vty frontend"
 
 flag scion
