@@ -1628,8 +1628,12 @@ viFnewE f = discard (editFile $ dropSpace f)
 -- | viSearch is a doSearch wrapper that print the search outcome.
 -- TODO: consider merging with doSearch 
 viSearch :: String -> [SearchOption] -> Direction -> EditorM ()
-viSearch x y z = do
-  r <- doSearch (if null x then Nothing else Just x) y z
+viSearch needle searchOptions dir = do
+  r <- doSearch (if null needle then Nothing else Just needle) searchOptions dir
+  when (dir == Backward) $ do
+    -- move cursor so that it stands on the last character of search term
+    -- enabling user to continue searching with # or * after #
+    withBuffer0' $ viMove (CharMove Backward)
   case r of
     PatternFound    -> return ()
     PatternNotFound -> printMsg "Pattern not found"
