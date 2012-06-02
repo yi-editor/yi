@@ -236,18 +236,33 @@ nilKeymap = choice [
                           "You should however create your own ~/.yi/yi.hs file: ",
                           "You can type 'c', 'e' or 'v' now to create and edit it using a temporary cua, emacs or vim keymap."]
           openCfg km kmName = write $ do
-            dataDir <- io $ getDataDir
+            dataDir <- io getDataDir
             let exampleCfg = dataDir </> "example-configs" </> kmName
-            homeDir <- io $ getHomeDirectory
-            let cfgDir = homeDir </> ".yi"
-                cfgFile = cfgDir </> "yi.hs"
-            cfgExists <- io $ doesFileExist cfgFile
-            -- io $ print cfgExists
-            io $ createDirectoryIfMissing True cfgDir -- so that the file can be saved.
+            homeDir <- io getHomeDirectory
+            cfgDir <- io $ getAppUserDataDirectory "yi"
+            let cfgFile = cfgDir </> "yi.hs"
+            cfgExists <- io $ doesFileExist cfgDir
+            io $ createDirectoryIfMissing True cfgDir -- so that the file can be saved
             discard $ editFile cfgFile -- load config file
             -- locally override the keymap to the user choice
-            withBuffer $ modifyMode (\m -> m {modeKeymap = const km})
+            withBuffer $ modifyMode (\m -> m { modeKeymap = const km })
             when (not cfgExists) $ do
-                 -- file did not exist, load a reasonable default
-                 defCfg <- io $ readFile exampleCfg
-                 withBuffer $ insertN defCfg
+                -- file did not exist, load a reasonable default
+                defCfg <- io $ readFile exampleCfg
+                withBuffer $ insertN defCfg
+--          openCfg km kmName = write $ do
+--            dataDir <- io $ getDataDir
+--            let exampleCfg = dataDir </> "example-configs" </> kmName
+--            homeDir <- io $ getHomeDirectory
+--            let cfgDir = homeDir </> ".yi"
+--                cfgFile = cfgDir </> "yi.hs"
+--            cfgExists <- io $ doesFileExist cfgFile
+--            -- io $ print cfgExists
+--            io $ createDirectoryIfMissing True cfgDir -- so that the file can be saved.
+--            discard $ editFile cfgFile -- load config file
+--            -- locally override the keymap to the user choice
+--            withBuffer $ modifyMode (\m -> m {modeKeymap = const km})
+--            when (not cfgExists) $ do
+--                 -- file did not exist, load a reasonable default
+--                 defCfg <- io $ readFile exampleCfg
+--                 withBuffer $ insertN defCfg

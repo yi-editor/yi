@@ -6,7 +6,7 @@ module System.FriendlyPath
 
 import Control.Applicative
 import System.FilePath
-import System.Posix.User (getUserEntryForName, homeDirectory)
+import System.PosixCompat.User (getUserEntryForName, homeDirectory)
 import System.CanonicalizePath
 import System.Directory hiding (canonicalizePath)
 
