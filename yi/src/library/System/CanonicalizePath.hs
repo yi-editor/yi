@@ -13,9 +13,9 @@ import qualified System.Win32 as Win32
 import Control.Applicative
 import Control.Monad
 import Data.List.Split     (splitOn)
-import System.FilePath     ((</>), isAbsolute, takeDirectory, pathSeparator)
+import System.FilePath     ((</>), isDrive, isAbsolute, takeDirectory, pathSeparator, normalise)
 import System.Directory    (getCurrentDirectory)
-import System.Posix.Files  (readSymbolicLink)
+import System.PosixCompat.Files  (readSymbolicLink)
 
 
 -- | Removes `/./` `//` and `/../` sequences from path,
@@ -33,7 +33,7 @@ canonicalizePath path = do
   absPath <- makeAbsolute path
   foldM (\x y -> expandSym $ combinePath x y) "/" $ splitPath absPath
 #else
-  Win32.getFullPathName . normalise
+  Win32.getFullPathName . normalise $ path
 #endif
 
 -- | Dereferences symbolic links until regular
@@ -59,7 +59,9 @@ makeAbsolute f
 combinePath :: FilePath -> String -> FilePath
 combinePath x "."  = x
 combinePath x ".." = takeDirectory x
-combinePath x y = x </> y
+combinePath x y
+    | isDrive x = (x ++ [pathSeparator]) </> y -- "C:" </> "bin" = "C:bin"
+    | otherwise = x </> y
 
 -- | Splits path into parts by path separator
 splitPath :: FilePath -> [String]
