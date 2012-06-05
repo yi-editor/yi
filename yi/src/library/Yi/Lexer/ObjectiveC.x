@@ -87,6 +87,9 @@ $nl        = [\n\r]
   | "@synchronized"
   | "@defs"
   | "@encode"
+  | "@property"
+  | "@synthesize"
+  | "@dynamic"
   | nil
   | Nil
   | id
