@@ -83,6 +83,8 @@ $nl        = [\n\r]
   | "@finally"
   | "@end"
   | "@protocol"
+  | "@optional"
+  | "@required"
   | "@selector"
   | "@synchronized"
   | "@defs"
