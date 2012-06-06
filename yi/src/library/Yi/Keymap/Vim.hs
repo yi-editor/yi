@@ -1310,7 +1310,22 @@ TODO: use or remove
                                      Just cmplFn -> cmplFn $ ignoreExCmd s
                                      Nothing     -> ex_complete s
 
-           f_complete = exSimpleComplete (matchingFileNames Nothing)
+           f_complete f | f == "%" = do
+                           -- current buffer is minibuffer
+                           -- actual file is in the second buffer in bufferStack
+                           bufferRef <- withEditor $ gets (head . drop 1 . bufferStack)
+                           maybeCurrentFileName <- withGivenBuffer bufferRef (gets file)
+
+                           case maybeCurrentFileName of
+                             Just fn -> withBuffer $ do
+                                 -- now modifying minibuffer
+                                 point <- pointB
+                                 deleteNAt Forward 1 (point-1)
+                                 insertN fn
+
+                             Nothing -> return ()
+                        | otherwise = exSimpleComplete (matchingFileNames Nothing) f
+
            b_complete = exSimpleComplete matchingBufferNames
            ex_complete ('c':'d':' ':f)                         = f_complete f
            ex_complete ('e':' ':f)                             = f_complete f
