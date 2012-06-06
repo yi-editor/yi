@@ -961,6 +961,8 @@ defKeymap = Proto template
        ,('(',  unitDelimited '(' ')')
        ,(')',  unitDelimited '(' ')')
        ,('b',  unitDelimited '(' ')')
+       ,('[',  unitDelimited '[' ']')
+       ,(']',  unitDelimited '[' ']')
        ,('{',  unitDelimited '{' '}')
        ,('}',  unitDelimited '{' '}')
        ,('B',  unitDelimited '{' '}')
