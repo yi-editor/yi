@@ -19,7 +19,7 @@ import Prelude ()
 
 import Control.Monad.Error
 import Data.Char
-import Data.List (intercalate)
+import Data.List (intercalate, length)
 import Distribution.Text (display)
 import System.Console.GetOpt
 import System.Exit
@@ -77,6 +77,7 @@ data Opts = Help
           | SelfCheck
           | GhcOption String
           | Debug
+          | OpenInTabs
 
 -- | List of editors for which we provide an emulation.
 editors :: [(String,Config -> Config)]
@@ -95,10 +96,17 @@ options =
   , Option ['l']  ["line"]        (ReqArg LineNo     "NUM")      "Start on line number"
   , Option []     ["as"]          (ReqArg EditorNm   "EDITOR")   editorHelp
   , Option []     ["ghc-option"]  (ReqArg GhcOption  "OPTION")   "Specify option to pass to ghc when compiling configuration file"
+  , Option [openInTabsShort] [openInTabsLong] (NoArg  OpenInTabs)  "Open files in tabs"
   ] where frontendHelp = ("Select frontend, which can be one of:\n"
                              ++ intercalate ", " frontendNames)
           editorHelp   = ("Start with editor keymap, where editor is one of:\n"
                              ++ (intercalate ", " . fmap fst) editors)
+
+openInTabsShort :: Char
+openInTabsShort = 'p'
+
+openInTabsLong :: String
+openInTabsLong = "open-in-tabs"
 
 -- | usage string.
 usage, versinfo :: String
@@ -110,12 +118,15 @@ versinfo = "yi " ++ display version
 do_args :: Config -> [String] -> Either Err (Config, ConsoleConfig)
 do_args cfg args =
     case (getOpt (ReturnInOrder File) options args) of
-        (o, [], []) -> foldM getConfig (cfg, defaultConsoleConfig) o
+        (os, [], []) -> foldM (getConfig shouldOpenInTabs) (cfg, defaultConsoleConfig) os
         (_, _, errs) -> fail (concat errs)
+    where
+        shouldOpenInTabs = ("--" ++ openInTabsLong) `elem` args
+                         || ('-':[openInTabsShort]) `elem` args
 
 -- | Update the default configuration based on a command-line option.
-getConfig :: (Config, ConsoleConfig) -> Opts -> Either Err (Config, ConsoleConfig)
-getConfig (cfg,cfgcon) opt =
+getConfig :: Bool -> (Config, ConsoleConfig) -> Opts -> Either Err (Config, ConsoleConfig)
+getConfig shouldOpenInTabs (cfg, cfgcon) opt =
     case opt of
       Frontend f -> case lookup f availableFrontends of
                       Just frontEnd -> return (cfg { startFrontEnd = frontEnd }, cfgcon)
@@ -126,13 +137,19 @@ getConfig (cfg,cfgcon) opt =
       LineNo l      -> case startActions cfg of
                          x : xs -> return (cfg { startActions = x:makeAction (gotoLn (read l)):xs }, cfgcon)
                          []     -> fail "The `-l' option must come after a file argument"
-      File filename -> prependAction (editFile filename)
+
+      File filename -> if shouldOpenInTabs && (length (startActions cfg) > 0) then
+                         prependActions [YiA (editFile filename), EditorA newTabE]
+                       else
+                         prependAction (editFile filename)
+
       EditorNm emul -> case lookup (fmap toLower emul) editors of
              Just modifyCfg -> return $ (modifyCfg cfg, cfgcon)
              Nothing -> fail $ "Unknown emulation: " ++ show emul
       GhcOption ghcOpt -> return (cfg, cfgcon { ghcOptions = ghcOptions cfgcon ++ [ghcOpt] })
       _ -> return (cfg, cfgcon)
-  where 
+  where
+    prependActions as = return $ (cfg { startActions = (fmap makeAction as) ++ startActions cfg }, cfgcon)
     prependAction a = return $ (cfg { startActions = makeAction a : startActions cfg}, cfgcon)
 
 -- ---------------------------------------------------------------------
