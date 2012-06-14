@@ -75,6 +75,7 @@ module Yi.Buffer.Misc
   , getModeLine
   , getPercent
   , setInserting
+  , savingPrefCol
   , forgetPreferCol
   , movingToPrefCol
   , getPrefCol

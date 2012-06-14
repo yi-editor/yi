@@ -41,7 +41,9 @@ botB = moveTo =<< sizeB
 
 -- | Move left if on eol, but not on blank line
 leftOnEol :: BufferM ()
-leftOnEol = do
+-- @savingPrefCol@ is needed, because deep down @leftB@ contains @forgetPrefCol@
+-- which messes up vertical cursor motion in Vim normal mode
+leftOnEol = savingPrefCol $ do
         eol <- atEol
         sol <- atSol
         when (eol && not sol) leftB
