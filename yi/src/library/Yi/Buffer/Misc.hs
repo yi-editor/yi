@@ -77,6 +77,7 @@ module Yi.Buffer.Misc
   , setInserting
   , forgetPreferCol
   , movingToPrefCol
+  , getPrefCol
   , setPrefCol
   , markSavedB
   , addOverlayB
@@ -337,6 +338,12 @@ file b = case b ^. identA of
 
 preferColA :: Accessor FBuffer (Maybe Int)
 preferColA = preferColAA . attrsA
+
+setPrefCol :: Maybe Int -> BufferM ()
+setPrefCol = putA preferColA
+
+getPrefCol :: BufferM (Maybe Int)
+getPrefCol = getA preferColA
 
 bufferDynamicA :: Accessor FBuffer DynamicValues
 bufferDynamicA = bufferDynamicAA . attrsA
@@ -892,9 +899,6 @@ rightN = moveN
 -- ---------------------------------------------------------------------
 -- Line based movement and friends
 
-setPrefCol :: Maybe Int -> BufferM ()
-setPrefCol = putA preferColA
-
 -- | Move point down by @n@ lines. @n@ can be negative.
 -- Returns the actual difference in lines which we moved which
 -- may be negative if the requested line difference is negative.
@@ -903,7 +907,7 @@ lineMoveRel = movingToPrefCol . gotoLnFrom
 
 movingToPrefCol :: BufferM a -> BufferM a
 movingToPrefCol f = do
-  prefCol <- getA preferColA
+  prefCol <- getPrefCol
   targetCol <- maybe curCol return prefCol
   r <- f
   moveToColB targetCol
@@ -929,7 +933,7 @@ forgetPreferCol = setPrefCol Nothing
 
 savingPrefCol :: BufferM a -> BufferM a
 savingPrefCol f = do
-  pc <- getA preferColA
+  pc <- getPrefCol
   result <- f
   setPrefCol pc
   return result
