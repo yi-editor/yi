@@ -961,6 +961,8 @@ defKeymap = Proto template
        ,('(',  unitDelimited '(' ')')
        ,(')',  unitDelimited '(' ')')
        ,('b',  unitDelimited '(' ')')
+       ,('[',  unitDelimited '[' ']')
+       ,(']',  unitDelimited '[' ']')
        ,('{',  unitDelimited '{' '}')
        ,('}',  unitDelimited '{' '}')
        ,('B',  unitDelimited '{' '}')
@@ -1310,7 +1312,22 @@ TODO: use or remove
                                      Just cmplFn -> cmplFn $ ignoreExCmd s
                                      Nothing     -> ex_complete s
 
-           f_complete = exSimpleComplete (matchingFileNames Nothing)
+           f_complete f | f == "%" = do
+                           -- current buffer is minibuffer
+                           -- actual file is in the second buffer in bufferStack
+                           bufferRef <- withEditor $ gets (head . drop 1 . bufferStack)
+                           maybeCurrentFileName <- withGivenBuffer bufferRef (gets file)
+
+                           case maybeCurrentFileName of
+                             Just fn -> withBuffer $ do
+                                 -- now modifying minibuffer
+                                 point <- pointB
+                                 deleteNAt Forward 1 (point-1)
+                                 insertN fn
+
+                             Nothing -> return ()
+                        | otherwise = exSimpleComplete (matchingFileNames Nothing) f
+
            b_complete = exSimpleComplete matchingBufferNames
            ex_complete ('c':'d':' ':f)                         = f_complete f
            ex_complete ('e':' ':f)                             = f_complete f
@@ -1320,6 +1337,8 @@ TODO: use or remove
            ex_complete ('r':' ':f)                             = f_complete f
            ex_complete ('r':'e':'a':'d':' ':f)                 = f_complete f
            ex_complete ('t':'a':'b':'e':' ':f)                 = f_complete f
+           ex_complete ('t':'a':'b':'e':'d':'i':'t':' ':f)     = f_complete f
+           ex_complete ('t':'a':'b':'n':'e':'w':' ':f)         = f_complete f
            ex_complete ('s':'a':'v':'e':'a':'s':' ':f)         = f_complete f
            ex_complete ('s':'a':'v':'e':'a':'s':'!':' ':f)     = f_complete f
            ex_complete ('b':' ':f)                             = b_complete f
@@ -1338,7 +1357,8 @@ TODO: use or remove
            catchAllComplete = exSimpleComplete $ const $ return $
                                 (userExCmds ++) $
                                 ("hoogle-word" :) $ ("hoogle-search" : )$ ("set ft=" :) $ ("set tags=" :) $ map (++ " ") $ words $
-                                "e edit r read saveas saveas! tabe tabnew tabm b buffer bd bd! bdelete bdelete! " ++
+                                "e edit r read saveas saveas! tabe tabedit tabnew tabm " ++
+                                "b buffer bd bd! bdelete bdelete! " ++
                                 "yi cabal nohlsearch cd pwd suspend stop undo redo redraw reload tag .! quit quitall " ++
                                 "qall quit! quitall! qall! write wq wqall ascii xit exit next prev" ++
                                 "$ split new ball h help"
@@ -1561,11 +1581,17 @@ TODO: use or remove
            fn "help"       = help
            fn "tabm"       = withEditor (moveTab Nothing)
            fn ('t':'a':'b':'m':' ':n) = withEditor (moveTab $ Just (read n))
-           fn "tabnew"     = withEditor $ do
+
+           fn "tabe"       = withEditor $ do
                newTabE
                discard newTempBufferE
                return ()
-           fn ('t':'a':'b':'e':' ':f) = withEditor newTabE >> viFnewE f
+           fn "tabedit"    = fn "tabe"
+           fn "tabnew"     = fn "tabe"
+
+           fn ('t':'a':'b':'e':' ':f)             = withEditor newTabE >> viFnewE f
+           fn ('t':'a':'b':'e':'d':'i':'t':' ':f) = fn $ "tabe " ++ f
+           fn ('t':'a':'b':'n':'e':'w':' ':f)     = fn $ "tabe " ++ f
 
            fn "ball"       = withEditor openAllBuffersE
 
@@ -1628,8 +1654,12 @@ viFnewE f = discard (editFile $ dropSpace f)
 -- | viSearch is a doSearch wrapper that print the search outcome.
 -- TODO: consider merging with doSearch 
 viSearch :: String -> [SearchOption] -> Direction -> EditorM ()
-viSearch x y z = do
-  r <- doSearch (if null x then Nothing else Just x) y z
+viSearch needle searchOptions dir = do
+  r <- doSearch (if null needle then Nothing else Just needle) searchOptions dir
+  when (dir == Backward) $ do
+    -- move cursor so that it stands on the last character of search term
+    -- enabling user to continue searching with # or * after #
+    withBuffer0' $ viMove (CharMove Backward)
   case r of
     PatternFound    -> return ()
     PatternNotFound -> printMsg "Pattern not found"

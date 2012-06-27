@@ -1,5 +1,5 @@
 name:           yi-contrib
-version:        0.6.4.0
+version:        0.6.5.0
 category:       Development, Editor
 synopsis:       Add-ons to Yi, the Haskell-Scriptable Editor
 description:
@@ -36,4 +36,4 @@ library
     directory < 1.2,
     filepath < 1.4,
     split ==0.1.*,
-    yi ==0.6.4.0
+    yi == 0.6.5.0

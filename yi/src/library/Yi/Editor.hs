@@ -614,7 +614,6 @@ layoutManagerNextVariantE = modA (tabLayoutManagerA . currentTabA) nextVariant
 layoutManagerPreviousVariantE :: EditorM ()
 layoutManagerPreviousVariantE = modA (tabLayoutManagerA . currentTabA) previousVariant
 
-
 -- | Enlarge the current window
 enlargeWinE :: EditorM ()
 enlargeWinE = error "enlargeWinE: not implemented"
