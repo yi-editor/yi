@@ -337,13 +337,12 @@ isearchEnd accept = do
   let (lastSearched,_,_) = head s
   let (_,p0,_) = last s
   historyFinishGen iSearch (return lastSearched)
-  resetRegexE
   if accept 
      then do withBuffer0 $ setSelectionMarkPointB $ regionStart p0 
              printMsg "Quit"
-     else withBuffer0 $ moveTo $ regionStart p0
-  
-  
+     else do resetRegexE
+             withBuffer0 $ moveTo $ regionStart p0
+
 
 -----------------
 -- Query-Replace
