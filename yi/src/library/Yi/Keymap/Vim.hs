@@ -36,7 +36,9 @@ module Yi.Keymap.Vim (keymapSet,
                       listTagStack,
                       pushTagStack,
                       popTagStack,
-                      peekTagStack
+                      peekTagStack,
+                      exMode,
+                      exEval
                       ) where
 
 import Prelude (maybe, length, filter, map, drop, break, uncurry, reads)
@@ -696,23 +698,6 @@ defKeymap = Proto template
        where
          boundedPattern x = "\\<" ++ (regexEscapeString x) ++ "\\>"
 
-     gotoTag :: Tag -> YiM ()
-     gotoTag tag =
-       visitTagTable $ \tagTable ->
-         case lookupTag tag tagTable of
-           Nothing -> fail $ "No tags containing " ++ tag
-           Just (filename, line) -> do
-             when (enableTagStack $ v_opts self)
-                  viTagStackPushPos
-             viFnewE filename
-             discard $ withBuffer' $ gotoLn line
-             return ()
-
-     viTagStackPushPos :: YiM ()
-     viTagStackPushPos = withEditor $ do bn <- withBuffer0 $ gets identString
-                                         p  <- withBuffer0 pointB
-                                         pushTagStack bn p
-
      gotoPrevTagMark :: Int -> YiM ()
      gotoPrevTagMark cnt = do
        lastP <- withEditor $ popTagStack cnt
@@ -721,29 +706,8 @@ defKeymap = Proto template
          Just (fp, p) -> do viFnewE fp
                             withBuffer' $ moveTo p
 
-     -- | Call continuation @act@ with the TagTable. Uses the global table
-     -- and prompts the user if it doesn't exist
-     visitTagTable :: (TagTable -> YiM ()) -> YiM ()
-     visitTagTable act = do
-       posTagTable <- withEditor getTags
-       -- does the tagtable exist?
-       case posTagTable of
-         Just tagTable -> act tagTable
-         Nothing -> do fps <- withEditor getTagsFileList  -- withBuffer0' $ tagsFileList <$> getDynamicB
-                       efps <- io $ filterM fileExist fps
-                       when (null efps) $ fail ("No existing tags file among: " ++ show fps)
-                       tagTable <- io $ importTagTable (head efps)
-                       withEditor $ setTags tagTable
-                       act tagTable
-
      gotoTagCurrentWord :: YiM ()
-     gotoTagCurrentWord = gotoTag =<< withEditor (withBuffer0' (readRegionB =<< regionOfNonEmptyB unitViWord))
-
-     -- | Parse any character that can be inserted in the text.
-     textChar :: KeymapM Char
-     textChar = do
-       Event (KASCII c) [] <- anyEvent
-       return c
+     gotoTagCurrentWord = gotoTag (v_opts self) =<< withEditor (withBuffer0' (readRegionB =<< regionOfNonEmptyB unitViWord))
 
      continueSearching :: (Direction -> Direction) -> EditorM ()
      continueSearching fdir = do
@@ -1092,7 +1056,7 @@ defKeymap = Proto template
                   ,char 'V'  ?>> change_vis_mode selStyle LineWise
                   ,char 'v'  ?>> change_vis_mode selStyle Inclusive
                   ,ctrlCh 'v'?>> change_vis_mode selStyle Block
-                  ,char ':'  ?>>! ex_mode ":'<,'>"
+                  ,char ':'  ?>>! (exMode self) ":'<,'>"
                   ,char 'p'  ?>>! pasteOverSelection -- TODO repeat
                   ,char 'x'  ?>>! (cutSelection >> withBuffer0 leftOnEol) -- TODO repeat
                   ,char 's'  ?>> beginIns self (cutSelection >> withBuffer0 (setVisibleSelection False)) -- TODO repeat
@@ -1112,7 +1076,7 @@ defKeymap = Proto template
      --
      cmd2other :: VimMode
      cmd2other =
-         choice [char ':'     ?>>! ex_mode ":",
+         choice [char ':'     ?>>! (exMode self) ":",
                  char 'v'     ?>> vis_mode Inclusive,
                  char 'V'     ?>> vis_mode LineWise,
                  ctrlCh 'v'   ?>> vis_mode Block, -- one use VLine for block mode
@@ -1131,8 +1095,8 @@ defKeymap = Proto template
                  char 'C'     ?>> change NoMove Exclusive viMoveToEol, -- alias of "c$"
                  char 'S'     ?>> change viMoveToSol LineWise viMoveToEol, -- alias of "cc" TODO update
                  char 's'     ?>> change NoMove Exclusive (CharMove Forward), -- non-linewise alias of "cl"
-                 char '/'     ?>>! ex_mode "/",
-                 char '?'     ?>>! ex_mode "?",
+                 char '/'     ?>>! (exMode self) "/",
+                 char '?'     ?>>! (exMode self) "?",
                  leave,
                  spec KIns    ?>> ins_mode self]
 
@@ -1261,387 +1225,386 @@ TODO: use or remove
                 <|| do c <- textChar; write $ replaceB c
         where replaceB c = do e <- atEol; if e then insertB c else writeB c -- savingInsertCharB ?
 
-     -- ---------------------------------------------------------------------
-     -- Ex mode. We also process regex searching mode here.
-     --
-     findUserCmd :: String -> Maybe VimExCmd
-     findUserCmd cmdLine = find ((name `elem`) . cmdNames) $ v_ex_cmds self
-       where name = takeWhile (not . isSpace) $ dropWhile isSpace cmdLine
+-- ---------------------------------------------------------------------
+-- Ex mode. We also process regex searching mode here.
+--
+findUserCmd :: [VimExCmd] -> String -> Maybe VimExCmd
+findUserCmd cmds cmdLine = find ((name `elem`) . cmdNames) cmds
+  where name = takeWhile (not . isSpace) $ dropWhile isSpace cmdLine
 
-     ex_mode :: String -> EditorM ()
-     ex_mode prompt = do
-       -- The above ensures that the action is performed on the buffer that originated the minibuffer.
-       let ex_buffer_finish = do
-             withEditor historyFinish
-             lineString <- withBuffer' elemsB
-             withEditor closeBufferAndWindowE
-             ex_eval (head prompt : lineString)
-           ex_process :: VimMode
-           ex_process = (some (spec KTab ?>>! completeMinibuffer) >> deprioritize >>! resetComplete)
-               <|| choice [spec KEnter ?>>! ex_buffer_finish
-                          ,spec KEsc   ?>>! closeBufferAndWindowE
-                          ,ctrlCh 'h'  ?>>! actionAndHistoryPrefix $ deleteB Character Backward
-                          ,spec KBS    ?>>! deleteBkdOrClose
-                          ,spec KDel   ?>>! actionAndHistoryPrefix $ deleteB Character Forward
-                          ,ctrlCh 'p'  ?>>! historyUp
-                          ,spec KUp    ?>>! historyUp
-                          ,ctrlCh 'n'  ?>>! historyDown
-                          ,spec KDown  ?>>! historyDown
-                          ,spec KLeft  ?>>! moveXorSol 1
-                          ,spec KRight ?>>! moveXorEol 1
-                          ,ctrlCh 'w'  ?>>! actionAndHistoryPrefix $ deleteB unitWord Backward
-                          ,ctrlCh 'u'  ?>>! moveToSol >> deleteToEol]
-                  <|| (insertChar >>! setHistoryPrefix)
-           actionAndHistoryPrefix act = do
-             discard $ withBuffer0 $ act
-             setHistoryPrefix
-           setHistoryPrefix = do
-             ls <- withEditor . withBuffer0 $ elemsB
-             historyPrefixSet ls
-           insertChar = textChar >>= write . insertB
-           deleteBkdOrClose = do
-             ls <- withBuffer0 elemsB
-             if null ls then closeBufferAndWindowE
-                        else actionAndHistoryPrefix $ deleteB Character Backward
+exMode :: ModeMap -> String -> EditorM ()
+exMode self prompt = do
+  -- The above ensures that the action is performed on the buffer that originated the minibuffer.
+  let ex_buffer_finish = do
+        withEditor historyFinish
+        lineString <- withBuffer' elemsB
+        withEditor closeBufferAndWindowE
+        exEval self (head prompt : lineString)
+      ex_process :: VimMode
+      ex_process = (some (spec KTab ?>>! completeMinibuffer) >> deprioritize >>! resetComplete)
+          <|| choice [spec KEnter ?>>! ex_buffer_finish
+                     ,spec KEsc   ?>>! closeBufferAndWindowE
+                     ,ctrlCh 'h'  ?>>! actionAndHistoryPrefix $ deleteB Character Backward
+                     ,spec KBS    ?>>! deleteBkdOrClose
+                     ,spec KDel   ?>>! actionAndHistoryPrefix $ deleteB Character Forward
+                     ,ctrlCh 'p'  ?>>! historyUp
+                     ,spec KUp    ?>>! historyUp
+                     ,ctrlCh 'n'  ?>>! historyDown
+                     ,spec KDown  ?>>! historyDown
+                     ,spec KLeft  ?>>! moveXorSol 1
+                     ,spec KRight ?>>! moveXorEol 1
+                     ,ctrlCh 'w'  ?>>! actionAndHistoryPrefix $ deleteB unitWord Backward
+                     ,ctrlCh 'u'  ?>>! moveToSol >> deleteToEol]
+             <|| (insertChar >>! setHistoryPrefix)
+      actionAndHistoryPrefix act = do
+        discard $ withBuffer0 $ act
+        setHistoryPrefix
+      setHistoryPrefix = do
+        ls <- withEditor . withBuffer0 $ elemsB
+        historyPrefixSet ls
+      insertChar = textChar >>= write . insertB
+      deleteBkdOrClose = do
+        ls <- withBuffer0 elemsB
+        if null ls then closeBufferAndWindowE
+                   else actionAndHistoryPrefix $ deleteB Character Backward
 
-           findUserComplFn s | Just ex_cmd <- findUserCmd s = completeFn ex_cmd
-                             | otherwise                    = Nothing
+      findUserComplFn s | Just ex_cmd <- findUserCmd (v_ex_cmds self) s = completeFn ex_cmd
+                        | otherwise                                     = Nothing
 
-           completeMinibuffer = do s <- withBuffer elemsB
-                                   case findUserComplFn s of
-                                     Just cmplFn -> cmplFn $ ignoreExCmd s
-                                     Nothing     -> ex_complete s
+      completeMinibuffer = do s <- withBuffer elemsB
+                              case findUserComplFn s of
+                                Just cmplFn -> cmplFn $ ignoreExCmd s
+                                Nothing     -> ex_complete s
 
-           f_complete f | f == "%" = do
-                           -- current buffer is minibuffer
-                           -- actual file is in the second buffer in bufferStack
-                           bufferRef <- withEditor $ gets (head . drop 1 . bufferStack)
-                           maybeCurrentFileName <- withGivenBuffer bufferRef (gets file)
+      f_complete f | f == "%" = do
+                      -- current buffer is minibuffer
+                      -- actual file is in the second buffer in bufferStack
+                      bufferRef <- withEditor $ gets (head . drop 1 . bufferStack)
+                      maybeCurrentFileName <- withGivenBuffer bufferRef (gets file)
 
-                           case maybeCurrentFileName of
-                             Just fn -> withBuffer $ do
-                                 -- now modifying minibuffer
-                                 point <- pointB
-                                 deleteNAt Forward 1 (point-1)
-                                 insertN fn
+                      case maybeCurrentFileName of
+                        Just fn -> withBuffer $ do
+                            -- now modifying minibuffer
+                            point <- pointB
+                            deleteNAt Forward 1 (point-1)
+                            insertN fn
 
-                             Nothing -> return ()
-                        | otherwise = exSimpleComplete (matchingFileNames Nothing) f
+                        Nothing -> return ()
+                   | otherwise = exSimpleComplete (matchingFileNames Nothing) f
 
-           b_complete = exSimpleComplete matchingBufferNames
-           ex_complete ('c':'d':' ':f)                         = f_complete f
-           ex_complete ('e':' ':f)                             = f_complete f
-           ex_complete ('e':'d':'i':'t':' ':f)                 = f_complete f
-           ex_complete ('w':' ':f)                             = f_complete f
-           ex_complete ('w':'r':'i':'t':'e':' ':f)             = f_complete f
-           ex_complete ('r':' ':f)                             = f_complete f
-           ex_complete ('r':'e':'a':'d':' ':f)                 = f_complete f
-           ex_complete ('t':'a':'b':'e':' ':f)                 = f_complete f
-           ex_complete ('t':'a':'b':'e':'d':'i':'t':' ':f)     = f_complete f
-           ex_complete ('t':'a':'b':'n':'e':'w':' ':f)         = f_complete f
-           ex_complete ('s':'a':'v':'e':'a':'s':' ':f)         = f_complete f
-           ex_complete ('s':'a':'v':'e':'a':'s':'!':' ':f)     = f_complete f
-           ex_complete ('b':' ':f)                             = b_complete f
-           ex_complete ('b':'u':'f':'f':'e':'r':' ':f)         = b_complete f
-           ex_complete ('b':'d':' ':f)                         = b_complete f
-           ex_complete ('b':'d':'!':' ':f)                     = b_complete f
-           ex_complete ('b':'d':'e':'l':'e':'t':'e':' ':f)     = b_complete f
-           ex_complete ('b':'d':'e':'l':'e':'t':'e':'!':' ':f) = b_complete f
-           ex_complete ('c':'a':'b':'a':'l':' ':s)             = cabalComplete s
-           ex_complete ('s':'e':'t':' ':'f':'t':'=':f)         = completeModes f
-           ex_complete ('y':'i':' ':s)                         = exSimpleComplete (const getAllNamesInScope) s
-           ex_complete s                                       = catchAllComplete s
+      b_complete = exSimpleComplete matchingBufferNames
+      ex_complete ('c':'d':' ':f)                         = f_complete f
+      ex_complete ('e':' ':f)                             = f_complete f
+      ex_complete ('e':'d':'i':'t':' ':f)                 = f_complete f
+      ex_complete ('w':' ':f)                             = f_complete f
+      ex_complete ('w':'r':'i':'t':'e':' ':f)             = f_complete f
+      ex_complete ('r':' ':f)                             = f_complete f
+      ex_complete ('r':'e':'a':'d':' ':f)                 = f_complete f
+      ex_complete ('t':'a':'b':'e':' ':f)                 = f_complete f
+      ex_complete ('t':'a':'b':'e':'d':'i':'t':' ':f)     = f_complete f
+      ex_complete ('t':'a':'b':'n':'e':'w':' ':f)         = f_complete f
+      ex_complete ('s':'a':'v':'e':'a':'s':' ':f)         = f_complete f
+      ex_complete ('s':'a':'v':'e':'a':'s':'!':' ':f)     = f_complete f
+      ex_complete ('b':' ':f)                             = b_complete f
+      ex_complete ('b':'u':'f':'f':'e':'r':' ':f)         = b_complete f
+      ex_complete ('b':'d':' ':f)                         = b_complete f
+      ex_complete ('b':'d':'!':' ':f)                     = b_complete f
+      ex_complete ('b':'d':'e':'l':'e':'t':'e':' ':f)     = b_complete f
+      ex_complete ('b':'d':'e':'l':'e':'t':'e':'!':' ':f) = b_complete f
+      ex_complete ('c':'a':'b':'a':'l':' ':s)             = cabalComplete s
+      ex_complete ('s':'e':'t':' ':'f':'t':'=':f)         = completeModes f
+      ex_complete ('y':'i':' ':s)                         = exSimpleComplete (const getAllNamesInScope) s
+      ex_complete s                                       = catchAllComplete s
 
-           userExCmds = concatMap (map (++ " ") . cmdNames) $ v_ex_cmds self
+      userExCmds = concatMap (map (++ " ") . cmdNames) $ v_ex_cmds self
 
-           catchAllComplete = exSimpleComplete $ const $ return $
-                                (userExCmds ++) $
-                                ("hoogle-word" :) $ ("hoogle-search" : )$ ("set ft=" :) $ ("set tags=" :) $ map (++ " ") $ words $
-                                "e edit r read saveas saveas! tabe tabedit tabnew tabm " ++
-                                "b buffer bd bd! bdelete bdelete! " ++
-                                "yi cabal nohlsearch cd pwd suspend stop undo redo redraw reload tag .! quit quitall " ++
-                                "qall quit! quitall! qall! write wq wqall ascii xit exit next prev" ++
-                                "$ split new ball h help"
-           cabalComplete = exSimpleComplete $ const $ return cabalCmds
-           cabalCmds = words "configure install list update upgrade fetch upload check sdist" ++
-                       words "report build copy haddock clean hscolour register test help"
-           completeModes = exSimpleComplete $ const getAllModeNames
+      catchAllComplete = exSimpleComplete $ const $ return $
+                           (userExCmds ++) $
+                           ("hoogle-word" :) $ ("hoogle-search" : )$ ("set ft=" :) $ ("set tags=" :) $ map (++ " ") $ words $
+                           "e edit r read saveas saveas! tabe tabedit tabnew tabm " ++
+                           "b buffer bd bd! bdelete bdelete! " ++
+                           "yi cabal nohlsearch cd pwd suspend stop undo redo redraw reload tag .! quit quitall " ++
+                           "qall quit! quitall! qall! write wq wqall ascii xit exit next prev" ++
+                           "$ split new ball h help"
+      cabalComplete = exSimpleComplete $ const $ return cabalCmds
+      cabalCmds = words "configure install list update upgrade fetch upload check sdist" ++
+                  words "report build copy haddock clean hscolour register test help"
+      completeModes = exSimpleComplete $ const getAllModeNames
 
-       historyStart
-       historyPrefixSet ""
-       discard $ spawnMinibufferE prompt $ const ex_process
-       return ()
+  historyStart
+  historyPrefixSet ""
+  discard $ spawnMinibufferE prompt $ const ex_process
+  return ()
 
-     -- | eval an ex command to an YiM (), also appends to the ex history
-     ex_eval :: String -> YiM ()
-     ex_eval cmd =
-       case cmd of
-             -- regex searching
-               ('/':pat) -> withEditor $ viSearch pat [] Forward
-               ('?':pat) -> withEditor $ viSearch pat [] Backward
+-- | eval an ex command to an YiM (), also appends to the ex history
+exEval :: ModeMap -> String -> YiM ()
+exEval self cmd =
+  case cmd of
+        -- regex searching
+          ('/':pat) -> withEditor $ viSearch pat [] Forward
+          ('?':pat) -> withEditor $ viSearch pat [] Backward
 
-             -- TODO: Remapping could be done using the <|| operator somehow. 
-             -- The remapped stuff could be saved in a keymap-local state, (using StateT monad transformer).
+        -- TODO: Remapping could be done using the <|| operator somehow.
+        -- The remapped stuff could be saved in a keymap-local state, (using StateT monad transformer).
 
-             -- add mapping to command mode
-               (_:'m':'a':'p':' ':_cs) -> error "Not yet implemented."
+        -- add mapping to command mode
+          (_:'m':'a':'p':' ':_cs) -> error "Not yet implemented."
 
-             -- add mapping to insert mode
-               (_:'m':'a':'p':'!':' ':_cs) -> error "Not yet implemented."
+        -- add mapping to insert mode
+          (_:'m':'a':'p':'!':' ':_cs) -> error "Not yet implemented."
 
-             -- unmap a binding from command mode
-               (_:'u':'n':'m':'a':'p':' ':_cs) -> error "Not yet implemented."
+        -- unmap a binding from command mode
+          (_:'u':'n':'m':'a':'p':' ':_cs) -> error "Not yet implemented."
 
-             -- unmap a binding from insert mode
-               (_:'u':'n':'m':'a':'p':'!':' ':_cs) -> error "Not yet implemented."
-
-
-             -- just a normal ex command
-               (_:src) -> evalCmd $ dropSpace src
-
-             -- can't happen, but deal with it
-               [] -> return ()
-
-         where
-           {- safeQuitWindow implements the commands in vim equivalent to :q.
-            - Closes the current window unless the current window is the last window on a 
-            - modified buffer that is not considered "worthless".
-            -}
-           safeQuitWindow = do
-               nw <- withBuffer' needsAWindowB
-               ws <- withEditor $ getA currentWindowA >>= windowsOnBufferE . bufkey
-               if 1 == length ws && nw 
-                 then errorEditor "No write since last change (add ! to override)"
-                 else closeWindow
-           
-           needsAWindowB = do
-             isWorthless <- gets (either (const True) (const False) . (^. identA))
-             canClose <- gets isUnchangedBuffer
-             if isWorthless || canClose then return False else return True
-           
-           {- quitWindow implements the commands in vim equivalent to :q!
-            - Closes the current window regardless of whether the window is on a modified
-            - buffer or not. 
-            - TODO: Does not quit the editor if there are modified hidden buffers.
-            - 
-            - Corey - Vim appears to abandon any changes to the current buffer if the window being 
-            - closed is the last window on the buffer. The, now unmodified, buffer is still around 
-            - and can be switched to using :b. I think this is odd and prefer the modified buffer
-            - sticking around. 
-            -}
-           quitWindow = closeWindow
-           
-           {- safeQuitAllWindows implements the commands in vim equivalent to :qa!
-            - Exits the editor unless there is a modified buffer that is not worthless.
-            -}
-           safeQuitAllWindows = do
-             bs <- mapM (\b -> (,) b <$> withEditor (withGivenBuffer0 b needsAWindowB)) =<< readEditor bufferStack
-             -- Vim only shows the first modified buffer in the error.
-             case find snd bs of
-               Nothing -> quitEditor
-               Just (b, _) -> do
-                 bufferName <- withEditor $ withGivenBuffer0 b $ gets file
-                 errorEditor $ "No write since last change for buffer " 
-                               ++ show bufferName
-                               ++ " (add ! to override)"
-           
-           whenUnchanged mu f = do u <- mu
-                                   if u then f
-                                        else errorEditor "No write since last change (add ! to override)"
+        -- unmap a binding from insert mode
+          (_:'u':'n':'m':'a':'p':'!':' ':_cs) -> error "Not yet implemented."
 
 
-           wquitall = forAllBuffers fwriteBufferE >> quitEditor
-           bdelete  = whenUnchanged (withBuffer' $ gets isUnchangedBuffer) . withEditor . closeBufferE . dropSpace
-           bdeleteNoW = withEditor . closeBufferE . dropSpace
+        -- just a normal ex command
+          (_:src) -> evalCmd $ dropSpace src
 
-           -- the help feature currently try to show available key bindings
-           help = withEditor (printMsg . show =<< acceptedInputs)
+        -- can't happen, but deal with it
+          [] -> return ()
 
+    where
+      {- safeQuitWindow implements the commands in vim equivalent to :q.
+       - Closes the current window unless the current window is the last window on a
+       - modified buffer that is not considered "worthless".
+       -}
+      safeQuitWindow = do
+          nw <- withBuffer' needsAWindowB
+          ws <- withEditor $ getA currentWindowA >>= windowsOnBufferE . bufkey
+          if 1 == length ws && nw
+            then errorEditor "No write since last change (add ! to override)"
+            else closeWindow
 
-           evalCmd cmdLine = case findUserCmd cmdLine of
-                               Just ex_cmd -> cmdFn ex_cmd $ ignoreExCmd cmdLine
-                               Nothing     -> fn cmdLine
+      needsAWindowB = do
+        isWorthless <- gets (either (const True) (const False) . (^. identA))
+        canClose <- gets isUnchangedBuffer
+        if isWorthless || canClose then return False else return True
 
-           -- fn maps from the text entered on the command line to a YiM () implementing the 
-           -- command.
-           fn ""           = withEditor clrStatus
+      {- quitWindow implements the commands in vim equivalent to :q!
+       - Closes the current window regardless of whether the window is on a modified
+       - buffer or not.
+       - TODO: Does not quit the editor if there are modified hidden buffers.
+       -
+       - Corey - Vim appears to abandon any changes to the current buffer if the window being
+       - closed is the last window on the buffer. The, now unmodified, buffer is still around
+       - and can be switched to using :b. I think this is odd and prefer the modified buffer
+       - sticking around.
+       -}
+      quitWindow = closeWindow
 
-           fn s | all isDigit s = withBuffer' (setMarkHere '\'' >> gotoLn (read s) >> firstNonSpaceB)
+      {- safeQuitAllWindows implements the commands in vim equivalent to :qa!
+       - Exits the editor unless there is a modified buffer that is not worthless.
+       -}
+      safeQuitAllWindows = do
+        bs <- mapM (\b -> (,) b <$> withEditor (withGivenBuffer0 b needsAWindowB)) =<< readEditor bufferStack
+        -- Vim only shows the first modified buffer in the error.
+        case find snd bs of
+          Nothing -> quitEditor
+          Just (b, _) -> do
+            bufferName <- withEditor $ withGivenBuffer0 b $ gets file
+            errorEditor $ "No write since last change for buffer "
+                          ++ show bufferName
+                          ++ " (add ! to override)"
 
-           fn "w"          = viWrite
-           fn ('w':' ':f)  = viSafeWriteTo $ dropSpace f
-           fn ('w':'r':'i':'t':'e':' ':f)  = viSafeWriteTo $ dropSpace f
-           fn ('w':'!':' ':f)  = viWriteTo $ dropSpace f
-           fn ('w':'r':'i':'t':'e':'!':' ':f)  = viWriteTo $ dropSpace f
-           fn "qa"         = safeQuitAllWindows
-           fn "qal"        = safeQuitAllWindows
-           fn "qall"       = safeQuitAllWindows
-           fn "quita"      = safeQuitAllWindows
-           fn "quital"     = safeQuitAllWindows
-           fn "quitall"    = safeQuitAllWindows
-           fn "q"          = safeQuitWindow
-           fn "qu"         = safeQuitWindow
-           fn "qui"        = safeQuitWindow
-           fn "quit"       = safeQuitWindow
-           fn "q!"         = quitWindow
-           fn "qu!"        = quitWindow
-           fn "qui!"       = quitWindow
-           fn "quit!"      = quitWindow
-           fn "qa!"        = quitEditor
-           fn "qal!"       = quitEditor
-           fn "qall!"      = quitEditor
-           fn "quita!"     = quitEditor
-           fn "quital!"    = quitEditor
-           fn "quitall!"   = quitEditor
-           fn "wq"         = viWrite >> closeWindow
-           fn "wqa"        = wquitall
-           fn "wqal"       = wquitall
-           fn "wqall"      = wquitall
-           fn "as"         = withEditor viCharInfo
-           fn "ascii"      = withEditor viCharInfo
-           fn "x"          = viWriteModified >> closeWindow
-           fn "xi"         = viWriteModified >> closeWindow
-           fn "xit"        = viWriteModified >> closeWindow
-           fn "exi"        = viWriteModified >> closeWindow
-           fn "exit"       = viWriteModified >> closeWindow
-           fn "n"          = withEditor nextBufW
-           fn "next"       = withEditor nextBufW
-           fn "$"          = withBuffer' botB
-           fn "p"          = withEditor prevBufW
-           fn "prev"       = withEditor prevBufW
-           fn ('s':'p':_)  = withEditor splitE
-           fn "e"          = revertE
-           fn "edit"       = revertE
-           fn ('e':' ':f)  = viFnewE f
-           fn ('e':'d':'i':'t':' ':f) = viFnewE f
-           fn ('s':'a':'v':'e':'a':'s':' ':f)     = let f' = dropSpace f in discard $ viSafeWriteTo f' >> editFile f'
-           fn ('s':'a':'v':'e':'a':'s':'!':' ':f) = let f' = dropSpace f in discard $ viWriteTo f' >> editFile f'
-           fn ('r':' ':f)  = withBuffer' . insertN =<< io (readFile $ dropSpace f)
-           fn ('r':'e':'a':'d':' ':f) = withBuffer' . insertN =<< io (readFile $ dropSpace f)
-           fn ('s':'e':'t':' ':'f':'t':'=':ft)  = do (AnyMode m) <- anyModeByName (dropSpace ft) ; withBuffer $ setMode m
-           fn ('s':'e':'t':' ':'t':'a':'g':'s':'=':fps)  = withEditor $ setTagsFileList fps
-           fn ('n':'e':'w':' ':f) = withEditor splitE >> viFnewE f
-           fn ('s':'/':cs) = withEditor $ viSub cs Line
-           fn ('%':'s':'/':cs) = withEditor $ viSub cs Document
-
-           fn ('b':' ':"m") = withEditor $ switchToBufferWithNameE "*messages*"
-           fn ('b':' ':f)   = withEditor $ switchToBufferWithNameE $ dropSpace f
-           fn "bd"                                    = bdelete ""
-           fn "bdelete"                               = bdelete ""
-           fn ('b':'d':' ':f)                         = bdelete f
-           fn ('b':'d':'e':'l':'e':'t':'e':' ':f)     = bdelete f
-           fn "bd!"                                   = bdeleteNoW ""
-           fn "bdelete!"                              = bdeleteNoW ""
-           fn ('b':'d':'!':' ':f)                     = bdeleteNoW f
-           fn ('b':'d':'e':'l':'e':'t':'e':'!':' ':f) = bdeleteNoW f
-           -- TODO: bd[!] [N]
-
-           fn ('t':'a':'g':' ':t) = gotoTag t
-
-           -- send just this line through external command /fn/
-           fn ('.':'!':f) = do
-                 ln  <- withBuffer' readLnB
-                 ln' <- runProcessWithInput f ln
-                 withBuffer' $ do moveToSol
-                                  deleteToEol
-                                  insertN ln'
-                                  moveToSol
-
-     --    Needs to occur in another buffer
-     --    fn ('!':f) = runProcessWithInput f []
-
-           fn "reload"     = reload >> return ()    -- not in vim
-
-           fn "redr"       = userForceRefresh
-           fn "redraw"     = userForceRefresh
-
-           fn "u"          = withBuffer' undoB
-           fn "undo"       = withBuffer' undoB
-           fn "only"       = withEditor closeOtherE
-           fn "red"        = withBuffer' redoB
-           fn "redo"       = withBuffer' redoB
-
-           fn ('c':'d':' ':f) = io . setCurrentDirectory . dropSpace $ f
-           fn "pwd"        = (io $ getCurrentDirectory) >>= withEditor . printMsg
-
-           fn "sus"        = suspendEditor
-           fn "suspend"    = suspendEditor
-           fn "st"         = suspendEditor
-           fn "stop"       = suspendEditor
-
-           fn ('c':'a':'b':'a':'l':' ':s) = cabalRun s1 (const $ return ()) (CommandArguments $ words $ drop 1 s2) where (s1, s2) = break (==' ') s
-           fn "make"       = makeBuild $ CommandArguments []
-           fn ('m':'a':'k':'e':' ':s) = makeBuild (CommandArguments $ words s)
-           fn ('!':s)         = shellCommandV s
-           fn ('y':'i':' ':s) = execEditorAction $ dropSpace s
-
-           fn "hoogle-word" = hoogle >> return ()
-           fn "hoogle-search" = hoogleSearch
-           fn "h"          = help
-           fn "help"       = help
-           fn "tabm"       = withEditor (moveTab Nothing)
-           fn ('t':'a':'b':'m':' ':n) = withEditor (moveTab $ Just (read n))
-
-           fn "tabe"       = withEditor $ do
-               newTabE
-               discard newTempBufferE
-               return ()
-           fn "tabedit"    = fn "tabe"
-           fn "tabnew"     = fn "tabe"
-
-           fn ('t':'a':'b':'e':' ':f)             = withEditor newTabE >> viFnewE f
-           fn ('t':'a':'b':'e':'d':'i':'t':' ':f) = fn $ "tabe " ++ f
-           fn ('t':'a':'b':'n':'e':'w':' ':f)     = fn $ "tabe " ++ f
-
-           fn "ball"       = withEditor openAllBuffersE
-
-           fn "noh"        = withEditor resetRegexE
-           fn "nohlsearch" = withEditor resetRegexE
-           fn s            = errorEditor $ "The "++show s++ " command is unknown."
+      whenUnchanged mu f = do u <- mu
+                              if u then f
+                                   else errorEditor "No write since last change (add ! to override)"
 
 
-     ------------------------------------------------------------------------
+      wquitall = forAllBuffers fwriteBufferE >> quitEditor
+      bdelete  = whenUnchanged (withBuffer' $ gets isUnchangedBuffer) . withEditor . closeBufferE . dropSpace
+      bdeleteNoW = withEditor . closeBufferE . dropSpace
 
-     --not_implemented :: Char -> YiM ()
-     --not_implemented c = errorEditor $ "Not implemented: " ++ show c
+      -- the help feature currently try to show available key bindings
+      help = withEditor (printMsg . show =<< acceptedInputs)
 
-     -- ---------------------------------------------------------------------
-     -- Misc functions
 
-     forAllBuffers :: (BufferRef -> YiM ()) -> YiM ()
-     forAllBuffers f = mapM_ f =<< readEditor bufferStack
+      evalCmd cmdLine = case findUserCmd (v_ex_cmds self) cmdLine of
+                          Just ex_cmd -> cmdFn ex_cmd $ ignoreExCmd cmdLine
+                          Nothing     -> fn cmdLine
 
-     viCharInfo :: EditorM ()
-     viCharInfo = do c <- withBuffer0' readB
-                     printMsg $ showCharInfo c ""
-         where showCharInfo :: Char -> ShowS
-               showCharInfo c = shows c . showChar ' ' . shows d
-                              . showString ",  Hex " . showHex d
-                              . showString ",  Octal " . showOct d
-                 where d = ord c
+      -- fn maps from the text entered on the command line to a YiM () implementing the
+      -- command.
+      fn ""           = withEditor clrStatus
 
-     viChar8Info :: EditorM ()
-     viChar8Info = do c <- withBuffer0' readB
-                      let w8 = UTF8.encode [c]
-                      printMsg $ shows c . showChar ' ' . showSeq shows w8
-                               . showString ",  Hex " . showSeq showHex w8
-                               . showString ",  Octal " . showSeq showOct w8 $ ""
-         where showSeq showX xs s = foldr ($) s $ intersperse (showChar ' ') $ map showX xs
+      fn s | all isDigit s = withBuffer' (setMarkHere '\'' >> gotoLn (read s) >> firstNonSpaceB)
 
-     viFileInfo :: EditorM ()
-     viFileInfo =
-         do bufInfo <- withBuffer0' bufInfoB
-            printMsg $ showBufInfo bufInfo
-         where
-         showBufInfo :: BufferFileInfo -> String
-         showBufInfo bufInfo = concat [ show $ bufInfoFileName bufInfo
-              , " Line "
-              , show $ bufInfoLineNo bufInfo
-              , " ["
-              , bufInfoPercent bufInfo
-              , "]"
-              ]
+      fn "w"          = viWrite
+      fn ('w':' ':f)  = viSafeWriteTo $ dropSpace f
+      fn ('w':'r':'i':'t':'e':' ':f)  = viSafeWriteTo $ dropSpace f
+      fn ('w':'!':' ':f)  = viWriteTo $ dropSpace f
+      fn ('w':'r':'i':'t':'e':'!':' ':f)  = viWriteTo $ dropSpace f
+      fn "qa"         = safeQuitAllWindows
+      fn "qal"        = safeQuitAllWindows
+      fn "qall"       = safeQuitAllWindows
+      fn "quita"      = safeQuitAllWindows
+      fn "quital"     = safeQuitAllWindows
+      fn "quitall"    = safeQuitAllWindows
+      fn "q"          = safeQuitWindow
+      fn "qu"         = safeQuitWindow
+      fn "qui"        = safeQuitWindow
+      fn "quit"       = safeQuitWindow
+      fn "q!"         = quitWindow
+      fn "qu!"        = quitWindow
+      fn "qui!"       = quitWindow
+      fn "quit!"      = quitWindow
+      fn "qa!"        = quitEditor
+      fn "qal!"       = quitEditor
+      fn "qall!"      = quitEditor
+      fn "quita!"     = quitEditor
+      fn "quital!"    = quitEditor
+      fn "quitall!"   = quitEditor
+      fn "wq"         = viWrite >> closeWindow
+      fn "wqa"        = wquitall
+      fn "wqal"       = wquitall
+      fn "wqall"      = wquitall
+      fn "as"         = withEditor viCharInfo
+      fn "ascii"      = withEditor viCharInfo
+      fn "x"          = viWriteModified >> closeWindow
+      fn "xi"         = viWriteModified >> closeWindow
+      fn "xit"        = viWriteModified >> closeWindow
+      fn "exi"        = viWriteModified >> closeWindow
+      fn "exit"       = viWriteModified >> closeWindow
+      fn "n"          = withEditor nextBufW
+      fn "next"       = withEditor nextBufW
+      fn "$"          = withBuffer' botB
+      fn "p"          = withEditor prevBufW
+      fn "prev"       = withEditor prevBufW
+      fn ('s':'p':_)  = withEditor splitE
+      fn "e"          = revertE
+      fn "edit"       = revertE
+      fn ('e':' ':f)  = viFnewE f
+      fn ('e':'d':'i':'t':' ':f) = viFnewE f
+      fn ('s':'a':'v':'e':'a':'s':' ':f)     = let f' = dropSpace f in discard $ viSafeWriteTo f' >> editFile f'
+      fn ('s':'a':'v':'e':'a':'s':'!':' ':f) = let f' = dropSpace f in discard $ viWriteTo f' >> editFile f'
+      fn ('r':' ':f)  = withBuffer' . insertN =<< io (readFile $ dropSpace f)
+      fn ('r':'e':'a':'d':' ':f) = withBuffer' . insertN =<< io (readFile $ dropSpace f)
+      fn ('s':'e':'t':' ':'f':'t':'=':ft)  = do (AnyMode m) <- anyModeByName (dropSpace ft) ; withBuffer $ setMode m
+      fn ('s':'e':'t':' ':'t':'a':'g':'s':'=':fps)  = withEditor $ setTagsFileList fps
+      fn ('n':'e':'w':' ':f) = withEditor splitE >> viFnewE f
+      fn ('s':'/':cs) = withEditor $ viSub cs Line
+      fn ('%':'s':'/':cs) = withEditor $ viSub cs Document
 
+      fn ('b':' ':"m") = withEditor $ switchToBufferWithNameE "*messages*"
+      fn ('b':' ':f)   = withEditor $ switchToBufferWithNameE $ dropSpace f
+      fn "bd"                                    = bdelete ""
+      fn "bdelete"                               = bdelete ""
+      fn ('b':'d':' ':f)                         = bdelete f
+      fn ('b':'d':'e':'l':'e':'t':'e':' ':f)     = bdelete f
+      fn "bd!"                                   = bdeleteNoW ""
+      fn "bdelete!"                              = bdeleteNoW ""
+      fn ('b':'d':'!':' ':f)                     = bdeleteNoW f
+      fn ('b':'d':'e':'l':'e':'t':'e':'!':' ':f) = bdeleteNoW f
+      -- TODO: bd[!] [N]
+
+      fn ('t':'a':'g':' ':t) = gotoTag (v_opts self) t
+
+      -- send just this line through external command /fn/
+      fn ('.':'!':f) = do
+            ln  <- withBuffer' readLnB
+            ln' <- runProcessWithInput f ln
+            withBuffer' $ do moveToSol
+                             deleteToEol
+                             insertN ln'
+                             moveToSol
+
+--    Needs to occur in another buffer
+--    fn ('!':f) = runProcessWithInput f []
+
+      fn "reload"     = reload >> return ()    -- not in vim
+
+      fn "redr"       = userForceRefresh
+      fn "redraw"     = userForceRefresh
+
+      fn "u"          = withBuffer' undoB
+      fn "undo"       = withBuffer' undoB
+      fn "only"       = withEditor closeOtherE
+      fn "red"        = withBuffer' redoB
+      fn "redo"       = withBuffer' redoB
+
+      fn ('c':'d':' ':f) = io . setCurrentDirectory . dropSpace $ f
+      fn "pwd"        = (io $ getCurrentDirectory) >>= withEditor . printMsg
+
+      fn "sus"        = suspendEditor
+      fn "suspend"    = suspendEditor
+      fn "st"         = suspendEditor
+      fn "stop"       = suspendEditor
+
+      fn ('c':'a':'b':'a':'l':' ':s) = cabalRun s1 (const $ return ()) (CommandArguments $ words $ drop 1 s2) where (s1, s2) = break (==' ') s
+      fn "make"       = makeBuild $ CommandArguments []
+      fn ('m':'a':'k':'e':' ':s) = makeBuild (CommandArguments $ words s)
+      fn ('!':s)         = shellCommandV s
+      fn ('y':'i':' ':s) = execEditorAction $ dropSpace s
+
+      fn "hoogle-word" = hoogle >> return ()
+      fn "hoogle-search" = hoogleSearch
+      fn "h"          = help
+      fn "help"       = help
+      fn "tabm"       = withEditor (moveTab Nothing)
+      fn ('t':'a':'b':'m':' ':n) = withEditor (moveTab $ Just (read n))
+
+      fn "tabe"       = withEditor $ do
+          newTabE
+          discard newTempBufferE
+          return ()
+      fn "tabedit"    = fn "tabe"
+      fn "tabnew"     = fn "tabe"
+
+      fn ('t':'a':'b':'e':' ':f)             = withEditor newTabE >> viFnewE f
+      fn ('t':'a':'b':'e':'d':'i':'t':' ':f) = fn $ "tabe " ++ f
+      fn ('t':'a':'b':'n':'e':'w':' ':f)     = fn $ "tabe " ++ f
+
+      fn "ball"       = withEditor openAllBuffersE
+
+      fn "noh"        = withEditor resetRegexE
+      fn "nohlsearch" = withEditor resetRegexE
+      fn s            = errorEditor $ "The "++show s++ " command is unknown."
+
+
+------------------------------------------------------------------------
+
+--not_implemented :: Char -> YiM ()
+--not_implemented c = errorEditor $ "Not implemented: " ++ show c
+
+-- ---------------------------------------------------------------------
+-- Misc functions
+
+forAllBuffers :: (BufferRef -> YiM ()) -> YiM ()
+forAllBuffers f = mapM_ f =<< readEditor bufferStack
+
+viCharInfo :: EditorM ()
+viCharInfo = do c <- withBuffer0' readB
+                printMsg $ showCharInfo c ""
+    where showCharInfo :: Char -> ShowS
+          showCharInfo c = shows c . showChar ' ' . shows d
+                         . showString ",  Hex " . showHex d
+                         . showString ",  Octal " . showOct d
+            where d = ord c
+
+viChar8Info :: EditorM ()
+viChar8Info = do c <- withBuffer0' readB
+                 let w8 = UTF8.encode [c]
+                 printMsg $ shows c . showChar ' ' . showSeq shows w8
+                          . showString ",  Hex " . showSeq showHex w8
+                          . showString ",  Octal " . showSeq showOct w8 $ ""
+    where showSeq showX xs s = foldr ($) s $ intersperse (showChar ' ') $ map showX xs
+
+viFileInfo :: EditorM ()
+viFileInfo =
+    do bufInfo <- withBuffer0' bufInfoB
+       printMsg $ showBufInfo bufInfo
+    where
+    showBufInfo :: BufferFileInfo -> String
+    showBufInfo bufInfo = concat [ show $ bufInfoFileName bufInfo
+         , " Line "
+         , show $ bufInfoLineNo bufInfo
+         , " ["
+         , bufInfoPercent bufInfo
+         , "]"
+         ]
 
 -- | write the current buffer, but only if modified (cf. :help :x)
 viWriteModified :: YiM ()
@@ -1803,3 +1766,41 @@ kwd_mode opts = some (ctrlCh 'n' ?>> write . viWordComplete $ completeCaseSensit
   where viWordComplete caseSensitive = 
           withEditor . withBuffer0 . (savingDeleteWordB Backward >>) . 
           savingInsertStringB =<< wordCompleteString' caseSensitive
+
+gotoTag :: VimOpts -> Tag -> YiM ()
+gotoTag opts tag =
+  visitTagTable $ \tagTable ->
+    case lookupTag tag tagTable of
+      Nothing -> fail $ "No tags containing " ++ tag
+      Just (filename, line) -> do
+        when (enableTagStack opts)
+             viTagStackPushPos
+        viFnewE filename
+        discard $ withBuffer' $ gotoLn line
+        return ()
+
+-- | Parse any character that can be inserted in the text.
+textChar :: KeymapM Char
+textChar = do
+  Event (KASCII c) [] <- anyEvent
+  return c
+
+-- | Call continuation @act@ with the TagTable. Uses the global table
+-- and prompts the user if it doesn't exist
+visitTagTable :: (TagTable -> YiM ()) -> YiM ()
+visitTagTable act = do
+  posTagTable <- withEditor getTags
+  -- does the tagtable exist?
+  case posTagTable of
+    Just tagTable -> act tagTable
+    Nothing -> do fps <- withEditor getTagsFileList  -- withBuffer0' $ tagsFileList <$> getDynamicB
+                  efps <- io $ filterM fileExist fps
+                  when (null efps) $ fail ("No existing tags file among: " ++ show fps)
+                  tagTable <- io $ importTagTable (head efps)
+                  withEditor $ setTags tagTable
+                  act tagTable
+
+viTagStackPushPos :: YiM ()
+viTagStackPushPos = withEditor $ do bn <- withBuffer0 $ gets identString
+                                    p  <- withBuffer0 pointB
+                                    pushTagStack bn p
