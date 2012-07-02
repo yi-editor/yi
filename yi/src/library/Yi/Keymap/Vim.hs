@@ -46,7 +46,7 @@ import Yi.Prelude
 
 import Data.Binary
 import Data.Char
-import Data.List (nub, take, words, dropWhile, takeWhile, intersperse, reverse)
+import Data.List (nub, take, words, dropWhile, takeWhile, intersperse, reverse, isSuffixOf)
 import Data.Maybe (fromMaybe, isJust)
 import Data.Either (either)
 import Data.Prototype
@@ -59,7 +59,7 @@ import System.PosixCompat.Files (fileExist)
 #else
 import System.Posix (fileExist)
 #endif
-import System.FilePath (FilePath)
+import System.FilePath (FilePath, takeFileName)
 import System.Directory (getCurrentDirectory, setCurrentDirectory)
 
 import Control.Monad.State hiding (mapM_, mapM, sequence)
@@ -78,7 +78,7 @@ import Yi.Regex (seInput, regexEscapeString)
 import Yi.Search
 import Yi.Style
 import Yi.TextCompletion
-import Yi.Completion (containsMatch', mkIsPrefixOf)
+import Yi.Completion (containsMatch', mkIsPrefixOf, prefixMatch, completeInListCustomShow)
 import Yi.Tag 
 import Yi.Window (bufkey)
 import Yi.Hoogle (hoogle, hoogleSearch)
@@ -435,6 +435,21 @@ exInfixComplete' caseSensitive compl s' = do
 
 exInfixComplete :: (String -> YiM [String]) -> String -> YiM ()
 exInfixComplete = exInfixComplete' True
+
+exFileNameComplete :: String -> YiM ()
+exFileNameComplete s' = mkCompleteFn (completeInListCustomShow basename)
+                                     prefixMatch (matchingFileNames Nothing) s >>=
+                            withBuffer . insertN . drop (length s)
+    where s = dropWhile isSpace s'
+
+          -- this tries to resemble 'basename' utility:
+          --   basename "foo/bar.baz" = "bar.baz"
+          --   basename "foo/bar/" = "bar"
+          -- but
+          --   System.FilePath.takeBaseName "foo/bar.baz" = "bar"
+          --   System.FilePath.takeFileName "foo/bar/" = ""
+          basename f = takeFileName $ if "/" `isSuffixOf` f then init f
+                                                            else f
 
 mkExHistComplete :: (String -> String -> Bool) -> (String -> YiM [String]) -> String -> YiM ()
 mkExHistComplete matchFn compl s =
@@ -1290,7 +1305,7 @@ exMode self prompt = do
                             insertN fn
 
                         Nothing -> return ()
-                   | otherwise = exSimpleComplete (matchingFileNames Nothing) f
+                   | otherwise = exFileNameComplete f
 
       b_complete = exSimpleComplete matchingBufferNames
       ex_complete ('c':'d':' ':f)                         = f_complete f
