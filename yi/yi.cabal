@@ -330,6 +330,7 @@ library
     Shim.ProjectContent
     System.CanonicalizePath
     System.FriendlyPath
+    Control.Exc
 
     -- Broken.
 --            Yi.Keymap.Ee,
