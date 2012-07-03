@@ -1,4 +1,4 @@
-{-# LANGUAGE GeneralizedNewtypeDeriving, DeriveDataTypeable #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving, DeriveDataTypeable, ScopedTypeVariables #-}
 -- | This module defines a list type and operations on it; it further
 -- provides functions which write in and out the list.
 -- The goal is to make it easy for the user to store a large number of text buffers
@@ -7,6 +7,8 @@
 module Yi.IReader where
 
 import Control.Monad.State (join)
+import Control.Exception
+import Prelude hiding (catch)
 import Data.Binary (Binary, decode, encodeFile)
 import Data.Sequence as S
 import Data.Typeable (Typeable)
@@ -66,11 +68,12 @@ writeDB adb = discard $ io . join . fmap (flip encodeFile adb) $ dbLocation
 
 -- | Read in database from 'dbLocation' and then parse it into an 'ArticleDB'.
 readDB :: YiM ArticleDB
-readDB = io $ (dbLocation >>= r) `catch` (\_ -> return initial)
+readDB = io $ (dbLocation >>= r) `catch` returnDefault
           where r = fmap (decode . BL.fromChunks . return) . B.readFile
                 -- We read in with strict bytestrings to guarantee the file is closed,
                 -- and then we convert it to the lazy bytestring data.binary expects.
                 -- This is inefficient, but alas...
+                returnDefault (_ :: SomeException) = return initial
 
 -- | The canonical location. We assume \~\/.yi has been set up already.
 dbLocation :: IO FilePath
