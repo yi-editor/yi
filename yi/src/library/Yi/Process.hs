@@ -1,4 +1,4 @@
-{-# LANGUAGE CPP #-}
+{-# LANGUAGE CPP, ScopedTypeVariables #-}
 -- Copyright (c) 2005 Don Stewart - http://www.cse.unsw.edu.au/~dons
 module Yi.Process (popen, runProgCommand, runShellCommand, shellFileName,
                    createSubprocess, readAvailable, SubprocessInfo(..), SubprocessId) where
@@ -10,12 +10,13 @@ import System.Process
 import System.Environment ( getEnv )
 
 import Control.Concurrent       (forkIO)
-import qualified Control.OldException as Control.Exception
+import qualified Control.Exception (evaluate, handle, SomeException)
 
 import Foreign.Marshal.Alloc(allocaBytes)
 import Foreign.C.String
 
-import Prelude(length, catch)
+import Prelude(length)
+import Control.Exc(orException)
 import Yi.Prelude
 import Yi.Buffer (BufferRef)
 
@@ -29,7 +30,7 @@ import System.Posix.IO
 -- TODO: this will probably be called readProcess in the new process package (2.0)
 popen :: FilePath -> [String] -> Maybe String -> IO (String,String,ExitCode)
 popen file args minput =
-    Control.Exception.handle (\e -> return ([],show e,error (show e))) $ do
+    Control.Exception.handle handler $ do
 
     (inp,out,err,pid) <- runInteractiveProcess file args Nothing Nothing
     hSetBuffering out LineBuffering
@@ -54,6 +55,7 @@ popen file args minput =
     exitCode <- waitForProcess pid -- blocks without -threaded, you're warned.
 
     return (output,errput,exitCode)
+  where handler (e :: Control.Exception.SomeException) = return ([], show e, error (show e))
 
 -- | Run a command. This looks up a program name in \$PATH, but then calls it
 -- directly with the argument.
@@ -67,7 +69,7 @@ runProgCommand prog args = do loc <- findExecutable prog
 -- | Run a command using the system shell, returning stdout, stderr and exit code
 
 shellFileName :: IO String
-shellFileName = catch (getEnv "SHELL") (const $ return "/bin/sh")
+shellFileName = orException (getEnv "SHELL") (return "/bin/sh")
 
 shellCommandSwitch :: String
 shellCommandSwitch = "-c"

@@ -16,6 +16,7 @@ import Data.List.Split     (splitOn)
 import System.FilePath     ((</>), isDrive, isAbsolute, takeDirectory, pathSeparator, normalise)
 import System.Directory    (getCurrentDirectory)
 import System.PosixCompat.Files  (readSymbolicLink)
+import Control.Exc          (ignoringException)
 
 
 -- | Removes `/./` `//` and `/../` sequences from path,
@@ -42,12 +43,11 @@ expandSym :: FilePath -> IO FilePath
 expandSym fpath = do
   -- System.Posix.Files.getFileStatus dereferences symlink before
   -- checking its status, so it's useless here
-  deref <- catch (Just <$> readSymbolicLink fpath) (\_ -> return Nothing)
+  deref <- ignoringException (Just <$> readSymbolicLink fpath)
   case deref of
     Just slink -> if isAbsolute slink then expandSym slink
                   else expandSym $ foldl combinePath (takeDirectory fpath) $ splitPath slink
-    Nothing -> return fpath
-  
+    Nothing -> return fpath 
 
 -- | Make a path absolute.
 makeAbsolute :: FilePath -> IO FilePath

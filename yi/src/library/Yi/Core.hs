@@ -52,7 +52,8 @@ import Control.Monad (forever)
 import Control.Monad.Error ()
 import Control.Monad.Reader (ask)
 import Control.Monad.Trans
-import Control.OldException
+import Control.Exception
+import Control.Exc
 import qualified Data.DelayList as DelayList
 import Data.List (intercalate, partition)
 import Data.List.Split (splitOn)
@@ -113,7 +114,7 @@ startEditor cfg st = do
     -- Setting up the 1st window is a bit tricky because most functions assume there exists a "current window"
     newSt <- newMVar $ YiVar editor [] 1 M.empty
     (ui, runYi) <-
-      do rec let handler exception = runYi $ errorEditor (show exception) >> refreshEditor
+      do rec let handler (exception :: SomeException) = runYi $ errorEditor (show exception) >> refreshEditor
                  inF ev    = handle handler $ runYi $ dispatch ev
                  outF acts = handle handler $ runYi $ interactive acts
                  runYi f   = runReaderT (runYiM f) yi
@@ -361,7 +362,7 @@ terminateSubprocesses shouldTerminate _yi var = do
         return (var {yiSubprocesses = M.fromList toKeep}, ())
 
 -- | Start a subprocess with the given command and arguments.
-startSubprocess :: FilePath -> [String] -> (Either Exception ExitCode -> YiM x) -> YiM BufferRef
+startSubprocess :: FilePath -> [String] -> (Either SomeException ExitCode -> YiM x) -> YiM BufferRef
 startSubprocess cmd args onExit = onYiVar $ \yi var -> do
         let (e', bufref) = runEditor 
                               (yiConfig yi) 
@@ -376,7 +377,7 @@ startSubprocess cmd args onExit = onYiVar $ \yi var -> do
                     }, bufref)
   where bufferName = "output from " ++ cmd ++ " " ++ show args
 
-startSubprocessWatchers :: SubprocessId -> SubprocessInfo -> Yi -> (Either Exception ExitCode -> YiM x) -> IO ()
+startSubprocessWatchers :: SubprocessId -> SubprocessInfo -> Yi -> (Either SomeException ExitCode -> YiM x) -> IO ()
 startSubprocessWatchers procid procinfo yi onExit = do
     mapM_ forkOS ([pipeToBuffer (hErr procinfo) (send . append True) | separateStdErr procinfo] ++
                   [pipeToBuffer (hOut procinfo) (send . append False),
@@ -411,12 +412,17 @@ sendToProcess bufref s = do
 
 pipeToBuffer :: Handle -> (String -> IO ()) -> IO ()
 pipeToBuffer h append = 
-  handle (const $ return ()) $ forever $ (hWaitForInput h (-1) >> readAvailable h >>= append)
+  do _ <- ignoringException $ forever $ (do _ <- hWaitForInput h (-1) 
+                                            r <- readAvailable h 
+                                            _ <- append r
+                                            return ())
+     return ()
+                        
 
 
-waitForExit :: ProcessHandle -> IO (Either Exception ExitCode)
+waitForExit :: ProcessHandle -> IO (Either SomeException ExitCode)
 waitForExit ph = 
-    handle (\e -> return (Left e)) $ do 
+    handle (\e -> return (Left (e :: SomeException))) $ do 
       mec <- getProcessExitCode ph
       case mec of
           Nothing -> threadDelay (500*1000) >> waitForExit ph
