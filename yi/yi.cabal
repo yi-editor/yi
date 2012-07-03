@@ -12,8 +12,12 @@ maintainer:     yi-devel@googlegroups.com
 homepage:       http://haskell.org/haskellwiki/Yi
 bug-reports:    http://code.google.com/p/yi-editor/issues/list
 Cabal-Version:  >= 1.10
-tested-with:    GHC==7.0.2
+tested-with:    GHC==7.0.2, GHC==7.4.1
 build-type:     Simple
+
+source repository
+  type:     git
+  location: https://github.com/yi-editor/yi.git
 
 data-files:
   art/*.png
