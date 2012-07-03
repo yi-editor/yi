@@ -7,7 +7,7 @@ module Yi.Command where
 import Data.Binary
 import System.Exit
   ( ExitCode( ExitSuccess,ExitFailure ) )
-import Control.OldException
+import Control.Exception(SomeException)
 import Control.Monad.Trans (MonadIO (..))
 {- External Library Module Imports -}
 {- Local (yi) module imports -}
@@ -61,7 +61,7 @@ instance YiVariable CabalBuffer
 cabalConfigureE :: CommandArguments -> YiM ()
 cabalConfigureE = cabalRun "configure" configureExit
 
-configureExit :: Either Exception ExitCode -> YiM ()
+configureExit :: Either SomeException ExitCode -> YiM ()
 configureExit (Right ExitSuccess) = reloadProjectE "."
 configureExit _ = return ()
 
@@ -71,7 +71,7 @@ reloadProjectE s = withUI $ \ui -> reloadProject ui s
 
 -- | Run the given commands with args and pipe the ouput into the build buffer,
 -- which is shown in an other window.
-buildRun :: String -> [String] -> (Either Exception ExitCode -> YiM x) -> YiM ()
+buildRun :: String -> [String] -> (Either SomeException ExitCode -> YiM x) -> YiM ()
 buildRun cmd args onExit = withOtherWindow $ do
    b <- startSubprocess cmd args onExit
    withEditor $ do
@@ -83,7 +83,7 @@ buildRun cmd args onExit = withOtherWindow $ do
 makeBuild :: CommandArguments -> YiM ()
 makeBuild (CommandArguments args) = buildRun "make" args (const $ return ())
 
-cabalRun :: String -> (Either Exception ExitCode -> YiM x) -> CommandArguments -> YiM ()
+cabalRun :: String -> (Either SomeException ExitCode -> YiM x) -> CommandArguments -> YiM ()
 cabalRun cmd onExit (CommandArguments args) = buildRun "cabal" (cmd:args) onExit
 
 -----------------------
