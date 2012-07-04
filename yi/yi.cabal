@@ -20,7 +20,7 @@ data-files:
   example-configs/*.hs
 extra-source-files: src/library/Yi/Lexer/common.hsinc
 
-source repository
+source-repository head
   type:     git
   location: https://github.com/yi-editor/yi.git
 
