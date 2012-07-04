@@ -12,15 +12,17 @@ maintainer:     yi-devel@googlegroups.com
 homepage:       http://haskell.org/haskellwiki/Yi
 bug-reports:    http://code.google.com/p/yi-editor/issues/list
 Cabal-Version:  >= 1.10
-tested-with:    GHC==7.0.2
+tested-with:    GHC==7.0.2, GHC==7.4.1
 build-type:     Simple
-
 data-files:
   art/*.png
   art/*.pdf
   example-configs/*.hs
-
 extra-source-files: src/library/Yi/Lexer/common.hsinc
+
+source-repository head
+  type:     git
+  location: https://github.com/yi-editor/yi.git
 
 -- Frontends
 flag cocoa
@@ -236,9 +238,6 @@ library
   if impl(ghc >=7.2)
      default-extensions: NondecreasingIndentation
 
-  if impl(ghc >=7.2)
-     default-extensions: NondecreasingIndentation
-
   if !os(windows)
     build-depends:
       unix
@@ -333,6 +332,7 @@ library
     Shim.ProjectContent
     System.CanonicalizePath
     System.FriendlyPath
+    Control.Exc
 
     -- Broken.
 --            Yi.Keymap.Ee,
