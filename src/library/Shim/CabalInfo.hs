@@ -2,10 +2,10 @@ module Shim.CabalInfo where
 
 import Shim.Utils
 
-import qualified Control.OldException as CE
 import System.FilePath
 import Control.Monad.State
 
+import Control.Exc
 import Control.Applicative
 import Distribution.ModuleName
 import Distribution.PackageDescription
@@ -20,10 +20,10 @@ guessCabalFile sourcefile = do
   recurseDir findCabalFile dir  -- "/bar/foo/s.hs" -> "/bar/foo"
  where findCabalFile dir = do
          logS $ "looking in: " ++ dir
-         pdfile <- CE.try (findPackageDesc dir) :: IO (Either CE.Exception (Maybe FilePath))
+         pdfile <- ignoringException (findPackageDesc dir)
          case pdfile of
-           Right (Just f) -> return . Just $ dir </> f
-           _ -> return Nothing
+           Just f  -> return . Just $ dir </> f
+           Nothing -> return Nothing
 
 -- | Guess what lib\/exe the sourcefile belongs to.
 guessCabalStanza :: FilePath -> FilePath -> PackageDescription -> IO (Maybe String, BuildInfo)

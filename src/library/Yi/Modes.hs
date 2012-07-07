@@ -88,7 +88,7 @@ cMode = (linearSyntaxMode C.initState C.alexScanToken id)
 
 objectiveCMode = (linearSyntaxMode ObjectiveC.initState ObjectiveC.alexScanToken id)
   {
-    modeApplies = anyExtension ["m"], 
+    modeApplies = anyExtension ["m", "mm"],
     modeName = "objective-c"
   }
 

@@ -26,7 +26,7 @@ module Yi.Dired
   , diredDirBuffer
   ) where
 
-import Prelude (catch, realToFrac)
+import Prelude (realToFrac)
 
 import qualified Codec.Binary.UTF8.String as UTF8
 import Control.Monad.Reader hiding (mapM)
@@ -46,6 +46,7 @@ import System.Locale
 import System.PosixCompat.Files
 import System.PosixCompat.Types
 import System.PosixCompat.User
+import Control.Exc
 import Text.Printf
 
 import Yi.Core hiding (sequence, forM, notElem)
@@ -125,43 +126,36 @@ modDiredOpState f = withBuffer $ modA bufferDynamicValueA f
 -- Pass the list of remaining operations down, insert new ops at the head if needed
 procDiredOp :: Bool -> [DiredOp] -> YiM ()
 procDiredOp counting ((DORemoveFile f):ops) = do
-  io $ catch (removeLink f) handler
+  io $ printingException ("Remove file " ++ f) (removeLink f)
   when counting postproc
   procDiredOp counting ops
-    where handler err = fail $ concat ["Remove file ", f,
-                                       " failed: ", show err]
-          postproc = do incDiredOpSucCnt
+    where postproc = do incDiredOpSucCnt
                         withBuffer $ diredUnmarkPath (takeFileName f)
 procDiredOp counting ((DORemoveDir f):ops) = do
-  io $ catch (removeDirectoryRecursive f) handler
+  io $ printingException ("Remove directory " ++ f) (removeDirectoryRecursive f)
   -- document suggests removeDirectoryRecursive will follow
   -- symlinks in f, but it seems not the case, at least on OS X.
   when counting postproc
   procDiredOp counting ops
-    where handler err = fail $ concat ["Remove directory ", f,
-                                       " failed: ", show err]
-          postproc = do
+    where postproc = do
             incDiredOpSucCnt
             withBuffer $ diredUnmarkPath (takeFileName f)
 procDiredOp _counting ((DORemoveBuffer _):_) = undefined -- TODO
 procDiredOp counting  ((DOCopyFile o n):ops) = do
-  io $ catch (copyFile o n) handler
+  io $ printingException ("Copy file " ++ o) (copyFile o n)
   when counting postproc
   procDiredOp counting ops
-    where handler err = fail $ concat ["Copy file ", o,
-                                       " to ", n, " failed: ", show err]
-          postproc = do
+    where postproc = do
             incDiredOpSucCnt
             withBuffer $ diredUnmarkPath (takeFileName o)
             -- TODO: mark copied files with "C" if the target dir's dired buffer exists
 procDiredOp counting ((DOCopyDir o n):ops) = do
-  contents <- io $ catch doCopy handler
+  contents <- io $ printingException (concat ["Copy directory ", o, " to ", n]) doCopy
   subops <- io $ mapM builder $ filter (`notElem` [".", ".."]) contents
   procDiredOp False subops
   when counting postproc
   procDiredOp counting ops
-    where handler err = fail $ concat ["Copy directory ", o, " to ", n, " failed: ", show err]
-          postproc = do
+    where postproc = do
             incDiredOpSucCnt
             withBuffer $ diredUnmarkPath (takeFileName o)
           -- perform dir copy: create new dir and create other copy ops
@@ -182,12 +176,10 @@ procDiredOp counting ((DOCopyDir o n):ops) = do
 
 
 procDiredOp counting ((DORename o n):ops) = do
-  io $ catch (rename o n) handler
+  io $ printingException (concat ["Rename ", o, " to ", n]) (rename o n)
   when counting postproc
   procDiredOp counting ops
-    where handler err = fail $ concat ["Rename ", o,
-                                       " to ", n, " failed: ", show err]
-          postproc = do
+    where postproc = do
             incDiredOpSucCnt
             withBuffer $ diredUnmarkPath (takeFileName o)
 procDiredOp counting r@((DOConfirm prompt eops enops):ops) = do
@@ -468,8 +460,8 @@ diredScanDir dir = do
                         _filenm <- if (isSymbolicLink fileStatus) then
                                   return . ((++) (takeFileName fp ++ " -> ")) =<< readSymbolicLink fp else
                                   return $ takeFileName fp
-                        ownerEntry <- catch (getUserEntryForID uid) (const $ getAllUserEntries >>= return . scanForUid uid)
-                        groupEntry <- catch (getGroupEntryForID gid) (const $ getAllGroupEntries >>= return . scanForGid gid)
+                        ownerEntry <- orException (getUserEntryForID uid) (getAllUserEntries >>= return . scanForUid uid)
+                        groupEntry <- orException (getGroupEntryForID gid) (getAllGroupEntries >>= return . scanForGid gid)
                         let fmodeStr   = (modeString . fileMode) fileStatus
                             sz = toInteger $ fileSize fileStatus
                             ownerStr   = userName ownerEntry

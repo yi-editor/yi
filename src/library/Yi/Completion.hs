@@ -3,6 +3,7 @@
 
 module Yi.Completion 
   ( completeInList, completeInList'
+  , completeInListCustomShow
   , commonPrefix
   , prefixMatch, infixMatch
   , containsMatch', containsMatch, containsMatchCaseInsensitive
@@ -49,16 +50,20 @@ containsMatchCaseInsensitive = containsMatch' False
 -- and a list of possibilites.  Matching function should return the
 -- part of the string that matches the user string.
 completeInList :: String -> (String -> Maybe String) -> [String] -> EditorM String
-completeInList s match l
+completeInList = completeInListCustomShow id
+
+-- | Same as 'completeInList', but maps @showFunction@ on possible matches when printing
+completeInListCustomShow :: (String -> String) -> String -> (String -> Maybe String) ->
+                            [String] -> EditorM String
+completeInListCustomShow showFunction s match possibilities
     | null filtered = printMsg "No match" >> return s
     | prefix /= s = return prefix
     | isSingleton filtered = printMsg "Sole completion" >> return s
     | prefix `elem` filtered = printMsg ("Complete, but not unique: " ++ show filtered) >> return s
-    | otherwise = printMsgs filtered >> return s
+    | otherwise = printMsgs (map showFunction filtered) >> return s
     where
-    prefix   = commonPrefix filtered
-    -- filtered = nub $ catMaybes $ fmap match l
-    filtered = filterMatches match l
+      prefix   = commonPrefix filtered
+      filtered = filterMatches match possibilities
 
 completeInList' :: String -> (String -> Maybe String) -> [String] -> EditorM String
 completeInList' s match l
