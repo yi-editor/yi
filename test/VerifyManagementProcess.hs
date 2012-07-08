@@ -65,28 +65,34 @@ tests = return $ concat [ verify_v_opts ]
 assert :: (MonadError String m, Monad m) => Bool -> String -> m ()
 assert b f_str = when (not b) (throwError f_str)
 
+verify_stdout :: String -> [String] -> (String -> Either String ()) -> Test
+verify_stdout name args check = 
+    Test $ TestInstance
+        { run = do
+            (stdout_str, stderr_str, exit_code) <- str_interact_yi args ""
+            info $ "stdout -\n" ++ stdout_str
+            info $ "stderr -\n" ++ stderr_str
+            let r = do
+                    assert (exit_code == ExitSuccess)
+                        $ "yi failed - " ++ show exit_code
+                    check stdout_str
+            info $ show r
+            return $ Finished $ case r of
+                Right () -> Pass
+                Left f_msg -> Fail f_msg
+        , name = name
+        , tags = []
+        , options = []
+        , setOption = const (const $ Left "no options") 
+        }
+
 verify_v_opts :: [Test]
 verify_v_opts = foldMap tests_for_version_opt ["-v", "--version"] 
     where 
         tests_for_version_opt v_opt = 
-            [ Test $ TestInstance
-                { run = do
-                    let expected = "^master version: (.*)$"
-                    (stdout_str, stderr_str, exit_code) <- str_interact_yi [v_opt] ""
-                    info $ "stdout -\n" ++ stderr_str
-                    let r = do
-                            assert (exit_code == ExitSuccess)
-                                $ "yi failed - " ++ show exit_code
-                            assert (stdout_str =~ expected)
-                                $ "stdout did not state master version -\n" ++ stdout_str
-                    info $ show r
-                    return $ Finished $ case r of
-                        Right () -> Pass
-                        Left f_msg -> Fail f_msg
-                , name = v_opt ++ " outputs version info"
-                , tags = []
-                , options = []
-                , setOption = const (const $ Left "no options") 
-                }
-            ]
+            [ verify_stdout v_opt [v_opt] $ \stdout_str -> do
+                let expected = "^master version: (.*)$"
+                assert (stdout_str =~ expected)
+                    $ "stdout did not state master version -\n" ++ stdout_str
+            ] 
 
