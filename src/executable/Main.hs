@@ -1,5 +1,3 @@
--- Copyright (C) 2008 JP Bernardy
--- Copyright (C) 2004 Don Stewart - http://www.cse.unsw.edu.au/~dons
 -- Copyright (C) 2012 Corey O'Connor
 --
 -- | This process manages the compilation and execution of yi.
@@ -8,14 +6,17 @@
 -- final states are process termination.
 --
 
-module Main (main) where
+module Main (main, main_) where
 
 import Prelude hiding ( catch )
+
+import Paths_yi
 
 import Control.Applicative
 import Control.Exception
 
 import System.Directory
+import System.Environment
 import System.Exit
 import System.IO
 
@@ -28,30 +29,31 @@ info :: HPrintfType r => String -> r
 info format = hPrintf stderr format
 
 data YiSystem where
-    Init :: YiSystem
+    -- Initial state. Parameterized by command line arguments. 
+    Init :: [String] -> YiSystem
     Die  :: Int -> String -> YiSystem
     Exit :: YiSystem
 
-data SystemConfig where
-    SystemConfig ::
-        { hasUserConfig :: Bool
-        } -> SystemConfig
-    deriving ( Show, Eq, Read )
-
 main :: IO ()
-main = catch (manageYiSystem Init) dieFromException
+main = do
+    exit_code <- main_ =<< getArgs
+    exitWith exit_code
 
-dieFromException :: SomeException -> IO a
+main_ :: [String] -> IO ExitCode
+main_ args = catch (manageYiSystem $ Init args) dieFromException
+
+dieFromException :: SomeException -> IO ExitCode
 dieFromException e = manageYiSystem (Die 1 $ show e)
 
-manageYiSystem :: YiSystem -> IO a
+manageYiSystem :: YiSystem -> IO ExitCode
 manageYiSystem (Die n reason) = do
     info "E%d - %s" n reason
-    exitWith $ ExitFailure n
+    return $ ExitFailure n
 manageYiSystem Exit = do
-    exitWith ExitSuccess
-manageYiSystem Init = do
-    -- Determine what we know about the Yi system
+    return ExitSuccess
+manageYiSystem (Init args) = do
+    -- Examine the command line arguments to determine if any actions need to be taken before
+    -- booting yi proper.
     user_dir_exists <- doesDirectoryExist <$> appDir
     manageYiSystem Exit
 
