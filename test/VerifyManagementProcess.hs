@@ -91,8 +91,7 @@ verify_v_opts = foldMap tests_for_version_opt ["-v", "--version"]
     where 
         tests_for_version_opt v_opt = 
             [ verify_stdout v_opt [v_opt] $ \stdout_str -> do
-                let expected = "^master version: (.*)$"
-                assert (stdout_str =~ expected)
-                    $ "stdout did not state master version -\n" ++ stdout_str
+                let expected = "^version: (.*)$"
+                assert (stdout_str =~ expected) "output did not include version" 
             ] 
 
