@@ -7,6 +7,7 @@ where
 {- Standard Library Module Imports -}
 import Data.List
   ( isPrefixOf
+  , stripPrefix
   , (\\)
   , filter
   )
@@ -37,8 +38,12 @@ import Yi.Core
 import Yi.MiniBuffer
     ( simpleComplete
     , withMinibufferGen
+    , mkCompleteFn
     )
-import System.CanonicalizePath (canonicalizePath)
+import Yi.Completion
+    ( completeInList'
+    )
+import System.CanonicalizePath (canonicalizePath, replaceShorthands)
 import Data.Maybe (isNothing)
 
 -- | Given a possible starting path (which if not given defaults to
@@ -50,12 +55,13 @@ import Data.Maybe (isNothing)
 --   we return all of the filenames then we get a 'hint' which is way too
 --   long to be particularly useful.
 getAppropriateFiles :: Maybe String -> String -> YiM (String, [ String ])
-getAppropriateFiles start s = do
+getAppropriateFiles start s' = do
   curDir <- case start of
             Nothing -> do bufferPath <- withBuffer $ gets file
                           liftIO $ getFolder bufferPath
             (Just path) -> return path
-  let sDir = if hasTrailingPathSeparator s then s else takeDirectory s
+  let s = replaceShorthands s'
+      sDir = if hasTrailingPathSeparator s then s else takeDirectory s
       searchDir = if null sDir then curDir
                   else if isAbsolute' sDir then sDir
                   else curDir </> sDir
@@ -120,8 +126,17 @@ promptFile :: String -> (String -> YiM ()) -> YiM ()
 promptFile prompt act = do maybePath <- withBuffer $ gets file
                            startPath <- addTrailingPathSeparator <$> (liftIO $ canonicalizePath =<< getFolder maybePath)
                            -- TODO: Just call withMinibuffer
-                           withMinibufferGen startPath (findFileHint startPath) prompt (simpleComplete $ matchingFileNames (Just startPath)) act
+                           withMinibufferGen startPath (findFileHint startPath) prompt (completeFile startPath)
+                             (act . replaceShorthands)
 
+matchFile :: String -> String -> Maybe String
+matchFile path proposedCompletion =
+  let realPath = replaceShorthands path
+  in (path ++) <$> stripPrefix realPath proposedCompletion
+
+completeFile :: String -> String -> YiM String
+completeFile startPath = mkCompleteFn completeInList' matchFile $ matchingFileNames (Just startPath)
+                         --(simpleComplete $ matchingFileNames (Just startPath))
 
 -- | For use as the hint when opening a file using the minibuffer.
 -- We essentially return all the files in the given directory which
