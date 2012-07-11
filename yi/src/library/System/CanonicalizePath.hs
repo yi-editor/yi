@@ -14,9 +14,10 @@ import qualified System.Win32 as Win32
 import Control.Applicative
 import Control.Monad
 import Data.List.Split     (splitOn, splitOneOf)
-import System.FilePath     ((</>), isAbsolute, takeDirectory, pathSeparator, pathSeparators)
+import System.FilePath     ((</>), isDrive, isAbsolute, takeDirectory, pathSeparator, pathSeparators, normalise)
 import System.Directory    (getCurrentDirectory)
-import System.Posix.Files  (readSymbolicLink)
+import System.PosixCompat.Files  (readSymbolicLink)
+import Control.Exc          (ignoringException)
 
 
 -- | Removes `/./` `//` and `/../` sequences from path,
@@ -34,7 +35,7 @@ canonicalizePath path = do
   absPath <- makeAbsolute path
   foldM (\x y -> expandSym $ combinePath x y) "/" $ splitPath absPath
 #else
-  Win32.getFullPathName . normalise
+  Win32.getFullPathName . normalise $ path
 #endif
 
 -- | Dereferences symbolic links until regular
@@ -43,12 +44,11 @@ expandSym :: FilePath -> IO FilePath
 expandSym fpath = do
   -- System.Posix.Files.getFileStatus dereferences symlink before
   -- checking its status, so it's useless here
-  deref <- catch (Just <$> readSymbolicLink fpath) (\_ -> return Nothing)
+  deref <- ignoringException (Just <$> readSymbolicLink fpath)
   case deref of
     Just slink -> if isAbsolute slink then expandSym slink
                   else expandSym $ foldl combinePath (takeDirectory fpath) $ splitPath slink
-    Nothing -> return fpath
-  
+    Nothing -> return fpath 
 
 -- | Make a path absolute.
 makeAbsolute :: FilePath -> IO FilePath
@@ -60,7 +60,9 @@ makeAbsolute f
 combinePath :: FilePath -> String -> FilePath
 combinePath x "."  = x
 combinePath x ".." = takeDirectory x
-combinePath x y = x </> y
+combinePath x y
+    | isDrive x = (x ++ [pathSeparator]) </> y -- "C:" </> "bin" = "C:bin"
+    | otherwise = x </> y
 
 replaceUpTo :: Eq a => [a] -> [a] -> [a] -> [a]
 replaceUpTo srch rep as =

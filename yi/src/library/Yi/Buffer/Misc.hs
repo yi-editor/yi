@@ -75,8 +75,10 @@ module Yi.Buffer.Misc
   , getModeLine
   , getPercent
   , setInserting
+  , savingPrefCol
   , forgetPreferCol
   , movingToPrefCol
+  , getPrefCol
   , setPrefCol
   , markSavedB
   , addOverlayB
@@ -338,6 +340,12 @@ file b = case b ^. identA of
 preferColA :: Accessor FBuffer (Maybe Int)
 preferColA = preferColAA . attrsA
 
+setPrefCol :: Maybe Int -> BufferM ()
+setPrefCol = putA preferColA
+
+getPrefCol :: BufferM (Maybe Int)
+getPrefCol = getA preferColA
+
 bufferDynamicA :: Accessor FBuffer DynamicValues
 bufferDynamicA = bufferDynamicAA . attrsA
 
@@ -451,7 +459,6 @@ getModeLine prefix = withModeB (\m -> (modeModeLine m) prefix)
 defaultModeLine :: [String] -> BufferM String
 defaultModeLine prefix = do
     col <- curCol
-    col <- curCol
     pos <- pointB
     ln <- curLn
     p <- pointB
@@ -460,7 +467,9 @@ defaultModeLine prefix = do
     ro <-getA readOnlyA
     modeNm <- gets (withMode0 modeName)
     unchanged <- gets isUnchangedBuffer
-    let pct = if pos == 1 then "Top" else getPercent p s
+    let pct = if (pos == 1) || (s == 0)
+                then "Top"
+                else getPercent p s
         chg = if unchanged then "-" else "*"
         roStr = if ro  then "%" else chg
         hexChar = "0x" ++ Numeric.showHex (Data.Char.ord curChar) ""
@@ -479,7 +488,9 @@ defaultModeLine prefix = do
 -- | Given a point, and the file size, gives us a percent string
 getPercent :: Point -> Point -> String
 getPercent a b = show p ++ "%"
-    where p = ceiling (fromIntegral a / fromIntegral b * 100 :: Double) :: Int
+    where p = ceiling (aa / bb * 100.0 :: Double) :: Int
+          aa = fromIntegral a :: Double 
+          bb = fromIntegral b :: Double
 
 queryBuffer :: (forall syntax. BufferImpl syntax -> x) -> BufferM x
 queryBuffer f = gets (\(FBuffer _ fb _) -> f fb)
@@ -892,9 +903,6 @@ rightN = moveN
 -- ---------------------------------------------------------------------
 -- Line based movement and friends
 
-setPrefCol :: Maybe Int -> BufferM ()
-setPrefCol = putA preferColA
-
 -- | Move point down by @n@ lines. @n@ can be negative.
 -- Returns the actual difference in lines which we moved which
 -- may be negative if the requested line difference is negative.
@@ -903,7 +911,7 @@ lineMoveRel = movingToPrefCol . gotoLnFrom
 
 movingToPrefCol :: BufferM a -> BufferM a
 movingToPrefCol f = do
-  prefCol <- getA preferColA
+  prefCol <- getPrefCol
   targetCol <- maybe curCol return prefCol
   r <- f
   moveToColB targetCol
@@ -929,7 +937,7 @@ forgetPreferCol = setPrefCol Nothing
 
 savingPrefCol :: BufferM a -> BufferM a
 savingPrefCol f = do
-  pc <- getA preferColA
+  pc <- getPrefCol
   result <- f
   setPrefCol pc
   return result

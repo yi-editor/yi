@@ -44,6 +44,7 @@ import Yi.Completion
     ( completeInList'
     )
 import System.CanonicalizePath (canonicalizePath, replaceShorthands)
+import Data.Maybe (isNothing)
 
 -- | Given a possible starting path (which if not given defaults to
 --   the current directory) and a fragment of a path we find all
@@ -68,7 +69,9 @@ getAppropriateFiles start s' = do
   let fixTrailingPathSeparator f = do
                        isDir <- doesDirectoryExist (searchDir' </> f)
                        return $ if isDir then addTrailingPathSeparator f else f
+
   files <- liftIO $ getDirectoryContents searchDir'
+
   -- Remove the two standard current-dir and parent-dir as we do not
   -- need to complete or hint about these as they are known by users.
   let files' = files \\ [ ".", ".." ]
@@ -90,7 +93,21 @@ getFolder (Just path) = do
 matchingFileNames :: Maybe String -> String -> YiM [String]
 matchingFileNames start s = do
   (sDir, files) <- getAppropriateFiles start s
-  return $ fmap (sDir </>) files
+
+  -- There is one common case when we don't need to prepend @sDir@ to @files@:
+  --
+  -- Suppose user just wants to edit a file "foobar" in current directory
+  -- and inputs ":e foo<Tab>"
+  --
+  -- @sDir@ in this case equals to "." and "foo" would not be
+  -- a prefix of ("." </> "foobar"), resulting in a failed completion
+  --
+  -- However, if user inputs ":e ./foo<Tab>", we need to prepend @sDir@ to @files@
+  let results = if (isNothing start && sDir == "." && not ("./" `isPrefixOf` s))
+                   then files
+                   else fmap (sDir </>) files
+
+  return results
 
 adjBlock :: Int -> BufferM ()
 adjBlock x = withSyntaxB' (\m s -> modeAdjustBlock m s x)
