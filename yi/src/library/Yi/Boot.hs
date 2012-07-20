@@ -56,7 +56,7 @@ yiDriver cfg = do
                             , Dyre.hidePackages = ["mtl"]
                             , Dyre.ghcOpts      = (["-threaded", "-O2"] ++
 #ifdef PROFILING
-                                                   ["-prof", "-auto-all", "-rtsopts"] ++
+                                                   ["-prof", "-auto-all", "-rtsopts", "-osuf=p_o", "-hisuf=p_hi"] ++
 #endif
                                                    ghcOptions cfgcon)
                             }
