@@ -15,6 +15,9 @@ import Paths_yi
 import Control.Applicative
 import Control.Exception
 
+import Data.Monoid
+
+import System.Console.GetOpt
 import System.Directory
 import System.Environment
 import System.Exit
@@ -45,6 +48,25 @@ main_ args = catch (manageYiSystem $ Init args) dieFromException
 dieFromException :: SomeException -> IO ExitCode
 dieFromException e = manageYiSystem (Die 1 $ show e)
 
+data MonitorOpts
+    = ReportVersion
+    | NoMonitorOpts
+    deriving (Show, Eq)
+
+instance Monoid MonitorOpts where
+    mempty = NoMonitorOpts
+    NoMonitorOpts `mappend` x             = x
+    x             `mappend` NoMonitorOpts = x
+    ReportVersion `mappend` _             = ReportVersion
+    _             `mappend` ReportVersion = ReportVersion
+
+opts_spec :: [OptDescr MonitorOpts] 
+opts_spec =
+    [ Option "v" ["version"]
+             (NoArg ReportVersion) 
+             "report the version of the yi monitor and custom yi"
+    ]
+
 manageYiSystem :: YiSystem -> IO ExitCode
 manageYiSystem (Die n reason) = do
     info "E%d - %s" n reason
@@ -54,6 +76,11 @@ manageYiSystem Exit = do
 manageYiSystem (Init args) = do
     -- Examine the command line arguments to determine if any actions need to be taken before
     -- booting yi proper.
-    user_dir_exists <- doesDirectoryExist <$> appDir
-    manageYiSystem Exit
+    let (opts, unknown_non, unknown_opts) = getOpt RequireOrder opts_spec args
+    case mconcat opts of
+        NoMonitorOpts -> do
+            fail "TODO: NoMonitorOpts"
+        ReportVersion -> do
+            putStrLn $ "version: " ++ show version
+            manageYiSystem Exit
 
