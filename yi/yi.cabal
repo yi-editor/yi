@@ -386,10 +386,7 @@ executable yi
   if flag(profiling)
     cpp-options: -DPROFILING
 
-  if flag(hacking)
-    main-is: HackerMain.hs
-  else
-    main-is: Main.hs
+  main-is: Main.hs
 
   build-depends:
     base >=4 && <5
