@@ -54,7 +54,11 @@ yiDriver cfg = do
                             , Dyre.showError    = showErrorsInConf
                             , Dyre.configDir    = Just . getAppUserDataDirectory $ "yi"
                             , Dyre.hidePackages = ["mtl"]
-                            , Dyre.ghcOpts      = ["-threaded", "-O2"] ++ ghcOptions cfgcon
+                            , Dyre.ghcOpts      = (["-threaded", "-O2"] ++
+#ifdef PROFILING
+                                                   ["-prof", "-auto-all", "-rtsopts"] ++
+#endif
+                                                   ghcOptions cfgcon)
                             }
             in Dyre.wrapMain yiParams (finalCfg, cfgcon)
 

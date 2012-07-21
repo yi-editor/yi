@@ -1,5 +1,5 @@
 name:           yi
-version:        0.6.5.0
+version:        0.6.6.1
 category:       Development, Editor
 synopsis:       The Haskell-Scriptable Editor
 description:
@@ -54,6 +54,12 @@ flag ghcAPI
   --  * links against old version of Cabal
   -- ...
 
+flag profiling
+  Default: False
+  Description:
+    Runtime binary will be compiled with profiling and RTS
+    options enabled.
+
 flag hacking
   Default: False
   Description:
@@ -78,6 +84,9 @@ library
 
   if flag(hacking)
     buildable: False
+
+  if flag(profiling)
+    CPP-options: -DPROFILING
 
   exposed-modules:
     Yi
@@ -232,6 +241,10 @@ library
 
   build-tools: alex >= 3
   ghc-options: -Wall -fno-warn-orphans
+  ghc-prof-options: -prof -auto-all -rtsopts
+  if flag(profiling)
+    cpp-options: -DPROFILING
+
   if flag(hacking)
     ghc-prof-options: -prof -auto-all
 
@@ -369,11 +382,11 @@ executable yi
 
   if flag(dochack)
     buildable: False
+  
+  if flag(profiling)
+    cpp-options: -DPROFILING
 
-  if flag(hacking)
-    main-is: HackerMain.hs
-  else
-    main-is: Main.hs
+  main-is: Main.hs
 
   build-depends:
     base >=4 && <5
@@ -381,3 +394,4 @@ executable yi
     build-depends: yi
   build-tools: alex >= 3
   ghc-options: -threaded
+  ghc-prof-options: -prof -auto-all -rtsopts
