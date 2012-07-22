@@ -1,3 +1,4 @@
+{-# LANGUAGE RecordWildCards #-}
 -- Copyright (C) 2012 Corey O'Connor
 --
 -- | This process manages the compilation and execution of yi.
@@ -95,7 +96,11 @@ manageYiSystem (Init args) = do
             putStr $! show yiSystemInfo
             manageYiSystem Exit
         ReportSystemInfo False -> do
-            fail "TODO: human readable yi system info"
+            let SystemInfo {..} = yiSystemInfo
+                PackageDescription {..} = yiPackageDescription
+                LocalBuildInfo {..} = yiLocalBuildInfo
+            _ <- printf "base-version: %s\n" $ display $ pkgVersion package
+            manageYiSystem Exit
         StartDelegate opts -> do
             fail "TODO: Start delegate"
 

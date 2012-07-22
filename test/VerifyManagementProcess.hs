@@ -25,5 +25,7 @@ verify_info_opts =
     [ verify_stdout "raw info is parsable" ["--raw-info"] $ \out -> do
         let parsed_info :: SystemInfo = read out
         assert (show parsed_info == out) "raw info read/show isomorphism"
+    , verify_stdout "info is usable" ["--info"] $ \out -> do
+        assert (length out > 4) "output is not too tiny"
     ]
 
