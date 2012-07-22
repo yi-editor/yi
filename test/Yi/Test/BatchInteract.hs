@@ -19,28 +19,14 @@ import System.Process
 -- # spawn threads to write to stdin from a string
 -- # get the contents lazily of stdout and stderr
 -- # wait on the process to end
-str_interact_yi :: [String] -> String -> IO (String, String, ExitCode)
+str_interact_yi :: [String] -> String -> IO (ExitCode, String, String)
 str_interact_yi args stdin_str = do
     let yi_exe_path = "dist/build/yi/yi"
-    let cmd = RawCommand yi_exe_path args
-        process_spec = CreateProcess 
-                        { cmdspec = cmd
-                        , cwd = Nothing
-                        , env = Nothing
-                        , std_in = CreatePipe
-                        , std_out = CreatePipe
-                        , std_err = CreatePipe
-                        , close_fds = False
-                        , create_group = True
-                        }
-    (Just stdin_h, Just stdout_h, Just stderr_h, process) <- createProcess process_spec
-    forM_ [stdin_h, stdout_h, stderr_h] (flip hSetBuffering NoBuffering)
-    forkIO $ hPutStr stdin_h stdin_str >> hClose stdin_h
-    stdout_str <- hGetContents stdout_h
-    stderr_str <- hGetContents stderr_h
-    exit_code <- waitForProcess process
+    (exit_code, stdout_str, stderr_str) <- readProcessWithExitCode yi_exe_path
+                                                                   args
+                                                                   stdin_str
     info $ printf "%s - yi %s" (show exit_code) (concat args)
-    return (stdout_str, stderr_str, exit_code)
+    return (exit_code, stdout_str, stderr_str)
 
 verify_str_interact :: String -- name
                     -> [String]  -- yi args
@@ -50,7 +36,7 @@ verify_str_interact :: String -- name
 verify_str_interact name args check = 
     Test $ TestInstance
         { run = do
-            (stdout_str, stderr_str, exit_code) <- str_interact_yi args ""
+            (exit_code, stdout_str, stderr_str) <- str_interact_yi args ""
             info $ "stdout -\n" ++ stdout_str
             info $ "stderr -\n" ++ stderr_str
             let r = check stdout_str stderr_str exit_code

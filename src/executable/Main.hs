@@ -10,12 +10,16 @@ module Main (main, main_) where
 
 import Prelude hiding ( catch )
 
+import Yi.System.Info
+
 import Paths_yi
 
 import Control.Applicative
 import Control.Exception
 
 import Data.Monoid
+
+import Distribution.Text ( display )
 
 import System.Console.GetOpt
 import System.Directory
@@ -48,23 +52,29 @@ main_ args = catch (manageYiSystem $ Init args) dieFromException
 dieFromException :: SomeException -> IO ExitCode
 dieFromException e = manageYiSystem (Die 1 $ show e)
 
-data MonitorOpts
+data MonitorCommand
     = ReportVersion
-    | NoMonitorOpts
+    | ReportSystemInfo Bool
+    | StartDelegate [String]
     deriving (Show, Eq)
 
-instance Monoid MonitorOpts where
-    mempty = NoMonitorOpts
-    NoMonitorOpts `mappend` x             = x
-    x             `mappend` NoMonitorOpts = x
-    ReportVersion `mappend` _             = ReportVersion
-    _             `mappend` ReportVersion = ReportVersion
+instance Monoid MonitorCommand where
+    mempty = StartDelegate []
+    (StartDelegate _) `mappend` x                 = x
+    x                 `mappend` (StartDelegate _) = x
+    x                 `mappend` _                 = x
 
-opts_spec :: [OptDescr MonitorOpts] 
+opts_spec :: [OptDescr MonitorCommand] 
 opts_spec =
     [ Option "v" ["version"]
              (NoArg ReportVersion) 
-             "report the version of the yi monitor and custom yi"
+             "Output the version of the yi monitor and custom yi"
+    , Option "" ["info"]
+             (NoArg $ ReportSystemInfo False)
+             "Output some of the system information in a human-friendly format."
+    , Option "" ["raw-info"]
+             (NoArg $ ReportSystemInfo True)
+             "Output the system information in a machine-friendly format."
     ]
 
 manageYiSystem :: YiSystem -> IO ExitCode
@@ -76,11 +86,16 @@ manageYiSystem Exit = do
 manageYiSystem (Init args) = do
     -- Examine the command line arguments to determine if any actions need to be taken before
     -- booting yi proper.
-    let (opts, unknown_non, unknown_opts) = getOpt RequireOrder opts_spec args
+    let (opts, non_opts, unknown_opts, _) = getOpt' RequireOrder opts_spec args
     case mconcat opts of
-        NoMonitorOpts -> do
-            fail "TODO: NoMonitorOpts"
         ReportVersion -> do
-            putStrLn $ "version: " ++ show version
+            putStrLn $ "version: " ++ display version
             manageYiSystem Exit
+        ReportSystemInfo True -> do
+            putStr $! show yiSystemInfo
+            manageYiSystem Exit
+        ReportSystemInfo False -> do
+            fail "TODO: human readable yi system info"
+        StartDelegate opts -> do
+            fail "TODO: Start delegate"
 
