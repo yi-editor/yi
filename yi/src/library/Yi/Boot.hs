@@ -59,6 +59,7 @@ yiDriver cfg = do
                                                    ["-prof", "-auto-all", "-rtsopts", "-osuf=p_o", "-hisuf=p_hi"] ++
 #endif
                                                    ghcOptions cfgcon)
+                            , Dyre.includeCurrentDirectory = False
                             }
             in Dyre.wrapMain yiParams (finalCfg, cfgcon)
 
