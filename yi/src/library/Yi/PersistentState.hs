@@ -16,6 +16,8 @@ import System.FilePath((</>))
 import System.Directory(getAppUserDataDirectory, doesFileExist)
 import qualified Data.Map as M
 
+import Control.Exc(ignoringException)
+
 import Yi.Prelude
 import Yi.Dynamic
 import Yi.History
@@ -23,8 +25,8 @@ import Yi.Editor
 import Yi.Keymap(YiM)
 import Yi.Keymap.Vim.TagStack(VimTagStack(..), getTagStack, setTagStack)
 
-data PersistentState = PersistentState { histories   :: Histories
-                                       , vimTagStack :: VimTagStack
+data PersistentState = PersistentState { histories   :: !Histories
+                                       , vimTagStack :: !VimTagStack
                                        }
 
 $(derive makeBinary ''PersistentState)
@@ -44,7 +46,7 @@ getPersistentStateFilename :: YiM String
 getPersistentStateFilename = do cfgDir <- io $ getAppUserDataDirectory "yi"
                                 return $ cfgDir </> "history"
 
-loadPersistentState, savePersistentState :: YiM ()
+savePersistentState :: YiM ()
 savePersistentState = do pStateFilename <- getPersistentStateFilename
                          (hist :: Histories) <- withEditor $ getA dynA
                          tagStack <- withEditor $ getTagStack
@@ -57,10 +59,20 @@ savePersistentState = do pStateFilename <- getPersistentStateFilename
     trimH (History cur content prefix) = History cur (trim content) prefix
     trim content = drop (max 0 (length content - maxHistory)) content
 
-loadPersistentState = do pStateFilename <- getPersistentStateFilename
+readPersistentState :: YiM (Maybe PersistentState)
+readPersistentState = do pStateFilename <- getPersistentStateFilename
                          pStateExists <- io $ doesFileExist pStateFilename
-                         when pStateExists $
-                           do (pState :: PersistentState) <- io $ decodeFile pStateFilename
-                              withEditor $ putA dynA   $ histories   pState
-                              withEditor $ setTagStack $ vimTagStack pState
+                         if not pStateExists
+                           then return Nothing
+                           else io $ ignoringException $ strictDecoder pStateFilename
+  where
+    strictDecoder filename = do (state :: PersistentState) <- decodeFile filename
+                                state `seq` return (Just state)
+
+loadPersistentState :: YiM ()
+loadPersistentState = do maybePState <- readPersistentState
+                         case maybePState of
+                           Nothing     -> return ()
+                           Just pState -> do withEditor $ putA dynA   $ histories   pState
+                                             withEditor $ setTagStack $ vimTagStack pState
 
