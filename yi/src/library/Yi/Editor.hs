@@ -144,6 +144,10 @@ tabsA = tabs_A . fixCurrentBufferA_
 currentTabA :: Accessor Editor Tab
 currentTabA = PL.focusA . tabsA
 
+askConfigVariableA :: (YiConfigVariable b, MonadEditor m) => m b
+askConfigVariableA = do cfg <- askCfg
+                        return $ cfg ^. configVarsA ^. configVariableA
+
 dynA :: YiVariable a => Accessor Editor a
 dynA = dynamicValueA . dynamicA
 

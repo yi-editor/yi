@@ -1,4 +1,4 @@
-{-# LANGUAGE TemplateHaskell, ScopedTypeVariables, NoMonomorphismRestriction, Haskell2010 #-}
+{-# LANGUAGE TemplateHaskell, ScopedTypeVariables, NoMonomorphismRestriction, Haskell2010, GeneralizedNewtypeDeriving, DeriveDataTypeable #-}
 -- Copyright '2012 by Michal J. Gajda
 --
 -- | This module implements persistence across different Yi runs.
@@ -7,12 +7,14 @@
 --   of Yi are run at the same time.
 
 module Yi.PersistentState(loadPersistentState,
-                          savePersistentState)
+                          savePersistentState,
+                          maxHistoryEntries)
 where
 
 import Prelude hiding ((.))
 import Data.Binary
 import Data.DeriveTH
+import Data.Accessor.Template(nameDeriveAccessors)
 import System.FilePath((</>))
 import System.Directory(getAppUserDataDirectory, doesFileExist)
 import qualified Data.Map as M
@@ -21,6 +23,8 @@ import Control.Exc(ignoringException)
 
 import Yi.Prelude
 import Yi.Dynamic
+import Yi.Config
+import Yi.Config.Simple.Types(customVariable, Field)
 import Yi.History
 import Yi.Editor
 import Yi.Keymap(YiM)
@@ -38,6 +42,35 @@ data PersistentState = PersistentState { histories     :: !Histories
 
 $(derive makeBinary ''PersistentState)
 
+newtype MaxHistoryEntries = MaxHistoryEntries { unMaxHistoryEntries :: Int }
+  deriving(Typeable, Binary)
+
+instance Initializable MaxHistoryEntries where
+  initial = MaxHistoryEntries 1000
+
+instance YiConfigVariable MaxHistoryEntries
+
+$(nameDeriveAccessors ''MaxHistoryEntries (\n -> Just (n ++ "A")))
+
+maxHistoryEntries :: Field Int
+maxHistoryEntries = unMaxHistoryEntriesA . customVariable
+
+-- | Finds a path of history file.
+getPersistentStateFilename :: YiM String
+getPersistentStateFilename = do cfgDir <- io $ getAppUserDataDirectory "yi"
+                                return $ cfgDir </> "history"
+
+-- | Trims per-command histories to contain at most N completions each.
+trimHistories :: Int -> Histories -> Histories
+trimHistories maxHistory = M.map trimH
+  where
+    trimH (History cur content prefix) = History cur (trim content) prefix
+    trim content = drop (max 0 (length content - maxHistory)) content
+
+-- | Trims VimTagStack to contain at most N values.
+trimTagStack :: Int -> VimTagStack -> VimTagStack
+trimTagStack maxHistory = VimTagStack . take maxHistory . tagsStack
+
 -- | Here is a persistent history saving part.
 --   We assume each command is a single line.
 --   To add new components, one has to:
@@ -46,38 +79,22 @@ $(derive makeBinary ''PersistentState)
 --   * add write and read parts in @loadPersistentState@/@savePersistentState@,
 --   * add a trimming code in @savePersistentState@ to prevent blowing up
 --     of save file.
---
--- TODO: trim contents by amount set by config variable
-
-getPersistentStateFilename :: YiM String
-getPersistentStateFilename = do cfgDir <- io $ getAppUserDataDirectory "yi"
-                                return $ cfgDir </> "history"
-
 savePersistentState :: YiM ()
-savePersistentState = do pStateFilename <- getPersistentStateFilename
+savePersistentState = do MaxHistoryEntries histLimit <- withEditor $ askConfigVariableA
+                         pStateFilename      <- getPersistentStateFilename
                          (hist :: Histories) <- withEditor $ getA dynA
                          tagStack            <- withEditor $ getTagStack
                          kr                  <- withEditor $ getA killringA
                          curRe               <- withEditor $ getRegexE
-                         let pState = PersistentState { histories     = trimHistories hist
-                                                      , vimTagStack   = trimTagStack  tagStack
+                         let pState = PersistentState { histories     = trimHistories histLimit hist
+                                                      , vimTagStack   = trimTagStack  histLimit tagStack
                                                       , aKillring     = kr    -- trimmed during normal operation
                                                       , aCurrentRegex = curRe -- just a single value -> no need to trim
                                                       }
                          io $ encodeFile pStateFilename $ pState
 
-maxHistory :: Int
-maxHistory = 100 -- TODO: make configurable
-
-trimHistories :: Histories -> Histories
-trimHistories = M.map trimH
-  where
-    trimH (History cur content prefix) = History cur (trim content) prefix
-    trim content = drop (max 0 (length content - maxHistory)) content
-
-trimTagStack :: VimTagStack -> VimTagStack
-trimTagStack = VimTagStack . take maxHistory . tagsStack
-
+-- | Reads and decodes a persistent state in both strict, and exception robust
+--   way.
 readPersistentState :: YiM (Maybe PersistentState)
 readPersistentState = do pStateFilename <- getPersistentStateFilename
                          pStateExists <- io $ doesFileExist pStateFilename
@@ -88,6 +105,7 @@ readPersistentState = do pStateFilename <- getPersistentStateFilename
     strictDecoder filename = do (state :: PersistentState) <- decodeFile filename
                                 state `seq` return (Just state)
 
+-- | Loads a persistent state, and sets Yi state variables accordingly.
 loadPersistentState :: YiM ()
 loadPersistentState = do maybePState <- readPersistentState
                          case maybePState of
