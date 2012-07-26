@@ -6,7 +6,9 @@
 --   Warning: Current version will _not_ check whether two or more instances
 --   of Yi are run at the same time.
 
-module Yi.PersistentState where
+module Yi.PersistentState(loadPersistentState,
+                          savePersistentState)
+where
 
 import Data.Binary
 import Data.DeriveTH
@@ -18,8 +20,12 @@ import Yi.Prelude
 import Yi.Dynamic
 import Yi.History
 import Yi.Editor
+import Yi.Keymap(YiM)
+import Yi.Keymap.Vim.TagStack(VimTagStack(..), getTagStack, setTagStack)
 
-data PersistentState = PersistentState { histories :: Histories }
+data PersistentState = PersistentState { histories   :: Histories
+                                       , vimTagStack :: VimTagStack
+                                       }
 
 $(derive makeBinary ''PersistentState)
 
@@ -34,14 +40,17 @@ $(derive makeBinary ''PersistentState)
 --
 -- TODO: trim contents by amount set by config variable
 
-maxHistorySize=10000
-
+getPersistentStateFilename :: YiM String
 getPersistentStateFilename = do cfgDir <- io $ getAppUserDataDirectory "yi"
                                 return $ cfgDir </> "history"
 
+loadPersistentState, savePersistentState :: YiM ()
 savePersistentState = do pStateFilename <- getPersistentStateFilename
                          (hist :: Histories) <- withEditor $ getA dynA
-                         let pState = PersistentState { histories = M.map trimH hist }
+                         tagStack <- withEditor $ getTagStack
+                         let pState = PersistentState { histories   = M.map trimH hist
+                                                      , vimTagStack = tagStack
+                                                      }
                          io $ encodeFile pStateFilename $ pState
   where
     maxHistory = 100 -- TODO: make configurable
@@ -52,7 +61,6 @@ loadPersistentState = do pStateFilename <- getPersistentStateFilename
                          pStateExists <- io $ doesFileExist pStateFilename
                          when pStateExists $
                            do (pState :: PersistentState) <- io $ decodeFile pStateFilename
-                              let hist :: Histories = histories pState
-                              withEditor $ putA dynA hist
-
+                              withEditor $ putA dynA   $ histories   pState
+                              withEditor $ setTagStack $ vimTagStack pState
 
