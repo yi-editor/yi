@@ -25,10 +25,14 @@ import Yi.Editor
 import Yi.Keymap(YiM)
 import Yi.Keymap.Vim.TagStack(VimTagStack(..), getTagStack, setTagStack)
 import Yi.KillRing(Killring(..))
+import Yi.Search(getRegexE, setRegexE)
+import Yi.Regex(SearchExp(..))
 
-data PersistentState = PersistentState { histories   :: !Histories
-                                       , vimTagStack :: !VimTagStack
-                                       , aKillring   :: !Killring
+
+data PersistentState = PersistentState { histories     :: !Histories
+                                       , vimTagStack   :: !VimTagStack
+                                       , aKillring     :: !Killring
+                                       , aCurrentRegex :: Maybe SearchExp
                                        }
 
 $(derive makeBinary ''PersistentState)
@@ -53,9 +57,11 @@ savePersistentState = do pStateFilename <- getPersistentStateFilename
                          (hist :: Histories) <- withEditor $ getA dynA
                          tagStack            <- withEditor $ getTagStack
                          kr                  <- withEditor $ getA killringA
-                         let pState = PersistentState { histories   = M.map trimH hist
-                                                      , vimTagStack = tagStack
-                                                      , aKillring   = kr
+                         curRe               <- withEditor $ getRegexE
+                         let pState = PersistentState { histories     = M.map trimH hist
+                                                      , vimTagStack   = tagStack
+                                                      , aKillring     = kr
+                                                      , aCurrentRegex = curRe
                                                       }
                          io $ encodeFile pStateFilename $ pState
   where
@@ -77,7 +83,8 @@ loadPersistentState :: YiM ()
 loadPersistentState = do maybePState <- readPersistentState
                          case maybePState of
                            Nothing     -> return ()
-                           Just pState -> do withEditor $ putA dynA      $ histories   pState
-                                             withEditor $ setTagStack    $ vimTagStack pState
-                                             withEditor $ putA killringA $ aKillring   pState
+                           Just pState -> do withEditor $ putA dynA                   $ histories     pState
+                                             withEditor $ setTagStack                 $ vimTagStack   pState
+                                             withEditor $ putA killringA              $ aKillring     pState
+                                             withEditor $ maybe (return ()) setRegexE $ aCurrentRegex pState
 

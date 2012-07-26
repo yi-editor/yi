@@ -231,7 +231,7 @@ makeSimpleSearch s = se
 
 makeISearch :: String -> SearchExp
 makeISearch s = case makeSearchOptsM opts s of
-                  Left _ -> SearchExp s emptyRegex emptyRegex
+                  Left _ -> SearchExp s emptyRegex emptyRegex []
                   Right search -> search
    where opts = QuoteRegex : if any isUpper s then [] else [IgnoreCase]
 
