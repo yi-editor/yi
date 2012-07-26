@@ -84,7 +84,7 @@ import Yi.String
 import Yi.Style (errorStyle, strongHintStyle)
 import qualified Yi.UI.Common as UI
 import Yi.Window (dummyWindow, bufkey, wkey, winRegion)
-import Yi.PersistentState(loadPersistentState, savePersistentState)
+import {-# source #-} Yi.PersistentState(loadPersistentState, savePersistentState)
 
 -- | Make an action suitable for an interactive run.
 -- UI will be refreshed.
