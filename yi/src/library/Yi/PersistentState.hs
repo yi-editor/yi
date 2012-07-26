@@ -24,9 +24,11 @@ import Yi.History
 import Yi.Editor
 import Yi.Keymap(YiM)
 import Yi.Keymap.Vim.TagStack(VimTagStack(..), getTagStack, setTagStack)
+import Yi.KillRing(Killring(..))
 
 data PersistentState = PersistentState { histories   :: !Histories
                                        , vimTagStack :: !VimTagStack
+                                       , aKillring   :: !Killring
                                        }
 
 $(derive makeBinary ''PersistentState)
@@ -49,9 +51,11 @@ getPersistentStateFilename = do cfgDir <- io $ getAppUserDataDirectory "yi"
 savePersistentState :: YiM ()
 savePersistentState = do pStateFilename <- getPersistentStateFilename
                          (hist :: Histories) <- withEditor $ getA dynA
-                         tagStack <- withEditor $ getTagStack
+                         tagStack            <- withEditor $ getTagStack
+                         kr                  <- withEditor $ getA killringA
                          let pState = PersistentState { histories   = M.map trimH hist
                                                       , vimTagStack = tagStack
+                                                      , aKillring   = kr
                                                       }
                          io $ encodeFile pStateFilename $ pState
   where
@@ -73,6 +77,7 @@ loadPersistentState :: YiM ()
 loadPersistentState = do maybePState <- readPersistentState
                          case maybePState of
                            Nothing     -> return ()
-                           Just pState -> do withEditor $ putA dynA   $ histories   pState
-                                             withEditor $ setTagStack $ vimTagStack pState
+                           Just pState -> do withEditor $ putA dynA      $ histories   pState
+                                             withEditor $ setTagStack    $ vimTagStack pState
+                                             withEditor $ putA killringA $ aKillring   pState
 
