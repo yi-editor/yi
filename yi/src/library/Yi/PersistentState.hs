@@ -10,6 +10,7 @@ module Yi.PersistentState(loadPersistentState,
                           savePersistentState)
 where
 
+import Prelude hiding ((.))
 import Data.Binary
 import Data.DeriveTH
 import System.FilePath((</>))
@@ -58,16 +59,24 @@ savePersistentState = do pStateFilename <- getPersistentStateFilename
                          tagStack            <- withEditor $ getTagStack
                          kr                  <- withEditor $ getA killringA
                          curRe               <- withEditor $ getRegexE
-                         let pState = PersistentState { histories     = M.map trimH hist
-                                                      , vimTagStack   = tagStack
-                                                      , aKillring     = kr
-                                                      , aCurrentRegex = curRe
+                         let pState = PersistentState { histories     = trimHistories hist
+                                                      , vimTagStack   = trimTagStack  tagStack
+                                                      , aKillring     = kr    -- trimmed during normal operation
+                                                      , aCurrentRegex = curRe -- just a single value -> no need to trim
                                                       }
                          io $ encodeFile pStateFilename $ pState
+
+maxHistory :: Int
+maxHistory = 100 -- TODO: make configurable
+
+trimHistories :: Histories -> Histories
+trimHistories = M.map trimH
   where
-    maxHistory = 100 -- TODO: make configurable
     trimH (History cur content prefix) = History cur (trim content) prefix
     trim content = drop (max 0 (length content - maxHistory)) content
+
+trimTagStack :: VimTagStack -> VimTagStack
+trimTagStack = VimTagStack . take maxHistory . tagsStack
 
 readPersistentState :: YiM (Maybe PersistentState)
 readPersistentState = do pStateFilename <- getPersistentStateFilename
