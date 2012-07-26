@@ -84,6 +84,7 @@ import Yi.String
 import Yi.Style (errorStyle, strongHintStyle)
 import qualified Yi.UI.Common as UI
 import Yi.Window (dummyWindow, bufkey, wkey, winRegion)
+import Yi.PersistentState(loadPersistentState, savePersistentState)
 
 -- | Make an action suitable for an interactive run.
 -- UI will be refreshed.
@@ -110,6 +111,7 @@ startEditor cfg st = do
 
     -- Use an empty state unless resuming from an earlier session and one is already available
     let editor = maybe emptyEditor id st
+    -- here to add load history etc?
 
     -- Setting up the 1st window is a bit tricky because most functions assume there exists a "current window"
     newSt <- newMVar $ YiVar editor [] 1 M.empty
@@ -121,6 +123,8 @@ startEditor cfg st = do
                  yi        = Yi ui inF outF cfg newSt
              ui <- uiStart cfg inF outF editor   
          return (ui, runYi)
+
+    runYi $ loadPersistentState
   
     runYi $ do if isNothing st
                     then postActions $ startActions cfg -- process options if booting for the first time
@@ -198,6 +202,7 @@ showEvs :: [Event] -> String
 -- | Quit.
 quitEditor :: YiM ()
 quitEditor = do
+    savePersistentState
     onYiVar $ terminateSubprocesses (const True)
     withUI (flip UI.end True)
 
