@@ -83,6 +83,7 @@ import Yi.Tag
 import Yi.Window (bufkey)
 import Yi.Hoogle (hoogle, hoogleSearch)
 import qualified Codec.Binary.UTF8.String as UTF8
+import Yi.Keymap.Vim.TagStack
 
 
 --
@@ -175,41 +176,6 @@ data VimExCmd = VimExCmd { cmdNames :: [String]
                          }
 
 type VimExCmdMap = [VimExCmd] -- very simple implementation yet
-
-newtype VimTagStack = VimTagStack { tagsStack :: [(FilePath, Point)] }
-    deriving (Typeable, Binary)
-
-instance Initializable VimTagStack where
-    initial = VimTagStack []
-
-instance YiVariable VimTagStack
-
-getTagStack :: EditorM VimTagStack
-getTagStack = getDynamic
-
-setTagStack :: VimTagStack -> EditorM ()
-setTagStack = setDynamic
-
-listTagStack :: EditorM [(FilePath, Point)]
-listTagStack = return . tagsStack =<< getTagStack
-
-pushTagStack :: FilePath -> Point -> EditorM ()
-pushTagStack fp p = do VimTagStack ts <- getTagStack
-                       setTagStack $ VimTagStack $ (fp, p):ts
-
-peekTagStack :: EditorM (Maybe (FilePath, Point))
-peekTagStack = do VimTagStack ts <- getTagStack
-                  case ts of
-                    []    -> return Nothing
-                    (p:_) -> return $ Just p
-
--- pop 'count' element from the tag stack.
-popTagStack :: Int -> EditorM (Maybe (FilePath, Point))
-popTagStack count = do VimTagStack ts <- getTagStack
-                       case drop (count - 1) ts of
-                         []     -> return Nothing
-                         (p:ps) -> do setTagStack $ VimTagStack ps
-                                      return $ Just p
 
 $(nameDeriveAccessors ''VimOpts $ Just.(++ "A"))
 
