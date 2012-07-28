@@ -1,4 +1,4 @@
-{-# LANGUAGE FlexibleContexts, TemplateHaskell #-}
+{-# LANGUAGE FlexibleContexts, TemplateHaskell, RecordWildCards #-}
 {-# OPTIONS_GHC -fno-warn-incomplete-patterns #-} -- uniplate uses incomplete patterns
 -- Copyright (c) Jean-Philippe Bernardy 2008
 module Yi.Regex 
@@ -11,6 +11,8 @@ module Yi.Regex
    )
 where
 
+import Data.Binary
+import Data.DeriveTH
 import Data.Generics.Uniplate
 import Text.Regex.TDFA
 import Text.Regex.TDFA.Pattern
@@ -21,7 +23,11 @@ import Text.Regex.TDFA.TDFA(patternToRegex)
 import Yi.Buffer.Basic (Direction(..))
 
 -- input string, regexexp, backward regex.
-data SearchExp = SearchExp { seInput :: String, seCompiled :: Regex, seBackCompiled :: Regex}
+data SearchExp = SearchExp { seInput        :: String
+                           , seCompiled     :: Regex
+                           , seBackCompiled :: Regex
+                           , seOptions      :: [SearchOption]
+                           }
 
 searchString :: SearchExp -> String
 searchString = seInput
@@ -43,18 +49,34 @@ data SearchOption
     | QuoteRegex   -- ^ Treat the input not as a regex but as a literal string to search for.
     deriving Eq
 
+$(derive makeBinary ''SearchOption)
+
 searchOpt :: SearchOption -> CompOption -> CompOption
 searchOpt IgnoreCase = \o->o{caseSensitive = False}
 searchOpt NoNewLine = \o->o{multiline = False}
 searchOpt QuoteRegex = id
 
 makeSearchOptsM :: [SearchOption] -> String -> Either String SearchExp
-makeSearchOptsM opts re = (\p->SearchExp re (compile p) (compile $ reversePattern p)) <$> pattern
+makeSearchOptsM opts re = (\p->SearchExp { seInput        = re
+                                         , seCompiled     = compile p
+                                         , seBackCompiled = compile $ reversePattern p
+                                         , seOptions      = opts
+                                         }) <$> pattern
     where searchOpts = foldr (.) id . map searchOpt
           compile source = patternToRegex source (searchOpts opts defaultCompOpt) defaultExecOpt
           pattern = if QuoteRegex `elem` opts 
                           then Right (literalPattern re) 
                           else mapLeft show (parseRegex re)
+
+instance Binary SearchExp where
+  get = do re   <- get
+           opts <- get
+           return $ case makeSearchOptsM opts re of
+                      Left err -> error err
+                      Right se -> se
+  put (SearchExp { seInput   = re,
+                   seOptions = opts, .. }) = do put re
+                                                put opts
 
 mapLeft :: (t1 -> a) -> Either t1 t -> Either a t
 mapLeft _ (Right a) = Right a
@@ -119,7 +141,7 @@ instance Uniplate Pattern where
           p ->([],\[]->p)
 
 emptySearch :: SearchExp
-emptySearch = SearchExp "" emptyRegex emptyRegex
+emptySearch = SearchExp "" emptyRegex emptyRegex []
 
 
 -- | The regular expression that matches nothing.

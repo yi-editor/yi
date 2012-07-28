@@ -1,3 +1,5 @@
+-- -*- haskell -*-
+
 module Yi.File where
 
 import Yi.Buffer.Basic

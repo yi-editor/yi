@@ -468,11 +468,11 @@ defaultModeLine prefix = do
     modeNm <- gets (withMode0 modeName)
     unchanged <- gets isUnchangedBuffer
     let pct = if (pos == 1) || (s == 0)
-                then "Top"
+                then " Top"
                 else getPercent p s
         chg = if unchanged then "-" else "*"
         roStr = if ro  then "%" else chg
-        hexChar = "0x" ++ Numeric.showHex (Data.Char.ord curChar) ""
+        hexChar = "0x" ++ padString 2 '0' (Numeric.showHex (Data.Char.ord curChar) "")
 
     nm <- gets $ shortIdentString prefix
     return $
@@ -480,14 +480,19 @@ defaultModeLine prefix = do
            ++ nm ++
            replicate 5 ' ' ++
            hexChar ++ "  " ++
-           "L" ++ show ln ++ "  " ++ "C" ++ show col ++
+           "L" ++ padString 5 ' ' (show ln) ++ "  " ++ "C" ++ padString 3 ' ' (show col) ++
            "  " ++ pct ++
            "  " ++ modeNm ++
            "  " ++ show (fromPoint p)
 
+padString :: Int -> Char -> String -> String
+padString n c s = replicate k c ++ s
+  where
+    k = max 0 $ n - length s
+
 -- | Given a point, and the file size, gives us a percent string
 getPercent :: Point -> Point -> String
-getPercent a b = show p ++ "%"
+getPercent a b = padString 3 ' ' (show p) ++ "%"
     where p = ceiling (aa / bb * 100.0 :: Double) :: Int
           aa = fromIntegral a :: Double 
           bb = fromIntegral b :: Double
