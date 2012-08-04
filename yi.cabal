@@ -11,7 +11,7 @@ author:         AUTHORS
 maintainer:     yi-devel@googlegroups.com
 homepage:       http://haskell.org/haskellwiki/Yi
 bug-reports:    http://code.google.com/p/yi-editor/issues/list
-Cabal-Version:  >= 1.15.0
+Cabal-Version:  >= 1.17.0
 tested-with:    GHC==7.4.1
 build-type:     Custom
 
@@ -30,7 +30,7 @@ executable yi
         filepath == 1.*,
         mtl == 2.*,
         process == 1.*,
-        Cabal == 1.15.*
+        Cabal == 1.17.*
     ghc-options: -threaded
 
 test-suite verify-management-process
@@ -52,7 +52,7 @@ test-suite verify-management-process
         filepath == 1.*,
         mtl == 2.*,
         process == 1.*,
-        Cabal == 1.15.*,
+        Cabal == 1.17.*,
         regex-posix >= 0.95.1
     ghc-options: -threaded
 
