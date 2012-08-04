@@ -6,8 +6,7 @@
 -- The management process is modeled as a state machine. The initial state is process start and the
 -- final states are process termination.
 --
-
-module Main (main, main_) where
+module Main where
 
 import Prelude hiding ( catch )
 
@@ -19,10 +18,12 @@ import Control.Applicative
 import Control.Exception
 
 import Data.Monoid
+import Data.Version
 
 import Distribution.Text ( display )
 
 import System.Console.GetOpt
+
 import System.Directory
 import System.Environment
 import System.Exit
@@ -36,9 +37,14 @@ appDir = getAppUserDataDirectory "yi"
 info :: HPrintfType r => String -> r
 info format = hPrintf stderr format
 
+data PackageSource 
+    = Installed Version
+    | SourceDir FilePath
+
 data YiSystem where
     -- Initial state. Parameterized by command line arguments. 
     Init :: [String] -> YiSystem
+    Boot :: SystemInfo -> YiSystem
     Die  :: Int -> String -> YiSystem
     Exit :: YiSystem
 
