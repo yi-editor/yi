@@ -16,6 +16,7 @@ import Yi.Command (cabalBuildE, cabalConfigureE, grepFind, makeBuild, reloadProj
 import {-# source #-} Yi.Boot
 import Yi.Config
 import Yi.Config.Misc
+import Yi.Paths(getConfigFilename)
 import Yi.Core
 import Yi.Eval(publishedActions)
 import Yi.File
@@ -233,14 +234,13 @@ nilKeymap = choice [
     where configHelp = newBufferE (Left "configuration help") $ R.fromString $ unlines $
                          ["This instance of Yi is not configured.",
                           "To get a standard reasonable keymap, you can run yi with either --as=cua, --as=vim or --as=emacs.",
-                          "You should however create your own ~/.yi/yi.hs file: ",
+                          "You should however create your own ~/.config/yi/yi.hs file: ",
                           "You can type 'c', 'e' or 'v' now to create and edit it using a temporary cua, emacs or vim keymap."]
           openCfg km kmName = write $ do
             dataDir <- io getDataDir
             let exampleCfg = dataDir </> "example-configs" </> kmName
-            homeDir <- io getHomeDirectory
-            cfgDir <- io $ getAppUserDataDirectory "yi"
-            let cfgFile = cfgDir </> "yi.hs"
+            cfgFile <- getConfigFilename
+            let cfgDir = takeDirectory cfgFile
             cfgExists <- io $ doesFileExist cfgDir
             io $ createDirectoryIfMissing True cfgDir -- so that the file can be saved
             discard $ editFile cfgFile -- load config file
