@@ -23,6 +23,7 @@ import Yi.Buffer.Region (readRegionB)
 import Yi.Dynamic
 import Yi.Keymap (withBuffer, YiM)
 import Yi.Prelude (getA, putA, io, discard, Initializable(..))
+import Yi.Paths(getArticleDbFilename)
 
 type Article = B.ByteString
 newtype ArticleDB = ADB { unADB :: Seq Article }
@@ -64,20 +65,16 @@ insertArticle (ADB adb) new = ADB (new <| adb)
 
 -- | Serialize given 'ArticleDB' out.
 writeDB :: ArticleDB -> YiM ()
-writeDB adb = discard $ io . join . fmap (flip encodeFile adb) $ dbLocation
+writeDB adb = discard $ io . join . fmap (flip encodeFile adb) $ getArticleDbFilename
 
--- | Read in database from 'dbLocation' and then parse it into an 'ArticleDB'.
+-- | Read in database from 'getArticleDbFilename' and then parse it into an 'ArticleDB'.
 readDB :: YiM ArticleDB
-readDB = io $ (dbLocation >>= r) `catch` returnDefault
+readDB = io $ (getArticleDbFilename >>= r) `catch` returnDefault
           where r = fmap (decode . BL.fromChunks . return) . B.readFile
                 -- We read in with strict bytestrings to guarantee the file is closed,
                 -- and then we convert it to the lazy bytestring data.binary expects.
                 -- This is inefficient, but alas...
                 returnDefault (_ :: SomeException) = return initial
-
--- | The canonical location. We assume \~\/.yi has been set up already.
-dbLocation :: IO FilePath
-dbLocation = getHomeDirectory >>= \home -> return (home ++ "/.yi/articles.db")
 
 -- | Returns the database as it exists on the disk, and the current Yi buffer contents.
 --   Note that the Initializable typeclass gives us an empty Seq. So first we try the buffer

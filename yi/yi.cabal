@@ -167,6 +167,7 @@ library
     Yi.Mode.Latex
     Yi.Modes
     Yi.Monad
+    Yi.Paths
     Yi.PersistentState
     Yi.Prelude
     Yi.Process
