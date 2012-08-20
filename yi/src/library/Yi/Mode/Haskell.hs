@@ -52,10 +52,8 @@ haskellAbstract = emptyMode
      I dare say that there are other file types that use ".x"
      as the file extension.
      For now though this is probably okay given the users of
-     'yi' are mostly haskell hackers, as of yet.
-     Same for ".y" of parser generator 'Happy'.
-     -}
-    where extensions = ["hs", "x", "y", "hsc", "hsinc", "hs-boot"]
+     'yi' are mostly haskell hackers, as of yet. -}
+    where extensions = ["hs", "x", "hsc", "hsinc", "hs-boot"]
           shebangPattern = "^#![[:space:]]*/usr/bin/env[[:space:]]+runhaskell"
 
 -- | "Clever" haskell mode, using the paren-matching syntax.
