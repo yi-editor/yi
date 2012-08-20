@@ -11,35 +11,37 @@ module Yi.Paths(
 ) where
 
 import System.Directory(getHomeDirectory, getAppUserDataDirectory, -- TODO: phase out in favour of xdg-dir
-                        doesFileExist, createDirectoryIfMissing)
-import System.FilePath((</>), takeDirectory)
+                        doesFileExist, doesDirectoryExist,
+                        createDirectoryIfMissing)
+import System.FilePath((</>), takeDirectory, FilePath)
 import Control.Applicative((<$>))
 import Control.Monad(filterM, Monad)
 import Control.Monad.Trans(liftIO, MonadIO)
--- import qualified System.Environment.XDG.BaseDir as XDG
+import qualified System.Environment.XDG.BaseDir as XDG
+
+appUserDataCond dirQuery = liftIO $
+  do oldDir <- getAppUserDataDirectory "yi"
+     newDir <- dirQuery "yi"
+     oldDirExists <- doesDirectoryExist oldDir
+     newDirExists <- doesDirectoryExist newDir
+     return $ if newDirExists -- overrides old-style
+                 then newDir
+                 else if oldDirExists -- old-style exists, use it
+                        then oldDir
+                        else newDir -- none exists, use new style
 
 -- TODO: These would be replaced by xdg-basedir equivalents
-getConfigDir = liftIO $ getAppUserDataDirectory "yi"
-getDataDir   = liftIO $ getAppUserDataDirectory "yi"
-
--- | This is internal function that factors out common code from
---   getConfigPath and getDataPath
-getPathHelper :: (MonadIO m) => (String -> IO FilePath) -> FilePath -> m FilePath
-getPathHelper basePathGenerator fname = do
-  baseDir <- liftIO $ basePathGenerator "yi"
-  case fname of
-    "" -> return baseDir -- calling for directory path
-    _  -> return $ baseDir </> fname
+getConfigDir = appUserDataCond XDG.getUserConfigDir
+getDataDir   = appUserDataCond XDG.getUserDataDir
 
 -- | Given a path relative to application data directory,
 --   this function finds a path to a given data file.
 getDataPath :: (MonadIO m) => FilePath -> m FilePath
-getDataPath   = getPathHelper getAppUserDataDirectory
-
+getDataPath   fp = getDataDir >>= (return . (</> fp))
 -- | Given a path relative to application configuration directory,
 --   this function finds a path to a given configuration file.
 getConfigPath :: (MonadIO m) => FilePath -> m FilePath
-getConfigPath = getPathHelper getAppUserDataDirectory
+getConfigPath fp = getConfigDir >>= (return . (</> fp))
 
 -- Note: Dyre also uses XDG cache dir - that would be:
 --getCachePath = getPathHelper XDG.getUserCacheDirectory
