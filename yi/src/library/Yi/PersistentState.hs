@@ -15,8 +15,7 @@ import Prelude hiding ((.))
 import Data.Binary
 import Data.DeriveTH
 import Data.Accessor.Template(nameDeriveAccessors)
-import System.FilePath((</>))
-import System.Directory(getAppUserDataDirectory, doesFileExist)
+import System.Directory(doesFileExist)
 import qualified Data.Map as M
 
 import Control.Exc(ignoringException)
@@ -32,6 +31,7 @@ import Yi.Keymap.Vim.TagStack(VimTagStack(..), getTagStack, setTagStack)
 import Yi.KillRing(Killring(..))
 import Yi.Search(getRegexE, setRegexE)
 import Yi.Regex(SearchExp(..))
+import Yi.Paths(getPersistentStateFilename)
 
 
 data PersistentState = PersistentState { histories     :: !Histories
@@ -55,11 +55,6 @@ $(nameDeriveAccessors ''MaxHistoryEntries (\n -> Just (n ++ "A")))
 maxHistoryEntries :: Field Int
 maxHistoryEntries = unMaxHistoryEntriesA . customVariable
 
--- | Finds a path of history file.
-getPersistentStateFilename :: YiM String
-getPersistentStateFilename = do cfgDir <- io $ getAppUserDataDirectory "yi"
-                                return $ cfgDir </> "history"
-
 -- | Trims per-command histories to contain at most N completions each.
 trimHistories :: Int -> Histories -> Histories
 trimHistories maxHistory = M.map trimH
@@ -80,18 +75,18 @@ trimTagStack maxHistory = VimTagStack . take maxHistory . tagsStack
 --   * add a trimming code in @savePersistentState@ to prevent blowing up
 --     of save file.
 savePersistentState :: YiM ()
-savePersistentState = do MaxHistoryEntries histLimit <- withEditor $ askConfigVariableA
+savePersistentState = do MaxHistoryEntries histLimit <- withEditor askConfigVariableA
                          pStateFilename      <- getPersistentStateFilename
                          (hist :: Histories) <- withEditor $ getA dynA
-                         tagStack            <- withEditor $ getTagStack
+                         tagStack            <- withEditor   getTagStack
                          kr                  <- withEditor $ getA killringA
-                         curRe               <- withEditor $ getRegexE
+                         curRe               <- withEditor   getRegexE
                          let pState = PersistentState { histories     = trimHistories histLimit hist
                                                       , vimTagStack   = trimTagStack  histLimit tagStack
                                                       , aKillring     = kr    -- trimmed during normal operation
                                                       , aCurrentRegex = curRe -- just a single value -> no need to trim
                                                       }
-                         io $ encodeFile pStateFilename $ pState
+                         io $ encodeFile pStateFilename pState
 
 -- | Reads and decodes a persistent state in both strict, and exception robust
 --   way.

@@ -53,7 +53,7 @@ haskellAbstract = emptyMode
      as the file extension.
      For now though this is probably okay given the users of
      'yi' are mostly haskell hackers, as of yet. -}
-    where extensions = ["hs", "x", "hsc", "hsinc"]
+    where extensions = ["hs", "x", "hsc", "hsinc", "hs-boot"]
           shebangPattern = "^#![[:space:]]*/usr/bin/env[[:space:]]+runhaskell"
 
 -- | "Clever" haskell mode, using the paren-matching syntax.
