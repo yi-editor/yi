@@ -239,10 +239,8 @@ nilKeymap = choice [
           openCfg km kmName = write $ do
             dataDir <- io getDataDir
             let exampleCfg = dataDir </> "example-configs" </> kmName
-            cfgFile <- getConfigFilename
-            let cfgDir = takeDirectory cfgFile
-            cfgExists <- io $ doesFileExist cfgDir
-            io $ createDirectoryIfMissing True cfgDir -- so that the file can be saved
+            cfgFile <- getConfigFilename -- automatically creates directory, if missing
+            cfgExists <- io $ doesFileExist cfgFile
             discard $ editFile cfgFile -- load config file
             -- locally override the keymap to the user choice
             withBuffer $ modifyMode (\m -> m { modeKeymap = const km })

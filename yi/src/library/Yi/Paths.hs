@@ -24,11 +24,12 @@ appUserDataCond dirQuery = liftIO $
      newDir <- dirQuery "yi"
      oldDirExists <- doesDirectoryExist oldDir
      newDirExists <- doesDirectoryExist newDir
-     return $ if newDirExists -- overrides old-style
-                 then newDir
-                 else if oldDirExists -- old-style exists, use it
-                        then oldDir
-                        else newDir -- none exists, use new style
+     if newDirExists -- overrides old-style
+        then return newDir
+        else if oldDirExists -- old-style exists, use it
+               then return oldDir
+               else do createDirectoryIfMissing True newDir -- none exists, use new style, but create it
+                       return newDir
 
 -- TODO: These would be replaced by xdg-basedir equivalents
 getConfigDir = appUserDataCond XDG.getUserConfigDir
