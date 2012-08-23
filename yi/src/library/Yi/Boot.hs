@@ -17,6 +17,7 @@ import Yi.Editor
 import Yi.Keymap
 import Yi.Main
 import qualified Yi.UI.Common as UI
+import qualified Yi.Paths(getConfigDir)
 
 -- | once the custom yi is compiled this restores the editor state (if requested) then proceeds to
 -- run the editor.
@@ -52,7 +53,7 @@ yiDriver cfg = do
                             { Dyre.projectName  = "yi"
                             , Dyre.realMain     = realMain
                             , Dyre.showError    = showErrorsInConf
-                            , Dyre.configDir    = Just . getAppUserDataDirectory $ "yi"
+                            , Dyre.configDir    = Just Yi.Paths.getConfigDir
                             , Dyre.hidePackages = ["mtl"]
                             , Dyre.ghcOpts      = (["-threaded", "-O2"] ++
 #ifdef PROFILING
