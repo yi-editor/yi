@@ -15,8 +15,7 @@ import Prelude hiding ((.))
 import Data.Binary
 import Data.DeriveTH
 import Data.Accessor.Template(nameDeriveAccessors)
-import System.FilePath((</>))
-import System.Directory(getAppUserDataDirectory, doesFileExist)
+import System.Directory(doesFileExist)
 import qualified Data.Map as M
 
 import Control.Exc(ignoringException)
@@ -32,6 +31,7 @@ import Yi.Keymap.Vim.TagStack(VimTagStack(..), getTagStack, setTagStack)
 import Yi.KillRing(Killring(..))
 import Yi.Search(getRegexE, setRegexE)
 import Yi.Regex(SearchExp(..))
+import Yi.Paths(getPersistentStateFilename)
 
 
 data PersistentState = PersistentState { histories     :: !Histories
@@ -54,11 +54,6 @@ $(nameDeriveAccessors ''MaxHistoryEntries (\n -> Just (n ++ "A")))
 
 maxHistoryEntries :: Field Int
 maxHistoryEntries = unMaxHistoryEntriesA . customVariable
-
--- | Finds a path of history file.
-getPersistentStateFilename :: YiM String
-getPersistentStateFilename = do cfgDir <- io $ getAppUserDataDirectory "yi"
-                                return $ cfgDir </> "history"
 
 -- | Trims per-command histories to contain at most N completions each.
 trimHistories :: Int -> Histories -> Histories

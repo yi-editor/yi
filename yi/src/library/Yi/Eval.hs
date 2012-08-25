@@ -23,8 +23,7 @@ import Data.List
 import Data.Monoid
 import Prelude hiding (error, (.))
 import qualified Language.Haskell.Interpreter as LHI
-import System.FilePath
-import System.Directory
+import System.Directory(doesFileExist)
 import qualified Data.HashMap.Strict as M
 
 import Yi.Config.Simple.Types
@@ -32,6 +31,7 @@ import Yi.Core  hiding (concatMap)
 import Yi.File
 import Yi.Hooks
 import Yi.Regex
+import qualified Yi.Paths(getEvaluatorContextFilename)
 
 -- | Runs the action, as written by the user.
 --
@@ -85,8 +85,7 @@ ghciEvaluator :: Evaluator
 ghciEvaluator = Evaluator{..} where
     execEditorActionImpl :: String -> YiM ()
     execEditorActionImpl s = do
-       contextPath <- (</> ".yi" </> "local") <$> io getHomeDirectory
-       let contextFile = contextPath </> "Env.hs"
+       contextFile <- Yi.Paths.getEvaluatorContextFilename
        haveUserContext <- io $ doesFileExist contextFile
        res <- io $ LHI.runInterpreter $ do
            LHI.set [LHI.searchPath LHI.:= []]
