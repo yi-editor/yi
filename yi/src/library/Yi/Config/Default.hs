@@ -174,6 +174,7 @@ defaultConfig =
                         AnyMode fundamentalMode]
          , debugMode = False
          , configKillringAccumulate = False
+         , configCheckExternalChangesObsessively = True
          , configRegionStyle = Exclusive
          , configInputPreprocess = I.idAutomaton
          , bufferUpdateHandler = []
