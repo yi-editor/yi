@@ -141,6 +141,7 @@ library
     Yi.Lexer.Haskell
     Yi.Lexer.JavaScript
     Yi.Lexer.Java
+    Yi.Lexer.JSON
     Yi.Lexer.Latex
     Yi.Lexer.LiterateHaskell
     Yi.Lexer.GitCommit
