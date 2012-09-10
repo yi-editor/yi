@@ -345,9 +345,10 @@ iSearch = "isearch"
 isearchEnd :: Bool -> EditorM ()
 isearchEnd accept = do
   Isearch s <- getDynamic
-  let (lastSearched,_,_) = head s
+  let (lastSearched,_,dir) = head s
   let (_,p0,_) = last s
   historyFinishGen iSearch (return lastSearched)
+  putA searchDirectionA dir
   if accept 
      then do withBuffer0 $ setSelectionMarkPointB $ regionStart p0 
              printMsg "Quit"
