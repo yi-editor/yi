@@ -275,7 +275,7 @@ refreshEditor = onYiVar $ \yi var -> do
                 (if or relayout then UI.layout (yiUi yi) else return) e4
         
         e7 <- return (yiEditor var) >>= 
-             checkFileChanges >>= 
+             (if (configCheckExternalChangesObsessively cfg) then checkFileChanges else return) >>=
              pureM clearAllSyntaxAndHideSelection >>=
              -- Adjust window sizes according to UI info
              UI.layout (yiUi yi) >>=
