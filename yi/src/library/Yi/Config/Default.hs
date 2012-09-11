@@ -168,6 +168,7 @@ defaultConfig =
                         AnyMode pythonMode,
                         AnyMode rubyMode,
                         AnyMode javaMode,
+                        AnyMode jsonMode,
                         AnyMode ireaderMode,
                         AnyMode svnCommitMode,
                         AnyMode gitCommitMode,

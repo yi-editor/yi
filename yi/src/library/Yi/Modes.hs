@@ -2,7 +2,7 @@
 module Yi.Modes (TokenBasedMode, fundamentalMode,
                  cMode, objectiveCMode, cppMode, cabalMode,
                  srmcMode, ocamlMode, ottMode, gnuMakeMode,
-                 perlMode, pythonMode, javaMode, anyExtension,
+                 perlMode, pythonMode, javaMode, jsonMode, anyExtension,
                  extensionOrContentsMatch, linearSyntaxMode,
                  svnCommitMode, hookModes, applyModeHooks,
                  lookupMode, whitespaceMode, removeAnnots,
@@ -35,6 +35,7 @@ import qualified Yi.Lexer.Ott        as Ott
 import qualified Yi.Lexer.Perl       as Perl
 import qualified Yi.Lexer.Python     as Python
 import qualified Yi.Lexer.Java       as Java
+import qualified Yi.Lexer.JSON       as JSON
 import qualified Yi.Lexer.Ruby       as Ruby
 import qualified Yi.Lexer.Srmc       as Srmc
 import qualified Yi.Lexer.SVNCommit  as SVNCommit
@@ -47,8 +48,10 @@ type TokenBasedMode tok = Mode (Tree (Tok tok))
 type StyleBasedMode = TokenBasedMode StyleName
 
 fundamentalMode :: Mode syntax
-svnCommitMode, cMode, objectiveCMode, cppMode, cabalMode, srmcMode, ottMode, gnuMakeMode, perlMode, pythonMode, javaMode, rubyMode :: StyleBasedMode
-ocamlMode :: TokenBasedMode (OCaml.Token)
+svnCommitMode, cMode, objectiveCMode, cppMode, cabalMode,
+  srmcMode, ottMode, gnuMakeMode, perlMode, pythonMode,
+  javaMode, jsonMode, rubyMode :: StyleBasedMode
+ocamlMode :: TokenBasedMode OCaml.Token
 
 fundamentalMode = emptyMode
   { 
@@ -160,6 +163,12 @@ javaMode = (linearSyntaxMode Java.initState Java.alexScanToken id)
   {
     modeName = "java",
     modeApplies = anyExtension ["java"]
+  }
+
+jsonMode = (linearSyntaxMode JSON.initState JSON.alexScanToken id)
+  {
+    modeName = "json",
+    modeApplies = anyExtension ["json"]
   }
 
 isMakefile :: FilePath -> String -> Bool
