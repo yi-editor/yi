@@ -1,3 +1,31 @@
+
+{- This file aims to provide (the essential subset of) the same functionality
+   that vim plugins ctrlp and command-t provide.
+
+   Setup:
+
+     Add something like this to your config:
+
+       (ctrlCh 'p' ?>>! fuzzyOpen)
+
+   Usage:
+
+     <C-p> (or whatever mapping user chooses) starts fuzzy open dialog.
+
+     Typing something filters filelist.
+
+     <Enter> opens currently selected file
+     in current (the one that fuzzyOpen was initited from) window.
+
+     <C-t> opens currently selected file in a new tab.
+     <C-s> opens currently selected file in a split.
+
+     <KUp> and <C-p> moves selection up
+     <KDown> and <C-n> moves selection down
+
+     Readline shortcuts <C-a> , <C-e>, <C-u> and <C-k> work as usual.
+-}
+
 module Yi.FuzzyOpen
     ( fuzzyOpen
     ) where
@@ -23,6 +51,7 @@ fuzzyOpen = do
     withEditor $ spawnMinibufferE "" $ const $ localKeymap bufRef fileList
     return ()
 
+-- shamelessly stolen from Chapter 9 of Real World Haskell
 getRecursiveContents :: FilePath -> IO [FilePath]
 getRecursiveContents topdir = do
     names <- getDirectoryContents topdir
@@ -61,11 +90,15 @@ localKeymap bufRef fileList =
           updatingB bufAction = withBuffer bufAction >> update
           updatingE editorAction = withEditor editorAction >> update
 
-insertChar :: Keymap
-insertChar = textChar >>= write . insertB
-
 showFileList :: [FilePath] -> String
 showFileList = concat . intersperse "\n" . map ("  " ++)
+
+{- Implementation detail:
+   The index of selected file is stored as vertical cursor position.
+   Asterisk position is always synchronized with cursor position.
+
+   TODO: store index of selected file explicitly to make things more obvious.
+-}
 
 updateMatchList :: BufferRef -> [FilePath] -> YiM ()
 updateMatchList bufRef fileList = do
@@ -102,6 +135,7 @@ openRoutine preOpenAction bufRef = do
         preOpenAction
     discard $ editFile chosenFile
 
+-- TODO: This function looks like it belongs to Yi.Buffer.Misc
 getLine :: BufferM String
 getLine = do
     moveToSol
@@ -110,19 +144,23 @@ getLine = do
     p1 <- pointB
     nelemsB (fromPoint p1 - fromPoint p0) p0
 
+-- stolen from Yi.Keymap.Vim
 -- | Parse any character that can be inserted in the text.
 textChar :: KeymapM Char
 textChar = do
   Event (KASCII c) [] <- anyEvent
   return c
 
-moveSelectionUp :: BufferRef -> EditorM () 
+insertChar :: Keymap
+insertChar = textChar >>= write . insertB
+
+moveSelectionUp :: BufferRef -> EditorM ()
 moveSelectionUp bufRef = withGivenBuffer0 bufRef $ do
     replaceCurrentChar ' '
     lineUp
     replaceCurrentChar '*'
-    
-moveSelectionDown :: BufferRef -> EditorM () 
+
+moveSelectionDown :: BufferRef -> EditorM ()
 moveSelectionDown bufRef = withGivenBuffer0 bufRef $ do
     replaceCurrentChar ' '
     lineDown
