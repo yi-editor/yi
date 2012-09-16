@@ -244,19 +244,30 @@ isearchFunE fun = do
   printMsg $ "I-search: " ++ current
   setRegexE srch
   prevPoint <- withBuffer0 pointB
-  mp <- withBuffer0 $ do
+  matches <- withBuffer0 $ do
       moveTo $ regionStart p0
       when (direction == Backward) $
          moveN $ length current
       regexB direction srch
-  case mp of
-    [] -> do withBuffer0 $ moveTo prevPoint -- go back to where we were
-             setDynamic $ Isearch ((current,p0,direction):s)
-             printMsg $ "Failing I-search: " ++ current
-    (p:_) -> do
-                  withBuffer0 $ do
-                    moveTo (regionEnd p)
-                  setDynamic $ Isearch ((current,p,direction):s)
+
+  let onSuccess p = do withBuffer0 $ moveTo (regionEnd p)
+                       setDynamic $ Isearch ((current,p,direction):s)
+
+  case matches of
+    (p:_) -> onSuccess p
+    [] -> do matchesAfterWrap <- withBuffer0 $ do
+               case direction of
+                 Forward -> moveTo 0
+                 Backward -> do
+                   bufferLength <- sizeB
+                   moveTo bufferLength
+               regexB direction srch
+
+             case matchesAfterWrap of
+               (p:_) -> onSuccess p
+               [] -> do withBuffer0 $ moveTo prevPoint -- go back to where we were
+                        setDynamic $ Isearch ((current,p0,direction):s)
+                        printMsg $ "Failing I-search: " ++ current
                  
 isearchDelE :: EditorM ()
 isearchDelE = do
@@ -334,9 +345,10 @@ iSearch = "isearch"
 isearchEnd :: Bool -> EditorM ()
 isearchEnd accept = do
   Isearch s <- getDynamic
-  let (lastSearched,_,_) = head s
+  let (lastSearched,_,dir) = head s
   let (_,p0,_) = last s
   historyFinishGen iSearch (return lastSearched)
+  putA searchDirectionA dir
   if accept 
      then do withBuffer0 $ setSelectionMarkPointB $ regionStart p0 
              printMsg "Quit"
