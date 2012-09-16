@@ -1261,16 +1261,18 @@ exMode self prompt = do
                       -- current buffer is minibuffer
                       -- actual file is in the second buffer in bufferStack
                       bufferRef <- withEditor $ gets (head . drop 1 . bufferStack)
-                      maybeCurrentFileName <- withGivenBuffer bufferRef (gets file)
+                      currentFileName <- withGivenBuffer bufferRef $
+                          fmap bufInfoFileName bufInfoB
 
-                      case maybeCurrentFileName of
-                        Just fn -> withBuffer $ do
-                            -- now modifying minibuffer
-                            point <- pointB
-                            deleteNAt Forward 1 (point-1)
-                            insertN fn
+                      let sanitizedFileName = case currentFileName of
+                                              ('/':'/':f) -> '/':f
+                                              otherwise -> currentFileName
 
-                        Nothing -> return ()
+                      -- now modifying minibuffer
+                      withBuffer $ do
+                          point <- pointB
+                          deleteNAt Forward 1 (point-1)
+                          insertN sanitizedFileName
                    | otherwise = exFileNameComplete f
 
       b_complete = exSimpleComplete matchingBufferNames
