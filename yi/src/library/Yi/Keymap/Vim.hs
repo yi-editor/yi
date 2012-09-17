@@ -59,7 +59,7 @@ import System.PosixCompat.Files (fileExist)
 #else
 import System.Posix (fileExist)
 #endif
-import System.FilePath (FilePath, takeFileName)
+import System.FilePath (takeFileName)
 import System.Directory (getCurrentDirectory, setCurrentDirectory)
 
 import Control.Monad.State hiding (mapM_, mapM, sequence)
@@ -83,6 +83,7 @@ import Yi.Tag
 import Yi.Window (bufkey)
 import Yi.Hoogle (hoogle, hoogleSearch)
 import qualified Codec.Binary.UTF8.String as UTF8
+import Yi.Keymap.Readline
 import Yi.Keymap.Vim.TagStack
 
 
@@ -1236,7 +1237,8 @@ exMode self prompt = do
                      ,spec KRight ?>>! moveXorEol 1
                      ,ctrlCh 'w'  ?>>! actionAndHistoryPrefix $ deleteB unitWord Backward
                      ,ctrlCh 'u'  ?>>! moveToSol >> deleteToEol]
-             <|| (insertChar >>! setHistoryPrefix)
+          <|| standardMovementBindings
+          <|| (insertChar >>! setHistoryPrefix)
       actionAndHistoryPrefix act = do
         discard $ withBuffer0 $ act
         setHistoryPrefix
@@ -1265,8 +1267,8 @@ exMode self prompt = do
                           fmap bufInfoFileName bufInfoB
 
                       let sanitizedFileName = case currentFileName of
-                                              ('/':'/':f) -> '/':f
-                                              otherwise -> currentFileName
+                                              ('/':'/':f') -> '/':f'
+                                              _ -> currentFileName
 
                       -- now modifying minibuffer
                       withBuffer $ do
