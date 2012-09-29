@@ -107,14 +107,8 @@ updateMatchList bufRef fileList = do
     withEditor $ withGivenBuffer0 bufRef $ do
         replaceBufferContent $ showFileList filteredFiles
         moveTo 0
-        replaceCurrentChar '*'
+        replaceCharB '*'
     return ()
-
-replaceCurrentChar :: Char -> BufferM ()
-replaceCurrentChar c = do
-    deleteN 1
-    insertB c
-    leftB
 
 openInThisWindow :: BufferRef -> YiM ()
 openInThisWindow = openRoutine (return ())
@@ -147,12 +141,12 @@ insertChar = textChar >>= write . insertB
 
 moveSelectionUp :: BufferRef -> EditorM ()
 moveSelectionUp bufRef = withGivenBuffer0 bufRef $ do
-    replaceCurrentChar ' '
+    replaceCharB ' '
     lineUp
-    replaceCurrentChar '*'
+    replaceCharB '*'
 
 moveSelectionDown :: BufferRef -> EditorM ()
 moveSelectionDown bufRef = withGivenBuffer0 bufRef $ do
-    replaceCurrentChar ' '
+    replaceCharB ' '
     lineDown
-    replaceCurrentChar '*'
+    replaceCharB '*'
