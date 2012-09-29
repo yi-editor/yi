@@ -37,12 +37,12 @@ infixMatch :: String -> String -> Maybe String
 infixMatch needle haystack = fmap (\n -> drop n haystack) $ findIndex (needle `isPrefixOf`) (tails haystack)
 
 -- | Example: "abc" matches "a1b2c"
-subsequenceMatch :: String -> String -> Maybe String
+subsequenceMatch :: String -> String -> Bool
 subsequenceMatch needle haystack = go needle haystack
   where go (n:ns) (h:hs) | n == h = go ns hs
         go (n:ns) (h:hs) | n /= h = go (n:ns) hs
-        go [] _ = Just haystack
-        go _ [] = Nothing
+        go [] _ = True
+        go _ [] = False
 
 containsMatch' :: Bool -> String -> String -> Maybe String
 containsMatch' caseSensitive pattern str = fmap (const str) $ find (pattern `tstPrefix`) (tails str)

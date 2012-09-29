@@ -103,7 +103,7 @@ showFileList = concat . intersperse "\n" . map ("  " ++)
 updateMatchList :: BufferRef -> [FilePath] -> YiM ()
 updateMatchList bufRef fileList = do
     needle <- withBuffer elemsB
-    let filteredFiles = filter (isJust . subsequenceMatch needle) fileList
+    let filteredFiles = filter (subsequenceMatch needle) fileList
     withEditor $ withGivenBuffer0 bufRef $ do
         replaceBufferContent $ showFileList filteredFiles
         moveTo 0
