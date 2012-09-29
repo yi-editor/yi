@@ -1764,12 +1764,6 @@ gotoTag opts tag =
         discard $ withBuffer' $ gotoLn line
         return ()
 
--- | Parse any character that can be inserted in the text.
-textChar :: KeymapM Char
-textChar = do
-  Event (KASCII c) [] <- anyEvent
-  return c
-
 -- | Call continuation @act@ with the TagTable. Uses the global table
 -- and prompts the user if it doesn't exist
 visitTagTable :: (TagTable -> YiM ()) -> YiM ()

@@ -129,13 +129,6 @@ openRoutine preOpenAction bufRef = do
         preOpenAction
     discard $ editFile chosenFile
 
--- stolen from Yi.Keymap.Vim
--- | Parse any character that can be inserted in the text.
-textChar :: KeymapM Char
-textChar = do
-  Event (KASCII c) [] <- anyEvent
-  return c
-
 insertChar :: Keymap
 insertChar = textChar >>= write . insertB
 

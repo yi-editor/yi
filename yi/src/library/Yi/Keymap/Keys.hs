@@ -7,7 +7,8 @@ module Yi.Keymap.Keys
     (
      module Yi.Event,
      module Yi.Interact,
-     printableChar, charOf, shift, meta, ctrl, super, hyper, spec, char,
+     printableChar, textChar,
+     charOf, shift, meta, ctrl, super, hyper, spec, char,
      (>>!), (>>=!), (?>>), (?>>!), (?*>>), (?*>>!),
      ctrlCh, metaCh, hyperCh,
      optMod,
@@ -29,6 +30,13 @@ printableChar = do
   when (not $ isPrint c) $ 
        fail "unprintable character"
   return c
+
+-- | Parse any character that can be inserted in the text.
+textChar :: KeymapM Char
+textChar = do
+    -- Why only ASCII?
+    Event (KASCII c) [] <- anyEvent
+    return c
 
 pString :: (MonadInteract m w Event) => String -> m [Event] 
 pString = events . map char
