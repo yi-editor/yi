@@ -121,11 +121,9 @@ openInNewTab = openRoutine newTabE
 
 openRoutine :: EditorM () -> BufferRef -> YiM ()
 openRoutine preOpenAction bufRef = do
-    chosenFile <- fmap (drop 2) $ withEditor $ withGivenBuffer0 bufRef $ do
-        moveTo 0
-        readLnB
+    chosenFile <- fmap (drop 2) $ withEditor $ withGivenBuffer0 bufRef readLnB
     withEditor $ do
-        replicateM 2 closeBufferAndWindowE
+        replicateM_ 2 closeBufferAndWindowE
         preOpenAction
     discard $ editFile chosenFile
 
