@@ -129,20 +129,11 @@ openRoutine :: EditorM () -> BufferRef -> YiM ()
 openRoutine preOpenAction bufRef = do
     chosenFile <- fmap (drop 2) $ withEditor $ withGivenBuffer0 bufRef $ do
         moveTo 0
-        getLine
+        readLnB
     withEditor $ do
         replicateM 2 closeBufferAndWindowE
         preOpenAction
     discard $ editFile chosenFile
-
--- TODO: This function looks like it belongs to Yi.Buffer.Misc
-getLine :: BufferM String
-getLine = do
-    moveToSol
-    p0 <- pointB
-    moveToEol
-    p1 <- pointB
-    nelemsB (fromPoint p1 - fromPoint p0) p0
 
 -- stolen from Yi.Keymap.Vim
 -- | Parse any character that can be inserted in the text.
