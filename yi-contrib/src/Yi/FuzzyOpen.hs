@@ -35,7 +35,7 @@ import Yi
 import Yi.MiniBuffer
 import Yi.Completion
 
-import Control.Monad (replicateM)
+import Control.Monad (replicateM, replicateM_)
 import Control.Monad.Trans (liftIO)
 import System.Directory (doesDirectoryExist, getDirectoryContents)
 import System.FilePath (FilePath, (</>))
