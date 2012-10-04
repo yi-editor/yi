@@ -174,17 +174,20 @@ layout ui e = do
       niceCmd = arrangeItems cmd cols (maxStatusHeight e)
       cmdHeight = length niceCmd
       ws' = applyHeights (computeHeights (rows - tabBarHeight - cmdHeight + 1) ws) ws
-      ws'' = fmap (apply . discardOldRegion) ws'
       discardOldRegion w = w { winRegion = emptyRegion }
                            -- Discard this field, otherwise we keep retaining reference to
                            -- old Window objects (leak)
-      apply win = win {
-          winRegion   = getRegionImpl win (configUI $ config ui) e cols (height win)
-          --
-         ,actualLines = windowLinesDisp win (configUI $ config ui) e cols (height win) 
-        }
 
+  let apply :: Window -> IO Window
+      apply win = do
+        let uiconfig = configUI $ config ui
+        newWinRegion <- return $! getRegionImpl win uiconfig e cols (height win)
+        newActualLines <- return $! windowLinesDisp win uiconfig e cols (height win)
+        return $! win { winRegion = newWinRegion, actualLines = newActualLines }
+
+  ws'' <- mapM (apply . discardOldRegion) ws'
   return $ windowsA ^= ws'' $ e
+  -- return $ windowsA ^= forcePL ws'' $ e
 
 -- Do Vty layout inside the Yi event loop
 layoutAction :: (MonadEditor m, MonadIO m) => UI -> m ()
@@ -262,9 +265,9 @@ windowLinesDisp win cfg e w h = dispCount
 
 getRegionImpl :: Window -> UIConfig -> Editor -> Int -> Int -> Region
 getRegionImpl win cfg e w h = region
-  where (_,region,_) = drawWindow cfg e (error "focus must not be used")  win w h
+  where (_,region,_) = drawWindow cfg e (error "focus must not be used") win w h
 
--- | Return a rendered wiew of the window.
+-- | Return a rendered view of the window.
 renderWindow :: UIConfig -> Editor -> Int -> (Window, Bool) -> Rendered
 renderWindow cfg e width (win,hasFocus) =
     let (rendered,_,_) = drawWindow cfg e hasFocus win width (height win)
