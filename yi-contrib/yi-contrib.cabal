@@ -28,6 +28,7 @@ library
     Yi.Config.Users.Reiner
     Yi.Style.Misc
     Yi.Templates
+    Yi.FuzzyOpen
 
   build-depends:
     base >=4.0 && <5,
@@ -36,4 +37,5 @@ library
     directory < 1.2,
     filepath < 1.4,
     split ==0.1.*,
-    yi == 0.6.6.0
+    mtl >= 0.1.0.1,
+    yi == 0.6.6.1
