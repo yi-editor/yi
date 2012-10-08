@@ -115,7 +115,9 @@ viWrite = do
             bufInfo <- withBuffer bufInfoB
             let s   = bufInfoFileName bufInfo
             fwriteE
-            msgEditor $ show f ++ " " ++ show s ++ " written"
+            let message = if f == s then show f ++ " written"
+                                    else show f ++ " " ++ show s ++ " written"
+            msgEditor message
 
 -- | Try to write to a named file in the manner of vi\/vim
 viWriteTo :: String -> YiM ()
@@ -123,7 +125,9 @@ viWriteTo f = do
     bufInfo <- withBuffer bufInfoB
     let s   = bufInfoFileName bufInfo
     fwriteToE f
-    msgEditor $ show f++" "++show s ++ " written"
+    let message = if f == s then show f ++ " written"
+                            else show f ++ " " ++ show s ++ " written"
+    msgEditor message
 
 -- | Try to write to a named file if it doesn't exist. Error out if it does.
 viSafeWriteTo :: String -> YiM ()

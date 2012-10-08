@@ -168,6 +168,7 @@ defaultConfig =
                         AnyMode pythonMode,
                         AnyMode rubyMode,
                         AnyMode javaMode,
+                        AnyMode jsonMode,
                         AnyMode ireaderMode,
                         AnyMode svnCommitMode,
                         AnyMode gitCommitMode,
@@ -175,6 +176,7 @@ defaultConfig =
                         AnyMode fundamentalMode]
          , debugMode = False
          , configKillringAccumulate = False
+         , configCheckExternalChangesObsessively = True
          , configRegionStyle = Exclusive
          , configInputPreprocess = I.idAutomaton
          , bufferUpdateHandler = []

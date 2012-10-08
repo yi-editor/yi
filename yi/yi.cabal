@@ -127,6 +127,7 @@ library
     Yi.Keymap.Emacs.KillRing
     Yi.Keymap.Emacs.Utils
     Yi.Keymap.Keys
+    Yi.Keymap.Readline
     Yi.Keymap.Vim
     Yi.Keymap.Vim.TagStack
     Yi.KillRing
@@ -141,6 +142,7 @@ library
     Yi.Lexer.Haskell
     Yi.Lexer.JavaScript
     Yi.Lexer.Java
+    Yi.Lexer.JSON
     Yi.Lexer.Latex
     Yi.Lexer.LiterateHaskell
     Yi.Lexer.GitCommit

@@ -140,6 +140,7 @@ module Yi.Buffer.Misc
   , BufferId
   , file
   , lastSyncTimeA
+  , replaceCharB
   )
 where
 
@@ -971,6 +972,12 @@ readAtB i = do
     return $ case s of
                [c] -> c
                _ -> '\0'
+
+replaceCharB :: Char -> BufferM ()
+replaceCharB c = do
+    deleteN 1
+    insertB c
+    leftB
 
 -- | Delete @n@ characters forward from the current point
 deleteN :: Int -> BufferM ()

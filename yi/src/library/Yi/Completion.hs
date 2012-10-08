@@ -6,6 +6,7 @@ module Yi.Completion
   , completeInListCustomShow
   , commonPrefix
   , prefixMatch, infixMatch
+  , subsequenceMatch
   , containsMatch', containsMatch, containsMatchCaseInsensitive
   , mkIsPrefixOf
   )
@@ -34,6 +35,14 @@ prefixMatch prefix s = if prefix `isPrefixOf` s then Just s else Nothing
 -- | Infix matching function, for use with 'completeInList'
 infixMatch :: String -> String -> Maybe String
 infixMatch needle haystack = fmap (\n -> drop n haystack) $ findIndex (needle `isPrefixOf`) (tails haystack)
+
+-- | Example: "abc" matches "a1b2c"
+subsequenceMatch :: String -> String -> Bool
+subsequenceMatch needle haystack = go needle haystack
+  where go (n:ns) (h:hs) | n == h = go ns hs
+        go (n:ns) (h:hs) | n /= h = go (n:ns) hs
+        go [] _ = True
+        go _ [] = False
 
 containsMatch' :: Bool -> String -> String -> Maybe String
 containsMatch' caseSensitive pattern str = fmap (const str) $ find (pattern `tstPrefix`) (tails str)
