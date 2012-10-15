@@ -130,6 +130,11 @@ library
     Yi.Keymap.Readline
     Yi.Keymap.Vim
     Yi.Keymap.Vim.TagStack
+    Yi.Keymap.Vim2
+    Yi.Keymap.Vim2.Common
+    Yi.Keymap.Vim2.InsertMap
+    Yi.Keymap.Vim2.NormalMap
+    Yi.Keymap.Vim2.Utils
     Yi.KillRing
     Yi.Layout
     Yi.Lexer.Abella
