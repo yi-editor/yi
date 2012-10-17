@@ -59,7 +59,7 @@ import System.PosixCompat.Files (fileExist)
 #else
 import System.Posix (fileExist)
 #endif
-import System.FilePath (FilePath, takeFileName)
+import System.FilePath (takeFileName)
 import System.Directory (getCurrentDirectory, setCurrentDirectory)
 
 import Control.Monad.State hiding (mapM_, mapM, sequence)
@@ -83,6 +83,7 @@ import Yi.Tag
 import Yi.Window (bufkey)
 import Yi.Hoogle (hoogle, hoogleSearch)
 import qualified Codec.Binary.UTF8.String as UTF8
+import Yi.Keymap.Readline
 import Yi.Keymap.Vim.TagStack
 
 
@@ -1236,7 +1237,8 @@ exMode self prompt = do
                      ,spec KRight ?>>! moveXorEol 1
                      ,ctrlCh 'w'  ?>>! actionAndHistoryPrefix $ deleteB unitWord Backward
                      ,ctrlCh 'u'  ?>>! moveToSol >> deleteToEol]
-             <|| (insertChar >>! setHistoryPrefix)
+          <|| standardMovementBindings
+          <|| (insertChar >>! setHistoryPrefix)
       actionAndHistoryPrefix act = do
         discard $ withBuffer0 $ act
         setHistoryPrefix
@@ -1261,16 +1263,18 @@ exMode self prompt = do
                       -- current buffer is minibuffer
                       -- actual file is in the second buffer in bufferStack
                       bufferRef <- withEditor $ gets (head . drop 1 . bufferStack)
-                      maybeCurrentFileName <- withGivenBuffer bufferRef (gets file)
+                      currentFileName <- withGivenBuffer bufferRef $
+                          fmap bufInfoFileName bufInfoB
 
-                      case maybeCurrentFileName of
-                        Just fn -> withBuffer $ do
-                            -- now modifying minibuffer
-                            point <- pointB
-                            deleteNAt Forward 1 (point-1)
-                            insertN fn
+                      let sanitizedFileName = case currentFileName of
+                                              ('/':'/':f') -> '/':f'
+                                              _ -> currentFileName
 
-                        Nothing -> return ()
+                      -- now modifying minibuffer
+                      withBuffer $ do
+                          point <- pointB
+                          deleteNAt Forward 1 (point-1)
+                          insertN sanitizedFileName
                    | otherwise = exFileNameComplete f
 
       b_complete = exSimpleComplete matchingBufferNames
@@ -1759,12 +1763,6 @@ gotoTag opts tag =
         viFnewE filename
         discard $ withBuffer' $ gotoLn line
         return ()
-
--- | Parse any character that can be inserted in the text.
-textChar :: KeymapM Char
-textChar = do
-  Event (KASCII c) [] <- anyEvent
-  return c
 
 -- | Call continuation @act@ with the TagTable. Uses the global table
 -- and prompts the user if it doesn't exist

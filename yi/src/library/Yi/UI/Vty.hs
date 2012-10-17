@@ -46,14 +46,15 @@ data Rendered =
              , cursor  :: !(Maybe (Int,Int)) -- ^ cursor point on the above
              }
 
-data UI = UI {  vty       :: Vty             -- ^ Vty
-             , scrsize    :: IORef (Int,Int) -- ^ screen size
-             , uiThread   :: ThreadId
-             , uiEnd      :: MVar ()
-             , uiRefresh  :: MVar ()
-             , uiEditor   :: IORef Editor    -- ^ Copy of the editor state, local to the UI, used to show stuff when the window is resized.
-             , config     :: Config
-             , oAttrs     :: TerminalAttributes
+data UI = UI {  vty            :: Vty             -- ^ Vty
+             , scrsize         :: IORef (Int,Int) -- ^ screen size
+             , uiThread        :: ThreadId
+             , uiEndInputLoop  :: MVar ()
+             , uiEndRenderLoop :: MVar ()
+             , uiEditor        :: IORef Editor    -- ^ Copy of the editor state, local to the UI, used to show stuff when the window is resized.
+             , uiDirty         :: MVar ()         -- ^ used to trigger redraw in renderLoop
+             , config          :: Config
+             , oAttrs          :: TerminalAttributes
              }
 
 mkUI :: UI -> Common.UI
@@ -62,7 +63,7 @@ mkUI ui = Common.dummyUI
    Common.main           = main ui,
    Common.end            = end ui,
    Common.suspend        = raiseSignal sigTSTP,
-   Common.refresh        = refresh ui,
+   Common.refresh        = requestRefresh ui,
    Common.layout         = layout ui,
    Common.userForceRefresh = userForceRefresh ui
   }
@@ -81,51 +82,61 @@ start cfg ch outCh editor = do
           -- fork input-reading thread. important to block *thread* on getKey
           -- otherwise all threads will block waiting for input
           tid <- myThreadId
-          endUI <- newEmptyMVar
-          tuiRefresh <- newEmptyMVar
+          endInput <- newEmptyMVar
+          endRender <- newEmptyMVar
           editorRef <- newIORef editor
-          let result = UI v sz tid endUI tuiRefresh editorRef cfg oattr
+          dirty <- newEmptyMVar
+          let ui = UI v sz tid endInput endRender editorRef dirty cfg oattr
+
               -- | Action to read characters into a channel
-              getcLoop = maybe (getKey >>= ch >> getcLoop) (const (return ())) =<< tryTakeMVar endUI
+              inputLoop :: IO ()
+              inputLoop = tryTakeMVar endInput >>=
+                          maybe (getKey >>= ch >> inputLoop)
+                                (const $ return ())
 
               -- | Read a key. UIs need to define a method for getting events.
+              getKey :: IO Yi.Event.Event
               getKey = do 
                 event <- Vty.next_event v
                 case event of 
                   (EvResize x y) -> do
                       logPutStrLn $ "UI: EvResize: " ++ show (x,y)
                       writeIORef sz (y,x)
-                      outCh [makeAction (layoutAction result :: YiM ())] 
+                      outCh [makeAction (layoutAction ui :: YiM ())]
                       -- since any action will force a refresh, return () is probably 
-                      -- sufficient instead of "layoutAction result"
+                      -- sufficient instead of "layoutAction ui"
                       getKey
                   _ -> return (fromVtyEvent event)
-          discard $ forkIO getcLoop
-          return (mkUI result)
 
+              renderLoop :: IO ()
+              renderLoop = do
+                takeMVar dirty
+                tryTakeMVar endRender >>=
+                  maybe (do logPutStrLn "time to render"
+                            handle (\(except :: IOException) -> do
+                                       logPutStrLn "refresh crashed with IO Error"
+                                       logError $ show except)
+                                   (readIORef editorRef >>= refresh ui >> renderLoop))
+                        (const $ return ())
+
+          discard $ forkIO inputLoop
+          discard $ forkIO renderLoop
+
+          return (mkUI ui)
+
+-- Is there something else to do here?
+-- Previous version said "block on MVar forever" in rather obfuscated way
 main :: UI -> IO ()
-main ui = do
-  let
-      -- | When the editor state isn't being modified, refresh, then wait for
-      -- it to be modified again.
-      refreshLoop :: IO ()
-      refreshLoop = forever $ do
-                      logPutStrLn "waiting for refresh"
-                      takeMVar (uiRefresh ui)
-                      handle (\(except :: IOException) -> do
-                                 logPutStrLn "refresh crashed with IO Error"
-                                 logError $ show $ except)
-                             (readRef (uiEditor ui) >>= refresh ui >> return ())
-  logPutStrLn "refreshLoop started"
-  refreshLoop
+main _ui = forever $ threadDelay 1000000
 
 -- | Clean up and go home
 end :: UI -> Bool -> IO ()
-end i reallyQuit = do  
-  Vty.shutdown (vty i)
-  setTerminalAttributes stdInput (oAttrs i) Immediately
-  discard $ tryPutMVar (uiEnd i) ()
-  when reallyQuit $ throwTo (uiThread i) ExitSuccess
+end ui reallyQuit = do
+  Vty.shutdown (vty ui)
+  setTerminalAttributes stdInput (oAttrs ui) Immediately
+  discard $ tryPutMVar (uiEndInputLoop ui) ()
+  discard $ tryPutMVar (uiEndRenderLoop ui) ()
+  when reallyQuit $ throwTo (uiThread ui) ExitSuccess
   return ()
 
 fromVtyEvent :: Vty.Event -> Yi.Event.Event
@@ -174,23 +185,31 @@ layout ui e = do
       niceCmd = arrangeItems cmd cols (maxStatusHeight e)
       cmdHeight = length niceCmd
       ws' = applyHeights (computeHeights (rows - tabBarHeight - cmdHeight + 1) ws) ws
-      ws'' = fmap (apply . discardOldRegion) ws'
       discardOldRegion w = w { winRegion = emptyRegion }
                            -- Discard this field, otherwise we keep retaining reference to
                            -- old Window objects (leak)
-      apply win = win {
-          winRegion   = getRegionImpl win (configUI $ config ui) e cols (height win)
-          --
-         ,actualLines = windowLinesDisp win (configUI $ config ui) e cols (height win) 
-        }
 
+  let apply :: Window -> IO Window
+      apply win = do
+        let uiconfig = configUI $ config ui
+        newWinRegion <- return $! getRegionImpl win uiconfig e cols (height win)
+        newActualLines <- return $! windowLinesDisp win uiconfig e cols (height win)
+        return $! win { winRegion = newWinRegion, actualLines = newActualLines }
+
+  ws'' <- mapM (apply . discardOldRegion) ws'
   return $ windowsA ^= ws'' $ e
+  -- return $ windowsA ^= forcePL ws'' $ e
 
 -- Do Vty layout inside the Yi event loop
 layoutAction :: (MonadEditor m, MonadIO m) => UI -> m ()
 layoutAction ui = do
     withEditor . put =<< io . layout ui =<< withEditor get
     withEditor $ mapM_ (flip withWindowE snapInsB) =<< getA windowsA
+
+requestRefresh :: UI -> Editor -> IO ()
+requestRefresh ui e = do
+  writeIORef (uiEditor ui) e
+  discard $ tryPutMVar (uiDirty ui) ()
 
 -- | Redraw the entire terminal from the UI.
 refresh :: UI -> Editor -> IO ()
@@ -262,9 +281,9 @@ windowLinesDisp win cfg e w h = dispCount
 
 getRegionImpl :: Window -> UIConfig -> Editor -> Int -> Int -> Region
 getRegionImpl win cfg e w h = region
-  where (_,region,_) = drawWindow cfg e (error "focus must not be used")  win w h
+  where (_,region,_) = drawWindow cfg e (error "focus must not be used") win w h
 
--- | Return a rendered wiew of the window.
+-- | Return a rendered view of the window.
 renderWindow :: UIConfig -> Editor -> Int -> (Window, Bool) -> Rendered
 renderWindow cfg e width (win,hasFocus) =
     let (rendered,_,_) = drawWindow cfg e hasFocus win width (height win)
