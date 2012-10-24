@@ -4,10 +4,10 @@ module Yi.Keymap.Vim2
     ( keymapSet
     , mkKeymapSet
     , defModeMapProto
-    , VimBinding(..)
-    , ModeMap(..)
+    , VimBinding (..)
+    , ModeMap (..)
     ) where
-    
+
 import Prelude ()
 import Yi.Prelude
 
@@ -51,6 +51,5 @@ defVimKeymap m = do
         Just (VimBinding _ prereq action mutateState) -> write $ do
             currentState <- withEditor getDynamic
             when (prereq currentState) $ do
-              action
-              withEditor $ setDynamic $ mutateState currentState
-
+                action
+                withEditor $ setDynamic $ mutateState currentState

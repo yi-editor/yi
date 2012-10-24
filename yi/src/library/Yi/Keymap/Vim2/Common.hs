@@ -45,11 +45,15 @@ $(derive makeBinary ''VimState)
 
 instance YiVariable VimState
 
-data VimBinding = VimBinding {
-        vbPrerequisite :: Event -> VimState -> Bool,
-        vbYiAction :: YiM (),
-        vbUpdateState :: VimState -> VimState
-    }
+-- Distinction between YiM and EditorM variants is for testing.
+data VimBinding = VimBindingY {
+                      vbyPrerequisite :: Event -> VimState -> Bool,
+                      vbyAction :: YiM (Maybe VimState),
+                  }
+                | VimBindingE {
+                      vbePrerequisite :: Event -> VimState -> Bool,
+                      vbeAction :: EditorM (Maybe VimState),
+                  }
 
 data Operator = Operator
 
