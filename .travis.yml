@@ -1,1 +1,3 @@
 language: haskell
+before_install: "cd yi"
+install: "cabal install -fpango"
