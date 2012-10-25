@@ -1,7 +1,11 @@
 language: haskell
 before_install:
- - cd yi
  - cabal install alex
  - cabal install happy
  - cabal install gtk2hs-buildtools
-install: "cabal install -fpango"
+install: 
+ - cd yi
+ - cabal install -fpango
+ - cd -
+ - cd yi-contrib
+ - cabal install
