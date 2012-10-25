@@ -9,3 +9,10 @@ install:
  - cd -
  - cd yi-contrib
  - cabal install
+notifications:
+  irc:
+    channels:
+      - "irc.freenode.org#yi"
+  email:
+    recipients:
+      - yi-devel@googlegroups.com
