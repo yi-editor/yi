@@ -1,8 +1,10 @@
 module Yi.Keymap.Vim2.Utils
-  ( mkBinding
+  ( mkBindingE
+  , mkBindingY
   , switchMode
   , resetCount
   , vimMoveE
+  , isBindingApplicable
   ) where
 
 import Yi.Prelude
@@ -11,14 +13,26 @@ import Prelude ()
 import Data.Maybe (fromMaybe)
 
 import Yi.Buffer
-import Yi.Event
 import Yi.Editor
+import Yi.Event
 import Yi.Keymap
 import Yi.Keymap.Vim2.Common
 
-mkBinding :: VimMode -> (Event, YiM (), VimState -> VimState) -> VimBinding
-mkBinding mode (event, action, mutate) = VimBinding event prereq action mutate
-    where prereq (VimState m _) = m == mode
+mkBindingE :: VimMode -> (Event, EditorM (), VimState -> VimState) -> VimBinding
+mkBindingE mode (event, action, mutate) = VimBindingE prereq combinedAction
+    where prereq ev (VimState m _) = m == mode && ev == event
+          combinedAction = do
+              currentState <- getDynamic
+              action
+              setDynamic $ mutate currentState
+
+mkBindingY :: VimMode -> (Event, YiM (), VimState -> VimState) -> VimBinding
+mkBindingY mode (event, action, mutate) = VimBindingY prereq combinedAction
+    where prereq ev (VimState m _) = m == mode && ev == event
+          combinedAction = do
+              currentState <- withEditor $ getDynamic
+              action
+              withEditor $ setDynamic $ mutate currentState
 
 switchMode :: VimMode -> VimState -> VimState
 switchMode mode state = state { vsMode = mode }
@@ -36,3 +50,7 @@ vimMoveE motion = do
         VMUp -> discard $ lineMoveRel (-count)
         VMDown -> discard $ lineMoveRel count
       leftOnEol
+
+isBindingApplicable :: Event -> VimState -> VimBinding -> Bool
+isBindingApplicable e s (VimBindingE prereq _) = prereq e s
+isBindingApplicable e s (VimBindingY prereq _) = prereq e s

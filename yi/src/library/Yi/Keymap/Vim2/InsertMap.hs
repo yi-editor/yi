@@ -11,6 +11,6 @@ import Yi.Keymap.Vim2.Common
 import Yi.Keymap.Vim2.Utils
 
 defInsertMap :: [VimBinding]
-defInsertMap = fmap (mkBinding Insert)
+defInsertMap = fmap (mkBindingE Insert)
                  [ (spec KEsc, return (), switchMode Normal)
                  ]

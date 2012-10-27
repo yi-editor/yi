@@ -6,6 +6,7 @@ module Yi.Keymap.Vim2
     , defModeMapProto
     , VimBinding (..)
     , ModeMap (..)
+    , allBindings
     ) where
 
 import Prelude ()
@@ -19,7 +20,7 @@ import Yi.Keymap.Keys
 import Yi.Keymap.Vim2.Common
 import Yi.Keymap.Vim2.NormalMap
 import Yi.Keymap.Vim2.InsertMap
-
+import Yi.Keymap.Vim2.Utils
 
 data ModeMap = ModeMap {
         vimKeymap :: Keymap,
@@ -42,14 +43,18 @@ defModeMapProto = Proto template
                           }
 
 defVimKeymap :: ModeMap -> KeymapM ()
-defVimKeymap m = do
+defVimKeymap mm = do
     e <- anyEvent
-    let maybeBinding = find ((== e) . vbEvent) allBindings
-        allBindings = normalMap m ++ insertMap m
+    write $ handleEvent mm e
+
+handleEvent :: ModeMap -> Event -> YiM ()
+handleEvent mm e = do
+    currentState <- withEditor getDynamic
+    let maybeBinding = find (isBindingApplicable e currentState) (allBindings mm)
     case maybeBinding of
         Nothing -> fail $ "unhandled event " ++ show e
-        Just (VimBinding _ prereq action mutateState) -> write $ do
-            currentState <- withEditor getDynamic
-            when (prereq currentState) $ do
-                action
-                withEditor $ setDynamic $ mutateState currentState
+        Just (VimBindingY _ action) -> action
+        Just (VimBindingE _ action) -> withEditor action
+
+allBindings :: ModeMap -> [VimBinding]
+allBindings m = normalMap m ++ insertMap m

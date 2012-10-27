@@ -15,6 +15,7 @@ import Data.DeriveTH
 
 import Yi.Buffer hiding (Insert)
 import Yi.Dynamic
+import Yi.Editor
 import Yi.Event
 import Yi.Keymap
 
@@ -48,11 +49,11 @@ instance YiVariable VimState
 -- Distinction between YiM and EditorM variants is for testing.
 data VimBinding = VimBindingY {
                       vbyPrerequisite :: Event -> VimState -> Bool,
-                      vbyAction :: YiM (Maybe VimState),
+                      vbyAction :: YiM ()
                   }
                 | VimBindingE {
                       vbePrerequisite :: Event -> VimState -> Bool,
-                      vbeAction :: EditorM (Maybe VimState),
+                      vbeAction :: EditorM ()
                   }
 
 data Operator = Operator
