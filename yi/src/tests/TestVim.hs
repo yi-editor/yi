@@ -1,10 +1,14 @@
 module Main where
 
-import Data.List (foldl', find)
+import Control.Monad (filterM, forM, void)
+
+import Data.List (foldl', find, sort, isSuffixOf)
 import Data.Prototype (extractValue)
 
 import System.Directory
 import System.FilePath
+
+import Text.Printf
 
 import Yi.Buffer.Misc
 import Yi.Config.Default (defaultVimConfig)
@@ -12,9 +16,6 @@ import Yi.Editor
 import Yi.Event
 import Yi.Keymap.Keys (char)
 import Yi.Keymap.Vim2
-import Yi.Keymap.Vim2.Common
-import Yi.Keymap.Vim2.NormalMap
-import Yi.Keymap.Vim2.InsertMap
 import Yi.Keymap.Vim2.Utils
 
 data VimTest = VimTest {
@@ -44,23 +45,66 @@ handleEvent event = do
     case maybeBinding of
         Nothing -> fail $ "unhandled event " ++ show event
         Just (VimBindingE _ action) -> withEditor action
-        Just (VimBindingY _ action) -> fail "Impure binding found"
+        Just (VimBindingY _ _) -> fail "Impure binding found"
 
 parseEvents :: String -> [Event]
 parseEvents s = map char . filter (/= '\n') $ s
 
-loadTest :: FilePath -> IO VimTest
-loadTest path = do
+loadTestFromDirectory :: FilePath -> IO VimTest
+loadTestFromDirectory path = do
     input <- readFile $ path </> "input"
     output <- readFile $ path </> "output"
     events <- fmap parseEvents $ readFile $ path </> "events"
     return $ VimTest (takeBaseName path) input output events
 
+loadTestFromFile :: FilePath -> IO VimTest
+loadTestFromFile path = do
+    text <- readFile path
+    let ls = tail $ lines text
+        (input, rest) = break (== "-- Output") ls
+        (output, rest2) = break (== "-- Events") $ tail rest
+        eventText = tail rest2
+    return $ VimTest (takeBaseName path) (unlines input)
+                                         (unlines output)
+                                         (parseEvents . unlines $ eventText)
+
+containsTest :: FilePath -> IO Bool
+containsTest d = do
+    files <- fmap (filter (`notElem` [".", ".."])) $ getDirectoryContents d
+    return $ sort files == ["events", "input", "output"]
+
+getRecursiveFiles :: FilePath -> IO [FilePath]
+getRecursiveFiles topdir = do
+    names <- getDirectoryContents topdir
+    let properNames = filter (`notElem` [".", "..", ".git", ".svn"]) names
+    paths <- forM properNames $ \name -> do
+        let path = topdir </> name
+        isDirectory <- doesDirectoryExist path
+        if isDirectory
+            then getRecursiveFiles path
+            else return [path]
+    return (concat paths)
+
+getRecursiveDirectories :: FilePath -> IO [FilePath]
+getRecursiveDirectories topdir = do
+    names <- getDirectoryContents topdir
+    let properNames = filter (`notElem` [".", "..", ".git", ".svn"]) names
+    paths <- forM properNames $ \name -> do
+        let path = topdir </> name
+        isDirectory <- doesDirectoryExist path
+        if isDirectory
+            then fmap (path:) $ getRecursiveDirectories path
+            else return []
+    return (concat paths)
+
 discoverTests :: IO [VimTest]
 discoverTests = do
-    testDirs <- fmap (map ("vimtests" </>) . filter (`notElem` [".", ".."])) $
-                     getDirectoryContents "vimtests"
-    mapM loadTest testDirs
+    dirs <- getRecursiveDirectories "vimtests"
+    testDirs <- filterM containsTest dirs
+    testFiles <- fmap (filter (isSuffixOf ".test")) $ getRecursiveFiles "vimtests"
+    testsFromDirs <- mapM loadTestFromDirectory testDirs
+    testsFromFiles <- mapM loadTestFromFile testFiles
+    return $ testsFromDirs ++ testsFromFiles
 
 runTest :: VimTest -> TestResult
 runTest t = if outputMatches then TestPassed (vtName t)
@@ -75,14 +119,14 @@ runTest t = if outputMatches then TestPassed (vtName t)
           cursorPos = show . snd . runEditor' (withBuffer0 $ do
                                                   l <- curLn
                                                   c <- curCol
-                                                  return (l, c))
+                                                  return (l, c + 1))
 
 initialEditor :: String -> Editor
 initialEditor input = fst $ runEditor' action  emptyEditor
     where action = withBuffer0 $ do
                        insertN text
                        let (x, y) = read cursorLine
-                       moveToLineColB y x
+                       moveToLineColB x (y - 1)
           cursorLine = head $ lines input
           text =  unlines $ tail $ lines input
 
@@ -93,8 +137,18 @@ main :: IO ()
 main = do
     tests <- discoverTests
 
-    putStrLn $ "Found " ++ show (length tests) ++ " tests:"
+    void $ printf "Found %d tests\n\n" $ length tests
 
     let results = map runTest tests
 
     mapM_ print results
+
+    let passed = length $ filter successful results
+        successful (TestPassed _) = True
+        successful _ = False
+
+    putStrLn ""
+    void $ printf "PASSED: %d\n" passed
+    void $ printf "FAILED: %d\n" $ length results - passed
+
+    return ()
