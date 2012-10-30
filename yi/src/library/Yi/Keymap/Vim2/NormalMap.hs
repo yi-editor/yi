@@ -7,6 +7,7 @@ import Prelude ()
 
 import Data.Char
 
+import Yi.Buffer hiding (Insert)
 import Yi.Core (quitEditor)
 import Yi.Editor
 import Yi.Event
@@ -24,12 +25,37 @@ defNormalMap :: [VimBinding]
 defNormalMap = [mkBindingY Normal (spec (KFun 10), quitEditor, id)] ++ pureBindings
 
 pureBindings :: [VimBinding]
-pureBindings = fmap (mkBindingE Normal) $
-         [ (char 'h', vimMoveE VMLeft, resetCount)
-         , (char 'l', vimMoveE VMRight, resetCount)
-         , (char 'j', vimMoveE VMDown, resetCount)
-         , (char 'k', vimMoveE VMUp, resetCount)
-         , (char 'i', return (), switchMode Insert)
-         , (spec KEsc, return (), resetCount)
-         ]
-         ++ fmap mkDigitBinding ['1' .. '9']
+pureBindings =
+    [zeroBinding] ++
+    fmap (mkBindingE Normal) (
+        [ (char 'h', vimMoveE (VMChar Backward), resetCount)
+        , (char 'l', vimMoveE (VMChar Forward), resetCount)
+        , (char 'j', vimMoveE (VMLine Forward), resetCount)
+        , (char 'k', vimMoveE (VMLine Backward), resetCount)
+
+        -- Word motions
+        , (char 'w', vimMoveE (VMWordStart Forward), resetCount)
+        , (char 'b', vimMoveE (VMWordStart Backward), resetCount)
+        , (char 'e', vimMoveE (VMWordEnd Forward), resetCount)
+
+        -- Intraline stuff
+        , (char '$', vimMoveE VMEOL, resetCount)
+        , (char '^', vimMoveE VMNonEmptySOL, resetCount)
+
+        , (char 'i', return (), switchMode Insert)
+        , (spec KEsc, return (), resetCount)
+        ]
+        ++ fmap mkDigitBinding ['1' .. '9']
+    )
+
+zeroBinding :: VimBinding
+zeroBinding = VimBindingE prereq action
+    where prereq ev _ = ev == char '0'
+          action = do
+              currentState <- getDynamic
+              case (vsCount currentState) of
+                  Just c -> setDynamic $ currentState { vsCount = Just (10 * c) }
+                  Nothing -> do
+                      vimMoveE VMSOL
+                      setDynamic $ resetCount currentState
+

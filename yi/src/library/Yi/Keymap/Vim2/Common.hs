@@ -58,7 +58,10 @@ data VimBinding = VimBindingY {
 
 data Operator = Operator
 
-data VimMotion = VMLeft
-               | VMRight
-               | VMDown
-               | VMUp
+data VimMotion = VMChar Direction
+               | VMLine Direction
+               | VMWordStart Direction
+               | VMWordEnd Direction
+               | VMSOL
+               | VMNonEmptySOL
+               | VMEOL

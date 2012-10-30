@@ -10,6 +10,8 @@ module Yi.Keymap.Vim2.Utils
 import Yi.Prelude
 import Prelude ()
 
+import Control.Monad (replicateM_)
+
 import Data.Maybe (fromMaybe)
 
 import Yi.Buffer
@@ -43,12 +45,22 @@ resetCount s = s { vsCount = Nothing }
 vimMoveE :: VimMotion -> EditorM ()
 vimMoveE motion = do
     count <- fmap (fromMaybe 1 . vsCount) getDynamic
+    let repeat = replicateM_ count
     withBuffer0 $ do
       case motion of
-        VMLeft -> moveXorSol count
-        VMRight -> moveXorEol count
-        VMUp -> discard $ lineMoveRel (-count)
-        VMDown -> discard $ lineMoveRel count
+        (VMChar Backward) -> moveXorSol count
+        (VMChar Forward) -> moveXorEol count
+        (VMLine Backward) -> discard $ lineMoveRel (-count)
+        (VMLine Forward) -> discard $ lineMoveRel count
+        (VMWordStart Backward) -> repeat $ moveB unitViWord Backward
+        (VMWordStart Forward) -> repeat $ genMoveB unitViWord (Backward, InsideBound) Forward
+        (VMWordEnd Backward) -> repeat $ genMoveB unitViWord (Backward, InsideBound) Backward
+        (VMWordEnd Forward) -> repeat $ genMoveB unitViWord (Forward, InsideBound) Forward
+        VMSOL -> moveToSol
+        VMEOL -> do
+            when (count > 1) $ discard $ lineMoveRel (count - 1)
+            moveToEol
+        VMNonEmptySOL -> firstNonSpaceB
       leftOnEol
 
 isBindingApplicable :: Event -> VimState -> VimBinding -> Bool
