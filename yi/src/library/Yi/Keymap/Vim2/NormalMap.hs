@@ -37,6 +37,9 @@ pureBindings =
         , (char 'w', vimMoveE (VMWordStart Forward), resetCount)
         , (char 'b', vimMoveE (VMWordStart Backward), resetCount)
         , (char 'e', vimMoveE (VMWordEnd Forward), resetCount)
+        , (char 'W', vimMoveE (VMWORDStart Forward), resetCount)
+        , (char 'B', vimMoveE (VMWORDStart Backward), resetCount)
+        , (char 'E', vimMoveE (VMWORDEnd Forward), resetCount)
 
         -- Intraline stuff
         , (char '$', vimMoveE VMEOL, resetCount)

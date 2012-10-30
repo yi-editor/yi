@@ -62,6 +62,8 @@ data VimMotion = VMChar Direction
                | VMLine Direction
                | VMWordStart Direction
                | VMWordEnd Direction
+               | VMWORDStart Direction
+               | VMWORDEnd Direction
                | VMSOL
                | VMNonEmptySOL
                | VMEOL
