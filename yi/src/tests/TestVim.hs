@@ -2,7 +2,7 @@ module Main where
 
 import Control.Monad (filterM, forM, void)
 
-import Data.List (foldl', find, sort, isSuffixOf)
+import Data.List (foldl', find, sort, isSuffixOf, intercalate)
 import Data.Prototype (extractValue)
 
 import System.Directory
@@ -24,7 +24,7 @@ data VimTest = VimTest {
                  , vtOutput :: String
                  , vtEvents :: [Event]
                }
-    deriving Show
+    deriving (Show, Eq, Ord)
 
 data TestResult = TestPassed String
                 | TestFailed String String
@@ -32,6 +32,9 @@ data TestResult = TestPassed String
 instance Show TestResult where
     show (TestPassed name) = "PASSED " ++ name
     show (TestFailed name msg) = "FAILED " ++ name ++ ":\n" ++ msg
+
+unlines' :: [String] -> String
+unlines' = intercalate "\n"
 
 allDefaultPureBindings :: [VimBinding]
 allDefaultPureBindings = filter isPure $ allBindings $ extractValue defModeMapProto
@@ -55,7 +58,7 @@ loadTestFromDirectory path = do
     input <- readFile $ path </> "input"
     output <- readFile $ path </> "output"
     events <- fmap parseEvents $ readFile $ path </> "events"
-    return $ VimTest (takeBaseName path) input output events
+    return $ VimTest (joinPath . drop 1 . splitPath $ path) input output events
 
 loadTestFromFile :: FilePath -> IO VimTest
 loadTestFromFile path = do
@@ -64,9 +67,10 @@ loadTestFromFile path = do
         (input, rest) = break (== "-- Output") ls
         (output, rest2) = break (== "-- Events") $ tail rest
         eventText = tail rest2
-    return $ VimTest (takeBaseName path) (unlines input)
-                                         (unlines output)
-                                         (parseEvents . unlines $ eventText)
+    return $ VimTest (joinPath . drop 1 . splitPath . dropExtension $ path)
+                     (unlines' input)
+                     (unlines' output)
+                     (parseEvents . unlines' $ eventText)
 
 containsTest :: FilePath -> IO Bool
 containsTest d = do
@@ -109,7 +113,7 @@ discoverTests = do
 runTest :: VimTest -> TestResult
 runTest t = if outputMatches then TestPassed (vtName t)
                              else TestFailed (vtName t) $
-                                      unlines [">>>", vtOutput t, "===", actualOut, "<<<"]
+                                      unlines ["Expected:", vtOutput t, "Got:", actualOut, "---"]
     where outputMatches = vtOutput t == actualOut
           actualOut = extractBufferString $ runEvents (vtEvents t)
           extractBufferString editor = cursorPos editor ++ "\n" ++
@@ -128,27 +132,33 @@ initialEditor input = fst $ runEditor' action  emptyEditor
                        let (x, y) = read cursorLine
                        moveToLineColB x (y - 1)
           cursorLine = head $ lines input
-          text =  unlines $ tail $ lines input
+          text = unlines' $ tail $ lines input
 
 runEditor' :: EditorM a -> Editor -> (Editor, a)
 runEditor' = runEditor defaultVimConfig
 
+runTests :: [VimTest] -> ([TestResult], [TestResult])
+runTests tests = (successes, failures)
+    where results = map runTest tests
+          successes = filter successful results
+          failures = filter (not . successful) results
+          successful (TestPassed _) = True
+          successful _ = False
+
 main :: IO ()
 main = do
-    tests <- discoverTests
+    tests <- fmap sort discoverTests
 
     void $ printf "Found %d tests\n\n" $ length tests
 
-    let results = map runTest tests
+    let (successes, failures) = runTests tests
 
-    mapM_ print results
+    mapM_ print failures
 
-    let passed = length $ filter successful results
-        successful (TestPassed _) = True
-        successful _ = False
+    let passed = length successes
 
     putStrLn ""
     void $ printf "PASSED: %d\n" passed
-    void $ printf "FAILED: %d\n" $ length results - passed
+    void $ printf "FAILED: %d\n" $ length tests - passed
 
     return ()

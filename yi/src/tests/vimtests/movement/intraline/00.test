@@ -1,0 +1,14 @@
+-- Input
+(2,2)
+abc
+eee
+cd
+ddd
+-- Output
+(2,1)
+abc
+eee
+cd
+ddd
+-- Events
+00
