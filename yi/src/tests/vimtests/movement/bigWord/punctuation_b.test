@@ -1,0 +1,8 @@
+-- Input
+(1,11)
+a-b+c"d foo
+-- Output
+(1,1)
+a-b+c"d foo
+-- Events
+BB
