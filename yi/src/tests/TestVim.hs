@@ -14,7 +14,7 @@ import Yi.Buffer.Misc
 import Yi.Config.Default (defaultVimConfig)
 import Yi.Editor
 import Yi.Event
-import Yi.Keymap.Keys (char)
+import Yi.Keymap.Keys (char, spec)
 import Yi.Keymap.Vim2
 import Yi.Keymap.Vim2.Utils
 
@@ -50,8 +50,19 @@ handleEvent event = do
         Just (VimBindingE _ action) -> withEditor action
         Just (VimBindingY _ _) -> fail "Impure binding found"
 
+parseEvents' :: String -> [Event]
+parseEvents' s = map char . filter (/= '\n') $ s
+
 parseEvents :: String -> [Event]
-parseEvents s = map char . filter (/= '\n') $ s
+parseEvents = fst . foldl' go ([], [])
+    where go (evs, s) '\n' = (evs, s)
+          go (evs, []) '<' = (evs, "<")
+          go (evs, []) c = (evs ++ [char c], [])
+          go (evs, s) '>' = (evs ++ [lookupEvent (tail s)], [])
+          go (evs, s) c = (evs, s ++ [c])
+          lookupEvent "Esc" = spec KEsc
+          lookupEvent "lt" = char '<'
+          lookupEvent _ = undefined
 
 loadTestFromDirectory :: FilePath -> IO VimTest
 loadTestFromDirectory path = do
