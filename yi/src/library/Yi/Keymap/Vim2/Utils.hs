@@ -23,7 +23,7 @@ import Yi.Keymap.Vim2.Common
 mkBindingE :: VimMode -> (Event, EditorM (), VimState -> VimState) -> VimBinding
 mkBindingE mode (event, action, mutate) = VimBindingE prereq combinedAction
     where prereq ev (VimState m _) = m == mode && ev == event
-          combinedAction = do
+          combinedAction _ = do
               currentState <- getDynamic
               action
               setDynamic $ mutate currentState
@@ -31,7 +31,7 @@ mkBindingE mode (event, action, mutate) = VimBindingE prereq combinedAction
 mkBindingY :: VimMode -> (Event, YiM (), VimState -> VimState) -> VimBinding
 mkBindingY mode (event, action, mutate) = VimBindingY prereq combinedAction
     where prereq ev (VimState m _) = m == mode && ev == event
-          combinedAction = do
+          combinedAction _ = do
               currentState <- withEditor $ getDynamic
               action
               withEditor $ setDynamic $ mutate currentState

@@ -47,11 +47,8 @@ handleEvent event = do
     let maybeBinding = find (isBindingApplicable event currentState) allDefaultPureBindings
     case maybeBinding of
         Nothing -> fail $ "unhandled event " ++ show event
-        Just (VimBindingE _ action) -> withEditor action
+        Just (VimBindingE _ action) -> withEditor $ action event
         Just (VimBindingY _ _) -> fail "Impure binding found"
-
-parseEvents' :: String -> [Event]
-parseEvents' s = map char . filter (/= '\n') $ s
 
 parseEvents :: String -> [Event]
 parseEvents = fst . foldl' go ([], [])
@@ -60,9 +57,11 @@ parseEvents = fst . foldl' go ([], [])
           go (evs, []) c = (evs ++ [char c], [])
           go (evs, s) '>' = (evs ++ [lookupEvent (tail s)], [])
           go (evs, s) c = (evs, s ++ [c])
-          lookupEvent "Esc" = spec KEsc
-          lookupEvent "lt" = char '<'
-          lookupEvent _ = undefined
+
+lookupEvent :: String -> Event
+lookupEvent "Esc" = spec KEsc
+lookupEvent "lt" = char '<'
+lookupEvent _ = undefined
 
 loadTestFromDirectory :: FilePath -> IO VimTest
 loadTestFromDirectory path = do
@@ -137,13 +136,12 @@ runTest t = if outputMatches then TestPassed (vtName t)
                                                   return (l, c + 1))
 
 initialEditor :: String -> Editor
-initialEditor input = fst $ runEditor' action  emptyEditor
+initialEditor input = fst $ runEditor' action emptyEditor
     where action = withBuffer0 $ do
                        insertN text
                        let (x, y) = read cursorLine
                        moveToLineColB x (y - 1)
-          cursorLine = head $ lines input
-          text = unlines' $ tail $ lines input
+          (cursorLine, '\n':text) = break (== '\n') input
 
 runEditor' :: EditorM a -> Editor -> (Editor, a)
 runEditor' = runEditor defaultVimConfig

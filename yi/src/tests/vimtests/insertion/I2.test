@@ -1,0 +1,8 @@
+-- Input
+(1,7)
+    foo
+-- Output
+(1,7)
+    barfoo
+-- Events
+Ibar<Esc>

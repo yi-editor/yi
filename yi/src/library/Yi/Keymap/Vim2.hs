@@ -53,8 +53,8 @@ handleEvent mm e = do
     let maybeBinding = find (isBindingApplicable e currentState) (allBindings mm)
     case maybeBinding of
         Nothing -> fail $ "unhandled event " ++ show e
-        Just (VimBindingY _ action) -> action
-        Just (VimBindingE _ action) -> withEditor action
+        Just (VimBindingY _ action) -> action e
+        Just (VimBindingE _ action) -> withEditor $ action e
 
 allBindings :: ModeMap -> [VimBinding]
 allBindings m = normalMap m ++ insertMap m

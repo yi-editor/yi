@@ -49,11 +49,11 @@ instance YiVariable VimState
 -- Distinction between YiM and EditorM variants is for testing.
 data VimBinding = VimBindingY {
                       vbyPrerequisite :: Event -> VimState -> Bool,
-                      vbyAction :: YiM ()
+                      vbyAction :: Event -> YiM ()
                   }
                 | VimBindingE {
                       vbePrerequisite :: Event -> VimState -> Bool,
-                      vbeAction :: EditorM ()
+                      vbeAction :: Event -> EditorM ()
                   }
 
 data Operator = Operator

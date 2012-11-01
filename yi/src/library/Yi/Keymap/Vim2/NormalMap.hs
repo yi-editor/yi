@@ -45,7 +45,11 @@ pureBindings =
         , (char '$', vimMoveE VMEOL, resetCount)
         , (char '^', vimMoveE VMNonEmptySOL, resetCount)
 
+        -- Transition to insert mode
         , (char 'i', return (), switchMode Insert)
+        , (char 'I', vimMoveE VMNonEmptySOL, switchMode Insert)
+        , (char 'a', withBuffer0 rightB, switchMode Insert)
+        , (char 'A', withBuffer0 moveToEol, switchMode Insert)
         , (spec KEsc, return (), resetCount)
         ]
         ++ fmap mkDigitBinding ['1' .. '9']
@@ -54,7 +58,7 @@ pureBindings =
 zeroBinding :: VimBinding
 zeroBinding = VimBindingE prereq action
     where prereq ev _ = ev == char '0'
-          action = do
+          action _ = do
               currentState <- getDynamic
               case (vsCount currentState) of
                   Just c -> setDynamic $ currentState { vsCount = Just (10 * c) }
