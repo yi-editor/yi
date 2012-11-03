@@ -1,6 +1,8 @@
+{-# LANGUAGE ScopedTypeVariables #-}
+
 module Main where
 
-import Control.Monad (filterM, forM, void)
+import Control.Monad (filterM, forM, void, unless)
 
 import Data.List (foldl', find, sort, isSuffixOf, intercalate)
 import Data.Prototype (extractValue)
@@ -14,7 +16,7 @@ import Yi.Buffer.Misc
 import Yi.Config.Default (defaultVimConfig)
 import Yi.Editor
 import Yi.Event
-import Yi.Keymap.Keys (char, spec)
+import Yi.Keymap.Keys (char, spec, ctrlCh)
 import Yi.Keymap.Vim2
 import Yi.Keymap.Vim2.Utils
 
@@ -59,9 +61,11 @@ parseEvents = fst . foldl' go ([], [])
           go (evs, s) c = (evs, s ++ [c])
 
 lookupEvent :: String -> Event
+lookupEvent ('C':'-':c:[]) = ctrlCh c
 lookupEvent "Esc" = spec KEsc
+lookupEvent "CR" = spec KEnter
 lookupEvent "lt" = char '<'
-lookupEvent _ = undefined
+lookupEvent s = error $ "Couldn't convert string <" ++ s ++ "> to key"
 
 loadTestFromDirectory :: FilePath -> IO VimTest
 loadTestFromDirectory path = do
@@ -70,9 +74,22 @@ loadTestFromDirectory path = do
     events <- fmap parseEvents $ readFile $ path </> "events"
     return $ VimTest (joinPath . drop 1 . splitPath $ path) input output events
 
+isValidTestFile :: String -> Bool
+isValidTestFile text =
+    case lines text of
+        [] -> False
+        ("-- Input": ls) ->
+            case break (== "-- Output") ls of
+                (_, []) -> False
+                (_, "-- Output":ls') -> "-- Events" `elem` ls'
+                _ -> False
+        _ -> False
+
 loadTestFromFile :: FilePath -> IO VimTest
 loadTestFromFile path = do
     text <- readFile path
+    unless (isValidTestFile text) $
+        void $ printf "Test %s is invalid\n" path
     let ls = tail $ lines text
         (input, rest) = break (== "-- Output") ls
         (output, rest2) = break (== "-- Events") $ tail rest
@@ -129,7 +146,7 @@ runTest t = if outputMatches then TestPassed (vtName t)
           extractBufferString editor = cursorPos editor ++ "\n" ++
                                        snd (runEditor' (withBuffer0 elemsB) editor)
           runEvents = foldl' runEvent $ initialEditor (vtInput t)
-          runEvent editor event = fst $ runEditor' (handleEvent event) editor 
+          runEvent editor event = fst $ runEditor' (handleEvent event) editor
           cursorPos = show . snd . runEditor' (withBuffer0 $ do
                                                   l <- curLn
                                                   c <- curCol
