@@ -50,7 +50,56 @@ pureBindings =
         , (char 'I', vimMoveE VMNonEmptySOL, switchMode Insert)
         , (char 'a', withBuffer0 rightB, switchMode Insert)
         , (char 'A', withBuffer0 moveToEol, switchMode Insert)
+        , (char 'o', return (), switchMode Insert) -- TODO
+        , (char 'O', return (), switchMode Insert) -- TODO
         , (spec KEsc, return (), resetCount)
+
+        -- Replace
+        , (char 'r', return (), id) -- TODO
+        , (char 'R', return (), id)
+
+        -- Deletion
+        , (char 'x', return (), id) -- TODO
+        , (char 'd', return (), id) -- TODO
+
+        -- Yanking
+        , (char 'y', return (), id) -- TODO
+        , (char 'Y', return (), id) -- TODO
+
+        -- Pasting
+        , (char 'p', return (), id) -- TODO
+        , (char 'P', return (), id) -- TODO
+
+        -- Search
+        , (char '/', return (), id) -- TODO
+        , (char '?', return (), id) -- TODO
+        , (char '*', return (), id) -- TODO
+        , (char '#', return (), id) -- TODO
+        , (char 'n', return (), id) -- TODO
+        , (char 'N', return (), id) -- TODO
+
+        -- Transition to visual
+        , (char 'v', return (), id) -- TODO
+        , (char 'V', return (), id) -- TODO
+        , (ctrlCh 'v', return (), id) -- TODO
+
+        -- Repeat
+        , (char '.', return (), id) -- TODO
+        , (char '&', return (), id) -- TODO
+
+        -- Transition to ex
+        , (char ':', return (), id) -- TODO
+
+        -- unsorted TODO
+        , (char 'g', return (), id)
+        , (char 's', return (), id)
+        , (char '[', return (), id)
+        , (char ']', return (), id)
+        , (char '{', return (), id)
+        , (char '}', return (), id)
+        , (char '-', return (), id)
+        , (char '+', return (), id)
+        , (spec KEnter, return (), id)
         ]
         ++ fmap mkDigitBinding ['1' .. '9']
     )
