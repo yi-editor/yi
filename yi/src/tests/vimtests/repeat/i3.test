@@ -1,0 +1,8 @@
+-- Input
+(1,1)
+foo
+-- Output
+(1,11)
+ABABABABABCCCCCfoo
+-- Events
+3iABC<Esc>2.

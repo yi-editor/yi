@@ -1,0 +1,18 @@
+-- Input
+(2,1)
+123
+456
+789
+-- Output
+(8,3)
+123
+456
+abc
+abc
+abc
+abc
+abc
+abc
+789
+-- Events
+2oabc<Esc>..

@@ -1,0 +1,11 @@
+-- Input
+(1,5)
+Foo bar baz
+
+123 234 345
+-- Output
+(1,4)
+Foo 
+123 234 345
+-- Events
+dv}

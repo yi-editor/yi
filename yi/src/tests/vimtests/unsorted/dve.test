@@ -1,0 +1,8 @@
+-- Input
+(1,1)
+Foo bar baz
+-- Output
+(1,1)
+o bar baz
+-- Events
+dve
