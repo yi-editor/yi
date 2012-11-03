@@ -50,13 +50,22 @@ pureBindings =
         , (char 'I', vimMoveE VMNonEmptySOL, switchMode Insert)
         , (char 'a', withBuffer0 rightB, switchMode Insert)
         , (char 'A', withBuffer0 moveToEol, switchMode Insert)
-        , (char 'o', return (), switchMode Insert) -- TODO
-        , (char 'O', return (), switchMode Insert) -- TODO
+        , (char 'o', withBuffer0 $ do
+                         moveToEol
+                         insertB '\n'
+            , switchMode Insert)
+        , (char 'O', withBuffer0 $ do
+                         moveToSol
+                         insertB '\n'
+                         leftB
+            , switchMode Insert)
+        , (char 'c', return (), switchMode Insert) -- TODO
+        , (char 'C', return (), switchMode Insert) -- TODO
         , (spec KEsc, return (), resetCount)
 
         -- Replace
-        , (char 'r', return (), id) -- TODO
-        , (char 'R', return (), id)
+        , (char 'r', return (), switchMode ReplaceSingleChar)
+        , (char 'R', return (), switchMode Replace)
 
         -- Deletion
         , (char 'x', return (), id) -- TODO

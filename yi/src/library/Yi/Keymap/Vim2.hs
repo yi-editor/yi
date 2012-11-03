@@ -18,14 +18,18 @@ import Yi.Editor
 import Yi.Keymap
 import Yi.Keymap.Keys
 import Yi.Keymap.Vim2.Common
-import Yi.Keymap.Vim2.NormalMap
 import Yi.Keymap.Vim2.InsertMap
+import Yi.Keymap.Vim2.NormalMap
+import Yi.Keymap.Vim2.ReplaceMap
+import Yi.Keymap.Vim2.ReplaceSingleCharMap
 import Yi.Keymap.Vim2.Utils
 
 data ModeMap = ModeMap {
         vimKeymap :: Keymap,
         normalMap :: [VimBinding],
-        insertMap :: [VimBinding]
+        insertMap :: [VimBinding],
+        replaceSingleMap :: [VimBinding],
+        replaceMap :: [VimBinding]
     }
 
 mkKeymapSet :: Proto ModeMap -> KeymapSet
@@ -39,7 +43,9 @@ defModeMapProto = Proto template
     where template self = ModeMap {
                               vimKeymap = defVimKeymap self,
                               normalMap = defNormalMap,
-                              insertMap = defInsertMap
+                              insertMap = defInsertMap,
+                              replaceSingleMap = defReplaceSingleMap,
+                              replaceMap = defReplaceMap
                           }
 
 defVimKeymap :: ModeMap -> KeymapM ()
@@ -57,4 +63,4 @@ handleEvent mm e = do
         Just (VimBindingE _ action) -> withEditor $ action e
 
 allBindings :: ModeMap -> [VimBinding]
-allBindings m = normalMap m ++ insertMap m
+allBindings m = normalMap m ++ insertMap m ++ replaceSingleMap m ++ replaceMap m

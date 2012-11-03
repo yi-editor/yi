@@ -23,6 +23,7 @@ data VimMode = Normal
              | NormalOperatorPending
              | Insert
              | Replace
+             | ReplaceSingleChar
              | InsertNormal -- ^ after C-o
              | InsertVisual -- ^ after C-o and one of v, V, C-v
              | Visual RegionStyle
