@@ -1,0 +1,8 @@
+-- Input
+(1,1)
+ABCm ipsum
+-- Output
+(1,8)
+ABCm ABCm
+-- Events
+v3lcABC<Esc>w.
