@@ -86,6 +86,10 @@ pureBindings =
         , (char '#', return (), id) -- TODO
         , (char 'n', return (), id) -- TODO
         , (char 'N', return (), id) -- TODO
+        , (char 'f', return (), id) -- TODO
+        , (char 'F', return (), id) -- TODO
+        , (char 't', return (), id) -- TODO
+        , (char 'T', return (), id) -- TODO
 
         -- Transition to visual
         , (char 'v', return (), id) -- TODO
