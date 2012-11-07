@@ -68,5 +68,4 @@ vimMoveE motion = do
       leftOnEol
 
 isBindingApplicable :: Event -> VimState -> VimBinding -> Bool
-isBindingApplicable e s (VimBindingE prereq _) = prereq e s
-isBindingApplicable e s (VimBindingY prereq _) = prereq e s
+isBindingApplicable e s b = (vbPrerequisite b) e s
