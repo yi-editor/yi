@@ -1,0 +1,8 @@
+-- Input
+(1,1)
+12345678
+-- Output
+(1,5)
+123478
+-- Events
+lv3l<C-c>xv3ly
