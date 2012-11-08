@@ -7,6 +7,7 @@ module Yi.Keymap.Vim2.Utils
   , isBindingApplicable
   , stringToEvent
   , eventToString
+  , parseEvents
   ) where
 
 import Yi.Prelude
@@ -21,7 +22,7 @@ import Yi.Buffer
 import Yi.Editor
 import Yi.Event
 import Yi.Keymap
-import Yi.Keymap.Keys
+import Yi.Keymap.Keys (char, ctrlCh, spec)
 import Yi.Keymap.Vim2.Common
 
 mkBindingE :: VimMode -> (Event, EditorM (), VimState -> VimState) -> VimBinding
@@ -88,3 +89,11 @@ eventToString (Event (KASCII c) []) = [c]
 eventToString (Event (KASCII c) [MCtrl]) = ['<', 'C', '-', c, '>']
 eventToString (Event (KASCII c) [MShift]) = [toUpper c]
 eventToString e = error $ "Couldn't convert event <" ++ show e ++ "> to string"
+
+parseEvents :: String -> [Event]
+parseEvents = fst . foldl' go ([], [])
+    where go (evs, s) '\n' = (evs, s)
+          go (evs, []) '<' = (evs, "<")
+          go (evs, []) c = (evs ++ [char c], [])
+          go (evs, s) '>' = (evs ++ [stringToEvent (s ++ ">")], [])
+          go (evs, s) c = (evs, s ++ [c])

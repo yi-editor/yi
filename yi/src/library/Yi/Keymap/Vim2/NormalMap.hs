@@ -19,8 +19,8 @@ import Yi.Keymap.Vim2.Utils
 
 mkDigitBinding :: Char -> (Event, EditorM (), VimState -> VimState)
 mkDigitBinding c = (char c, return (), mutate)
-    where mutate (VimState m Nothing a r) = VimState m (Just d) a r
-          mutate (VimState m (Just count) a r) = VimState m (Just $ count * 10 + d) a r
+    where mutate (VimState m Nothing a r es) = VimState m (Just d) a r es
+          mutate (VimState m (Just count) a r es) = VimState m (Just $ count * 10 + d) a r es
           d = ord c - ord '0'
 
 defNormalMap :: [VimBinding]
@@ -109,7 +109,7 @@ pureBindings =
                     Nothing -> return ()
                     Just (RepeatableAction prevCount actionString) -> do
                         let count = fromMaybe prevCount (vsCount currentState)
-                        vimEval $ show count ++ actionString
+                        scheduleActionStringForEval $ show count ++ actionString
             , id)
         , (char '&', return (), id) -- TODO
 

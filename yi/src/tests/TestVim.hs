@@ -1,11 +1,10 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 
-module Main where
+module Main (main) where
 
 import Control.Monad (filterM, forM, void, unless)
 
-import Data.List (foldl', find, sort, isSuffixOf, intercalate)
-import Data.Prototype (extractValue)
+import Data.List (sort, isSuffixOf, intercalate)
 
 import System.Directory
 import System.FilePath
@@ -15,16 +14,13 @@ import Text.Printf
 import Yi.Buffer.Misc
 import Yi.Config.Default (defaultVimConfig)
 import Yi.Editor
-import Yi.Event
-import Yi.Keymap.Keys (char, spec, ctrlCh)
 import Yi.Keymap.Vim2
-import Yi.Keymap.Vim2.Utils
 
 data VimTest = VimTest {
                    vtName :: String
                  , vtInput :: String
                  , vtOutput :: String
-                 , vtEvents :: [Event]
+                 , vtEventString :: String
                }
     deriving (Show, Eq, Ord)
 
@@ -38,33 +34,9 @@ instance Show TestResult where
 unlines' :: [String] -> String
 unlines' = intercalate "\n"
 
-allDefaultPureBindings :: [VimBinding]
-allDefaultPureBindings = filter isPure $ allBindings $ extractValue defModeMapProto
-    where isPure (VimBindingE _ _) = True
-          isPure _ = False
-
-handleEvent :: Event -> EditorM ()
-handleEvent event = do
-    currentState <- getDynamic
-    let maybeBinding = find (isBindingApplicable event currentState) allDefaultPureBindings
-    case maybeBinding of
-        Nothing -> fail $ "unhandled event " ++ show event
-        Just (VimBindingE _ action) -> withEditor $ action event
-        Just (VimBindingY _ _) -> fail "Impure binding found"
-
-parseEvents :: String -> [Event]
-parseEvents = fst . foldl' go ([], [])
-    where go (evs, s) '\n' = (evs, s)
-          go (evs, []) '<' = (evs, "<")
-          go (evs, []) c = (evs ++ [char c], [])
-          go (evs, s) '>' = (evs ++ [stringToEvent (s ++ ">")], [])
-          go (evs, s) c = (evs, s ++ [c])
-
 loadTestFromDirectory :: FilePath -> IO VimTest
 loadTestFromDirectory path = do
-    input <- readFile $ path </> "input"
-    output <- readFile $ path </> "output"
-    events <- fmap parseEvents $ readFile $ path </> "events"
+    [input, output, events] <- mapM (readFile . (path </>)) ["input", "output", "events"]
     return $ VimTest (joinPath . drop 1 . splitPath $ path) input output events
 
 isValidTestFile :: String -> Bool
@@ -90,7 +62,7 @@ loadTestFromFile path = do
     return $ VimTest (joinPath . drop 1 . splitPath . dropExtension $ path)
                      (unlines' input)
                      (unlines' output)
-                     (parseEvents . unlines' $ eventText)
+                     (unlines' eventText)
 
 containsTest :: FilePath -> IO Bool
 containsTest d = do
@@ -135,11 +107,10 @@ runTest t = if outputMatches then TestPassed (vtName t)
                              else TestFailed (vtName t) $
                                       unlines ["Expected:", vtOutput t, "Got:", actualOut, "---"]
     where outputMatches = vtOutput t == actualOut
-          actualOut = extractBufferString $ runEvents (vtEvents t)
+          actualOut = extractBufferString $ fst $
+              runEditor' (defaultVimEval $ vtEventString t) (initialEditor $ vtInput t)
           extractBufferString editor = cursorPos editor ++ "\n" ++
                                        snd (runEditor' (withBuffer0 elemsB) editor)
-          runEvents = foldl' runEvent $ initialEditor (vtInput t)
-          runEvent editor event = fst $ runEditor' (handleEvent event) editor
           cursorPos = show . snd . runEditor' (withBuffer0 $ do
                                                   l <- curLn
                                                   c <- curCol

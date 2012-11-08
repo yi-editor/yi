@@ -1,10 +1,16 @@
 module Yi.Keymap.Vim2.Eval
-    ( vimEval ) where
+    ( scheduleActionStringForEval
+    ) where
 
-import Prelude ()
+-- This module doesn't contains actual eval, see Yi.Keymap.Vim2.vimEval comment
+
 import Yi.Prelude
+import Prelude ()
 
 import Yi.Editor
+import Yi.Keymap.Vim2.Common
 
-vimEval :: String -> EditorM ()
-vimEval = const $ return ()
+scheduleActionStringForEval :: String -> EditorM ()
+scheduleActionStringForEval s = do
+        state <- getDynamic
+        setDynamic $ state { vsStringToEval = s }

@@ -29,8 +29,8 @@ data Operator = OpYank
     deriving (Typeable, Eq)
 
 data RepeatableAction = RepeatableAction {
-          previousCount :: !Int
-        , actionString :: !String
+          raPreviousCount :: !Int
+        , raActionString :: !String
     }
     deriving (Typeable, Eq)
 
@@ -50,6 +50,7 @@ data VimState = VimState {
         , vsCount :: !(Maybe Int)
         , vsAccumulator :: !String
         , vsRepeatableAction :: !(Maybe RepeatableAction)
+        , vsStringToEval :: !String -- ^ see Yi.Keymap.Vim2.vimEval comment
     } deriving (Typeable)
 
 $(derive makeBinary ''Operator)
@@ -62,7 +63,7 @@ instance Initializable VimMode where
 $(derive makeBinary ''VimMode)
 
 instance Initializable VimState where
-    initial = VimState Normal Nothing [] Nothing
+    initial = VimState Normal Nothing [] Nothing []
 
 $(derive makeBinary ''VimState)
 

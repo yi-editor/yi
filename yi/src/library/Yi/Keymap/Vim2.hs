@@ -6,17 +6,21 @@ module Yi.Keymap.Vim2
     , defModeMapProto
     , VimBinding (..)
     , ModeMap (..)
-    , allBindings
+    , vimEval
+    , allBindings -- ^ for testing purposes
+    , defaultVimEval -- ^ for testing purposes
     ) where
 
 import Prelude ()
 import Yi.Prelude
 
+import Data.List (map, filter)
 import Data.Prototype
 
 import Yi.Editor
+import Yi.Event
 import Yi.Keymap
-import Yi.Keymap.Keys
+import Yi.Keymap.Keys (anyEvent)
 import Yi.Keymap.Vim2.Common
 import Yi.Keymap.Vim2.InsertMap
 import Yi.Keymap.Vim2.NormalMap
@@ -63,8 +67,38 @@ handleEvent mm e = do
         Just (VimBindingE _ action) -> withEditor $ action e
     withEditor $ do
         stateAfterAction <- getDynamic
+
+        -- see comment for 'vimEval' below
+        vimEval mm $ vsStringToEval stateAfterAction
+
         let newAccumulator = vsAccumulator stateAfterAction ++ eventToString e
         setDynamic $ stateAfterAction { vsAccumulator = newAccumulator }
 
 allBindings :: ModeMap -> [VimBinding]
 allBindings m = normalMap m ++ insertMap m ++ replaceSingleMap m ++ replaceMap m
+
+-- This is not in Yi.Keymap.Vim2.Eval to avoid circular dependency:
+-- eval needs to know about bindings, which contains normal bindings,
+-- which contains '.', which needs to eval things
+-- So as a workaround '.' just saves a string that needs eval in VimState
+-- and the actual evaluation happens in handleEvent
+vimEval :: ModeMap -> String -> EditorM ()
+vimEval mm s = sequence_ actions
+    where actions = map (pureHandleEvent mm) $ parseEvents s
+
+defaultVimEval :: String -> EditorM ()
+defaultVimEval = vimEval $ extractValue defModeMapProto
+
+pureHandleEvent :: ModeMap -> Event -> EditorM ()
+pureHandleEvent mm event = do
+    currentState <- getDynamic
+    let maybeBinding = find (isBindingApplicable event currentState) (allPureBindings mm)
+    case maybeBinding of
+        Nothing -> fail $ "unhandled event " ++ show event
+        Just (VimBindingE _ action) -> withEditor $ action event
+        Just (VimBindingY _ _) -> fail "Impure binding found"
+
+allPureBindings :: ModeMap -> [VimBinding]
+allPureBindings mm = filter isPure $ allBindings mm
+    where isPure (VimBindingE _ _) = True
+          isPure _ = False
