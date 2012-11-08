@@ -61,6 +61,10 @@ handleEvent mm e = do
         Nothing -> fail $ "unhandled event " ++ show e
         Just (VimBindingY _ action) -> action e
         Just (VimBindingE _ action) -> withEditor $ action e
+    withEditor $ do
+        stateAfterAction <- getDynamic
+        let newAccumulator = vsAccumulator stateAfterAction ++ eventToString e
+        setDynamic $ stateAfterAction { vsAccumulator = newAccumulator }
 
 allBindings :: ModeMap -> [VimBinding]
 allBindings m = normalMap m ++ insertMap m ++ replaceSingleMap m ++ replaceMap m

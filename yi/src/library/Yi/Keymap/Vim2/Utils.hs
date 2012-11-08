@@ -5,6 +5,8 @@ module Yi.Keymap.Vim2.Utils
   , resetCount
   , vimMoveE
   , isBindingApplicable
+  , stringToEvent
+  , eventToString
   ) where
 
 import Yi.Prelude
@@ -12,17 +14,19 @@ import Prelude ()
 
 import Control.Monad (replicateM_)
 
+import Data.Char (toUpper)
 import Data.Maybe (fromMaybe)
 
 import Yi.Buffer
 import Yi.Editor
 import Yi.Event
 import Yi.Keymap
+import Yi.Keymap.Keys
 import Yi.Keymap.Vim2.Common
 
 mkBindingE :: VimMode -> (Event, EditorM (), VimState -> VimState) -> VimBinding
 mkBindingE mode (event, action, mutate) = VimBindingE prereq combinedAction
-    where prereq ev (VimState m _) = m == mode && ev == event
+    where prereq ev vs = (vsMode vs) == mode && ev == event
           combinedAction _ = do
               currentState <- getDynamic
               action
@@ -30,7 +34,7 @@ mkBindingE mode (event, action, mutate) = VimBindingE prereq combinedAction
 
 mkBindingY :: VimMode -> (Event, YiM (), VimState -> VimState) -> VimBinding
 mkBindingY mode (event, action, mutate) = VimBindingY prereq combinedAction
-    where prereq ev (VimState m _) = m == mode && ev == event
+    where prereq ev vs = (vsMode vs) == mode && ev == event
           combinedAction _ = do
               currentState <- withEditor $ getDynamic
               action
@@ -69,3 +73,18 @@ vimMoveE motion = do
 
 isBindingApplicable :: Event -> VimState -> VimBinding -> Bool
 isBindingApplicable e s b = (vbPrerequisite b) e s
+
+stringToEvent :: String -> Event
+stringToEvent ('<':'C':'-':c:'>':[]) = ctrlCh c
+stringToEvent "<Esc>" = spec KEsc
+stringToEvent "<CR>" = spec KEnter
+stringToEvent "<lt>" = char '<'
+stringToEvent (c:[]) = char c
+stringToEvent s = error $ "Couldn't convert string <" ++ s ++ "> to event"
+
+eventToString :: Event -> String
+eventToString (Event (KASCII '<') []) = "<lt>"
+eventToString (Event (KASCII c) []) = [c]
+eventToString (Event (KASCII c) [MCtrl]) = ['<', 'C', '-', c, '>']
+eventToString (Event (KASCII c) [MShift]) = [toUpper c]
+eventToString e = error $ "Couldn't convert event <" ++ show e ++ "> to string"

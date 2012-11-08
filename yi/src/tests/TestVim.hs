@@ -57,15 +57,8 @@ parseEvents = fst . foldl' go ([], [])
     where go (evs, s) '\n' = (evs, s)
           go (evs, []) '<' = (evs, "<")
           go (evs, []) c = (evs ++ [char c], [])
-          go (evs, s) '>' = (evs ++ [lookupEvent (tail s)], [])
+          go (evs, s) '>' = (evs ++ [stringToEvent (s ++ ">")], [])
           go (evs, s) c = (evs, s ++ [c])
-
-lookupEvent :: String -> Event
-lookupEvent ('C':'-':c:[]) = ctrlCh c
-lookupEvent "Esc" = spec KEsc
-lookupEvent "CR" = spec KEnter
-lookupEvent "lt" = char '<'
-lookupEvent s = error $ "Couldn't convert string <" ++ s ++ "> to key"
 
 loadTestFromDirectory :: FilePath -> IO VimTest
 loadTestFromDirectory path = do

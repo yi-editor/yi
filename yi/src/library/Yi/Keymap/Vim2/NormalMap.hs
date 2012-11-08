@@ -6,6 +6,7 @@ import Yi.Prelude
 import Prelude ()
 
 import Data.Char
+import Data.Maybe (fromMaybe)
 
 import Yi.Buffer hiding (Insert)
 import Yi.Core (quitEditor)
@@ -13,12 +14,13 @@ import Yi.Editor
 import Yi.Event
 import Yi.Keymap.Keys
 import Yi.Keymap.Vim2.Common
+import Yi.Keymap.Vim2.Eval
 import Yi.Keymap.Vim2.Utils
 
 mkDigitBinding :: Char -> (Event, EditorM (), VimState -> VimState)
 mkDigitBinding c = (char c, return (), mutate)
-    where mutate (VimState m Nothing) = VimState m (Just d)
-          mutate (VimState m (Just count)) = VimState m (Just $ count * 10 + d)
+    where mutate (VimState m Nothing a r) = VimState m (Just d) a r
+          mutate (VimState m (Just count) a r) = VimState m (Just $ count * 10 + d) a r
           d = ord c - ord '0'
 
 defNormalMap :: [VimBinding]
@@ -101,7 +103,14 @@ pureBindings =
         , (ctrlCh 'v', return (), id) -- TODO
 
         -- Repeat
-        , (char '.', return (), id) -- TODO
+        , (char '.', do
+                currentState <- getDynamic
+                case vsRepeatableAction currentState of
+                    Nothing -> return ()
+                    Just (RepeatableAction prevCount actionString) -> do
+                        let count = fromMaybe prevCount (vsCount currentState)
+                        vimEval $ show count ++ actionString
+            , id)
         , (char '&', return (), id) -- TODO
 
         -- Transition to ex

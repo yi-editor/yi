@@ -6,7 +6,6 @@ import Yi.Prelude
 import Prelude ()
 
 import Yi.Buffer hiding (Insert)
-import Yi.Buffer.Misc
 import Yi.Editor
 import Yi.Event
 import Yi.Keymap.Keys
@@ -16,6 +15,7 @@ import Yi.Keymap.Vim2.Utils
 defInsertMap :: [VimBinding]
 defInsertMap = specials ++ [printable]
 
+specials :: [VimBinding]
 specials = fmap (mkBindingE Insert)
              [ (spec KEsc, vimMoveE (VMChar Backward), switchMode Normal)
              ]

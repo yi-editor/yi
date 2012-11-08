@@ -5,6 +5,7 @@ module Yi.Keymap.Vim2.Common
     , VimBinding(..)
     , VimState(..)
     , VimMotion(..)
+    , RepeatableAction(..)
     ) where
 
 import Yi.Prelude
@@ -19,8 +20,22 @@ import Yi.Editor
 import Yi.Event
 import Yi.Keymap
 
+data Operator = OpYank
+              | OpDelete
+              | OpChange
+              | OpSwitchCase
+              | OpToUpperCase
+              | OpToLowerCase
+    deriving (Typeable, Eq)
+
+data RepeatableAction = RepeatableAction {
+          previousCount :: !Int
+        , actionString :: !String
+    }
+    deriving (Typeable, Eq)
+
 data VimMode = Normal
-             | NormalOperatorPending
+             | NormalOperatorPending Operator
              | Insert
              | Replace
              | ReplaceSingleChar
@@ -31,9 +46,15 @@ data VimMode = Normal
     deriving (Typeable, Eq)
 
 data VimState = VimState {
-        vsMode :: !VimMode,
-        vsCount :: !(Maybe Int)
+          vsMode :: !VimMode
+        , vsCount :: !(Maybe Int)
+        , vsAccumulator :: !String
+        , vsRepeatableAction :: !(Maybe RepeatableAction)
     } deriving (Typeable)
+
+$(derive makeBinary ''Operator)
+
+$(derive makeBinary ''RepeatableAction)
 
 instance Initializable VimMode where
     initial = Normal
@@ -41,7 +62,7 @@ instance Initializable VimMode where
 $(derive makeBinary ''VimMode)
 
 instance Initializable VimState where
-    initial = VimState Normal Nothing
+    initial = VimState Normal Nothing [] Nothing
 
 $(derive makeBinary ''VimState)
 
@@ -57,8 +78,6 @@ data VimBinding = VimBindingY {
                       vbeAction :: Event -> EditorM ()
                   }
 
-data Operator = Operator
-
 data VimMotion = VMChar Direction
                | VMLine Direction
                | VMWordStart Direction
@@ -68,3 +87,4 @@ data VimMotion = VMChar Direction
                | VMSOL
                | VMNonEmptySOL
                | VMEOL
+
