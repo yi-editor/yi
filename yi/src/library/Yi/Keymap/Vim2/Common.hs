@@ -26,7 +26,7 @@ data Operator = OpYank
               | OpSwitchCase
               | OpToUpperCase
               | OpToLowerCase
-    deriving (Typeable, Eq)
+    deriving (Typeable, Eq, Show)
 
 data RepeatableAction = RepeatableAction {
           raPreviousCount :: !Int
@@ -43,7 +43,7 @@ data VimMode = Normal
              | InsertVisual -- ^ after C-o and one of v, V, C-v
              | Visual RegionStyle
              | CmdLine
-    deriving (Typeable, Eq)
+    deriving (Typeable, Eq, Show)
 
 data VimState = VimState {
           vsMode :: !VimMode

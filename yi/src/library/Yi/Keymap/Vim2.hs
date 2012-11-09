@@ -94,7 +94,7 @@ pureHandleEvent mm event = do
     currentState <- getDynamic
     let maybeBinding = find (isBindingApplicable event currentState) (allPureBindings mm)
     case maybeBinding of
-        Nothing -> fail $ "unhandled event " ++ show event
+        Nothing -> fail $ "unhandled event " ++ show event ++ " in " ++ show (vsMode currentState)
         Just (VimBindingE _ action) -> withEditor $ action event
         Just (VimBindingY _ _) -> fail "Impure binding found"
 

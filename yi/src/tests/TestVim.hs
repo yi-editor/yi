@@ -7,6 +7,7 @@ import Control.Monad (filterM, forM, void, unless)
 import Data.List (sort, isSuffixOf, intercalate)
 
 import System.Directory
+import System.Environment
 import System.FilePath
 
 import Text.Printf
@@ -93,11 +94,11 @@ getRecursiveDirectories topdir = do
             else return []
     return (concat paths)
 
-discoverTests :: IO [VimTest]
-discoverTests = do
-    dirs <- getRecursiveDirectories "vimtests"
+discoverTests :: FilePath -> IO [VimTest]
+discoverTests topdir = do
+    dirs <- getRecursiveDirectories topdir
     testDirs <- filterM containsTest dirs
-    testFiles <- fmap (filter (isSuffixOf ".test")) $ getRecursiveFiles "vimtests"
+    testFiles <- fmap (filter (isSuffixOf ".test")) $ getRecursiveFiles topdir
     testsFromDirs <- mapM loadTestFromDirectory testDirs
     testsFromFiles <- mapM loadTestFromFile testFiles
     return $ testsFromDirs ++ testsFromFiles
@@ -137,7 +138,13 @@ runTests tests = (successes, failures)
 
 main :: IO ()
 main = do
-    tests <- fmap sort discoverTests
+    args <- getArgs
+
+    let topDir = case take 1 args of
+                    [s] -> s
+                    _ -> "vimtests"
+
+    tests <- fmap sort (discoverTests topDir)
 
     void $ printf "Found %d tests\n\n" $ length tests
 
