@@ -1,0 +1,11 @@
+-- Input
+(1,1)
+123
+123
+-- Output
+(1,2)
+foo
+bar
+baz
+-- Events
+l<C-v>ljrx

@@ -1,0 +1,8 @@
+-- Input
+(1,1)
+foo bar
+-- Output
+(1,10)
+foo bhelloar
+-- Events
+wlihello<C-c>

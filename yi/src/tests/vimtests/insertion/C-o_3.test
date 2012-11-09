@@ -1,0 +1,12 @@
+-- Input
+(1,1)
+foo
+bar
+baz
+-- Output
+(3,1)
+foo
+ar
+az
+-- Events
+li<C-o>j<C-w><C-o>j<C-w>

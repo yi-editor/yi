@@ -1,0 +1,10 @@
+-- Input
+(1,1)
+1
+2
+3
+-- Output
+(1,1)
+1
+-- Events
+GA<C-h><C-h><C-h><C-h><Esc>

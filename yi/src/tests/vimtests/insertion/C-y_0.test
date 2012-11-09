@@ -1,0 +1,10 @@
+-- Input
+(1,1)
+foo
+bar
+-- Output
+(2,3)
+foo
+foobar
+-- Events
+ji<C-y><C-y><C-y>
