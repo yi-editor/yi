@@ -67,6 +67,8 @@ pureBindings =
         -- Changing
         , (char 'c', return (), switchMode Insert) -- TODO
         , (char 'C', return (), switchMode Insert) -- TODO
+        , (char 's', return (), id) -- TODO
+        , (char 'S', return (), id) -- TODO
 
         -- Replacing
         , (char 'r', return (), switchMode ReplaceSingleChar)
@@ -121,9 +123,14 @@ pureBindings =
         , (char 'U', return (), id) -- TODO
         , (ctrlCh 'r', return (), id) -- TODO
 
+        -- Indenting
+        , (char '<', return (), id) -- TODO
+        , (char '>', return (), id) -- TODO
+
         -- unsorted TODO
         , (char 'g', return (), id)
-        , (char 's', return (), id)
+        , (char 'G', return (), id)
+        , (char 'm', return (), id)
         , (char '[', return (), id)
         , (char ']', return (), id)
         , (char '{', return (), id)
@@ -131,6 +138,8 @@ pureBindings =
         , (char '-', return (), id)
         , (char '+', return (), id)
         , (char '~', return (), id)
+        , (char '"', return (), id)
+        , (char 'q', return (), id)
         , (spec KEnter, return (), id)
         ]
         ++ fmap mkDigitBinding ['1' .. '9']
