@@ -45,3 +45,4 @@ Features incompatible with Vim because why not
 
   * Y yanks to EOL
   * A and I in linewise visual mode behave like in blockwise visual mode
+  * 999rZ turns ABC into ZZZ instead of doing nothing
