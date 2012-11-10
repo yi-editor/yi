@@ -106,7 +106,10 @@ discoverTests topdir = do
 runTest :: VimTest -> TestResult
 runTest t = if outputMatches then TestPassed (vtName t)
                              else TestFailed (vtName t) $
-                                      unlines ["Expected:", vtOutput t, "Got:", actualOut, "---"]
+                                      unlines [ "Expected:", vtOutput t
+                                              , "Got:", actualOut
+                                              , "Events:", vtEventString t
+                                              , "---"]
     where outputMatches = vtOutput t == actualOut
           actualOut = extractBufferString $ fst $
               runEditor' (defaultVimEval $ vtEventString t) (initialEditor $ vtInput t)
