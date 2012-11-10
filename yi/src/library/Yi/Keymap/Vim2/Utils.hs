@@ -2,6 +2,7 @@ module Yi.Keymap.Vim2.Utils
   ( mkBindingE
   , mkBindingY
   , switchMode
+  , switchModeE
   , resetCount
   , vimMoveE
   , isBindingApplicable
@@ -43,6 +44,11 @@ mkBindingY mode (event, action, mutate) = VimBindingY prereq combinedAction
 
 switchMode :: VimMode -> VimState -> VimState
 switchMode mode state = state { vsMode = mode }
+
+switchModeE :: VimMode -> EditorM ()
+switchModeE mode = do
+    currentState <- getDynamic
+    setDynamic $ switchMode mode currentState
 
 resetCount :: VimState -> VimState
 resetCount s = s { vsCount = Nothing }
