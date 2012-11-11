@@ -21,11 +21,14 @@ import Yi.Editor
 import Yi.Event
 import Yi.Keymap
 import Yi.Keymap.Keys (anyEvent)
+
 import Yi.Keymap.Vim2.Common
+import Yi.Keymap.Vim2.EventUtils
 import Yi.Keymap.Vim2.InsertMap
 import Yi.Keymap.Vim2.NormalMap
 import Yi.Keymap.Vim2.ReplaceMap
 import Yi.Keymap.Vim2.ReplaceSingleCharMap
+import Yi.Keymap.Vim2.StateUtils
 import Yi.Keymap.Vim2.Utils
 
 data ModeMap = ModeMap {
@@ -61,14 +64,22 @@ handleEvent :: ModeMap -> Event -> YiM ()
 handleEvent mm e = do
     currentState <- withEditor getDynamic
     let maybeBinding = find (isBindingApplicable e currentState) (allBindings mm)
-    case maybeBinding of
+
+    repeatToken <- case maybeBinding of
         Nothing -> fail $ "unhandled event " ++ show e
         Just (VimBindingY _ action) -> action e
         Just (VimBindingE _ action) -> withEditor $ action e
+
     withEditor $ do
+        case repeatToken of
+            Drop -> dropAccumulatorE
+            Continue -> accumulateEventE e
+            Finish -> accumulateEventE e >> flushAccumulatorIntoRepeatableActionE
+
         stateAfterAction <- getDynamic
 
         -- see comment for 'vimEval' below
+        modifyStateE $ \s -> s { vsStringToEval = "" }
         vimEval mm $ vsStringToEval stateAfterAction
 
         let newAccumulator = vsAccumulator stateAfterAction ++ eventToString e
@@ -83,8 +94,9 @@ allBindings m = normalMap m ++ insertMap m ++ replaceSingleMap m ++ replaceMap m
 -- So as a workaround '.' just saves a string that needs eval in VimState
 -- and the actual evaluation happens in handleEvent
 vimEval :: ModeMap -> String -> EditorM ()
-vimEval mm s = sequence_ actions
-    where actions = map (pureHandleEvent mm) $ parseEvents s
+vimEval mm s = do
+    sequence_ actions
+        where actions = map (pureHandleEvent mm) $ parseEvents s
 
 defaultVimEval :: String -> EditorM ()
 defaultVimEval = vimEval $ extractValue defModeMapProto
@@ -95,8 +107,19 @@ pureHandleEvent mm event = do
     let maybeBinding = find (isBindingApplicable event currentState) (allPureBindings mm)
     case maybeBinding of
         Nothing -> fail $ "unhandled event " ++ show event ++ " in " ++ show (vsMode currentState)
-        Just (VimBindingE _ action) -> withEditor $ action event
+        Just (VimBindingE _ action) -> do
+            repeatToken <- withEditor $ action event
+            case repeatToken of
+                Drop -> dropAccumulatorE
+                Continue -> accumulateEventE event
+                Finish -> accumulateEventE event >> flushAccumulatorIntoRepeatableActionE
         Just (VimBindingY _ _) -> fail "Impure binding found"
+
+    stateAfterAction <- getDynamic
+
+    -- see comment for 'vimEval' below
+    modifyStateE $ \s -> s { vsStringToEval = "" }
+    vimEval mm $ vsStringToEval stateAfterAction
 
 allPureBindings :: ModeMap -> [VimBinding]
 allPureBindings mm = filter isPure $ allBindings mm

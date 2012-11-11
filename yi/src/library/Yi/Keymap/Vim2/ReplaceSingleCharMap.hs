@@ -49,6 +49,7 @@ actualReplaceBinding = VimBindingE prereq action
 
                   else return ()
               switchModeE Normal
+              return Finish
 
 replaceCharWithBelowB :: BufferM ()
 replaceCharWithBelowB = replaceCharWithVerticalOffset 1

@@ -26,4 +26,5 @@ printable = VimBindingE prereq action
     where prereq _ s = Insert == vsMode s
           action (Event (KASCII c) []) = do
               withBuffer0 $ insertB c
-          action _ = return ()
+              return Continue
+          action _ = return Drop

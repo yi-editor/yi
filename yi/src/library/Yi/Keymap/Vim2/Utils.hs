@@ -1,5 +1,6 @@
 module Yi.Keymap.Vim2.Utils
   ( mkBindingE
+  , mkBindingE'
   , mkBindingY
   , switchMode
   , switchModeE
@@ -8,9 +9,6 @@ module Yi.Keymap.Vim2.Utils
   , modifyStateE
   , vimMoveE
   , isBindingApplicable
-  , stringToEvent
-  , eventToString
-  , parseEvents
   ) where
 
 import Yi.Prelude
@@ -18,13 +16,10 @@ import Prelude ()
 
 import Control.Monad (replicateM_)
 
-import Data.Char (toUpper)
-
 import Yi.Buffer
 import Yi.Editor
 import Yi.Event
 import Yi.Keymap
-import Yi.Keymap.Keys (char, ctrlCh, spec)
 import Yi.Keymap.Vim2.Common
 import Yi.Keymap.Vim2.StateUtils
 
@@ -39,6 +34,16 @@ mkBindingE mode (event, action, mutate) = VimBindingE prereq combinedAction
               currentState <- getDynamic
               action
               setDynamic $ mutate currentState
+              return Drop
+
+mkBindingE' :: VimMode -> (Event, EditorM (), VimState -> VimState, RepeatToken) -> VimBinding
+mkBindingE' mode (event, action, mutate, rtoken) = VimBindingE prereq combinedAction
+    where prereq ev vs = (vsMode vs) == mode && ev == event
+          combinedAction _ = do
+              currentState <- getDynamic
+              action
+              setDynamic $ mutate currentState
+              return rtoken
 
 mkBindingY :: VimMode -> (Event, YiM (), VimState -> VimState) -> VimBinding
 mkBindingY mode (event, action, mutate) = VimBindingY prereq combinedAction
@@ -47,6 +52,7 @@ mkBindingY mode (event, action, mutate) = VimBindingY prereq combinedAction
               currentState <- withEditor $ getDynamic
               action
               withEditor $ setDynamic $ mutate currentState
+              return Drop
 
 vimMoveE :: VimMotion -> EditorM ()
 vimMoveE motion = do
@@ -76,25 +82,3 @@ vimMoveE motion = do
 isBindingApplicable :: Event -> VimState -> VimBinding -> Bool
 isBindingApplicable e s b = (vbPrerequisite b) e s
 
-stringToEvent :: String -> Event
-stringToEvent ('<':'C':'-':c:'>':[]) = ctrlCh c
-stringToEvent "<Esc>" = spec KEsc
-stringToEvent "<CR>" = spec KEnter
-stringToEvent "<lt>" = char '<'
-stringToEvent (c:[]) = char c
-stringToEvent s = error $ "Couldn't convert string <" ++ s ++ "> to event"
-
-eventToString :: Event -> String
-eventToString (Event (KASCII '<') []) = "<lt>"
-eventToString (Event (KASCII c) []) = [c]
-eventToString (Event (KASCII c) [MCtrl]) = ['<', 'C', '-', c, '>']
-eventToString (Event (KASCII c) [MShift]) = [toUpper c]
-eventToString e = error $ "Couldn't convert event <" ++ show e ++ "> to string"
-
-parseEvents :: String -> [Event]
-parseEvents = fst . foldl' go ([], [])
-    where go (evs, s) '\n' = (evs, s)
-          go (evs, []) '<' = (evs, "<")
-          go (evs, []) c = (evs ++ [char c], [])
-          go (evs, s) '>' = (evs ++ [stringToEvent (s ++ ">")], [])
-          go (evs, s) c = (evs, s ++ [c])

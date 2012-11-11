@@ -23,4 +23,5 @@ printable = VimBindingE prereq action
                   then insertB c
                   else replaceCharB c
               rightB
-          action _ = return ()
+              return Continue
+          action _ = return Drop

@@ -18,8 +18,8 @@ import Yi.Keymap.Vim2.Eval
 import Yi.Keymap.Vim2.StateUtils
 import Yi.Keymap.Vim2.Utils
 
-mkDigitBinding :: Char -> (Event, EditorM (), VimState -> VimState)
-mkDigitBinding c = (char c, return (), mutate)
+mkDigitBinding :: Char -> VimBinding
+mkDigitBinding c = mkBindingE' Normal (char c, return (), mutate, Continue)
     where mutate (VimState m Nothing a rm r es) = VimState m (Just d) a rm r es
           mutate (VimState m (Just count) a rm r es) = VimState m (Just $ count * 10 + d) a rm r es
           d = ord c - ord '0'
@@ -29,8 +29,12 @@ defNormalMap = [mkBindingY Normal (spec (KFun 10), quitEditor, id)] ++ pureBindi
 
 pureBindings :: [VimBinding]
 pureBindings =
-    [zeroBinding] ++
-    fmap (mkBindingE Normal) (
+    [zeroBinding, repeatBinding] ++
+    fmap (mkBindingE' Normal)
+        [ (char 'x', cutChar Forward =<< getCountE, resetCount, Finish)
+        , (char 'X', cutChar Backward =<< getCountE, resetCount, Finish)
+        ] ++
+    fmap (mkBindingE Normal)
         [ (char 'h', vimMoveE (VMChar Backward), resetCount)
         , (char 'l', vimMoveE (VMChar Forward), resetCount)
         , (char 'j', vimMoveE (VMLine Forward), resetCount)
@@ -76,9 +80,6 @@ pureBindings =
         , (char 'R', return (), switchMode Replace)
 
         -- Deletion
-        , (char 'x', cutChar Forward =<< getCountE, resetCount)
-        , (char 'X', cutChar Backward =<< getCountE, resetCount)
-        
         , (char 'd', return (), id) -- TODO
         , (char 'D', return (), id) -- TODO
 
@@ -108,14 +109,6 @@ pureBindings =
         , (ctrlCh 'v', return (), id) -- TODO
 
         -- Repeat
-        , (char '.', do
-                currentState <- getDynamic
-                case vsRepeatableAction currentState of
-                    Nothing -> return ()
-                    Just (RepeatableAction prevCount actionString) -> do
-                        let count = fromMaybe prevCount (vsCount currentState)
-                        scheduleActionStringForEval $ show count ++ actionString
-            , id)
         , (char '&', return (), id) -- TODO
 
         -- Transition to ex
@@ -145,19 +138,33 @@ pureBindings =
         , (char 'q', return (), id)
         , (spec KEnter, return (), id)
         ]
-        ++ fmap mkDigitBinding ['1' .. '9']
-    )
+    ++ fmap mkDigitBinding ['1' .. '9']
 
 zeroBinding :: VimBinding
 zeroBinding = VimBindingE prereq action
-    where prereq ev _ = ev == char '0'
+    where prereq ev state = ev == char '0' && (vsMode state == Normal)
           action _ = do
               currentState <- getDynamic
               case (vsCount currentState) of
-                  Just c -> setDynamic $ currentState { vsCount = Just (10 * c) }
+                  Just c -> do
+                      setDynamic $ currentState { vsCount = Just (10 * c) }
+                      return Continue
                   Nothing -> do
                       vimMoveE VMSOL
                       setDynamic $ resetCount currentState
+                      return Drop
+
+repeatBinding :: VimBinding
+repeatBinding = VimBindingE prereq action
+    where prereq ev state = ev == char '.' && (vsMode state == Normal)
+          action _ = do
+                currentState <- getDynamic
+                case vsRepeatableAction currentState of
+                    Nothing -> return ()
+                    Just (RepeatableAction prevCount actionString) -> do
+                        let count = fromMaybe prevCount (vsCount currentState)
+                        scheduleActionStringForEval $ show count ++ actionString
+                return Drop
 
 cutChar :: Direction -> Int -> EditorM ()
 cutChar dir count = withBuffer0 $ do

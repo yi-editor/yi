@@ -5,6 +5,7 @@ module Yi.Keymap.Vim2.Common
     , VimBinding(..)
     , VimState(..)
     , VimMotion(..)
+    , RepeatToken(..)
     , RepeatableAction(..)
     ) where
 
@@ -34,7 +35,7 @@ data RepeatableAction = RepeatableAction {
           raPreviousCount :: !Int
         , raActionString :: !String
     }
-    deriving (Typeable, Eq)
+    deriving (Typeable, Eq, Show)
 
 data Register = Register {
           regRegionStyle :: RegionStyle
@@ -79,14 +80,20 @@ $(derive makeBinary ''VimState)
 
 instance YiVariable VimState
 
+-- TODO: explain
+data RepeatToken = Finish
+                 | Drop
+                 | Continue
+    deriving Show
+
 -- Distinction between YiM and EditorM variants is for testing.
 data VimBinding = VimBindingY {
                       vbPrerequisite :: Event -> VimState -> Bool,
-                      vbyAction :: Event -> YiM ()
+                      vbyAction :: Event -> YiM RepeatToken
                   }
                 | VimBindingE {
                       vbPrerequisite :: Event -> VimState -> Bool,
-                      vbeAction :: Event -> EditorM ()
+                      vbeAction :: Event -> EditorM RepeatToken
                   }
 
 data VimMotion = VMChar Direction

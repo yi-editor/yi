@@ -9,8 +9,8 @@ import Prelude ()
 
 import Yi.Editor
 import Yi.Keymap.Vim2.Common
+import Yi.Keymap.Vim2.StateUtils
 
 scheduleActionStringForEval :: String -> EditorM ()
-scheduleActionStringForEval s = do
-        state <- getDynamic
-        setDynamic $ state { vsStringToEval = s }
+scheduleActionStringForEval s = modifyStateE $
+    \state -> state { vsStringToEval = s }
