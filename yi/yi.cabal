@@ -223,7 +223,7 @@ library
     data-accessor-mtl == 0.2.*,
     data-accessor-template >= 0.2.1.3 && < 0.2.2,
     dlist >=0.4.1,
-    dyre >=0.8.8 && < 0.8.9,
+    dyre >=0.8.11,
     filepath>=1.1 && <1.4,
     fingertree >= 0 && <0.1,
     ghc-paths ==0.1.*,
