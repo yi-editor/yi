@@ -15,12 +15,13 @@ import Yi.Event
 import Yi.Keymap.Keys
 import Yi.Keymap.Vim2.Common
 import Yi.Keymap.Vim2.Eval
+import Yi.Keymap.Vim2.StateUtils
 import Yi.Keymap.Vim2.Utils
 
 mkDigitBinding :: Char -> (Event, EditorM (), VimState -> VimState)
 mkDigitBinding c = (char c, return (), mutate)
-    where mutate (VimState m Nothing a r es) = VimState m (Just d) a r es
-          mutate (VimState m (Just count) a r es) = VimState m (Just $ count * 10 + d) a r es
+    where mutate (VimState m Nothing a rm r es) = VimState m (Just d) a rm r es
+          mutate (VimState m (Just count) a rm r es) = VimState m (Just $ count * 10 + d) a rm r es
           d = ord c - ord '0'
 
 defNormalMap :: [VimBinding]
@@ -75,7 +76,9 @@ pureBindings =
         , (char 'R', return (), switchMode Replace)
 
         -- Deletion
-        , (char 'x', return (), id) -- TODO
+        , (char 'x', cutChar Forward =<< getCountE, resetCount)
+        , (char 'X', cutChar Backward =<< getCountE, resetCount)
+        
         , (char 'd', return (), id) -- TODO
         , (char 'D', return (), id) -- TODO
 
@@ -156,3 +159,10 @@ zeroBinding = VimBindingE prereq action
                       vimMoveE VMSOL
                       setDynamic $ resetCount currentState
 
+cutChar :: Direction -> Int -> EditorM ()
+cutChar dir count = withBuffer0 $ do
+    p0 <- pointB
+    (if dir == Forward then moveXorEol else moveXorSol) count
+    p1 <- pointB
+    deleteRegionB $ mkRegion p0 p1
+    leftOnEol

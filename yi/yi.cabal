@@ -137,6 +137,7 @@ library
     Yi.Keymap.Vim2.NormalMap
     Yi.Keymap.Vim2.ReplaceMap
     Yi.Keymap.Vim2.ReplaceSingleCharMap
+    Yi.Keymap.Vim2.StateUtils
     Yi.Keymap.Vim2.Utils
     Yi.KillRing
     Yi.Layout

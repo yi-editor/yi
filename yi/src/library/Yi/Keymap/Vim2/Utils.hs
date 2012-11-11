@@ -4,6 +4,8 @@ module Yi.Keymap.Vim2.Utils
   , switchMode
   , switchModeE
   , resetCount
+  , resetCountE
+  , modifyStateE
   , vimMoveE
   , isBindingApplicable
   , stringToEvent
@@ -17,7 +19,6 @@ import Prelude ()
 import Control.Monad (replicateM_)
 
 import Data.Char (toUpper)
-import Data.Maybe (fromMaybe)
 
 import Yi.Buffer
 import Yi.Editor
@@ -25,6 +26,11 @@ import Yi.Event
 import Yi.Keymap
 import Yi.Keymap.Keys (char, ctrlCh, spec)
 import Yi.Keymap.Vim2.Common
+import Yi.Keymap.Vim2.StateUtils
+
+-- 'mkBindingE' and 'mkBindingY' are helper functions for bindings
+-- where VimState mutation is not dependent on action performed
+-- and prerequisite has form (mode == ... && event == ...)
 
 mkBindingE :: VimMode -> (Event, EditorM (), VimState -> VimState) -> VimBinding
 mkBindingE mode (event, action, mutate) = VimBindingE prereq combinedAction
@@ -42,20 +48,9 @@ mkBindingY mode (event, action, mutate) = VimBindingY prereq combinedAction
               action
               withEditor $ setDynamic $ mutate currentState
 
-switchMode :: VimMode -> VimState -> VimState
-switchMode mode state = state { vsMode = mode }
-
-switchModeE :: VimMode -> EditorM ()
-switchModeE mode = do
-    currentState <- getDynamic
-    setDynamic $ switchMode mode currentState
-
-resetCount :: VimState -> VimState
-resetCount s = s { vsCount = Nothing }
-
 vimMoveE :: VimMotion -> EditorM ()
 vimMoveE motion = do
-    count <- fmap (fromMaybe 1 . vsCount) getDynamic
+    count <- getCountE
     let repeat = replicateM_ count
     withBuffer0 $ do
       case motion of

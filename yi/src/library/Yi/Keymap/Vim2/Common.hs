@@ -13,6 +13,8 @@ import Prelude ()
 
 import Data.Binary
 import Data.DeriveTH
+import qualified Data.HashMap.Strict as HM
+import qualified Data.Rope as R
 
 import Yi.Buffer hiding (Insert)
 import Yi.Dynamic
@@ -34,6 +36,11 @@ data RepeatableAction = RepeatableAction {
     }
     deriving (Typeable, Eq)
 
+data Register = Register {
+          regRegionStyle :: RegionStyle
+        , regContent :: Maybe R.Rope
+    }
+
 data VimMode = Normal
              | NormalOperatorPending Operator
              | Insert
@@ -49,6 +56,7 @@ data VimState = VimState {
           vsMode :: !VimMode
         , vsCount :: !(Maybe Int)
         , vsAccumulator :: !String
+        , vsRegisterMap :: !(Maybe (HM.HashMap Char Register))
         , vsRepeatableAction :: !(Maybe RepeatableAction)
         , vsStringToEval :: !String -- ^ see Yi.Keymap.Vim2.vimEval comment
     } deriving (Typeable)
@@ -57,13 +65,15 @@ $(derive makeBinary ''Operator)
 
 $(derive makeBinary ''RepeatableAction)
 
+$(derive makeBinary ''Register)
+
 instance Initializable VimMode where
     initial = Normal
 
 $(derive makeBinary ''VimMode)
 
 instance Initializable VimState where
-    initial = VimState Normal Nothing [] Nothing []
+    initial = VimState Normal Nothing [] Nothing Nothing []
 
 $(derive makeBinary ''VimState)
 
