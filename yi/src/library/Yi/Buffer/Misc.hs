@@ -468,8 +468,10 @@ defaultModeLine prefix = do
     ro <-getA readOnlyA
     modeNm <- gets (withMode0 modeName)
     unchanged <- gets isUnchangedBuffer
-    let pct = if (pos == 1) || (s == 0)
+    let pct = if (pos == 0) || (s == 0)
                 then " Top"
+                else if (pos == s)
+                  then " Bot"
                 else getPercent p s
         chg = if unchanged then "-" else "*"
         roStr = if ro  then "%" else chg
