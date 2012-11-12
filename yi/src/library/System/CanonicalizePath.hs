@@ -67,9 +67,9 @@ combinePath x y
 replaceUpTo :: Eq a => [a] -> [a] -> [a] -> [a]
 replaceUpTo srch rep as =
   case splitOn srch as of
-    [] -> []
-    [a] -> a
-    (a:as) -> rep ++ last as
+    []      -> []
+    [a]     -> a
+    (_:as') -> rep ++ last as'
 
 -- replace utility shorthands, similar to Emacs
 --   somepath//someotherpath is equivalent to /someotherpath
