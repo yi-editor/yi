@@ -19,7 +19,7 @@ defReplaceSingleMap :: [VimBinding]
 defReplaceSingleMap = [escBinding, actualReplaceBinding]
 
 escBinding :: VimBinding
-escBinding = mkBindingE ReplaceSingleChar (spec KEsc, return (), switchMode Normal)
+escBinding = mkBindingE ReplaceSingleChar Drop (spec KEsc, return (), resetCount . switchMode Normal)
 
 actualReplaceBinding :: VimBinding
 actualReplaceBinding = VimBindingE prereq action
@@ -48,6 +48,7 @@ actualReplaceBinding = VimBindingE prereq action
                       replicateM_ effectiveCount $ (rightB >> replacer)
 
                   else return ()
+              resetCountE
               switchModeE Normal
               return Finish
 

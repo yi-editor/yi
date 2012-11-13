@@ -16,7 +16,7 @@ defInsertMap :: [VimBinding]
 defInsertMap = specials ++ [printable]
 
 specials :: [VimBinding]
-specials = fmap (mkBindingE Insert)
+specials = fmap (mkBindingE Insert Finish)
              [ (spec KEsc, vimMoveE (VMChar Backward), switchMode Normal)
              , (ctrlCh 'c', vimMoveE (VMChar Backward), switchMode Normal)
              ]

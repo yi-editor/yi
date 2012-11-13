@@ -12,7 +12,9 @@ defReplaceMap :: [VimBinding]
 defReplaceMap = [escBinding, printable]
 
 escBinding :: VimBinding
-escBinding = mkBindingE Replace (spec KEsc, vimMoveE (VMChar Backward), switchMode Normal)
+escBinding = mkBindingE Replace Finish (spec KEsc,
+                                        vimMoveE (VMChar Backward),
+                                        resetCount . switchMode Normal)
 
 printable :: VimBinding
 printable = VimBindingE prereq action
