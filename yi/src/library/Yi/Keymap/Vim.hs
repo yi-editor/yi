@@ -44,6 +44,7 @@ module Yi.Keymap.Vim (keymapSet,
 import Prelude (maybe, length, filter, map, drop, break, uncurry, reads)
 import Yi.Prelude
 
+
 import Data.Binary
 import Data.Char
 import Data.List (nub, take, words, dropWhile, takeWhile, intersperse, reverse, isSuffixOf)
@@ -1640,7 +1641,15 @@ leaveInsRep :: VimMode
 leaveInsRep = do
     discard $ oneOf [spec KEsc, ctrlCh '[', ctrlCh 'c']
     adjustPriority (-1)
-    write $ commitLastInsertionE >> withBuffer0 (setMarkHere '^')
+    write $ do
+        commitLastInsertionE
+        withBuffer0 $ do
+            currentLineRegion <- regionOfNonEmptyB VLine
+            currentLineContent <- readRegionB currentLineRegion
+            when (all (`elem` " \n") currentLineContent) $ savingPrefCol $ do
+               moveToSol
+               deleteToEol
+            setMarkHere '^'
     startTopKeymap keymapSet
 
 -- | Insert mode is either insertion actions, or the meta (\ESC) action
