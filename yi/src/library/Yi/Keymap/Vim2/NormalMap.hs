@@ -72,7 +72,7 @@ continuingBindings :: [VimBinding]
 continuingBindings = fmap (mkBindingE Normal Continue)
     [ (char 'r', return (), switchMode ReplaceSingleChar)
     , (char 'd', return (), id) -- TODO
-    
+
     -- Transition to insert mode
     , (char 'i', return (), switchMode Insert)
     , (char 'I', vimMoveE VMNonEmptySOL, switchMode Insert)
