@@ -1,0 +1,12 @@
+-- Input
+(2,1)
+Lorem ipsum dolor sit amet
+
+qwe rty uiop
+-- Output
+(2,1)
+Lorem ipsum dolor sit amet
+
+qwe rty uiop
+-- Events
+rx
