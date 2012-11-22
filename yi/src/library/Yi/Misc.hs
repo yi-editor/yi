@@ -5,6 +5,12 @@ module Yi.Misc
 where
 
 {- Standard Library Module Imports -}
+import Data.Char
+  ( isUpper
+  , isLower
+  , chr
+  , ord
+  )
 import Data.List
   ( isPrefixOf
   , stripPrefix
@@ -143,3 +149,14 @@ completeFile startPath = mkCompleteFn completeInList' matchFile $ matchingFileNa
 -- have the given prefix.
 findFileHint :: String -> String -> YiM [String]
 findFileHint startPath s = snd <$> getAppropriateFiles (Just startPath) s
+
+onCharLetterCode :: (Int -> Int) -> Char -> Char
+onCharLetterCode f c | isUpper c || isLower c = chr (f (ord c - a) `mod` 26 + a)
+                     | otherwise              = c
+                     where a | isUpper c = ord 'A'
+                             | isLower c = ord 'a'
+                             | otherwise = undefined
+
+rot13Char :: Char -> Char
+rot13Char = onCharLetterCode (+13)
+

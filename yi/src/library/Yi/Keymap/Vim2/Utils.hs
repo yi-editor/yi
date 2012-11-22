@@ -1,6 +1,7 @@
 module Yi.Keymap.Vim2.Utils
   ( mkBindingE
   , mkBindingY
+  , mkStringBindingE
   , switchMode
   , switchModeE
   , resetCount
@@ -8,6 +9,8 @@ module Yi.Keymap.Vim2.Utils
   , modifyStateE
   , vimMoveE
   , isBindingApplicable
+  , applyOperatorToTextObjectB
+  , applyOperatorToRegionB
   ) where
 
 import Yi.Prelude
@@ -15,20 +18,41 @@ import Prelude ()
 
 import Control.Monad (replicateM_)
 
+import Data.List (isPrefixOf)
+
 import Yi.Buffer
 import Yi.Editor
 import Yi.Event
 import Yi.Keymap
 import Yi.Keymap.Vim2.Common
 import Yi.Keymap.Vim2.StateUtils
+import Yi.Keymap.Vim2.TextObject
+import Yi.Keymap.Vim2.EventUtils
 
 -- 'mkBindingE' and 'mkBindingY' are helper functions for bindings
 -- where VimState mutation is not dependent on action performed
 -- and prerequisite has form (mode == ... && event == ...)
 
+mkStringBindingE :: VimMode -> RepeatToken
+    -> (String, EditorM (), VimState -> VimState) -> VimBinding
+mkStringBindingE mode rtoken (eventString, action, mutate) = VimBindingE prereq combinedAction
+    -- TODO: Consider making prereq return Match | Partial | None
+    -- instead of Bool
+    where prereq ev vs = vsMode vs == mode
+                       && (vsAccumulator vs ++ eventToString ev) `isPrefixOf` eventString
+          combinedAction ev = do
+              currentState <- getDynamic
+              let accum = vsAccumulator currentState
+              if vsAccumulator currentState ++ eventToString ev == eventString
+              then do
+                  action
+                  setDynamic $ mutate currentState
+                  return rtoken
+              else return Continue
+
 mkBindingE :: VimMode -> RepeatToken -> (Event, EditorM (), VimState -> VimState) -> VimBinding
 mkBindingE mode rtoken (event, action, mutate) = VimBindingE prereq combinedAction
-    where prereq ev vs = (vsMode vs) == mode && ev == event
+    where prereq ev vs = vsMode vs == mode && ev == event
           combinedAction _ = do
               currentState <- getDynamic
               action
@@ -37,9 +61,9 @@ mkBindingE mode rtoken (event, action, mutate) = VimBindingE prereq combinedActi
 
 mkBindingY :: VimMode -> (Event, YiM (), VimState -> VimState) -> VimBinding
 mkBindingY mode (event, action, mutate) = VimBindingY prereq combinedAction
-    where prereq ev vs = (vsMode vs) == mode && ev == event
+    where prereq ev vs = vsMode vs == mode && ev == event
           combinedAction _ = do
-              currentState <- withEditor $ getDynamic
+              currentState <- withEditor getDynamic
               action
               withEditor $ setDynamic $ mutate currentState
               return Drop
@@ -69,6 +93,16 @@ vimMoveE motion = do
             VMNonEmptySOL -> firstNonSpaceB
         leftOnEol
 
+applyOperatorToTextObjectB :: VimOperator -> TextObject -> BufferM ()
+applyOperatorToTextObjectB op to = do
+    reg <- textObjectRegionB to
+    applyOperatorToRegionB op reg
+
+applyOperatorToRegionB :: VimOperator -> Region -> BufferM ()
+applyOperatorToRegionB op reg = case op of
+    OpDelete -> deleteRegionB reg
+    _ -> insertN $ "Operator not supported " ++ show op
+
 isBindingApplicable :: Event -> VimState -> VimBinding -> Bool
-isBindingApplicable e s b = (vbPrerequisite b) e s
+isBindingApplicable e s b = vbPrerequisite b e s
 

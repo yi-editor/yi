@@ -26,6 +26,7 @@ import Yi.Keymap.Vim2.Common
 import Yi.Keymap.Vim2.EventUtils
 import Yi.Keymap.Vim2.InsertMap
 import Yi.Keymap.Vim2.NormalMap
+import Yi.Keymap.Vim2.NormalOperatorPendingMap
 import Yi.Keymap.Vim2.ReplaceMap
 import Yi.Keymap.Vim2.ReplaceSingleCharMap
 import Yi.Keymap.Vim2.StateUtils
@@ -34,6 +35,7 @@ import Yi.Keymap.Vim2.Utils
 data ModeMap = ModeMap {
         vimKeymap :: Keymap,
         normalMap :: [VimBinding],
+        normalOperatorPendingMap :: [VimBinding],
         insertMap :: [VimBinding],
         replaceSingleMap :: [VimBinding],
         replaceMap :: [VimBinding]
@@ -50,6 +52,7 @@ defModeMapProto = Proto template
     where template self = ModeMap {
                               vimKeymap = defVimKeymap self,
                               normalMap = defNormalMap,
+                              normalOperatorPendingMap = defNormalOperatorPendingMap,
                               insertMap = defInsertMap,
                               replaceSingleMap = defReplaceSingleMap,
                               replaceMap = defReplaceMap
@@ -76,17 +79,15 @@ handleEvent mm e = do
             Continue -> accumulateEventE e
             Finish -> accumulateEventE e >> flushAccumulatorIntoRepeatableActionE
 
-        stateAfterAction <- getDynamic
-
-        -- see comment for 'vimEval' below
-        modifyStateE $ \s -> s { vsStringToEval = "" }
-        vimEval mm $ vsStringToEval stateAfterAction
-
-        let newAccumulator = vsAccumulator stateAfterAction ++ eventToString e
-        setDynamic $ stateAfterAction { vsAccumulator = newAccumulator }
+        performEvalIfNecessary mm
 
 allBindings :: ModeMap -> [VimBinding]
-allBindings m = normalMap m ++ insertMap m ++ replaceSingleMap m ++ replaceMap m
+allBindings m = concat [ normalMap m
+                       , normalOperatorPendingMap m
+                       , insertMap m
+                       , replaceSingleMap m
+                       , replaceMap m
+                       ]
 
 -- This is not in Yi.Keymap.Vim2.Eval to avoid circular dependency:
 -- eval needs to know about bindings, which contains normal bindings,
@@ -94,8 +95,7 @@ allBindings m = normalMap m ++ insertMap m ++ replaceSingleMap m ++ replaceMap m
 -- So as a workaround '.' just saves a string that needs eval in VimState
 -- and the actual evaluation happens in handleEvent
 vimEval :: ModeMap -> String -> EditorM ()
-vimEval mm s = do
-    sequence_ actions
+vimEval mm s = sequence_ actions
         where actions = map (pureHandleEvent mm) $ parseEvents s
 
 defaultVimEval :: String -> EditorM ()
@@ -115,6 +115,10 @@ pureHandleEvent mm event = do
                 Finish -> accumulateEventE event >> flushAccumulatorIntoRepeatableActionE
         Just (VimBindingY _ _) -> fail "Impure binding found"
 
+    performEvalIfNecessary mm
+
+performEvalIfNecessary :: ModeMap -> EditorM ()
+performEvalIfNecessary mm = do
     stateAfterAction <- getDynamic
 
     -- see comment for 'vimEval' below

@@ -141,6 +141,7 @@ module Yi.Buffer.Misc
   , file
   , lastSyncTimeA
   , replaceCharB
+  , pointAfterB
   )
 where
 
@@ -1047,6 +1048,11 @@ savingPointB f = savingPrefCol $ do
 
 pointAt :: forall a. BufferM a -> BufferM Point
 pointAt f = savingPointB (f *> pointB)
+
+pointAfterB :: Point -> BufferM Point
+pointAfterB p = pointAt $ do 
+  moveTo p
+  rightB
 
 -------------
 -- Window

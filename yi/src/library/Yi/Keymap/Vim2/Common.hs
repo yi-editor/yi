@@ -5,6 +5,7 @@ module Yi.Keymap.Vim2.Common
     , VimBinding(..)
     , VimState(..)
     , VimMotion(..)
+    , VimOperator(..)
     , RepeatToken(..)
     , RepeatableAction(..)
     ) where
@@ -23,12 +24,17 @@ import Yi.Editor
 import Yi.Event
 import Yi.Keymap
 
-data Operator = OpYank
-              | OpDelete
-              | OpChange
-              | OpSwitchCase
-              | OpToUpperCase
-              | OpToLowerCase
+data VimOperator = OpYank
+                 | OpDelete
+                 | OpChange
+                 | OpSwitchCase
+                 | OpUpperCase
+                 | OpLowerCase
+                 | OpReindent
+                 | OpShiftRight
+                 | OpShiftLeft
+                 | OpRot13
+                 | OpFormat
     deriving (Typeable, Eq, Show)
 
 data RepeatableAction = RepeatableAction {
@@ -43,7 +49,7 @@ data Register = Register {
     }
 
 data VimMode = Normal
-             | NormalOperatorPending Operator
+             | NormalOperatorPending VimOperator
              | Insert
              | Replace
              | ReplaceSingleChar
@@ -56,13 +62,14 @@ data VimMode = Normal
 data VimState = VimState {
           vsMode :: !VimMode
         , vsCount :: !(Maybe Int)
-        , vsAccumulator :: !String
+        , vsAccumulator :: !String -- ^ for repeat and potentially macros
+        , vsTextObjectAccumulator :: !String
         , vsRegisterMap :: !(Maybe (HM.HashMap Char Register))
         , vsRepeatableAction :: !(Maybe RepeatableAction)
         , vsStringToEval :: !String -- ^ see Yi.Keymap.Vim2.vimEval comment
     } deriving (Typeable)
 
-$(derive makeBinary ''Operator)
+$(derive makeBinary ''VimOperator)
 
 $(derive makeBinary ''RepeatableAction)
 
@@ -74,7 +81,7 @@ instance Initializable VimMode where
 $(derive makeBinary ''VimMode)
 
 instance Initializable VimState where
-    initial = VimState Normal Nothing [] Nothing Nothing []
+    initial = VimState Normal Nothing [] [] Nothing Nothing []
 
 $(derive makeBinary ''VimState)
 

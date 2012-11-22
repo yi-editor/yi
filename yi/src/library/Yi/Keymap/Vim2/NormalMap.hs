@@ -20,8 +20,8 @@ import Yi.Keymap.Vim2.Utils
 
 mkDigitBinding :: Char -> VimBinding
 mkDigitBinding c = mkBindingE Normal Continue (char c, return (), mutate)
-    where mutate (VimState m Nothing a rm r es) = VimState m (Just d) a rm r es
-          mutate (VimState m (Just count) a rm r es) = VimState m (Just $ count * 10 + d) a rm r es
+    where mutate vs@(VimState {vsCount = Nothing}) = vs { vsCount = Just d }
+          mutate vs@(VimState {vsCount = Just count}) = vs { vsCount = Just $ count * 10 + d }
           d = ord c - ord '0'
 
 defNormalMap :: [VimBinding]
@@ -71,7 +71,12 @@ finishingBingings = fmap (mkBindingE Normal Finish)
 continuingBindings :: [VimBinding]
 continuingBindings = fmap (mkBindingE Normal Continue)
     [ (char 'r', return (), switchMode ReplaceSingleChar)
-    , (char 'd', return (), id) -- TODO
+    , (char 'd', return (), switchMode (NormalOperatorPending OpDelete))
+    , (char 'y', return (), switchMode (NormalOperatorPending OpYank))
+    , (char 'c', return (), switchMode (NormalOperatorPending OpChange))
+    , (char '=', return (), switchMode (NormalOperatorPending OpReindent))
+    , (char '<', return (), switchMode (NormalOperatorPending OpShiftRight))
+    , (char '>', return (), switchMode (NormalOperatorPending OpShiftLeft))
 
     -- Transition to insert mode
     , (char 'i', return (), switchMode Insert)
@@ -87,6 +92,13 @@ continuingBindings = fmap (mkBindingE Normal Continue)
                      insertB '\n'
                      leftB
         , switchMode Insert)
+    ]
+    ++ fmap (mkStringBindingE Normal Continue)
+    [ ("gu", return (), switchMode (NormalOperatorPending OpLowerCase))
+    , ("gU", return (), switchMode (NormalOperatorPending OpUpperCase))
+    , ("g~", return (), switchMode (NormalOperatorPending OpSwitchCase))
+    , ("gq", return (), switchMode (NormalOperatorPending OpFormat))
+    , ("g?", return (), switchMode (NormalOperatorPending OpRot13))
     ]
 
 nonrepeatableBindings :: [VimBinding]

@@ -6,8 +6,10 @@ module Yi.Keymap.Vim2.StateUtils
   , modifyStateE
   , getCountE
   , accumulateEventE
+  , accumulateTextObjectEventE
   , flushAccumulatorIntoRepeatableActionE
   , dropAccumulatorE
+  , dropTextObjectAccumulatorE
   ) where
 
 import Yi.Prelude
@@ -46,6 +48,10 @@ accumulateEventE :: Event -> EditorM ()
 accumulateEventE e = modifyStateE $
     \s -> s { vsAccumulator = vsAccumulator s ++ eventToString e }
 
+accumulateTextObjectEventE :: Event -> EditorM ()
+accumulateTextObjectEventE e = modifyStateE $
+    \s -> s { vsTextObjectAccumulator = vsTextObjectAccumulator s ++ eventToString e }
+
 flushAccumulatorIntoRepeatableActionE :: EditorM ()
 flushAccumulatorIntoRepeatableActionE = do
     currentState <- getDynamic
@@ -56,3 +62,7 @@ flushAccumulatorIntoRepeatableActionE = do
 
 dropAccumulatorE :: EditorM ()
 dropAccumulatorE = modifyStateE $ \s -> s { vsAccumulator = [] }
+
+dropTextObjectAccumulatorE :: EditorM ()
+dropTextObjectAccumulatorE = modifyStateE $ \s -> s { vsTextObjectAccumulator = [] }
+

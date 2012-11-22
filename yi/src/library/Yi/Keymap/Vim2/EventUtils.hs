@@ -29,6 +29,7 @@ eventToString (Event (KASCII c) []) = [c]
 eventToString (Event (KASCII c) [MCtrl]) = ['<', 'C', '-', c, '>']
 eventToString (Event (KASCII c) [MShift]) = [toUpper c]
 eventToString (Event KEsc []) = "<Esc>"
+eventToString (Event KEnter []) = "<CR>"
 eventToString e = error $ "Couldn't convert event <" ++ show e ++ "> to string"
 
 parseEvents :: String -> [Event]

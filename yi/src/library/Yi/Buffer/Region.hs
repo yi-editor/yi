@@ -104,11 +104,8 @@ modifyRegionClever =  replToMod replaceRegionClever
 inclusiveRegionB :: Region -> BufferM Region
 inclusiveRegionB r =
           if regionStart r <= regionEnd r
-              then mkRegion (regionStart r) <$> pointAfter (regionEnd r)
-              else mkRegion <$> pointAfter (regionStart r) <*> pure (regionEnd r)
-    where pointAfter p = pointAt $ do 
-                           moveTo p
-                           rightB
+              then mkRegion (regionStart r) <$> pointAfterB (regionEnd r)
+              else mkRegion <$> pointAfterB (regionStart r) <*> pure (regionEnd r)
 
 -- | See a region as a block/rectangular region,
 -- since regions are represented by two point, this returns
