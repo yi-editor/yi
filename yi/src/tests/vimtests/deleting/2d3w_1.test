@@ -1,0 +1,10 @@
+-- Input
+(1,1)
+a b c d e f g h
+a b c d e f g h
+-- Output
+(1,1)
+g h
+e f g h
+-- Events
+2d3wj4.
