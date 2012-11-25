@@ -40,7 +40,7 @@ zeroBinding = VimBindingE prereq action
     where prereq ev state = ev == char '0' && (vsMode state == Normal)
           action _ = do
               currentState <- getDynamic
-              case (vsCount currentState) of
+              case vsCount currentState of
                   Just c -> do
                       setDynamic $ currentState { vsCount = Just (10 * c) }
                       return Continue
@@ -59,6 +59,7 @@ repeatBinding = VimBindingE prereq action
                     Just (RepeatableAction prevCount actionString) -> do
                         let count = fromMaybe prevCount (vsCount currentState)
                         scheduleActionStringForEval $ show count ++ actionString
+                        resetCountE
                 return Drop
 
     -- Finishers

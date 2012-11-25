@@ -3,6 +3,7 @@ module Yi.Keymap.Vim2.EventUtils
   , eventToString
   , parseEvents
   , stringToRepeatableAction
+  , splitCountedCommand
   ) where
 
 import Yi.Prelude
@@ -42,7 +43,11 @@ parseEvents = fst . foldl' go ([], [])
 
 stringToRepeatableAction :: String -> RepeatableAction
 stringToRepeatableAction s = RepeatableAction count command
-    where (countString, command) = break (not . isDigit) s
+    where (count, command) = splitCountedCommand s
+
+splitCountedCommand :: String -> (Int, String)
+splitCountedCommand s = (count, commandString)
+    where (countString, commandString) = break (not . isDigit) s
           count = case countString of
                    [] -> 1
                    _ -> read countString

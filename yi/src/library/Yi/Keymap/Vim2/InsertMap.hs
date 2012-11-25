@@ -11,6 +11,7 @@ import Yi.Event
 import Yi.Keymap.Keys
 import Yi.Keymap.Vim2.Common
 import Yi.Keymap.Vim2.Utils
+import Yi.Keymap.Vim2.StateUtils
 
 defInsertMap :: [VimBinding]
 defInsertMap = specials ++ [printable]

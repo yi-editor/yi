@@ -3,6 +3,7 @@ module Yi.Keymap.Vim2.StateUtils
   , switchModeE
   , resetCount
   , resetCountE
+  , setCountE
   , modifyStateE
   , getCountE
   , accumulateEventE
@@ -43,6 +44,9 @@ getCountE :: EditorM Int
 getCountE = do
     currentState <- getDynamic
     return $! fromMaybe 1 (vsCount currentState)
+
+setCountE :: Int -> EditorM ()
+setCountE n = modifyStateE $ \s -> s { vsCount = Just n }
 
 accumulateEventE :: Event -> EditorM ()
 accumulateEventE e = modifyStateE $

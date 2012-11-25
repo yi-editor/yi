@@ -2,15 +2,12 @@ module Yi.Keymap.Vim2.Utils
   ( mkBindingE
   , mkBindingY
   , mkStringBindingE
-  , switchMode
-  , switchModeE
-  , resetCount
-  , resetCountE
-  , modifyStateE
   , vimMoveE
   , isBindingApplicable
   , applyOperatorToTextObjectB
   , applyOperatorToRegionB
+  , splitCountedCommand
+  , normalizeCount
   ) where
 
 import Yi.Prelude
@@ -18,7 +15,8 @@ import Prelude ()
 
 import Control.Monad (replicateM_)
 
-import Data.List (isPrefixOf)
+import Data.Char (isDigit)
+import Data.List (break, isPrefixOf)
 
 import Yi.Buffer
 import Yi.Editor
@@ -43,7 +41,7 @@ mkStringBindingE mode rtoken (eventString, action, mutate) = VimBindingE prereq 
           combinedAction ev = do
               currentState <- getDynamic
               let accum = vsAccumulator currentState
-              if vsAccumulator currentState ++ eventToString ev == eventString
+              if accum ++ eventToString ev == eventString
               then do
                   action
                   setDynamic $ mutate currentState
@@ -93,9 +91,9 @@ vimMoveE motion = do
             VMNonEmptySOL -> firstNonSpaceB
         leftOnEol
 
-applyOperatorToTextObjectB :: VimOperator -> TextObject -> BufferM ()
-applyOperatorToTextObjectB op to = do
-    reg <- textObjectRegionB to
+applyOperatorToTextObjectB :: VimOperator -> Int -> TextObject -> BufferM ()
+applyOperatorToTextObjectB op count to = do
+    reg <- textObjectRegionB count to
     applyOperatorToRegionB op reg
 
 applyOperatorToRegionB :: VimOperator -> Region -> BufferM ()
@@ -105,4 +103,15 @@ applyOperatorToRegionB op reg = case op of
 
 isBindingApplicable :: Event -> VimState -> VimBinding -> Bool
 isBindingApplicable e s b = vbPrerequisite b e s
+
+-- 2d3w -> 6dw
+-- 6dw -> 6dw
+-- dw -> dw
+normalizeCount :: String -> String
+normalizeCount s = if null countedObject
+                   then s
+                   else show (operatorCount * objectCount) ++ operator ++ object
+    where (operatorCount, rest1) = splitCountedCommand s
+          (operator, countedObject) = break isDigit rest1
+          (objectCount, object) = splitCountedCommand countedObject
 

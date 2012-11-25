@@ -5,8 +5,6 @@ module Yi.Keymap.Vim2.NormalOperatorPendingMap
 import Prelude ()
 import Yi.Prelude
 
-import Control.Monad (replicateM_)
-
 import Yi.Editor
 import Yi.Keymap.Keys
 import Yi.Keymap.Vim2.Common
@@ -30,7 +28,7 @@ lineShortCut = VimBindingE prereq action
           action _ = do
               op <- getOperatorE
               count <- getCountE
-              withBuffer0 . replicateM_ count $ applyOperatorToTextObjectB op $ TextObject "Vl"
+              withBuffer0 $ applyOperatorToTextObjectB op count $ TextObject "Vl"
               return Finish
 
 textObject :: VimBinding
@@ -49,14 +47,16 @@ textObject = VimBindingE prereq action
                   Partial -> do
                       accumulateTextObjectEventE e
                       return Continue
-                  Success to -> do
+                  Success n to -> do
                       op <- getOperatorE
                       count <- getCountE
-                      -- TODO normalize count
-                      --      2d3w -> 6dw
+                      modifyStateE $ \s -> s {
+                              vsCount = Just $ count * n
+                            , vsAccumulator = show (count * n)
+                                    ++ snd (splitCountedCommand (normalizeCount (vsAccumulator s)))
+                          }
                       dropTextObjectAccumulatorE
-                      withBuffer0 . replicateM_ count $ applyOperatorToTextObjectB op to
-                      dropTextObjectAccumulatorE
+                      withBuffer0 $ applyOperatorToTextObjectB op (count * n) to
                       resetCountE
                       switchModeE Normal
                       return Finish

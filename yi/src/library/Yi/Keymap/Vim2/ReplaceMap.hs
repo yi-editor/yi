@@ -6,6 +6,7 @@ import Yi.Buffer
 import Yi.Editor
 import Yi.Keymap.Keys
 import Yi.Keymap.Vim2.Common
+import Yi.Keymap.Vim2.StateUtils
 import Yi.Keymap.Vim2.Utils
 
 defReplaceMap :: [VimBinding]

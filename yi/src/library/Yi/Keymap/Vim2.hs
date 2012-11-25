@@ -7,8 +7,9 @@ module Yi.Keymap.Vim2
     , VimBinding (..)
     , ModeMap (..)
     , vimEval
-    , allBindings -- ^ for testing purposes
-    , defaultVimEval -- ^ for testing purposes
+    -- | for testing purposes
+    , allBindings
+    , defaultVimEval
     ) where
 
 import Prelude ()
