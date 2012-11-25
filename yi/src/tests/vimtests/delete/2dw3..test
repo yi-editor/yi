@@ -1,0 +1,12 @@
+-- Input
+(2,1)
+a b c d e f g h i j
+a b c d e f g h i j
+a b c d e f g h i j
+-- Output
+(2,1)
+a b c d e f g h i j
+f g h i j
+a b c d e f g h i j
+-- Events
+2dw3.
