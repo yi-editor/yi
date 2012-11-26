@@ -22,7 +22,6 @@ import Yi.Event
 import Yi.Keymap
 import Yi.Keymap.Vim2.Common
 import Yi.Keymap.Vim2.StateUtils
-import Yi.Keymap.Vim2.TextObject
 import Yi.Keymap.Vim2.EventUtils
 
 -- 'mkBindingE' and 'mkBindingY' are helper functions for bindings
@@ -40,29 +39,24 @@ mkStringBindingE mode rtoken (eventString, action, mutate) = VimBindingE prereq 
               currentState <- getDynamic
               let accum = vsAccumulator currentState
               if accum ++ eventToString ev == eventString
-              then do
-                  action
-                  setDynamic $ mutate currentState
-                  return rtoken
+              then combineAction action mutate rtoken
               else return Continue
 
 mkBindingE :: VimMode -> RepeatToken -> (Event, EditorM (), VimState -> VimState) -> VimBinding
 mkBindingE mode rtoken (event, action, mutate) = VimBindingE prereq combinedAction
     where prereq ev vs = vsMode vs == mode && ev == event
-          combinedAction _ = do
-              currentState <- getDynamic
-              action
-              setDynamic $ mutate currentState
-              return rtoken
+          combinedAction _ = combineAction action mutate rtoken
 
 mkBindingY :: VimMode -> (Event, YiM (), VimState -> VimState) -> VimBinding
 mkBindingY mode (event, action, mutate) = VimBindingY prereq combinedAction
     where prereq ev vs = vsMode vs == mode && ev == event
-          combinedAction _ = do
-              currentState <- withEditor getDynamic
-              action
-              withEditor $ setDynamic $ mutate currentState
-              return Drop
+          combinedAction _ = combineAction action mutate Drop
+
+combineAction :: MonadEditor m => m () -> (VimState -> VimState) -> RepeatToken -> m RepeatToken
+combineAction action mutateState rtoken = do
+    action
+    withEditor $ modifyStateE mutateState
+    return rtoken
 
 vimMoveE :: VimMotion -> EditorM ()
 vimMoveE motion = do
