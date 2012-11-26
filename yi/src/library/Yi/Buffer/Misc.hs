@@ -744,7 +744,7 @@ newlineB = insertB '\n'
 
 ------------------------------------------------------------------------
 insertNAt' :: Rope -> Point -> BufferM ()
-insertNAt' rope pnt = applyUpdate (Insert pnt Forward $ rope)
+insertNAt' rope pnt = applyUpdate (Insert pnt Forward rope)
 
 -- | Insert the list at specified point, extending size of buffer
 insertNAt :: String -> Point -> BufferM ()
@@ -753,6 +753,9 @@ insertNAt cs pnt = insertNAt' (R.fromString cs) pnt
 -- | Insert the list at current point, extending size of buffer
 insertN :: String -> BufferM ()
 insertN cs = insertNAt cs =<< pointB
+
+insertN' :: Rope -> BufferM ()
+insertN' rope = insertNAt' rope =<< pointB
 
 -- | Insert the char at current point, extending size of buffer
 insertB :: Char -> BufferM ()

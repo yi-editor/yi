@@ -4,8 +4,6 @@ module Yi.Keymap.Vim2.Utils
   , mkStringBindingE
   , vimMoveE
   , isBindingApplicable
-  , applyOperatorToTextObjectB
-  , applyOperatorToRegionB
   , splitCountedCommand
   , normalizeCount
   ) where
@@ -90,16 +88,6 @@ vimMoveE motion = do
                 moveToEol
             VMNonEmptySOL -> firstNonSpaceB
         leftOnEol
-
-applyOperatorToTextObjectB :: VimOperator -> Int -> TextObject -> BufferM ()
-applyOperatorToTextObjectB op count to = do
-    reg <- textObjectRegionB count to
-    applyOperatorToRegionB op reg
-
-applyOperatorToRegionB :: VimOperator -> Region -> BufferM ()
-applyOperatorToRegionB op reg = case op of
-    OpDelete -> deleteRegionB reg
-    _ -> insertN $ "Operator not supported " ++ show op
 
 isBindingApplicable :: Event -> VimState -> VimBinding -> Bool
 isBindingApplicable e s b = vbPrerequisite b e s

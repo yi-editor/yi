@@ -7,6 +7,7 @@ import Prelude ()
 
 import Data.Char
 import Data.Maybe (fromMaybe)
+import qualified Data.Rope as R
 
 import Yi.Buffer hiding (Insert)
 import Yi.Core (quitEditor)
@@ -67,6 +68,25 @@ finishingBingings :: [VimBinding]
 finishingBingings = fmap (mkBindingE Normal Finish)
     [ (char 'x', (withBuffer0 . cutChar Forward) =<< getCountE, resetCount)
     , (char 'X', (withBuffer0 . cutChar Backward) =<< getCountE, resetCount)
+
+    -- Pasting
+    , (char 'p', do
+        s <- getDefaultRegisterE
+        case s of
+            Nothing -> return ()
+            Just r -> withBuffer0 $ do
+                rightB
+                insertN (R.toString r)
+                leftB
+        , id)
+    , (char 'P', do
+        s <- getDefaultRegisterE
+        case s of
+            Nothing -> return ()
+            Just r -> withBuffer0 $ do
+                insertN (R.toString r)
+                leftB
+        , id)
     ]
 
 continuingBindings :: [VimBinding]
@@ -139,10 +159,6 @@ nonrepeatableBindings = fmap (mkBindingE Normal Drop)
     -- Yanking
     , (char 'y', return (), id) -- TODO
     , (char 'Y', return (), id) -- TODO
-
-    -- Pasting
-    , (char 'p', return (), id) -- TODO
-    , (char 'P', return (), id) -- TODO
 
     -- Search
     , (char '/', return (), id) -- TODO

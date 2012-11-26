@@ -6,6 +6,7 @@ module Yi.Keymap.Vim2.Common
     , VimState(..)
     , VimMotion(..)
     , VimOperator(..)
+    , Register(..)
     , RepeatToken(..)
     , RepeatableAction(..)
     ) where
@@ -45,7 +46,7 @@ data RepeatableAction = RepeatableAction {
 
 data Register = Register {
           regRegionStyle :: RegionStyle
-        , regContent :: Maybe R.Rope
+        , regContent :: R.Rope
     }
 
 data VimMode = Normal
@@ -64,7 +65,7 @@ data VimState = VimState {
         , vsCount :: !(Maybe Int)
         , vsAccumulator :: !String -- ^ for repeat and potentially macros
         , vsTextObjectAccumulator :: !String
-        , vsRegisterMap :: !(Maybe (HM.HashMap Char Register))
+        , vsRegisterMap :: !(HM.HashMap Char Register)
         , vsRepeatableAction :: !(Maybe RepeatableAction)
         , vsStringToEval :: !String -- ^ see Yi.Keymap.Vim2.vimEval comment
     } deriving (Typeable)
@@ -81,7 +82,7 @@ instance Initializable VimMode where
 $(derive makeBinary ''VimMode)
 
 instance Initializable VimState where
-    initial = VimState Normal Nothing [] [] Nothing Nothing []
+    initial = VimState Normal Nothing [] [] HM.empty Nothing []
 
 $(derive makeBinary ''VimState)
 

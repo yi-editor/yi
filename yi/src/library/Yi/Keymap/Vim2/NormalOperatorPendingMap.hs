@@ -9,6 +9,7 @@ import Yi.Editor
 import Yi.Keymap.Keys
 import Yi.Keymap.Vim2.Common
 import Yi.Keymap.Vim2.EventUtils
+import Yi.Keymap.Vim2.OperatorUtils
 import Yi.Keymap.Vim2.StateUtils
 import Yi.Keymap.Vim2.TextObject
 import Yi.Keymap.Vim2.Utils
@@ -21,14 +22,15 @@ defNormalOperatorPendingMap = [lineShortCut, textObject, escBinding]
 -- operator is applied to current line
 lineShortCut :: VimBinding
 lineShortCut = VimBindingE prereq action
-    where prereq e vs = case vsMode vs of
-                            NormalOperatorPending _ -> not (null (vsAccumulator vs))
-                                                       && eventToString e == [last $ vsAccumulator vs]
-                            _ -> False
+    where prereq e vs =
+              case vsMode vs of
+                  NormalOperatorPending _ -> not (null (vsAccumulator vs))
+                                             && eventToString e == [last $ vsAccumulator vs]
+                  _ -> False
           action _ = do
               op <- getOperatorE
               count <- getCountE
-              withBuffer0 $ applyOperatorToTextObjectB op count $ TextObject "Vl"
+              applyOperatorToTextObjectE op count $ TextObject "Vl"
               return Finish
 
 textObject :: VimBinding
@@ -56,7 +58,7 @@ textObject = VimBindingE prereq action
                                     ++ snd (splitCountedCommand (normalizeCount (vsAccumulator s)))
                           }
                       dropTextObjectAccumulatorE
-                      withBuffer0 $ applyOperatorToTextObjectB op (count * n) to
+                      applyOperatorToTextObjectE op (count * n) to
                       resetCountE
                       switchModeE Normal
                       return Finish

@@ -71,9 +71,9 @@ import Yi.Core
 import Yi.Eval (execEditorAction, getAllNamesInScope)
 import Yi.File
 import Yi.History
-import Yi.Misc (matchingFileNames,adjBlock,adjIndent)
 import Yi.String (dropSpace,lines')
 import Yi.MiniBuffer
+import Yi.Misc
 import Yi.Regex (seInput, regexEscapeString)
 import Yi.Search
 import Yi.Style
@@ -1005,18 +1005,6 @@ defKeymap = Proto template
          case txt' of
            '\n':txt -> moveToSol >> insertN txt >> leftN (length txt)
            _        -> insertN txt' >> leftB
-     switchCaseChar :: Char -> Char
-     switchCaseChar c = if isUpper c then toLower c else toUpper c
-
-     onCharLetterCode :: (Int -> Int) -> Char -> Char
-     onCharLetterCode f c | isUpper c || isLower c = chr (f (ord c - a) `mod` 26 + a)
-                          | otherwise              = c
-                         where a | isUpper c = ord 'A'
-                                 | isLower c = ord 'a'
-                                 | otherwise = undefined
-
-     rot13Char :: Char -> Char
-     rot13Char = onCharLetterCode (+13)
 
      viMapRegion :: (Char -> Char) -> RegionStyle -> Region -> EditorM ()
      viMapRegion f Block region = withBuffer0' $ mapM_ (`mapRegionB` f) =<< blockifyRegion region

@@ -11,13 +11,18 @@ module Yi.Keymap.Vim2.StateUtils
   , flushAccumulatorIntoRepeatableActionE
   , dropAccumulatorE
   , dropTextObjectAccumulatorE
+  , setDefaultRegisterE
+  , getDefaultRegisterE
   ) where
 
 import Yi.Prelude
 import Prelude ()
 
+import qualified Data.HashMap.Strict as HM
 import Data.Maybe (fromMaybe)
+import qualified Data.Rope as R
 
+import Yi.Buffer.Normal
 import Yi.Editor
 import Yi.Event
 import Yi.Keymap.Vim2.Common
@@ -70,3 +75,15 @@ dropAccumulatorE = modifyStateE $ \s -> s { vsAccumulator = [] }
 dropTextObjectAccumulatorE :: EditorM ()
 dropTextObjectAccumulatorE = modifyStateE $ \s -> s { vsTextObjectAccumulator = [] }
 
+getDefaultRegisterE :: EditorM (Maybe R.Rope)
+getDefaultRegisterE = do
+    rmap <- fmap vsRegisterMap getDynamic
+    case HM.lookup '"' rmap of
+        Nothing -> return Nothing
+        Just (Register style content) -> return $! Just content
+
+setDefaultRegisterE :: R.Rope -> EditorM ()
+setDefaultRegisterE s = do
+    rmap <- fmap vsRegisterMap getDynamic
+    let rmap' = HM.insert '"' (Register Inclusive s) rmap
+    modifyStateE $ \state -> state { vsRegisterMap = rmap' }
