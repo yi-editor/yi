@@ -1,6 +1,7 @@
 module Yi.Keymap.Vim2.TextObject
   ( TextObject(..)
   , TextObjectDetectResult(..)
+  , StyledRegion(..)
   , parseTextObject
   , textObjectRegionB
   ) where
@@ -21,6 +22,11 @@ data TextObjectDetectResult = Success Int TextObject
                             | Fail
     deriving Show
 
+data StyledRegion = StyledRegion !RegionStyle !Region
+
+-- text object grammar
+-- textobject = @number? @operator @stylemod* @number? @stylemod* @motion
+-- TODO: style modifiers
 parseTextObject :: String -> TextObjectDetectResult
 parseTextObject s = setCount count (parseCommand commandString)
     where (count, commandString) = splitCountedCommand s
@@ -56,12 +62,40 @@ regionWithTwoMovesB move1 move2 = do
     moveTo start
     return $! mkRegion p0 p1
 
-textObjectRegionB :: Int -> TextObject -> BufferM Region
-textObjectRegionB n (TextObject "l") = regionWithMoveB $
+textObjectRegionB :: Int -> TextObject -> BufferM StyledRegion
+textObjectRegionB count to = do
+    result@(StyledRegion style reg) <- textObjectRegionB' count to
+    -- from vim help:
+    --
+    -- 1. If the motion is exclusive and the end of the motion is in column 1, the
+    --    end of the motion is moved to the end of the previous line and the motion
+    --    becomes inclusive.  Example: "}" moves to the first line after a paragraph,
+    --    but "d}" will not include that line.
+    -- 						*exclusive-linewise*
+    -- 2. If the motion is exclusive, the end of the motion is in column 1 and the
+    --    start of the motion was at or before the first non-blank in the line, the
+    --    motion becomes linewise.  Example: If a paragraph begins with some blanks
+    --    and you do "d}" while standing on the first non-blank, all the lines of
+    --    the paragraph are deleted, including the blanks.  If you do a put now, the
+    --    deleted lines will be inserted below the cursor position.
+    --
+    -- TODO: case 2
+    if style == Exclusive
+    then do
+        let end = regionEnd reg
+        (_, endColumn) <- getLineAndColOfPoint end
+        if endColumn == 0
+        then return $ StyledRegion Inclusive $ reg { regionEnd = end -~ 1 }
+        else return result
+    else return result
+
+
+textObjectRegionB' :: Int -> TextObject -> BufferM StyledRegion
+textObjectRegionB' n (TextObject "l") = fmap (StyledRegion Inclusive) $ regionWithMoveB $
     moveXorEol n
-textObjectRegionB n (TextObject "w") = regionWithMoveB $
+textObjectRegionB' n (TextObject "w") = fmap (StyledRegion Exclusive) $ regionWithMoveB $
     replicateM_ n $ genMoveB unitViWord (Backward, InsideBound) Forward
-textObjectRegionB n (TextObject "Vl") = do
+textObjectRegionB' n (TextObject "Vl") = do
     reg <- regionWithTwoMovesB moveToSol (lineMoveRel (n-1) >> moveToEol)
-    inclusiveRegionB reg
-textObjectRegionB _n _to = return emptyRegion
+    fmap (StyledRegion LineWise) $ inclusiveRegionB reg
+textObjectRegionB' _n _to = return $ StyledRegion Inclusive emptyRegion

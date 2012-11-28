@@ -7,7 +7,6 @@ import Prelude ()
 import Yi.Prelude
 
 import Data.Char (toLower, toUpper)
-import qualified Data.Rope as R
 
 import Yi.Buffer
 import Yi.Editor
@@ -18,7 +17,7 @@ import Yi.Misc
 
 applyOperatorToTextObjectE :: VimOperator -> Int -> TextObject -> EditorM ()
 applyOperatorToTextObjectE op count to = do
-    reg <- withBuffer0 $ textObjectRegionB count to
+    (StyledRegion style reg) <- withBuffer0 $ textObjectRegionB count to
     applyOperatorToRegionE op reg
 
 applyOperatorToRegionE :: VimOperator -> Region -> EditorM ()
@@ -26,7 +25,7 @@ applyOperatorToRegionE op reg = case op of
     OpDelete -> do
         s <- withBuffer0 $ readRegionB' reg
         setDefaultRegisterE s
-        withBuffer0 $ deleteRegionB reg
+        withBuffer0 $ deleteRegionB reg >> moveTo (regionStart reg) >> leftOnEol
     OpLowerCase -> withBuffer0 $ transformCharactersInRegionB reg toLower
     OpUpperCase -> withBuffer0 $ transformCharactersInRegionB reg toUpper
     OpSwitchCase -> withBuffer0 $ transformCharactersInRegionB reg switchCaseChar

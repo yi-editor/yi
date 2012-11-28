@@ -145,6 +145,9 @@ atEof = atBoundaryB Document Forward
 getLineAndCol :: BufferM (Int, Int)
 getLineAndCol = (,) <$> curLn <*> curCol
 
+getLineAndColOfPoint :: Point -> BufferM (Int, Int)
+getLineAndColOfPoint p = savingPointB $ moveTo p >> getLineAndCol
+
 -- | Read the line the point is on
 readLnB :: BufferM String
 readLnB = readUnitB Line
