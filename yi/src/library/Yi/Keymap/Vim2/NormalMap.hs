@@ -7,7 +7,6 @@ import Prelude ()
 
 import Data.Char
 import Data.Maybe (fromMaybe)
-import qualified Data.Rope as R
 
 import Yi.Buffer hiding (Insert)
 import Yi.Core (quitEditor)
@@ -76,7 +75,7 @@ finishingBingings = fmap (mkBindingE Normal Finish)
             Nothing -> return ()
             Just r -> withBuffer0 $ do
                 rightB
-                insertN (R.toString r)
+                insertN' r
                 leftB
         , id)
     , (char 'P', do
@@ -84,7 +83,7 @@ finishingBingings = fmap (mkBindingE Normal Finish)
         case s of
             Nothing -> return ()
             Just r -> withBuffer0 $ do
-                insertN (R.toString r)
+                insertN' r
                 leftB
         , id)
     ]

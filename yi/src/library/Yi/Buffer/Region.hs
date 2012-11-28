@@ -12,6 +12,7 @@ module Yi.Buffer.Region
   , replaceRegionB'
   , replaceRegionClever
   , readRegionB
+  , readRegionB'
   , mapRegionB
   , modifyRegionB
   , modifyRegionClever
@@ -38,6 +39,10 @@ deleteRegionB r = deleteNAt (regionDirection r) (fromIntegral (regionEnd r ~- re
 -- | Read an arbitrary part of the buffer
 readRegionB :: Region -> BufferM String
 readRegionB r = nelemsB (fromIntegral (regionEnd r - i)) i
+    where i = regionStart r
+
+readRegionB' :: Region -> BufferM Rope
+readRegionB' r = nelemsB' (fromIntegral (regionEnd r - i)) i
     where i = regionStart r
 
 -- | Replace a region with a given string.

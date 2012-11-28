@@ -24,8 +24,8 @@ applyOperatorToTextObjectE op count to = do
 applyOperatorToRegionE :: VimOperator -> Region -> EditorM ()
 applyOperatorToRegionE op reg = case op of
     OpDelete -> do
-        s <- withBuffer0 $ readRegionB reg
-        setDefaultRegisterE $ R.fromString s
+        s <- withBuffer0 $ readRegionB' reg
+        setDefaultRegisterE s
         withBuffer0 $ deleteRegionB reg
     OpLowerCase -> withBuffer0 $ transformCharactersInRegionB reg toLower
     OpUpperCase -> withBuffer0 $ transformCharactersInRegionB reg toUpper

@@ -41,12 +41,14 @@ module Yi.Buffer.Misc
   , moveN
   , leftN
   , rightN
+  , insertN'
   , insertN
   , insertNAt'
   , insertNAt
   , insertB
   , deleteN
   , nelemsB
+  , nelemsB'
   , writeB
   , writeN
   , newlineB
@@ -673,6 +675,9 @@ pointB = getMarkPointB =<< getInsMark
 -- | Return @n@ elems starting at @i@ of the buffer as a list
 nelemsB :: Int -> Point -> BufferM String
 nelemsB n i = queryBuffer $ nelemsBI n i
+
+nelemsB' :: Int -> Point -> BufferM Rope
+nelemsB' n i = fmap (R.take n) (streamB Forward i)
 
 streamB :: Direction -> Point -> BufferM Rope
 streamB dir i = queryBuffer (getStream dir i)
