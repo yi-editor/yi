@@ -8,7 +8,7 @@ import Yi.Prelude
 
 import Data.Char (toLower, toUpper)
 
-import Yi.Buffer
+import Yi.Buffer hiding (Insert)
 import Yi.Editor
 import Yi.Keymap.Vim2.Common
 import Yi.Keymap.Vim2.StateUtils
@@ -18,14 +18,19 @@ import Yi.Misc
 applyOperatorToTextObjectE :: VimOperator -> Int -> TextObject -> EditorM ()
 applyOperatorToTextObjectE op count to = do
     (StyledRegion style reg) <- withBuffer0 $ textObjectRegionB count to
-    applyOperatorToRegionE op reg
+    applyOperatorToRegionE op style reg
 
-applyOperatorToRegionE :: VimOperator -> Region -> EditorM ()
-applyOperatorToRegionE op reg = case op of
+applyOperatorToRegionE :: VimOperator -> RegionStyle -> Region -> EditorM ()
+applyOperatorToRegionE op style reg = case op of
     OpDelete -> do
         s <- withBuffer0 $ readRegionB' reg
-        setDefaultRegisterE s
+        setDefaultRegisterE style s
         withBuffer0 $ deleteRegionB reg >> moveTo (regionStart reg) >> leftOnEol
+    OpChange -> do
+        s <- withBuffer0 $ readRegionB' reg
+        setDefaultRegisterE style s
+        withBuffer0 $ deleteRegionB reg >> moveTo (regionStart reg)
+        switchModeE Insert
     OpLowerCase -> withBuffer0 $ transformCharactersInRegionB reg toLower
     OpUpperCase -> withBuffer0 $ transformCharactersInRegionB reg toUpper
     OpSwitchCase -> withBuffer0 $ transformCharactersInRegionB reg switchCaseChar

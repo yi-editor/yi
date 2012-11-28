@@ -65,7 +65,7 @@ flushAccumulatorIntoRepeatableActionE :: EditorM ()
 flushAccumulatorIntoRepeatableActionE = do
     currentState <- getDynamic
     let repeatableAction = stringToRepeatableAction $ vsAccumulator currentState
-    modifyStateE $ \s -> s { vsRepeatableAction = (Just repeatableAction) 
+    modifyStateE $ \s -> s { vsRepeatableAction = Just repeatableAction
                            , vsAccumulator = []
                            }
 
@@ -75,15 +75,11 @@ dropAccumulatorE = modifyStateE $ \s -> s { vsAccumulator = [] }
 dropTextObjectAccumulatorE :: EditorM ()
 dropTextObjectAccumulatorE = modifyStateE $ \s -> s { vsTextObjectAccumulator = [] }
 
-getDefaultRegisterE :: EditorM (Maybe R.Rope)
-getDefaultRegisterE = do
-    rmap <- fmap vsRegisterMap getDynamic
-    case HM.lookup '"' rmap of
-        Nothing -> return Nothing
-        Just (Register style content) -> return $! Just content
+getDefaultRegisterE :: EditorM (Maybe Register)
+getDefaultRegisterE = fmap (HM.lookup '\0' . vsRegisterMap) getDynamic
 
-setDefaultRegisterE :: R.Rope -> EditorM ()
-setDefaultRegisterE s = do
+setDefaultRegisterE :: RegionStyle -> R.Rope -> EditorM ()
+setDefaultRegisterE style rope = do
     rmap <- fmap vsRegisterMap getDynamic
-    let rmap' = HM.insert '"' (Register Inclusive s) rmap
+    let rmap' = HM.insert '\0' (Register style rope) rmap
     modifyStateE $ \state -> state { vsRegisterMap = rmap' }

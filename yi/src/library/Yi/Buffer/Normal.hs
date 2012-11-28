@@ -41,6 +41,8 @@ module Yi.Buffer.Normal (TextUnit(Character, Line, VLine, Document),
                          , unitWiseRegion
                          , extendRegionToBoundaries
                         , regionStyleA
+                        , insertRopeWithStyleB
+                        , deleteRegionWithStyleB
                         ) where
 
 import Prelude(length, subtract)
@@ -444,3 +446,8 @@ extendRegionToBoundaries unit bs1 bs2 region = savingPointB $ do
   stop <- pointB
   return $ mkRegion' (regionDirection region) start stop
 
+insertRopeWithStyleB :: Rope -> RegionStyle -> BufferM ()
+insertRopeWithStyleB rope style = insertN' rope
+
+deleteRegionWithStyleB :: Region -> RegionStyle -> BufferM ()
+deleteRegionWithStyleB region style = deleteRegionB region

@@ -50,6 +50,7 @@ data Register = Register {
     }
 
 data VimMode = Normal
+             | NormalGotoCharacter Direction RegionStyle
              | NormalOperatorPending VimOperator
              | Insert
              | Replace

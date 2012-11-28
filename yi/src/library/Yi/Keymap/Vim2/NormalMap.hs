@@ -62,7 +62,6 @@ repeatBinding = VimBindingE prereq action
                         resetCountE
                 return Drop
 
-    -- Finishers
 finishingBingings :: [VimBinding]
 finishingBingings = fmap (mkBindingE Normal Finish)
     [ (char 'x', (withBuffer0 . cutChar Forward) =<< getCountE, resetCount)
@@ -70,20 +69,20 @@ finishingBingings = fmap (mkBindingE Normal Finish)
 
     -- Pasting
     , (char 'p', do
-        s <- getDefaultRegisterE
-        case s of
+        register <- getDefaultRegisterE
+        case register of
             Nothing -> return ()
-            Just r -> withBuffer0 $ do
+            Just (Register style rope) -> withBuffer0 $ do
                 rightB
-                insertN' r
+                insertRopeWithStyleB rope style
                 leftB
         , id)
     , (char 'P', do
         s <- getDefaultRegisterE
         case s of
             Nothing -> return ()
-            Just r -> withBuffer0 $ do
-                insertN' r
+            Just (Register style rope) -> withBuffer0 $ do
+                insertRopeWithStyleB rope style
                 leftB
         , id)
     ]
@@ -166,15 +165,19 @@ nonrepeatableBindings = fmap (mkBindingE Normal Drop)
     , (char '#', return (), id) -- TODO
     , (char 'n', return (), id) -- TODO
     , (char 'N', return (), id) -- TODO
-    , (char 'f', return (), id) -- TODO
-    , (char 'F', return (), id) -- TODO
-    , (char 't', return (), id) -- TODO
-    , (char 'T', return (), id) -- TODO
+    , (char 'f', return (), switchMode (NormalGotoCharacter Forward Inclusive))
+    , (char 'F', return (), switchMode (NormalGotoCharacter Backward Inclusive))
+    , (char 't', return (), switchMode (NormalGotoCharacter Forward Exclusive))
+    , (char 'T', return (), switchMode (NormalGotoCharacter Backward Exclusive))
+    , (char ';', return (), id) -- TODO
 
     -- Transition to visual
-    , (char 'v', return (), id) -- TODO
-    , (char 'V', return (), id) -- TODO
-    , (ctrlCh 'v', return (), id) -- TODO
+    -- , (char 'v', return (), switchMode (Visual Inclusive))
+    -- , (char 'V', return (), switchMode (Visual LineWise))
+    -- , (ctrlCh 'v', return (), switchMode (Visual Block))
+    , (char 'v', return (), id)
+    , (char 'V', return (), id)
+    , (ctrlCh 'v', return (), id)
 
     -- Repeat
     , (char '&', return (), id) -- TODO
@@ -204,6 +207,7 @@ nonrepeatableBindings = fmap (mkBindingE Normal Drop)
     , (char '~', return (), id)
     , (char '"', return (), id)
     , (char 'q', return (), id)
+    , (char ',', return (), id)
     , (spec KEnter, return (), id)
     ]
 

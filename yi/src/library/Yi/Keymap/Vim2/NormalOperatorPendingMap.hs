@@ -15,23 +15,7 @@ import Yi.Keymap.Vim2.TextObject
 import Yi.Keymap.Vim2.Utils
 
 defNormalOperatorPendingMap :: [VimBinding]
-defNormalOperatorPendingMap = [lineShortCut, textObject, escBinding]
-
--- things like dd, yy or gUU
--- when user repeats the last char of operator sequence,
--- operator is applied to current line
-lineShortCut :: VimBinding
-lineShortCut = VimBindingE prereq action
-    where prereq e vs =
-              case vsMode vs of
-                  NormalOperatorPending _ -> not (null (vsAccumulator vs))
-                                             && eventToString e == [last $ vsAccumulator vs]
-                  _ -> False
-          action _ = do
-              op <- getOperatorE
-              count <- getCountE
-              applyOperatorToTextObjectE op count $ TextObject "Vl"
-              return Finish
+defNormalOperatorPendingMap = [textObject, escBinding]
 
 textObject :: VimBinding
 textObject = VimBindingE prereq action
