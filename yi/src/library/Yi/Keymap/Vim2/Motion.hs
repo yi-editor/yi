@@ -53,6 +53,9 @@ repeat :: BufferM () -> Int -> BufferM ()
 repeat = flip replicateM_
 
 regionOfMoveB :: CountedMove -> BufferM StyledRegion
-regionOfMoveB (CountedMove n (Move style move)) = do 
+regionOfMoveB = normalizeRegion <=< regionOfMoveB'
+
+regionOfMoveB' :: CountedMove -> BufferM StyledRegion
+regionOfMoveB' (CountedMove n (Move style move)) = do
     region <- mkRegion <$> pointB <*> destinationOfMoveB (move n)
     return $! StyledRegion style region

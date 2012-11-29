@@ -6,6 +6,7 @@ import Yi.Prelude
 import Prelude ()
 
 import Data.Char
+import Data.List (dropWhile)
 import Data.Maybe (fromMaybe, isJust)
 
 import Yi.Buffer hiding (Insert)
@@ -40,11 +41,14 @@ motionBinding :: VimBinding
 motionBinding = VimBindingE prereq action
     where prereq ev state | vsMode state == Normal =
                                 case ev of
-                                    Event (KASCII c) [] -> isJust (stringToMove [c])
+                                    Event (KASCII c) [] -> isJust (stringToMove s)
+                                        where s = dropWhile isDigit (vsAccumulator state) ++ [c]
                                     _ -> False
                           | otherwise = False
           action (Event (KASCII c) []) = do
-              let (Just (Move _ move)) = stringToMove [c]
+              state <- getDynamic
+              let s = dropWhile isDigit (vsAccumulator state) ++ [c]
+                  (Just (Move _ move)) = stringToMove s
               count <- getCountE
               withBuffer0 $ move count >> leftOnEol
               resetCountE

@@ -5,6 +5,7 @@ module Yi.Prelude
 (<>),
 (++), -- consider scrapping this and replacing it by the above
 (=<<),
+(<=<),
 ($!),
 Double,
 Binary,
