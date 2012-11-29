@@ -1,12 +1,14 @@
 module Yi.Keymap.Vim2.OperatorUtils
     ( applyOperatorToTextObjectE
     , applyOperatorToRegionE
+    , lastCharForOperator
     ) where
 
 import Prelude ()
 import Yi.Prelude
 
 import Data.Char (toLower, toUpper)
+import Data.Maybe (fromJust)
 
 import Yi.Buffer hiding (Insert)
 import Yi.Editor
@@ -41,3 +43,19 @@ transformCharactersInRegionB :: Region -> (Char -> Char) -> BufferM ()
 transformCharactersInRegionB reg f = savingPointB $ do
     s <- readRegionB reg
     replaceRegionB reg (fmap f s)
+
+-- TODO eliminate redundancy
+lastCharForOperator :: VimOperator -> Char
+lastCharForOperator op = fromJust $ lookup op
+    [ (OpYank, 'y')
+    , (OpReindent, '=')
+    , (OpShiftRight, '>')
+    , (OpShiftLeft, '<')
+    , (OpFormat, 'q')
+    , (OpDelete, 'd')
+    , (OpChange, 'c')
+    , (OpLowerCase, 'u')
+    , (OpUpperCase, 'U')
+    , (OpSwitchCase, '~')
+    , (OpRot13, '?')
+    ]

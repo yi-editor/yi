@@ -25,8 +25,11 @@ textObject = VimBindingE prereq action
                             NormalOperatorPending _ -> True
                             _ -> False
         action e = do
-            partial <- fmap vsTextObjectAccumulator getDynamic
-            let operand = parseTextObject (partial ++ eventToString e)
+            currentState <- getDynamic
+            let partial = vsTextObjectAccumulator currentState
+                operand = parseTextObject opChar (partial ++ eventToString e)
+                opChar = lastCharForOperator op
+                (NormalOperatorPending op) = vsMode currentState
             case operand of
                 Fail -> do
                     dropTextObjectAccumulatorE
