@@ -1,9 +1,10 @@
 module Yi.Keymap.Vim2.TextObject
   ( TextObject(..)
-  , TextObjectDetectResult(..)
+  , OperandDetectResult(..)
   , StyledRegion(..)
   , parseTextObject
-  , textObjectRegionB
+  , regionOfTextObjectB
+  , changeTextObjectCount
   ) where
 
 import Prelude ()
@@ -11,60 +12,42 @@ import Yi.Prelude
 
 import Control.Monad (replicateM_)
 
+import Data.Maybe (isJust, fromJust)
+
 import Yi.Buffer
 import Yi.Keymap.Vim2.EventUtils
+import Yi.Keymap.Vim2.Motion
+import Yi.Keymap.Vim2.StyledRegion
 
-newtype TextObject = TextObject String
-    deriving Show
+data TextObject = TextObject !Int !RegionStyle TextUnit
 
-data TextObjectDetectResult = Success Int TextObject
-                            | Partial
-                            | Fail
-    deriving Show
+data OperandDetectResult = JustTextObject !TextObject
+                         | JustMove !CountedMove
+                         | Partial
+                         | Fail
 
-data StyledRegion = StyledRegion !RegionStyle !Region
-
--- text object grammar
--- textobject = @number? @operator @stylemod* @number? @stylemod* @motion
--- TODO: style modifiers
-parseTextObject :: String -> TextObjectDetectResult
-parseTextObject s = setCount count (parseCommand commandString)
+parseTextObject :: String -> OperandDetectResult
+parseTextObject s = setOperandCount count (parseCommand commandString)
     where (count, commandString) = splitCountedCommand s
 
-setCount :: Int -> TextObjectDetectResult -> TextObjectDetectResult
-setCount count (Success _ (TextObject b)) = Success count (TextObject b)
-setCount _ r = r
+changeTextObjectCount :: Int -> TextObject -> TextObject
+changeTextObjectCount count (TextObject _c s u) = TextObject count s u
 
-parseCommand :: String -> TextObjectDetectResult
+setOperandCount :: Int -> OperandDetectResult -> OperandDetectResult
+setOperandCount n (JustTextObject (TextObject _ s u)) = JustTextObject (TextObject n s u)
+setOperandCount n (JustMove (CountedMove _ m)) = JustMove (CountedMove n m)
+setOperandCount _ o = o
+
+parseCommand :: String -> OperandDetectResult
 parseCommand "" = Partial
-parseCommand "l" = Success 1 $ TextObject "l"
+parseCommand s | isJust (stringToMove s) = JustMove $ CountedMove 1 $ fromJust $ stringToMove s
 parseCommand "V" = Partial
-parseCommand "Vl" = Success 1 $ TextObject "Vl"
-parseCommand "w" = Success 1 $ TextObject "w"
+parseCommand "Vl" = JustTextObject $ TextObject 1 LineWise VLine
 parseCommand _ = Fail
 
--- | if 'move' does something besides moving cursor, bad things may happen
-regionWithMoveB :: BufferM () -> BufferM Region
-regionWithMoveB move = do
-    p0 <- pointB
-    move
-    p1 <- pointB
-    moveTo p0
-    return $! mkRegion p0 p1
-
-regionWithTwoMovesB :: BufferM () -> BufferM () -> BufferM Region
-regionWithTwoMovesB move1 move2 = do
-    start <- pointB
-    move1
-    p0 <- pointB
-    move2
-    p1 <- pointB
-    moveTo start
-    return $! mkRegion p0 p1
-
-textObjectRegionB :: Int -> TextObject -> BufferM StyledRegion
-textObjectRegionB count to = do
-    result@(StyledRegion style reg) <- textObjectRegionB' count to
+regionOfTextObjectB :: TextObject -> BufferM StyledRegion
+regionOfTextObjectB to = do
+    result@(StyledRegion style reg) <- textObjectRegionB' to
     -- from vim help:
     --
     -- 1. If the motion is exclusive and the end of the motion is in column 1, the
@@ -89,13 +72,8 @@ textObjectRegionB count to = do
         else return result
     else return result
 
-
-textObjectRegionB' :: Int -> TextObject -> BufferM StyledRegion
-textObjectRegionB' n (TextObject "l") = fmap (StyledRegion Inclusive) $ regionWithMoveB $
-    moveXorEol n
-textObjectRegionB' n (TextObject "w") = fmap (StyledRegion Exclusive) $ regionWithMoveB $
-    replicateM_ n $ genMoveB unitViWord (Backward, InsideBound) Forward
-textObjectRegionB' n (TextObject "Vl") = do
-    reg <- regionWithTwoMovesB moveToSol (lineMoveRel (n-1) >> moveToEol)
-    fmap (StyledRegion LineWise) $ inclusiveRegionB reg
-textObjectRegionB' _n _to = return $ StyledRegion Inclusive emptyRegion
+textObjectRegionB' :: TextObject -> BufferM StyledRegion
+textObjectRegionB' (TextObject count style unit) =
+    fmap (StyledRegion style) $ regionWithTwoMovesB
+        (maybeMoveB unit Backward)
+        (replicateM_ count $ maybeMoveB unit Forward)

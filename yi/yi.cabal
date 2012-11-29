@@ -98,6 +98,7 @@ library
     Yi.Buffer.Normal
     Yi.Buffer.Misc
     Yi.Buffer.Region
+    Yi.Buffer.TextUnit
     Yi.Buffer.Undo
     Yi.Command
     Yi.Completion
@@ -135,12 +136,14 @@ library
     Yi.Keymap.Vim2.Eval
     Yi.Keymap.Vim2.EventUtils
     Yi.Keymap.Vim2.InsertMap
+    Yi.Keymap.Vim2.Motion
     Yi.Keymap.Vim2.NormalMap
     Yi.Keymap.Vim2.NormalGotoCharacterMap
     Yi.Keymap.Vim2.NormalOperatorPendingMap
     Yi.Keymap.Vim2.ReplaceMap
     Yi.Keymap.Vim2.ReplaceSingleCharMap
     Yi.Keymap.Vim2.StateUtils
+    Yi.Keymap.Vim2.StyledRegion
     Yi.Keymap.Vim2.TextObject
     Yi.Keymap.Vim2.Utils
     Yi.KillRing

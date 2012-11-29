@@ -15,13 +15,13 @@ import Yi.Keymap.Vim2.StateUtils
 import Yi.Keymap.Vim2.TextObject
 import Yi.Misc
 
-applyOperatorToTextObjectE :: VimOperator -> Int -> TextObject -> EditorM ()
-applyOperatorToTextObjectE op count to = do
-    (StyledRegion style reg) <- withBuffer0 $ textObjectRegionB count to
-    applyOperatorToRegionE op style reg
+applyOperatorToTextObjectE :: VimOperator -> TextObject -> EditorM ()
+applyOperatorToTextObjectE op to = do
+    styledRegion <- withBuffer0 $ regionOfTextObjectB to
+    applyOperatorToRegionE op styledRegion
 
-applyOperatorToRegionE :: VimOperator -> RegionStyle -> Region -> EditorM ()
-applyOperatorToRegionE op style reg = case op of
+applyOperatorToRegionE :: VimOperator -> StyledRegion -> EditorM ()
+applyOperatorToRegionE op (StyledRegion style reg) = case op of
     OpDelete -> do
         s <- withBuffer0 $ readRegionB' reg
         setDefaultRegisterE style s

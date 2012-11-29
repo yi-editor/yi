@@ -13,6 +13,7 @@ module Yi.Buffer
   , module Yi.Buffer.Misc
   , module Yi.Buffer.Normal
   , module Yi.Buffer.Region
+  , module Yi.Buffer.TextUnit
   , module Yi.Buffer.Undo
   -- Implementation re-exports (move out of implementation?)
   , UIUpdate (..)
@@ -27,6 +28,7 @@ import Yi.Buffer.Indent
 import Yi.Buffer.Misc
 import Yi.Buffer.Normal
 import Yi.Buffer.Region
+import Yi.Buffer.TextUnit
 import Yi.Buffer.Undo
 
 import Yi.Buffer.Implementation

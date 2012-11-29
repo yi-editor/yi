@@ -9,6 +9,7 @@ import Yi.Editor
 import Yi.Keymap.Keys
 import Yi.Keymap.Vim2.Common
 import Yi.Keymap.Vim2.EventUtils
+import Yi.Keymap.Vim2.Motion
 import Yi.Keymap.Vim2.OperatorUtils
 import Yi.Keymap.Vim2.StateUtils
 import Yi.Keymap.Vim2.TextObject
@@ -33,7 +34,7 @@ textObject = VimBindingE prereq action
                   Partial -> do
                       accumulateTextObjectEventE e
                       return Continue
-                  Success n to -> do
+                  JustTextObject to@(TextObject n _ _) -> do
                       op <- getOperatorE
                       count <- getCountE
                       modifyStateE $ \s -> s {
@@ -42,7 +43,21 @@ textObject = VimBindingE prereq action
                                     ++ snd (splitCountedCommand (normalizeCount (vsAccumulator s)))
                           }
                       dropTextObjectAccumulatorE
-                      applyOperatorToTextObjectE op (count * n) to
+                      applyOperatorToTextObjectE op $ changeTextObjectCount (count * n) to
+                      resetCountE
+                      switchModeE Normal
+                      return Finish
+                  JustMove (CountedMove n m) -> do
+                      op <- getOperatorE
+                      count <- getCountE
+                      modifyStateE $ \s -> s {
+                              vsCount = Just $ count * n
+                            , vsAccumulator = show (count * n)
+                                    ++ snd (splitCountedCommand (normalizeCount (vsAccumulator s)))
+                          }
+                      dropTextObjectAccumulatorE
+                      region <- withBuffer0 $ regionOfMoveB $ CountedMove (count * n) m
+                      applyOperatorToRegionE op region
                       resetCountE
                       switchModeE Normal
                       return Finish

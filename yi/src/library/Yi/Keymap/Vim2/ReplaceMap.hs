@@ -14,7 +14,7 @@ defReplaceMap = [escBinding, printable]
 
 escBinding :: VimBinding
 escBinding = mkBindingE Replace Finish (spec KEsc,
-                                        vimMoveE (VMChar Backward),
+                                        withBuffer0 $ moveXorSol 1,
                                         resetCount . switchMode Normal)
 
 printable :: VimBinding
