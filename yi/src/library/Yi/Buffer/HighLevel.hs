@@ -636,3 +636,22 @@ revertB s now = do
 
 smallBufferSize :: Int
 smallBufferSize = 1000000
+
+deleteRegionWithStyleB :: Region -> RegionStyle -> BufferM Point
+deleteRegionWithStyleB region style =
+    case style of
+        Block -> do
+            deleteRegionB region -- TODO
+            return $! regionStart region
+        _ -> do
+            effectiveRegion <- convertRegionToStyleB region style
+            deleteRegionB effectiveRegion
+            return $! regionStart effectiveRegion
+
+readRegionRopeWithStyleB :: Region -> RegionStyle -> BufferM Rope
+readRegionRopeWithStyleB reg style = readRegionB' =<< convertRegionToStyleB reg style
+
+insertRopeWithStyleB :: Rope -> RegionStyle -> BufferM ()
+insertRopeWithStyleB rope style = do
+    when (style == LineWise) moveToEol
+    insertN' rope

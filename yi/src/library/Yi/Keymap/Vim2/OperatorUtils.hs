@@ -25,13 +25,18 @@ applyOperatorToTextObjectE op to = do
 applyOperatorToRegionE :: VimOperator -> StyledRegion -> EditorM ()
 applyOperatorToRegionE op (StyledRegion style reg) = case op of
     OpDelete -> do
-        s <- withBuffer0 $ readRegionB' reg
+        s <- withBuffer0 $ readRegionRopeWithStyleB reg style
         setDefaultRegisterE style s
-        withBuffer0 $ deleteRegionB reg >> moveTo (regionStart reg) >> leftOnEol
+        withBuffer0 $ do
+            point <- deleteRegionWithStyleB reg style
+            moveTo point
+            leftOnEol
     OpChange -> do
-        s <- withBuffer0 $ readRegionB' reg
+        s <- withBuffer0 $ readRegionRopeWithStyleB reg style
         setDefaultRegisterE style s
-        withBuffer0 $ deleteRegionB reg >> moveTo (regionStart reg)
+        withBuffer0 $ do
+            point <- deleteRegionWithStyleB reg style
+            moveTo point
         switchModeE Insert
     OpLowerCase -> withBuffer0 $ transformCharactersInRegionB reg toLower
     OpUpperCase -> withBuffer0 $ transformCharactersInRegionB reg toUpper

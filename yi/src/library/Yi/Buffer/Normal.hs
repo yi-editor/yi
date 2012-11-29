@@ -9,7 +9,7 @@
 --  * the textual units they work on
 --  * the direction towards which they operate (if applicable)
 
-module Yi.Buffer.Normal (TextUnit(Character, Line, VLine, Document),
+module Yi.Buffer.Normal (TextUnit(Character, Line, VLine, Document, GenUnit),
                          outsideUnit,
                          leftBoundaryUnit,                         
                          unitWord,
@@ -38,12 +38,11 @@ module Yi.Buffer.Normal (TextUnit(Character, Line, VLine, Document),
                          checkPeekB
                          , RegionStyle(..)
                          , mkRegionOfStyleB
+                         , convertRegionToStyleB
                          , unitWiseRegion
                          , extendRegionToBoundaries
-                        , regionStyleA
-                        , insertRopeWithStyleB
-                        , deleteRegionWithStyleB
-                        ) where
+                         , regionStyleA
+                         ) where
 
 import Prelude(length, subtract)
 import Yi.Prelude
@@ -77,6 +76,9 @@ instance YiVariable RegionStyle
 regionStyleA :: Accessor FBuffer RegionStyle
 regionStyleA = bufferDynamicValueA
 
+convertRegionToStyleB :: Region -> RegionStyle -> BufferM Region
+convertRegionToStyleB r = mkRegionOfStyleB (regionStart r) (regionEnd r)
+
 mkRegionOfStyleB :: Point -> Point -> RegionStyle -> BufferM Region
 mkRegionOfStyleB start' stop' regionStyle =
    let [start, stop] = sort [start', stop']
@@ -102,9 +104,3 @@ extendRegionToBoundaries unit bs1 bs2 region = savingPointB $ do
   genMaybeMoveB unit (Forward, bs2) Forward
   stop <- pointB
   return $ mkRegion' (regionDirection region) start stop
-
-insertRopeWithStyleB :: Rope -> RegionStyle -> BufferM ()
-insertRopeWithStyleB rope style = insertN' rope
-
-deleteRegionWithStyleB :: Region -> RegionStyle -> BufferM ()
-deleteRegionWithStyleB region style = deleteRegionB region

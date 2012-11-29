@@ -3,6 +3,7 @@ module Yi.Keymap.Vim2.Motion
     , CountedMove(..)
     , stringToMove 
     , regionOfMoveB
+    , changeMoveStyle
     ) where
 
 import Prelude ()
@@ -21,20 +22,23 @@ stringToMove :: String -> Maybe Move
 stringToMove c = fmap (Move Exclusive) (lookup c exclusiveMotions)
              <|> fmap (Move Inclusive) (lookup c inclusiveMotions)
 
+changeMoveStyle :: (RegionStyle -> RegionStyle) -> Move -> Move
+changeMoveStyle smod (Move s m) = Move (smod s) m
+
 exclusiveMotions :: [(String, Int -> BufferM ())]
 exclusiveMotions =
-    [ ("w", repeat $ genMoveB unitViWord (Backward, InsideBound) Forward)
+    [ ("h", moveXorSol)
+    , ("l", moveXorEol)
+    , ("w", repeat $ genMoveB unitViWord (Backward, InsideBound) Forward)
     , ("W", repeat $ genMoveB unitViWORD (Backward, InsideBound) Forward)
     , ("b", repeat $ moveB unitViWord Backward)
     , ("B", repeat $ moveB unitViWORD Backward)
-    , ("^", const $ firstNonSpaceB)
+    , ("^", const firstNonSpaceB)
     ]
 
 inclusiveMotions :: [(String, Int -> BufferM ())]
 inclusiveMotions =
-    [ ("h", moveXorSol)
-    , ("l", moveXorEol)
-    , ("j", discard . lineMoveRel)
+    [ ("j", discard . lineMoveRel)
     , ("k", discard . lineMoveRel . negate)
 
     -- Word motions

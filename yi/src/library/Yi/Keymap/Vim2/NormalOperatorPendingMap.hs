@@ -5,6 +5,7 @@ module Yi.Keymap.Vim2.NormalOperatorPendingMap
 import Prelude ()
 import Yi.Prelude
 
+import Yi.Buffer
 import Yi.Editor
 import Yi.Keymap.Keys
 import Yi.Keymap.Vim2.Common
@@ -12,6 +13,7 @@ import Yi.Keymap.Vim2.EventUtils
 import Yi.Keymap.Vim2.Motion
 import Yi.Keymap.Vim2.OperatorUtils
 import Yi.Keymap.Vim2.StateUtils
+import Yi.Keymap.Vim2.StyledRegion
 import Yi.Keymap.Vim2.TextObject
 import Yi.Keymap.Vim2.Utils
 
@@ -40,7 +42,6 @@ textObject = VimBindingE prereq action
                     accumulateTextObjectEventE e
                     return Continue
                 _ -> do
-                    op <- getOperatorE
                     count <- getCountE
                     dropTextObjectAccumulatorE
                     case operand of
@@ -51,9 +52,30 @@ textObject = VimBindingE prereq action
                             normalizeCountE n
                             region <- withBuffer0 $ regionOfMoveB $ CountedMove (count * n) m
                             applyOperatorToRegionE op region
+                        JustOperator n style -> do
+                            normalizeCountE n
+                            normalizedCount <- getCountE
+                            region <- withBuffer0 $ regionForOperatorLineB normalizedCount style
+                            applyOperatorToRegionE op region
                     resetCountE
                     switchModeE Normal
                     return Finish
+
+regionForOperatorLineB :: Int -> RegionStyle -> BufferM StyledRegion
+regionForOperatorLineB n style = normalizeRegion =<< StyledRegion style <$> do
+    current <- pointB
+    if n == 1
+    then do
+        firstNonSpaceB
+        p0 <- pointB
+        return $! mkRegion p0 current
+    else do
+        lineMoveRel (n-2)
+        moveToEol
+        rightB
+        firstNonSpaceB
+        p1 <- pointB
+        return $! mkRegion current p1
 
 escBinding :: VimBinding
 escBinding = mkBindingE ReplaceSingleChar Drop (spec KEsc, return (), resetCount . switchMode Normal)

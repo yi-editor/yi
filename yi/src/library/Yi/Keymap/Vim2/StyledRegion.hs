@@ -33,6 +33,6 @@ normalizeRegion sr@(StyledRegion style reg) =
         let end = regionEnd reg
         (_, endColumn) <- getLineAndColOfPoint end
         if endColumn == 0
-        then return $ StyledRegion Inclusive $ reg { regionEnd = end -~ 1 }
+        then return $ StyledRegion Inclusive $ reg { regionEnd = end -~ 2 }
         else return sr
     else return sr
