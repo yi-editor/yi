@@ -4,7 +4,6 @@ module Yi.Keymap.Vim2.Utils
   , mkStringBindingE
   , isBindingApplicable
   , splitCountedCommand
-  , normalizeCount
   ) where
 
 import Yi.Prelude
@@ -59,15 +58,4 @@ combineAction action mutateState rtoken = do
 
 isBindingApplicable :: Event -> VimState -> VimBinding -> Bool
 isBindingApplicable e s b = vbPrerequisite b e s
-
--- 2d3w -> 6dw
--- 6dw -> 6dw
--- dw -> dw
-normalizeCount :: String -> String
-normalizeCount s = if null countedObject
-                   then s
-                   else show (operatorCount * objectCount) ++ operator ++ object
-    where (operatorCount, rest1) = splitCountedCommand s
-          (operator, countedObject) = break isDigit rest1
-          (objectCount, object) = splitCountedCommand countedObject
 

@@ -3,6 +3,7 @@ module Yi.Keymap.Vim2.EventUtils
   , eventToString
   , parseEvents
   , stringToRepeatableAction
+  , normalizeCount
   , splitCountedCommand
   ) where
 
@@ -51,3 +52,14 @@ splitCountedCommand s = (count, commandString)
           count = case countString of
                    [] -> 1
                    _ -> read countString
+
+-- 2d3w -> 6dw
+-- 6dw -> 6dw
+-- dw -> dw
+normalizeCount :: String -> String
+normalizeCount s = if null countedObject
+                   then s
+                   else show (operatorCount * objectCount) ++ operator ++ object
+    where (operatorCount, rest1) = splitCountedCommand s
+          (operator, countedObject) = break isDigit rest1
+          (objectCount, object) = splitCountedCommand countedObject

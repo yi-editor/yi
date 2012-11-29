@@ -20,47 +20,37 @@ defNormalOperatorPendingMap = [textObject, escBinding]
 
 textObject :: VimBinding
 textObject = VimBindingE prereq action
-    where prereq _ vs = case vsMode vs of
+    where
+        prereq _ vs = case vsMode vs of
                             NormalOperatorPending _ -> True
                             _ -> False
-          action e = do
-              partial <- fmap vsTextObjectAccumulator getDynamic
-              case parseTextObject (partial ++ eventToString e) of
-                  Fail -> do
-                      dropTextObjectAccumulatorE
-                      resetCountE
-                      switchModeE Normal
-                      return Drop
-                  Partial -> do
-                      accumulateTextObjectEventE e
-                      return Continue
-                  JustTextObject to@(TextObject n _ _) -> do
-                      op <- getOperatorE
-                      count <- getCountE
-                      modifyStateE $ \s -> s {
-                              vsCount = Just $ count * n
-                            , vsAccumulator = show (count * n)
-                                    ++ snd (splitCountedCommand (normalizeCount (vsAccumulator s)))
-                          }
-                      dropTextObjectAccumulatorE
-                      applyOperatorToTextObjectE op $ changeTextObjectCount (count * n) to
-                      resetCountE
-                      switchModeE Normal
-                      return Finish
-                  JustMove (CountedMove n m) -> do
-                      op <- getOperatorE
-                      count <- getCountE
-                      modifyStateE $ \s -> s {
-                              vsCount = Just $ count * n
-                            , vsAccumulator = show (count * n)
-                                    ++ snd (splitCountedCommand (normalizeCount (vsAccumulator s)))
-                          }
-                      dropTextObjectAccumulatorE
-                      region <- withBuffer0 $ regionOfMoveB $ CountedMove (count * n) m
-                      applyOperatorToRegionE op region
-                      resetCountE
-                      switchModeE Normal
-                      return Finish
+        action e = do
+            partial <- fmap vsTextObjectAccumulator getDynamic
+            let operand = parseTextObject (partial ++ eventToString e)
+            case operand of
+                Fail -> do
+                    dropTextObjectAccumulatorE
+                    resetCountE
+                    switchModeE Normal
+                    return Drop
+                Partial -> do
+                    accumulateTextObjectEventE e
+                    return Continue
+                _ -> do
+                    op <- getOperatorE
+                    count <- getCountE
+                    dropTextObjectAccumulatorE
+                    case operand of
+                        JustTextObject to@(TextObject n _ _) -> do
+                            normalizeCountE n
+                            applyOperatorToTextObjectE op $ changeTextObjectCount (count * n) to
+                        JustMove (CountedMove n m) -> do
+                            normalizeCountE n
+                            region <- withBuffer0 $ regionOfMoveB $ CountedMove (count * n) m
+                            applyOperatorToRegionE op region
+                    resetCountE
+                    switchModeE Normal
+                    return Finish
 
 escBinding :: VimBinding
 escBinding = mkBindingE ReplaceSingleChar Drop (spec KEsc, return (), resetCount . switchMode Normal)

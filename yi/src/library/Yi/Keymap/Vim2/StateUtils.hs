@@ -13,6 +13,7 @@ module Yi.Keymap.Vim2.StateUtils
   , dropTextObjectAccumulatorE
   , setDefaultRegisterE
   , getDefaultRegisterE
+  , normalizeCountE
   ) where
 
 import Yi.Prelude
@@ -83,3 +84,12 @@ setDefaultRegisterE style rope = do
     rmap <- fmap vsRegisterMap getDynamic
     let rmap' = HM.insert '\0' (Register style rope) rmap
     modifyStateE $ \state -> state { vsRegisterMap = rmap' }
+
+normalizeCountE :: Int -> EditorM ()
+normalizeCountE n = do
+    count <- getCountE
+    modifyStateE $ \s -> s {
+                       vsCount = Just $ count * n
+                     , vsAccumulator = show (count * n)
+                           ++ snd (splitCountedCommand (normalizeCount (vsAccumulator s)))
+                   }
