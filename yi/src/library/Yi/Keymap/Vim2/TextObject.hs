@@ -36,7 +36,7 @@ parseTextObject opChar s = parseCommand count styleMod opChar commandString
                         "V" -> const LineWise
                         "<C-v>" -> const Block
                         "v" -> \style -> case style of
-                                            Inclusive -> Inclusive
+                                            Exclusive -> Inclusive
                                             _ -> Exclusive
                         _ -> error "Can't happen"
 
