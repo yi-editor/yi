@@ -1,14 +1,12 @@
 -- Input
-(2,1)
+(1,1)
 Lorem ipsum dolor sit amet
 abc def ghi
 qwe rty uiop
-foo
 -- Output
-(2,1)
-Lorem ipsum dolor sit amet
+(3,1)
 abc def ghi
 qwe rty uiop
-foo
+Lorem ipsum dolor sit amet
 -- Events
-2ddP
+ddjp
