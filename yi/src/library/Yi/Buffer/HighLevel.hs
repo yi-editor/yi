@@ -652,6 +652,7 @@ readRegionRopeWithStyleB :: Region -> RegionStyle -> BufferM Rope
 readRegionRopeWithStyleB reg style = readRegionB' =<< convertRegionToStyleB reg style
 
 insertRopeWithStyleB :: Rope -> RegionStyle -> BufferM ()
-insertRopeWithStyleB rope style = do
-    when (style == LineWise) moveToEol
-    insertN' rope
+insertRopeWithStyleB rope LineWise = do
+    moveToSol
+    savingPointB $ insertN' rope
+insertRopeWithStyleB rope style = insertN' rope

@@ -8,6 +8,7 @@ import Prelude ()
 import Data.Char
 import Data.List (dropWhile)
 import Data.Maybe (fromMaybe, isJust)
+import qualified Data.Rope as R
 
 import Yi.Buffer hiding (Insert)
 import Yi.Core (quitEditor)
@@ -87,24 +88,48 @@ finishingBingings = fmap (mkBindingE Normal Finish)
     , (char 'X', (withBuffer0 . cutChar Backward) =<< getCountE, resetCount)
 
     -- Pasting
-    , (char 'p', do
-        register <- getDefaultRegisterE
-        case register of
-            Nothing -> return ()
-            Just (Register style rope) -> withBuffer0 $ do
-                rightB
-                insertRopeWithStyleB rope style
-                leftB
-        , id)
-    , (char 'P', do
-        s <- getDefaultRegisterE
-        case s of
-            Nothing -> return ()
-            Just (Register style rope) -> withBuffer0 $ do
-                insertRopeWithStyleB rope style
-                leftB
-        , id)
+    , (char 'p', pasteAfter, id)
+    , (char 'P', pasteBefore, id)
     ]
+
+pasteBefore :: EditorM ()
+pasteBefore = do
+    -- TODO: use count
+    s <- getDefaultRegisterE
+    case s of
+        Nothing -> return ()
+        Just (Register LineWise rope) -> withBuffer0 $ when (not $ R.null rope) $ do
+            -- Beware of edge cases ahead
+            let l = R.length rope
+                lastChar = head $ R.toString $ R.drop (l-1) rope
+                rope' = if lastChar == '\n' then rope else R.append rope (R.fromString "\n")
+            insertRopeWithStyleB rope' LineWise
+        Just (Register style rope) -> withBuffer0 $ do
+            insertRopeWithStyleB rope style
+            leftB
+
+pasteAfter :: EditorM ()
+pasteAfter = do
+    -- TODO: use count
+    register <- getDefaultRegisterE
+    case register of
+        Nothing -> return ()
+        Just (Register LineWise rope) -> withBuffer0 $ do
+            -- Beware of edge cases ahead
+            moveToEol
+            eof <- atEof
+            when eof $ insertB '\n'
+            rightB
+            insertRopeWithStyleB rope LineWise
+            when eof $ savingPointB $ do
+                newSize <- sizeB
+                moveTo (newSize - 1)
+                curChar <- readB
+                when (curChar == '\n') $ deleteN 1
+        Just (Register style rope) -> withBuffer0 $ do
+            rightB
+            insertRopeWithStyleB rope style
+            leftB
 
 continuingBindings :: [VimBinding]
 continuingBindings = fmap (mkBindingE Normal Continue)

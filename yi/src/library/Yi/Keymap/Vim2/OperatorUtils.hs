@@ -30,7 +30,14 @@ applyOperatorToRegionE op (StyledRegion style reg) = case op of
         withBuffer0 $ do
             point <- deleteRegionWithStyleB reg style
             moveTo point
-            leftOnEol
+            bufSize <- sizeB
+            eof <- atEof
+            if eof
+            then do
+                leftB
+                c <- readB
+                when (c == '\n') $ deleteN 1 >> moveToSol
+            else leftOnEol
     OpChange -> do
         s <- withBuffer0 $ readRegionRopeWithStyleB reg style
         setDefaultRegisterE style s
