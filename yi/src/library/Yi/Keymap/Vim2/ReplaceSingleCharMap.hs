@@ -34,21 +34,18 @@ actualReplaceBinding = VimBindingE prereq action
                               (Event (KASCII 'y') [MCtrl]) -> replaceCharWithAboveB
                               _ -> return ()
               withBuffer0 $ do
-                  replacer
-                  if count > 1
-                  then do
+                  -- Is there more easy way to get distance to eol?
+                  here <- pointB
+                  moveToEol
+                  eol <- pointB
+                  moveTo here
 
-                      -- Is there more easy way to get distance to eol?
-                      here <- pointB
-                      moveToEol
-                      eol <- pointB
-                      moveTo here
+                  let effectiveCount = min count (fromSize $ eol ~- here)
 
-                      let effectiveCount = min (count - 1) (fromPoint eol - fromPoint here - 1)
+                  when (effectiveCount > 0) $ do
+                      replicateM_ effectiveCount $ replacer >> rightB
+                      leftB
 
-                      replicateM_ effectiveCount $ (rightB >> replacer)
-
-                  else return ()
               resetCountE
               switchModeE Normal
               return Finish
