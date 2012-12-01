@@ -9,12 +9,8 @@ module Yi.Keymap.Vim2.Utils
 import Yi.Prelude
 import Prelude ()
 
-import Control.Monad (replicateM_)
+import Data.List (isPrefixOf)
 
-import Data.Char (isDigit)
-import Data.List (break, isPrefixOf)
-
-import Yi.Buffer
 import Yi.Editor
 import Yi.Event
 import Yi.Keymap
