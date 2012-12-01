@@ -28,4 +28,11 @@ printable = VimBindingE prereq action
           action (Event (KASCII c) []) = do
               withBuffer0 $ insertB c
               return Continue
+          action (Event KEnter []) = do
+              withBuffer0 $ insertB '\n'
+              return Continue
+          action (Event KTab []) = do
+              -- For testing purposes assume noexpandtab, tw=4
+              withBuffer0 $ insertN $ replicate 4 ' '
+              return Continue
           action _ = return Drop
