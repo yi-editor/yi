@@ -53,6 +53,12 @@ motionBinding = VimBindingE prereq action
               count <- getCountE
               withBuffer0 $ move count >> leftOnEol
               resetCountE
+
+              -- moving with j/k after $ sticks cursor to the right edge
+              when (c == '$') $ setStickyEolE True
+              when (c `elem` "jk" && vsStickyEol state) $ withBuffer0 $ moveToEol >> leftB
+              when (c `notElem` "jk$") $ setStickyEolE False
+
               return Drop
 
 zeroBinding :: VimBinding

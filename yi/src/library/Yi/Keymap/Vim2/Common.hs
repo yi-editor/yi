@@ -68,6 +68,7 @@ data VimState = VimState {
         , vsRegisterMap :: !(HM.HashMap Char Register)
         , vsRepeatableAction :: !(Maybe RepeatableAction)
         , vsStringToEval :: !String -- ^ see Yi.Keymap.Vim2.vimEval comment
+        , vsStickyEol :: !Bool -- ^ is set on $, allows j and k walk the right edge of lines
     } deriving (Typeable)
 
 $(derive makeBinary ''VimOperator)
@@ -82,7 +83,7 @@ instance Initializable VimMode where
 $(derive makeBinary ''VimMode)
 
 instance Initializable VimState where
-    initial = VimState Normal Nothing [] [] HM.empty Nothing []
+    initial = VimState Normal Nothing [] [] HM.empty Nothing [] False
 
 $(derive makeBinary ''VimState)
 

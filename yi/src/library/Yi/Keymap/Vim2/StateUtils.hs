@@ -14,6 +14,7 @@ module Yi.Keymap.Vim2.StateUtils
   , setDefaultRegisterE
   , getDefaultRegisterE
   , normalizeCountE
+  , setStickyEolE
   ) where
 
 import Yi.Prelude
@@ -93,3 +94,6 @@ normalizeCountE n = do
                      , vsAccumulator = show (count * n)
                            ++ snd (splitCountedCommand (normalizeCount (vsAccumulator s)))
                    }
+
+setStickyEolE :: Bool -> EditorM ()
+setStickyEolE b = modifyStateE $ \s -> s { vsStickyEol = b }
