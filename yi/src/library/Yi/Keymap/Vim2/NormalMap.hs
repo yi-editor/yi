@@ -18,7 +18,9 @@ import Yi.Keymap.Keys
 import Yi.Keymap.Vim2.Common
 import Yi.Keymap.Vim2.Eval
 import Yi.Keymap.Vim2.Motion
+import Yi.Keymap.Vim2.OperatorUtils
 import Yi.Keymap.Vim2.StateUtils
+import Yi.Keymap.Vim2.StyledRegion
 import Yi.Keymap.Vim2.Utils
 
 mkDigitBinding :: Char -> VimBinding
@@ -90,8 +92,8 @@ repeatBinding = VimBindingE prereq action
 
 finishingBingings :: [VimBinding]
 finishingBingings = fmap (mkBindingE Normal Finish)
-    [ (char 'x', (withBuffer0 . cutChar Forward) =<< getCountE, resetCount)
-    , (char 'X', (withBuffer0 . cutChar Backward) =<< getCountE, resetCount)
+    [ (char 'x', cutCharE Forward =<< getCountE, resetCount)
+    , (char 'X', cutCharE Backward =<< getCountE, resetCount)
 
     -- Pasting
     , (char 'p', pasteAfter, id)
@@ -177,9 +179,15 @@ nonrepeatableBindings = fmap (mkBindingE Normal Drop)
 
     -- Changing
     , (char 'c', return (), switchMode Insert) -- TODO
-    , (char 'C', return (), switchMode Insert) -- TODO
-    , (char 's', return (), id) -- TODO
-    , (char 'S', return (), id) -- TODO
+    , (char 'C', do
+        region <- withBuffer0 $ regionWithTwoMovesB (return ()) moveToEol
+        applyOperatorToRegionE OpDelete $ StyledRegion Exclusive region
+        return (), switchMode Insert) -- TODO
+    , (char 's', cutCharE Forward =<< getCountE, switchMode Insert)
+    , (char 'S', do
+        region <- withBuffer0 $ regionWithTwoMovesB firstNonSpaceB moveToEol
+        applyOperatorToRegionE OpDelete $ StyledRegion Exclusive region
+        , switchMode Insert)
 
     -- Replacing
     , (char 'R', return (), switchMode Replace)
@@ -244,10 +252,15 @@ nonrepeatableBindings = fmap (mkBindingE Normal Drop)
     , (spec KEnter, return (), id)
     ]
 
-cutChar :: Direction -> Int -> BufferM ()
-cutChar dir count = do
-    p0 <- pointB
-    (if dir == Forward then moveXorEol else moveXorSol) count
-    p1 <- pointB
-    deleteRegionB $ mkRegion p0 p1
-    leftOnEol
+cutCharE :: Direction -> Int -> EditorM ()
+cutCharE dir count = do
+    r <- withBuffer0 $ do
+        p0 <- pointB
+        (if dir == Forward then moveXorEol else moveXorSol) count
+        p1 <- pointB
+        let region = mkRegion p0 p1
+        rope <- readRegionB' region
+        deleteRegionB $ mkRegion p0 p1
+        leftOnEol
+        return rope
+    setDefaultRegisterE Inclusive r
