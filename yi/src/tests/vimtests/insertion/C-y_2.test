@@ -7,4 +7,4 @@ bar
 f
 fbar
 -- Events
-ji<C-y><C-y><C-y>
+ji<C-y><C-y><C-y><Esc>

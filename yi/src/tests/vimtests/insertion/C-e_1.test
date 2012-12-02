@@ -7,4 +7,4 @@ bar
 barfoo
 bar
 -- Events
-i<C-e><C-e><C-e>
+i<C-e><C-e><C-e><Esc>
