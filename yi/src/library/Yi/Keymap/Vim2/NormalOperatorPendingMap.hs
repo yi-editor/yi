@@ -62,7 +62,7 @@ textObject = VimBindingE prereq action
                     return Finish
 
 regionForOperatorLineB :: Int -> RegionStyle -> BufferM StyledRegion
-regionForOperatorLineB n style = normalizeRegion =<< StyledRegion style <$> do
+regionForOperatorLineB n style = normalizeRegion =<< StyledRegion style <$> savingPointB (do
     current <- pointB
     if n == 1
     then do
@@ -75,7 +75,7 @@ regionForOperatorLineB n style = normalizeRegion =<< StyledRegion style <$> do
         rightB
         firstNonSpaceB
         p1 <- pointB
-        return $! mkRegion current p1
+        return $! mkRegion current p1)
 
 escBinding :: VimBinding
 escBinding = mkBindingE ReplaceSingleChar Drop (spec KEsc, return (), resetCount . switchMode Normal)
