@@ -196,8 +196,11 @@ nonrepeatableBindings = fmap (mkBindingE Normal Drop)
     , (char 'D', return (), id) -- TODO
 
     -- Yanking
-    , (char 'y', return (), id) -- TODO
-    , (char 'Y', return (), id) -- TODO
+    , (char 'y', return (), switchMode $ NormalOperatorPending OpYank) -- TODO
+    , (char 'Y', do
+        region <- withBuffer0 $ regionWithTwoMovesB (return ()) moveToEol
+        applyOperatorToRegionE OpYank $ StyledRegion Exclusive region
+        , id) -- TODO
 
     -- Search
     , (char '/', return (), id) -- TODO

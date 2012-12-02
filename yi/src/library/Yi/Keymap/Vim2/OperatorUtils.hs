@@ -30,7 +30,6 @@ applyOperatorToRegionE op (StyledRegion style reg) = case op of
         withBuffer0 $ do
             point <- deleteRegionWithStyleB reg style
             moveTo point
-            bufSize <- sizeB
             eof <- atEof
             if eof
             then do
@@ -49,6 +48,9 @@ applyOperatorToRegionE op (StyledRegion style reg) = case op of
     OpUpperCase -> withBuffer0 $ transformCharactersInRegionB reg toUpper
     OpSwitchCase -> withBuffer0 $ transformCharactersInRegionB reg switchCaseChar
     OpRot13 -> withBuffer0 $ transformCharactersInRegionB reg rot13Char
+    OpYank -> do
+        s <- withBuffer0 $ readRegionRopeWithStyleB reg style
+        setDefaultRegisterE style s
     _ -> withBuffer0 $ insertN $ "Operator not supported " ++ show op
 
 transformCharactersInRegionB :: Region -> (Char -> Char) -> BufferM ()
