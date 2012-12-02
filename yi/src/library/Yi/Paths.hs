@@ -19,6 +19,7 @@ import Control.Monad(filterM, Monad)
 import Control.Monad.Trans(liftIO, MonadIO)
 import qualified System.Environment.XDG.BaseDir as XDG
 
+appUserDataCond ::(MonadIO m) => ([Char] -> IO FilePath) -> m FilePath
 appUserDataCond dirQuery = liftIO $
   do oldDir <- getAppUserDataDirectory "yi"
      newDir <- dirQuery "yi"
@@ -31,8 +32,9 @@ appUserDataCond dirQuery = liftIO $
                else do createDirectoryIfMissing True newDir -- none exists, use new style, but create it
                        return newDir
 
--- TODO: These would be replaced by xdg-basedir equivalents
+getConfigDir ::(MonadIO m) => m FilePath
 getConfigDir = appUserDataCond XDG.getUserConfigDir
+getDataDir   ::(MonadIO m) => m FilePath
 getDataDir   = appUserDataCond XDG.getUserDataDir
 
 -- | Given a path relative to application data directory,
