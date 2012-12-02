@@ -178,6 +178,8 @@ data VimExCmd = VimExCmd { cmdNames :: [String]
 
 type VimExCmdMap = [VimExCmd] -- very simple implementation yet
 
+data SearchVariety = Bounded | Unbounded
+
 $(nameDeriveAccessors ''VimOpts $ Just.(++ "A"))
 
 -- | The Vim keymap is divided into several parts, roughly corresponding
@@ -672,12 +674,14 @@ defKeymap = Proto template
           ,char 'm' ?>> setMark
           ,char '.' ?>>! applyViCmd cnt =<< withEditor (getA lastViCommandA)]
 
-
-     searchCurrentWord :: Direction -> EditorM ()
-     searchCurrentWord dir = do
+     searchCurrentWord :: SearchVariety -> Direction -> EditorM ()
+     searchCurrentWord bounded dir = do
        w <- withBuffer0' $ readRegionB =<< regionOfNonEmptyB unitViWord
-       viSearch (boundedPattern  w) [] dir
+       viSearch (pattern bounded w) [] dir
        where
+         pattern bounded w = case bounded of
+                             Bounded   -> boundedPattern w
+                             Unbounded -> w
          boundedPattern x = "\\<" ++ (regexEscapeString x) ++ "\\>"
 
      gotoPrevTagMark :: Int -> YiM ()
@@ -743,12 +747,14 @@ defKeymap = Proto template
          ,([ctrlW, char 'W'], prevWinE')
          ,([ctrlW, char 'p'], prevWinE')
 
-         -- these 4 commands should go to moveKeymap
+         -- these 6 commands should go to moveKeymap
          -- however moveKeymap is currently confined to BufferM
          ,([char 'n'],          const $ continueSearching id)
          ,([char 'N'],          const $ continueSearching reverseDir)
-         ,([char '*'],          const $ searchCurrentWord Forward)
-         ,([char '#'],          const $ searchCurrentWord Backward)
+         ,([char '*'],          const $ searchCurrentWord Bounded Forward)
+         ,([char '#'],          const $ searchCurrentWord Bounded Backward)
+         ,(map char "g*",       const $ searchCurrentWord Unbounded Forward)
+         ,(map char "g#",       const $ searchCurrentWord Unbounded Backward)
 
          -- since we don't have vertical splitting,
          -- these moving can be done using next/prev.
