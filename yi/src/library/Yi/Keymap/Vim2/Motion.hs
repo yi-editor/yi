@@ -21,9 +21,16 @@ data CountedMove = CountedMove !Int !Move
 stringToMove :: String -> Maybe Move
 stringToMove c = fmap (Move Exclusive) (lookup c exclusiveMotions)
              <|> fmap (Move Inclusive) (lookup c inclusiveMotions)
+             <|> fmap (Move LineWise) (lookup c linewiseMotions)
 
 changeMoveStyle :: (RegionStyle -> RegionStyle) -> Move -> Move
 changeMoveStyle smod (Move s m) = Move (smod s) m
+
+linewiseMotions :: [(String, Int -> BufferM ())]
+linewiseMotions =
+    [ ("j", discard . lineMoveRel)
+    , ("k", discard . lineMoveRel . negate)
+    ]
 
 exclusiveMotions :: [(String, Int -> BufferM ())]
 exclusiveMotions =
@@ -38,11 +45,9 @@ exclusiveMotions =
 
 inclusiveMotions :: [(String, Int -> BufferM ())]
 inclusiveMotions =
-    [ ("j", discard . lineMoveRel)
-    , ("k", discard . lineMoveRel . negate)
-
+    [
     -- Word motions
-    , ("e", repeat $ genMoveB unitViWord (Forward, InsideBound) Forward)
+      ("e", repeat $ genMoveB unitViWord (Forward, InsideBound) Forward)
     , ("E", repeat $ genMoveB unitViWORD (Forward, InsideBound) Forward)
     , ("ge", repeat $ genMoveB unitViWord (Forward, InsideBound) Backward)
     , ("gE", repeat $ genMoveB unitViWORD (Forward, InsideBound) Backward)
