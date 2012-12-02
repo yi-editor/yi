@@ -49,15 +49,15 @@ printableAction e = do
         (Event KTab []) -> insertN $ replicate 4 ' '
         (Event (KASCII 't') [MCtrl]) -> return () -- TODO
         (Event (KASCII 'd') [MCtrl]) -> return () -- TODO
-        (Event (KASCII 'e') [MCtrl]) -> return () -- TODO
-        (Event (KASCII 'y') [MCtrl]) -> return () -- TODO
+        (Event (KASCII 'e') [MCtrl]) -> insertCharWithBelowB
+        (Event (KASCII 'y') [MCtrl]) -> insertCharWithAboveB
         (Event (KASCII 'h') [MCtrl]) -> return () -- TODO
         (Event (KASCII 'j') [MCtrl]) -> return () -- TODO
         (Event (KASCII 'o') [MCtrl]) -> return () -- TODO
         (Event (KASCII 'w') [MCtrl]) -> return () -- TODO
         (Event (KASCII 'r') [MCtrl]) -> return () -- TODO
         (Event (KASCII 'k') [MCtrl]) -> return () -- TODO
-        e' -> error $ "Unhandled event " ++ show e'
+        e' -> error $ "Unhandled event " ++ show e' ++ " in insert mode"
     return Continue
 
 save :: Event -> EditorM ()

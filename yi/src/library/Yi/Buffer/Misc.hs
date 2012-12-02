@@ -143,6 +143,10 @@ module Yi.Buffer.Misc
   , file
   , lastSyncTimeA
   , replaceCharB
+  , replaceCharWithBelowB
+  , replaceCharWithAboveB
+  , insertCharWithBelowB
+  , insertCharWithAboveB
   , pointAfterCursorB
   , destinationOfMoveB
   )
@@ -988,6 +992,40 @@ replaceCharB c = do
     deleteN 1
     insertB c
     leftB
+
+replaceCharWithBelowB :: BufferM ()
+replaceCharWithBelowB = replaceCharWithVerticalOffset 1
+
+replaceCharWithAboveB :: BufferM ()
+replaceCharWithAboveB = replaceCharWithVerticalOffset (-1)
+
+insertCharWithBelowB :: BufferM ()
+insertCharWithBelowB = maybe (return ()) insertB =<< maybeCharBelowB
+
+insertCharWithAboveB :: BufferM ()
+insertCharWithAboveB = maybe (return ()) insertB =<< maybeCharAboveB
+
+replaceCharWithVerticalOffset :: Int -> BufferM ()
+replaceCharWithVerticalOffset offset =
+    maybe (return ()) replaceCharB =<< maybeCharWithVerticalOffset offset
+
+maybeCharBelowB :: BufferM (Maybe Char)
+maybeCharBelowB = maybeCharWithVerticalOffset 1
+
+maybeCharAboveB :: BufferM (Maybe Char)
+maybeCharAboveB = maybeCharWithVerticalOffset (-1)
+
+maybeCharWithVerticalOffset :: Int -> BufferM (Maybe Char)
+maybeCharWithVerticalOffset offset = savingPointB $ do
+    startingPoint <- pointB
+    l0 <- curLn
+    c0 <- curCol
+    discard $ lineMoveRel offset
+    l1 <- curLn
+    c1 <- curCol
+    if c0 == c1 && l0 + offset == l1
+    then fmap Just readB
+    else return Nothing
 
 -- | Delete @n@ characters forward from the current point
 deleteN :: Int -> BufferM ()

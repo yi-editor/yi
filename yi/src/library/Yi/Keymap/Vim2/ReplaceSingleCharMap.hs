@@ -49,23 +49,3 @@ actualReplaceBinding = VimBindingE prereq action
               resetCountE
               switchModeE Normal
               return Finish
-
-replaceCharWithBelowB :: BufferM ()
-replaceCharWithBelowB = replaceCharWithVerticalOffset 1
-
-replaceCharWithAboveB :: BufferM ()
-replaceCharWithAboveB = replaceCharWithVerticalOffset (-1)
-
-replaceCharWithVerticalOffset :: Int -> BufferM ()
-replaceCharWithVerticalOffset offset = do
-    startingPoint <- pointB
-    l0 <- curLn
-    c0 <- curCol
-    discard $ lineMoveRel offset
-    l1 <- curLn
-    c1 <- curCol
-    if c0 == c1 && l0 + offset == l1
-    then do c <- readB
-            moveTo startingPoint
-            replaceCharB c
-    else moveTo startingPoint
