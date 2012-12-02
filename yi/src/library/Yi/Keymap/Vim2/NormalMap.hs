@@ -216,12 +216,9 @@ nonrepeatableBindings = fmap (mkBindingE Normal Drop)
     , (char ';', return (), id) -- TODO
 
     -- Transition to visual
-    -- , (char 'v', return (), switchMode (Visual Inclusive))
-    -- , (char 'V', return (), switchMode (Visual LineWise))
-    -- , (ctrlCh 'v', return (), switchMode (Visual Block))
-    , (char 'v', return (), id)
-    , (char 'V', return (), id)
-    , (ctrlCh 'v', return (), id)
+    , (char 'v', enableVisualE Inclusive, resetCount . switchMode (Visual Inclusive))
+    , (char 'V', enableVisualE LineWise, resetCount . switchMode (Visual LineWise))
+    , (ctrlCh 'v', enableVisualE Block, resetCount . switchMode (Visual Block))
 
     -- Repeat
     , (char '&', return (), id) -- TODO
@@ -254,6 +251,12 @@ nonrepeatableBindings = fmap (mkBindingE Normal Drop)
     , (char ',', return (), id)
     , (spec KEnter, return (), id)
     ]
+
+enableVisualE :: RegionStyle -> EditorM ()
+enableVisualE style = withBuffer0 $ do
+    putA rectangleSelectionA $ Block == style
+    setVisibleSelection True
+    pointB >>= setSelectionMarkPointB
 
 cutCharE :: Direction -> Int -> EditorM ()
 cutCharE dir count = do

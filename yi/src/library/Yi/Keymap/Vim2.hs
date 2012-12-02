@@ -33,6 +33,7 @@ import Yi.Keymap.Vim2.ReplaceMap
 import Yi.Keymap.Vim2.ReplaceSingleCharMap
 import Yi.Keymap.Vim2.StateUtils
 import Yi.Keymap.Vim2.Utils
+import Yi.Keymap.Vim2.VisualMap
 
 data ModeMap = ModeMap {
         vimKeymap :: Keymap,
@@ -41,7 +42,8 @@ data ModeMap = ModeMap {
         normalOperatorPendingMap :: [VimBinding],
         insertMap :: [VimBinding],
         replaceSingleMap :: [VimBinding],
-        replaceMap :: [VimBinding]
+        replaceMap :: [VimBinding],
+        visualMap :: [VimBinding]
     }
 
 mkKeymapSet :: Proto ModeMap -> KeymapSet
@@ -59,7 +61,8 @@ defModeMapProto = Proto template
                               normalOperatorPendingMap = defNormalOperatorPendingMap,
                               insertMap = defInsertMap,
                               replaceSingleMap = defReplaceSingleMap,
-                              replaceMap = defReplaceMap
+                              replaceMap = defReplaceMap,
+                              visualMap = defVisualMap
                           }
 
 defVimKeymap :: ModeMap -> KeymapM ()
@@ -92,6 +95,7 @@ allBindings m = concat [ normalMap m
                        , insertMap m
                        , replaceSingleMap m
                        , replaceMap m
+                       , visualMap m
                        ]
 
 -- This is not in Yi.Keymap.Vim2.Eval to avoid circular dependency:
