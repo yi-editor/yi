@@ -26,6 +26,7 @@ module Yi
     module Yi.Style.Library,
     module Yi.Misc,
     module Yi.Mode.Haskell,
+    module Yi.Mode.IReader,
 #ifdef SCION
     module Yi.Scion
 #endif
@@ -44,6 +45,7 @@ import Yi.Style
 import Yi.Style.Library
 import Yi.Misc
 import Yi.Mode.Haskell (ghciGet, ghciLoadBuffer)
+import Yi.Mode.IReader (ireaderMode, ireadMode) 
 #ifdef SCION
 import Yi.Scion
 #endif
