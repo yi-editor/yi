@@ -66,21 +66,44 @@ prevWordB = moveB unitWord Backward
 
 -- * Char-based movement actions.
 
+gotoCharacterB :: Char -> Direction -> RegionStyle -> Bool -> BufferM ()
+gotoCharacterB c dir style stopAtLineBreaks = do
+    start <- pointB
+    let pred = if stopAtLineBreaks then (`elem` [c, '\n']) else (== c)
+        (move, moveBack) = if dir == Forward then (rightB, leftB) else (leftB, rightB)
+    doUntilB_ (pred <$> readB) move
+    b <- readB
+    if stopAtLineBreaks && b == '\n'
+    then moveTo start
+    else when (style == Exclusive && b == c) moveBack
+
 -- | Move to the next occurence of @c@
 nextCInc :: Char -> BufferM ()
-nextCInc c = doUntilB_ ((c ==) <$> readB) rightB
+nextCInc c = gotoCharacterB c Forward Inclusive False
+
+nextCInLineInc :: Char -> BufferM ()
+nextCInLineInc c = gotoCharacterB c Forward Inclusive True
 
 -- | Move to the character before the next occurence of @c@
 nextCExc :: Char -> BufferM ()
-nextCExc c = nextCInc c >> leftB
+nextCExc c = gotoCharacterB c Forward Exclusive False
+
+nextCInLineExc :: Char -> BufferM ()
+nextCInLineExc c = gotoCharacterB c Forward Exclusive True
 
 -- | Move to the previous occurence of @c@
 prevCInc :: Char -> BufferM ()
-prevCInc c = doUntilB_ ((c ==) <$> readB) leftB
+prevCInc c = gotoCharacterB c Backward Inclusive False
+
+prevCInLineInc :: Char -> BufferM ()
+prevCInLineInc c = gotoCharacterB c Backward Inclusive True
 
 -- | Move to the character after the previous occurence of @c@
 prevCExc :: Char -> BufferM ()
-prevCExc c = prevCInc c >> rightB
+prevCExc c = gotoCharacterB c Backward Exclusive False
+
+prevCInLineExc :: Char -> BufferM ()
+prevCInLineExc c = gotoCharacterB c Backward Exclusive True
 
 -- | Move to first non-space character in this line
 firstNonSpaceB :: BufferM ()

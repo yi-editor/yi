@@ -38,12 +38,19 @@ charBinding = VimBindingE prereq action
                   (Event (KASCII c) []) -> do
                       (NormalGotoCharacter direction style) <- fmap vsMode getDynamic
                       count <- getCountE
-                      withBuffer0 . replicateM_ count $ case (direction, style) of
-                        (Forward, Inclusive) -> nextCInc c
-                        (Forward, Exclusive) -> nextCInc c >> leftB
-                        (Backward, Inclusive) -> prevCInc c
-                        (Backward, Exclusive) -> prevCInc c >> rightB
-                        (_, _) -> error "should never happen"
+                      let move = case (direction, style) of
+                                    (Forward, Inclusive) -> nextCInLineInc c
+                                    (Forward, Exclusive) -> nextCInLineExc c
+                                    (Backward, Inclusive) -> prevCInLineInc c
+                                    (Backward, Exclusive) -> prevCInLineExc c
+                                    (_, _) -> error "should never happen"
+                      withBuffer0 $ do
+                          p0 <- pointB
+                          replicateM_ (count - 1) move
+                          p1 <- pointB
+                          move
+                          p2 <- pointB
+                          when (p1 == p2) $ moveTo p0
                   _ -> return ()
               resetCountE
               switchModeE Normal
