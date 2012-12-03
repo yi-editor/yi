@@ -3,6 +3,7 @@
 module Yi.Keymap.Vim2.Common
     ( VimMode(..)
     , VimBinding(..)
+    , GotoCharCommand(..)
     , VimState(..)
     , VimOperator(..)
     , Register(..)
@@ -60,6 +61,8 @@ data VimMode = Normal
              | CmdLine
     deriving (Typeable, Eq, Show)
 
+data GotoCharCommand = GotoCharCommand !Char !Direction !RegionStyle
+
 data VimState = VimState {
           vsMode :: !VimMode
         , vsCount :: !(Maybe Int)
@@ -70,6 +73,7 @@ data VimState = VimState {
         , vsStringToEval :: !String -- ^ see Yi.Keymap.Vim2.vimEval comment
         , vsStickyEol :: !Bool -- ^ is set on $, allows j and k walk the right edge of lines
         , vsOngoingInsertEvents :: !String
+        , vsLastGotoCharCommand :: !(Maybe GotoCharCommand)
     } deriving (Typeable)
 
 $(derive makeBinary ''VimOperator)
@@ -78,13 +82,15 @@ $(derive makeBinary ''RepeatableAction)
 
 $(derive makeBinary ''Register)
 
+$(derive makeBinary ''GotoCharCommand)
+
 instance Initializable VimMode where
     initial = Normal
 
 $(derive makeBinary ''VimMode)
 
 instance Initializable VimState where
-    initial = VimState Normal Nothing [] [] HM.empty Nothing [] False []
+    initial = VimState Normal Nothing [] [] HM.empty Nothing [] False [] Nothing
 
 $(derive makeBinary ''VimState)
 

@@ -5,6 +5,8 @@ module Yi.Keymap.Vim2.NormalMap
 import Yi.Prelude
 import Prelude ()
 
+import Control.Monad (replicateM_)
+
 import Data.Char
 import Data.List (dropWhile)
 import Data.Maybe (fromMaybe, isJust)
@@ -213,7 +215,8 @@ nonrepeatableBindings = fmap (mkBindingE Normal Drop)
     , (char 'F', return (), switchMode (NormalGotoCharacter Backward Inclusive))
     , (char 't', return (), switchMode (NormalGotoCharacter Forward Exclusive))
     , (char 'T', return (), switchMode (NormalGotoCharacter Backward Exclusive))
-    , (char ';', return (), id) -- TODO
+    , (char ';', repeatGotoCharE id, id) -- TODO
+    , (char ',', repeatGotoCharE reverseDir, id) -- TODO
 
     -- Transition to visual
     , (char 'v', enableVisualE Inclusive, resetCount . switchMode (Visual Inclusive))
@@ -248,9 +251,26 @@ nonrepeatableBindings = fmap (mkBindingE Normal Drop)
     , (char '~', return (), id)
     , (char '"', return (), id)
     , (char 'q', return (), id)
-    , (char ',', return (), id)
     , (spec KEnter, return (), id)
     ]
+
+repeatGotoCharE :: (Direction -> Direction) -> EditorM ()
+repeatGotoCharE mutateDir = do
+    prevCommand <- fmap vsLastGotoCharCommand getDynamic
+    count <- getCountE
+    withBuffer0 $ case prevCommand of
+        Just (GotoCharCommand c dir style) -> do
+            let newDir = mutateDir dir
+            let move = gotoCharacterB c newDir style True
+            p0 <- pointB
+            replicateM_ (count - 1) $ do
+                move
+                when (style == Exclusive) $ moveB Character newDir
+            p1 <- pointB
+            move
+            p2 <- pointB
+            when (p1 == p2) $ moveTo p0
+        Nothing -> return ()
 
 enableVisualE :: RegionStyle -> EditorM ()
 enableVisualE style = withBuffer0 $ do

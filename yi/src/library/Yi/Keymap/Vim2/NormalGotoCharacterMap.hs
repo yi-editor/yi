@@ -46,11 +46,15 @@ charBinding = VimBindingE prereq action
                                     (_, _) -> error "should never happen"
                       withBuffer0 $ do
                           p0 <- pointB
-                          replicateM_ (count - 1) move
+                          replicateM_ (count - 1) $ do
+                              move
+                              when (style == Exclusive) $ moveB Character direction
                           p1 <- pointB
                           move
                           p2 <- pointB
                           when (p1 == p2) $ moveTo p0
+                      let command = GotoCharCommand c direction style
+                      modifyStateE $ \s -> s { vsLastGotoCharCommand = Just command}
                   _ -> return ()
               resetCountE
               switchModeE Normal
