@@ -1512,6 +1512,7 @@ exEval self cmd =
 
       fn "u"          = withBuffer' undoB
       fn "undo"       = withBuffer' undoB
+      fn "on"         = withEditor closeOtherE
       fn "only"       = withEditor closeOtherE
       fn "red"        = withBuffer' redoB
       fn "redo"       = withBuffer' redoB
