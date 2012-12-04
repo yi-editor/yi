@@ -116,6 +116,7 @@ srmcMode = (linearSyntaxMode Srmc.initState Srmc.alexScanToken id)
                                 "srmc"]
   }
 
+gitCommitMode :: Mode (Tree (Tok GitCommit.Token))
 gitCommitMode = (linearSyntaxMode GitCommit.initState GitCommit.alexScanToken id)
   {
     modeName = "git-commit",

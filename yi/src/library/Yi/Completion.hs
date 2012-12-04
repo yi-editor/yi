@@ -43,6 +43,7 @@ subsequenceMatch needle haystack = go needle haystack
         go (n:ns) (h:hs) | n /= h = go (n:ns) hs
         go [] _ = True
         go _ [] = False
+        go _ _  = False -- NOTE: to satisfy broken GHC analyzer, which doesn't know that n==h or n/=h. After all one can make Eq so that it doesn't work ;->.
 
 containsMatch' :: Bool -> String -> String -> Maybe String
 containsMatch' caseSensitive pattern str = fmap (const str) $ find (pattern `tstPrefix`) (tails str)
