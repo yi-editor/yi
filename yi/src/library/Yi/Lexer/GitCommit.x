@@ -3,7 +3,7 @@
 {
 {-# OPTIONS -w  #-}
 module Yi.Lexer.GitCommit
-  ( initState, alexScanToken )
+  ( initState, alexScanToken, Token(..) )
 where
 import Data.Monoid (mappend)
 import Yi.Lexer.Alex

@@ -77,7 +77,7 @@ The following two imports are always present:
 
 Also, if the file 
 
-> $HOME/.yi/local/Env.hs
+> $HOME/.config/yi/local/Env.hs
 
 exists, it is imported unqualified.
 -}
