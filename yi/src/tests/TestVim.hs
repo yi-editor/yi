@@ -106,7 +106,8 @@ discoverTests topdir = do
 runTest :: VimTest -> TestResult
 runTest t = if outputMatches then TestPassed (vtName t)
                              else TestFailed (vtName t) $
-                                      unlines [ "Expected:", vtOutput t
+                                      unlines [ "Input:", vtInput t
+                                              , "Expected:", vtOutput t
                                               , "Got:", actualOut
                                               , "Events:", vtEventString t
                                               , "---"]
