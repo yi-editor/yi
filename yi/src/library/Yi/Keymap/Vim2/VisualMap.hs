@@ -9,7 +9,7 @@ import Data.Char (isDigit, ord)
 import Data.List (dropWhile)
 import Data.Maybe (isJust)
 
-import Yi.Buffer
+import Yi.Buffer hiding (Insert)
 import Yi.Editor
 import Yi.Event
 import Yi.Keymap.Keys
@@ -55,7 +55,7 @@ zeroBinding = VimBindingE prereq action
 
 mkDigitBinding :: Char -> VimBinding
 mkDigitBinding c = VimBindingE prereq action
-    where prereq (Event (KASCII c) []) (VimState { vsMode = (Visual _) }) = True
+    where prereq e (VimState { vsMode = (Visual _) }) | char c == e = True
           prereq _ _ = False
           action _ = do
               modifyStateE mutate
@@ -109,6 +109,9 @@ mkOperatorBinding (x, op) = VimBindingE prereq action
           action _ = do
               region <- withBuffer0 regionOfSelectionB
               applyOperatorToRegionE op $ StyledRegion Inclusive region
+              withBuffer0 $ moveTo $ regionStart region
+              resetCountE
+              switchModeE (if op == OpChange then Insert else Normal)
               return Finish
 
 todoBinding :: VimBinding

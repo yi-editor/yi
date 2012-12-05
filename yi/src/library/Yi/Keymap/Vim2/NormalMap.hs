@@ -114,9 +114,7 @@ pasteBefore = do
                 lastChar = head $ R.toString $ R.drop (l-1) rope
                 rope' = if lastChar == '\n' then rope else R.append rope (R.fromString "\n")
             insertRopeWithStyleB rope' LineWise
-        Just (Register style rope) -> withBuffer0 $ do
-            insertRopeWithStyleB rope style
-            leftB
+        Just (Register style rope) -> withBuffer0 $ pasteInclusiveB rope style
 
 pasteAfter :: EditorM ()
 pasteAfter = do
@@ -138,8 +136,15 @@ pasteAfter = do
                 when (curChar == '\n') $ deleteN 1
         Just (Register style rope) -> withBuffer0 $ do
             rightB
-            insertRopeWithStyleB rope style
-            leftB
+            pasteInclusiveB rope style
+
+pasteInclusiveB :: Rope -> RegionStyle -> BufferM ()
+pasteInclusiveB rope style = do
+    p0 <- pointB
+    insertRopeWithStyleB rope style
+    if R.countNewLines rope > 0
+    then moveTo p0
+    else leftB
 
 continuingBindings :: [VimBinding]
 continuingBindings = fmap (mkBindingE Normal Continue)
