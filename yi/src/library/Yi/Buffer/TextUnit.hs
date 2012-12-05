@@ -269,6 +269,7 @@ doIfCharB p o = readB >>= \c -> if p c then o >> return () else return ()
 
 -- | Boundary side
 data BoundarySide = InsideBound | OutsideBound
+    deriving Eq
 
 -- | Generic move operation
 -- Warning: moving To the (OutsideBound, Backward) bound of Document is impossible (offset -1!)

@@ -5,7 +5,11 @@ module Yi.Keymap.Vim2.NormalOperatorPendingMap
 import Prelude ()
 import Yi.Prelude
 
-import Yi.Buffer
+import Data.Char (isDigit)
+import Data.List (isPrefixOf, drop)
+import Data.Maybe (isJust, fromJust)
+
+import Yi.Buffer hiding (Insert)
 import Yi.Editor
 import Yi.Keymap.Keys
 import Yi.Keymap.Vim2.Common
@@ -29,7 +33,7 @@ textObject = VimBindingE prereq action
         action e = do
             currentState <- getDynamic
             let partial = vsTextObjectAccumulator currentState
-                operand = parseTextObject opChar (partial ++ eventToString e)
+                operand = parseOperand opChar (partial ++ eventToString e)
                 opChar = lastCharForOperator op
                 (NormalOperatorPending op) = vsMode currentState
             case operand of
@@ -45,9 +49,9 @@ textObject = VimBindingE prereq action
                     count <- getCountE
                     dropTextObjectAccumulatorE
                     case operand of
-                        JustTextObject to@(TextObject n _ _) -> do
+                        JustTextObject cto@(CountedTextObject n _) -> do
                             normalizeCountE n
-                            applyOperatorToTextObjectE op $ changeTextObjectCount (count * n) to
+                            applyOperatorToTextObjectE op $ changeTextObjectCount (count * n) cto
                         JustMove (CountedMove n m) -> do
                             normalizeCountE n
                             region <- withBuffer0 $ regionOfMoveB $ CountedMove (count * n) m
@@ -58,7 +62,8 @@ textObject = VimBindingE prereq action
                             region <- withBuffer0 $ regionForOperatorLineB normalizedCount style
                             applyOperatorToRegionE op region
                     resetCountE
-                    switchModeE Normal
+                    let (NormalOperatorPending op) = vsMode currentState
+                    switchModeE $ if op == OpChange then Insert else Normal
                     return Finish
 
 regionForOperatorLineB :: Int -> RegionStyle -> BufferM StyledRegion
@@ -70,7 +75,7 @@ regionForOperatorLineB n style = normalizeRegion =<< StyledRegion style <$> savi
         p0 <- pointB
         return $! mkRegion p0 current
     else do
-        lineMoveRel (n-2)
+        discard $ lineMoveRel (n-2)
         moveToEol
         rightB
         firstNonSpaceB
@@ -80,7 +85,51 @@ regionForOperatorLineB n style = normalizeRegion =<< StyledRegion style <$> savi
 escBinding :: VimBinding
 escBinding = mkBindingE ReplaceSingleChar Drop (spec KEsc, return (), resetCount . switchMode Normal)
 
-getOperatorE :: EditorM VimOperator
-getOperatorE = do
-    (NormalOperatorPending op) <- fmap vsMode getDynamic
-    return op
+data OperandParseResult = JustTextObject !CountedTextObject
+                         | JustMove !CountedMove
+                         | JustOperator !Int !RegionStyle -- ^ like dd and d2vd
+                         | Partial
+                         | Fail
+
+parseOperand :: Char -> String -> OperandParseResult
+parseOperand opChar s = parseCommand count styleMod opChar commandString
+    where (count, styleModString, commandString) = splitCountModifierCommand s
+          styleMod = case styleModString of
+                        "" -> id
+                        "V" -> const LineWise
+                        "<C-v>" -> const Block
+                        "v" -> \style -> case style of
+                                            Exclusive -> Inclusive
+                                            _ -> Exclusive
+                        _ -> error "Can't happen"
+
+parseCommand :: Int -> (RegionStyle -> RegionStyle) -> Char ->  String -> OperandParseResult
+parseCommand _ _ _ "" = Partial
+parseCommand _ _ _ "i" = Partial
+parseCommand _ _ _ "a" = Partial
+parseCommand _ _ _ "g" = Partial
+parseCommand n sm o s | [o] == s = JustOperator n (sm LineWise)
+-- TODO: refactor with Alternative
+parseCommand n sm _ s | isJust (stringToMove s) = JustMove $ CountedMove n
+                                                $ changeMoveStyle sm $ fromJust $ stringToMove s
+parseCommand n sm _ s | isJust (stringToTextObject s) = JustTextObject $ CountedTextObject n
+                                                      $ changeTextObjectStyle sm
+                                                      $ fromJust $ stringToTextObject s
+parseCommand _ _ _ _ = Fail
+
+
+-- Parse event string that can go after operator
+-- w -> (1, "", "w")
+-- 2w -> (2, "", "w")
+-- V2w -> (2, "V", "w")
+-- v2V3<C-v>w -> (6, "<C-v>", "w")
+-- vvvvvvvvvvvvvw -> (1, "v", "w")
+splitCountModifierCommand :: String -> (Int, String, String)
+splitCountModifierCommand = go "" 1 [""]
+    where go ds count mods (h:t) | isDigit h = go (ds ++ [h]) count mods t
+          go ds@(_:_) count mods s@(h:_) | not (isDigit h) = go [] (count * read ds) mods s
+          go [] count mods (h:t) | h `elem` "vV" = go [] count ([h]:mods) t
+          go [] count mods s | "<C-v>" `isPrefixOf` s = go [] count ("<C-v>":mods) (drop 5 s)
+          go [] count mods s = (count, head mods, s)
+          go ds count mods [] = (count * read ds, head mods, [])
+          go (_:_) _ _ (_:_) = error "Can't happen because isDigit and not isDigit cover every case"

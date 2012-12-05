@@ -14,12 +14,13 @@ import Yi.Buffer hiding (Insert)
 import Yi.Editor
 import Yi.Keymap.Vim2.Common
 import Yi.Keymap.Vim2.StateUtils
+import Yi.Keymap.Vim2.StyledRegion
 import Yi.Keymap.Vim2.TextObject
 import Yi.Misc
 
-applyOperatorToTextObjectE :: VimOperator -> TextObject -> EditorM ()
-applyOperatorToTextObjectE op to = do
-    styledRegion <- withBuffer0 $ regionOfTextObjectB to
+applyOperatorToTextObjectE :: VimOperator -> CountedTextObject -> EditorM ()
+applyOperatorToTextObjectE op cto = do
+    styledRegion <- withBuffer0 $ regionOfTextObjectB cto
     applyOperatorToRegionE op styledRegion
 
 applyOperatorToRegionE :: VimOperator -> StyledRegion -> EditorM ()
