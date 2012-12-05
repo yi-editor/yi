@@ -58,6 +58,7 @@ parseTextObject bs (c:[]) = fmap (TextObject Exclusive . ($ bs == OutsideBound))
            ,('B',  unitDelimited '{' '}')
            ,('<',  unitDelimited '<' '>')
            ,('>',  unitDelimited '<' '>')
+           -- TODO: 't'
            ]
 parseTextObject _ _ = Nothing
 
