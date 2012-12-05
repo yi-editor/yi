@@ -679,9 +679,9 @@ defKeymap = Proto template
        w <- withBuffer0' $ readRegionB =<< regionOfNonEmptyB unitViWord
        viSearch (pattern bounded w) [] dir
        where
-         pattern bounded w = case bounded of
-                             Bounded   -> boundedPattern w
-                             Unbounded -> w
+         pattern bounded' w = case bounded' of
+             Bounded   -> boundedPattern w
+             Unbounded -> w
          boundedPattern x = "\\<" ++ (regexEscapeString x) ++ "\\>"
 
      gotoPrevTagMark :: Int -> YiM ()
