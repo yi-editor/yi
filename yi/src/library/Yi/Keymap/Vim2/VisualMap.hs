@@ -92,15 +92,19 @@ operatorBindings :: [VimBinding]
 operatorBindings = fmap mkOperatorBinding
     [ ('y', OpYank)
     , ('d', OpDelete)
+    , ('x', OpDelete)
+    , ('X', OpDelete)
     , ('c', OpChange)
+    , ('u', OpLowerCase)
+    , ('U', OpUpperCase)
+    , ('~', OpSwitchCase)
     ]
 
 regionOfSelectionB :: BufferM Region
 regionOfSelectionB = savingPointB $ do
-    regStyle <- getA regionStyleA
     start <- getSelectionMarkPointB
     stop <- pointB
-    mkRegionOfStyleB start stop regStyle
+    return $! mkRegion start stop
 
 mkOperatorBinding :: (Char, VimOperator) -> VimBinding
 mkOperatorBinding (x, op) = VimBindingE prereq action

@@ -24,7 +24,7 @@ applyOperatorToTextObjectE op cto = do
     applyOperatorToRegionE op styledRegion
 
 applyOperatorToRegionE :: VimOperator -> StyledRegion -> EditorM ()
-applyOperatorToRegionE op (StyledRegion style reg) = case op of
+applyOperatorToRegionE op sreg@(StyledRegion style reg) = case op of
     OpDelete -> do
         s <- withBuffer0 $ readRegionRopeWithStyleB reg style
         setDefaultRegisterE style s
@@ -45,18 +45,18 @@ applyOperatorToRegionE op (StyledRegion style reg) = case op of
             point <- deleteRegionWithStyleB reg style
             moveTo point
         switchModeE Insert
-    OpLowerCase -> withBuffer0 $ transformCharactersInRegionB reg toLower
-    OpUpperCase -> withBuffer0 $ transformCharactersInRegionB reg toUpper
-    OpSwitchCase -> withBuffer0 $ transformCharactersInRegionB reg switchCaseChar
-    OpRot13 -> withBuffer0 $ transformCharactersInRegionB reg rot13Char
+    OpLowerCase -> withBuffer0 $ transformCharactersInRegionB sreg toLower
+    OpUpperCase -> withBuffer0 $ transformCharactersInRegionB sreg toUpper
+    OpSwitchCase -> withBuffer0 $ transformCharactersInRegionB sreg switchCaseChar
+    OpRot13 -> withBuffer0 $ transformCharactersInRegionB sreg rot13Char
     OpYank -> do
         s <- withBuffer0 $ readRegionRopeWithStyleB reg style
         setDefaultRegisterE style s
     _ -> withBuffer0 $ insertN $ "Operator not supported " ++ show op
 
-transformCharactersInRegionB :: Region -> (Char -> Char) -> BufferM ()
-transformCharactersInRegionB reg f = savingPointB $ do
-    s <- readRegionB reg
+transformCharactersInRegionB :: StyledRegion -> (Char -> Char) -> BufferM ()
+transformCharactersInRegionB (StyledRegion style reg) f = savingPointB $ do
+    s <- readRegionB =<< convertRegionToStyleB reg style
     replaceRegionB reg (fmap f s)
 
 -- TODO eliminate redundancy

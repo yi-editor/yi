@@ -279,6 +279,7 @@ repeatGotoCharE mutateDir = do
 
 enableVisualE :: RegionStyle -> EditorM ()
 enableVisualE style = withBuffer0 $ do
+    putA regionStyleA style
     putA rectangleSelectionA $ Block == style
     setVisibleSelection True
     pointB >>= setSelectionMarkPointB
