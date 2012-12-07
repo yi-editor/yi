@@ -52,12 +52,14 @@ applyOperatorToRegionE op sreg@(StyledRegion style reg) = case op of
     OpYank -> do
         s <- withBuffer0 $ readRegionRopeWithStyleB reg style
         setDefaultRegisterE style s
+        withBuffer0 $ moveTo (regionStart reg)
     _ -> withBuffer0 $ insertN $ "Operator not supported " ++ show op
 
 transformCharactersInRegionB :: StyledRegion -> (Char -> Char) -> BufferM ()
 transformCharactersInRegionB (StyledRegion style reg) f = savingPointB $ do
     s <- readRegionB =<< convertRegionToStyleB reg style
     replaceRegionB reg (fmap f s)
+    moveTo (regionStart reg)
 
 -- TODO eliminate redundancy
 lastCharForOperator :: VimOperator -> Char

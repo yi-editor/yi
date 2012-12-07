@@ -3,7 +3,7 @@
 module Yi.Buffer.HighLevel where
 
 import Control.Monad.RWS.Strict (ask)
-import Control.Monad.State
+import Control.Monad.State hiding (forM, forM_)
 import Data.Char
 import Data.List (isPrefixOf, sort, lines, drop, filter, length, takeWhile, dropWhile, reverse)
 import qualified Data.Rope as R
@@ -660,18 +660,62 @@ revertB s now = do
 smallBufferSize :: Int
 smallBufferSize = 1000000
 
+-- get lengths of parts covered by block region
+--
+-- Consider block region starting at 'o' and ending at 'z':
+--
+--    start
+--      |
+--     \|/
+-- def foo(bar):
+--     baz
+--
+--     ab
+--     xyz0
+--      /|\
+--       |
+--     finish
+--
+-- shapeOfBlockRegionB returns (regionStart, [2, 2, 0, 1, 2])
+shapeOfBlockRegionB :: Region -> BufferM (Point, [Int])
+shapeOfBlockRegionB reg = savingPointB $ do
+    (l0, c0) <- getLineAndColOfPoint $ regionStart reg
+    (l1, c1) <- getLineAndColOfPoint $ regionEnd reg
+    let (left, top, bottom) = (min c0 c1, min l0 l1, max l0 l1)
+    right <- savingPointB $ do
+        gotoLn bottom
+        moveToColB $ max c0 c1
+        curCol
+    lengths <- forM [top .. bottom] $ \l -> do
+        gotoLn l
+        moveToColB left
+        currentLeft <- curCol
+        if currentLeft /= left
+        then return 0
+        else do
+            moveToColB right
+            currentRight <- curCol
+            return $ currentRight - currentLeft + 1
+    startingPoint <- pointOfLineColB top left
+    return (startingPoint, lengths)
+
 deleteRegionWithStyleB :: Region -> RegionStyle -> BufferM Point
-deleteRegionWithStyleB region style =
-    case style of
-        Block -> do
-            deleteRegionB region -- TODO
-            return $! regionStart region
-        _ -> do
-            effectiveRegion <- convertRegionToStyleB region style
-            deleteRegionB effectiveRegion
-            return $! regionStart effectiveRegion
+deleteRegionWithStyleB region Block = savingPointB $ do
+    (start, lengths) <- shapeOfBlockRegionB region
+    moveTo start
+    -- insertN $ show (start, lengths)
+    forM_ lengths $ \l -> do
+        deleteN l
+        lineMoveRel 1
+    return start
+
+deleteRegionWithStyleB region style = do
+    effectiveRegion <- convertRegionToStyleB region style
+    deleteRegionB effectiveRegion
+    return $! regionStart effectiveRegion
 
 readRegionRopeWithStyleB :: Region -> RegionStyle -> BufferM Rope
+readRegionRopeWithStyleB reg Block = readRegionB' =<< convertRegionToStyleB reg Block
 readRegionRopeWithStyleB reg style = readRegionB' =<< convertRegionToStyleB reg style
 
 insertRopeWithStyleB :: Rope -> RegionStyle -> BufferM ()

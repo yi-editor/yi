@@ -111,9 +111,10 @@ mkOperatorBinding (x, op) = VimBindingE prereq action
     where prereq (Event (KASCII c) []) (VimState { vsMode = (Visual _) }) = x == c
           prereq _ _ = False
           action _ = do
+              (Visual style) <- vsMode <$> getDynamic
               region <- withBuffer0 regionOfSelectionB
-              applyOperatorToRegionE op $ StyledRegion Inclusive region
-              withBuffer0 $ moveTo $ regionStart region
+              applyOperatorToRegionE op $ StyledRegion style region
+              -- withBuffer0 $ moveTo $ regionStart region
               resetCountE
               switchModeE (if op == OpChange then Insert else Normal)
               return Finish
