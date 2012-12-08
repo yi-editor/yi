@@ -2,15 +2,18 @@
 -- Copyright (C) 2008 JP Bernardy
 module Yi.Buffer.HighLevel where
 
+import Prelude (FilePath)
+import Yi.Prelude
+
 import Control.Monad.RWS.Strict (ask)
 import Control.Monad.State hiding (forM, forM_)
+
 import Data.Char
-import Data.List (isPrefixOf, sort, lines, drop, filter, length, takeWhile, dropWhile, reverse)
-import qualified Data.Rope as R
+import Data.List (isPrefixOf, sort, lines, drop, filter, length,
+                  takeWhile, dropWhile, reverse, map, intersperse)
 import Data.Maybe (fromMaybe, listToMaybe)
+import qualified Data.Rope as R
 import Data.Time (UTCTime)
-import Prelude (FilePath, map)
-import Yi.Prelude
 
 import Yi.Buffer.Basic
 import Yi.Buffer.Misc
@@ -700,8 +703,8 @@ shapeOfBlockRegionB reg = savingPointB $ do
     return (startingPoint, lengths)
 
 deleteRegionWithStyleB :: Region -> RegionStyle -> BufferM Point
-deleteRegionWithStyleB region Block = savingPointB $ do
-    (start, lengths) <- shapeOfBlockRegionB region
+deleteRegionWithStyleB reg Block = savingPointB $ do
+    (start, lengths) <- shapeOfBlockRegionB reg
     moveTo start
     -- insertN $ show (start, lengths)
     forM_ lengths $ \l -> do
@@ -709,16 +712,33 @@ deleteRegionWithStyleB region Block = savingPointB $ do
         lineMoveRel 1
     return start
 
-deleteRegionWithStyleB region style = do
-    effectiveRegion <- convertRegionToStyleB region style
+deleteRegionWithStyleB reg style = savingPointB $ do
+    effectiveRegion <- convertRegionToStyleB reg style
     deleteRegionB effectiveRegion
     return $! regionStart effectiveRegion
 
 readRegionRopeWithStyleB :: Region -> RegionStyle -> BufferM Rope
-readRegionRopeWithStyleB reg Block = readRegionB' =<< convertRegionToStyleB reg Block
+readRegionRopeWithStyleB reg Block = savingPointB $ do
+    (start, lengths) <- shapeOfBlockRegionB reg
+    moveTo start
+    chunks <- forM lengths $ \l ->
+        if l == 0
+        then lineMoveRel 1 >> return R.empty
+        else do
+            p <- pointB
+            r <- readRegionB' $ mkRegion p (p +~ Size l)
+            lineMoveRel 1
+            return r
+    return $ R.concat $ intersperse (R.fromString "\n") chunks
 readRegionRopeWithStyleB reg style = readRegionB' =<< convertRegionToStyleB reg style
 
 insertRopeWithStyleB :: Rope -> RegionStyle -> BufferM ()
+insertRopeWithStyleB rope Block = savingPointB $ do
+    let lines = R.split (fromIntegral (ord '\n')) rope
+    forM_ lines $ \line -> do
+        savingPointB $ insertN' line
+        lineMoveRel 1
+
 insertRopeWithStyleB rope LineWise = do
     moveToSol
     savingPointB $ insertN' rope

@@ -115,7 +115,8 @@ inclusiveMotions =
                 moveToEol)
     , ("$", \n -> do
                 when (n > 1) $ discard $ lineMoveRel (n - 1)
-                moveToEol)
+                moveToEol
+                leftOnEol)
     , ("g_", \n -> do
                 when (n > 1) $ discard $ lineMoveRel (n - 1)
                 lastNonSpaceB)
@@ -129,7 +130,9 @@ regionOfMoveB = normalizeRegion <=< regionOfMoveB'
 
 regionOfMoveB' :: CountedMove -> BufferM StyledRegion
 regionOfMoveB' (CountedMove n (Move style move)) = do
-    region <- mkRegion <$> pointB <*> destinationOfMoveB (move n)
+    -- region <- mkRegion <$> pointB <*> destinationOfMoveB (move n >> leftOnEol)
+    region <- mkRegion <$> pointB <*> destinationOfMoveB
+        (move n >> when (style == Inclusive) leftOnEol)
     return $! StyledRegion style region
 
 moveForwardB, moveBackwardB :: TextUnit -> Int -> BufferM ()

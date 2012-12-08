@@ -142,9 +142,9 @@ pasteInclusiveB :: Rope -> RegionStyle -> BufferM ()
 pasteInclusiveB rope style = do
     p0 <- pointB
     insertRopeWithStyleB rope style
-    if R.countNewLines rope > 0
-    then moveTo p0
-    else leftB
+    if R.countNewLines rope == 0 && style `elem` [Exclusive, Inclusive]
+    then leftB
+    else moveTo p0
 
 continuingBindings :: [VimBinding]
 continuingBindings = fmap (mkBindingE Normal Continue)
