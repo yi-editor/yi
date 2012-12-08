@@ -1,0 +1,14 @@
+-- Input
+(1,1)
+1234
+abcd
+ABCD
+XYZW
+-- Output
+(1,5)
+12344
+abcdd
+ABCDD
+XYZW
+-- Events
+$<C-v>jjyp

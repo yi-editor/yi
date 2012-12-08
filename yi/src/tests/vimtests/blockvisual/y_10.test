@@ -1,0 +1,14 @@
+-- Input
+(2,2)
+1234
+abcd
+ABCD
+XYZW
+-- Output
+(2,2)
+1234
+abcdbcd
+ABCD
+XYZW
+-- Events
+<C-v>llyP
