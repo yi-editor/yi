@@ -10,3 +10,7 @@
 Yi/Lexer/*.hs
 .yi*.dbg
 dist/
+dist_yi/
+*~
+.hsenv_yi
+hsenv.log
