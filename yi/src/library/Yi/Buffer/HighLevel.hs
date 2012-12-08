@@ -702,6 +702,19 @@ shapeOfBlockRegionB reg = savingPointB $ do
     startingPoint <- pointOfLineColB top left
     return (startingPoint, lengths)
 
+splitBlockRegionToContiguousSubRegionsB :: Region -> BufferM [Region]
+splitBlockRegionToContiguousSubRegionsB reg = savingPointB $ do
+    (start, lengths) <- shapeOfBlockRegionB reg
+    moveTo start
+    forM lengths $ \l -> do
+        p0 <- pointB
+        moveXorEol l
+        p1 <- pointB
+        let subRegion = mkRegion p0 p1
+        moveTo p0
+        lineMoveRel 1
+        return subRegion
+
 deleteRegionWithStyleB :: Region -> RegionStyle -> BufferM Point
 deleteRegionWithStyleB reg Block = savingPointB $ do
     (start, lengths) <- shapeOfBlockRegionB reg

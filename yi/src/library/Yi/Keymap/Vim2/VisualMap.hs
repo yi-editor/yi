@@ -92,6 +92,7 @@ operatorBindings :: [VimBinding]
 operatorBindings = fmap mkOperatorBinding
     [ ('y', OpYank)
     , ('d', OpDelete)
+    , ('D', OpDelete) -- TODO: make D delete to eol
     , ('x', OpDelete)
     , ('X', OpDelete)
     , ('c', OpChange)

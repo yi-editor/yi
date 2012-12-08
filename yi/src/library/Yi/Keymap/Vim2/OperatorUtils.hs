@@ -56,7 +56,14 @@ applyOperatorToRegionE op sreg@(StyledRegion style reg) = case op of
     _ -> withBuffer0 $ insertN $ "Operator not supported " ++ show op
 
 transformCharactersInRegionB :: StyledRegion -> (Char -> Char) -> BufferM ()
-transformCharactersInRegionB (StyledRegion style reg) f = savingPointB $ do
+transformCharactersInRegionB (StyledRegion Block reg) f = do
+    subregions <- splitBlockRegionToContiguousSubRegionsB reg
+    forM_ subregions $ \sr ->
+        transformCharactersInRegionB (StyledRegion Exclusive sr) f
+    case subregions of
+        (sr:_) -> moveTo (regionStart sr)
+        [] -> error "Should never happen"
+transformCharactersInRegionB (StyledRegion style reg) f = do
     s <- readRegionB =<< convertRegionToStyleB reg style
     replaceRegionB reg (fmap f s)
     moveTo (regionStart reg)
