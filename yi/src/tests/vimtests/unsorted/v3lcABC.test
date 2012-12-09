@@ -1,6 +1,6 @@
 -- Input
 (1,1)
-ABCm ipsum
+Lorem ipsum
 -- Output
 (1,8)
 ABCm ABCm
