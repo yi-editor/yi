@@ -5,6 +5,7 @@ module Yi.Keymap.Vim2.StateUtils
   , resetCountE
   , setCountE
   , modifyStateE
+  , getMaybeCountE
   , getCountE
   , accumulateEventE
   , accumulateTextObjectEventE
@@ -46,6 +47,10 @@ resetCount s = s { vsCount = Nothing }
 
 resetCountE :: EditorM ()
 resetCountE = modifyStateE resetCount
+
+getMaybeCountE :: EditorM (Maybe Int)
+getMaybeCountE = do
+    fmap vsCount getDynamic
 
 getCountE :: EditorM Int
 getCountE = do
