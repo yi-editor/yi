@@ -76,7 +76,7 @@ handleEvent mm e = do
     let maybeBinding = find (isBindingApplicable e currentState) (allBindings mm)
 
     repeatToken <- case maybeBinding of
-        Nothing -> fail $ "unhandled event " ++ show e
+        Nothing -> fail $ "unhandled event " ++ show e ++ " at top level"
         Just (VimBindingY _ action) -> action e
         Just (VimBindingE _ action) -> withEditor $ action e
 
