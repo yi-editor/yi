@@ -17,7 +17,7 @@ import Yi.Keymap.Vim2.StyledRegion
 
 data Move = Move !RegionStyle (Maybe Int -> BufferM ())
 
-data CountedMove = CountedMove !Int !Move
+data CountedMove = CountedMove !(Maybe Int) !Move
 
 
 -- TODO:
@@ -142,7 +142,7 @@ regionOfMoveB' :: CountedMove -> BufferM StyledRegion
 regionOfMoveB' (CountedMove n (Move style move)) = do
     -- region <- mkRegion <$> pointB <*> destinationOfMoveB (move n >> leftOnEol)
     region <- mkRegion <$> pointB <*> destinationOfMoveB
-        (move (Just n) >> when (style == Inclusive) leftOnEol)
+        (move n >> when (style == Inclusive) leftOnEol)
     return $! StyledRegion style region
 
 moveForwardB, moveBackwardB :: TextUnit -> Int -> BufferM ()

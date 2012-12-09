@@ -16,6 +16,7 @@ module Yi.Keymap.Vim2.StateUtils
   , getDefaultRegisterE
   , normalizeCountE
   , setStickyEolE
+  , maybeMult
   ) where
 
 import Yi.Prelude
@@ -91,14 +92,20 @@ setDefaultRegisterE style rope = do
     let rmap' = HM.insert '\0' (Register style rope) rmap
     modifyStateE $ \state -> state { vsRegisterMap = rmap' }
 
-normalizeCountE :: Int -> EditorM ()
+normalizeCountE :: Maybe Int -> EditorM ()
 normalizeCountE n = do
-    count <- getCountE
+    mcount <- getMaybeCountE
     modifyStateE $ \s -> s {
-                       vsCount = Just $ count * n
-                     , vsAccumulator = show (count * n)
+                       vsCount = maybeMult mcount n
+                     , vsAccumulator = show (fromMaybe 1 (maybeMult mcount n))
                            ++ snd (splitCountedCommand (normalizeCount (vsAccumulator s)))
                    }
+
+maybeMult :: Num a => Maybe a -> Maybe a -> Maybe a
+maybeMult (Just a) (Just b) = Just (a * b)
+maybeMult Nothing  Nothing = Nothing
+maybeMult a        Nothing = a
+maybeMult Nothing  b       = b
 
 setStickyEolE :: Bool -> EditorM ()
 setStickyEolE b = modifyStateE $ \s -> s { vsStickyEol = b }
