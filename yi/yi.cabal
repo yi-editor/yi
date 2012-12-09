@@ -146,6 +146,8 @@ library
     Yi.Keymap.Vim2.StyledRegion
     Yi.Keymap.Vim2.TextObject
     Yi.Keymap.Vim2.Utils
+    Yi.Keymap.Vim2.VisualMap
+    Yi.Keymap.Vim2.OperatorUtils
     Yi.KillRing
     Yi.Layout
     Yi.Lexer.Abella
