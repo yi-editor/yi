@@ -65,45 +65,53 @@ stringToMove :: String -> Maybe Move
 stringToMove c = fmap (Move Exclusive) (lookup c exclusiveMotions)
              <|> fmap (Move Inclusive) (lookup c inclusiveMotions)
              <|> fmap (Move LineWise) (lookup c linewiseMotions)
+             <|> fmap (Move LineWise) (lookup c linewiseMaybeMotions)
 
 changeMoveStyle :: (RegionStyle -> RegionStyle) -> Move -> Move
 changeMoveStyle smod (Move s m) = Move (smod s) m
 
+-- Linewise motions which treat no count as being the same as a count of 1.
 linewiseMotions :: [(String, Maybe Int -> BufferM ())]
-linewiseMotions =
-    [ ("j", discard . lineMoveRel . defaultCount)
-    , ("k", discard . lineMoveRel . negate . defaultCount)
-    , ("-", const firstNonSpaceB <=< discard . lineMoveRel . negate . defaultCount)
-    , ("+", const firstNonSpaceB <=< discard . lineMoveRel . defaultCount)
-    , ("_", \n' -> do
-                let n = defaultCount n'
+linewiseMotions = fmap withDefaultCount
+    [ ("j", discard . lineMoveRel)
+    , ("k", discard . lineMoveRel . negate)
+    , ("-", const firstNonSpaceB <=< discard . lineMoveRel . negate)
+    , ("+", const firstNonSpaceB <=< discard . lineMoveRel)
+    , ("_", \n -> do
                 when (n > 1) $ discard $ lineMoveRel (n - 1)
                 firstNonSpaceB)
-    , ("G", gotoXOrEOF)
-    , ("gg", discard . gotoLn . defaultCount) -- TODO: save column
+    , ("gg", discard . gotoLn) -- TODO: save column
     ]
 
+-- Linewise motions which differentiate no count and a count of 1.
+linewiseMaybeMotions :: [(String, Maybe Int -> BufferM ())]
+linewiseMaybeMotions =
+    [ ("G", gotoXOrEOF)
+    ]
+
+-- Exclusive motions which treat no count as being the same as a count of 1.
 exclusiveMotions :: [(String, Maybe Int -> BufferM ())]
-exclusiveMotions =
-    [ ("h", moveXorSol . defaultCount)
-    , ("l", moveXorEol . defaultCount)
+exclusiveMotions = fmap withDefaultCount
+    [ ("h", moveXorSol)
+    , ("l", moveXorEol)
     , ("w", moveForwardB unitViWord)
     , ("W", moveForwardB unitViWORD)
     , ("b", moveBackwardB unitViWord)
     , ("B", moveBackwardB unitViWORD)
-    , ("^", const firstNonSpaceB . defaultCount)
-    , ("g^", const firstNonSpaceB . defaultCount) -- TODO: respect wrapping
-    , ("g0", const moveToSol . defaultCount) -- TODO: respect wrapping
+    , ("^", const firstNonSpaceB)
+    , ("g^", const firstNonSpaceB) -- TODO: respect wrapping
+    , ("g0", const moveToSol) -- TODO: respect wrapping
     -- "0" sort of belongs here, but is currently handled as a special case in some modes
-    , ("|", (\n -> moveToSol >> moveXorEol (n - 1)) . defaultCount)
+    , ("|", \n -> moveToSol >> moveXorEol (n - 1))
     , ("(", moveBackwardB unitSentence)
     , (")", moveForwardB unitSentence)
     , ("{", moveBackwardB unitEmacsParagraph)
     , ("}", moveForwardB unitEmacsParagraph)
     ]
 
+-- Inclusive motions which treat no count as being the same as a count of 1.
 inclusiveMotions :: [(String, Maybe Int -> BufferM ())]
-inclusiveMotions =
+inclusiveMotions = fmap withDefaultCount
     [
     -- Word motions
       ("e", repeat $ genMoveB unitViWord (Forward, InsideBound) Forward)
@@ -112,23 +120,20 @@ inclusiveMotions =
     , ("gE", repeat $ genMoveB unitViWORD (Forward, InsideBound) Backward)
 
     -- Intraline stuff
-    , ("g$", \n' -> do
-                let n = defaultCount n'
+    , ("g$", \n -> do
                 when (n > 1) $ discard $ lineMoveRel (n - 1)
                 moveToEol)
-    , ("$", \n' -> do
-                let n = defaultCount n'
+    , ("$", \n -> do
                 when (n > 1) $ discard $ lineMoveRel (n - 1)
                 moveToEol
                 leftOnEol)
-    , ("g_", \n' -> do
-                let n = defaultCount n'
+    , ("g_", \n -> do
                 when (n > 1) $ discard $ lineMoveRel (n - 1)
                 lastNonSpaceB)
     ]
 
-repeat :: BufferM () -> Maybe Int -> BufferM ()
-repeat b n = replicateM_ (defaultCount n) b
+repeat :: BufferM () -> Int -> BufferM ()
+repeat = flip replicateM_
 
 regionOfMoveB :: CountedMove -> BufferM StyledRegion
 regionOfMoveB = normalizeRegion <=< regionOfMoveB'
@@ -140,7 +145,7 @@ regionOfMoveB' (CountedMove n (Move style move)) = do
         (move (Just n) >> when (style == Inclusive) leftOnEol)
     return $! StyledRegion style region
 
-moveForwardB, moveBackwardB :: TextUnit -> Maybe Int -> BufferM ()
+moveForwardB, moveBackwardB :: TextUnit -> Int -> BufferM ()
 moveForwardB unit = repeat $ genMoveB unit (Backward,InsideBound) Forward
 moveBackwardB unit = repeat $ moveB unit Backward
 
@@ -150,6 +155,6 @@ gotoXOrEOF n = do
         Nothing -> botB >> moveToSol
         Just n' -> gotoLn n' >> moveToSol
 
-
-defaultCount :: Maybe Int -> Int
-defaultCount = fromMaybe 1
+withDefaultCount :: (String, Int -> BufferM ()) -> (String, Maybe Int -> BufferM ())
+withDefaultCount (s, f) = (s, f . defaultCount)
+    where defaultCount = fromMaybe 1
