@@ -64,7 +64,7 @@ flag hacking
   Default: False
   Description:
      Hacking mode:
-        * Create HackerMain.hs by copying your ~/.yi/yi.hs
+        * Create HackerMain.hs by copying your ~/.config/yi/yi.hs
         * Skip library compilation
         * You can run yi in-place with dist/build/yi/yi
 
