@@ -51,7 +51,7 @@ zeroBinding = VimBindingE prereq action
                   Nothing -> do
                       withBuffer0 moveToSol
                       setDynamic $ resetCount currentState
-                      return Drop
+                      return Continue
 
 mkDigitBinding :: Char -> VimBinding
 mkDigitBinding c = VimBindingE prereq action
@@ -68,14 +68,13 @@ motionBinding :: VimBinding
 motionBinding = VimBindingE prereq action
     where prereq ev state@(VimState { vsMode = (Visual _) }) =
                                 case ev of
-                                    Event (KASCII c) [] -> isJust (stringToMove s)
-                                        where s = dropWhile isDigit (vsAccumulator state) ++ [c]
+                                    -- TODO: handle multichar motions
+                                    Event (KASCII c) [] -> isJust (stringToMove [c])
                                     _ -> False
           prereq _ _ =  False
           action (Event (KASCII c) []) = do
               state <- getDynamic
-              let s = dropWhile isDigit (vsAccumulator state) ++ [c]
-                  (Just (Move _ move)) = stringToMove s
+              let (Just (Move _ move)) = stringToMove [c]
               count <- getCountE
               withBuffer0 $ move count >> leftOnEol
               resetCountE
@@ -85,7 +84,7 @@ motionBinding = VimBindingE prereq action
               when (c `elem` "jk" && vsStickyEol state) $ withBuffer0 $ moveToEol >> leftB
               when (c `notElem` "jk$") $ setStickyEolE False
 
-              return Drop
+              return Continue
 
 -- TODO reduce duplication of operator list
 operatorBindings :: [VimBinding]
@@ -116,8 +115,13 @@ mkOperatorBinding (x, op) = VimBindingE prereq action
               region <- withBuffer0 regionOfSelectionB
               applyOperatorToRegionE op $ StyledRegion style region
               resetCountE
-              switchModeE (if op == OpChange then Insert else Normal)
-              return Finish
+              if op == OpChange
+              then do
+                  switchModeE Insert
+                  return Continue
+              else do
+                  switchModeE Normal
+                  return Finish
 
 todoBinding :: VimBinding
 todoBinding = VimBindingE prereq action

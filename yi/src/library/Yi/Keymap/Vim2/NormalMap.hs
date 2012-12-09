@@ -170,6 +170,11 @@ continuingBindings = fmap (mkBindingE Normal Continue)
                      insertB '\n'
                      leftB
         , switchMode Insert)
+
+    -- Transition to visual
+    , (char 'v', enableVisualE Inclusive, resetCount . switchMode (Visual Inclusive))
+    , (char 'V', enableVisualE LineWise, resetCount . switchMode (Visual LineWise))
+    , (ctrlCh 'v', enableVisualE Block, resetCount . switchMode (Visual Block))
     ]
     ++ fmap (mkStringBindingE Normal Continue)
     [ ("gu", return (), switchMode (NormalOperatorPending OpLowerCase))
@@ -222,11 +227,6 @@ nonrepeatableBindings = fmap (mkBindingE Normal Drop)
     , (char 'T', return (), switchMode (NormalGotoCharacter Backward Exclusive))
     , (char ';', repeatGotoCharE id, id) -- TODO
     , (char ',', repeatGotoCharE reverseDir, id) -- TODO
-
-    -- Transition to visual
-    , (char 'v', enableVisualE Inclusive, resetCount . switchMode (Visual Inclusive))
-    , (char 'V', enableVisualE LineWise, resetCount . switchMode (Visual LineWise))
-    , (ctrlCh 'v', enableVisualE Block, resetCount . switchMode (Visual Block))
 
     -- Repeat
     , (char '&', return (), id) -- TODO

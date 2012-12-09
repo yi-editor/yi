@@ -63,8 +63,13 @@ textObject = VimBindingE prereq action
                             applyOperatorToRegionE op region
                     resetCountE
                     let (NormalOperatorPending op) = vsMode currentState
-                    switchModeE $ if op == OpChange then Insert else Normal
-                    return Finish
+                    if op == OpChange
+                    then do
+                        switchModeE Insert
+                        return Continue
+                    else do
+                        switchModeE Normal
+                        return Finish
 
 regionForOperatorLineB :: Int -> RegionStyle -> BufferM StyledRegion
 regionForOperatorLineB n style = normalizeRegion =<< StyledRegion style <$> savingPointB (do
