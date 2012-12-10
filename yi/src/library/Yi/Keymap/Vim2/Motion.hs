@@ -10,13 +10,14 @@ import Prelude ()
 import Yi.Prelude
 
 import Control.Monad (replicateM_)
+import Data.Maybe (fromMaybe)
 
 import Yi.Buffer
 import Yi.Keymap.Vim2.StyledRegion
 
-data Move = Move !RegionStyle (Int -> BufferM ())
+data Move = Move !RegionStyle (Maybe Int -> BufferM ())
 
-data CountedMove = CountedMove !Int !Move
+data CountedMove = CountedMove !(Maybe Int) !Move
 
 
 -- TODO:
@@ -64,12 +65,14 @@ stringToMove :: String -> Maybe Move
 stringToMove c = fmap (Move Exclusive) (lookup c exclusiveMotions)
              <|> fmap (Move Inclusive) (lookup c inclusiveMotions)
              <|> fmap (Move LineWise) (lookup c linewiseMotions)
+             <|> fmap (Move LineWise) (lookup c linewiseMaybeMotions)
 
 changeMoveStyle :: (RegionStyle -> RegionStyle) -> Move -> Move
 changeMoveStyle smod (Move s m) = Move (smod s) m
 
-linewiseMotions :: [(String, Int -> BufferM ())]
-linewiseMotions =
+-- Linewise motions which treat no count as being the same as a count of 1.
+linewiseMotions :: [(String, Maybe Int -> BufferM ())]
+linewiseMotions = fmap withDefaultCount
     [ ("j", discard . lineMoveRel)
     , ("k", discard . lineMoveRel . negate)
     , ("-", const firstNonSpaceB <=< discard . lineMoveRel . negate)
@@ -77,12 +80,18 @@ linewiseMotions =
     , ("_", \n -> do
                 when (n > 1) $ discard $ lineMoveRel (n - 1)
                 firstNonSpaceB)
-    , ("G", \n -> gotoLn n >> moveToSol) -- TODO: G without explicit count
     , ("gg", discard . gotoLn) -- TODO: save column
     ]
 
-exclusiveMotions :: [(String, Int -> BufferM ())]
-exclusiveMotions =
+-- Linewise motions which differentiate no count and a count of 1.
+linewiseMaybeMotions :: [(String, Maybe Int -> BufferM ())]
+linewiseMaybeMotions =
+    [ ("G", gotoXOrEOF)
+    ]
+
+-- Exclusive motions which treat no count as being the same as a count of 1.
+exclusiveMotions :: [(String, Maybe Int -> BufferM ())]
+exclusiveMotions = fmap withDefaultCount
     [ ("h", moveXorSol)
     , ("l", moveXorEol)
     , ("w", moveForwardB unitViWord)
@@ -100,8 +109,9 @@ exclusiveMotions =
     , ("}", moveForwardB unitEmacsParagraph)
     ]
 
-inclusiveMotions :: [(String, Int -> BufferM ())]
-inclusiveMotions =
+-- Inclusive motions which treat no count as being the same as a count of 1.
+inclusiveMotions :: [(String, Maybe Int -> BufferM ())]
+inclusiveMotions = fmap withDefaultCount
     [
     -- Word motions
       ("e", repeat $ genMoveB unitViWord (Forward, InsideBound) Forward)
@@ -138,3 +148,13 @@ regionOfMoveB' (CountedMove n (Move style move)) = do
 moveForwardB, moveBackwardB :: TextUnit -> Int -> BufferM ()
 moveForwardB unit = repeat $ genMoveB unit (Backward,InsideBound) Forward
 moveBackwardB unit = repeat $ moveB unit Backward
+
+gotoXOrEOF :: Maybe Int -> BufferM ()
+gotoXOrEOF n = do
+    case n of
+        Nothing -> botB >> moveToSol
+        Just n' -> gotoLn n' >> moveToSol
+
+withDefaultCount :: (String, Int -> BufferM ()) -> (String, Maybe Int -> BufferM ())
+withDefaultCount (s, f) = (s, f . defaultCount)
+    where defaultCount = fromMaybe 1

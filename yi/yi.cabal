@@ -64,7 +64,7 @@ flag hacking
   Default: False
   Description:
      Hacking mode:
-        * Create HackerMain.hs by copying your ~/.yi/yi.hs
+        * Create HackerMain.hs by copying your ~/.config/yi/yi.hs
         * Skip library compilation
         * You can run yi in-place with dist/build/yi/yi
 
@@ -146,6 +146,8 @@ library
     Yi.Keymap.Vim2.StyledRegion
     Yi.Keymap.Vim2.TextObject
     Yi.Keymap.Vim2.Utils
+    Yi.Keymap.Vim2.VisualMap
+    Yi.Keymap.Vim2.OperatorUtils
     Yi.KillRing
     Yi.Layout
     Yi.Lexer.Abella
@@ -239,7 +241,7 @@ library
     data-accessor-mtl == 0.2.*,
     data-accessor-template >= 0.2.1.3 && < 0.2.2,
     dlist >=0.4.1,
-    dyre >=0.8.8 && < 0.8.9,
+    dyre >=0.8.11,
     filepath>=1.1 && <1.4,
     fingertree >= 0 && <0.1,
     ghc-paths ==0.1.*,

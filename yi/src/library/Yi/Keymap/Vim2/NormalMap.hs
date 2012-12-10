@@ -54,7 +54,7 @@ motionBinding = VimBindingE prereq action
               state <- getDynamic
               let s = dropWhile isDigit (vsAccumulator state) ++ [c]
                   (Just (Move _ move)) = stringToMove s
-              count <- getCountE
+              count <- getMaybeCountE
               withBuffer0 $ move count >> leftOnEol
               resetCountE
 

@@ -75,7 +75,7 @@ motionBinding = VimBindingE prereq action
           action (Event (KASCII c) []) = do
               state <- getDynamic
               let (Just (Move _ move)) = stringToMove [c]
-              count <- getCountE
+              count <- getMaybeCountE
               withBuffer0 $ move count >> leftOnEol
               resetCountE
 

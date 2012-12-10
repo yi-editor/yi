@@ -1,0 +1,14 @@
+-- Input
+(1,4)
+aa bb cc dd
+aa bb cc dd
+aa bb cc dd
+aa bb cc dd
+-- Output
+(4,1)
+aa bb cc dd
+aa bb cc dd
+aa bb cc dd
+aa bb cc dd
+-- Events
+G
