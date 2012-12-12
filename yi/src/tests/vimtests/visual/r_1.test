@@ -3,7 +3,7 @@
 foo
 bar
 -- Output
-(1,1)
+(1,3)
 fox
 xxr
 -- Events
