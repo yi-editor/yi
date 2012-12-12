@@ -71,20 +71,21 @@ defVimKeymap mm = do
     write $ handleEvent mm e
 
 handleEvent :: ModeMap -> Event -> YiM ()
-handleEvent mm e = do
+handleEvent mm event = do
     currentState <- withEditor getDynamic
-    let maybeBinding = find (isBindingApplicable e currentState) (allBindings mm)
+    let bindingMatch = selectBinding event currentState (allBindings mm)
 
-    repeatToken <- case maybeBinding of
-        Nothing -> fail $ "unhandled event " ++ show e ++ " at top level"
-        Just (VimBindingY _ action) -> action e
-        Just (VimBindingE _ action) -> withEditor $ action e
+    repeatToken <- case bindingMatch of
+        WholeMatch (VimBindingY _ action) -> action event
+        WholeMatch (VimBindingE _ action) -> withEditor $ action event
+        NoMatch -> return Drop
+        PartialMatch -> return Continue
 
     withEditor $ do
         case repeatToken of
             Drop -> dropAccumulatorE
-            Continue -> accumulateEventE e
-            Finish -> accumulateEventE e >> flushAccumulatorIntoRepeatableActionE
+            Continue -> accumulateEventE event
+            Finish -> accumulateEventE event >> flushAccumulatorIntoRepeatableActionE
 
         performEvalIfNecessary mm
 
@@ -113,16 +114,20 @@ defaultVimEval = vimEval $ extractValue defModeMapProto
 pureHandleEvent :: ModeMap -> Event -> EditorM ()
 pureHandleEvent mm event = do
     currentState <- getDynamic
-    let maybeBinding = find (isBindingApplicable event currentState) (allPureBindings mm)
-    case maybeBinding of
-        Nothing -> fail $ "unhandled event " ++ show event ++ " in " ++ show (vsMode currentState)
-        Just (VimBindingE _ action) -> do
+    let bindingMatch = selectBinding event currentState (allPureBindings mm)
+    case bindingMatch of
+        NoMatch -> dropBindingAccumulatorE
+        PartialMatch -> do
+            accumulateBindingEventE event
+            accumulateEventE event
+        WholeMatch (VimBindingE _ action) -> do
             repeatToken <- withEditor $ action event
+            dropBindingAccumulatorE
             case repeatToken of
                 Drop -> dropAccumulatorE
                 Continue -> accumulateEventE event
                 Finish -> accumulateEventE event >> flushAccumulatorIntoRepeatableActionE
-        Just (VimBindingY _ _) -> fail "Impure binding found"
+        WholeMatch (VimBindingY _ _) -> fail "Impure binding found"
 
     performEvalIfNecessary mm
 

@@ -6,20 +6,6 @@ module Yi.Keymap.Vim2.Motion
     , changeMoveStyle
     ) where
 
-import Prelude ()
-import Yi.Prelude
-
-import Control.Monad (replicateM_)
-import Data.Maybe (fromMaybe)
-
-import Yi.Buffer
-import Yi.Keymap.Vim2.StyledRegion
-
-data Move = Move !RegionStyle (Maybe Int -> BufferM ())
-
-data CountedMove = CountedMove !(Maybe Int) !Move
-
-
 -- TODO:
 --
 -- respecting wrap in gj, g0, etc
@@ -61,11 +47,42 @@ data CountedMove = CountedMove !(Maybe Int) !Move
 -- same, which is more logical.  However, this causes a small incompatibility
 -- between Vi and Vim.
 
-stringToMove :: String -> Maybe Move
-stringToMove c = fmap (Move Exclusive) (lookup c exclusiveMotions)
-             <|> fmap (Move Inclusive) (lookup c inclusiveMotions)
-             <|> fmap (Move LineWise) (lookup c linewiseMotions)
-             <|> fmap (Move LineWise) (lookup c linewiseMaybeMotions)
+import Prelude ()
+import Yi.Prelude
+
+import Control.Monad (replicateM_)
+
+import Data.List (isPrefixOf)
+import Data.Maybe (fromMaybe)
+
+import Yi.Buffer
+import Yi.Keymap.Vim2.Common
+import Yi.Keymap.Vim2.StyledRegion
+
+data Move = Move !RegionStyle (Maybe Int -> BufferM ())
+
+data CountedMove = CountedMove !(Maybe Int) !Move
+
+stringToMove :: String -> MatchResult Move
+stringToMove s = case lookupMove s of
+                    Just m -> WholeMatch m
+                    Nothing -> if any (isPrefixOf s . fst) allMotions
+                               then PartialMatch
+                               else NoMatch
+    
+lookupMove :: String -> Maybe Move
+lookupMove s = fmap (Move Exclusive) (lookup s exclusiveMotions)
+           <|> fmap (Move Inclusive) (lookup s inclusiveMotions)
+           <|> fmap (Move LineWise) (lookup s linewiseMotions)
+           <|> fmap (Move LineWise) (lookup s linewiseMaybeMotions)
+
+allMotions :: [(String, Maybe Int -> BufferM ())]
+allMotions = concat 
+    [ exclusiveMotions
+    , inclusiveMotions
+    , linewiseMotions
+    , linewiseMaybeMotions
+    ]
 
 changeMoveStyle :: (RegionStyle -> RegionStyle) -> Move -> Move
 changeMoveStyle smod (Move s m) = Move (smod s) m
@@ -150,11 +167,11 @@ moveForwardB unit = repeat $ genMoveB unit (Backward,InsideBound) Forward
 moveBackwardB unit = repeat $ moveB unit Backward
 
 gotoXOrEOF :: Maybe Int -> BufferM ()
-gotoXOrEOF n = do
-    case n of
-        Nothing -> botB >> moveToSol
-        Just n' -> gotoLn n' >> moveToSol
+gotoXOrEOF n = case n of
+    Nothing -> botB >> moveToSol
+    Just n' -> gotoLn n' >> moveToSol
 
 withDefaultCount :: (String, Int -> BufferM ()) -> (String, Maybe Int -> BufferM ())
 withDefaultCount (s, f) = (s, f . defaultCount)
     where defaultCount = fromMaybe 1
+

@@ -8,8 +8,7 @@ import Prelude ()
 import Control.Monad (replicateM_)
 
 import Data.Char
-import Data.List (dropWhile)
-import Data.Maybe (fromMaybe, isJust)
+import Data.Maybe (fromMaybe)
 import qualified Data.Rope as R
 
 import Yi.Buffer hiding (Insert)
@@ -19,6 +18,7 @@ import Yi.Event
 import Yi.Keymap.Keys
 import Yi.Keymap.Vim2.Common
 import Yi.Keymap.Vim2.Eval
+import Yi.Keymap.Vim2.EventUtils
 import Yi.Keymap.Vim2.Motion
 import Yi.Keymap.Vim2.OperatorUtils
 import Yi.Keymap.Vim2.StateUtils
@@ -42,32 +42,35 @@ pureBindings =
     continuingBindings ++
     nonrepeatableBindings
 
-motionBinding :: VimBinding
-motionBinding = VimBindingE prereq action
-    where prereq ev state | vsMode state == Normal =
-                                case ev of
-                                    Event (KASCII c) [] -> isJust (stringToMove s)
-                                        where s = dropWhile isDigit (vsAccumulator state) ++ [c]
-                                    _ -> False
-                          | otherwise = False
-          action (Event (KASCII c) []) = do
-              state <- getDynamic
-              let s = dropWhile isDigit (vsAccumulator state) ++ [c]
-                  (Just (Move _ move)) = stringToMove s
-              count <- getMaybeCountE
-              withBuffer0 $ move count >> leftOnEol
-              resetCountE
-
-              -- moving with j/k after $ sticks cursor to the right edge
-              when (c == '$') $ setStickyEolE True
-              when (c `elem` "jk" && vsStickyEol state) $ withBuffer0 $ moveToEol >> leftB
-              when (c `notElem` "jk$") $ setStickyEolE False
-
-              return Drop
+motionBinding = mkMotionBinding $ \m -> case m of
+                                     Normal -> True
+                                     _ -> False
+-- motionBinding :: VimBinding
+-- motionBinding = VimBindingE prereq action
+--     where prereq e (VimState { vsMode = Normal, vsBindingAccumulator = bacc }) =
+--               let s = bacc ++ eventToString e
+--               in fmap (const ()) (stringToMove s)
+--           prereq _ _ = NoMatch
+--           action e = do
+--               state <- getDynamic
+--               let s = vsBindingAccumulator state ++ estring
+--                   estring = eventToString e
+--                   WholeMatch (Move _style move) = stringToMove s
+--               count <- getMaybeCountE
+--               withBuffer0 $ move count >> leftOnEol
+--               resetCountE
+-- 
+--               -- moving with j/k after $ sticks cursor to the right edge
+--               when (estring == "$") $ setStickyEolE True
+--               when (estring `elem` ["j", "k"] && vsStickyEol state) $
+--                   withBuffer0 $ moveToEol >> leftB
+--               when (estring `notElem` ["j", "k", "$"]) $ setStickyEolE False
+-- 
+--               return Drop
 
 zeroBinding :: VimBinding
 zeroBinding = VimBindingE prereq action
-    where prereq ev state = ev == char '0' && (vsMode state == Normal)
+    where prereq ev state = matchFromBool $ ev == char '0' && (vsMode state == Normal)
           action _ = do
               currentState <- getDynamic
               case vsCount currentState of
@@ -81,7 +84,7 @@ zeroBinding = VimBindingE prereq action
 
 repeatBinding :: VimBinding
 repeatBinding = VimBindingE prereq action
-    where prereq ev state = ev == char '.' && (vsMode state == Normal)
+    where prereq ev state = matchFromBool $ ev == char '.' && (vsMode state == Normal)
           action _ = do
                 currentState <- getDynamic
                 case vsRepeatableAction currentState of

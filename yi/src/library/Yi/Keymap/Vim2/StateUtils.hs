@@ -8,9 +8,11 @@ module Yi.Keymap.Vim2.StateUtils
   , getMaybeCountE
   , getCountE
   , accumulateEventE
+  , accumulateBindingEventE
   , accumulateTextObjectEventE
   , flushAccumulatorIntoRepeatableActionE
   , dropAccumulatorE
+  , dropBindingAccumulatorE
   , dropTextObjectAccumulatorE
   , setDefaultRegisterE
   , getDefaultRegisterE
@@ -50,8 +52,7 @@ resetCountE :: EditorM ()
 resetCountE = modifyStateE resetCount
 
 getMaybeCountE :: EditorM (Maybe Int)
-getMaybeCountE = do
-    fmap vsCount getDynamic
+getMaybeCountE = fmap vsCount getDynamic
 
 getCountE :: EditorM Int
 getCountE = do
@@ -60,6 +61,10 @@ getCountE = do
 
 setCountE :: Int -> EditorM ()
 setCountE n = modifyStateE $ \s -> s { vsCount = Just n }
+
+accumulateBindingEventE :: Event -> EditorM ()
+accumulateBindingEventE e = modifyStateE $
+    \s -> s { vsBindingAccumulator = vsBindingAccumulator s ++ eventToString e }
 
 accumulateEventE :: Event -> EditorM ()
 accumulateEventE e = modifyStateE $
@@ -79,6 +84,9 @@ flushAccumulatorIntoRepeatableActionE = do
 
 dropAccumulatorE :: EditorM ()
 dropAccumulatorE = modifyStateE $ \s -> s { vsAccumulator = [] }
+
+dropBindingAccumulatorE :: EditorM ()
+dropBindingAccumulatorE = modifyStateE $ \s -> s { vsBindingAccumulator = [] }
 
 dropTextObjectAccumulatorE :: EditorM ()
 dropTextObjectAccumulatorE = modifyStateE $ \s -> s { vsTextObjectAccumulator = [] }

@@ -36,7 +36,7 @@ exitInsertMode = do
 
 printable :: VimBinding
 printable = VimBindingE prereq action
-    where prereq _ s = Insert == vsMode s
+    where prereq _ s = if Insert == vsMode s then WholeMatch () else NoMatch
           action = printableAction
 
 printableAction :: Event -> EditorM RepeatToken

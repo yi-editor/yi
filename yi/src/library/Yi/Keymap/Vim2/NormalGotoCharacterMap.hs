@@ -20,9 +20,9 @@ escBinding :: VimBinding
 escBinding = VimBindingE prereq action
     where prereq ev state | ev == Event KEsc [] =
                                 case vsMode state of
-                                    NormalGotoCharacter _ _ -> True
-                                    _ -> False
-                          | otherwise = False
+                                    NormalGotoCharacter _ _ -> WholeMatch ()
+                                    _ -> NoMatch
+                          | otherwise = NoMatch
           action _ = do
               switchModeE Normal
               resetCountE
@@ -31,8 +31,8 @@ escBinding = VimBindingE prereq action
 charBinding :: VimBinding
 charBinding = VimBindingE prereq action
     where prereq _ s = case vsMode s of
-                           NormalGotoCharacter _ _ -> True
-                           _ -> False
+                           NormalGotoCharacter _ _ -> WholeMatch ()
+                           _ -> NoMatch
           action e = do
               case e of
                   (Event (KASCII c) []) -> do

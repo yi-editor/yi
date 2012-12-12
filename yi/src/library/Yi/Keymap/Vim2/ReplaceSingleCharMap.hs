@@ -24,7 +24,7 @@ escBinding = mkBindingE ReplaceSingleChar Drop (spec KEsc, return (), resetCount
 
 actualReplaceBinding :: VimBinding
 actualReplaceBinding = VimBindingE prereq action
-    where prereq _ s = ReplaceSingleChar == vsMode s
+    where prereq _ s = if ReplaceSingleChar == vsMode s then WholeMatch () else NoMatch
           action e = do
               currentState <- getDynamic
               let count = fromMaybe 1 $ vsCount currentState

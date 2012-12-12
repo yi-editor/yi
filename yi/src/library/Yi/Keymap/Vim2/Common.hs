@@ -9,6 +9,7 @@ module Yi.Keymap.Vim2.Common
     , Register(..)
     , RepeatToken(..)
     , RepeatableAction(..)
+    , MatchResult(..)
     ) where
 
 import Yi.Prelude
@@ -74,6 +75,7 @@ data VimState = VimState {
         , vsStickyEol :: !Bool -- ^ is set on $, allows j and k walk the right edge of lines
         , vsOngoingInsertEvents :: !String
         , vsLastGotoCharCommand :: !(Maybe GotoCharCommand)
+        , vsBindingAccumulator :: !String
     } deriving (Typeable)
 
 $(derive makeBinary ''VimOperator)
@@ -90,7 +92,7 @@ instance Initializable VimMode where
 $(derive makeBinary ''VimMode)
 
 instance Initializable VimState where
-    initial = VimState Normal Nothing [] [] HM.empty Nothing [] False [] Nothing
+    initial = VimState Normal Nothing [] [] HM.empty Nothing [] False [] Nothing []
 
 $(derive makeBinary ''VimState)
 
@@ -102,12 +104,34 @@ data RepeatToken = Finish
                  | Continue
     deriving Show
 
+data MatchResult a = NoMatch
+                   | PartialMatch
+                   | WholeMatch a
+
+instance Functor MatchResult where
+    fmap f (WholeMatch x) = WholeMatch (f x)
+    fmap _ NoMatch = NoMatch
+    fmap _ PartialMatch = PartialMatch
+
+instance Applicative MatchResult where
+    pure = WholeMatch
+    WholeMatch f <*> WholeMatch x = WholeMatch (f x)
+    _ <*> _ = NoMatch
+
+instance Alternative MatchResult where
+    empty = NoMatch
+    WholeMatch x <|> _ = WholeMatch x
+    _ <|> WholeMatch x = WholeMatch x
+    PartialMatch <|> _ = PartialMatch
+    _ <|> PartialMatch = PartialMatch
+    _ <|> _ = NoMatch
+
 -- Distinction between YiM and EditorM variants is for testing.
 data VimBinding = VimBindingY {
-                      vbPrerequisite :: Event -> VimState -> Bool,
+                      vbPrerequisite :: Event -> VimState -> MatchResult (),
                       vbyAction :: Event -> YiM RepeatToken
                   }
                 | VimBindingE {
-                      vbPrerequisite :: Event -> VimState -> Bool,
+                      vbPrerequisite :: Event -> VimState -> MatchResult (),
                       vbeAction :: Event -> EditorM RepeatToken
                   }

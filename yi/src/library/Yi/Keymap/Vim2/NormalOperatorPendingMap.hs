@@ -7,7 +7,7 @@ import Yi.Prelude
 
 import Data.Char (isDigit)
 import Data.List (isPrefixOf, drop)
-import Data.Maybe (isJust, fromJust, fromMaybe)
+import Data.Maybe (fromMaybe)
 
 import Yi.Buffer hiding (Insert)
 import Yi.Editor
@@ -28,8 +28,8 @@ textObject :: VimBinding
 textObject = VimBindingE prereq action
     where
         prereq _ vs = case vsMode vs of
-                            NormalOperatorPending _ -> True
-                            _ -> False
+                            NormalOperatorPending _ -> WholeMatch ()
+                            _ -> NoMatch
         action e = do
             currentState <- getDynamic
             let partial = vsTextObjectAccumulator currentState
@@ -37,12 +37,12 @@ textObject = VimBindingE prereq action
                 opChar = lastCharForOperator op
                 (NormalOperatorPending op) = vsMode currentState
             case operand of
-                Fail -> do
+                NoOperand -> do
                     dropTextObjectAccumulatorE
                     resetCountE
                     switchModeE Normal
                     return Drop
-                Partial -> do
+                PartialOperand -> do
                     accumulateTextObjectEventE e
                     return Continue
                 _ -> do
@@ -63,7 +63,6 @@ textObject = VimBindingE prereq action
                             region <- withBuffer0 $ regionForOperatorLineB normalizedCount style
                             applyOperatorToRegionE op region
                     resetCountE
-                    let (NormalOperatorPending op) = vsMode currentState
                     if op == OpChange
                     then do
                         switchModeE Insert
@@ -94,8 +93,8 @@ escBinding = mkBindingE ReplaceSingleChar Drop (spec KEsc, return (), resetCount
 data OperandParseResult = JustTextObject !CountedTextObject
                          | JustMove !CountedMove
                          | JustOperator !Int !RegionStyle -- ^ like dd and d2vd
-                         | Partial
-                         | Fail
+                         | PartialOperand
+                         | NoOperand
 
 parseOperand :: Char -> String -> OperandParseResult
 parseOperand opChar s = parseCommand mcount styleMod opChar commandString
@@ -109,19 +108,20 @@ parseOperand opChar s = parseCommand mcount styleMod opChar commandString
                                             _ -> Exclusive
                         _ -> error "Can't happen"
 
-parseCommand :: Maybe Int -> (RegionStyle -> RegionStyle) -> Char ->  String -> OperandParseResult
-parseCommand _ _ _ "" = Partial
-parseCommand _ _ _ "i" = Partial
-parseCommand _ _ _ "a" = Partial
-parseCommand _ _ _ "g" = Partial
+parseCommand :: Maybe Int -> (RegionStyle -> RegionStyle) -> Char -> String -> OperandParseResult
+parseCommand _ _ _ "" = PartialOperand
+parseCommand _ _ _ "i" = PartialOperand
+parseCommand _ _ _ "a" = PartialOperand
+parseCommand _ _ _ "g" = PartialOperand
 parseCommand n sm o s | [o] == s = JustOperator (fromMaybe 1 n) (sm LineWise)
--- TODO: refactor with Alternative
-parseCommand n sm _ s | isJust (stringToMove s) = JustMove $ CountedMove n
-                                                $ changeMoveStyle sm $ fromJust $ stringToMove s
-parseCommand n sm _ s | isJust (stringToTextObject s) = JustTextObject $ CountedTextObject (fromMaybe 1 n)
-                                                      $ changeTextObjectStyle sm
-                                                      $ fromJust $ stringToTextObject s
-parseCommand _ _ _ _ = Fail
+parseCommand n sm _ s =
+    case stringToMove s of
+        WholeMatch m -> JustMove $ CountedMove n $ changeMoveStyle sm m
+        PartialMatch -> PartialOperand
+        NoMatch -> case stringToTextObject s of
+            Just to -> JustTextObject $ CountedTextObject (fromMaybe 1 n)
+                                      $ changeTextObjectStyle sm to
+            Nothing -> NoOperand
 
 
 -- Parse event string that can go after operator
