@@ -38,12 +38,12 @@ mkStringBindingE mode rtoken (eventString, action, mutate) = VimBindingE prereq 
 
 mkBindingE :: VimMode -> RepeatToken -> (Event, EditorM (), VimState -> VimState) -> VimBinding
 mkBindingE mode rtoken (event, action, mutate) = VimBindingE prereq combinedAction
-    where prereq ev vs = if vsMode vs == mode && ev == event then WholeMatch () else NoMatch
+    where prereq ev vs = matchFromBool $ vsMode vs == mode && ev == event
           combinedAction _ = combineAction action mutate rtoken
 
 mkBindingY :: VimMode -> (Event, YiM (), VimState -> VimState) -> VimBinding
 mkBindingY mode (event, action, mutate) = VimBindingY prereq combinedAction
-    where prereq ev vs = if vsMode vs == mode && ev == event then WholeMatch () else NoMatch
+    where prereq ev vs = matchFromBool $ vsMode vs == mode && ev == event
           combinedAction _ = combineAction action mutate Drop
 
 combineAction :: MonadEditor m => m () -> (VimState -> VimState) -> RepeatToken -> m RepeatToken

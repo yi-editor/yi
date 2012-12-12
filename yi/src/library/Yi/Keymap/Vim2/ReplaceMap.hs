@@ -35,7 +35,7 @@ exitReplaceMode = do
 
 printable :: VimBinding
 printable = VimBindingE prereq action
-    where prereq _ s = if Replace == vsMode s then WholeMatch () else NoMatch
+    where prereq _ s = matchFromBool $ Replace == vsMode s
           action = printableAction
 
 printableAction :: Event -> EditorM RepeatToken
