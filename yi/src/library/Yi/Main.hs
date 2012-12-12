@@ -83,6 +83,7 @@ data Opts = Help
 editors :: [(String,Config -> Config)]
 editors = [("emacs", toEmacsStyleConfig),
            ("vim",   toVimStyleConfig),
+           ("vim2",  toVim2StyleConfig),
            ("cua",   toCuaStyleConfig)]
 
 options :: [OptDescr Opts]
