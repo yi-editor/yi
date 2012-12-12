@@ -21,7 +21,7 @@ import Yi.Keymap.Vim2.StyledRegion
 import Yi.Keymap.Vim2.Utils
 
 defVisualMap :: [VimBinding]
-defVisualMap = [escBinding, motionBinding] ++ operatorBindings ++ digitBindings
+defVisualMap = [escBinding, motionBinding] ++ operatorBindings ++ digitBindings ++ [replaceBinding]
 
 escBinding :: VimBinding
 escBinding = VimBindingE prereq action
@@ -112,3 +112,19 @@ mkOperatorBinding (s, op) = VimBindingE prereq action
               else do
                   switchModeE Normal
                   return Finish
+
+replaceBinding :: VimBinding
+replaceBinding = VimBindingE prereq action
+    where prereq (Event (KASCII c) [])
+                 (VimState { vsMode = (Visual _), vsBindingAccumulator = bacc })
+                    | c == 'r' && bacc == [] = PartialMatch
+                    | bacc == "r" = WholeMatch ()
+          prereq _ _ = NoMatch
+          action (Event (KASCII c) []) = do
+              (Visual style) <- vsMode <$> getDynamic
+              region <- withBuffer0 regionOfSelectionB
+              withBuffer0 $ transformCharactersInRegionB (StyledRegion style region)
+                                (\x -> if x == '\n' then x else c)
+              switchModeE Normal
+              return Finish
+

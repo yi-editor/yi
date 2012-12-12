@@ -55,20 +55,6 @@ applyOperatorToRegionE op sreg@(StyledRegion style reg) = case op of
         withBuffer0 $ moveTo (regionStart reg)
     _ -> withBuffer0 $ insertN $ "Operator not supported " ++ show op
 
-transformCharactersInRegionB :: StyledRegion -> (Char -> Char) -> BufferM ()
-transformCharactersInRegionB (StyledRegion Block reg) f = do
-    subregions <- splitBlockRegionToContiguousSubRegionsB reg
-    forM_ subregions $ \sr ->
-        transformCharactersInRegionB (StyledRegion Exclusive sr) f
-    case subregions of
-        (sr:_) -> moveTo (regionStart sr)
-        [] -> error "Should never happen"
-transformCharactersInRegionB (StyledRegion style reg) f = do
-    reg' <- convertRegionToStyleB reg style
-    s <- readRegionB reg'
-    replaceRegionB reg' (fmap f s)
-    moveTo (regionStart reg')
-
 -- TODO eliminate redundancy
 lastCharForOperator :: VimOperator -> Char
 lastCharForOperator op = fromJust $ lookup op

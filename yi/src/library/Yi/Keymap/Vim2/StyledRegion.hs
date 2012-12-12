@@ -1,6 +1,7 @@
 module Yi.Keymap.Vim2.StyledRegion
     ( StyledRegion(..)
     , normalizeRegion
+    , transformCharactersInRegionB
     ) where
 
 import Prelude ()
@@ -36,3 +37,17 @@ normalizeRegion sr@(StyledRegion style reg) =
         then return $ StyledRegion Inclusive $ reg { regionEnd = end -~ 2 }
         else return sr
     else return sr
+
+transformCharactersInRegionB :: StyledRegion -> (Char -> Char) -> BufferM ()
+transformCharactersInRegionB (StyledRegion Block reg) f = do
+    subregions <- splitBlockRegionToContiguousSubRegionsB reg
+    forM_ subregions $ \sr ->
+        transformCharactersInRegionB (StyledRegion Exclusive sr) f
+    case subregions of
+        (sr:_) -> moveTo (regionStart sr)
+        [] -> error "Should never happen"
+transformCharactersInRegionB (StyledRegion style reg) f = do
+    reg' <- convertRegionToStyleB reg style
+    s <- readRegionB reg'
+    replaceRegionB reg' (fmap f s)
+    moveTo (regionStart reg')
