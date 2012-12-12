@@ -64,9 +64,10 @@ transformCharactersInRegionB (StyledRegion Block reg) f = do
         (sr:_) -> moveTo (regionStart sr)
         [] -> error "Should never happen"
 transformCharactersInRegionB (StyledRegion style reg) f = do
-    s <- readRegionB =<< convertRegionToStyleB reg style
-    replaceRegionB reg (fmap f s)
-    moveTo (regionStart reg)
+    reg' <- convertRegionToStyleB reg style
+    s <- readRegionB reg'
+    replaceRegionB reg' (fmap f s)
+    moveTo (regionStart reg')
 
 -- TODO eliminate redundancy
 lastCharForOperator :: VimOperator -> Char
