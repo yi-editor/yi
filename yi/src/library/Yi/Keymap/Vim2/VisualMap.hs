@@ -7,6 +7,7 @@ import Prelude ()
 
 import Data.Char (ord)
 import Data.List (isPrefixOf)
+import Data.Ord
 
 import Yi.Buffer hiding (Insert)
 import Yi.Editor
@@ -21,7 +22,8 @@ import Yi.Keymap.Vim2.StyledRegion
 import Yi.Keymap.Vim2.Utils
 
 defVisualMap :: [VimBinding]
-defVisualMap = [escBinding, motionBinding] ++ operatorBindings ++ digitBindings ++ [replaceBinding]
+defVisualMap = [escBinding, motionBinding]
+            ++ operatorBindings ++ digitBindings ++ [replaceBinding, switchEdgeBinding]
 
 escBinding :: VimBinding
 escBinding = VimBindingE prereq action
@@ -127,4 +129,22 @@ replaceBinding = VimBindingE prereq action
                                 (\x -> if x == '\n' then x else c)
               switchModeE Normal
               return Finish
+
+switchEdgeBinding :: VimBinding
+switchEdgeBinding = VimBindingE prereq action
+    where prereq (Event (KASCII c) [])
+                 (VimState { vsMode = (Visual _), vsBindingAccumulator = [] })
+                    | c `elem` "oO" = WholeMatch ()
+          prereq _ _ = NoMatch
+          action (Event (KASCII c) []) = do
+              (Visual style) <- vsMode <$> getDynamic
+              withBuffer0 $ do
+                  here <- pointB
+                  there <- getSelectionMarkPointB
+                  (here', there') <- case (c, style) of
+                                        ('O', Block) -> flipRectangleB here there
+                                        (_, _) -> return (there, here)
+                  moveTo here'
+                  setSelectionMarkPointB there'
+              return Continue
 

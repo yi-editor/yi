@@ -12,8 +12,10 @@ import Data.Char
 import Data.List (isPrefixOf, sort, lines, drop, filter, length,
                   takeWhile, dropWhile, reverse, map, intersperse)
 import Data.Maybe (fromMaybe, listToMaybe)
+import Data.Ord
 import qualified Data.Rope as R
 import Data.Time (UTCTime)
+import Data.Tuple (swap)
 
 import Yi.Buffer.Basic
 import Yi.Buffer.Misc
@@ -680,15 +682,12 @@ smallBufferSize = 1000000
 --     finish
 --
 -- shapeOfBlockRegionB returns (regionStart, [2, 2, 0, 1, 2])
+-- TODO: accept stickToEol flag
 shapeOfBlockRegionB :: Region -> BufferM (Point, [Int])
 shapeOfBlockRegionB reg = savingPointB $ do
     (l0, c0) <- getLineAndColOfPoint $ regionStart reg
     (l1, c1) <- getLineAndColOfPoint $ regionEnd reg
-    let (left, top, bottom) = (min c0 c1, min l0 l1, max l0 l1)
-    right <- savingPointB $ do
-        gotoLn bottom
-        moveToColB $ max c0 c1
-        curCol
+    let (left, top, bottom, right) = (min c0 c1, min l0 l1, max l0 l1, max c0 c1)
     lengths <- forM [top .. bottom] $ \l -> do
         gotoLn l
         moveToColB left
@@ -697,6 +696,7 @@ shapeOfBlockRegionB reg = savingPointB $ do
         then return 0
         else do
             moveToColB right
+            leftOnEol
             currentRight <- curCol
             return $ currentRight - currentLeft + 1
     startingPoint <- pointOfLineColB top left
@@ -756,3 +756,34 @@ insertRopeWithStyleB rope LineWise = do
     moveToSol
     savingPointB $ insertN' rope
 insertRopeWithStyleB rope style = insertN' rope
+
+-- consider the following buffer content
+--
+-- 123456789
+-- qwertyuio
+-- asdfgh
+--
+-- The following examples use letters from that buffer as points.
+-- h' denotes the newline after h
+--
+-- 1 r -> 4 q
+-- 9 q -> 1 o
+-- q h -> y a
+-- a o -> h' q
+-- o a -> q h'
+-- 1 a -> 1 a
+--
+-- property: fmap swap (flipRectangleB a b) = flipRectangleB b a
+flipRectangleB :: Point -> Point -> BufferM (Point, Point)
+flipRectangleB p0 p1 = savingPointB $ do
+    (_, c0) <- getLineAndColOfPoint p0
+    (_, c1) <- getLineAndColOfPoint p1
+    case compare c0 c1 of
+        EQ -> return (p0, p1)
+        GT -> fmap swap $ flipRectangleB p1 p0
+        LT -> do
+            -- now we know that c0 < c1
+            moveTo p0
+            moveXorEol $ c1 - c0
+            flippedP0 <- pointB
+            return (flippedP0, p1 -~ Size (c1 - c0))
