@@ -52,7 +52,7 @@ import Yi.Prelude
 
 import Control.Monad (replicateM_)
 
-import Data.List (isPrefixOf)
+import Data.List (isPrefixOf, group)
 import Data.Maybe (fromMaybe)
 
 import Yi.Buffer
@@ -66,9 +66,10 @@ data CountedMove = CountedMove !(Maybe Int) !Move
 stringToMove :: String -> MatchResult Move
 stringToMove s = case lookupMove s of
                     Just m -> WholeMatch m
-                    Nothing -> if any (isPrefixOf s . fst) allMotions
+                    Nothing -> if any (isPrefixOf s . fst) allNonParametricMotions
                                then PartialMatch
                                else NoMatch
+                 <|> matchGotoCharMove s
     
 lookupMove :: String -> Maybe Move
 lookupMove s = fmap (Move Exclusive) (lookup s exclusiveMotions)
@@ -76,8 +77,8 @@ lookupMove s = fmap (Move Exclusive) (lookup s exclusiveMotions)
            <|> fmap (Move LineWise) (lookup s linewiseMotions)
            <|> fmap (Move LineWise) (lookup s linewiseMaybeMotions)
 
-allMotions :: [(String, Maybe Int -> BufferM ())]
-allMotions = concat 
+allNonParametricMotions :: [(String, Maybe Int -> BufferM ())]
+allNonParametricMotions = concat
     [ exclusiveMotions
     , inclusiveMotions
     , linewiseMotions
@@ -175,3 +176,23 @@ withDefaultCount :: (String, Int -> BufferM ()) -> (String, Maybe Int -> BufferM
 withDefaultCount (s, f) = (s, f . defaultCount)
     where defaultCount = fromMaybe 1
 
+matchGotoCharMove :: String -> MatchResult Move
+matchGotoCharMove (m:[]) | m `elem` "fFtT" = PartialMatch
+matchGotoCharMove (m:c:[]) | m `elem` "fFtT" = WholeMatch $ Move style action
+    where (direction, style, move) =
+              case m of
+                  'f' -> (Forward, Inclusive, nextCInLineInc c)
+                  't' -> (Forward, Exclusive, nextCInLineExc c)
+                  'F' -> (Backward, Inclusive, prevCInLineInc c)
+                  'T' -> (Backward, Exclusive, prevCInLineExc c)
+          action mcount = do
+                  let count = fromMaybe 1 mcount
+                  p0 <- pointB
+                  replicateM_ (count - 1) $ do
+                      move
+                      when (style == Exclusive) $ moveB Character direction
+                  p1 <- pointB
+                  move
+                  p2 <- pointB
+                  when (p1 == p2) $ moveTo p0
+matchGotoCharMove _ = NoMatch

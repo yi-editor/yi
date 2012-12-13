@@ -27,7 +27,6 @@ import Yi.Keymap.Vim2.Common
 import Yi.Keymap.Vim2.EventUtils
 import Yi.Keymap.Vim2.InsertMap
 import Yi.Keymap.Vim2.NormalMap
-import Yi.Keymap.Vim2.NormalGotoCharacterMap
 import Yi.Keymap.Vim2.NormalOperatorPendingMap
 import Yi.Keymap.Vim2.ReplaceMap
 import Yi.Keymap.Vim2.ReplaceSingleCharMap
@@ -38,7 +37,6 @@ import Yi.Keymap.Vim2.VisualMap
 data ModeMap = ModeMap {
         vimKeymap :: Keymap,
         normalMap :: [VimBinding],
-        normalGotoCharacterMap :: [VimBinding],
         normalOperatorPendingMap :: [VimBinding],
         insertMap :: [VimBinding],
         replaceSingleMap :: [VimBinding],
@@ -57,7 +55,6 @@ defModeMapProto = Proto template
     where template self = ModeMap {
                               vimKeymap = defVimKeymap self,
                               normalMap = defNormalMap,
-                              normalGotoCharacterMap = defNormalGotoCharacterMap,
                               normalOperatorPendingMap = defNormalOperatorPendingMap,
                               insertMap = defInsertMap,
                               replaceSingleMap = defReplaceSingleMap,
@@ -72,27 +69,26 @@ defVimKeymap mm = do
 
 handleEvent :: ModeMap -> Event -> YiM ()
 handleEvent mm event = do
-    return ()
-    -- currentState <- withEditor getDynamic
-    -- let bindingMatch = selectBinding event currentState (allBindings mm)
+    currentState <- withEditor getDynamic
+    let evs = vsBindingAccumulator currentState ++ eventToString event
+    let bindingMatch = selectBinding evs currentState (allBindings mm)
 
-    -- repeatToken <- case bindingMatch of
-    --     WholeMatch (VimBindingY _ action) -> action event
-    --     WholeMatch (VimBindingE _ action) -> withEditor $ action event
-    --     NoMatch -> return Drop
-    --     PartialMatch -> return Continue
+    repeatToken <- case bindingMatch of
+        WholeMatch (VimBindingY _ action) -> action evs
+        WholeMatch (VimBindingE _ action) -> withEditor $ action evs
+        NoMatch -> return Drop
+        PartialMatch -> return Continue
 
-    -- withEditor $ do
-    --     case repeatToken of
-    --         Drop -> dropAccumulatorE
-    --         Continue -> accumulateEventE event
-    --         Finish -> accumulateEventE event >> flushAccumulatorIntoRepeatableActionE
+    withEditor $ do
+        case repeatToken of
+            Drop -> dropAccumulatorE
+            Continue -> accumulateEventE event
+            Finish -> accumulateEventE event >> flushAccumulatorIntoRepeatableActionE
 
-    --     performEvalIfNecessary mm
+        performEvalIfNecessary mm
 
 allBindings :: ModeMap -> [VimBinding]
 allBindings m = concat [ normalMap m
-                       , normalGotoCharacterMap m
                        , normalOperatorPendingMap m
                        , insertMap m
                        , replaceSingleMap m

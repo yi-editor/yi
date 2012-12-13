@@ -224,10 +224,10 @@ nonrepeatableBindings = fmap (mkBindingE Normal Drop)
     , (char '#', return (), id) -- TODO
     , (char 'n', return (), id) -- TODO
     , (char 'N', return (), id) -- TODO
-    , (char 'f', return (), switchMode (NormalGotoCharacter Forward Inclusive))
-    , (char 'F', return (), switchMode (NormalGotoCharacter Backward Inclusive))
-    , (char 't', return (), switchMode (NormalGotoCharacter Forward Exclusive))
-    , (char 'T', return (), switchMode (NormalGotoCharacter Backward Exclusive))
+    -- , (char 'f', return (), switchMode (NormalGotoCharacter Forward Inclusive))
+    -- , (char 'F', return (), switchMode (NormalGotoCharacter Backward Inclusive))
+    -- , (char 't', return (), switchMode (NormalGotoCharacter Forward Exclusive))
+    -- , (char 'T', return (), switchMode (NormalGotoCharacter Backward Exclusive))
     , (char ';', repeatGotoCharE id, id) -- TODO
     , (char ',', repeatGotoCharE reverseDir, id) -- TODO
 

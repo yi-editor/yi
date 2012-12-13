@@ -12,7 +12,8 @@ module Yi.Keymap.Vim2.Utils
 import Yi.Prelude
 import Prelude ()
 
-import Data.List (isPrefixOf)
+import Data.List (isPrefixOf, group)
+
 
 import Yi.Buffer hiding (Insert)
 import Yi.Editor
@@ -70,9 +71,21 @@ mkMotionBinding condition = VimBindingE prereq action
 
               -- moving with j/k after $ sticks cursor to the right edge
               when (evs == "$") $ setStickyEolE True
-              when (evs `elem` ["j", "k"] && vsStickyEol state) $
+              when (evs `elem` group "jk" && vsStickyEol state) $
                   withBuffer0 $ moveToEol >> leftB
-              when (evs `notElem` ["j", "k", "$"]) $ setStickyEolE False
+              when (evs `notElem` group "jk$") $ setStickyEolE False
+
+              let m = head evs
+              when (m `elem` "fFtT") $ do
+                  let c = last evs
+                      (direction, style) =
+                          case m of
+                              'f' -> (Forward, Inclusive)
+                              't' -> (Forward, Exclusive)
+                              'F' -> (Backward, Inclusive)
+                              'T' -> (Backward, Exclusive)
+                      command = GotoCharCommand c direction style
+                  modifyStateE $ \s -> s { vsLastGotoCharCommand = Just command}
 
               return Drop
 
