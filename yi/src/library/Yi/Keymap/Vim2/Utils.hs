@@ -2,11 +2,11 @@ module Yi.Keymap.Vim2.Utils
   ( mkBindingE
   , mkBindingY
   , mkStringBindingE
-  , matchBinding 
   , splitCountedCommand
   , selectBinding
   , matchFromBool
   , mkMotionBinding
+  , matchesString
   ) where
 
 import Yi.Prelude
@@ -31,19 +31,17 @@ mkStringBindingE :: VimMode -> RepeatToken
     -> (String, EditorM (), VimState -> VimState) -> VimBinding
 mkStringBindingE mode rtoken (eventString, action, mutate) = VimBindingE prereq combinedAction
     where prereq _ vs | vsMode vs /= mode = NoMatch
-          prereq ev vs | (vsAccumulator vs ++ eventToString ev) == eventString = WholeMatch ()
-          prereq ev vs | (vsAccumulator vs ++ eventToString ev) `isPrefixOf` eventString = PartialMatch
-          prereq _ _ = NoMatch
+          prereq evs _ = evs `matchesString` eventString
           combinedAction _ = combineAction action mutate rtoken
 
 mkBindingE :: VimMode -> RepeatToken -> (Event, EditorM (), VimState -> VimState) -> VimBinding
 mkBindingE mode rtoken (event, action, mutate) = VimBindingE prereq combinedAction
-    where prereq ev vs = matchFromBool $ vsMode vs == mode && ev == event
+    where prereq evs vs = matchFromBool $ vsMode vs == mode && evs == eventToString event
           combinedAction _ = combineAction action mutate rtoken
 
 mkBindingY :: VimMode -> (Event, YiM (), VimState -> VimState) -> VimBinding
 mkBindingY mode (event, action, mutate) = VimBindingY prereq combinedAction
-    where prereq ev vs = matchFromBool $ vsMode vs == mode && ev == event
+    where prereq evs vs = matchFromBool $ vsMode vs == mode && evs == eventToString event
           combinedAction _ = combineAction action mutate Drop
 
 combineAction :: MonadEditor m => m () -> (VimState -> VimState) -> RepeatToken -> m RepeatToken
@@ -52,35 +50,33 @@ combineAction action mutateState rtoken = do
     withEditor $ modifyStateE mutateState
     return rtoken
 
-matchBinding :: Event -> VimState -> VimBinding -> MatchResult ()
-matchBinding e s b = vbPrerequisite b e s
-
-selectBinding :: Event -> VimState -> [VimBinding] -> MatchResult VimBinding
-selectBinding e s = foldl go NoMatch
-    where go match b = match <|> fmap (const b) (vbPrerequisite b e s)
+selectBinding :: String -> VimState -> [VimBinding] -> MatchResult VimBinding
+selectBinding eventString state = foldl go NoMatch
+    where go match b = match <|> fmap (const b) (vbPrerequisite b eventString state)
 
 matchFromBool :: Bool -> MatchResult ()
 matchFromBool b = if b then WholeMatch () else NoMatch
 
 mkMotionBinding :: (VimMode -> Bool) -> VimBinding
-mkMotionBinding pred = VimBindingE prereq action
-    where prereq e (VimState { vsMode = mode, vsBindingAccumulator = bacc }) | pred mode =
-              let s = bacc ++ eventToString e
-              in fmap (const ()) (stringToMove s)
+mkMotionBinding condition = VimBindingE prereq action
+    where prereq evs state | condition (vsMode state) = fmap (const ()) (stringToMove evs)
           prereq _ _ = NoMatch
-          action e = do
+          action evs = do
               state <- getDynamic
-              let s = vsBindingAccumulator state ++ estring
-                  estring = eventToString e
-                  WholeMatch (Move _style move) = stringToMove s
+              let WholeMatch (Move _style move) = stringToMove evs
               count <- getMaybeCountE
               withBuffer0 $ move count >> leftOnEol
               resetCountE
 
               -- moving with j/k after $ sticks cursor to the right edge
-              when (estring == "$") $ setStickyEolE True
-              when (estring `elem` ["j", "k"] && vsStickyEol state) $
+              when (evs == "$") $ setStickyEolE True
+              when (evs `elem` ["j", "k"] && vsStickyEol state) $
                   withBuffer0 $ moveToEol >> leftB
-              when (estring `notElem` ["j", "k", "$"]) $ setStickyEolE False
+              when (evs `notElem` ["j", "k", "$"]) $ setStickyEolE False
 
               return Drop
+
+matchesString :: String -> String -> MatchResult ()
+matchesString got expected | expected == got = WholeMatch ()
+                           | got `isPrefixOf` expected = PartialMatch
+                           | otherwise = NoMatch

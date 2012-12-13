@@ -27,8 +27,8 @@ defVisualMap = [escBinding, motionBinding]
 
 escBinding :: VimBinding
 escBinding = VimBindingE prereq action
-    where prereq e (VimState { vsMode = (Visual _) }) =
-              matchFromBool $ e `elem` [spec KEsc, ctrlCh 'c']
+    where prereq evs (VimState { vsMode = (Visual _) }) =
+              matchFromBool $ evs `elem` ["<Esc>", "<C-c>"]
           prereq _ _ = NoMatch
           action _ = do
               resetCountE
@@ -44,7 +44,7 @@ digitBindings = zeroBinding : fmap mkDigitBinding ['1' .. '9']
 
 zeroBinding :: VimBinding
 zeroBinding = VimBindingE prereq action
-    where prereq (Event (KASCII '0') []) (VimState { vsMode = (Visual _) }) = WholeMatch ()
+    where prereq "0" (VimState { vsMode = (Visual _) }) = WholeMatch ()
           prereq _ _ = NoMatch
           action _ = do
               currentState <- getDynamic
@@ -59,7 +59,7 @@ zeroBinding = VimBindingE prereq action
 
 mkDigitBinding :: Char -> VimBinding
 mkDigitBinding c = VimBindingE prereq action
-    where prereq e (VimState { vsMode = (Visual _) }) | char c == e = WholeMatch ()
+    where prereq (c':[]) (VimState { vsMode = (Visual _) }) = matchFromBool $ c == c'
           prereq _ _ = NoMatch
           action _ = do
               modifyStateE mutate
@@ -97,10 +97,7 @@ regionOfSelectionB = savingPointB $ do
 
 mkOperatorBinding :: (String, VimOperator) -> VimBinding
 mkOperatorBinding (s, op) = VimBindingE prereq action
-    where prereq (Event (KASCII c) [])
-                 (VimState { vsMode = (Visual _), vsBindingAccumulator = bacc })
-                     | s == bacc ++ [c] = WholeMatch ()
-                     | (bacc ++ [c]) `isPrefixOf` s = PartialMatch 
+    where prereq evs (VimState { vsMode = (Visual _) }) = evs `matchesString` s
           prereq _ _ = NoMatch
           action _ = do
               (Visual style) <- vsMode <$> getDynamic
@@ -117,12 +114,13 @@ mkOperatorBinding (s, op) = VimBindingE prereq action
 
 replaceBinding :: VimBinding
 replaceBinding = VimBindingE prereq action
-    where prereq (Event (KASCII c) [])
-                 (VimState { vsMode = (Visual _), vsBindingAccumulator = bacc })
-                    | c == 'r' && bacc == [] = PartialMatch
-                    | bacc == "r" = WholeMatch ()
+    where prereq evs (VimState { vsMode = (Visual _) }) =
+              case evs of
+                "r" -> PartialMatch
+                ('r':_:[]) -> WholeMatch ()
+                _ -> NoMatch
           prereq _ _ = NoMatch
-          action (Event (KASCII c) []) = do
+          action (_:c:[]) = do
               (Visual style) <- vsMode <$> getDynamic
               region <- withBuffer0 regionOfSelectionB
               withBuffer0 $ transformCharactersInRegionB (StyledRegion style region)
@@ -132,11 +130,9 @@ replaceBinding = VimBindingE prereq action
 
 switchEdgeBinding :: VimBinding
 switchEdgeBinding = VimBindingE prereq action
-    where prereq (Event (KASCII c) [])
-                 (VimState { vsMode = (Visual _), vsBindingAccumulator = [] })
-                    | c `elem` "oO" = WholeMatch ()
+    where prereq evs (VimState { vsMode = (Visual _) }) = matchFromBool $ evs `elem` ["o", "O"]
           prereq _ _ = NoMatch
-          action (Event (KASCII c) []) = do
+          action (c:[]) = do
               (Visual style) <- vsMode <$> getDynamic
               withBuffer0 $ do
                   here <- pointB

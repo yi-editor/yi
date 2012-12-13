@@ -70,7 +70,7 @@ motionBinding = mkMotionBinding $ \m -> case m of
 
 zeroBinding :: VimBinding
 zeroBinding = VimBindingE prereq action
-    where prereq ev state = matchFromBool $ ev == char '0' && (vsMode state == Normal)
+    where prereq evs state = matchFromBool $ evs == "0" && (vsMode state == Normal)
           action _ = do
               currentState <- getDynamic
               case vsCount currentState of
@@ -84,7 +84,7 @@ zeroBinding = VimBindingE prereq action
 
 repeatBinding :: VimBinding
 repeatBinding = VimBindingE prereq action
-    where prereq ev state = matchFromBool $ ev == char '.' && (vsMode state == Normal)
+    where prereq evs state = matchFromBool $ evs == "." && (vsMode state == Normal)
           action _ = do
                 currentState <- getDynamic
                 case vsRepeatableAction currentState of

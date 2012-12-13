@@ -30,7 +30,7 @@ exitInsertMode = do
     count <- getCountE
     when (count > 1) $ do
         inputEvents <- fmap (parseEvents . vsOngoingInsertEvents) getDynamic
-        replicateM_ (count - 1) $ mapM_ printableAction inputEvents
+        replicateM_ (count - 1) $ mapM_ (printableAction . eventToString) inputEvents
     modifyStateE $ \s -> s { vsOngoingInsertEvents = "" }
     withBuffer0 $ moveXorSol 1
 
@@ -39,27 +39,27 @@ printable = VimBindingE prereq action
     where prereq _ s = matchFromBool $ Insert == vsMode s
           action = printableAction
 
-printableAction :: Event -> EditorM RepeatToken
-printableAction e = do
-    save e
-    withBuffer0 $ case e of
-        (Event (KASCII c) []) -> insertB c
-        (Event KEnter []) -> insertB '\n'
+printableAction :: EventString -> EditorM RepeatToken
+printableAction evs = do
+    save evs
+    withBuffer0 $ case evs of
+        (c:[]) -> insertB c
+        "<CR>" -> insertB '\n'
         -- For testing purposes assume noexpandtab, tw=4
-        (Event KTab []) -> insertN $ replicate 4 ' '
-        (Event (KASCII 't') [MCtrl]) -> return () -- TODO
-        (Event (KASCII 'd') [MCtrl]) -> return () -- TODO
-        (Event (KASCII 'e') [MCtrl]) -> insertCharWithBelowB
-        (Event (KASCII 'y') [MCtrl]) -> insertCharWithAboveB
-        (Event (KASCII 'h') [MCtrl]) -> return () -- TODO
-        (Event (KASCII 'j') [MCtrl]) -> return () -- TODO
-        (Event (KASCII 'o') [MCtrl]) -> return () -- TODO
-        (Event (KASCII 'w') [MCtrl]) -> return () -- TODO
-        (Event (KASCII 'r') [MCtrl]) -> return () -- TODO
-        (Event (KASCII 'k') [MCtrl]) -> return () -- TODO
-        e' -> error $ "Unhandled event " ++ show e' ++ " in insert mode"
+        "<Tab>" -> insertN $ replicate 4 ' '
+        "<C-t>" -> return () -- TODO
+        "<C-d>" -> return () -- TODO
+        "<C-e>" -> insertCharWithBelowB
+        "<C-y>" -> insertCharWithAboveB
+        "<C-h>" -> return () -- TODO
+        "<C-j>" -> return () -- TODO
+        "<C-o>" -> return () -- TODO
+        "<C-w>" -> return () -- TODO
+        "<C-r>" -> return () -- TODO
+        "<C-k>" -> return () -- TODO
+        evs' -> error $ "Unhandled event " ++ evs' ++ " in insert mode"
     return Continue
 
-save :: Event -> EditorM ()
-save e =
-    modifyStateE $ \s -> s { vsOngoingInsertEvents = vsOngoingInsertEvents s ++ eventToString e }
+save :: EventString -> EditorM ()
+save evs =
+    modifyStateE $ \s -> s { vsOngoingInsertEvents = vsOngoingInsertEvents s ++ evs }

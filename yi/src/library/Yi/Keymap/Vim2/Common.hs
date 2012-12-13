@@ -10,6 +10,7 @@ module Yi.Keymap.Vim2.Common
     , RepeatToken(..)
     , RepeatableAction(..)
     , MatchResult(..)
+    , EventString
     ) where
 
 import Yi.Prelude
@@ -126,12 +127,14 @@ instance Alternative MatchResult where
     _ <|> PartialMatch = PartialMatch
     _ <|> _ = NoMatch
 
+type EventString = String
+
 -- Distinction between YiM and EditorM variants is for testing.
 data VimBinding = VimBindingY {
-                      vbPrerequisite :: Event -> VimState -> MatchResult (),
-                      vbyAction :: Event -> YiM RepeatToken
+                      vbPrerequisite :: EventString -> VimState -> MatchResult (),
+                      vbyAction :: EventString -> YiM RepeatToken
                   }
                 | VimBindingE {
-                      vbPrerequisite :: Event -> VimState -> MatchResult (),
-                      vbeAction :: Event -> EditorM RepeatToken
+                      vbPrerequisite :: EventString -> VimState -> MatchResult (),
+                      vbeAction :: EventString -> EditorM RepeatToken
                   }

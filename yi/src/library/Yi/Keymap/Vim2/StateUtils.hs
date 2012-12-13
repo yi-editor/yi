@@ -70,9 +70,9 @@ accumulateEventE :: Event -> EditorM ()
 accumulateEventE e = modifyStateE $
     \s -> s { vsAccumulator = vsAccumulator s ++ eventToString e }
 
-accumulateTextObjectEventE :: Event -> EditorM ()
-accumulateTextObjectEventE e = modifyStateE $
-    \s -> s { vsTextObjectAccumulator = vsTextObjectAccumulator s ++ eventToString e }
+accumulateTextObjectEventE :: EventString -> EditorM ()
+accumulateTextObjectEventE evs = modifyStateE $
+    \s -> s { vsTextObjectAccumulator = vsTextObjectAccumulator s ++ evs }
 
 flushAccumulatorIntoRepeatableActionE :: EditorM ()
 flushAccumulatorIntoRepeatableActionE = do

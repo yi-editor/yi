@@ -25,13 +25,13 @@ escBinding = mkBindingE ReplaceSingleChar Drop (spec KEsc, return (), resetCount
 actualReplaceBinding :: VimBinding
 actualReplaceBinding = VimBindingE prereq action
     where prereq _ s = matchFromBool $ ReplaceSingleChar == vsMode s
-          action e = do
+          action evs = do
               currentState <- getDynamic
               let count = fromMaybe 1 $ vsCount currentState
-              let replacer = case e of
-                              (Event (KASCII c) []) -> replaceCharB c
-                              (Event (KASCII 'e') [MCtrl]) -> replaceCharWithBelowB
-                              (Event (KASCII 'y') [MCtrl]) -> replaceCharWithAboveB
+              let replacer = case evs of
+                              (c:[]) -> replaceCharB c
+                              "<C-e>" -> replaceCharWithBelowB
+                              "<C-y>" -> replaceCharWithAboveB
                               _ -> return ()
               withBuffer0 $ do
                   -- Is there more easy way to get distance to eol?

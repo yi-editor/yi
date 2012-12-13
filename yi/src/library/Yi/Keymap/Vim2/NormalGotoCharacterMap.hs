@@ -9,7 +9,6 @@ import Control.Monad (replicateM_)
 
 import Yi.Buffer
 import Yi.Editor
-import Yi.Event
 import Yi.Keymap.Vim2.Common
 import Yi.Keymap.Vim2.StateUtils
 
@@ -18,11 +17,11 @@ defNormalGotoCharacterMap = [escBinding, charBinding]
 
 escBinding :: VimBinding
 escBinding = VimBindingE prereq action
-    where prereq ev state | ev == Event KEsc [] =
+    where prereq evs state | evs == "<Esc>" =
                                 case vsMode state of
                                     NormalGotoCharacter _ _ -> WholeMatch ()
                                     _ -> NoMatch
-                          | otherwise = NoMatch
+                           | otherwise = NoMatch
           action _ = do
               switchModeE Normal
               resetCountE
@@ -33,9 +32,9 @@ charBinding = VimBindingE prereq action
     where prereq _ s = case vsMode s of
                            NormalGotoCharacter _ _ -> WholeMatch ()
                            _ -> NoMatch
-          action e = do
-              case e of
-                  (Event (KASCII c) []) -> do
+          action evs = do
+              case evs of
+                  (c:[]) -> do
                       (NormalGotoCharacter direction style) <- fmap vsMode getDynamic
                       count <- getCountE
                       let move = case (direction, style) of

@@ -30,10 +30,10 @@ textObject = VimBindingE prereq action
         prereq _ vs = case vsMode vs of
                             NormalOperatorPending _ -> WholeMatch ()
                             _ -> NoMatch
-        action e = do
+        action evs = do
             currentState <- getDynamic
             let partial = vsTextObjectAccumulator currentState
-                operand = parseOperand opChar (partial ++ eventToString e)
+                operand = parseOperand opChar (partial ++ evs)
                 opChar = lastCharForOperator op
                 (NormalOperatorPending op) = vsMode currentState
             case operand of
@@ -43,7 +43,7 @@ textObject = VimBindingE prereq action
                     switchModeE Normal
                     return Drop
                 PartialOperand -> do
-                    accumulateTextObjectEventE e
+                    accumulateTextObjectEventE evs
                     return Continue
                 _ -> do
                     count <- getCountE

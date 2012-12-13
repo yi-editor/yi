@@ -72,22 +72,23 @@ defVimKeymap mm = do
 
 handleEvent :: ModeMap -> Event -> YiM ()
 handleEvent mm event = do
-    currentState <- withEditor getDynamic
-    let bindingMatch = selectBinding event currentState (allBindings mm)
+    return ()
+    -- currentState <- withEditor getDynamic
+    -- let bindingMatch = selectBinding event currentState (allBindings mm)
 
-    repeatToken <- case bindingMatch of
-        WholeMatch (VimBindingY _ action) -> action event
-        WholeMatch (VimBindingE _ action) -> withEditor $ action event
-        NoMatch -> return Drop
-        PartialMatch -> return Continue
+    -- repeatToken <- case bindingMatch of
+    --     WholeMatch (VimBindingY _ action) -> action event
+    --     WholeMatch (VimBindingE _ action) -> withEditor $ action event
+    --     NoMatch -> return Drop
+    --     PartialMatch -> return Continue
 
-    withEditor $ do
-        case repeatToken of
-            Drop -> dropAccumulatorE
-            Continue -> accumulateEventE event
-            Finish -> accumulateEventE event >> flushAccumulatorIntoRepeatableActionE
+    -- withEditor $ do
+    --     case repeatToken of
+    --         Drop -> dropAccumulatorE
+    --         Continue -> accumulateEventE event
+    --         Finish -> accumulateEventE event >> flushAccumulatorIntoRepeatableActionE
 
-        performEvalIfNecessary mm
+    --     performEvalIfNecessary mm
 
 allBindings :: ModeMap -> [VimBinding]
 allBindings m = concat [ normalMap m
@@ -114,14 +115,15 @@ defaultVimEval = vimEval $ extractValue defModeMapProto
 pureHandleEvent :: ModeMap -> Event -> EditorM ()
 pureHandleEvent mm event = do
     currentState <- getDynamic
-    let bindingMatch = selectBinding event currentState (allPureBindings mm)
+    let evs = vsBindingAccumulator currentState ++ eventToString event
+        bindingMatch = selectBinding evs currentState (allPureBindings mm)
     case bindingMatch of
         NoMatch -> dropBindingAccumulatorE
         PartialMatch -> do
             accumulateBindingEventE event
             accumulateEventE event
         WholeMatch (VimBindingE _ action) -> do
-            repeatToken <- withEditor $ action event
+            repeatToken <- withEditor $ action evs
             dropBindingAccumulatorE
             case repeatToken of
                 Drop -> dropAccumulatorE

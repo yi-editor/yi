@@ -29,7 +29,7 @@ exitReplaceMode = do
     count <- getCountE
     when (count > 1) $ do
         inputEvents <- fmap (parseEvents . vsOngoingInsertEvents) getDynamic
-        replicateM_ (count - 1) $ mapM_ printableAction inputEvents
+        replicateM_ (count - 1) $ mapM_ (printableAction . eventToString) inputEvents
     modifyStateE $ \s -> s { vsOngoingInsertEvents = "" }
     withBuffer0 $ moveXorSol 1
 
@@ -38,25 +38,25 @@ printable = VimBindingE prereq action
     where prereq _ s = matchFromBool $ Replace == vsMode s
           action = printableAction
 
-printableAction :: Event -> EditorM RepeatToken
-printableAction e = do
-    save e
-    withBuffer0 $ case e of
-        (Event (KASCII c) []) -> insertOrReplaceB c
-        (Event KEnter []) -> insertOrReplaceB '\n'
+printableAction :: EventString -> EditorM RepeatToken
+printableAction evs = do
+    save evs
+    withBuffer0 $ case evs of
+        (c:[]) -> insertOrReplaceB c
+        "<CR>" -> insertOrReplaceB '\n'
         -- For testing purposes assume noexpandtab, tw=4
-        (Event KTab []) -> replicateM_ 4 $ insertOrReplaceB ' '
-        (Event (KASCII 't') [MCtrl]) -> return () -- TODO
-        (Event (KASCII 'd') [MCtrl]) -> return () -- TODO
-        (Event (KASCII 'e') [MCtrl]) -> insertOrReplaceCharWithBelowB
-        (Event (KASCII 'y') [MCtrl]) -> insertOrReplaceCharWithAboveB
-        (Event (KASCII 'h') [MCtrl]) -> return () -- TODO
-        (Event (KASCII 'j') [MCtrl]) -> return () -- TODO
-        (Event (KASCII 'o') [MCtrl]) -> return () -- TODO
-        (Event (KASCII 'w') [MCtrl]) -> return () -- TODO
-        (Event (KASCII 'r') [MCtrl]) -> return () -- TODO
-        (Event (KASCII 'k') [MCtrl]) -> return () -- TODO
-        e' -> error $ "Unhandled event " ++ show e' ++ " in replace mode"
+        "<Esc>" -> replicateM_ 4 $ insertOrReplaceB ' '
+        "<C-t>" -> return () -- TODO
+        "<C-d>" -> return () -- TODO
+        "<C-e>" -> insertOrReplaceCharWithBelowB
+        "<C-y>" -> insertOrReplaceCharWithAboveB
+        "<C-h>" -> return () -- TODO
+        "<C-j>" -> return () -- TODO
+        "<C-o>" -> return () -- TODO
+        "<C-w>" -> return () -- TODO
+        "<C-r>" -> return () -- TODO
+        "<C-k>" -> return () -- TODO
+        evs' -> error $ "Unhandled event " ++ evs' ++ " in replace mode"
     return Continue
 
 insertOrReplaceB :: Char -> BufferM ()
@@ -83,6 +83,6 @@ insertOrReplaceCharWithAboveB = do
     else replaceCharWithAboveB
     rightB
 
-save :: Event -> EditorM ()
-save e =
-    modifyStateE $ \s -> s { vsOngoingInsertEvents = vsOngoingInsertEvents s ++ eventToString e }
+save :: EventString -> EditorM ()
+save evs =
+    modifyStateE $ \s -> s { vsOngoingInsertEvents = vsOngoingInsertEvents s ++ evs }
