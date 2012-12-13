@@ -138,7 +138,6 @@ library
     Yi.Keymap.Vim2.InsertMap
     Yi.Keymap.Vim2.Motion
     Yi.Keymap.Vim2.NormalMap
-    Yi.Keymap.Vim2.NormalGotoCharacterMap
     Yi.Keymap.Vim2.NormalOperatorPendingMap
     Yi.Keymap.Vim2.ReplaceMap
     Yi.Keymap.Vim2.ReplaceSingleCharMap
