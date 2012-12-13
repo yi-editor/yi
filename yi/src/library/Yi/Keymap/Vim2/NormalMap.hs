@@ -105,18 +105,21 @@ finishingBingings = fmap (mkBindingE Normal Finish)
     , (char 'P', pasteBefore, id)
     ]
 
+addNewLineIfNecessary :: Rope -> Rope
+addNewLineIfNecessary rope = if lastChar == '\n'
+                             then rope
+                             else R.append rope (R.fromString "\n")
+    where lastChar = head $ R.toString $ R.drop (R.length rope - 1) rope
+
 pasteBefore :: EditorM ()
 pasteBefore = do
     -- TODO: use count
     s <- getDefaultRegisterE
     case s of
         Nothing -> return ()
-        Just (Register LineWise rope) -> withBuffer0 $ when (not $ R.null rope) $ do
+        Just (Register LineWise rope) -> withBuffer0 $ when (not $ R.null rope) $
             -- Beware of edge cases ahead
-            let l = R.length rope
-                lastChar = head $ R.toString $ R.drop (l-1) rope
-                rope' = if lastChar == '\n' then rope else R.append rope (R.fromString "\n")
-            insertRopeWithStyleB rope' LineWise
+            insertRopeWithStyleB (addNewLineIfNecessary rope) LineWise
         Just (Register style rope) -> withBuffer0 $ pasteInclusiveB rope style
 
 pasteAfter :: EditorM ()
@@ -131,7 +134,7 @@ pasteAfter = do
             eof <- atEof
             when eof $ insertB '\n'
             rightB
-            insertRopeWithStyleB rope LineWise
+            insertRopeWithStyleB (addNewLineIfNecessary rope) LineWise
             when eof $ savingPointB $ do
                 newSize <- sizeB
                 moveTo (newSize - 1)
