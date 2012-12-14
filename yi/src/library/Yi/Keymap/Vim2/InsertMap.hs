@@ -53,7 +53,7 @@ printableAction evs = do
         "<C-y>" -> insertCharWithAboveB
         "<BS>"  -> deleteB Character Backward
         "<C-h>" -> deleteB Character Backward
-        "<C-j>" -> return () -- TODO
+        "<C-j>" -> insertB '\n'
         "<C-o>" -> return () -- TODO
         "<C-w>" -> deleteRegionB =<< regionOfPartNonEmptyB unitViWordOnLine Backward
         "<C-r>" -> return () -- TODO
