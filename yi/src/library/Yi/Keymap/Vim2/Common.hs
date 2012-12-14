@@ -54,7 +54,7 @@ data Register = Register {
 data VimMode = Normal
              | NormalGotoCharacter Direction RegionStyle
              | NormalOperatorPending VimOperator
-             | Insert
+             | Insert Char -- ^ char denotes how state got into insert mode ('i', 'a', etc.)
              | Replace
              | ReplaceSingleChar
              | InsertNormal -- ^ after C-o

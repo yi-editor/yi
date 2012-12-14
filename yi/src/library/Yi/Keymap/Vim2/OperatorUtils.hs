@@ -44,7 +44,7 @@ applyOperatorToRegionE op sreg@(StyledRegion style reg) = case op of
         withBuffer0 $ do
             point <- deleteRegionWithStyleB reg style
             moveTo point
-        switchModeE Insert
+        switchModeE $ Insert 'c'
     OpLowerCase -> withBuffer0 $ transformCharactersInRegionB sreg toLower
     OpUpperCase -> withBuffer0 $ transformCharactersInRegionB sreg toUpper
     OpSwitchCase -> withBuffer0 $ transformCharactersInRegionB sreg switchCaseChar

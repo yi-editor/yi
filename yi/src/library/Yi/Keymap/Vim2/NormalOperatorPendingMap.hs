@@ -65,7 +65,7 @@ textObject = VimBindingE prereq action
                     resetCountE
                     if op == OpChange
                     then do
-                        switchModeE Insert
+                        switchModeE $ Insert 'c'
                         return Continue
                     else do
                         switchModeE Normal

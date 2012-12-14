@@ -18,8 +18,6 @@ import Yi.Event
 import Yi.Keymap.Keys
 import Yi.Keymap.Vim2.Common
 import Yi.Keymap.Vim2.Eval
-import Yi.Keymap.Vim2.EventUtils
-import Yi.Keymap.Vim2.Motion
 import Yi.Keymap.Vim2.OperatorUtils
 import Yi.Keymap.Vim2.StateUtils
 import Yi.Keymap.Vim2.StyledRegion
@@ -163,19 +161,19 @@ continuingBindings = fmap (mkBindingE Normal Continue)
     , (char '>', return (), switchMode (NormalOperatorPending OpShiftLeft))
 
     -- Transition to insert mode
-    , (char 'i', return (), switchMode Insert)
-    , (char 'I', withBuffer0 firstNonSpaceB, switchMode Insert)
-    , (char 'a', withBuffer0 rightB, switchMode Insert)
-    , (char 'A', withBuffer0 moveToEol, switchMode Insert)
+    , (char 'i', return (), switchMode $ Insert 'i')
+    , (char 'I', withBuffer0 firstNonSpaceB, switchMode $ Insert 'I')
+    , (char 'a', withBuffer0 rightB, switchMode $ Insert 'a')
+    , (char 'A', withBuffer0 moveToEol, switchMode $ Insert 'A')
     , (char 'o', withBuffer0 $ do
                      moveToEol
                      insertB '\n'
-        , switchMode Insert)
+        , switchMode $ Insert 'o')
     , (char 'O', withBuffer0 $ do
                      moveToSol
                      insertB '\n'
                      leftB
-        , switchMode Insert)
+        , switchMode $ Insert 'O')
 
     -- Transition to visual
     , (char 'v', enableVisualE Inclusive, resetCount . switchMode (Visual Inclusive))
@@ -196,16 +194,15 @@ nonrepeatableBindings = fmap (mkBindingE Normal Drop)
     , (ctrlCh 'c', return (), resetCount)
 
     -- Changing
-    , (char 'c', return (), switchMode Insert) -- TODO
     , (char 'C', do
         region <- withBuffer0 $ regionWithTwoMovesB (return ()) moveToEol
         applyOperatorToRegionE OpDelete $ StyledRegion Exclusive region
-        return (), switchMode Insert) -- TODO
-    , (char 's', cutCharE Forward =<< getCountE, switchMode Insert)
+        return (), switchMode $ Insert 'C')
+    , (char 's', cutCharE Forward =<< getCountE, switchMode $ Insert 's')
     , (char 'S', do
         region <- withBuffer0 $ regionWithTwoMovesB firstNonSpaceB moveToEol
         applyOperatorToRegionE OpDelete $ StyledRegion Exclusive region
-        , switchMode Insert)
+        , switchMode $ Insert 'S')
 
     -- Replacing
     , (char 'R', return (), switchMode Replace)
@@ -227,12 +224,8 @@ nonrepeatableBindings = fmap (mkBindingE Normal Drop)
     , (char '#', return (), id) -- TODO
     , (char 'n', return (), id) -- TODO
     , (char 'N', return (), id) -- TODO
-    -- , (char 'f', return (), switchMode (NormalGotoCharacter Forward Inclusive))
-    -- , (char 'F', return (), switchMode (NormalGotoCharacter Backward Inclusive))
-    -- , (char 't', return (), switchMode (NormalGotoCharacter Forward Exclusive))
-    -- , (char 'T', return (), switchMode (NormalGotoCharacter Backward Exclusive))
-    , (char ';', repeatGotoCharE id, id) -- TODO
-    , (char ',', repeatGotoCharE reverseDir, id) -- TODO
+    , (char ';', repeatGotoCharE id, id)
+    , (char ',', repeatGotoCharE reverseDir, id)
 
     -- Repeat
     , (char '&', return (), id) -- TODO

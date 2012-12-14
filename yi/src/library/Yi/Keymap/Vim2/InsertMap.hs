@@ -17,26 +17,31 @@ import Yi.Keymap.Vim2.Utils
 import Yi.Keymap.Vim2.StateUtils
 
 defInsertMap :: [VimBinding]
-defInsertMap = specials ++ [printable]
+defInsertMap = [exitBinding, printable]
 
-specials :: [VimBinding]
-specials = fmap (mkBindingE Insert Finish)
-             [ (spec KEsc, exitInsertMode, resetCount . switchMode Normal)
-             , (ctrlCh 'c', exitInsertMode, resetCount . switchMode Normal)
-             ]
-
-exitInsertMode :: EditorM ()
-exitInsertMode = do
-    count <- getCountE
-    when (count > 1) $ do
-        inputEvents <- fmap (parseEvents . vsOngoingInsertEvents) getDynamic
-        replicateM_ (count - 1) $ mapM_ (printableAction . eventToString) inputEvents
-    modifyStateE $ \s -> s { vsOngoingInsertEvents = "" }
-    withBuffer0 $ moveXorSol 1
+exitBinding :: VimBinding
+exitBinding = VimBindingE prereq action
+    where prereq evs (VimState { vsMode = (Insert _) }) =
+              matchFromBool $ evs `elem` ["<Esc>", "<C-c>"]
+          prereq _ _ = NoMatch
+          action _ = do
+              count <- getCountE
+              (Insert starter) <- fmap vsMode getDynamic
+              when (count > 1) $ do
+                  inputEvents <- fmap (parseEvents . vsOngoingInsertEvents) getDynamic
+                  replicateM_ (count - 1) $ do
+                      when (starter `elem` "Oo") $ withBuffer0 $ insertB '\n'
+                      mapM_ (printableAction . eventToString) inputEvents
+              modifyStateE $ \s -> s { vsOngoingInsertEvents = "" }
+              withBuffer0 $ moveXorSol 1
+              resetCountE
+              switchModeE Normal
+              return Finish
 
 printable :: VimBinding
 printable = VimBindingE prereq action
-    where prereq _ s = matchFromBool $ Insert == vsMode s
+    where prereq _ (VimState { vsMode = Insert _ } ) = WholeMatch ()
+          prereq _ _ = NoMatch
           action = printableAction
 
 printableAction :: EventString -> EditorM RepeatToken
