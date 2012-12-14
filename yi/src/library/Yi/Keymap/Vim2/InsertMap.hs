@@ -47,8 +47,8 @@ printableAction evs = do
         "<CR>" -> insertB '\n'
         -- For testing purposes assume noexpandtab, tw=4
         "<Tab>" -> insertN $ replicate 4 ' '
-        "<C-t>" -> return () -- TODO
-        "<C-d>" -> return () -- TODO
+        "<C-t>" -> shiftIndentOfRegion 1 =<< regionOfB Line
+        "<C-d>" -> shiftIndentOfRegion (-1) =<< regionOfB Line
         "<C-e>" -> insertCharWithBelowB
         "<C-y>" -> insertCharWithAboveB
         "<C-h>" -> deleteB Character Backward

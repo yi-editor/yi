@@ -39,6 +39,7 @@ Intentionally not supported features of Vim
 
   * select mode
   * folds
+  * 0<C-d> and ^<C-d> in insert mode
 
 Features incompatible with Vim because why not
 ----------------------------------------------
