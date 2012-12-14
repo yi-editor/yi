@@ -51,7 +51,7 @@ printableAction evs = do
         "<C-d>" -> return () -- TODO
         "<C-e>" -> insertCharWithBelowB
         "<C-y>" -> insertCharWithAboveB
-        "<C-h>" -> return () -- TODO
+        "<C-h>" -> deleteB Character Backward
         "<C-j>" -> return () -- TODO
         "<C-o>" -> return () -- TODO
         "<C-w>" -> return () -- TODO
