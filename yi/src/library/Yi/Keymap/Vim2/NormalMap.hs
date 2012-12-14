@@ -250,13 +250,7 @@ nonrepeatableBindings = fmap (mkBindingE Normal Drop)
     , (char '>', return (), id) -- TODO
 
     -- unsorted TODO
-    , (char 'g', return (), id)
-    , (char 'G', return (), id)
     , (char 'm', return (), id)
-    , (char '[', return (), id)
-    , (char ']', return (), id)
-    , (char '{', return (), id)
-    , (char '}', return (), id)
     , (char '-', return (), id)
     , (char '+', return (), id)
     , (char '~', return (), id)

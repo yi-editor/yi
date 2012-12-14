@@ -127,6 +127,11 @@ instance Alternative MatchResult where
     _ <|> PartialMatch = PartialMatch
     _ <|> _ = NoMatch
 
+instance Show (MatchResult a) where
+    show (WholeMatch _) = "WholeMatch"
+    show PartialMatch = "PartialMatch"
+    show NoMatch = "NoMatch"
+
 type EventString = String
 
 -- Distinction between YiM and EditorM variants is for testing.
