@@ -1023,8 +1023,9 @@ maybeCharWithVerticalOffset offset = savingPointB $ do
     discard $ lineMoveRel offset
     l1 <- curLn
     c1 <- curCol
-    if c0 == c1 && l0 + offset == l1
-    then fmap Just readB
+    curChar <- readB
+    if c0 == c1 && l0 + offset == l1 && curChar `notElem` "\n\0"
+    then return $ Just curChar
     else return Nothing
 
 -- | Delete @n@ characters forward from the current point
