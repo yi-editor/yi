@@ -8,11 +8,13 @@ import Prelude ()
 import Data.Char (ord)
 import Data.List (isPrefixOf)
 import Data.Ord
+import Data.Prototype (extractValue)
 
 import Yi.Buffer hiding (Insert)
 import Yi.Editor
 import Yi.Event
 import Yi.Keymap.Keys
+import Yi.Keymap.Vim (exMode, defKeymap)
 import Yi.Keymap.Vim2.Common
 import Yi.Keymap.Vim2.EventUtils
 import Yi.Keymap.Vim2.Motion
@@ -24,6 +26,7 @@ import Yi.Keymap.Vim2.Utils
 defVisualMap :: [VimBinding]
 defVisualMap = [escBinding, motionBinding]
             ++ operatorBindings ++ digitBindings ++ [replaceBinding, switchEdgeBinding]
+            ++ [exBinding]
 
 escBinding :: VimBinding
 escBinding = VimBindingE prereq action
@@ -38,6 +41,15 @@ escBinding = VimBindingE prereq action
                   putA regionStyleA Inclusive
               switchModeE Normal
               return Drop
+
+exBinding :: VimBinding
+exBinding = VimBindingE prereq action
+    where prereq ":" (VimState { vsMode = (Visual _) }) = WholeMatch ()
+          prereq _ _ = NoMatch
+          action _ = do
+              exMode (extractValue defKeymap) ":'<,'>"
+              switchModeE Normal
+              return Finish
 
 digitBindings :: [VimBinding]
 digitBindings = zeroBinding : fmap mkDigitBinding ['1' .. '9']
@@ -76,6 +88,7 @@ motionBinding = mkMotionBinding $ \m -> case m of
 operatorBindings :: [VimBinding]
 operatorBindings = fmap mkOperatorBinding
     [ ("y", OpYank)
+    , ("Y", OpYank)
     , ("d", OpDelete)
     , ("D", OpDelete) -- TODO: make D delete to eol
     , ("x", OpDelete)

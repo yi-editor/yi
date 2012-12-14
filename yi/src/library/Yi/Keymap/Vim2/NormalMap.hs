@@ -9,6 +9,7 @@ import Control.Monad (replicateM_)
 
 import Data.Char
 import Data.Maybe (fromMaybe)
+import Data.Prototype (extractValue)
 import qualified Data.Rope as R
 
 import Yi.Buffer hiding (Insert)
@@ -16,6 +17,7 @@ import Yi.Core (quitEditor)
 import Yi.Editor
 import Yi.Event
 import Yi.Keymap.Keys
+import Yi.Keymap.Vim (exMode, defKeymap)
 import Yi.Keymap.Vim2.Common
 import Yi.Keymap.Vim2.Eval
 import Yi.Keymap.Vim2.OperatorUtils
@@ -38,33 +40,12 @@ pureBindings =
     fmap mkDigitBinding ['1' .. '9'] ++
     finishingBingings ++
     continuingBindings ++
-    nonrepeatableBindings
+    nonrepeatableBindings ++
+    [tabTraversalBinding]
 
 motionBinding = mkMotionBinding $ \m -> case m of
                                      Normal -> True
                                      _ -> False
--- motionBinding :: VimBinding
--- motionBinding = VimBindingE prereq action
---     where prereq e (VimState { vsMode = Normal, vsBindingAccumulator = bacc }) =
---               let s = bacc ++ eventToString e
---               in fmap (const ()) (stringToMove s)
---           prereq _ _ = NoMatch
---           action e = do
---               state <- getDynamic
---               let s = vsBindingAccumulator state ++ estring
---                   estring = eventToString e
---                   WholeMatch (Move _style move) = stringToMove s
---               count <- getMaybeCountE
---               withBuffer0 $ move count >> leftOnEol
---               resetCountE
--- 
---               -- moving with j/k after $ sticks cursor to the right edge
---               when (estring == "$") $ setStickyEolE True
---               when (estring `elem` ["j", "k"] && vsStickyEol state) $
---                   withBuffer0 $ moveToEol >> leftB
---               when (estring `notElem` ["j", "k", "$"]) $ setStickyEolE False
--- 
---               return Drop
 
 zeroBinding :: VimBinding
 zeroBinding = VimBindingE prereq action
@@ -231,12 +212,12 @@ nonrepeatableBindings = fmap (mkBindingE Normal Drop)
     , (char '&', return (), id) -- TODO
 
     -- Transition to ex
-    , (char ':', return (), id) -- TODO
+    , (char ':', switchToExE, id) -- TODO
 
     -- Undo
-    , (char 'u', return (), id) -- TODO
-    , (char 'U', return (), id) -- TODO
-    , (ctrlCh 'r', return (), id) -- TODO
+    , (char 'u', flip replicateM_ (withBuffer0 undoB) =<< getCountE, id)
+    , (char 'U', flip replicateM_ (withBuffer0 undoB) =<< getCountE, id) -- TODO
+    , (ctrlCh 'r', flip replicateM_ (withBuffer0 redoB) =<< getCountE, id)
 
     -- Indenting
     , (char '<', return (), id) -- TODO
@@ -251,6 +232,9 @@ nonrepeatableBindings = fmap (mkBindingE Normal Drop)
     , (char 'q', return (), id)
     , (spec KEnter, return (), id)
     ]
+
+switchToExE :: EditorM ()
+switchToExE = exMode (extractValue defKeymap) ":"
 
 repeatGotoCharE :: (Direction -> Direction) -> EditorM ()
 repeatGotoCharE mutateDir = do
@@ -289,3 +273,14 @@ cutCharE dir count = do
         leftOnEol
         return rope
     setDefaultRegisterE Inclusive r
+
+tabTraversalBinding :: VimBinding
+tabTraversalBinding = VimBindingE prereq action
+    where prereq "g" (VimState { vsMode = Normal }) = PartialMatch
+          prereq ('g':c:[]) (VimState { vsMode = Normal }) | c `elem` "tT" = WholeMatch ()
+          prereq _ _ = NoMatch
+          action ('g':c:[]) = do
+              count <- getCountE
+              replicateM_ count $ if c == 'T' then previousTabE else nextTabE
+              resetCountE
+              return Drop
