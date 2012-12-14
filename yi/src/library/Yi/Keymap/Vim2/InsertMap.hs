@@ -51,10 +51,11 @@ printableAction evs = do
         "<C-d>" -> shiftIndentOfRegion (-1) =<< regionOfB Line
         "<C-e>" -> insertCharWithBelowB
         "<C-y>" -> insertCharWithAboveB
+        "<BS>"  -> deleteB Character Backward
         "<C-h>" -> deleteB Character Backward
         "<C-j>" -> return () -- TODO
         "<C-o>" -> return () -- TODO
-        "<C-w>" -> return () -- TODO
+        "<C-w>" -> deleteRegionB =<< regionOfPartNonEmptyB unitViWordOnLine Backward
         "<C-r>" -> return () -- TODO
         "<C-k>" -> return () -- TODO
         evs' -> error $ "Unhandled event " ++ evs' ++ " in insert mode"
