@@ -21,6 +21,7 @@ stringToEvent :: String -> Event
 stringToEvent ('<':'C':'-':c:'>':[]) = ctrlCh c
 stringToEvent "<Esc>" = spec KEsc
 stringToEvent "<CR>" = spec KEnter
+stringToEvent "<BS>" = spec KBS
 stringToEvent "<lt>" = char '<'
 stringToEvent (c:[]) = char c
 stringToEvent ('<':'F':d:'>':[]) | isDigit d = spec (KFun $ read [d])
@@ -33,6 +34,7 @@ eventToString (Event (KASCII c) []) = [c]
 eventToString (Event (KASCII c) [MCtrl]) = ['<', 'C', '-', c, '>']
 eventToString (Event (KASCII c) [MShift]) = [toUpper c]
 eventToString (Event KEsc []) = "<Esc>"
+eventToString (Event KBS []) = "<BS>"
 eventToString (Event KEnter []) = "<CR>"
 eventToString (Event (KFun x) []) = "<F" ++ show x ++ ">"
 eventToString e = error $ "Couldn't convert event <" ++ show e ++ "> to string"
