@@ -86,7 +86,7 @@ finishingBingings = fmap (mkBindingE Normal Finish)
     -- Miscellaneous.
     -- TODO A repeat length longer than the current line toggles the final
     -- character too many times.
-    , (char '~', flip replicateM_ (withBuffer0 $ switchCaseCharB >> leftOnEol) =<< getCountE, resetCount)
+    , (char '~', withCountOnBuffer0 $ switchCaseCharB >> leftOnEol, resetCount)
     ]
 
 addNewLineIfNecessary :: Rope -> Rope
@@ -220,13 +220,9 @@ nonrepeatableBindings = fmap (mkBindingE Normal Drop)
     , (char ':', switchToExE, id) -- TODO
 
     -- Undo
-    , (char 'u', flip replicateM_ (withBuffer0 undoB) =<< getCountE, id)
-    , (char 'U', flip replicateM_ (withBuffer0 undoB) =<< getCountE, id) -- TODO
-    , (ctrlCh 'r', flip replicateM_ (withBuffer0 redoB) =<< getCountE, id)
-
-    -- Indenting
-    , (char '<', return (), id) -- TODO
-    , (char '>', return (), id) -- TODO
+    , (char 'u', withCountOnBuffer0 undoB, id)
+    , (char 'U', withCountOnBuffer0 undoB, id) -- TODO
+    , (ctrlCh 'r', withCountOnBuffer0 redoB, id)
 
     -- unsorted TODO
     , (char 'm', return (), id)
@@ -288,3 +284,9 @@ tabTraversalBinding = VimBindingE prereq action
               replicateM_ count $ if c == 'T' then previousTabE else nextTabE
               resetCountE
               return Drop
+
+withCount :: EditorM () -> EditorM ()
+withCount action = flip replicateM_ action =<< getCountE
+
+withCountOnBuffer0 :: BufferM () -> EditorM ()
+withCountOnBuffer0 action = withCount $ withBuffer0 action
