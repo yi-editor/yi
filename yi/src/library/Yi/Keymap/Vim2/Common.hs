@@ -99,7 +99,15 @@ $(derive makeBinary ''VimState)
 
 instance YiVariable VimState
 
--- TODO: explain
+-- Whether an action can be repeated through the use of the '.' key.
+--
+-- Actions with a RepeatToken of:
+--
+--  - Finish are repeatable.
+--  - Drop are not repeatable.
+--  - Continue are currently in progress. They will become repeatable when
+--    completed. It is possible to cancel a in progress action, in which case
+--    it will not be repeatable.
 data RepeatToken = Finish
                  | Drop
                  | Continue
