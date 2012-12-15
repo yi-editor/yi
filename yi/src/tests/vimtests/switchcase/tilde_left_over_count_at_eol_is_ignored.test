@@ -1,0 +1,18 @@
+-- Input
+(2,1)
+12345678901234567890
+If tilde is given a
+count which is greater than the line length
+the case of the final character is switched exactly once.
+We have 18 characters in the first line, a count of 19
+should switch the final 'a' to 'A', not to 'A' and then back to 'a'.
+-- Output
+(2,19)
+12345678901234567890
+iF TILDE IS GIVEN A
+count which is greater than the line length
+the case of the final character is switched exactly once.
+We have 18 characters in the first line, a count of 19
+should switch the final 'a' to 'A', not to 'A' and then back to 'a'.
+-- Events
+20~

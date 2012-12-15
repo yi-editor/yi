@@ -87,7 +87,7 @@ finishingBingings = fmap (mkBindingE Normal Finish)
     -- Miscellaneous.
     -- TODO restrict this to operate only on the current line. A large count,
     -- or repeating should not move the cursor to the next line.
-    , (char '~', flip replicateM_ (withBuffer0 switchCaseAtCurrentChar) =<< getCountE, resetCount)
+    , (char '~', flip replicateM_ (withBuffer0 $ switchCaseAtCurrentChar >> leftOnEol) =<< getCountE, resetCount)
     ]
 
 addNewLineIfNecessary :: Rope -> Rope
