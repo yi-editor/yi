@@ -24,6 +24,7 @@ import Yi.Keymap.Vim2.OperatorUtils
 import Yi.Keymap.Vim2.StateUtils
 import Yi.Keymap.Vim2.StyledRegion
 import Yi.Keymap.Vim2.Utils
+import Yi.Misc (switchCaseChar)
 
 mkDigitBinding :: Char -> VimBinding
 mkDigitBinding c = mkBindingE Normal Continue (char c, return (), mutate)
@@ -82,6 +83,9 @@ finishingBingings = fmap (mkBindingE Normal Finish)
     -- Pasting
     , (char 'p', pasteAfter, id)
     , (char 'P', pasteBefore, id)
+
+    -- Miscellaneous.
+    , (char '~', flip replicateM_ (withBuffer0 switchCaseAtCurrentChar) =<< getCountE, resetCount)
     ]
 
 addNewLineIfNecessary :: Rope -> Rope
@@ -227,7 +231,6 @@ nonrepeatableBindings = fmap (mkBindingE Normal Drop)
     , (char 'm', return (), id)
     , (char '-', return (), id)
     , (char '+', return (), id)
-    , (char '~', return (), id)
     , (char '"', return (), id)
     , (char 'q', return (), id)
     , (spec KEnter, return (), id)
@@ -273,6 +276,9 @@ cutCharE dir count = do
         leftOnEol
         return rope
     setDefaultRegisterE Inclusive r
+
+switchCaseAtCurrentChar :: BufferM ()
+switchCaseAtCurrentChar = transformB (fmap switchCaseChar) Character Forward
 
 tabTraversalBinding :: VimBinding
 tabTraversalBinding = VimBindingE prereq action
