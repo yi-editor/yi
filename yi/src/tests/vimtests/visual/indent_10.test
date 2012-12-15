@@ -3,10 +3,12 @@
     foo
     bar
     baz
+    xyzzy
 -- Output
 (1,1)
 foo
 bar
-    baz
+baz
+    xyzzy
 -- Events
 V2j<lt>

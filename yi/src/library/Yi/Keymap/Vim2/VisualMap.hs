@@ -12,12 +12,9 @@ import Data.Prototype (extractValue)
 
 import Yi.Buffer hiding (Insert)
 import Yi.Editor
-import Yi.Event
 import Yi.Keymap.Keys
 import Yi.Keymap.Vim (exMode, defKeymap)
 import Yi.Keymap.Vim2.Common
-import Yi.Keymap.Vim2.EventUtils
-import Yi.Keymap.Vim2.Motion
 import Yi.Keymap.Vim2.OperatorUtils
 import Yi.Keymap.Vim2.StateUtils
 import Yi.Keymap.Vim2.StyledRegion
@@ -100,6 +97,8 @@ operatorBindings = fmap mkOperatorBinding
     , ("gu", OpLowerCase)
     , ("gU", OpUpperCase)
     , ("g~", OpSwitchCase)
+    , (">", OpShiftRight)
+    , ("<lt>", OpShiftLeft)
     ]
 
 regionOfSelectionB :: BufferM Region

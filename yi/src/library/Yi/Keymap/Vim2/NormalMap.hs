@@ -138,8 +138,7 @@ continuingBindings = fmap (mkBindingE Normal Continue)
     , (char 'y', return (), switchMode (NormalOperatorPending OpYank))
     , (char 'c', return (), switchMode (NormalOperatorPending OpChange))
     , (char '=', return (), switchMode (NormalOperatorPending OpReindent))
-    , (char '<', return (), switchMode (NormalOperatorPending OpShiftRight))
-    , (char '>', return (), switchMode (NormalOperatorPending OpShiftLeft))
+    , (char '>', return (), switchMode (NormalOperatorPending OpShiftRight))
 
     -- Transition to insert mode
     , (char 'i', return (), switchMode $ Insert 'i')
@@ -167,6 +166,7 @@ continuingBindings = fmap (mkBindingE Normal Continue)
     , ("g~", return (), switchMode (NormalOperatorPending OpSwitchCase))
     , ("gq", return (), switchMode (NormalOperatorPending OpFormat))
     , ("g?", return (), switchMode (NormalOperatorPending OpRot13))
+    , ("<lt>", return (), switchMode (NormalOperatorPending OpShiftLeft))
     ]
 
 nonrepeatableBindings :: [VimBinding]

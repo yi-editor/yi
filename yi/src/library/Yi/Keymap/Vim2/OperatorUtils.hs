@@ -53,6 +53,8 @@ applyOperatorToRegionE op sreg@(StyledRegion style reg) = case op of
         s <- withBuffer0 $ readRegionRopeWithStyleB reg style
         setDefaultRegisterE style s
         withBuffer0 $ moveTo (regionStart reg)
+    OpShiftRight -> withBuffer0 $ shiftIndentOfRegion 1 =<< convertRegionToStyleB reg style
+    OpShiftLeft -> withBuffer0 $ shiftIndentOfRegion (-1) =<< convertRegionToStyleB reg style
     _ -> withBuffer0 $ insertN $ "Operator not supported " ++ show op
 
 -- TODO eliminate redundancy
