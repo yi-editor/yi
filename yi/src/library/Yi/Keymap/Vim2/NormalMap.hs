@@ -24,7 +24,6 @@ import Yi.Keymap.Vim2.OperatorUtils
 import Yi.Keymap.Vim2.StateUtils
 import Yi.Keymap.Vim2.StyledRegion
 import Yi.Keymap.Vim2.Utils
-import Yi.Misc (switchCaseChar)
 
 mkDigitBinding :: Char -> VimBinding
 mkDigitBinding c = mkBindingE Normal Continue (char c, return (), mutate)
@@ -85,9 +84,9 @@ finishingBingings = fmap (mkBindingE Normal Finish)
     , (char 'P', pasteBefore, id)
 
     -- Miscellaneous.
-    -- TODO restrict this to operate only on the current line. A large count,
-    -- or repeating should not move the cursor to the next line.
-    , (char '~', flip replicateM_ (withBuffer0 $ switchCaseAtCurrentChar >> leftOnEol) =<< getCountE, resetCount)
+    -- TODO A repeat length longer than the current line toggles the final
+    -- character too many times.
+    , (char '~', flip replicateM_ (withBuffer0 $ switchCaseCharB >> leftOnEol) =<< getCountE, resetCount)
     ]
 
 addNewLineIfNecessary :: Rope -> Rope
@@ -278,9 +277,6 @@ cutCharE dir count = do
         leftOnEol
         return rope
     setDefaultRegisterE Inclusive r
-
-switchCaseAtCurrentChar :: BufferM ()
-switchCaseAtCurrentChar = transformB (fmap switchCaseChar) Character Forward
 
 tabTraversalBinding :: VimBinding
 tabTraversalBinding = VimBindingE prereq action

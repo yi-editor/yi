@@ -246,6 +246,12 @@ lowercaseWordB = transformB (fmap toLower) unitWord Forward
 capitaliseWordB :: BufferM ()
 capitaliseWordB = transformB capitalizeFirst unitWord Forward
 
+-- | switch the case of the letter under the cursor
+switchCaseCharB :: BufferM ()
+switchCaseCharB = transformB (fmap switchCaseChar) Character Forward
+
+switchCaseChar :: Char -> Char
+switchCaseChar c = if isUpper c then toLower c else toUpper c
 
 -- | Delete to the end of line, excluding it.
 deleteToEol :: BufferM ()
