@@ -1,8 +1,12 @@
 -- Input
 (1,1)
 foo
+bar
 -- Output
-(1,14)
-ABCABCABABCABCCfoo
+(2,1)
+foo
+foo
+bar
+bar
 -- Events
-3iABC<Esc>2.
+Vjlllyp

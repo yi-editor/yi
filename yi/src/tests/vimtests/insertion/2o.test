@@ -4,14 +4,11 @@
 456
 789
 -- Output
-(7,3)
+(4,3)
 123
 456
 abc
 abc
-abc
-abc
-abc
 789
 -- Events
-2oabc<Esc>3.
+2oabc<Esc>
