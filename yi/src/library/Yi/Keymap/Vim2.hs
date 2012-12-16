@@ -74,16 +74,24 @@ handleEvent mm event = do
     let bindingMatch = selectBinding evs currentState (allBindings mm)
 
     repeatToken <- case bindingMatch of
-        WholeMatch (VimBindingY _ action) -> action evs
-        WholeMatch (VimBindingE _ action) -> withEditor $ action evs
-        NoMatch -> return Drop
-        PartialMatch -> return Continue
+        WholeMatch (VimBindingY _ action) -> do
+            withEditor dropBindingAccumulatorE
+            action evs
+        WholeMatch (VimBindingE _ action) -> withEditor $ dropBindingAccumulatorE >> action evs
+        NoMatch -> do
+            withEditor dropBindingAccumulatorE
+            return Drop
+        PartialMatch -> do
+            withEditor $ accumulateBindingEventE event
+            return Continue
 
     withEditor $ do
         case repeatToken of
             Drop -> dropAccumulatorE
             Continue -> accumulateEventE event
-            Finish -> accumulateEventE event >> flushAccumulatorIntoRepeatableActionE
+            Finish -> do
+                accumulateEventE event
+                flushAccumulatorIntoRepeatableActionE
 
         performEvalIfNecessary mm
 

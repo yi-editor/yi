@@ -6,18 +6,20 @@ import Yi.Prelude
 import Prelude ()
 
 import Control.Monad (replicateM_)
+import Data.Maybe (maybe)
 
 import Yi.Buffer hiding (Insert)
 import Yi.Editor
 import Yi.Event
 import Yi.Keymap.Keys
 import Yi.Keymap.Vim2.Common
+import Yi.Keymap.Vim2.Digraph
 import Yi.Keymap.Vim2.EventUtils
 import Yi.Keymap.Vim2.Utils
 import Yi.Keymap.Vim2.StateUtils
 
 defInsertMap :: [VimBinding]
-defInsertMap = [exitBinding, printable]
+defInsertMap = [exitBinding, digraphBinding, printable]
 
 exitBinding :: VimBinding
 exitBinding = VimBindingE prereq action
@@ -31,16 +33,34 @@ exitBinding = VimBindingE prereq action
                   inputEvents <- fmap (parseEvents . vsOngoingInsertEvents) getDynamic
                   replicateM_ (count - 1) $ do
                       when (starter `elem` "Oo") $ withBuffer0 $ insertB '\n'
-                      mapM_ (printableAction . eventToString) inputEvents
+                      replay inputEvents
               modifyStateE $ \s -> s { vsOngoingInsertEvents = "" }
               withBuffer0 $ moveXorSol 1
               resetCountE
               switchModeE Normal
               return Finish
 
+replay :: [Event] -> EditorM ()
+-- TODO: make digraphs work here too
+replay = mapM_ (printableAction . eventToString)
+
+digraphBinding :: VimBinding
+digraphBinding = VimBindingE prereq action
+    where prereq ('<':'C':'-':'k':'>':_c1:_c2:[]) (VimState { vsMode = Insert _ }) = WholeMatch ()
+          prereq ('<':'C':'-':'k':'>':_c1:[]) (VimState { vsMode = Insert _ }) = PartialMatch
+          prereq "<C-k>" (VimState { vsMode = Insert _ }) = PartialMatch
+          prereq _ _ = NoMatch
+          action ('<':'C':'-':'k':'>':c1:c2:[]) = do
+              maybe (return ()) (withBuffer0 . insertB) $ charFromDigraph c1 c2
+              return Continue
+
+-- TODO: split this binding into printable and specials
 printable :: VimBinding
 printable = VimBindingE prereq action
-    where prereq _ (VimState { vsMode = Insert _ } ) = WholeMatch ()
+    where prereq evs state@(VimState { vsMode = Insert _ } ) =
+              case vbPrerequisite digraphBinding evs state of
+                  NoMatch -> WholeMatch ()
+                  _ -> NoMatch
           prereq _ _ = NoMatch
           action = printableAction
 
