@@ -11,7 +11,7 @@ import Control.Monad.State hiding (forM, forM_)
 import Data.Char
 import Data.List (isPrefixOf, sort, lines, drop, filter, length,
                   takeWhile, dropWhile, reverse, map, intersperse)
-import Data.Maybe (fromMaybe, listToMaybe)
+import Data.Maybe (fromMaybe, listToMaybe, catMaybes)
 import Data.Ord
 import qualified Data.Rope as R
 import Data.Time (UTCTime)
@@ -689,7 +689,7 @@ shapeOfBlockRegionB reg = savingPointB $ do
     (l1, c1) <- getLineAndColOfPoint $ regionEnd reg
     let (left, top, bottom, right) = (min c0 c1, min l0 l1, max l0 l1, max c0 c1)
     lengths <- forM [top .. bottom] $ \l -> do
-        gotoLn l
+        discard $ gotoLn l
         moveToColB left
         currentLeft <- curCol
         if currentLeft /= left
@@ -702,6 +702,24 @@ shapeOfBlockRegionB reg = savingPointB $ do
     startingPoint <- pointOfLineColB top left
     return (startingPoint, lengths)
 
+leftEdgesOfRegionB :: RegionStyle -> Region -> BufferM [Point]
+leftEdgesOfRegionB Block reg = savingPointB $ do
+    (l0, _) <- getLineAndColOfPoint $ regionStart reg
+    (l1, _) <- getLineAndColOfPoint $ regionEnd reg
+    moveTo $ regionStart reg
+    fmap catMaybes $ forM [0 .. abs (l0 - l1)] $ \i -> savingPointB $ do
+        discard $ lineMoveRel i
+        p <- pointB
+        eol <- atEol
+        if not eol
+        then return $ Just p
+        else return Nothing
+leftEdgesOfRegionB _ r = return [regionStart r]
+
+rightEdgesOfRegionB :: RegionStyle -> Region -> BufferM [Point]
+-- TODO
+rightEdgesOfRegionB style reg = return [regionEnd reg]
+
 splitBlockRegionToContiguousSubRegionsB :: Region -> BufferM [Region]
 splitBlockRegionToContiguousSubRegionsB reg = savingPointB $ do
     (start, lengths) <- shapeOfBlockRegionB reg
@@ -712,7 +730,7 @@ splitBlockRegionToContiguousSubRegionsB reg = savingPointB $ do
         p1 <- pointB
         let subRegion = mkRegion p0 p1
         moveTo p0
-        lineMoveRel 1
+        discard $ lineMoveRel 1
         return subRegion
 
 deleteRegionWithStyleB :: Region -> RegionStyle -> BufferM Point
@@ -740,22 +758,21 @@ readRegionRopeWithStyleB reg Block = savingPointB $ do
         else do
             p <- pointB
             r <- readRegionB' $ mkRegion p (p +~ Size l)
-            lineMoveRel 1
+            discard $ lineMoveRel 1
             return r
     return $ R.concat $ intersperse (R.fromString "\n") chunks
 readRegionRopeWithStyleB reg style = readRegionB' =<< convertRegionToStyleB reg style
 
 insertRopeWithStyleB :: Rope -> RegionStyle -> BufferM ()
 insertRopeWithStyleB rope Block = savingPointB $ do
-    let lines = R.split (fromIntegral (ord '\n')) rope
-    forM_ lines $ \line -> do
+    let ls = R.split (fromIntegral (ord '\n')) rope
+    forM_ ls $ \line -> do
         savingPointB $ insertN' line
-        lineMoveRel 1
-
+        discard $ lineMoveRel 1
 insertRopeWithStyleB rope LineWise = do
     moveToSol
     savingPointB $ insertN' rope
-insertRopeWithStyleB rope style = insertN' rope
+insertRopeWithStyleB rope _ = insertN' rope
 
 -- consider the following buffer content
 --

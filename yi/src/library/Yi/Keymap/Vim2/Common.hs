@@ -77,6 +77,7 @@ data VimState = VimState {
         , vsOngoingInsertEvents :: !String
         , vsLastGotoCharCommand :: !(Maybe GotoCharCommand)
         , vsBindingAccumulator :: !String
+        , vsSecondaryCursors :: ![Point]
     } deriving (Typeable)
 
 $(derive makeBinary ''VimOperator)
@@ -93,7 +94,7 @@ instance Initializable VimMode where
 $(derive makeBinary ''VimMode)
 
 instance Initializable VimState where
-    initial = VimState Normal Nothing [] [] HM.empty Nothing [] False [] Nothing []
+    initial = VimState Normal Nothing [] [] HM.empty Nothing [] False [] Nothing [] []
 
 $(derive makeBinary ''VimState)
 

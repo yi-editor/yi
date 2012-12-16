@@ -6,7 +6,7 @@ import Yi.Prelude
 import Prelude ()
 
 import Data.Char (ord)
-import Data.List (isPrefixOf)
+import Data.List (isPrefixOf, drop, group, sort, reverse)
 import Data.Ord
 import Data.Prototype (extractValue)
 
@@ -23,7 +23,7 @@ import Yi.Keymap.Vim2.Utils
 defVisualMap :: [VimBinding]
 defVisualMap = [escBinding, motionBinding]
             ++ operatorBindings ++ digitBindings ++ [replaceBinding, switchEdgeBinding]
-            ++ [exBinding]
+            ++ [insertBinding, exBinding]
 
 escBinding :: VimBinding
 escBinding = VimBindingE prereq action
@@ -142,7 +142,8 @@ replaceBinding = VimBindingE prereq action
 
 switchEdgeBinding :: VimBinding
 switchEdgeBinding = VimBindingE prereq action
-    where prereq evs (VimState { vsMode = (Visual _) }) = matchFromBool $ evs `elem` ["o", "O"]
+    where prereq evs (VimState { vsMode = (Visual _) }) =
+              matchFromBool $ evs `elem` group "oO"
           prereq _ _ = NoMatch
           action (c:[]) = do
               (Visual style) <- vsMode <$> getDynamic
@@ -156,3 +157,18 @@ switchEdgeBinding = VimBindingE prereq action
                   setSelectionMarkPointB there'
               return Continue
 
+insertBinding :: VimBinding
+insertBinding = VimBindingE prereq action
+    where prereq evs (VimState { vsMode = (Visual _) }) =
+              matchFromBool $ evs `elem` group "IA"
+          prereq _ _ = NoMatch
+          action evs = do
+              (Visual style) <- vsMode <$> getDynamic
+              region <- withBuffer0 regionOfSelectionB
+              cursors <- withBuffer0 $ case evs of
+                  "I" -> leftEdgesOfRegionB style region
+                  "A" -> rightEdgesOfRegionB style region
+              withBuffer0 $ moveTo $ head cursors
+              modifyStateE $ \s -> s { vsSecondaryCursors = drop 1 cursors }
+              switchModeE $ Insert (head evs)
+              return Continue

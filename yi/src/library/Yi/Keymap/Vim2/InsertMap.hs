@@ -6,6 +6,7 @@ import Yi.Prelude
 import Prelude ()
 
 import Control.Monad (replicateM_)
+import Data.List (drop, sort, reverse)
 import Data.Maybe (maybe)
 
 import Yi.Buffer hiding (Insert)
@@ -36,6 +37,7 @@ exitBinding = VimBindingE prereq action
                       replay inputEvents
               modifyStateE $ \s -> s { vsOngoingInsertEvents = "" }
               withBuffer0 $ moveXorSol 1
+              modifyStateE $ \s -> s { vsSecondaryCursors = [] }
               resetCountE
               switchModeE Normal
               return Finish
@@ -67,23 +69,39 @@ printable = VimBindingE prereq action
 printableAction :: EventString -> EditorM RepeatToken
 printableAction evs = do
     save evs
-    withBuffer0 $ case evs of
-        (c:[]) -> insertB c
-        "<CR>" -> insertB '\n'
-        -- For testing purposes assume noexpandtab, tw=4
-        "<Tab>" -> insertN $ replicate 4 ' '
-        "<C-t>" -> shiftIndentOfRegion 1 =<< regionOfB Line
-        "<C-d>" -> shiftIndentOfRegion (-1) =<< regionOfB Line
-        "<C-e>" -> insertCharWithBelowB
-        "<C-y>" -> insertCharWithAboveB
-        "<BS>"  -> deleteB Character Backward
-        "<C-h>" -> deleteB Character Backward
-        "<C-j>" -> insertB '\n'
-        "<C-o>" -> return () -- TODO
-        "<C-w>" -> deleteRegionB =<< regionOfPartNonEmptyB unitViWordOnLine Backward
-        "<C-r>" -> return () -- TODO
-        "<C-k>" -> return () -- TODO
-        evs' -> error $ "Unhandled event " ++ evs' ++ " in insert mode"
+    currentCursor <- withBuffer0 pointB
+    secondaryCursors <- fmap vsSecondaryCursors getDynamic
+    let allCursors = currentCursor:secondaryCursors
+    marks <- withBuffer0 $ forM allCursors $ \cursor -> do
+        moveTo cursor
+        -- getMarkB $ Just $ "v_I" ++ show cursor
+        getMarkB Nothing
+    let bufAction = case evs of
+                        (c:[]) -> insertB c
+                        "<CR>" -> insertB '\n'
+                        -- For testing purposes assume noexpandtab, tw=4
+                        "<Tab>" -> insertN $ replicate 4 ' '
+                        "<C-t>" -> shiftIndentOfRegion 1 =<< regionOfB Line
+                        "<C-d>" -> shiftIndentOfRegion (-1) =<< regionOfB Line
+                        "<C-e>" -> insertCharWithBelowB
+                        "<C-y>" -> insertCharWithAboveB
+                        "<BS>"  -> deleteB Character Backward
+                        "<C-h>" -> deleteB Character Backward
+                        "<C-j>" -> insertB '\n'
+                        "<C-o>" -> return () -- TODO
+                        "<C-w>" -> deleteRegionB =<< regionOfPartNonEmptyB unitViWordOnLine Backward
+                        "<C-r>" -> return () -- TODO
+                        "<C-k>" -> return () -- TODO
+                        evs' -> error $ "Unhandled event " ++ evs' ++ " in insert mode"
+    updatedCursors <- withBuffer0 $ do
+        updatedCursors <- forM marks $ \mark -> do
+            moveTo =<< getMarkPointB mark
+            bufAction
+            pointB
+        mapM_ deleteMarkB marks
+        moveTo $ head updatedCursors
+        return updatedCursors
+    modifyStateE $ \s -> s { vsSecondaryCursors = drop 1 updatedCursors }
     return Continue
 
 save :: EventString -> EditorM ()
