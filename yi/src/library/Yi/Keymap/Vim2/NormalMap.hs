@@ -84,9 +84,12 @@ finishingBingings = fmap (mkBindingE Normal Finish)
     , (char 'P', pasteBefore, id)
 
     -- Miscellaneous.
-    -- TODO A repeat length longer than the current line toggles the final
-    -- character too many times.
-    , (char '~', withCountOnBuffer0 $ switchCaseCharB >> leftOnEol, resetCount)
+    , (char '~', do
+           count <- getCountE
+           withBuffer0 $ do
+               transformCharactersInLineN count switchCaseChar
+               leftOnEol
+        , resetCount)
     ]
 
 addNewLineIfNecessary :: Rope -> Rope

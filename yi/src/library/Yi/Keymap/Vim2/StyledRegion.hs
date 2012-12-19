@@ -2,6 +2,7 @@ module Yi.Keymap.Vim2.StyledRegion
     ( StyledRegion(..)
     , normalizeRegion
     , transformCharactersInRegionB
+    , transformCharactersInLineN
     ) where
 
 import Prelude ()
@@ -51,3 +52,12 @@ transformCharactersInRegionB (StyledRegion style reg) f = do
     s <- readRegionB reg'
     replaceRegionB reg' (fmap f s)
     moveTo (regionStart reg')
+
+transformCharactersInLineN :: Int -> (Char -> Char) -> BufferM ()
+transformCharactersInLineN count action = do
+    p0 <- pointB
+    moveXorEol count
+    p1 <- pointB
+    let sreg = StyledRegion Exclusive $ mkRegion p0 p1
+    transformCharactersInRegionB sreg action
+    moveTo p1
