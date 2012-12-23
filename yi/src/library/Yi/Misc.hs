@@ -162,6 +162,3 @@ onCharLetterCode f c | isUpper c || isLower c = chr (f (ord c - a) `mod` 26 + a)
 rot13Char :: Char -> Char
 rot13Char = onCharLetterCode (+13)
 
-switchCaseChar :: Char -> Char
-switchCaseChar c = if isUpper c then toLower c else toUpper c
-
