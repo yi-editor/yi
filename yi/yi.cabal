@@ -206,7 +206,7 @@ library
   build-depends:
     Cabal >= 1.10 && < 1.18,
     Diff >=0.1 && <0.2,
-    array, containers,  directory, process, old-locale,
+    array, containers, directory, process, old-locale,
     base >= 4 && < 5,
     binary == 0.5.*,
     bytestring >= 0.9.1 && < 0.11,
@@ -220,7 +220,6 @@ library
     dyre >=0.8.11,
     filepath>=1.1 && <1.4,
     fingertree >= 0 && <0.1,
-    ghc-paths ==0.1.*,
     hashable < 1.2,
     hint > 0.3.1,
     mtl >= 0.1.0.1,
@@ -327,6 +326,7 @@ library
 
     build-depends:
       ghc >= 7,
+      ghc-paths ==0.1.*,
       old-time >= 1.1.0.0,
       rosezipper >= 0.1 && < 0.3
 
@@ -339,19 +339,19 @@ library
     Paths_yi,
 
     -- "Internal" modules that the user better not see.
-    Yi.Buffer.Implementation
-    Parser.Incremental
+    Yi.Buffer.Implementation,
+    Parser.Incremental,
 
     -- Should probably be split out to another package.
-    Control.Exc
-    Data.DelayList
-    Data.Prototype
-    Data.Rope
-    Data.Trie
-    Shim.CabalInfo
-    Shim.Utils
-    Shim.ProjectContent
-    System.CanonicalizePath
+    Control.Exc,
+    Data.DelayList,
+    Data.Prototype,
+    Data.Rope,
+    Data.Trie,
+    Shim.CabalInfo,
+    Shim.Utils,
+    Shim.ProjectContent,
+    System.CanonicalizePath,
     System.FriendlyPath
 
     -- Broken.
