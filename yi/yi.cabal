@@ -229,7 +229,6 @@ library
     random,
     regex-base ==0.93.*,
     regex-tdfa == 1.1.*,
-    rosezipper >= 0.1 && < 0.3,
     split == 0.1.*,
     template-haskell >= 2.4 && < 2.9,
     time >= 1.1 && < 1.5,
@@ -325,6 +324,11 @@ library
 
   if flag (ghcAPI)
     cpp-options: -DGHC_API
+
+    build-depends:
+      ghc >= 7,
+      old-time >= 1.1.0.0,
+      rosezipper >= 0.1 && < 0.3
 
     exposed-modules: Yi.Mode.Shim
     other-modules:
