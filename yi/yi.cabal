@@ -203,12 +203,6 @@ library
     Yi.Window
     Yi.Char.Unicode
 
-    -- This is super bad. This shouldn't be exposed (and we should just
-    -- depend on a premade ropes library). Needed in yi-pango.
-    Data.Rope
-    Data.Prototype
-    Parser.Incremental
-
   build-depends:
     Cabal >= 1.10 && < 1.18,
     Diff >=0.1 && <0.2,
@@ -342,16 +336,19 @@ library
 
     -- "Internal" modules that the user better not see.
     Yi.Buffer.Implementation
+    Parser.Incremental
 
     -- Should probably be split out to another package.
+    Control.Exc
     Data.DelayList
+    Data.Prototype
+    Data.Rope
     Data.Trie
     Shim.CabalInfo
     Shim.Utils
     Shim.ProjectContent
     System.CanonicalizePath
     System.FriendlyPath
-    Control.Exc
 
     -- Broken.
 --            Yi.Keymap.Ee,
