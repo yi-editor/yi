@@ -224,7 +224,6 @@ library
     hint > 0.3.1,
     mtl >= 0.1.0.1,
     pointedlist >= 0.3.5 && <0.4,
-    pureMD5 >= 0.2.3,
     random,
     regex-base ==0.93.*,
     regex-tdfa == 1.1.*,
@@ -328,7 +327,8 @@ library
       ghc >= 7,
       ghc-paths ==0.1.*,
       old-time >= 1.1.0.0,
-      rosezipper >= 0.1 && < 0.3
+      rosezipper >= 0.1 && < 0.3,
+      pureMD5 >= 0.2.3
 
     exposed-modules: Yi.Mode.Shim
     other-modules:
