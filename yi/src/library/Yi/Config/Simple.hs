@@ -81,7 +81,7 @@ module Yi.Config.Simple (
 
 import Yi.Boot
 --import Yi.Buffer.Misc hiding(modifyMode)
-import Yi.Core hiding(modifyMode)
+import Yi.Core hiding(modifyMode, (%=))
 import Yi.Config.Default
 import Yi.Config.Misc
 import Yi.Config.Simple.Types

@@ -53,7 +53,7 @@ mapFromFoldable,
 module Control.Applicative,
 module Control.Category,
 module Data.Accessor, 
-putA, getA, modA,
+module Data.Accessor.Monad.MTL.State, putA, getA, modA, 
 module Data.Bool,
 module Data.Foldable,
 module Data.Function,
@@ -106,7 +106,7 @@ import qualified Control.Monad.State.Class as CMSC
 import qualified Data.Accessor.Basic as Accessor
 import Data.Accessor ((<.), accessor, getVal, setVal, Accessor,(^.),(^:),(^=))
 import qualified Data.Accessor.Monad.MTL.State as Accessor.MTL
--- import Data.Accessor.Monad.MTL.State ((%:), (%=))
+import Data.Accessor.Monad.MTL.State ((%:), (%=))
 import qualified Data.List.PointedList as PL
     
 type Endom a = a -> a
