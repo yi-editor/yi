@@ -23,7 +23,6 @@ import Yi.Core
 import Yi.History
 import Yi.Completion (infixMatch, prefixMatch, containsMatch', completeInList, completeInList')
 import Yi.Style (defaultStyle)
-import qualified Yi.Core as Editor
 import qualified Data.Rope as R
 
 -- | Open a minibuffer window with the given prompt and keymap

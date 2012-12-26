@@ -4,7 +4,7 @@
 module Yi.Syntax.JavaScript where
 
 import Data.DeriveTH
-import Data.Data (Data, Typeable)
+import Data.Data (Data)
 import qualified Data.Foldable
 import Data.Monoid (Endo(..), mempty)
 import Prelude (maybe)
