@@ -36,8 +36,7 @@ import Prelude ()
 import Yi.Core
 
 import Yi.MiniBuffer
-    ( simpleComplete
-    , withMinibufferGen
+    ( withMinibufferGen
     , mkCompleteFn
     )
 import Yi.Completion
@@ -136,7 +135,6 @@ matchFile path proposedCompletion =
 
 completeFile :: String -> String -> YiM String
 completeFile startPath = mkCompleteFn completeInList' matchFile $ matchingFileNames (Just startPath)
-                         --(simpleComplete $ matchingFileNames (Just startPath))
 
 -- | For use as the hint when opening a file using the minibuffer.
 -- We essentially return all the files in the given directory which

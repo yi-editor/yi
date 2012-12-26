@@ -22,7 +22,6 @@ import Control.Exc(ignoringException)
 
 import Yi.Prelude
 import Yi.Dynamic
-import Yi.Config
 import Yi.Config.Simple.Types(customVariable, Field)
 import Yi.History
 import Yi.Editor

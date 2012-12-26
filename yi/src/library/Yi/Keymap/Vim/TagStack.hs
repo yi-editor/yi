@@ -8,7 +8,6 @@ module Yi.Keymap.Vim.TagStack(VimTagStack(..),
                               popTagStack)
 where
 
-import System.FilePath(FilePath)
 import Yi.Buffer.Basic(Point)
 import Yi.Prelude(Initializable(..))
 import Yi.Dynamic
@@ -16,13 +15,6 @@ import Yi.Editor
 
 import Data.Binary
 import Data.Typeable
-{- 
-import {-# source #-} Yi.Boot
-import Yi.Core
-import Yi.File
-import Yi.History
-import Yi.MiniBuffer
- -}
 
 newtype VimTagStack = VimTagStack { tagsStack :: [(FilePath, Point)] }
     deriving (Typeable, Binary)

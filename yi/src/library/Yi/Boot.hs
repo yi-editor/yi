@@ -8,7 +8,6 @@ import qualified Config.Dyre.Options as Dyre
 import Config.Dyre.Relaunch
 import Control.Monad.State
 import qualified Data.Rope as R
-import System.Directory
 import System.Environment
 import System.Exit
 

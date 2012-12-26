@@ -44,7 +44,7 @@ module Yi.Keymap.Vim (keymapSet,
 import Prelude (maybe, length, filter, map, drop, break, uncurry, reads)
 import Yi.Prelude
 
-import Data.Binary
+import qualified Data.Binary
 import Data.Char
 import Data.List (nub, take, words, dropWhile, takeWhile, intersperse, reverse, isSuffixOf)
 import Data.Maybe (fromMaybe, isJust)
@@ -139,7 +139,7 @@ data ViCmd = ArbCmd !(Int -> YiM ()) !Int
            | NoOp
   deriving (Typeable)
 
-instance Binary ViCmd where
+instance Data.Binary.Binary ViCmd where
     put = dummyPut
     get = dummyGet
 
@@ -158,7 +158,7 @@ data ViInsertion = ViIns { viActFirst  :: Maybe (EditorM ()) -- ^ The action per
 newtype MViInsertion = MVI { unMVI :: Maybe ViInsertion }
   deriving(Typeable, Initializable)
 
-instance Binary MViInsertion where
+instance Data.Binary.Binary MViInsertion where
     put = dummyPut
     get = dummyGet
 instance YiVariable MViInsertion
