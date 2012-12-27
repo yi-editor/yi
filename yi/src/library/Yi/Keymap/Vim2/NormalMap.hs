@@ -1,6 +1,6 @@
 module Yi.Keymap.Vim2.NormalMap
-  ( defNormalMap
-  ) where
+    ( defNormalMap
+    ) where
 
 import Yi.Prelude
 import Prelude ()
@@ -141,7 +141,7 @@ pasteInclusiveB rope style = do
 
 continuingBindings :: [VimBinding]
 continuingBindings = fmap (mkBindingE Normal Continue)
-    [ (char 'r', return (), switchMode ReplaceSingleChar)
+    [ (char 'r', return (), switchMode ReplaceSingleChar) -- TODO make it just a binding
     , (char 'd', return (), switchMode (NormalOperatorPending OpDelete))
     , (char 'y', return (), switchMode (NormalOperatorPending OpYank))
     , (char 'c', return (), switchMode (NormalOperatorPending OpChange))

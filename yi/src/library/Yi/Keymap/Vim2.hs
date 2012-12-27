@@ -71,7 +71,8 @@ handleEvent :: ModeMap -> Event -> YiM ()
 handleEvent mm event = do
     currentState <- withEditor getDynamic
     let evs = vsBindingAccumulator currentState ++ eventToString event
-    let bindingMatch = selectBinding evs currentState (allBindings mm)
+        bindingMatch = selectBinding evs currentState (allBindings mm)
+        prevMode = vsMode currentState
 
     repeatToken <- case bindingMatch of
         WholeMatch (VimBindingY _ action) -> do
@@ -94,6 +95,7 @@ handleEvent mm event = do
                 flushAccumulatorIntoRepeatableActionE
 
         performEvalIfNecessary mm
+        updateModeIndicatorE prevMode
 
 allBindings :: ModeMap -> [VimBinding]
 allBindings m = concat [ normalMap m
@@ -121,6 +123,7 @@ pureHandleEvent mm event = do
     currentState <- getDynamic
     let evs = vsBindingAccumulator currentState ++ eventToString event
         bindingMatch = selectBinding evs currentState (allPureBindings mm)
+        prevMode = vsMode currentState
     case bindingMatch of
         NoMatch -> dropBindingAccumulatorE
         PartialMatch -> do
@@ -136,6 +139,7 @@ pureHandleEvent mm event = do
         WholeMatch (VimBindingY _ _) -> fail "Impure binding found"
 
     performEvalIfNecessary mm
+    updateModeIndicatorE prevMode
 
 performEvalIfNecessary :: ModeMap -> EditorM ()
 performEvalIfNecessary mm = do

@@ -1,31 +1,32 @@
 module Yi.Keymap.Vim2.StateUtils
-  ( switchMode
-  , switchModeE
-  , resetCount
-  , resetCountE
-  , setCountE
-  , modifyStateE
-  , getMaybeCountE
-  , getCountE
-  , accumulateEventE
-  , accumulateBindingEventE
-  , accumulateTextObjectEventE
-  , flushAccumulatorIntoRepeatableActionE
-  , dropAccumulatorE
-  , dropBindingAccumulatorE
-  , dropTextObjectAccumulatorE
-  , setDefaultRegisterE
-  , getDefaultRegisterE
-  , normalizeCountE
-  , setStickyEolE
-  , maybeMult
-  ) where
+    ( switchMode
+    , switchModeE
+    , resetCount
+    , resetCountE
+    , setCountE
+    , modifyStateE
+    , getMaybeCountE
+    , getCountE
+    , accumulateEventE
+    , accumulateBindingEventE
+    , accumulateTextObjectEventE
+    , flushAccumulatorIntoRepeatableActionE
+    , dropAccumulatorE
+    , dropBindingAccumulatorE
+    , dropTextObjectAccumulatorE
+    , setDefaultRegisterE
+    , getDefaultRegisterE
+    , normalizeCountE
+    , setStickyEolE
+    , maybeMult
+    , updateModeIndicatorE
+    ) where
 
 import Yi.Prelude
 import Prelude ()
 
 import qualified Data.HashMap.Strict as HM
-import Data.Maybe (fromMaybe)
+import Data.Maybe (fromMaybe, maybe)
 import qualified Data.Rope as R
 
 import Yi.Buffer.Normal
@@ -33,6 +34,7 @@ import Yi.Editor
 import Yi.Event
 import Yi.Keymap.Vim2.Common
 import Yi.Keymap.Vim2.EventUtils
+import Yi.Style (defaultStyle)
 
 switchMode :: VimMode -> VimState -> VimState
 switchMode mode state = state { vsMode = mode }
@@ -117,3 +119,19 @@ maybeMult Nothing  b       = b
 
 setStickyEolE :: Bool -> EditorM ()
 setStickyEolE b = modifyStateE $ \s -> s { vsStickyEol = b }
+
+updateModeIndicatorE :: VimMode -> EditorM ()
+updateModeIndicatorE prevMode = do
+    mode <- fmap vsMode getDynamic
+    when (mode /= prevMode) $ do
+        let modeName = case mode of
+                        Insert _ -> "INSERT"
+                        InsertNormal -> "(insert)"
+                        InsertVisual -> "(insert) VISUAL"
+                        Replace -> "REPLACE"
+                        Visual Block -> "VISUAL BLOCK"
+                        Visual LineWise -> "VISUAL LINE"
+                        Visual _ -> "VISUAL"
+                        _ -> ""
+            decoratedModeName = if null modeName then "" else "-- " ++ modeName ++ " --"
+        setStatus ([decoratedModeName], defaultStyle)
