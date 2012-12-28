@@ -5,9 +5,6 @@ module Yi.Keymap.Vim2.Digraph
 import Prelude ()
 import Yi.Prelude
 
-import Control.Applicative
-import Data.List (lookup)
-
 charFromDigraph :: Char -> Char -> Maybe Char
 charFromDigraph c1 c2 = lookup [c1, c2] digraphTable <|> lookup [c2, c1] digraphTable
 

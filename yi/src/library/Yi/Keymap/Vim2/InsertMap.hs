@@ -6,13 +6,12 @@ import Yi.Prelude
 import Prelude ()
 
 import Control.Monad (replicateM_)
-import Data.List (drop, sort, reverse)
+import Data.List (drop)
 import Data.Maybe (maybe)
 
 import Yi.Buffer hiding (Insert)
 import Yi.Editor
 import Yi.Event
-import Yi.Keymap.Keys
 import Yi.Keymap.Vim2.Common
 import Yi.Keymap.Vim2.Digraph
 import Yi.Keymap.Vim2.EventUtils
@@ -55,6 +54,7 @@ digraphBinding = VimBindingE prereq action
           action ('<':'C':'-':'k':'>':c1:c2:[]) = do
               maybe (return ()) (withBuffer0 . insertB) $ charFromDigraph c1 c2
               return Continue
+          action _ = error "can't happen"
 
 -- TODO: split this binding into printable and specials
 printable :: VimBinding

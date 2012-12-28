@@ -43,6 +43,7 @@ pureBindings =
     nonrepeatableBindings ++
     [tabTraversalBinding]
 
+motionBinding :: VimBinding
 motionBinding = mkMotionBinding $ \m -> case m of
                                      Normal -> True
                                      _ -> False
@@ -287,6 +288,7 @@ tabTraversalBinding = VimBindingE prereq action
               replicateM_ count $ if c == 'T' then previousTabE else nextTabE
               resetCountE
               return Drop
+          action _ = error "can't happen"
 
 withCount :: EditorM () -> EditorM ()
 withCount action = flip replicateM_ action =<< getCountE

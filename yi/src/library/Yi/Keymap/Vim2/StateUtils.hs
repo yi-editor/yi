@@ -26,7 +26,7 @@ import Yi.Prelude
 import Prelude ()
 
 import qualified Data.HashMap.Strict as HM
-import Data.Maybe (fromMaybe, maybe)
+import Data.Maybe (fromMaybe)
 import qualified Data.Rope as R
 
 import Yi.Buffer.Normal

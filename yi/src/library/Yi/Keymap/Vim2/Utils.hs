@@ -84,6 +84,7 @@ mkMotionBinding condition = VimBindingE prereq action
                               't' -> (Forward, Exclusive)
                               'F' -> (Backward, Inclusive)
                               'T' -> (Backward, Exclusive)
+                              _ -> error "can't happen"
                       command = GotoCharCommand c direction style
                   modifyStateE $ \s -> s { vsLastGotoCharCommand = Just command}
 

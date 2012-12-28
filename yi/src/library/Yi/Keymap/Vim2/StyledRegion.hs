@@ -9,7 +9,6 @@ import Prelude ()
 import Yi.Prelude
 
 import Yi.Buffer
-import Yi.Region
 
 data StyledRegion = StyledRegion !RegionStyle !Region
 

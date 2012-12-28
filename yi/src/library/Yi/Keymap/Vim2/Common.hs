@@ -24,8 +24,9 @@ import qualified Data.Rope as R
 import Yi.Buffer hiding (Insert)
 import Yi.Dynamic
 import Yi.Editor
-import Yi.Event
 import Yi.Keymap
+
+type EventString = String
 
 data VimOperator = OpYank
                  | OpDelete
@@ -42,7 +43,7 @@ data VimOperator = OpYank
 
 data RepeatableAction = RepeatableAction {
           raPreviousCount :: !Int
-        , raActionString :: !String
+        , raActionString :: !EventString
     }
     deriving (Typeable, Eq, Show)
 
@@ -67,15 +68,15 @@ data GotoCharCommand = GotoCharCommand !Char !Direction !RegionStyle
 data VimState = VimState {
           vsMode :: !VimMode
         , vsCount :: !(Maybe Int)
-        , vsAccumulator :: !String -- ^ for repeat and potentially macros
-        , vsTextObjectAccumulator :: !String
+        , vsAccumulator :: !EventString -- ^ for repeat and potentially macros
+        , vsTextObjectAccumulator :: !EventString
         , vsRegisterMap :: !(HM.HashMap Char Register)
         , vsRepeatableAction :: !(Maybe RepeatableAction)
-        , vsStringToEval :: !String -- ^ see Yi.Keymap.Vim2.vimEval comment
+        , vsStringToEval :: !EventString -- ^ see Yi.Keymap.Vim2.vimEval comment
         , vsStickyEol :: !Bool -- ^ is set on $, allows j and k walk the right edge of lines
-        , vsOngoingInsertEvents :: !String
+        , vsOngoingInsertEvents :: !EventString
         , vsLastGotoCharCommand :: !(Maybe GotoCharCommand)
-        , vsBindingAccumulator :: !String
+        , vsBindingAccumulator :: !EventString
         , vsSecondaryCursors :: ![Point]
     } deriving (Typeable)
 
@@ -139,8 +140,6 @@ instance Show (MatchResult a) where
     show (WholeMatch _) = "WholeMatch"
     show PartialMatch = "PartialMatch"
     show NoMatch = "NoMatch"
-
-type EventString = String
 
 -- Distinction between YiM and EditorM variants is for testing.
 data VimBinding = VimBindingY {

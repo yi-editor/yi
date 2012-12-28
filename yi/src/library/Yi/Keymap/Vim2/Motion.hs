@@ -52,7 +52,7 @@ import Yi.Prelude
 
 import Control.Monad (replicateM_)
 
-import Data.List (isPrefixOf, group)
+import Data.List (isPrefixOf)
 import Data.Maybe (fromMaybe)
 
 import Yi.Buffer
@@ -185,6 +185,7 @@ matchGotoCharMove (m:c:[]) | m `elem` "fFtT" = WholeMatch $ Move style action
                   't' -> (Forward, Exclusive, nextCInLineExc c)
                   'F' -> (Backward, Inclusive, prevCInLineInc c)
                   'T' -> (Backward, Exclusive, prevCInLineExc c)
+                  _ -> error "can't happen"
           action mcount = do
                   let count = fromMaybe 1 mcount
                   p0 <- pointB

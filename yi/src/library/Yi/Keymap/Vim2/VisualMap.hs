@@ -6,13 +6,11 @@ import Yi.Prelude
 import Prelude ()
 
 import Data.Char (ord)
-import Data.List (isPrefixOf, drop, group, sort, reverse)
-import Data.Ord
+import Data.List (drop, group)
 import Data.Prototype (extractValue)
 
 import Yi.Buffer hiding (Insert)
 import Yi.Editor
-import Yi.Keymap.Keys
 import Yi.Keymap.Vim (exMode, defKeymap)
 import Yi.Keymap.Vim2.Common
 import Yi.Keymap.Vim2.OperatorUtils
@@ -77,6 +75,7 @@ mkDigitBinding c = VimBindingE prereq action
           mutate vs@(VimState {vsCount = Just count}) = vs { vsCount = Just $ count * 10 + d }
           d = ord c - ord '0'
 
+motionBinding :: VimBinding
 motionBinding = mkMotionBinding $ \m -> case m of
                                      Visual _ -> True
                                      _ -> False
@@ -139,6 +138,7 @@ replaceBinding = VimBindingE prereq action
                                 (\x -> if x == '\n' then x else c)
               switchModeE Normal
               return Finish
+          action _ = error "can't happen"
 
 switchEdgeBinding :: VimBinding
 switchEdgeBinding = VimBindingE prereq action
@@ -156,6 +156,7 @@ switchEdgeBinding = VimBindingE prereq action
                   moveTo here'
                   setSelectionMarkPointB there'
               return Continue
+          action _ = error "can't happen"
 
 insertBinding :: VimBinding
 insertBinding = VimBindingE prereq action
@@ -168,6 +169,7 @@ insertBinding = VimBindingE prereq action
               cursors <- withBuffer0 $ case evs of
                   "I" -> leftEdgesOfRegionB style region
                   "A" -> rightEdgesOfRegionB style region
+                  _ -> error "can't happen"
               withBuffer0 $ moveTo $ head cursors
               modifyStateE $ \s -> s { vsSecondaryCursors = drop 1 cursors }
               switchModeE $ Insert (head evs)

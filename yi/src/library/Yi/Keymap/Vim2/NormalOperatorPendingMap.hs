@@ -13,7 +13,6 @@ import Yi.Buffer hiding (Insert)
 import Yi.Editor
 import Yi.Keymap.Keys
 import Yi.Keymap.Vim2.Common
-import Yi.Keymap.Vim2.EventUtils
 import Yi.Keymap.Vim2.Motion
 import Yi.Keymap.Vim2.OperatorUtils
 import Yi.Keymap.Vim2.StateUtils
@@ -62,6 +61,7 @@ textObject = VimBindingE prereq action
                             normalizedCount <- getCountE
                             region <- withBuffer0 $ regionForOperatorLineB normalizedCount style
                             applyOperatorToRegionE op region
+                        _ -> error "can't happen"
                     resetCountE
                     if op == OpChange
                     then do

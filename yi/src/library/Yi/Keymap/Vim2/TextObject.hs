@@ -62,5 +62,7 @@ parseTextObject bs (c:[]) = fmap (TextObject Exclusive . ($ bs == OutsideBound))
            ]
 parseTextObject _ _ = Nothing
 
+-- TODO: this probably belongs to Buffer.TextUnit
+toOuter :: TextUnit -> TextUnit -> Bool -> TextUnit
 toOuter outer _     True  = leftBoundaryUnit outer
 toOuter _     inner False = inner

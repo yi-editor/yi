@@ -190,7 +190,7 @@ defaultEmacsConfig = toEmacsStyleConfig defaultConfig
 defaultVimConfig = toVimStyleConfig defaultConfig
 defaultCuaConfig = toCuaStyleConfig defaultConfig
 
-toEmacsStyleConfig, toVimStyleConfig, toCuaStyleConfig :: Config -> Config
+toEmacsStyleConfig, toVimStyleConfig, toVim2StyleConfig, toCuaStyleConfig :: Config -> Config
 toEmacsStyleConfig cfg 
     = cfg {
             configUI = (configUI cfg) { configVtyEscDelay = 1000 , configScrollStyle = Just SnapToCenter},
