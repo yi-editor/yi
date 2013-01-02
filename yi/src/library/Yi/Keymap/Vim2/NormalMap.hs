@@ -228,6 +228,14 @@ nonrepeatableBindings = fmap (mkBindingE Normal Drop)
     , (char 'U', withCountOnBuffer0 undoB, id) -- TODO
     , (ctrlCh 'r', withCountOnBuffer0 redoB, id)
 
+    -- scrolling
+    ,(ctrlCh 'b', getCountE >>= withBuffer0 . upScreensB, id)
+    ,(ctrlCh 'f', getCountE >>= withBuffer0 . downScreensB, id)
+    ,(ctrlCh 'u', getCountE >>= withBuffer0 . vimScrollByB (negate . (`div` 2)), id)
+    ,(ctrlCh 'd', getCountE >>= withBuffer0 . vimScrollByB (`div` 2), id)
+    ,(ctrlCh 'y', getCountE >>= withBuffer0 . vimScrollB . negate, id)
+    ,(ctrlCh 'e', getCountE >>= withBuffer0 . vimScrollB, id)
+
     -- unsorted TODO
     , (char 'm', return (), id)
     , (char '-', return (), id)
