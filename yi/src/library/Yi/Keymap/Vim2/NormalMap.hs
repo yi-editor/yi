@@ -8,6 +8,7 @@ import Prelude ()
 import Control.Monad (replicateM_)
 
 import Data.Char
+import Data.List (group)
 import Data.Maybe (fromMaybe)
 import Data.Prototype (extractValue)
 import qualified Data.Rope as R
@@ -36,7 +37,7 @@ defNormalMap = mkBindingY Normal (spec (KFun 10), quitEditor, id) : pureBindings
 
 pureBindings :: [VimBinding]
 pureBindings =
-    [zeroBinding, repeatBinding, motionBinding] ++
+    [zeroBinding, repeatBinding, motionBinding, searchBinding] ++
     fmap mkDigitBinding ['1' .. '9'] ++
     finishingBingings ++
     continuingBindings ++
@@ -208,8 +209,6 @@ nonrepeatableBindings = fmap (mkBindingE Normal Drop)
         , id) -- TODO
 
     -- Search
-    , (char '/', return (), id) -- TODO
-    , (char '?', return (), id) -- TODO
     , (char '*', return (), id) -- TODO
     , (char '#', return (), id) -- TODO
     , (char 'n', return (), id) -- TODO
@@ -244,6 +243,16 @@ nonrepeatableBindings = fmap (mkBindingE Normal Drop)
     , (char 'q', return (), id)
     , (spec KEnter, return (), id)
     ]
+
+searchBinding :: VimBinding
+searchBinding = VimBindingE prereq action
+    where prereq evs (VimState { vsMode = Normal }) = matchFromBool $ evs `elem` group "/?"
+          prereq _ _ = NoMatch
+          action evs = do
+              state <- fmap vsMode getDynamic
+              let dir = if evs == "/" then Forward else Backward
+              switchModeE $ Search "" state dir
+              return Continue
 
 switchToExE :: EditorM ()
 switchToExE = exMode (extractValue defKeymap) ":"

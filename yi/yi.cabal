@@ -142,6 +142,7 @@ library
     Yi.Keymap.Vim2.NormalOperatorPendingMap
     Yi.Keymap.Vim2.ReplaceMap
     Yi.Keymap.Vim2.ReplaceSingleCharMap
+    Yi.Keymap.Vim2.SearchMotionMap
     Yi.Keymap.Vim2.StateUtils
     Yi.Keymap.Vim2.StyledRegion
     Yi.Keymap.Vim2.TextObject
