@@ -1,0 +1,16 @@
+-- Input
+(2,16)
+Lorem ipsum dolor sit amet
+ ipsum dolor sit amet
+ ipsum dolor sit amet
+abc def ghi
+qwe rty uiop
+-- Output
+(2,8)
+Lorem ipsum dolor sit amet
+ ipsum dolor sit amet
+ ipsum dolor sit amet
+abc def ghi
+qwe rty uiop
+-- Events
+?dolor<CR>nnn
