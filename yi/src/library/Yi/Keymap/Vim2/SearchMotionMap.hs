@@ -5,10 +5,12 @@ module Yi.Keymap.Vim2.SearchMotionMap
 import Prelude ()
 import Yi.Prelude
 
+import Control.Monad (replicateM_)
+
 import Yi.Editor
 import Yi.Keymap.Vim2.Common
+import Yi.Keymap.Vim2.Search
 import Yi.Keymap.Vim2.StateUtils
-import Yi.Search
 
 defSearchMotionMap :: [VimBinding]
 defSearchMotionMap = [enterBinding, escBinding, otherBinding]
@@ -20,7 +22,8 @@ enterBinding = VimBindingE prereq action
           action _ = do
               Search cmd prevMode dir <- fmap vsMode getDynamic
               -- TODO: parse cmd into regex and flags
-              doSearch (Just cmd) [] dir
+              count <- getCountE
+              replicateM_ count $ doVimSearch (Just cmd) [] dir
               switchModeE prevMode
               case prevMode of
                   Visual _ -> return Continue

@@ -9,7 +9,7 @@ import Control.Monad (replicateM_)
 
 import Data.Char
 import Data.List (group)
-import Data.Maybe (fromMaybe)
+import Data.Maybe (fromMaybe, maybe)
 import Data.Prototype (extractValue)
 import qualified Data.Rope as R
 
@@ -22,9 +22,12 @@ import Yi.Keymap.Vim (exMode, defKeymap)
 import Yi.Keymap.Vim2.Common
 import Yi.Keymap.Vim2.Eval
 import Yi.Keymap.Vim2.OperatorUtils
+import Yi.Keymap.Vim2.Search
 import Yi.Keymap.Vim2.StateUtils
 import Yi.Keymap.Vim2.StyledRegion
 import Yi.Keymap.Vim2.Utils
+import Yi.Regex (seInput)
+import Yi.Search (getRegexE)
 
 mkDigitBinding :: Char -> VimBinding
 mkDigitBinding c = mkBindingE Normal Continue (char c, return (), mutate)
@@ -211,8 +214,8 @@ nonrepeatableBindings = fmap (mkBindingE Normal Drop)
     -- Search
     , (char '*', return (), id) -- TODO
     , (char '#', return (), id) -- TODO
-    , (char 'n', return (), id) -- TODO
-    , (char 'N', return (), id) -- TODO
+    , (char 'n', withCount $ continueSearching id, resetCount)
+    , (char 'N', withCount $ continueSearching reverseDir, resetCount)
     , (char ';', repeatGotoCharE id, id)
     , (char ',', repeatGotoCharE reverseDir, id)
 
@@ -253,6 +256,16 @@ searchBinding = VimBindingE prereq action
               let dir = if evs == "/" then Forward else Backward
               switchModeE $ Search "" state dir
               return Continue
+
+continueSearching :: (Direction -> Direction) -> EditorM ()
+continueSearching fdir = do
+    mbRegex <- getRegexE
+    case mbRegex of
+        Just regex -> do
+            dir <- fdir <$> getA searchDirectionA
+            printMsg $ (if dir == Forward then '/' else '?') : seInput regex
+            discard $ doVimSearch Nothing [] dir
+        Nothing -> printMsg "No previous search pattern"
 
 switchToExE :: EditorM ()
 switchToExE = exMode (extractValue defKeymap) ":"
@@ -307,6 +320,8 @@ tabTraversalBinding = VimBindingE prereq action
               return Drop
           action _ = error "can't happen"
 
+-- TODO: withCount name implies that parameter has type (Int -> EditorM ())
+--       Is there a better name for this function?
 withCount :: EditorM () -> EditorM ()
 withCount action = flip replicateM_ action =<< getCountE
 
