@@ -9,12 +9,13 @@ module System.CanonicalizePath
 
 #ifdef mingw32_HOST_OS
 import qualified System.Win32 as Win32
+import System.FilePath (normalise)
 #endif
 
 import Control.Applicative
 import Control.Monad
 import Data.List.Split     (splitOn, splitOneOf)
-import System.FilePath     ((</>), isDrive, isAbsolute, takeDirectory, pathSeparator, pathSeparators, normalise)
+import System.FilePath     ((</>), isDrive, isAbsolute, takeDirectory, pathSeparator, pathSeparators)
 import System.Directory    (getCurrentDirectory)
 import System.PosixCompat.Files  (readSymbolicLink)
 import Control.Exc          (ignoringException)

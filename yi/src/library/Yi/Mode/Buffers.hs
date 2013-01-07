@@ -6,7 +6,6 @@ module Yi.Mode.Buffers (
 ) where
 
 import Yi.Core
-import Yi.Buffer
 import Data.List ( intercalate )
 import System.FilePath ( takeFileName )
 

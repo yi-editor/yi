@@ -66,7 +66,7 @@ unlines' = intercalate "\n"
 -- | Split a String in lines. Unlike 'Prelude.lines', this does not
 -- remove any empty line at the end.
 lines' :: String -> [String]
-lines' = unintercalate "\n" 
+lines' = splitOn "\n"
 
 -- | A helper function for creating functions suitable for
 -- 'modifySelectionB' and 'modifyRegionB'.
@@ -82,4 +82,4 @@ padLeft, padRight :: Int -> String -> String
 padLeft n [] = replicate n ' '
 padLeft n (x:xs) = x : padLeft (n-1) xs
           
-padRight n = reverse . padLeft n . reverse          
+padRight n = reverse . padLeft n . reverse

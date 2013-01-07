@@ -55,7 +55,6 @@ import Data.Maybe
 import Data.Either
 import Data.List (span, takeWhile, take, length)
 import Yi.Core
-import Yi.Core as Editor
 import Yi.History
 
 -- ---------------------------------------------------------------------

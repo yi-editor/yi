@@ -10,12 +10,10 @@ module Yi.Paths(
   ,getDataPath
 ) where
 
-import System.Directory(getHomeDirectory, getAppUserDataDirectory, -- TODO: phase out in favour of xdg-dir
-                        doesFileExist, doesDirectoryExist,
+import System.Directory(getAppUserDataDirectory, -- TODO: phase out in favour of xdg-dir
+                        doesDirectoryExist,
                         createDirectoryIfMissing)
-import System.FilePath((</>), takeDirectory, FilePath)
-import Control.Applicative((<$>))
-import Control.Monad(filterM, Monad)
+import System.FilePath((</>))
 import Control.Monad.Trans(liftIO, MonadIO)
 import qualified System.Environment.XDG.BaseDir as XDG
 
