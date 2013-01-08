@@ -240,7 +240,11 @@ focusA = accessor getter setter where
 
 -- | Given a function which moves the focus from index A to index B, return a function which swaps the elements at indexes A and B and then moves the focus. See Yi.Editor.swapWinWithFirstE for an example.
 swapFocus :: (PL.PointedList a -> PL.PointedList a) -> (PL.PointedList a -> PL.PointedList a)
-swapFocus moveFocus xs = focusA ^= (xs ^. focusA) $ moveFocus $ focusA ^= (moveFocus xs ^. focusA) $ xs
+swapFocus moveFocus xs = focusA ^= (xs ^. focusA)
+                       $ moveFocus
+                       $ focusA ^= (moveFocus xs ^. focusA)
+                       $ xs
+
 ----------------------
 -- Acessor stuff
 

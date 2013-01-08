@@ -464,7 +464,7 @@ newWindowE mini bk = newZeroSizeWindow mini bk . WindowRef <$> newRef
 -- | Attach the specified buffer to the current window
 switchToBufferE :: BufferRef -> EditorM ()
 switchToBufferE bk = do
-    modA (focusA . windowsA) (\w ->
+    modA currentWindowA (\w ->
            w { bufkey = bk, 
                bufAccessList = forceFold1 $ ((bufkey w):) . filter (bk/=) $ bufAccessList w })
 
@@ -545,7 +545,7 @@ fixCurrentBufferA_ = fromSetGet (\new _old -> let
 fixCurrentWindow :: EditorM ()
 fixCurrentWindow = do
     b <- gets currentBuffer
-    modA (focusA . windowsA) (\w -> w {bufkey = b})
+    modA currentWindowA (\w -> w {bufkey = b})
 
 withWindowE :: Window -> BufferM a -> EditorM a
 withWindowE w = withGivenBufferAndWindow0 w (bufkey w)
