@@ -369,7 +369,7 @@ simpleNotebookSet sn ts = do
     forM_ tsList $ \(w,s) -> update nb (notebookChildTabLabel w) s
 
     -- now set the focus
-    p <- notebookPageNum nb (fst $ PL.focus ts)
+    p <- notebookPageNum nb (fst $ PL._focus ts)
     maybe (return ()) (update nb notebookPage) p
 
     -- write the new status

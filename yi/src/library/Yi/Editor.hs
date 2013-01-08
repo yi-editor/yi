@@ -32,7 +32,7 @@ import Yi.Tab
 import Yi.Window
 import qualified Data.Rope as R
 import qualified Data.DelayList as DelayList
-import qualified Data.List.PointedList as PL (atEnd)
+import qualified Data.List.PointedList as PL (atEnd, moveTo)
 import qualified Data.List.PointedList.Circular as PL
 import qualified Data.Map as M
 import {-# source #-} Yi.Keymap (extractTopKeymap)
@@ -142,7 +142,7 @@ tabsA :: Accessor Editor (PL.PointedList Tab)
 tabsA = tabs_A . fixCurrentBufferA_
 
 currentTabA :: Accessor Editor Tab
-currentTabA = PL.focusA . tabsA
+currentTabA = focusA . tabsA
 
 askConfigVariableA :: (YiConfigVariable b, MonadEditor m) => m b
 askConfigVariableA = do cfg <- askCfg
@@ -318,7 +318,7 @@ withBuffer0 f = do
   withGivenBufferAndWindow0 w (bufkey w) f
 
 currentWindowA :: Accessor Editor Window
-currentWindowA = PL.focusA . windowsA
+currentWindowA = focusA . windowsA
 
 -- | Return the current buffer
 currentBuffer :: Editor -> BufferRef
@@ -464,7 +464,7 @@ newWindowE mini bk = newZeroSizeWindow mini bk . WindowRef <$> newRef
 -- | Attach the specified buffer to the current window
 switchToBufferE :: BufferRef -> EditorM ()
 switchToBufferE bk = do
-    modA (PL.focusA . windowsA) (\w -> 
+    modA (focusA . windowsA) (\w ->
            w { bufkey = bk, 
                bufAccessList = forceFold1 $ ((bufkey w):) . filter (bk/=) $ bufAccessList w })
 
@@ -510,7 +510,7 @@ prevWinE = modA windowsA PL.previous
 
 -- | Swaps the focused window with the first window. Useful for layouts such as 'HPairOneStack', for which the first window is the largest.
 swapWinWithFirstE :: EditorM ()
-swapWinWithFirstE = modA windowsA (swapFocus (fromJust . PL.move 0))
+swapWinWithFirstE = modA windowsA (swapFocus (fromJust . PL.moveTo 0))
 
 -- | Moves the focused window to the first window, and moves all other windows down the stack.
 pushWinToFirstE :: EditorM ()
@@ -518,7 +518,7 @@ pushWinToFirstE = modA windowsA pushToFirst
   where
       pushToFirst ws = case PL.delete ws of
           Nothing -> ws
-          Just ws' -> PL.insertLeft (ws ^. PL.focusA) (fromJust $ PL.move 0 ws')
+          Just ws' -> PL.insertLeft (ws ^. focusA) (fromJust $ PL.moveTo 0 ws')
 
 -- | Swap focused window with the next one
 moveWinNextE :: EditorM ()
@@ -534,7 +534,7 @@ moveWinPrevE = modA windowsA (swapFocus PL.previous)
 fixCurrentBufferA_ :: Accessor Editor Editor
 fixCurrentBufferA_ = fromSetGet (\new _old -> let 
     ws = windows new
-    b = findBufferWith (bufkey $ PL.focus ws) new
+    b = findBufferWith (bufkey $ PL._focus ws) new
     newBufferStack = nub (bkey b : bufferStack new)
     -- make sure we do not hold to old versions by seqing the length.
     in length newBufferStack `seq` new { bufferStack = newBufferStack  } ) id
@@ -545,7 +545,7 @@ fixCurrentBufferA_ = fromSetGet (\new _old -> let
 fixCurrentWindow :: EditorM ()
 fixCurrentWindow = do
     b <- gets currentBuffer
-    modA (PL.focusA . windowsA) (\w -> w {bufkey = b})
+    modA (focusA . windowsA) (\w -> w {bufkey = b})
 
 withWindowE :: Window -> BufferM a -> EditorM a
 withWindowE w = withGivenBufferAndWindow0 w (bufkey w)
@@ -581,8 +581,8 @@ focusWindowE k = do
     case foldl searchWindowSet  (False, 0, 0) ts of
         (False, _, _) -> fail $ "No window with key " ++ show wkey ++ "found. (focusWindowE)"
         (True, tabIndex, winIndex) -> do
-            putA tabsA (fromJust $ PL.move tabIndex ts) 
-            modA windowsA (\ws -> fromJust $ PL.move winIndex ws) 
+            putA tabsA (fromJust $ PL.moveTo tabIndex ts)
+            modA windowsA (\ws -> fromJust $ PL.moveTo winIndex ws)
 
 -- | Split the current window, opening a second window onto current buffer.
 -- TODO: unfold newWindowE here?
@@ -608,7 +608,7 @@ withLMStack f = askCfg >>= \cfg -> modA (tabLayoutManagerA . currentTabA) (go (l
      go lms lm =
        case findPL (layoutManagerSameType lm) lms of
          Nothing -> head lms
-         Just lmsPL -> f lmsPL ^. PL.focusA
+         Just lmsPL -> f lmsPL ^. focusA
 
 -- | Next variant of the current layout manager, as given by 'nextVariant'
 layoutManagerNextVariantE :: EditorM ()
@@ -649,8 +649,8 @@ previousTabE = modA tabsA PL.previous
 -- | Moves the focused tab to the given index, or to the end if the index is not specified.
 moveTab :: Maybe Int -> EditorM ()
 moveTab Nothing  = do count <- getsA tabsA PL.length
-                      modA tabsA $ fromJust . PL.move (pred count)
-moveTab (Just n) = do newTabs <- getsA tabsA (PL.move n)
+                      modA tabsA $ fromJust . PL.moveTo (pred count)
+moveTab (Just n) = do newTabs <- getsA tabsA (PL.moveTo n)
                       when (isNothing newTabs) failure
                       putA tabsA $ fromJust newTabs
   where failure = fail $ "moveTab " ++ show n ++ ": no such tab"

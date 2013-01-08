@@ -40,7 +40,7 @@ data Tab = Tab {
  deriving Typeable
 
 tabFocus :: Tab -> Window
-tabFocus = PL.focus . tabWindows
+tabFocus = PL._focus . tabWindows
 
 -- | Returns a list of all mini windows associated with the given tab
 tabMiniWindows :: Tab -> [Window]

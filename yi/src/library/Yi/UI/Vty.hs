@@ -235,8 +235,8 @@ refresh ui e = do
                         <-> 
                         vert_cat (fmap formatCmdLine niceCmd)
                       )
-      ) { pic_cursor = case cursor (PL.focus renders) of
-                        Just (y,x) -> Cursor (toEnum x) (toEnum $ y + PL.focus startXs) 
+      ) { pic_cursor = case cursor (PL._focus renders) of
+                        Just (y,x) -> Cursor (toEnum x) (toEnum $ y + PL._focus startXs)
                         -- Add the position of the window to the position of the cursor
                         Nothing -> NoCursor
                         -- This case can occur if the user resizes the window. 

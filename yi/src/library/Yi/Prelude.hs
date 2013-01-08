@@ -37,6 +37,7 @@ dummyPut,
 dummyGet,
 every,
 findPL,
+focusA,
 fromIntegral,
 fst,
 fst3,
@@ -232,9 +233,14 @@ findPL p xs = go [] xs where
   go ls (f:rs) | p f    = Just (PL.PointedList ls f rs)
                | otherwise = go (f:ls) rs
 
+focusA :: Accessor (PL.PointedList a) a
+focusA = accessor getter setter where
+  getter   (PL.PointedList _ x _) = x
+  setter y (PL.PointedList x _ z) = PL.PointedList x y z
+
 -- | Given a function which moves the focus from index A to index B, return a function which swaps the elements at indexes A and B and then moves the focus. See Yi.Editor.swapWinWithFirstE for an example.
 swapFocus :: (PL.PointedList a -> PL.PointedList a) -> (PL.PointedList a -> PL.PointedList a)
-swapFocus moveFocus xs = PL.focusA ^= (xs ^. PL.focusA) $ moveFocus $ PL.focusA ^= (moveFocus xs ^. PL.focusA) $ xs
+swapFocus moveFocus xs = focusA ^= (xs ^. focusA) $ moveFocus $ focusA ^= (moveFocus xs ^. focusA) $ xs
 ----------------------
 -- Acessor stuff
 
