@@ -1,9 +1,10 @@
 module Yi.UI.TabBar where
 
-import Data.Accessor
 import qualified Data.List.PointedList.Circular as PL
 import System.FilePath
 
+import Prelude (take)
+import Yi.Prelude
 import Yi.Buffer (shortIdentString)
 import Yi.Tab
 import Yi.Window
@@ -22,7 +23,7 @@ type TabBarDescr = PL.PointedList TabDescr
 tabBarDescr :: Editor -> TabBarDescr
 tabBarDescr editor = 
     let prefix = commonNamePrefix editor
-        hintForTab tab = tabAbbrevTitle $ shortIdentString prefix $ findBufferWith (bufkey $ PL._focus (tab ^. tabWindowsA)) editor
+        hintForTab tab = tabAbbrevTitle $ shortIdentString prefix $ findBufferWith (bufkey $ tab^.tabWindowsA.PL.focus) editor
         tabDescr (tab,True) = TabDescr (hintForTab tab) True
         tabDescr (tab,False) = TabDescr (hintForTab tab) False
     in fmap tabDescr (PL.withFocus $ editor ^. tabsA)

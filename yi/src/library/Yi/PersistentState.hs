@@ -14,7 +14,6 @@ where
 import Prelude hiding ((.))
 import Data.Binary
 import Data.DeriveTH
-import Data.Accessor.Template(nameDeriveAccessors)
 import System.Directory(doesFileExist)
 import qualified Data.Map as M
 
@@ -22,6 +21,7 @@ import Control.Exc(ignoringException)
 
 import Yi.Prelude
 import Yi.Dynamic
+import Yi.Config(Config)
 import Yi.Config.Simple.Types(customVariable, Field)
 import Yi.History
 import Yi.Editor
@@ -49,10 +49,10 @@ instance Initializable MaxHistoryEntries where
 
 instance YiConfigVariable MaxHistoryEntries
 
-$(nameDeriveAccessors ''MaxHistoryEntries (\n -> Just (n ++ "A")))
+makeLensesWithSuffix "A" ''MaxHistoryEntries
 
 maxHistoryEntries :: Field Int
-maxHistoryEntries = unMaxHistoryEntriesA . customVariable
+maxHistoryEntries = (customVariable :: Field MaxHistoryEntries).unMaxHistoryEntriesA
 
 -- | Trims per-command histories to contain at most N completions each.
 trimHistories :: Int -> Histories -> Histories

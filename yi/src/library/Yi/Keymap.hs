@@ -16,13 +16,12 @@ import Yi.Config
 import Yi.Editor (EditorM, Editor, runEditor, MonadEditor(..))
 import Yi.Event
 import Yi.Monad
-import Yi.Prelude (io)
+import Yi.Prelude (io, makeLensesWithSuffix)
 import Yi.Process (SubprocessInfo, SubprocessId)
 import Yi.UI.Common
 import qualified Data.Map as M
 import qualified Yi.Editor as Editor
 import qualified Yi.Interact as I
-import Data.Accessor.Template
 
 data Action = forall a. Show a => YiA (YiM a)
             | forall a. Show a => EditorA (EditorM a)
@@ -169,7 +168,7 @@ data KeymapSet = KeymapSet
     , startTopKeymap :: Keymap    -- ^ Startup bit, to execute only once at the beginning.
     }
 
-$(nameDeriveAccessors ''KeymapSet $ Just.(++ "A"))
+makeLensesWithSuffix "A" ''KeymapSet
 
 extractTopKeymap :: KeymapSet -> Keymap
 extractTopKeymap kms = do

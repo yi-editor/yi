@@ -1,7 +1,9 @@
-{-# LANGUAGE MultiParamTypeClasses, FunctionalDependencies #-}
+{-# LANGUAGE MultiParamTypeClasses, FunctionalDependencies, Rank2Types #-}
 
 module Yi.Prelude 
     (
+id,
+(.),
 (<>),
 (++), -- consider scrapping this and replacing it by the above
 (=<<),
@@ -37,7 +39,6 @@ dummyPut,
 dummyGet,
 every,
 findPL,
-focusA,
 fromIntegral,
 fst,
 fst3,
@@ -52,9 +53,34 @@ mapAdjust',
 mapAlter',
 mapFromFoldable,
 module Control.Applicative,
-module Control.Category,
-module Data.Accessor, 
-module Data.Accessor.Monad.MTL.State, putA, getA, modA, 
+
+Lens',
+ALens',
+Getting,
+Setting,
+(^.),
+view,
+set,
+use,
+to,
+(.=),
+(%=),
+(%~),
+mapped,
+makeLensesWithSuffix,
+makeLenses,
+
+-- deprecated
+(^:),
+(^=),
+getVal,
+setVal,
+putA, getA, modA,
+Accessor,
+accessor,
+fromSetGet,
+mapDefault,
+
 module Data.Bool,
 module Data.Foldable,
 module Data.Function,
@@ -95,7 +121,7 @@ import qualified Data.HashMap.Strict as HashMap
 import Data.Hashable(Hashable)
 import Data.Int
 import Data.Rope (Rope)
-import Control.Category
+import Control.Lens hiding (Accessor, focus, (^=))
 import Control.Monad.Reader
 import Control.Applicative hiding((<$))
 import Data.Traversable 
@@ -104,12 +130,19 @@ import Data.Monoid (Monoid, mappend)
 import qualified Data.Set as Set
 import qualified Data.Map as Map
 import qualified Control.Monad.State.Class as CMSC
-import qualified Data.Accessor.Basic as Accessor
-import Data.Accessor ((<.), accessor, getVal, setVal, Accessor,(^.),(^:),(^=))
-import qualified Data.Accessor.Monad.MTL.State as Accessor.MTL
-import Data.Accessor.Monad.MTL.State ((%:), (%=))
-import qualified Data.List.PointedList as PL
-    
+import Data.List.PointedList (PointedList(PointedList), focus)
+
+type Accessor s a = Lens' s a
+{-# DEPRECATED Accessor "use 'Lens'' instead" #-}
+
+accessor :: (s -> a) -> (b -> s -> t) -> IndexPreservingLens s t a b
+accessor getter setter = lens getter (flip setter)
+{-# DEPRECATED accessor "use 'lens' or something even better" #-}
+
+fromSetGet :: (b -> s -> t) -> (s -> a) -> IndexPreservingLens s t a b
+fromSetGet setter getter = lens getter (flip setter)
+{-# DEPRECATED fromSetGet "use 'lens' or something even better" #-}
+
 type Endom a = a -> a
 
 
@@ -200,8 +233,8 @@ chain q (e1 : es@(e2 : _))
 
 -- | Lift an accessor to a traversable structure. (This can be seen as a
 -- generalization of fmap)
-every :: Traversable t => Accessor whole part -> Accessor (t whole) (t part)
-every a = accessor (fmap (getVal a)) (\parts wholes -> zipWithT (setVal a) parts wholes)
+every :: Traversable t => Lens' whole part -> Lens' (t whole) (t part)
+every a = lens (fmap (view a)) (flip (zipWithT (set a)))
 
 -- | zipWith, generalized to Traversable structures.
 zipWithT :: Traversable t => (a -> b -> c) -> t a -> t b -> t c
@@ -227,35 +260,57 @@ commonPrefix strings
 
 ---------------------- PointedList stuff
 -- | Finds the first element satisfying the predicate, and returns a zipper pointing at it.
-findPL :: (a -> Bool) -> [a] -> Maybe (PL.PointedList a)
+findPL :: (a -> Bool) -> [a] -> Maybe (PointedList a)
 findPL p xs = go [] xs where
   go _  [] = Nothing
-  go ls (f:rs) | p f    = Just (PL.PointedList ls f rs)
+  go ls (f:rs) | p f    = Just (PointedList ls f rs)
                | otherwise = go (f:ls) rs
 
-focusA :: Accessor (PL.PointedList a) a
-focusA = accessor getter setter where
-  getter   (PL.PointedList _ x _) = x
-  setter y (PL.PointedList x _ z) = PL.PointedList x y z
-
 -- | Given a function which moves the focus from index A to index B, return a function which swaps the elements at indexes A and B and then moves the focus. See Yi.Editor.swapWinWithFirstE for an example.
-swapFocus :: (PL.PointedList a -> PL.PointedList a) -> (PL.PointedList a -> PL.PointedList a)
-swapFocus moveFocus xs = focusA ^= (xs ^. focusA)
-                       $ moveFocus
-                       $ focusA ^= (moveFocus xs ^. focusA)
-                       $ xs
+swapFocus :: (PointedList a -> PointedList a) -> (PointedList a -> PointedList a)
+swapFocus moveFocus xs = xs & focus .~ (moveFocus xs^.focus)
+                            & moveFocus
+                            & focus .~ xs^.focus
 
 ----------------------
 -- Acessor stuff
 
-putA :: CMSC.MonadState r m => Accessor.T r a -> a -> m ()
-putA = Accessor.MTL.set
+makeLensesWithSuffix s =
+  makeLensesWith (defaultRules & lensField .~ Just . (++s))
 
-getA :: CMSC.MonadState r m => Accessor.T r a -> m a
-getA = Accessor.MTL.get
+putA :: CMSC.MonadState s m => ASetter s s a b -> b -> m ()
+putA = (.=)
+{-# DEPRECATED putA "use '.=' instead" #-}
 
-modA :: CMSC.MonadState r m => Accessor.T r a -> (a -> a) -> m ()
-modA = Accessor.MTL.modify
+getA :: CMSC.MonadState s m => Getting a s t a b -> m a
+getA = use
+{-# DEPRECATED getA "use 'use' instead" #-}
+
+modA :: CMSC.MonadState s m => ASetter s s a b -> (a -> b) -> m ()
+modA = (%=)
+{-# DEPRECATED modA "use '%=' instead" #-}
+
+getVal :: MonadReader s m => Getting a s t a b -> m a
+getVal = view
+{-# DEPRECATED getVal "use 'view' or '^.' instead" #-}
+
+infixr 5 ^=, ^:
+
+(^:) :: ASetter s t a b -> (a -> b) -> s -> t
+(^:) = (%~)
+{-# DEPRECATED (^:) "use '%~' instead" #-}
+
+(^=) :: ASetter s t a b -> b -> s -> t
+(^=) = (.~)
+{-# DEPRECATED (^=) "use '.~' or 'set' instead" #-}
+
+setVal :: ASetter s t a b -> b -> s -> t
+setVal = (.~)
+{-# DEPRECATED setVal "use '.~' or 'set' instead" #-}
+
+mapDefault :: Ord key => elem -> key -> Accessor (Map.Map key elem) elem
+mapDefault deflt key =
+  fromSetGet (Map.insert key) (Map.findWithDefault deflt key)
 
 -------------------- Initializable typeclass
 -- | The default value. If a function tries to get a copy of the state, but the state

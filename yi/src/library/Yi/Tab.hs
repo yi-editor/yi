@@ -1,4 +1,4 @@
-{-# LANGUAGE DeriveDataTypeable #-}
+{-# LANGUAGE DeriveDataTypeable, Rank2Types #-}
 
 module Yi.Tab
  (
@@ -21,7 +21,6 @@ module Yi.Tab
 import qualified Prelude
 import Yi.Prelude
 import qualified Data.Binary as Binary
-import Data.Accessor.Basic
 import qualified Data.List.PointedList as PL
 
 import Yi.Buffer.Basic(WindowRef)
@@ -62,7 +61,7 @@ tabLayoutManagerA = fromSetGet setter getter
 
 -- | Gets / sets the position of the divider with the given reference. The caller must ensure that the DividerRef is valid, otherwise an error will (might!) occur.
 tabDividerPositionA :: DividerRef -> Accessor Tab DividerPosition
-tabDividerPositionA ref = dividerPositionA ref . fromSetGet (\l t -> t { tabLayout = l}) tabLayout
+tabDividerPositionA ref = fromSetGet (\l t -> t { tabLayout = l}) tabLayout . dividerPositionA ref
 
 relayoutIf :: Bool -> Tab -> Tab
 relayoutIf False t = t
@@ -85,7 +84,7 @@ instance Show Tab where
 
 -- | A specialised version of "fmap".
 mapWindows :: (Window -> Window) -> Tab -> Tab
-mapWindows f = modify tabWindowsA (fmap f)
+mapWindows f = tabWindowsA %~ fmap f
 
 -- | Forces all windows in the tab
 forceTab :: Tab -> Tab

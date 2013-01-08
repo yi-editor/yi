@@ -50,7 +50,6 @@ import Data.List (nub, take, words, dropWhile, takeWhile, intersperse, reverse, 
 import Data.Maybe (fromMaybe, isJust)
 import Data.Either (either)
 import Data.Prototype
-import Data.Accessor.Template
 import Numeric (showHex, showOct)
 import Shim.Utils (splitBy, uncurry3)
 import System.IO (readFile)
@@ -163,8 +162,8 @@ instance Data.Binary.Binary MViInsertion where
     get = dummyGet
 instance YiVariable MViInsertion
 
-$(nameDeriveAccessors ''ViInsertion $ Just.(++ "A"))
-$(nameDeriveAccessors ''MViInsertion $ Just.(++ "_A"))
+makeLensesWithSuffix "A" ''ViInsertion
+makeLensesWithSuffix "_A" ''MViInsertion
 
 data VimOpts = VimOpts { tildeop :: Bool
                        , completeCaseSensitive :: Bool
@@ -180,7 +179,7 @@ type VimExCmdMap = [VimExCmd] -- very simple implementation yet
 
 data SearchVariety = Bounded | Unbounded
 
-$(nameDeriveAccessors ''VimOpts $ Just.(++ "A"))
+makeLensesWithSuffix "A" ''VimOpts
 
 -- | The Vim keymap is divided into several parts, roughly corresponding
 -- to the different modes of vi. Each mode is in turn broken up into
@@ -198,13 +197,13 @@ data ModeMap = ModeMap { -- | Top level mode
 
                        }
 
-$(nameDeriveAccessors ''ModeMap $ Just.(++ "A"))
+makeLensesWithSuffix "A" ''ModeMap
 
 lastViCommandA :: Accessor Editor ViCmd
 lastViCommandA = dynA
 
 currentViInsertionA :: Accessor FBuffer (Maybe ViInsertion)
-currentViInsertionA = unMVI_A . bufferDynamicValueA
+currentViInsertionA = bufferDynamicValueA . unMVI_A
 
 applyViCmd :: Maybe Int -> ViCmd -> YiM ()
 applyViCmd _  NoOp = return ()

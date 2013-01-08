@@ -9,8 +9,6 @@
 module Yi.Editor where
 
 import Control.Monad.RWS hiding (get, put, mapM, forM_)
-import Data.Accessor.Basic (fromSetGet)
-import Data.Accessor.Template
 import Data.Binary
 import Data.DeriveTH
 import Data.Either (rights)
@@ -33,6 +31,7 @@ import Yi.Window
 import qualified Data.Rope as R
 import qualified Data.DelayList as DelayList
 import qualified Data.List.PointedList as PL (atEnd, moveTo)
+import Data.List.PointedList (focus)
 import qualified Data.List.PointedList.Circular as PL
 import qualified Data.Map as M
 import {-# source #-} Yi.Keymap (extractTopKeymap)
@@ -129,27 +128,26 @@ emptyEditor = Editor {
 runEditor :: Config -> EditorM a -> Editor -> (Editor, a)
 runEditor cfg f e = let (a, e',()) = runRWS (fromEditorM f) cfg e in (e',a)
 
-$(nameDeriveAccessors ''Editor (\n -> Just (n ++ "A")))
-
+makeLensesWithSuffix "A" ''Editor
 
 windows :: Editor -> PL.PointedList Window
 windows e = e ^. windowsA
 
 windowsA :: Accessor Editor (PL.PointedList Window)
-windowsA =  tabWindowsA . currentTabA
+windowsA =  currentTabA.tabWindowsA
 
 tabsA :: Accessor Editor (PL.PointedList Tab)
-tabsA = tabs_A . fixCurrentBufferA_
+tabsA = fixCurrentBufferA_.tabs_A
 
 currentTabA :: Accessor Editor Tab
-currentTabA = focusA . tabsA
+currentTabA = tabsA.focus
 
 askConfigVariableA :: (YiConfigVariable b, MonadEditor m) => m b
 askConfigVariableA = do cfg <- askCfg
                         return $ cfg ^. configVarsA ^. configVariableA
 
 dynA :: YiVariable a => Accessor Editor a
-dynA = dynamicValueA . dynamicA
+dynA = dynamicA.dynamicValueA
 
 -- ---------------------------------------------------------------------
 -- Buffer operations
@@ -318,7 +316,7 @@ withBuffer0 f = do
   withGivenBufferAndWindow0 w (bufkey w) f
 
 currentWindowA :: Accessor Editor Window
-currentWindowA = focusA . windowsA
+currentWindowA = windowsA.focus
 
 -- | Return the current buffer
 currentBuffer :: Editor -> BufferRef
@@ -389,11 +387,11 @@ getRegE = getsA killringA krGet
 
 -- | Retrieve a value from the extensible state
 getDynamic :: YiVariable a => EditorM a
-getDynamic = getA (dynamicValueA . dynamicA)
+getDynamic = getA dynA
 
 -- | Insert a value into the extensible state, keyed by its type
 setDynamic :: YiVariable a => a -> EditorM ()
-setDynamic x = putA (dynamicValueA . dynamicA) x
+setDynamic = putA dynA
 
 -- | Attach the next buffer in the buffer stack to the current window.
 nextBufW :: EditorM ()
@@ -518,7 +516,7 @@ pushWinToFirstE = modA windowsA pushToFirst
   where
       pushToFirst ws = case PL.delete ws of
           Nothing -> ws
-          Just ws' -> PL.insertLeft (ws ^. focusA) (fromJust $ PL.moveTo 0 ws')
+          Just ws' -> PL.insertLeft (ws^.focus) (fromJust $ PL.moveTo 0 ws')
 
 -- | Swap focused window with the next one
 moveWinNextE :: EditorM ()
@@ -581,8 +579,8 @@ focusWindowE k = do
     case foldl searchWindowSet  (False, 0, 0) ts of
         (False, _, _) -> fail $ "No window with key " ++ show wkey ++ "found. (focusWindowE)"
         (True, tabIndex, winIndex) -> do
-            putA tabsA (fromJust $ PL.moveTo tabIndex ts)
-            modA windowsA (\ws -> fromJust $ PL.moveTo winIndex ws)
+            putA tabsA (fromJust $ PL.moveTo tabIndex ts) 
+            modA windowsA (\ws -> fromJust $ PL.moveTo winIndex ws) 
 
 -- | Split the current window, opening a second window onto current buffer.
 -- TODO: unfold newWindowE here?
@@ -600,23 +598,25 @@ layoutManagersNextE = withLMStack PL.next
 layoutManagersPreviousE :: EditorM ()
 layoutManagersPreviousE = withLMStack PL.previous
 
+currentTabLayoutManagerA = currentTabA.tabLayoutManagerA
+
 -- | Helper function for 'layoutManagersNext' and 'layoutManagersPrevious'
 withLMStack :: (PL.PointedList AnyLayoutManager -> PL.PointedList AnyLayoutManager) -> EditorM ()
-withLMStack f = askCfg >>= \cfg -> modA (tabLayoutManagerA . currentTabA) (go (layoutManagers cfg))
+withLMStack f = askCfg >>= \cfg -> modA currentTabLayoutManagerA (go (layoutManagers cfg))
   where
      go [] lm = lm
      go lms lm =
        case findPL (layoutManagerSameType lm) lms of
          Nothing -> head lms
-         Just lmsPL -> f lmsPL ^. focusA
+         Just lmsPL -> f lmsPL ^. focus
 
 -- | Next variant of the current layout manager, as given by 'nextVariant'
 layoutManagerNextVariantE :: EditorM ()
-layoutManagerNextVariantE = modA (tabLayoutManagerA . currentTabA) nextVariant
+layoutManagerNextVariantE = modA currentTabLayoutManagerA nextVariant
 
 -- | Previous variant of the current layout manager, as given by 'previousVariant'
 layoutManagerPreviousVariantE :: EditorM ()
-layoutManagerPreviousVariantE = modA (tabLayoutManagerA . currentTabA) previousVariant
+layoutManagerPreviousVariantE = modA currentTabLayoutManagerA previousVariant
 
 -- | Enlarge the current window
 enlargeWinE :: EditorM ()
@@ -628,7 +628,7 @@ shrinkWinE = error "shrinkWinE: not implemented"
 
 -- | Sets the given divider position on the current tab
 setDividerPosE :: DividerRef -> DividerPosition -> EditorM ()
-setDividerPosE ref pos = putA (tabDividerPositionA ref . currentTabA) pos
+setDividerPosE ref = putA (currentTabA.tabDividerPositionA ref)
 
 -- | Creates a new tab containing a window that views the current buffer.
 newTabE :: EditorM ()

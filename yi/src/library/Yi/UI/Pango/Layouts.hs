@@ -33,7 +33,7 @@ import qualified Data.List.PointedList as PL
 import Data.Maybe
 import qualified Prelude
 import Prelude(length, zipWith)
-import Yi.Prelude
+import Yi.Prelude hiding (set)
 import Yi.Layout(Orientation(..), RelativeSize, DividerPosition, Layout(..), DividerRef)
 import System.Glib.Types
 import Graphics.UI.Gtk as Gtk hiding(Orientation, Layout)

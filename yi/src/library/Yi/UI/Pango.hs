@@ -27,7 +27,7 @@ import qualified Graphics.UI.Gtk as Gtk
 import qualified Graphics.UI.Gtk.Gdk.GC as Gtk
 import System.Glib.GError
 
-import Yi.Prelude hiding (on)
+import Yi.Prelude hiding (on, set)
 
 import Yi.Buffer
 import Yi.Config

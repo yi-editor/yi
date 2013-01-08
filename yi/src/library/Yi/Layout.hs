@@ -1,4 +1,4 @@
-{-# LANGUAGE DeriveDataTypeable, ExistentialQuantification, DeriveFunctor, TupleSections, ViewPatterns #-}
+{-# LANGUAGE DeriveDataTypeable, ExistentialQuantification, DeriveFunctor, TupleSections, ViewPatterns, Rank2Types #-}
 {-# OPTIONS_GHC -funbox-strict-fields #-} -- we might as well unbox our Ints.
 
 -- | This module defines the layout manager interface (see 'LayoutManager'). To desgin a new layout manager, just make an instance of this class.
@@ -43,7 +43,6 @@ module Yi.Layout
  where
 
 import Prelude()
-import Data.Accessor.Basic
 import Yi.Prelude
 import Data.Typeable
 import Data.Maybe

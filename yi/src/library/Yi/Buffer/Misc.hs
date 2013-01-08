@@ -154,7 +154,6 @@ import Yi.Buffer.Undo
 import Yi.Dynamic
 import Yi.Window
 import Control.Monad.RWS.Strict hiding (mapM_, mapM, get, put, forM)
-import Data.Accessor.Template
 import Data.Binary
 import Data.DeriveTH
 import qualified Data.Rope as R
@@ -210,6 +209,8 @@ data SelectionStyle = SelectionStyle
   }
   deriving Typeable
 
+makeLensesWithSuffix "AA" ''SelectionStyle
+
 type BufferId = Either String FilePath
 -- ^ maybe a filename associated with this buffer. Filename is canonicalized.
 
@@ -235,7 +236,7 @@ data Attributes = Attributes
                 , pointFollowsWindow :: !(WindowRef -> Bool)
                 } deriving Typeable
 
-$(nameDeriveAccessors ''Attributes (\n -> Just (n ++ "AA")))
+makeLensesWithSuffix "AA" ''Attributes
 
 instance Binary Attributes where
     put (Attributes n b u bd pc pu selectionStyle_ _proc wm law lst ro ins _pfw) = do
@@ -273,10 +274,7 @@ miniIdentString b = case b ^. identA of
     Left bufName -> bufName
 
 identA :: Accessor FBuffer BufferId
-identA = identAA . attrsA
-
-
-
+identA = attrsA . identAA
 
 -- unfortunately the dynamic stuff can't be read.
 instance Binary FBuffer where
@@ -311,35 +309,34 @@ queryAndModifyRawbuf f (FBuffer f1 f5 f3) =
     in (FBuffer f1 f5' f3, x)
 
 attrsA :: Accessor FBuffer Attributes
-attrsA = accessor attributes (\a e -> case e of FBuffer f1 f2 _ -> FBuffer f1 f2 a)
+attrsA f (FBuffer f1 f2 a) = (\a' -> FBuffer f1 f2 a) <$> f a
 
 -- | Use in readonly!
 lastActiveWindowA :: Accessor FBuffer Window
-lastActiveWindowA = lastActiveWindowAA . attrsA
+lastActiveWindowA = attrsA.lastActiveWindowAA
 
 lastSyncTimeA :: Accessor FBuffer UTCTime
-lastSyncTimeA = lastSyncTimeAA . attrsA
+lastSyncTimeA = attrsA.lastSyncTimeAA
 
 undosA :: Accessor FBuffer URList
-undosA = undosAA . attrsA
+undosA = attrsA.undosAA
 
 readOnlyA :: Accessor FBuffer Bool
-readOnlyA = readOnlyAA . attrsA
+readOnlyA = attrsA.readOnlyAA
 
 insertingA :: Accessor FBuffer Bool
-insertingA = insertingAA . attrsA
+insertingA = attrsA.insertingAA
 
 pointFollowsWindowA :: Accessor FBuffer (WindowRef -> Bool)
-pointFollowsWindowA = pointFollowsWindowAA . attrsA
-
+pointFollowsWindowA = attrsA.pointFollowsWindowAA
 
 file :: FBuffer -> (Maybe FilePath)
-file b = case b ^. identA of
+file b = case b^.identA of
     Right f -> Just f
     _ -> Nothing
 
 preferColA :: Accessor FBuffer (Maybe Int)
-preferColA = preferColAA . attrsA
+preferColA = attrsA.preferColAA
 
 setPrefCol :: Maybe Int -> BufferM ()
 setPrefCol = putA preferColA
@@ -348,29 +345,25 @@ getPrefCol :: BufferM (Maybe Int)
 getPrefCol = getA preferColA
 
 bufferDynamicA :: Accessor FBuffer DynamicValues
-bufferDynamicA = bufferDynamicAA . attrsA
+bufferDynamicA = attrsA.bufferDynamicAA
 
 pendingUpdatesA :: Accessor FBuffer [UIUpdate]
-pendingUpdatesA = pendingUpdatesAA . attrsA
+pendingUpdatesA = attrsA.pendingUpdatesAA
 
 selectionStyleA :: Accessor FBuffer SelectionStyle
-selectionStyleA = selectionStyleAA . attrsA
+selectionStyleA = attrsA.selectionStyleAA
 
 highlightSelectionA :: Accessor FBuffer Bool
-highlightSelectionA = 
-  accessor highlightSelection (\x e -> e { highlightSelection = x })
-  . selectionStyleA
+highlightSelectionA = selectionStyleA.highlightSelectionAA
 
 rectangleSelectionA :: Accessor FBuffer Bool
-rectangleSelectionA = 
-  accessor rectangleSelection (\x e -> e { rectangleSelection = x })
-  . selectionStyleA
+rectangleSelectionA = selectionStyleA.rectangleSelectionAA
 
 keymapProcessA :: Accessor FBuffer KeymapProcess
-keymapProcessA = processAA . attrsA
+keymapProcessA = attrsA.processAA
 
 winMarksA :: Accessor FBuffer (M.Map WindowRef WinMarks)
-winMarksA = winMarksAA . attrsA
+winMarksA = attrsA.winMarksAA
 
 {- | Currently duplicates some of Vim's indent settings. Allowing a buffer to
  - specify settings that are more dynamic, perhaps via closures, could be
@@ -580,10 +573,10 @@ markSavedB t = do modA undosA setSavedFilePointU
                   putA lastSyncTimeA t
 
 bkey :: FBuffer -> BufferRef
-bkey = getVal (bkey__AA . attrsA)
+bkey = view $ attrsA.bkey__AA
 
 isUnchangedBuffer :: FBuffer -> Bool
-isUnchangedBuffer = isAtSavedFilePointU . getVal undosA
+isUnchangedBuffer = isAtSavedFilePointU . view undosA
 
 
 undoRedo :: (forall syntax. Mark -> URList -> BufferImpl syntax -> (BufferImpl syntax, (URList, [Update])) ) -> BufferM ()
@@ -1026,7 +1019,7 @@ gotoLnFrom x = do
 -- > putA bufferDynamicValueA updatedvalue
 -- > value <- getA bufferDynamicValueA
 bufferDynamicValueA :: YiVariable a => Accessor FBuffer a
-bufferDynamicValueA = dynamicValueA . bufferDynamicA
+bufferDynamicValueA = bufferDynamicA.dynamicValueA
 
 -- | perform a @BufferM a@, and return to the current point. (by using a mark)
 savingExcursionB :: BufferM a -> BufferM a
@@ -1056,4 +1049,4 @@ pointAt f = savingPointB (f *> pointB)
 askWindow :: (Window -> a) -> BufferM a
 askWindow = asks
 
-$(nameDeriveAccessors ''Mode (\n -> Just (n ++ "A")))
+makeLensesWithSuffix "A" ''Mode

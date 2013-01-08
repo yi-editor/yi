@@ -17,7 +17,6 @@ module Yi.Eval (
         consoleKeymap,
 ) where
 
-import Data.Accessor.Template
 import Data.Array
 import Data.List
 import Data.Monoid
@@ -128,13 +127,13 @@ ghciEvaluator = Evaluator{..} where
 ------------------- PublishedActions evaluator
 newtype PublishedActions = PublishedActions { publishedActions_ :: M.HashMap String Action }
   deriving(Typeable, Monoid)
-$(nameDeriveAccessors ''PublishedActions (\n -> (Just $ n ++ "A")))
+makeLensesWithSuffix "A" ''PublishedActions
 instance Initializable PublishedActions where initial = mempty
 instance YiConfigVariable PublishedActions
 
 -- | Accessor for the published actions. Consider using 'publishAction'.
 publishedActions :: Field (M.HashMap String Action)
-publishedActions = publishedActions_A . customVariable
+publishedActions = customVariable . publishedActions_A
 
 -- | Publish the given action, by the given name. This will overwrite any existing actions by the same name.
 publishAction :: (YiAction a x, Show x) => String -> a -> ConfigM ()

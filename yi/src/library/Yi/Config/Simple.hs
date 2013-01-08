@@ -153,15 +153,15 @@ configMain c m = yi =<< execStateT (runConfigM m) c
 -- type Field a (imported
 
 -- | Set a field.
-(%=) :: Field a -> a -> ConfigM ()
+(%=) :: FieldSetter a -> a -> ConfigM ()
 (%=) = putA
 
 -- | Get a field.
-get :: Field a -> ConfigM a
+get :: FieldGetter a -> ConfigM a
 get = getA
 
 -- | Modify a field.
-modify :: Field a -> (a -> a) -> ConfigM ()
+modify :: FieldSetter a -> (a -> a) -> ConfigM ()
 modify = modA
 
 
@@ -182,7 +182,7 @@ setFrontend f = maybe (return ()) (startFrontEndA %=) (lookup f availableFronten
 ------------------------- Modes, commands, and keybindings
 -- | Adds the given key bindings to the `global keymap'. The bindings will override existing bindings in the case of a clash.
 globalBindKeys :: Keymap -> ConfigM ()
-globalBindKeys a = modify (topKeymapA . defaultKmA) (||> a)
+globalBindKeys a = modify (defaultKmA.topKeymapA) (||> a)
 
 -- | @modeBindKeys mode keys@ adds the keybindings in @keys@ to all modes with the same name as @mode@.
 --
@@ -239,52 +239,52 @@ ensureModeRegistered caller name m = do
 --------------------- Appearance
 -- | 'Just' the font name, or 'Nothing' for default.
 fontName :: Field (Maybe String)
-fontName = configFontNameA . configUIA
+fontName = configUIA.configFontNameA
 
 -- | 'Just' the font size, or 'Nothing' for default.
 fontSize :: Field (Maybe Int)
-fontSize = configFontSizeA . configUIA
+fontSize = configUIA.configFontSizeA
 
 -- | Amount to move the buffer when using the scroll wheel.
 scrollWheelAmount :: Field Int
-scrollWheelAmount = configScrollWheelAmountA . configUIA
+scrollWheelAmount = configUIA.configScrollWheelAmountA
 
 -- | 'Just' the scroll style, or 'Nothing' for default.
 scrollStyle :: Field (Maybe ScrollStyle)
-scrollStyle = configScrollStyleA . configUIA
+scrollStyle = configUIA.configScrollStyleA
 
 -- | See 'CursorStyle' for documentation.
 cursorStyle :: Field CursorStyle
-cursorStyle = configCursorStyleA . configUIA
+cursorStyle = configUIA.configCursorStyleA
 
 data Side = LeftSide | RightSide
 
 -- | Which side to display the scroll bar on.
 scrollBarSide :: Field Side
-scrollBarSide = fromBool . configLeftSideScrollBarA . configUIA 
+scrollBarSide = configUIA.configLeftSideScrollBarA.fromBool
   where
       fromBool :: Accessor Bool Side
       fromBool = accessor (\b -> if b then LeftSide else RightSide) (\s _ -> case s of { LeftSide -> True; RightSide -> False }) 
 
 -- | Should the scroll bar autohide?
 autoHideScrollBar :: Field Bool
-autoHideScrollBar = configAutoHideScrollBarA . configUIA
+autoHideScrollBar = configUIA.configAutoHideScrollBarA
 
 -- | Should the tab bar autohide?
 autoHideTabBar :: Field Bool
-autoHideTabBar = configAutoHideTabBarA . configUIA
+autoHideTabBar = configUIA.configAutoHideTabBarA
 
 -- | Should lines be wrapped?
 lineWrap :: Field Bool
-lineWrap = configLineWrapA . configUIA
+lineWrap = configUIA.configLineWrapA
 
 -- | The character with which to fill empty window space. Usually \'~\' for vi-like editors, \' \' for everything else.
 windowFill :: Field Char
-windowFill = configWindowFillA . configUIA
+windowFill = configUIA.configWindowFillA
 
 -- | UI colour theme.
 theme :: Field Theme
-theme = configThemeA . configUIA
+theme = configUIA.configThemeA
 
 ---------- Layout
 -- | List of registered layout managers. When cycling through layouts, this list will be consulted.
