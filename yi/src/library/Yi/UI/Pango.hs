@@ -1,4 +1,4 @@
-{-# LANGUAGE CPP, ExistentialQuantification, DoRec, TupleSections, NamedFieldPuns, ViewPatterns #-}
+{-# LANGUAGE CPP, ExistentialQuantification, DoRec, TupleSections, NamedFieldPuns, ViewPatterns, ScopedTypeVariables #-}
 {-# OPTIONS_GHC -funbox-strict-fields #-}
 
 -- Copyright (c) 2007, 2008 Jean-Philippe Bernardy
@@ -7,8 +7,9 @@
 -- pango for direct text rendering.
 module Yi.UI.Pango (start) where
 
-import Prelude (catch, filter)
+import Prelude (filter)
 
+import Control.Exception (catch, SomeException)
 import Control.Concurrent
 import Data.Prototype
 import Data.IORef
@@ -276,7 +277,8 @@ setWindowFocus e ui t w = do
   update (modeline w) labelText ml
   writeIORef (fullTitle t) bufferName
   writeIORef (abbrevTitle t) (tabAbbrevTitle bufferName)
-  drawW <- catch (fmap Just $ widgetGetDrawWindow $ textview w) (const (return Nothing))
+  drawW <- catch (fmap Just $ widgetGetDrawWindow $ textview w)
+                 (\(_ :: SomeException) -> return Nothing)
   imContextSetClientWindow im drawW
   imContextFocusIn im
 
