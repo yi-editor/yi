@@ -34,7 +34,7 @@ library
     base >=4.0 && <5,
     containers,
     data-accessor >= 0.2.1.4 && < 0.3,
-    directory < 1.2,
+    directory < 1.3,
     filepath < 1.4,
     split ==0.1.*,
     mtl >= 0.1.0.1,
