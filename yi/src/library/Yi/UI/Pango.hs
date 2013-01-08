@@ -13,6 +13,7 @@ import Control.Concurrent
 import Data.Prototype
 import Data.IORef
 import Data.List (drop, intercalate, zip)
+import qualified Data.List.PointedList as PL (moveTo)
 import qualified Data.List.PointedList.Circular as PL
 import Data.Maybe
 import qualified Data.Map as M
@@ -198,7 +199,7 @@ startNoMsg cfg ch outCh ed = do
   let ui = UI win tabs status tc actionCh (configUI cfg) fontRef im
 
   -- Keep the current tab focus up to date
-  let move n pl = maybe pl id (PL.move n pl)
+  let move n pl = maybe pl id (PL.moveTo n pl)
       runAction = uiActionCh ui . makeAction
   -- why does this cause a hang without postGUIAsync?
   simpleNotebookOnSwitchPage (uiNotebook ui) $ \n -> postGUIAsync $
