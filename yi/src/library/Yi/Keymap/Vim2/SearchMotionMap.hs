@@ -22,7 +22,7 @@ enterBinding = VimBindingE prereq action
     where prereq "<CR>" (VimState { vsMode = Search {}} ) = WholeMatch ()
           prereq _ _ = NoMatch
           action _ = do
-              Search cmd prevMode dir <- fmap vsMode getDynamic
+              Search _cmd prevMode dir <- fmap vsMode getDynamic
               -- TODO: parse cmd into regex and flags
               count <- getCountE
               isearchFinishE
@@ -60,7 +60,7 @@ escBinding = VimBindingE prereq action
     where prereq "<Esc>" (VimState { vsMode = Search {}} ) = WholeMatch ()
           prereq _ _ = NoMatch
           action _ = do
-              Search cmd prevMode dir <- fmap vsMode getDynamic
+              Search _cmd prevMode _dir <- fmap vsMode getDynamic
               isearchCancelE
               switchModeE prevMode
               return Drop
