@@ -7,10 +7,12 @@ import Yi.Prelude
 
 import Control.Monad (replicateM_)
 
+import Yi.Buffer
 import Yi.Editor
 import Yi.Keymap.Vim2.Common
 import Yi.Keymap.Vim2.Search
 import Yi.Keymap.Vim2.StateUtils
+import Yi.Search
 
 defSearchMotionMap :: [VimBinding]
 defSearchMotionMap = [enterBinding, escBinding, otherBinding]
@@ -23,8 +25,17 @@ enterBinding = VimBindingE prereq action
               Search cmd prevMode dir <- fmap vsMode getDynamic
               -- TODO: parse cmd into regex and flags
               count <- getCountE
-              replicateM_ count $ doVimSearch (Just cmd) [] dir
+              isearchFinishE
               switchModeE prevMode
+
+              Just regex <- getRegexE
+              withBuffer0 $ if count == 1 && dir == Forward
+                            then do
+                                -- Workaround for isearchFinishE leaving cursor after match
+                                continueVimSearch (regex, Backward)
+                                continueVimSearch (regex, Forward)
+                            else replicateM_ (count - 1) $ continueVimSearch (regex, dir)
+
               case prevMode of
                   Visual _ -> return Continue
                   _ -> return Finish
@@ -36,9 +47,11 @@ otherBinding = VimBindingE prereq action
           action evs = do
               Search cmd pm dir <- fmap vsMode getDynamic
               case evs of
+                "<BS>" -> isearchDelE
+                "<C-h>" -> isearchDelE
                 [c] -> do
                     switchModeE $ Search (cmd ++ [c]) pm dir
-                    return ()
+                    isearchAddE evs
                 _ -> return ()
               return Continue
 
@@ -48,5 +61,6 @@ escBinding = VimBindingE prereq action
           prereq _ _ = NoMatch
           action _ = do
               Search cmd prevMode dir <- fmap vsMode getDynamic
+              isearchCancelE
               switchModeE prevMode
               return Drop

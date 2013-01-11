@@ -27,7 +27,7 @@ import Yi.Keymap.Vim2.StateUtils
 import Yi.Keymap.Vim2.StyledRegion
 import Yi.Keymap.Vim2.Utils
 import Yi.Regex (seInput)
-import Yi.Search (getRegexE)
+import Yi.Search (getRegexE, isearchInitE)
 
 mkDigitBinding :: Char -> VimBinding
 mkDigitBinding c = mkBindingE Normal Continue (char c, return (), mutate)
@@ -255,6 +255,7 @@ searchBinding = VimBindingE prereq action
               state <- fmap vsMode getDynamic
               let dir = if evs == "/" then Forward else Backward
               switchModeE $ Search "" state dir
+              isearchInitE dir
               return Continue
 
 continueSearching :: (Direction -> Direction) -> EditorM ()
