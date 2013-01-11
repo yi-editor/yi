@@ -175,5 +175,5 @@ backupE = error "backupE not implemented"
 setFileName :: BufferRef -> FilePath -> YiM ()
 setFileName b filename = do
   cfn <- liftIO $ userToCanonPath filename
-  withGivenBuffer b $ putA identA $ Right cfn
+  withGivenBuffer b $ identA .= Right cfn
 

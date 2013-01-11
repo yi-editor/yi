@@ -8,7 +8,7 @@ module Yi.Config.Simple (
   ConfigM,
   configMain,
   Field,
-  (%=),
+  (.=),
   get,
   modify,
   -- * Frontend
@@ -81,7 +81,7 @@ module Yi.Config.Simple (
 
 import Yi.Boot
 --import Yi.Buffer.Misc hiding(modifyMode)
-import Yi.Core hiding(modifyMode, (%=))
+import Yi.Core hiding(modifyMode)
 import Yi.Config.Default
 import Yi.Config.Misc
 import Yi.Config.Simple.Types
@@ -129,16 +129,16 @@ import qualified Yi.Mode.Haskell as Haskell
 
 main = 'configMain' 'defaultEmacsConfig' $ do
   'setFrontendPreferences' ["pango", "vte", "vty"]
-  'fontSize' '%=' 'Just' 10
+  'fontSize' '.=' 'Just' 10
   'modeBindKeys' Haskell.cleverMode ('metaCh' \'q\' '?>>!' 'reload')
   'globalBindKeys' ('metaCh' \'r\' '?>>!' 'reload')@
 
-A lot of the fields here are specified with the 'Field' type. To write a field, use ('%='). To read, use 'get'. For modification, use ('modify'). For example, the functions @foo@ and @bar@ are equivalent:
+A lot of the fields here are specified with the 'Field' type. To write a field, use ('.='). To read, use 'get'. For modification, use ('modify'). For example, the functions @foo@ and @bar@ are equivalent:
 
 @foo = 'modify' 'layoutManagers' 'reverse'
 bar = do
  lms <- 'get' 'layoutManagers'
- 'layoutManagers' '%=' 'reverse' lms@
+ 'layoutManagers' '.=' 'reverse' lms@
 -}
 
 
@@ -152,17 +152,13 @@ configMain c m = yi =<< execStateT (runConfigM m) c
 
 -- type Field a (imported
 
--- | Set a field.
-(%=) :: FieldSetter a -> a -> ConfigM ()
-(%=) = putA
-
 -- | Get a field.
 get :: FieldGetter a -> ConfigM a
-get = getA
+get = use
 
 -- | Modify a field.
 modify :: FieldSetter a -> (a -> a) -> ConfigM ()
-modify = modA
+modify = (%=)
 
 
 ---------------------------------- Frontend
@@ -172,12 +168,12 @@ modify = modA
 setFrontendPreferences :: [String] -> ConfigM ()
 setFrontendPreferences fs = 
    case mapMaybe (\f -> lookup f availableFrontends) fs of
-       (f:_) -> startFrontEndA %= f
+       (f:_) -> startFrontEndA .= f
        [] -> return ()
 
 -- | Sets the frontend, if it is available.
 setFrontend :: String -> ConfigM ()
-setFrontend f = maybe (return ()) (startFrontEndA %=) (lookup f availableFrontends)
+setFrontend f = maybe (return ()) (startFrontEndA .=) (lookup f availableFrontends)
 
 ------------------------- Modes, commands, and keybindings
 -- | Adds the given key bindings to the `global keymap'. The bindings will override existing bindings in the case of a clash.
@@ -193,11 +189,11 @@ modeBindKeys mode keys = ensureModeRegistered "modeBindKeys" (modeName mode) $ m
 
 -- | @modeBindKeysByName name keys@ adds the keybindings in @keys@ to all modes with name @name@ (if it is registered). Consider using 'modeBindKeys' instead.
 modeBindKeysByName :: String -> Keymap -> ConfigM ()
-modeBindKeysByName name k = ensureModeRegistered "modeBindKeysByName" name $ modifyModeByName name (modeKeymapA ^: f) 
+modeBindKeysByName name k = ensureModeRegistered "modeBindKeysByName" name $ modifyModeByName name (modeKeymapA %~ f) 
  where
   f :: (KeymapSet -> KeymapSet) -> (KeymapSet -> KeymapSet)
-  f mkm km = topKeymapA ^: (||> k) $ mkm km
--- (modeKeymapA ^: ((topKeymap ^: (||> k)) .))
+  f mkm km = topKeymapA %~ (||> k) $ mkm km
+-- (modeKeymapA %~ ((topKeymap %~ (||> k)) .))
 
 -- | Register the given mode. It will be preferred over any modes already defined.
 addMode :: Mode syntax -> ConfigM ()
@@ -259,12 +255,13 @@ cursorStyle = configUIA.configCursorStyleA
 
 data Side = LeftSide | RightSide
 
+boolIsoSide :: Iso' Bool Side
+boolIsoSide  = iso (\b -> if b then LeftSide else RightSide)
+                   (\s -> case s of { LeftSide -> True; RightSide -> False }) 
+
 -- | Which side to display the scroll bar on.
 scrollBarSide :: Field Side
-scrollBarSide = configUIA.configLeftSideScrollBarA.fromBool
-  where
-      fromBool :: Accessor Bool Side
-      fromBool = accessor (\b -> if b then LeftSide else RightSide) (\s _ -> case s of { LeftSide -> True; RightSide -> False }) 
+scrollBarSide = configUIA.configLeftSideScrollBarA.boolIsoSide 
 
 -- | Should the scroll bar autohide?
 autoHideScrollBar :: Field Bool

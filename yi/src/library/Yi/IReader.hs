@@ -21,7 +21,7 @@ import Yi.Buffer.Normal (regionOfB, TextUnit(Document))
 import Yi.Buffer.Region (readRegionB)
 import Yi.Dynamic
 import Yi.Keymap (withBuffer, YiM)
-import Yi.Prelude (getA, putA, io, discard, Initializable(..))
+import Yi.Prelude (use, (.=), io, discard, Initializable(..))
 import Yi.Paths(getArticleDbFilename)
 
 type Article = B.ByteString
@@ -80,7 +80,7 @@ readDB = io $ (getArticleDbFilename >>= r) `catch` returnDefault
 --   state in the hope we can avoid a very expensive read from disk, and if we find nothing
 --   (that is, if we get an empty Seq), only then do we call 'readDB'.
 oldDbNewArticle :: YiM (ArticleDB, Article)
-oldDbNewArticle = do saveddb <- withBuffer $ getA bufferDynamicValueA
+oldDbNewArticle = do saveddb <- withBuffer $ use bufferDynamicValueA
                      newarticle <-fmap B.pack $ withBuffer getBufferContents
                      if not $ S.null (unADB saveddb)
                       then return (saveddb, newarticle)
@@ -97,7 +97,7 @@ setDisplayedArticle newdb = do let next = getLatestArticle newdb
                                withBuffer $ do replaceBufferContent $ B.unpack next
                                                topB -- replaceBufferContents moves us
                                                     -- to bottom?
-                                               putA bufferDynamicValueA newdb
+                                               bufferDynamicValueA .= newdb
 
 -- | Go to next one. This ignores the buffer, but it doesn't remove anything from the database.
 -- However, the ordering does change.

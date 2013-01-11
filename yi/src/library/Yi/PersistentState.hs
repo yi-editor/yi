@@ -76,9 +76,9 @@ trimTagStack maxHistory = VimTagStack . take maxHistory . tagsStack
 savePersistentState :: YiM ()
 savePersistentState = do MaxHistoryEntries histLimit <- withEditor $ askConfigVariableA
                          pStateFilename      <- getPersistentStateFilename
-                         (hist :: Histories) <- withEditor $ getA dynA
+                         (hist :: Histories) <- withEditor $ use dynA
                          tagStack            <- withEditor $ getTagStack
-                         kr                  <- withEditor $ getA killringA
+                         kr                  <- withEditor $ use killringA
                          curRe               <- withEditor $ getRegexE
                          let pState = PersistentState { histories     = trimHistories histLimit hist
                                                       , vimTagStack   = trimTagStack  histLimit tagStack
@@ -104,8 +104,8 @@ loadPersistentState :: YiM ()
 loadPersistentState = do maybePState <- readPersistentState
                          case maybePState of
                            Nothing     -> return ()
-                           Just pState -> do withEditor $ putA dynA                   $ histories     pState
-                                             withEditor $ setTagStack                 $ vimTagStack   pState
-                                             withEditor $ putA killringA              $ aKillring     pState
-                                             withEditor $ maybe (return ()) setRegexE $ aCurrentRegex pState
+                           Just pState -> do withEditor $ dynA                        .= histories     pState
+                                             withEditor $ setTagStack                  $ vimTagStack   pState
+                                             withEditor $ killringA                   .= aKillring     pState
+                                             withEditor $ maybe (return ()) setRegexE  $ aCurrentRegex pState
 

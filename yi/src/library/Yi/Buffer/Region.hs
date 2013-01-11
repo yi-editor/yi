@@ -23,7 +23,7 @@ where
 import Data.Algorithm.Diff
 import Yi.Region
 import Yi.Buffer.Misc
-import Yi.Prelude
+import Yi.Prelude hiding (moveTo)
 import Prelude ()
 import Data.List (length, sort)
 import Yi.Window (winRegion)

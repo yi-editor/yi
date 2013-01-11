@@ -25,7 +25,7 @@ module Yi.Lexer.Alex (
                       ) where
 
 import Yi.Syntax hiding (mkHighlighter)
-import Yi.Prelude
+import Yi.Prelude hiding (Action)
 import Prelude ()
 import Yi.Region
 import Data.Ord (comparing)

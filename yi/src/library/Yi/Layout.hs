@@ -96,15 +96,16 @@ data Layout a
     }
   deriving(Typeable, Eq, Functor)
 
+-- TODO improve
 -- | Accessor for the 'DividerPosition' with given reference
-dividerPositionA :: DividerRef -> Accessor (Layout a) DividerPosition
-dividerPositionA ref = fromSetGet setter getter where
-  setter pos = set'
+dividerPositionA :: DividerRef -> Lens' (Layout a) DividerPosition
+dividerPositionA ref = lens getter setter where
+  setter s' pos = setter' s'
     where
-      set' s@(SingleWindow _) = s
-      set' p@Pair{} | divRef p == ref = p{ divPos = pos }
-                    | otherwise       = p{ pairFst = set' (pairFst p), pairSnd = set' (pairSnd p) }
-      set' s@Stack{} = s{ wins = fmap (\(l, r) -> (set' l, r)) (wins s) }
+      setter' s@(SingleWindow _) = s
+      setter' p@Pair{} | divRef p == ref = p{ divPos = pos }
+                    | otherwise       = p{ pairFst = setter' (pairFst p), pairSnd = setter' (pairSnd p) }
+      setter' s@Stack{} = s{ wins = fmap (\(l, r) -> (setter' l, r)) (wins s) }
 
   getter = fromMaybe invalidRef . get'
 

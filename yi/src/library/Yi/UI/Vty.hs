@@ -8,7 +8,7 @@
 
 module Yi.UI.Vty (start) where
 
-import Yi.Prelude hiding ((<|>))
+import Yi.Prelude hiding ((<|>), set)
 import Prelude (map, take, zip, repeat, length, break, splitAt)
 import Control.Arrow
 import Control.Concurrent
@@ -197,14 +197,13 @@ layout ui e = do
         return $! win { winRegion = newWinRegion, actualLines = newActualLines }
 
   ws'' <- mapM (apply . discardOldRegion) ws'
-  return $ windowsA ^= ws'' $ e
-  -- return $ windowsA ^= forcePL ws'' $ e
+  return $ e & windowsA .~ {-forcePL-} ws''
 
 -- Do Vty layout inside the Yi event loop
 layoutAction :: (MonadEditor m, MonadIO m) => UI -> m ()
 layoutAction ui = do
     withEditor . put =<< io . layout ui =<< withEditor get
-    withEditor $ mapM_ (flip withWindowE snapInsB) =<< getA windowsA
+    withEditor $ mapM_ (flip withWindowE snapInsB) =<< use windowsA
 
 requestRefresh :: UI -> Editor -> IO ()
 requestRefresh ui e = do
@@ -357,13 +356,13 @@ drawText :: Int    -- ^ The height of the part of the window we are in
          -> ([Image], Point, Maybe (Int,Int), Int)
 drawText h w topPoint point tabWidth bufData
     | h == 0 || w == 0 = ([], topPoint, Nothing, 0)
-    | otherwise        = (rendered_lines, bottomPoint, pntpos, h - (length wrapped - h))
+    | otherwise        = (rendered_lines, bottomPoint, pntpos, h - (length wra - h))
   where 
 
   -- the number of lines that taking wrapping into account,
   -- we use this to calculate the number of lines displayed.
-  wrapped = concatMap (wrapLine w) $ map (concatMap expandGraphic) $ take h $ lines' $ bufData
-  lns0 = take h wrapped
+  wra = concatMap (wrapLine w) $ map (concatMap expandGraphic) $ take h $ lines' $ bufData
+  lns0 = take h wra
 
   bottomPoint = case lns0 of 
                  [] -> topPoint 

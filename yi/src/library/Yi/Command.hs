@@ -30,7 +30,7 @@ changeBufferNameE =
   withMinibufferFree "New buffer name:" strFun
   where
   strFun :: String -> YiM ()
-  strFun = withBuffer . putA identA . Left
+  strFun x = withBuffer $ identA .= Left x
 
 ----------------------------
 -- | shell-command with argument prompt

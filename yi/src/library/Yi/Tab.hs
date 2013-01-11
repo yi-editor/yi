@@ -1,4 +1,4 @@
-{-# LANGUAGE DeriveDataTypeable, Rank2Types #-}
+{-# LANGUAGE DeriveDataTypeable, Rank2Types, TemplateHaskell #-}
 
 module Yi.Tab
  (
@@ -38,6 +38,8 @@ data Tab = Tab {
   }
  deriving Typeable
 
+makeLensesFor [("tabLayout", "tabLayoutA")] ''Tab
+
 tabFocus :: Tab -> Window
 tabFocus = PL._focus . tabWindows
 
@@ -45,30 +47,28 @@ tabFocus = PL._focus . tabWindows
 tabMiniWindows :: Tab -> [Window]
 tabMiniWindows = Prelude.filter isMini . toList . tabWindows
 
--- | Accessor for the windows. If the windows (but not the focus) have changed when setting, then a relayout will be triggered to preserve the internal invariant.
-tabWindowsA :: Accessor Tab (PL.PointedList Window)
-tabWindowsA = fromSetGet setter getter
+-- | Lens for the windows. If the windows (but not the focus) have changed when setting, then a relayout will be triggered to preserve the internal invariant.
+tabWindowsA :: Lens' Tab (PL.PointedList Window)
+tabWindowsA = lens tabWindows setter
   where
-    setter ws t = relayoutIf (toList ws /= toList (tabWindows t)) (t { tabWindows = ws})
-    getter = tabWindows
+    setter t ws = relayoutIf (toList ws /= toList (tabWindows t)) (t { tabWindows = ws})
 
--- | Accessor for the layout manager. When setting, will trigger a relayout if the layout manager has changed.
-tabLayoutManagerA :: Accessor Tab AnyLayoutManager
-tabLayoutManagerA = fromSetGet setter getter
+-- | Lens for the layout manager. When setting, will trigger a relayout if the layout manager has changed.
+tabLayoutManagerA :: Lens' Tab AnyLayoutManager
+tabLayoutManagerA = lens tabLayoutManager setter
   where
-    setter lm t = relayoutIf (lm /= tabLayoutManager t) (t { tabLayoutManager = lm })
-    getter = tabLayoutManager
+    setter t lm = relayoutIf (lm /= tabLayoutManager t) (t { tabLayoutManager = lm })
 
--- | Gets / sets the position of the divider with the given reference. The caller must ensure that the DividerRef is valid, otherwise an error will (might!) occur.
-tabDividerPositionA :: DividerRef -> Accessor Tab DividerPosition
-tabDividerPositionA ref = fromSetGet (\l t -> t { tabLayout = l}) tabLayout . dividerPositionA ref
+-- | Lens for the position of the divider with the given reference. The caller must ensure that the DividerRef is valid, otherwise an error will (might!) occur.
+tabDividerPositionA :: DividerRef -> Lens' Tab DividerPosition
+tabDividerPositionA ref = tabLayoutA.dividerPositionA ref
 
 relayoutIf :: Bool -> Tab -> Tab
 relayoutIf False t = t
 relayoutIf True t = relayout t
 
 relayout :: Tab -> Tab
-relayout t = t { tabLayout = buildLayout (tabWindows t) (tabLayoutManager t) (tabLayout t) }
+relayout t = t & tabLayoutA %~ buildLayout (tabWindows t) (tabLayoutManager t)
 
 instance Binary.Binary Tab where
   put (Tab tk ws _ _) = Binary.put tk >> Binary.put ws

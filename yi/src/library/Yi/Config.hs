@@ -6,7 +6,7 @@ import Data.Prototype
 
 import Yi.Buffer
 import Yi.Layout
-import Yi.Prelude
+import Yi.Prelude hiding (Action)
 import Yi.Config.Misc
 import {-# source #-} Yi.Keymap
 import {-# source #-} Yi.Editor

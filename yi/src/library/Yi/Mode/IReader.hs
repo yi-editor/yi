@@ -10,11 +10,11 @@ import Yi.Keymap
 import Yi.Keymap.Keys
 import Yi.Core (msgEditor)
 import Yi.Modes (anyExtension, fundamentalMode)
-import Yi.Prelude ((^:))
+import Yi.Prelude ((%~))
 
 abstract :: forall syntax. Mode syntax
 abstract = fundamentalMode { modeApplies = anyExtension ["irtxt"],
-                             modeKeymap = topKeymapA ^: ikeys }
+                             modeKeymap = topKeymapA %~ ikeys }
     where -- Default bindings.
           -- ikeys :: (MonadInteract f Yi.Keymap.Action Event) => f () -> f ()
           ikeys = (choice ([metaCh '`' ?>>! saveAsNewArticle,

@@ -20,7 +20,7 @@ mode :: Mode (OnlineTree.Tree (Tok Token))
 mode = Compilation.mode
   { modeApplies = modeNeverApplies,
     modeName = "interactive",
-    modeKeymap = topKeymapA ^: ((<||)
+    modeKeymap = topKeymapA %~ ((<||)
      (choice
       [spec KHome ?>>! ghciHome,
        spec KEnter ?>>! do

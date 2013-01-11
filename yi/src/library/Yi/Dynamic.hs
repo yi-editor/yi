@@ -42,13 +42,14 @@ newtype ConfigVariables = CV (M.HashMap ConcreteTypeRep D.Dynamic)
 
 instance Initializable ConfigVariables where initial = mempty
 
--- | Accessor for any 'YiConfigVariable'. Neither reader nor writer can fail:
+-- TODO use 'at'
+-- | Lens for any 'YiConfigVariable'. Neither reader nor writer can fail:
 -- if the user's config file hasn't set a value for a 'YiConfigVariable',
 -- then the default value is used.
-configVariableA :: forall a. YiConfigVariable a => Accessor ConfigVariables a
-configVariableA = accessor getCV setCV
+configVariableA :: forall a. YiConfigVariable a => Lens' ConfigVariables a
+configVariableA = lens getCV setCV
   where
-      setCV v (CV m) = CV (M.insert (cTypeOf (undefined :: a)) (D.toDyn v) m)
+      setCV (CV m) v = CV (M.insert (cTypeOf (undefined :: a)) (D.toDyn v) m)
       getCV (CV m) = 
          case M.lookup (cTypeOf (undefined :: a)) m of
              Nothing -> initial
@@ -119,12 +120,13 @@ instance Binary Dynamic where
 newtype DynamicValues = DV (M.HashMap ConcreteTypeRep Dynamic)
   deriving(Typeable, Monoid)
 
--- | Accessor for a dynamic component. If the component is not found, the value 'initial' is used.
-dynamicValueA :: forall a. YiVariable a => Accessor DynamicValues a
-dynamicValueA = accessor getDynamicValue setDynamicValue
+-- TODO use 'at'
+-- | Lens for a dynamic component. If the component is not found, the value 'initial' is used.
+dynamicValueA :: forall a. YiVariable a => Lens' DynamicValues a
+dynamicValueA = lens getDynamicValue setDynamicValue
     where
-      setDynamicValue :: a -> DynamicValues -> DynamicValues
-      setDynamicValue v (DV dv) = DV (M.insert (cTypeOf (undefined :: a)) (toDyn v) dv)
+      setDynamicValue :: DynamicValues -> a -> DynamicValues
+      setDynamicValue (DV dv) v = DV (M.insert (cTypeOf (undefined :: a)) (toDyn v) dv)
 
       getDynamicValue :: DynamicValues -> a
       getDynamicValue (DV dv) = case M.lookup (cTypeOf (undefined::a)) dv of

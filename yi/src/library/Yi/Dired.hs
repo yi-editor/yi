@@ -100,27 +100,75 @@ instance YiVariable DiredState
 
 $(derives [makeBinary] [''DiredEntry, ''DiredFileInfo])
 
+-- | Elementary operations for dired file operations
+-- Map a dired mark operation (e.g. delete, rename, copy) command
+-- into a list of DiredOps, and use procDiredOp to excute them.
+-- Logic and implementation of each operation are packaged in procDiredOp
+-- See askDelFiles for example.
+-- If new elem op is added, just add corresponding procDiredOp to handle it.
+data DiredOp = DORemoveFile FilePath
+             | DORemoveDir FilePath
+             | DOCopyFile FilePath FilePath
+             | DOCopyDir FilePath FilePath
+             | DORename FilePath FilePath
+             | DORemoveBuffer FilePath
+             -- ^ remove the buffers that associate with the file
+             | DOConfirm String [DiredOp] [DiredOp]
+             -- ^ prompt a "yes/no" question. If yes, execute the first list of embedded DiredOps
+             -- otherwise execute the second list of embedded DiredOps
+             | DOCheck (IO Bool) [DiredOp] [DiredOp]
+             -- ^ similar to DOConfirm, but no user interaction. Could be used to check file existence
+             | DOCkOverwrite FilePath DiredOp
+             -- ^ this is a shortcut, it invokes DCChoice if file exists
+             | DOInput String (String -> [DiredOp])
+             -- ^ prompt a string and collect user input.
+             -- the embedded list of DiredOps is generated based on input,
+             -- Remember that the input should be checked with DOCheck
+             | DOChoice String DiredOp
+             -- ^ prompt a string, provide keybindings for 'y', 'n', '!', 'q' and optional 'h' (help)
+             -- this is useful when overwriting of existing files is required to complete the op
+             -- choice '!' will bypass following DOChoice prompts.
+             | DOFeedback (DiredOpState -> YiM ())
+             -- ^ to feedback, given the state. such as show the result.
+             | DONoOp
+             -- ^ no operation
+
+-- Have no idea how to keep track of this state better, so here it is ...
+data DiredOpState = DiredOpState
+    {  _diredOpSucCnt :: !Int -- ^ keep track of the num of successful operations
+     , _diredOpForAll :: Bool -- ^ if True, DOChoice will be bypassed
+    }
+    deriving (Show, Eq, Typeable)
+
+instance Initializable DiredOpState where
+    initial = DiredOpState {_diredOpSucCnt = 0, _diredOpForAll = False}
+
+makeLenses ''DiredOpState
+$(derive makeBinary ''DiredOpState)
+
+instance YiVariable DiredOpState
+
 bypassReadOnly :: BufferM a -> BufferM a
-bypassReadOnly f = do ro <- getA readOnlyA
-                      putA readOnlyA False
+bypassReadOnly f = do ro <- use readOnlyA
+                      readOnlyA .= False
                       res <- f
-                      putA readOnlyA ro
+                      readOnlyA .= ro
                       return res
 
 filenameColOf :: BufferM () -> BufferM ()
-filenameColOf f = getA bufferDynamicValueA >>= setPrefCol . Just . diredNameCol >> f
+filenameColOf f = use bufferDynamicValueA >>= (.=) preferColA . Just . diredNameCol >> f
 
 resetDiredOpState :: YiM ()
-resetDiredOpState = withBuffer $ modA bufferDynamicValueA (\_ds -> initial :: DiredOpState)
+resetDiredOpState = withBuffer $ bufferDynamicValueA %= (\_ds -> initial :: DiredOpState)
 
 incDiredOpSucCnt :: YiM ()
-incDiredOpSucCnt = withBuffer $ modA bufferDynamicValueA (\ds -> ds { diredOpSucCnt = (diredOpSucCnt ds) + 1 })
+incDiredOpSucCnt = withBuffer $ bufferDynamicValueA.diredOpSucCnt += 1
 
 getDiredOpState :: YiM DiredOpState
-getDiredOpState = withBuffer $ getA bufferDynamicValueA
+getDiredOpState = withBuffer $ use bufferDynamicValueA
 
 modDiredOpState :: (DiredOpState -> DiredOpState) -> YiM ()
-modDiredOpState f = withBuffer $ modA bufferDynamicValueA f
+modDiredOpState f = withBuffer $ bufferDynamicValueA %= f
 
 -- | execute the operations
 -- Pass the list of remaining operations down, insert new ops at the head if needed
@@ -206,8 +254,8 @@ procDiredOp counting ((DOFeedback f):ops) = do
   getDiredOpState >>= f >> procDiredOp counting ops
 procDiredOp counting r@((DOChoice prompt op):ops) = do
   st <- getDiredOpState
-  if diredOpForAll st then proceedYes
-                      else discard $ withEditor $ spawnMinibufferE msg (const askKeymap)
+  if st^.diredOpForAll then proceedYes
+                       else discard $ withEditor $ spawnMinibufferE msg (const askKeymap)
     where msg = concat [prompt, " (y/n/!/q/h)"]
           askKeymap = choice ([ char 'n' ?>>! noAction
                               , char 'y' ?>>! yesAction
@@ -218,7 +266,7 @@ procDiredOp counting r@((DOChoice prompt op):ops) = do
           noAction = cleanUp >> proceedNo
           yesAction = cleanUp >> proceedYes
           allAction = do cleanUp
-                         modDiredOpState (\st -> st{diredOpForAll=True})
+                         modDiredOpState (diredOpForAll .~ True)
                          proceedYes
           quit = cleanUp >> msgEditor "Quit"
           help = do msgEditor $ concat ["y: yes, n: no, ",
@@ -254,7 +302,7 @@ askDelFiles dir fs = do
           ops = (map opGenerator fs)
           showResult st = do
                        diredRefresh
-                       msgEditor $ concat [show $ diredOpSucCnt st, " of ",
+                       msgEditor $ concat [show $ st^.diredOpSucCnt, " of ",
                                            show total, " deletions done"]
           showNothing _ = msgEditor "(No deletions requested)"
           total = length fs
@@ -325,23 +373,23 @@ diredDirBuffer d = do
     -- XXX Don't specify the path as the filename of the buffer.
     b <- withEditor $ stringToNewBuffer (Left dir) (R.fromString "")
     withEditor $ switchToBufferE b
-    withBuffer $ modA bufferDynamicValueA $ \ds -> ds { diredPath = dir }
+    withBuffer $ bufferDynamicValueA %= \ds -> ds { diredPath = dir }
     diredRefresh
     return b
 
 -- | Write the contents of the supplied directory into the current buffer in dired format
 diredRefresh :: YiM ()
 diredRefresh = do
-    dState <- withBuffer $ getA bufferDynamicValueA
+    dState <- withBuffer $ use bufferDynamicValueA
     let dir = diredPath dState
     -- Scan directory
     di <- io $ diredScanDir dir
     currFile <- if null (diredFilePoints dState)
                 then return ""
                 else do maybefile <- withBuffer fileFromPoint
-                        case maybefile of
-                          Just (fp, _) -> return fp
-                          Nothing      -> return ""
+                        return $ case maybefile of
+                          Just (fp, _) -> fp
+                          Nothing      -> ""
     let ds = dState {diredEntries = di, diredCurrFile = currFile}
     -- Compute results
     let dlines = linesToDisplay ds
@@ -352,7 +400,7 @@ diredRefresh = do
 
     -- Set buffer contents
     withBuffer $ do -- Clear buffer
-                    putA readOnlyA False
+                    readOnlyA .= False
                     ---- modifications begin here
                     deleteRegionB =<< regionOfB Document
                     -- Write Header
@@ -361,13 +409,13 @@ diredRefresh = do
                     -- paint header
                     addOverlayB $ mkOverlay UserLayer (mkRegion 0 (p-2)) headStyle
                     ptsList <- mapM insertDiredLine $ zip3 strss' stys strs
-                    putA bufferDynamicValueA ds{diredFilePoints=ptsList,
-                                                diredNameCol   =namecol}
+                    bufferDynamicValueA .= ds{diredFilePoints=ptsList,
+                                              diredNameCol   =namecol}
                     -- Colours for Dired come from overlays not syntax highlighting
-                    modifyMode $ \m -> m {modeKeymap = topKeymapA ^: diredKeymap, modeName = "dired"}
+                    modifyMode $ \m -> m {modeKeymap = topKeymapA %~ diredKeymap, modeName = "dired"}
                     diredRefreshMark
                     ---- no modifications after this line
-                    putA readOnlyA True
+                    readOnlyA .= True
                     when (null currFile) $ moveTo (p-2)
                     case getRow currFile ptsList of
                       Just rpos -> filenameColOf $ moveTo rpos
@@ -516,14 +564,14 @@ diredMarkWithChar c mv = bypassReadOnly $ do
                            maybefile <- fileFromPoint
                            case maybefile of
                              Just (fn, _de) -> do
-                                            modA bufferDynamicValueA (\ds -> ds {diredMarks = M.insert fn c $ diredMarks ds})
+                                            bufferDynamicValueA %= (\ds -> ds {diredMarks = M.insert fn c $ diredMarks ds})
                                             filenameColOf mv
                                             diredRefreshMark
                              Nothing        -> filenameColOf mv
 
 diredRefreshMark :: BufferM ()
 diredRefreshMark = do b <- pointB
-                      dState <- getA bufferDynamicValueA
+                      dState <- use bufferDynamicValueA
                       let posDict = diredFilePoints dState 
                           markMap = diredMarks dState
                           draw (pos, _, fn) = case M.lookup fn markMap of
@@ -546,24 +594,24 @@ diredUnmark :: BufferM ()
 diredUnmark = bypassReadOnly $ do 
                 maybefile <- fileFromPoint 
                 case maybefile of
-                  Just (fn, _de) -> do modA bufferDynamicValueA (\ds -> ds {diredMarks = M.delete fn $ diredMarks ds})
+                  Just (fn, _de) -> do bufferDynamicValueA %= (\ds -> ds {diredMarks = M.delete fn $ diredMarks ds})
                                        filenameColOf lineUp
                                        diredRefreshMark
                   Nothing        -> do filenameColOf lineUp
 
 
 diredUnmarkPath :: FilePath -> BufferM()
-diredUnmarkPath fn = do modA bufferDynamicValueA (\ds -> ds {diredMarks = M.delete fn $ diredMarks ds})
+diredUnmarkPath fn = do bufferDynamicValueA %= (\ds -> ds {diredMarks = M.delete fn $ diredMarks ds})
 
 diredUnmarkAll :: BufferM ()
 diredUnmarkAll = bypassReadOnly $ do
-                   modA bufferDynamicValueA (\ds -> ds {diredMarks = const M.empty $ diredMarks ds})
+                   bufferDynamicValueA %= (\ds -> ds {diredMarks = const M.empty $ diredMarks ds})
                    filenameColOf $ return ()
                    diredRefreshMark
 
 currentDir :: YiM FilePath
 currentDir = do
-  DiredState { diredPath = dir } <- withBuffer $ getA bufferDynamicValueA
+  DiredState { diredPath = dir } <- withBuffer $ use bufferDynamicValueA
   return dir
 
 -- | move selected files in a given directory to the target location given
@@ -614,7 +662,7 @@ askRenameFiles dir fs =
                               ckParentDir = doesDirectoryExist $ takeDirectory (dropTrailingPathSeparator t)
           showResult st = do
               diredRefresh
-              msgEditor $ concat [show (diredOpSucCnt st),
+              msgEditor $ concat [show $ st^.diredOpSucCnt,
                                   " of ", show total, " item(s) moved."]
           showNothing _ = msgEditor $ "Quit"
           total = length fs
@@ -656,7 +704,7 @@ askCopyFiles dir fs = do
                               ckParentDir = doesDirectoryExist $ takeDirectory (dropTrailingPathSeparator t)
           showResult st = do
                         diredRefresh
-                        msgEditor $ concat [show (diredOpSucCnt st),
+                        msgEditor $ concat [show $ st^.diredOpSucCnt,
                                             " of ", show total, " item(s) copied."]
           showNothing _ = msgEditor $ "Quit"
           total = length fs
@@ -734,7 +782,7 @@ noFileAtThisLine = msgEditor "(No file at this line)"
 fileFromPoint :: BufferM (Maybe (FilePath, DiredEntry))
 fileFromPoint = do
     p <- pointB
-    dState <- getA bufferDynamicValueA
+    dState <- use bufferDynamicValueA
     let candidates = filter (\(_,p2,_)->p<=p2) (diredFilePoints dState)
     case candidates of
       ((_, _, f):_) -> return $ Just (f, M.findWithDefault DiredNoInfo f $ diredEntries dState)
@@ -742,7 +790,7 @@ fileFromPoint = do
 
 markedFiles :: (Char -> Bool) -> YiM [(FilePath, DiredEntry)]
 markedFiles cond = do
-  dState <- withBuffer $ getA bufferDynamicValueA
+  dState <- withBuffer $ use bufferDynamicValueA
   let fs = fst . unzip $ filter (cond . snd) (M.assocs $ diredMarks dState)
   return $ map (\f -> (f, (diredEntries dState) M.! f)) fs
 
@@ -760,51 +808,4 @@ diredCreateDir = do
     io $ createDirectoryIfMissing True newdir
     diredRefresh
 
-
--- | Elementary operations for dired file operations
--- Map a dired mark operation (e.g. delete, rename, copy) command
--- into a list of DiredOps, and use procDiredOp to excute them.
--- Logic and implementation of each operation are packaged in procDiredOp
--- See askDelFiles for example.
--- If new elem op is added, just add corresponding procDiredOp to handle it.
-data DiredOp = DORemoveFile FilePath
-             | DORemoveDir FilePath
-             | DOCopyFile FilePath FilePath
-             | DOCopyDir FilePath FilePath
-             | DORename FilePath FilePath
-             | DORemoveBuffer FilePath
-             -- ^ remove the buffers that associate with the file
-             | DOConfirm String [DiredOp] [DiredOp]
-             -- ^ prompt a "yes/no" question. If yes, execute the first list of embedded DiredOps
-             -- otherwise execute the second list of embedded DiredOps
-             | DOCheck (IO Bool) [DiredOp] [DiredOp]
-             -- ^ similar to DOConfirm, but no user interaction. Could be used to check file existence
-             | DOCkOverwrite FilePath DiredOp
-             -- ^ this is a shortcut, it invokes DCChoice if file exists
-             | DOInput String (String -> [DiredOp])
-             -- ^ prompt a string and collect user input.
-             -- the embedded list of DiredOps is generated based on input,
-             -- Remember that the input should be checked with DOCheck
-             | DOChoice String DiredOp
-             -- ^ prompt a string, provide keybindings for 'y', 'n', '!', 'q' and optional 'h' (help)
-             -- this is useful when overwriting of existing files is required to complete the op
-             -- choice '!' will bypass following DOChoice prompts.
-             | DOFeedback (DiredOpState -> YiM ())
-             -- ^ to feedback, given the state. such as show the result.
-             | DONoOp
-             -- ^ no operation
-
--- Have no idea how to keep track of this state better, so here it is ...
-data DiredOpState = DiredOpState
-    {  diredOpSucCnt :: !Int -- ^ keep track of the num of successful operations
-     , diredOpForAll :: Bool -- ^ if True, DOChoice will be bypassed
-    }
-    deriving (Show, Eq, Typeable)
-
-instance Initializable DiredOpState where
-    initial = DiredOpState {diredOpSucCnt = 0, diredOpForAll = False}
-
-$(derive makeBinary ''DiredOpState)
-
-instance YiVariable DiredOpState
 

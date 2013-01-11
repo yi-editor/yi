@@ -27,7 +27,7 @@ abellaModeGen abellaBinding =
   , modeApplies = anyExtension ["thm"]
   , modeGetAnnotations = tokenBasedAnnots (sequenceA . tokToSpan . fmap Abella.tokenToText)
   , modeToggleCommentSelection = toggleCommentSelectionB "% " "%"
-  , modeKeymap = topKeymapA ^: ((<||)
+  , modeKeymap = topKeymapA %~ ((<||)
      (choice
       [ abellaBinding 'p' ?*>>! sav abellaUndo
       , abellaBinding 'e' ?*>>! sav abellaEval

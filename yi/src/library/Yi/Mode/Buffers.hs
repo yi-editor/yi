@@ -17,8 +17,8 @@ listBuffers = do
        bufRef <- stringToNewBuffer (Left "Buffer List")  $ fromString $ intercalate "\n" $ map identString bs
        switchToBufferE bufRef
      withBuffer $ do
-       modifyMode $ \m -> m {modeKeymap = topKeymapA ^: bufferKeymap, modeName = "buffers"}
-       putA readOnlyA True
+       modifyMode $ \m -> m {modeKeymap = topKeymapA %~ bufferKeymap, modeName = "buffers"}
+       readOnlyA .= True
 switch :: YiM ()
 switch =    do
     s <- withBuffer readLnB
@@ -31,7 +31,7 @@ bufferKeymap = do
     (choice [
              char 'p'                         ?>>! lineUp,
              oneOf [char 'n', char ' ']       >>! lineDown,
-             oneOf [ spec KEnter, char 'f' ]  >>! (switch >> ( withBuffer $ putA readOnlyA False)),
-             char 'v'                        ?>>! switch >> ( withBuffer $ putA readOnlyA True)  ] 
+             oneOf [ spec KEnter, char 'f' ]  >>! (switch >> (withBuffer $ readOnlyA .= False)),
+             char 'v'                        ?>>! switch  >> (withBuffer $ readOnlyA .= True)  ] 
      <||)
 

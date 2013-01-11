@@ -103,7 +103,7 @@ ghciEvaluator = Evaluator{..} where
 
     getAllNamesInScopeImpl :: YiM [String]
     getAllNamesInScopeImpl = do 
-       NamesCache cache <- withEditor $ getA dynA
+       NamesCache cache <- withEditor $ use dynA
        result <-if null cache then do
             res <-io $ LHI.runInterpreter $ do
                 LHI.set [LHI.searchPath LHI.:= []]
@@ -112,7 +112,7 @@ ghciEvaluator = Evaluator{..} where
                Left err ->[show err]
                Right exports -> flattenExports exports
           else return $ sort cache
-       withEditor $ putA dynA (NamesCache result)
+       withEditor $ dynA .= NamesCache result
        return result
   
 
@@ -137,7 +137,7 @@ publishedActions = customVariable . publishedActions_A
 
 -- | Publish the given action, by the given name. This will overwrite any existing actions by the same name.
 publishAction :: (YiAction a x, Show x) => String -> a -> ConfigM ()
-publishAction s a = modA publishedActions (M.insert s (makeAction a))
+publishAction s a = publishedActions %= M.insert s (makeAction a)
 
 {- | Evaluator based on a fixed list of published actions. Has a few differences from 'ghciEvaluator':
 

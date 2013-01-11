@@ -27,7 +27,7 @@ import Yi.Lexer.Haskell
 import Yi.Syntax.Layout
 import Yi.Syntax.Tree
 import Yi.Syntax
-import Yi.Prelude
+import Yi.Prelude hiding (Context)
 import Prelude ()
 import Data.DeriveTH
 import Data.Tuple (uncurry)

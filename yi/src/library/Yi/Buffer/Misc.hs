@@ -78,8 +78,7 @@ module Yi.Buffer.Misc
   , savingPrefCol
   , forgetPreferCol
   , movingToPrefCol
-  , getPrefCol
-  , setPrefCol
+  , preferColA
   , markSavedB
   , addOverlayB
   , delOverlayB
@@ -145,7 +144,7 @@ module Yi.Buffer.Misc
 where
 
 import Prelude (drop)
-import Yi.Prelude
+import Yi.Prelude hiding (Action, moveTo)
 import Yi.Region
 import System.FilePath
 import Yi.Buffer.Implementation
@@ -204,12 +203,12 @@ $(derive makeBinary ''MarkSet)
 
 
 data SelectionStyle = SelectionStyle
-  { highlightSelection :: !Bool
-  , rectangleSelection :: !Bool
+  { _highlightSelection :: !Bool
+  , _rectangleSelection :: !Bool
   }
   deriving Typeable
 
-makeLensesWithSuffix "AA" ''SelectionStyle
+makeLenses ''SelectionStyle
 
 type BufferId = Either String FilePath
 -- ^ maybe a filename associated with this buffer. Filename is canonicalized.
@@ -273,7 +272,7 @@ miniIdentString b = case b ^. identA of
     Right _ -> "MINIFILE:"
     Left bufName -> bufName
 
-identA :: Accessor FBuffer BufferId
+identA :: Lens' FBuffer BufferId
 identA = attrsA . identAA
 
 -- unfortunately the dynamic stuff can't be read.
@@ -308,26 +307,26 @@ queryAndModifyRawbuf f (FBuffer f1 f5 f3) =
     let (f5', x) = f f5
     in (FBuffer f1 f5' f3, x)
 
-attrsA :: Accessor FBuffer Attributes
+attrsA :: Lens' FBuffer Attributes
 attrsA f (FBuffer f1 f2 a) = (\a' -> FBuffer f1 f2 a) <$> f a
 
 -- | Use in readonly!
-lastActiveWindowA :: Accessor FBuffer Window
+lastActiveWindowA :: Lens' FBuffer Window
 lastActiveWindowA = attrsA.lastActiveWindowAA
 
-lastSyncTimeA :: Accessor FBuffer UTCTime
+lastSyncTimeA :: Lens' FBuffer UTCTime
 lastSyncTimeA = attrsA.lastSyncTimeAA
 
-undosA :: Accessor FBuffer URList
+undosA :: Lens' FBuffer URList
 undosA = attrsA.undosAA
 
-readOnlyA :: Accessor FBuffer Bool
+readOnlyA :: Lens' FBuffer Bool
 readOnlyA = attrsA.readOnlyAA
 
-insertingA :: Accessor FBuffer Bool
+insertingA :: Lens' FBuffer Bool
 insertingA = attrsA.insertingAA
 
-pointFollowsWindowA :: Accessor FBuffer (WindowRef -> Bool)
+pointFollowsWindowA :: Lens' FBuffer (WindowRef -> Bool)
 pointFollowsWindowA = attrsA.pointFollowsWindowAA
 
 file :: FBuffer -> (Maybe FilePath)
@@ -335,34 +334,28 @@ file b = case b^.identA of
     Right f -> Just f
     _ -> Nothing
 
-preferColA :: Accessor FBuffer (Maybe Int)
+preferColA :: Lens' FBuffer (Maybe Int)
 preferColA = attrsA.preferColAA
 
-setPrefCol :: Maybe Int -> BufferM ()
-setPrefCol = putA preferColA
-
-getPrefCol :: BufferM (Maybe Int)
-getPrefCol = getA preferColA
-
-bufferDynamicA :: Accessor FBuffer DynamicValues
+bufferDynamicA :: Lens' FBuffer DynamicValues
 bufferDynamicA = attrsA.bufferDynamicAA
 
-pendingUpdatesA :: Accessor FBuffer [UIUpdate]
+pendingUpdatesA :: Lens' FBuffer [UIUpdate]
 pendingUpdatesA = attrsA.pendingUpdatesAA
 
-selectionStyleA :: Accessor FBuffer SelectionStyle
+selectionStyleA :: Lens' FBuffer SelectionStyle
 selectionStyleA = attrsA.selectionStyleAA
 
-highlightSelectionA :: Accessor FBuffer Bool
-highlightSelectionA = selectionStyleA.highlightSelectionAA
+highlightSelectionA :: Lens' FBuffer Bool
+highlightSelectionA = selectionStyleA.highlightSelection
 
-rectangleSelectionA :: Accessor FBuffer Bool
-rectangleSelectionA = selectionStyleA.rectangleSelectionAA
+rectangleSelectionA :: Lens' FBuffer Bool
+rectangleSelectionA = selectionStyleA.rectangleSelection
 
-keymapProcessA :: Accessor FBuffer KeymapProcess
+keymapProcessA :: Lens' FBuffer KeymapProcess
 keymapProcessA = attrsA.processAA
 
-winMarksA :: Accessor FBuffer (M.Map WindowRef WinMarks)
+winMarksA :: Lens' FBuffer (M.Map WindowRef WinMarks)
 winMarksA = attrsA.winMarksAA
 
 {- | Currently duplicates some of Vim's indent settings. Allowing a buffer to
@@ -458,7 +451,7 @@ defaultModeLine prefix = do
     p <- pointB
     s <- sizeB
     curChar <-readB
-    ro <-getA readOnlyA
+    ro <-use readOnlyA
     modeNm <- gets (withMode0 modeName)
     unchanged <- gets isUnchangedBuffer
     let pct = if (pos == 0) || (s == 0)
@@ -505,13 +498,13 @@ queryAndModify f = getsAndModify (queryAndModifyRawbuf f)
 -- | Adds an "overlay" to the buffer
 addOverlayB :: Overlay -> BufferM ()
 addOverlayB ov = do
-  modA pendingUpdatesA (++ [overlayUpdate ov])
+  pendingUpdatesA %= (++ [overlayUpdate ov])
   modifyBuffer $ addOverlayBI ov
 
 -- | Remove an existing "overlay"
 delOverlayB :: Overlay -> BufferM ()
 delOverlayB ov = do
-  modA pendingUpdatesA (++ [overlayUpdate ov])
+  pendingUpdatesA %= (++ [overlayUpdate ov])
   modifyBuffer $ delOverlayBI ov
 
 delOverlayLayerB :: OvlLayer -> BufferM ()
@@ -526,8 +519,7 @@ runBuffer w b f =
     in (a, b')
 
 getMarks :: Window -> BufferM (Maybe WinMarks)
-getMarks w = do
-    getsA winMarksA (M.lookup $ wkey w) 
+getMarks w = uses winMarksA (M.lookup $ wkey w) 
  
 
 runBufferFull :: Window -> FBuffer -> BufferM a -> (a, [Update], FBuffer)
@@ -544,13 +536,13 @@ runBufferFull w b f =
                                    selMark = MarkValue 0 Backward, -- sel
                                    fromMark = MarkValue 0 Backward } -- from
                     else do
-                        Just mrks  <- getsA winMarksA (M.lookup $ wkey (b ^. lastActiveWindowA))
+                        Just mrks  <- uses winMarksA (M.lookup $ wkey (b ^. lastActiveWindowA))
                         forM mrks getMarkValueB
                 newMrks <- forM newMarkValues newMarkB
-                modA winMarksA (M.insert (wkey w) newMrks)
-            putA lastActiveWindowA w
+                winMarksA %= M.insert (wkey w) newMrks
+            lastActiveWindowA .= w
             f
-    in (a, updates, pendingUpdatesA ^: (++ fmap TextUpdate updates) $ b')
+    in (a, updates, b' & pendingUpdatesA %~ (++ fmap TextUpdate updates))
 
 getMarkValueB :: Mark -> BufferM MarkValue
 getMarkValueB m = fromMaybe (MarkValue 0 Forward) <$> queryBuffer (getMarkValueBI m)
@@ -569,8 +561,8 @@ runBufferDummyWindow b = fst . runBuffer (dummyWindow $ bkey b) b
 
 -- | Mark the current point in the undo list as a saved state.
 markSavedB :: UTCTime -> BufferM ()
-markSavedB t = do modA undosA setSavedFilePointU
-                  putA lastSyncTimeA t
+markSavedB t = do undosA %= setSavedFilePointU
+                  lastSyncTimeA .= t
 
 bkey :: FBuffer -> BufferRef
 bkey = view $ attrsA.bkey__AA
@@ -582,9 +574,9 @@ isUnchangedBuffer = isAtSavedFilePointU . view undosA
 undoRedo :: (forall syntax. Mark -> URList -> BufferImpl syntax -> (BufferImpl syntax, (URList, [Update])) ) -> BufferM ()
 undoRedo f = do
   m <- getInsMark
-  ur <- getA undosA
+  ur <- use undosA
   (ur', updates) <- queryAndModify (f m ur)
-  putA undosA ur'
+  undosA .= ur'
   tell updates
 
 undoB :: BufferM ()
@@ -692,11 +684,11 @@ moveTo x = do
 ------------------------------------------------------------------------
 
 setInserting :: Bool -> BufferM ()
-setInserting = putA insertingA
+setInserting = (insertingA .=)
 
 checkRO :: BufferM Bool
 checkRO =  do
-   ro <- getA readOnlyA
+   ro <- use readOnlyA
    when  ro (fail "Read Only Buffer")
    return ro
 
@@ -708,14 +700,14 @@ applyUpdate update = do
         forgetPreferCol
         let reversed = reverseUpdateI update
         modifyBuffer (applyUpdateI update)
-        modA undosA $ addChangeU $ AtomicChange $ reversed
+        undosA %= addChangeU (AtomicChange reversed)
         tell [update]
    -- otherwise, just ignore.
 
 -- | Revert all the pending updates; don't touch the point.
 revertPendingUpdatesB :: BufferM ()
 revertPendingUpdatesB = do
-  updates <- getA pendingUpdatesA
+  updates <- use pendingUpdatesA
   modifyBuffer (flip (foldr (\u bi -> applyUpdateI (reverseUpdateI u) bi)) [u | TextUpdate u <- updates])
 
 -- | Write an element into the buffer at the current point.
@@ -800,7 +792,7 @@ setMode :: Mode syntax -> BufferM ()
 setMode m = do
   modify (setMode0 m)
   -- reset the keymap process so we use the one of the new mode.
-  putA keymapProcessA I.End 
+  keymapProcessA .= I.End 
   modeOnLoad m
 
 -- | Modify the mode
@@ -808,7 +800,7 @@ modifyMode :: (forall syntax. Mode syntax -> Mode syntax) -> BufferM ()
 modifyMode f = do
   modify (modifyMode0 f)
   -- reset the keymap process so we use the one of the new mode.
-  putA keymapProcessA I.End 
+  keymapProcessA .= I.End 
 
 onMode :: (forall syntax. Mode syntax -> Mode syntax) -> AnyMode -> AnyMode
 onMode f (AnyMode m) = AnyMode (f m)
@@ -827,7 +819,7 @@ withSyntax0 f wk (FBuffer bm rb _attrs) = f bm (getAst wk rb)
 
 
 withSyntaxB :: (forall syntax. Mode syntax -> syntax -> a) -> BufferM a
-withSyntaxB f = withSyntax0 f <$> askWindow wkey <*> getA id
+withSyntaxB f = withSyntax0 f <$> askWindow wkey <*> use id
 
 
 focusSyntax ::  M.Map WindowRef Region -> FBuffer -> FBuffer
@@ -860,7 +852,7 @@ modifyMarkB m f = modifyBuffer $ modifyMarkBI m f
 
 -- | Highlight the selection
 setVisibleSelection :: Bool -> BufferM ()
-setVisibleSelection = putA highlightSelectionA
+setVisibleSelection = (highlightSelectionA .=)
 
 getInsMark :: BufferM Mark
 getInsMark = insMark <$> askMarks
@@ -912,11 +904,11 @@ lineMoveRel = movingToPrefCol . gotoLnFrom
 
 movingToPrefCol :: BufferM a -> BufferM a
 movingToPrefCol f = do
-  prefCol <- getPrefCol
+  prefCol <- use preferColA
   targetCol <- maybe curCol return prefCol
   r <- f
   moveToColB targetCol
-  setPrefCol $ Just targetCol
+  preferColA .= Just targetCol
   return r
 
 moveToColB :: Int -> BufferM ()
@@ -934,13 +926,13 @@ pointOfLineColB :: Int -> Int -> BufferM Point
 pointOfLineColB line col = savingPointB $ moveToLineColB line col >> pointB
 
 forgetPreferCol :: BufferM ()
-forgetPreferCol = setPrefCol Nothing
+forgetPreferCol = preferColA .= Nothing
 
 savingPrefCol :: BufferM a -> BufferM a
 savingPrefCol f = do
-  pc <- getPrefCol
+  pc <- use preferColA
   result <- f
-  setPrefCol pc
+  preferColA .= pc
   return result
 
 -- | Move point up one line
@@ -1016,9 +1008,9 @@ gotoLnFrom x = do
 -- | Access to a value into the extensible state, keyed by its type.
 --   This allows you to save or retrieve inside a 'BufferM' monad, ie:
 --
--- > putA bufferDynamicValueA updatedvalue
+-- > use bufferDynamicValueA updatedvalue
 -- > value <- getA bufferDynamicValueA
-bufferDynamicValueA :: YiVariable a => Accessor FBuffer a
+bufferDynamicValueA :: YiVariable a => Lens' FBuffer a
 bufferDynamicValueA = bufferDynamicA.dynamicValueA
 
 -- | perform a @BufferM a@, and return to the current point. (by using a mark)

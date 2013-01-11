@@ -1,7 +1,6 @@
 module Yi.Monad (
                  Ref(..), 
                  gets, 
-                 getsA, 
                  getsAndModify, 
                  maybeM,
                  modifiesRef,
@@ -14,7 +13,6 @@ module Yi.Monad (
                 ) where
 
 import Data.IORef
-import Control.Lens
 import Control.Monad.Reader
 import Control.Monad.State
 import Control.Concurrent.MVar
@@ -84,6 +82,3 @@ repeatUntilM m = do
     True -> do xs <- repeatUntilM m
                return (x:xs)
 
-getsA :: MonadState s m => Getting r s t a b -> (a -> r) -> m r
-getsA = uses
-{-# DEPRECATED getsA "use 'uses'" #-}

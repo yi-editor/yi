@@ -27,7 +27,7 @@ import qualified Graphics.UI.Gtk as Gtk
 import qualified Graphics.UI.Gtk.Gdk.GC as Gtk
 import System.Glib.GError
 
-import Yi.Prelude hiding (on, set)
+import Yi.Prelude hiding (on, set, moveTo, Action)
 
 import Yi.Buffer
 import Yi.Config
@@ -204,7 +204,7 @@ startNoMsg cfg ch outCh ed = do
       runAction = uiActionCh ui . makeAction
   -- why does this cause a hang without postGUIAsync?
   simpleNotebookOnSwitchPage (uiNotebook ui) $ \n -> postGUIAsync $
-    runAction (modA tabsA (move n) :: EditorM ())
+    runAction (tabsA %= move n :: EditorM ())
 
   return (mkUI ui)
 
@@ -264,7 +264,7 @@ updateWindow :: Editor -> UI -> Window -> WinInfo -> IO ()
 updateWindow e _ui win wInfo = do
     writeIORef (inFocus wInfo) False -- see also 'setWindowFocus'
     writeIORef (coreWin wInfo) win
-    writeIORef (insertingMode wInfo) (askBuffer win (findBufferWith (bufkey win) e) $ getA insertingA)
+    writeIORef (insertingMode wInfo) (askBuffer win (findBufferWith (bufkey win) e) $ use insertingA)
 
 setWindowFocus :: Editor -> UI -> TabInfo -> WinInfo -> IO ()
 setWindowFocus e ui t w = do
@@ -494,7 +494,7 @@ doLayout ui e = do
     tabs <- readRef $ tabCache ui
     f <- readRef (uiFont ui)
     heights <- fold <$> mapM (getHeightsInTab ui f e) tabs
-    let e' = (tabsA ^: fmap (mapWindows updateWin)) e
+    let e' = (tabsA . mapped %~ mapWindows updateWin) e
         updateWin w = case M.lookup (wkey w) heights of
                           Nothing -> w
                           Just (h,rgn) -> w { height = h, winRegion = rgn }

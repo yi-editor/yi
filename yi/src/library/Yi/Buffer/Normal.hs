@@ -44,7 +44,7 @@ module Yi.Buffer.Normal (TextUnit(Character, Line, VLine, Document),
                         ) where
 
 import Prelude(length, subtract)
-import Yi.Prelude
+import Yi.Prelude hiding (moveTo)
 import Yi.Buffer.Basic
 import Yi.Buffer.Misc
 import Yi.Buffer.Region
@@ -415,7 +415,7 @@ instance Initializable RegionStyle where
 
 instance YiVariable RegionStyle
 
-regionStyleA :: Accessor FBuffer RegionStyle
+regionStyleA :: Lens' FBuffer RegionStyle
 regionStyleA = bufferDynamicValueA
 
 mkRegionOfStyleB :: Point -> Point -> RegionStyle -> BufferM Region

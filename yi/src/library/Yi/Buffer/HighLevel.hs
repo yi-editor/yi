@@ -10,7 +10,7 @@ import qualified Data.Rope as R
 import Data.Maybe (fromMaybe, listToMaybe)
 import Data.Time (UTCTime)
 import Prelude (FilePath, map)
-import Yi.Prelude
+import Yi.Prelude hiding (moveTo)
 
 import Yi.Buffer.Basic
 import Yi.Buffer.Misc
@@ -364,12 +364,12 @@ scrollB n = do
     discard $ gotoLnFrom n
     setMarkPointB fr =<< pointB
   w <- askWindow wkey
-  modA pointFollowsWindowA (\old w' -> if w == w' then True else old w')
+  pointFollowsWindowA %= (\old w' -> if w == w' then True else old w')
 
 -- | Move the point to inside the viewable region
 snapInsB :: BufferM ()
 snapInsB = do
-    movePoint <- getA pointFollowsWindowA
+    movePoint <- use pointFollowsWindowA
     w <- askWindow wkey
     when (movePoint w) $ do
         r <- winRegionB
@@ -395,7 +395,7 @@ pointScreenRelPosition _ _ _ = Within -- just to disable the non-exhaustive patt
 -- | Move the visible region to include the point
 snapScreenB :: Maybe ScrollStyle ->BufferM Bool
 snapScreenB style = do
-    movePoint <- getA pointFollowsWindowA
+    movePoint <- use pointFollowsWindowA
     w <- askWindow wkey
     if movePoint w then return False else do
         inWin <- pointInWindowB =<< pointB
@@ -454,7 +454,7 @@ getRawestSelectRegionB = do
 -- | Return the empty region if the selection is not visible.
 getRawSelectRegionB :: BufferM Region
 getRawSelectRegionB = do
-  s <- getA highlightSelectionA
+  s <- use highlightSelectionA
   if s then getRawestSelectRegionB else do
      p <- pointB
      return $ mkRegion p p
@@ -462,7 +462,7 @@ getRawSelectRegionB = do
 -- | Get the current region boundaries. Extended to the current selection unit.
 getSelectRegionB :: BufferM Region
 getSelectRegionB = do
-  regionStyle <- getA regionStyleA
+  regionStyle <- use regionStyleA
   r <- getRawSelectRegionB
   mkRegionOfStyleB (regionStart r) (regionEnd r) regionStyle
 

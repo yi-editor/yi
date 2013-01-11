@@ -94,10 +94,10 @@ selectedTree e r = findLargestWithin r <$> getLastPath e (regionLast r)
 
 -- List must be non-empty
 findLargestWithin :: Region -> [Tree TT] -> Tree TT
-findLargestWithin r = fromMaybe . head <*> safeLast . takeWhile (within r)
+findLargestWithin r = fromMaybe . head <*> safeLast . takeWhile (isWithin r)
 
-within :: Region -> Tree TT -> Bool
-within r t = includedRegion ((mkRegion . getFirstOffset <*> getLastOffset) t) r
+isWithin :: Region -> Tree TT -> Bool
+isWithin r t = includedRegion ((mkRegion . getFirstOffset <*> getLastOffset) t) r
 
 safeLast :: [a] -> Maybe a
 safeLast [] = Nothing

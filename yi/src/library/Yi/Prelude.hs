@@ -53,11 +53,14 @@ mapAdjust',
 mapAlter',
 mapFromFoldable,
 module Control.Applicative,
+module Control.Lens,
 
+{-
 Lens',
 ALens',
 Getting,
 Setting,
+lens,
 (^.),
 view,
 set,
@@ -67,18 +70,11 @@ to,
 (%=),
 (%~),
 mapped,
-makeLensesWithSuffix,
 makeLenses,
+-}
+makeLensesWithSuffix,
 
 -- deprecated
-(^:),
-(^=),
-getVal,
-setVal,
-putA, getA, modA,
-Accessor,
-accessor,
-fromSetGet,
 mapDefault,
 
 module Data.Bool,
@@ -121,7 +117,7 @@ import qualified Data.HashMap.Strict as HashMap
 import Data.Hashable(Hashable)
 import Data.Int
 import Data.Rope (Rope)
-import Control.Lens hiding (Accessor, focus, (^=))
+import Control.Lens hiding (focus, (+~), (-~)) -- Accessor, focus, (^=))
 import Control.Monad.Reader
 import Control.Applicative hiding((<$))
 import Data.Traversable 
@@ -129,19 +125,8 @@ import Data.Typeable
 import Data.Monoid (Monoid, mappend)
 import qualified Data.Set as Set
 import qualified Data.Map as Map
-import qualified Control.Monad.State.Class as CMSC
 import Data.List.PointedList (PointedList(PointedList), focus)
-
-type Accessor s a = Lens' s a
-{-# DEPRECATED Accessor "use 'Lens'' instead" #-}
-
-accessor :: (s -> a) -> (b -> s -> t) -> IndexPreservingLens s t a b
-accessor getter setter = lens getter (flip setter)
-{-# DEPRECATED accessor "use 'lens' or something even better" #-}
-
-fromSetGet :: (b -> s -> t) -> (s -> a) -> IndexPreservingLens s t a b
-fromSetGet setter getter = lens getter (flip setter)
-{-# DEPRECATED fromSetGet "use 'lens' or something even better" #-}
+import qualified Language.Haskell.TH as TH
 
 type Endom a = a -> a
 
@@ -275,42 +260,13 @@ swapFocus moveFocus xs = xs & focus .~ (moveFocus xs^.focus)
 ----------------------
 -- Acessor stuff
 
+makeLensesWithSuffix :: String -> TH.Name -> TH.Q [TH.Dec]
 makeLensesWithSuffix s =
   makeLensesWith (defaultRules & lensField .~ Just . (++s))
 
-putA :: CMSC.MonadState s m => ASetter s s a b -> b -> m ()
-putA = (.=)
-{-# DEPRECATED putA "use '.=' instead" #-}
-
-getA :: CMSC.MonadState s m => Getting a s t a b -> m a
-getA = use
-{-# DEPRECATED getA "use 'use' instead" #-}
-
-modA :: CMSC.MonadState s m => ASetter s s a b -> (a -> b) -> m ()
-modA = (%=)
-{-# DEPRECATED modA "use '%=' instead" #-}
-
-getVal :: MonadReader s m => Getting a s t a b -> m a
-getVal = view
-{-# DEPRECATED getVal "use 'view' or '^.' instead" #-}
-
-infixr 5 ^=, ^:
-
-(^:) :: ASetter s t a b -> (a -> b) -> s -> t
-(^:) = (%~)
-{-# DEPRECATED (^:) "use '%~' instead" #-}
-
-(^=) :: ASetter s t a b -> b -> s -> t
-(^=) = (.~)
-{-# DEPRECATED (^=) "use '.~' or 'set' instead" #-}
-
-setVal :: ASetter s t a b -> b -> s -> t
-setVal = (.~)
-{-# DEPRECATED setVal "use '.~' or 'set' instead" #-}
-
-mapDefault :: Ord key => elem -> key -> Accessor (Map.Map key elem) elem
-mapDefault deflt key =
-  fromSetGet (Map.insert key) (Map.findWithDefault deflt key)
+mapDefault :: Ord key => elem -> key -> Lens' (Map.Map key elem) elem
+mapDefault deflt key = lens (Map.findWithDefault deflt key) (flip (Map.insert key))
+{-# DEPRECATED mapDefault "TODO" #-}
 
 -------------------- Initializable typeclass
 -- | The default value. If a function tries to get a copy of the state, but the state

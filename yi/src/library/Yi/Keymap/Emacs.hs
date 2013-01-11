@@ -87,7 +87,7 @@ completionKm caseSensitive = do discard $ some ((meta (char '/') ?>>! wordComple
 
 placeMark :: BufferM ()
 placeMark = do
-  putA highlightSelectionA True
+  highlightSelectionA .= True
   pointB >>= setSelectionMarkPointB
 
 selectAll ::BufferM()
@@ -254,11 +254,11 @@ emacsKeys univArg =
                  , ctrlCh 'b'    ?>>! listBuffers
                  , ctrlCh 'c'    ?>>! askQuitEditor
                  , ctrlCh 'f'    ?>>! findFile
-                 , ctrlCh 'q'      ?>>! (withBuffer $ modA readOnlyA not)
+                 , ctrlCh 'q'    ?>>! (withBuffer $ readOnlyA %= not)
                  , ctrlCh 's'    ?>>! fwriteE
                  , ctrlCh 'w'    ?>>! promptFile "Write file:" fwriteToE
                  , ctrlCh 'x'    ?>>! (exchangePointAndMarkB >> 
-                                       putA highlightSelectionA True)
+                                       highlightSelectionA .= True)
                  , char 'b'      ?>>! switchBufferE
                  , char 'd'      ?>>! dired
                  , char 'e' ?>> 

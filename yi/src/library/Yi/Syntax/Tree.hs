@@ -29,7 +29,7 @@ import Test.QuickCheck
 
 import Yi.Buffer.Basic
 import Yi.Lexer.Alex
-import Yi.Prelude
+import Yi.Prelude hiding (index, elements)
 import Yi.Region
 
 -- Fundamental types

@@ -75,8 +75,8 @@ attributesPictureB sty mexp region extraLayers =
 attributesPictureAndSelB :: UIStyle -> Maybe SearchExp -> Region -> BufferM [(Point,Attributes)]
 attributesPictureAndSelB sty mexp region = do
     selReg <- getSelectRegionB
-    showSel <- getA highlightSelectionA
-    rectSel <- getA rectangleSelectionA
+    showSel <- use highlightSelectionA
+    rectSel <- use rectangleSelectionA
     let styliseReg reg = Span (regionStart reg) selectedStyle (regionEnd reg)
         extraLayers | rectSel && showSel = (:[]) . fmap styliseReg <$> blockifyRegion selReg
                     | showSel            = return [[styliseReg selReg]]

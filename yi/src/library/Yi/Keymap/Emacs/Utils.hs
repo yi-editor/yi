@@ -183,7 +183,7 @@ queryReplaceE = do
     withMinibufferFree "Replace:" $ \replaceWhat -> do
     withMinibufferFree "With:" $ \replaceWith -> do
     b <- gets currentBuffer
-    win <- getA currentWindowA
+    win <- use currentWindowA
     let replaceKm = choice [char 'n' ?>>! qrNext win b re,
                             char '!' ?>>! qrReplaceAll win b re replaceWith,
                             oneOf [char 'y', char ' '] >>! qrReplaceOne win b re replaceWith,
@@ -269,7 +269,7 @@ scrollUpE a = case a of
 
 switchBufferE :: YiM ()
 switchBufferE = do
-    openBufs <- fmap bufkey . toList <$> getA windowsA
+    openBufs <- fmap bufkey . toList <$> use windowsA
     names <- withEditor $ do bs <- fmap bkey <$> getBufferStack
                              let choices = (bs \\ openBufs) ++ openBufs -- put the open buffers at the end.
                              prefix <- gets commonNamePrefix
