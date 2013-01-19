@@ -92,6 +92,7 @@ printableAction evs = do
                         "<C-w>" -> deleteRegionB =<< regionOfPartNonEmptyB unitViWordOnLine Backward
                         "<C-r>" -> return () -- TODO
                         "<C-k>" -> return () -- TODO
+                        "<lt>" -> insertB '<'
                         evs' -> error $ "Unhandled event " ++ evs' ++ " in insert mode"
     updatedCursors <- withBuffer0 $ do
         updatedCursors <- forM marks $ \mark -> do
