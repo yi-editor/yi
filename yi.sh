@@ -1,1 +1,1 @@
-runhaskell yi/yi/src/executable/Main.hs --as=emacs
+runhaskell yi/yi/example-configs/onlyu-config.hs
