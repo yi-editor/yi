@@ -151,8 +151,7 @@ emacsKeys univArg =
          , ctrlCh 's'           ?>>  (isearchKeymap Forward)
          , ctrlCh 't'           ?>>! (repeatingArg $ swapB)
          , ctrlCh 'v'           ?>>! scrollDownE univArg
---         , ctrlCh 'w'           ?>>! killRegion
-         , ctrlCh 'w'           ?>>! bKillWordB
+         , ctrlCh 'w'           ?>>! killRegion
          , ctrlCh 'y'           ?>>! yankE
          , ctrlCh 'z'           ?>>! suspendEditor
 
