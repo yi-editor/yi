@@ -105,7 +105,8 @@ withMinibufferGen proposal getHint prompt completer act = do
       closeMinibuffer = closeBufferAndWindowE >>
                         modA windowsA (fromJust . PL.find initialWindow)
       showMatchings = showMatchingsOf =<< withBuffer elemsB
-      showMatchingsOf userInput = withEditor . printStatus =<< fmap withDefaultStyle (getHint userInput)
+      transform = (++ ["}"]) . init . ("{" :) . tail . foldr (\elem acc -> acc ++ ["|", elem]) []
+      showMatchingsOf userInput = withEditor . printStatus =<< fmap (withDefaultStyle . transform) (getHint userInput)
       withDefaultStyle msg = (msg, defaultStyle)
       innerAction = do
         lineString <- withEditor $ do historyFinishGen prompt (withBuffer0 elemsB)
