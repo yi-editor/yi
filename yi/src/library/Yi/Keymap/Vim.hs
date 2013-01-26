@@ -71,7 +71,7 @@ import Yi.Core
 import Yi.Eval (execEditorAction, getAllNamesInScope)
 import Yi.File
 import Yi.History
-import Yi.String (dropSpace,lines')
+import Yi.String (dropSpace)
 import Yi.MiniBuffer
 import Yi.Misc
 import Yi.Regex (seInput, regexEscapeString)
@@ -697,25 +697,6 @@ defKeymap = Proto template
        dir <- fdir <$> getA searchDirectionA 
        printMsg $ directionElim dir '?' '/' : maybe "" seInput m
        viSearch "" [] dir
-
-     skippingFirst :: ([a] -> [a]) -> [a] -> [a]
-     skippingFirst f = list [] (\x -> (x :) . f)
-
-     skippingLast :: ([a] -> [a]) -> [a] -> [a]
-     skippingLast f xs = f (init xs) ++ [last xs]
-
-     skippingNull :: ([a] -> [b]) -> [a] -> [b]
-     skippingNull _ [] = []
-     skippingNull f xs = f xs
-
-     joinLinesB :: Region -> BufferM ()
-     joinLinesB =
-       savingPointB .
-         (modifyRegionClever $ skippingLast $
-            concat . (skippingFirst $ map $ skippingNull ((' ':) . dropWhile isSpace)) . lines')
-
-     concatLinesB :: Region -> BufferM ()
-     concatLinesB = savingPointB . (modifyRegionClever $ skippingLast $ filter (/='\n'))
 
      onCurrentWord :: (String -> String) -> BufferM ()
      onCurrentWord f = savingPointB $ modifyRegionClever f =<< regionOfNonEmptyB unitViWord

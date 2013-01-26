@@ -19,14 +19,21 @@ module Yi.Buffer.Region
   , winRegionB
   , inclusiveRegionB
   , blockifyRegion
+  , joinLinesB
+  , concatLinesB
   )
 where
-import Data.Algorithm.Diff
-import Yi.Region
-import Yi.Buffer.Misc
-import Yi.Prelude
+
 import Prelude ()
-import Data.List (length, sort)
+import Yi.Prelude
+
+import Data.Algorithm.Diff
+import Data.Char (isSpace)
+import Data.List (filter, length, sort, dropWhile)
+
+import Yi.Buffer.Misc
+import Yi.Region
+import Yi.String (lines')
 import Yi.Window (winRegion)
 
 winRegionB :: BufferM Region
@@ -124,3 +131,21 @@ blockifyRegion r = savingPointB $ do
   mapM (\line -> mkRegion <$> pointOfLineColB line lowCol <*> pointOfLineColB line (1 + highCol))
        [startLine..endLine]
 
+skippingFirst :: ([a] -> [a]) -> [a] -> [a]
+skippingFirst f = list [] (\x -> (x :) . f)
+
+skippingLast :: ([a] -> [a]) -> [a] -> [a]
+skippingLast f xs = f (init xs) ++ [last xs]
+
+skippingNull :: ([a] -> [b]) -> [a] -> [b]
+skippingNull _ [] = []
+skippingNull f xs = f xs
+
+joinLinesB :: Region -> BufferM ()
+joinLinesB =
+  savingPointB .
+    (modifyRegionClever $ skippingLast $
+       concat . (skippingFirst $ fmap $ skippingNull ((' ':) . dropWhile isSpace)) . lines')
+
+concatLinesB :: Region -> BufferM ()
+concatLinesB = savingPointB . (modifyRegionClever $ skippingLast $ filter (/='\n'))

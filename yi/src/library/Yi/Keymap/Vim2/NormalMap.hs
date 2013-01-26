@@ -8,7 +8,7 @@ import Prelude ()
 import Control.Monad (replicateM_)
 
 import Data.Char
-import Data.List (group)
+import Data.List (group, dropWhile)
 import Data.Maybe (fromMaybe, maybe)
 import Data.Prototype (extractValue)
 import qualified Data.Rope as R
@@ -21,6 +21,7 @@ import Yi.Keymap.Keys
 import Yi.Keymap.Vim (exMode, defKeymap)
 import Yi.Keymap.Vim2.Common
 import Yi.Keymap.Vim2.Eval
+import Yi.Keymap.Vim2.Motion
 import Yi.Keymap.Vim2.OperatorUtils
 import Yi.Keymap.Vim2.Search
 import Yi.Keymap.Vim2.StateUtils
@@ -95,6 +96,16 @@ finishingBingings = fmap (mkBindingE Normal Finish)
                transformCharactersInLineN count switchCaseChar
                leftOnEol
         , resetCount)
+    , (char 'J', do
+        count <- fmap (flip (-) 1 . max 2) getCountE
+        withBuffer0 $ do
+            (StyledRegion s r) <- case stringToMove "j" of
+                WholeMatch m -> regionOfMoveB $ CountedMove (Just count) m
+                _ -> error "can't happen"
+            lineMoveRel $ count - 1
+            moveToEol
+            joinLinesB =<< convertRegionToStyleB r s
+       , resetCount)
     ]
 
 addNewLineIfNecessary :: Rope -> Rope

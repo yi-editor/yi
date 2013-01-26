@@ -1,0 +1,9 @@
+-- Input
+(1,1)
+aaa
+bbb
+-- Output
+(1,4)
+aaa bbb
+-- Events
+J

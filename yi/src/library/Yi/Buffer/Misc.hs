@@ -1017,7 +1017,6 @@ maybeCharAboveB = maybeCharWithVerticalOffset (-1)
 
 maybeCharWithVerticalOffset :: Int -> BufferM (Maybe Char)
 maybeCharWithVerticalOffset offset = savingPointB $ do
-    startingPoint <- pointB
     l0 <- curLn
     c0 <- curCol
     discard $ lineMoveRel offset
