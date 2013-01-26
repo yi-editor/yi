@@ -22,7 +22,7 @@ import Yi.Config
 import Yi.Core
 import Yi.History
 import Yi.Completion (infixMatch, prefixMatch, containsMatch', completeInList, completeInList')
-import Yi.Style (defaultStyle, withFg, darkgreen)
+import qualified Yi.Style (defaultStyle, withFg, darkgreen)
 import qualified Data.Rope as R
 
 -- | Open a minibuffer window with the given prompt and keymap
