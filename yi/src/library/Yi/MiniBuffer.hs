@@ -22,7 +22,7 @@ import Yi.Config
 import Yi.Core
 import Yi.History
 import Yi.Completion (infixMatch, prefixMatch, containsMatch', completeInList, completeInList')
-import qualified Yi.Style (defaultStyle, withFg, darkgreen)
+import Yi.Style (defaultStyle, withFg, darkgreen)
 import qualified Data.Rope as R
 
 -- | Open a minibuffer window with the given prompt and keymap
@@ -99,7 +99,8 @@ withMinibufferGen :: String -> (String -> YiM [String]) ->
 withMinibufferGen proposal getHint prompt completer act = do
   initialBuffer <- gets currentBuffer
   initialWindow <- getA currentWindowA
-  let innerAction :: YiM ()
+  let realDo :: YiM ()
+      smartDo :: YiM ()
       -- ^ Read contents of current buffer (which should be the minibuffer), and
       -- apply it to the desired action
       closeMinibuffer = closeBufferAndWindowE >>
@@ -107,27 +108,34 @@ withMinibufferGen proposal getHint prompt completer act = do
       showMatchings = showMatchingsOf =<< withBuffer elemsB
       
       -- add { | } to the status line, make it looks like ido-mode in emacs
-      transform = (++ ["}"]) . ("{" :) . tail . foldr (\x acc -> acc ++ ["|", x]) []
+      transform = (++ ["}"]) . ("{" :) . tail . foldr (\x acc -> ["|", x] ++ acc) []
       showMatchingsOf userInput = withEditor . printStatus =<< fmap (withHintStyle . transform) (getHint userInput)
       
       hintStyle = const $ withFg darkgreen
       withHintStyle msg = (msg, hintStyle)
       
-      innerAction = do
-        lineString <- withEditor $ do historyFinishGen prompt (withBuffer0 elemsB)
+
+      getLineString = withEditor $ do historyFinishGen prompt (withBuffer0 elemsB)
                                       lineString <- withBuffer0 elemsB
                                       closeMinibuffer
                                       switchToBufferE initialBuffer
                                       -- The above ensures that the action is performed on the buffer
                                       -- that originated the minibuffer.
                                       return lineString
-        act lineString
+      realDo = getLineString >>= act
+        
+      smartDo = do lineString <- withEditor $ withBuffer0 elemsB
+                   -- if is directory, continue, else open the file
+                   if not (null lineString) && last lineString == '/' then showMatchings
+                     else realDo
+          
       up   = historyMove prompt 1
       down = historyMove prompt (-1)
 
-      rebindings = choice [oneOf [spec KEnter, ctrl $ char 'm'] >>! innerAction,
-                           oneOf [spec KUp,    meta $ char 'p'] >>! up,
-                           oneOf [spec KDown,  meta $ char 'n'] >>! down,
+      rebindings = choice [oneOf [spec KEnter, ctrl $ char 'm'] >>! completionFunction completer >>! smartDo,
+                           ctrl (char 'j') 		       ?>>! realDo,
+                           ctrl (char 's') 		       ?>>! realDo, -- to-do: change the matchings order
+                           ctrl (char 'r') 		       ?>>! realDo, -- to-do: change the matchings order
                            oneOf [spec KTab,   ctrl $ char 'i'] >>! completionFunction completer >>! showMatchings,
                            ctrl (char 'g')                     ?>>! closeMinibuffer]
   showMatchingsOf ""
@@ -135,7 +143,6 @@ withMinibufferGen proposal getHint prompt completer act = do
       historyStartGen prompt
       discard $ spawnMinibufferE (prompt ++ " ") (\bindings -> rebindings <|| (bindings >> write showMatchings))
       withBuffer0 $ replaceBufferContent proposal
-
 
 -- | Open a minibuffer, given a finite number of suggestions.
 withMinibufferFin :: String -> [String] -> (String -> YiM ()) -> YiM ()
