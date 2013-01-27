@@ -5,18 +5,19 @@ module Yi.Misc
 where
 
 {- Standard Library Module Imports -}
-import Data.List
-  ( isPrefixOf
+import Data.List(
+  isPrefixOf
   , stripPrefix
   , (\\)
-  , filter
+  , sortBy
   )
+
 import System.FriendlyPath
   ( expandTilda
   , isAbsolute'
   )
-import System.FilePath
-  ( takeDirectory
+import System.FilePath (
+  takeDirectory
   , (</>)
   , addTrailingPathSeparator
   , hasTrailingPathSeparator
@@ -44,6 +45,7 @@ import Yi.Completion
     )
 import System.CanonicalizePath (canonicalizePath, replaceShorthands)
 import Data.Maybe (isNothing)
+import Shim.Utils (fuzzyDistance)
 
 -- | Given a possible starting path (which if not given defaults to
 --   the current directory) and a fragment of a path we find all
@@ -75,7 +77,7 @@ getAppropriateFiles start s' = do
   -- need to complete or hint about these as they are known by users.
   let files' = files \\ [ ".", ".." ]
   fs <- liftIO $ mapM fixTrailingPathSeparator files'
-  let matching = filter (isPrefixOf $ takeFileName s) fs
+  let matching = sortBy (compare `on` (fuzzyDistance $ takeFileName s)) fs
   return (sDir, matching)
 
 -- | Given a path, trim the file name bit if it exists.  If no path
@@ -129,9 +131,7 @@ promptFile prompt act = do maybePath <- withBuffer $ gets file
                              (act . replaceShorthands)
 
 matchFile :: String -> String -> Maybe String
-matchFile path proposedCompletion =
-  let realPath = replaceShorthands path
-  in (path ++) <$> stripPrefix realPath proposedCompletion
+matchFile path proposedCompletion = Just $ replaceShorthands proposedCompletion
 
 completeFile :: String -> String -> YiM String
 completeFile startPath = mkCompleteFn completeInList' matchFile $ matchingFileNames (Just startPath)
