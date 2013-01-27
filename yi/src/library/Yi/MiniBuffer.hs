@@ -22,7 +22,7 @@ import Yi.Config
 import Yi.Core
 import Yi.History
 import Yi.Completion (infixMatch, prefixMatch, containsMatch', completeInList, completeInList')
-import Yi.Style (defaultStyle)
+import Yi.Style (defaultStyle, withFg, darkgreen)
 import qualified Data.Rope as R
 
 -- | Open a minibuffer window with the given prompt and keymap
@@ -105,9 +105,14 @@ withMinibufferGen proposal getHint prompt completer act = do
       closeMinibuffer = closeBufferAndWindowE >>
                         modA windowsA (fromJust . PL.find initialWindow)
       showMatchings = showMatchingsOf =<< withBuffer elemsB
-      transform = (++ ["}"]) . init . ("{" :) . tail . foldr (\elem acc -> acc ++ ["|", elem]) []
-      showMatchingsOf userInput = withEditor . printStatus =<< fmap (withDefaultStyle . transform) (getHint userInput)
-      withDefaultStyle msg = (msg, defaultStyle)
+      
+      -- add { | } to the status line, make it looks like ido-mode in emacs
+      transform = (++ ["}"]) . ("{" :) . tail . foldr (\x acc -> acc ++ ["|", x]) []
+      showMatchingsOf userInput = withEditor . printStatus =<< fmap (withHintStyle . transform) (getHint userInput)
+      
+      hintStyle = const $ withFg darkgreen
+      withHintStyle msg = (msg, hintStyle)
+      
       innerAction = do
         lineString <- withEditor $ do historyFinishGen prompt (withBuffer0 elemsB)
                                       lineString <- withBuffer0 elemsB
