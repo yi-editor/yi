@@ -18,6 +18,7 @@ import Data.List (isInfixOf)
 import qualified Data.List.PointedList.Circular as PL
 import Data.Maybe
 import Data.String (IsString)
+import System.FilePath (takeDirectory)
 import Yi.Config
 import Yi.Core
 import Yi.History
@@ -128,15 +129,38 @@ withMinibufferGen proposal getHint prompt completer act = do
                    -- if is directory, continue, else open the file
                    if not (null lineString) && last lineString == '/' then showMatchings
                      else realDo
-          
+
+      -- todo: this is find-file spec
+      gotoParentDir :: YiM ()
+      gotoParentDir = do
+        lineString <- withEditor $ withBuffer0 elemsB
+        toParent lineString
+        -- goto the parent's dir
+        where toParent []                   = error "path is nil."
+              toParent (x:[])               = error "Get to the root directory."
+              toParent xs | last xs == '/'  = replaceBuffer $ takeDirectory $ init xs
+                          | otherwise       = replaceBuffer $ takeDirectory xs
+
+              replaceBuffer = withEditor . withBuffer0 . replaceBufferContent . (++ "/")
+
+      -- delete one char
+      deleteChar :: YiM()
+      deleteChar = do
+        lineString <- withEditor $ withBuffer0 elemsB
+        if last lineString == '/' then gotoParentDir
+          else withEditor $ withBuffer0 $ replaceBufferContent $ init lineString
+                         
       up   = historyMove prompt 1
       down = historyMove prompt (-1)
 
-      rebindings = choice [oneOf [spec KEnter, ctrl $ char 'm'] >>! completionFunction completer >>! smartDo,
-                           ctrl (char 'j') 		       ?>>! realDo,
+      rebindings = choice [ctrl (char 'j')    		       ?>>! realDo,
+                           oneOf [spec KEnter, ctrl $ char 'm'] >>! completionFunction completer >>! smartDo,
                            ctrl (char 's') 		       ?>>! realDo, -- to-do: change the matchings order
                            ctrl (char 'r') 		       ?>>! realDo, -- to-do: change the matchings order
-                           oneOf [spec KTab,   ctrl $ char 'i'] >>! completionFunction completer >>! showMatchings,
+                           oneOf [ctrl (char 'w')]              >>! gotoParentDir >>! showMatchings,
+                           oneOf [spec KBS]                     >>! deleteChar >>! showMatchings,
+--                           oneOf [spec KTab,   ctrl $ char 'i'] >>! completionFunction completer >>! showMatchings,
+                           oneOf [spec KTab,   ctrl $ char 'i'] >>! realDo,
                            ctrl (char 'g')                     ?>>! closeMinibuffer]
   showMatchingsOf ""
   withEditor $ do 
