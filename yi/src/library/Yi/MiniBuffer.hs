@@ -14,7 +14,7 @@ module Yi.MiniBuffer
  ) where
 
 import Prelude (filter, length, words)
-import Data.List (isInfixOf)
+import Data.List (isInfixOf, sortBy)
 import qualified Data.List.PointedList.Circular as PL
 import Data.Maybe
 import Data.String (IsString)
@@ -24,6 +24,7 @@ import Yi.Core
 import Yi.History
 import Yi.Completion (infixMatch, prefixMatch, containsMatch', completeInList, completeInList')
 import Yi.Style (defaultStyle, withFg, darkgreen)
+import Shim.Utils (fuzzyDistance)
 import qualified Data.Rope as R
 
 -- | Open a minibuffer window with the given prompt and keymap
@@ -176,8 +177,9 @@ withMinibufferFin prompt possibilities act
         -- The function for returning the hints provided to the user underneath
         -- the input, basically all those that currently match.
         hinter s = return $ match s
-        -- All those which currently match.
-        match s = filter (s `isInfixOf`) possibilities
+        -- just sort
+        match s = sortBy (compare `on` (fuzzyDistance s)) possibilities
+--        match s = filter (s `isInfixOf`) possibilities
 
         -- The best match from the list of matches
         -- If the string matches completely then we take that

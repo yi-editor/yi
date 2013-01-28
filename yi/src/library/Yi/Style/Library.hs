@@ -49,7 +49,8 @@ defaultTheme = Proto $ const $ UIStyle
 -- | The default Theme
 defaultLightTheme :: Theme
 defaultLightTheme = defaultTheme `override` \super _ -> super
-  { modelineAttributes = emptyAttributes { foreground = black,    background = darkcyan }
+  { modelineAttributes = emptyAttributes { foreground = grey,    background = white }
+  , modelineFocusStyle = withFg black `mappend` withBg lightGrey
   , tabBarAttributes   = emptyAttributes { foreground = white,    background = black }
   , baseAttributes     = emptyAttributes
   }
