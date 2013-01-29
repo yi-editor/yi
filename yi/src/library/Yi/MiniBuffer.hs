@@ -23,7 +23,7 @@ import Yi.Config
 import Yi.Core
 import Yi.History
 import Yi.Completion (infixMatch, prefixMatch, containsMatch', completeInList, completeInList')
-import Yi.Style (defaultStyle, withFg, darkgreen)
+import Yi.Style (defaultStyle, withFg, green)
 import Shim.Utils (fuzzyDistance)
 import qualified Data.Rope as R
 
@@ -113,7 +113,7 @@ withMinibufferGen proposal getHint prompt completer act = do
       transform = (++ ["}"]) . ("{" :) . tail . foldr (\x acc -> ["|", x] ++ acc) []
       showMatchingsOf userInput = withEditor . printStatus =<< fmap (withHintStyle . transform) (getHint userInput)
       
-      hintStyle = const $ withFg darkgreen
+      hintStyle = const $ withFg green
       withHintStyle msg = (msg, hintStyle)
       
 
