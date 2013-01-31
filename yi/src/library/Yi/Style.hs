@@ -38,6 +38,7 @@ data UIStyle = UIStyle
   , tabNotFocusedStyle :: Style      -- ^ a tab that does not have the current focus
 
   , baseAttributes     :: Attributes -- ^ ground attributes for the main text views
+  , miniBaseAttributes  :: Attributes -- ^ mini window ground attributes for the main text views
 
   -- General styles applied to the ground attributes above
   , selectedStyle      :: Style      -- ^ the selected portion

@@ -48,14 +48,14 @@ data Editor = Editor {
        ,buffers       :: !(M.Map BufferRef FBuffer)
        ,refSupply     :: !Int  -- ^ Supply for buffer, window and tab ids.
 
-       ,tabs_          :: !(PL.PointedList Tab) -- ^ current tab contains the visible windows pointed list.
+       ,tabs_         :: !(PL.PointedList Tab) -- ^ current tab contains the visible windows pointed list.
 
        ,dynamic       :: !DynamicValues              -- ^ dynamic components
 
        ,statusLines   :: !Statuses
        ,maxStatusHeight :: !Int
        ,killring      :: !Killring
-       ,currentRegex         :: !(Maybe SearchExp) -- ^ currently highlighted regex (also most recent regex for use in vim bindings)
+       ,currentRegex  :: !(Maybe SearchExp) -- ^ currently highlighted regex (also most recent regex for use in vim bindings)
        ,searchDirection :: !Direction
        ,pendingEvents :: ![Event]                   -- ^ Processed events that didn't yield any action yet.
        ,onCloseActions :: !(M.Map BufferRef (EditorM ())) -- ^ Actions to be run when the buffer is closed; should be scrapped.

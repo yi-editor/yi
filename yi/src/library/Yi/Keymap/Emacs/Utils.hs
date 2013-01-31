@@ -325,6 +325,7 @@ promptTag = do
   let hinter =  return . take 10 . maybe fail hintTags tagTable
   -- Completions are super-cheap. Go wild
   let completer =  return . maybe id completeTag tagTable
+  logPutStrLn "begin file tag"
   withMinibufferGen "" hinter ("Find tag: (default " ++ defaultTag ++ ")") completer  $
                  -- if the string is "" use the defaultTag
                  gotoTag . maybeList defaultTag

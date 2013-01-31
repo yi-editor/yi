@@ -14,12 +14,15 @@ keyword       = RGB 0x8a 0xc6 0xf1
 typecolor     = RGB 0x9e 0x00 0xfe
 variable      = green
 interface     = RGB 0xaf 0x00 0x5f
+prompt        = RGB 0xaf 0x00 0x5f
 stringcolor   = RGB 0x00 0xd7 0x5f
 
 
 main :: IO ()
-main = yi $ defaultEmacsConfig
-  { defaultKm =
+main = do
+  initDebug ".yi.dbg"
+  yi $ defaultEmacsConfig  {
+    defaultKm =
       Emacs.mkKeymap $ override Emacs.defKeymap $ \parent _self ->
         parent {
            eKeymap = (eKeymap parent) ||> (ctrlCh 'w' ?>>! bkillWordB)
@@ -45,10 +48,12 @@ main = yi $ defaultEmacsConfig
           , keywordStyle       = withFg keyword
           , numberStyle        = withFg green
           , baseAttributes     = emptyAttributes { foreground = green,    background = black }
+          , miniBaseAttributes = emptyAttributes { foreground = prompt,  background = black }
           , variableStyle      = withFg green
           , stringStyle        = withFg stringcolor
           }
-        } 
-      -- bind M-> to increaseIndent and mix with default Emacs keymap.
+        }
+  , debugMode = True
+  -- bind M-> to increaseIndent and mix with default Emacs keymap.
   }
   

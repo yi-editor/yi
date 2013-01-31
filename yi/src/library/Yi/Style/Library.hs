@@ -18,6 +18,7 @@ defaultTheme = Proto $ const $ UIStyle
   , tabNotFocusedStyle = withFg bright_black <> withBg white
 
   , baseAttributes     = error "base attributes must be redefined!"
+  , miniBaseAttributes = error "mini window's base attributes must be redefined!"
 
   , selectedStyle      = withFg black <> withBg bright_magenta
   , eofStyle           = withFg bright_blue
@@ -53,6 +54,7 @@ defaultLightTheme = defaultTheme `override` \super _ -> super
   , modelineFocusStyle = withFg black <> withBg white
   , tabBarAttributes   = emptyAttributes { foreground = white,    background = black }
   , baseAttributes     = emptyAttributes
+  , miniBaseAttributes = emptyAttributes
   }
 
 -- | A Theme inspired by the blue colorscheme of Vim.

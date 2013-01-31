@@ -302,7 +302,8 @@ drawWindow cfg e focused win w h = (Rendered { picture = pict,cursor = cur}, mkR
         -- off reserves space for the mode line. The mini window does not have a mode line.
         off = if notMini then 1 else 0
         h' = h - off
-        ground = baseAttributes sty
+        -- change the mini window's base attributes
+        ground = if isMini win then miniBaseAttributes sty else baseAttributes sty
         wsty = attributesToAttr ground Vty.def_attr
         eofsty = appEndo (eofStyle sty) ground
         (point, _) = runBuffer win b pointB

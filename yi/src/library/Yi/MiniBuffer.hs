@@ -110,7 +110,10 @@ withMinibufferGen proposal getHint prompt completer act = do
       showMatchings = showMatchingsOf =<< withBuffer elemsB
       
       -- add { | } to the status line, make it looks like ido-mode in emacs
-      transform = (++ ["}"]) . ("{" :) . tail . foldr (\x acc -> ["|", x] ++ acc) []
+      safeTail [] = []
+      safeTail xs = tail xs
+      
+      transform = (++ ["}"]) . ("{" :) . safeTail . foldr (\x acc -> ["|", x] ++ acc) []
       showMatchingsOf userInput = withEditor . printStatus =<< fmap (withHintStyle . transform) (getHint userInput)
       
       hintStyle = const $ withFg green
@@ -163,7 +166,9 @@ withMinibufferGen proposal getHint prompt completer act = do
 --                           oneOf [spec KTab,   ctrl $ char 'i'] >>! completionFunction completer >>! showMatchings,
                            oneOf [spec KTab,   ctrl $ char 'i'] >>! realDo,
                            ctrl (char 'g')                     ?>>! closeMinibuffer]
+  logPutStrLn "show matching of"
   showMatchingsOf ""
+  logPutStrLn "show proposal"
   withEditor $ do 
       historyStartGen prompt
       discard $ spawnMinibufferE (prompt ++ " ") (\bindings -> rebindings <|| (bindings >> write showMatchings))
