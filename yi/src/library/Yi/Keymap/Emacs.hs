@@ -137,10 +137,10 @@ emacsKeys univArg =
          , ctrlCh 'e'           ?>>! (repeatingArg (maybeMoveB Line Forward))
          , ctrlCh 'f'           ?>>! (repeatingArg rightB)
          , ctrlCh 'g'           ?>>! (setVisibleSelection False)               
-         , ctrlCh 'h'           ?>> char 'b' ?>>! acceptedInputs               
+         , ctrlCh 'h'           ?>>  char 'b' ?>>! acceptedInputs               
          , ctrlCh 'i'           ?>>! (adjIndent IncreaseOnly)
          , ctrlCh 'j'           ?>>! newlineAndIndentB
-         , ctrlCh 'k'           ?>>! killLineE univArg
+         , ctrlCh 'k'           ?>>! killRegionOrLineE
          , ctrlCh 'l'           ?>>! (withBuffer scrollToCursorB >> userForceRefresh)
          , ctrlCh 'm'           ?>>! (repeatingArg $ insertB '\n')
          , ctrlCh 'n'           ?>>! (repeatingArg $ moveB VLine Forward)

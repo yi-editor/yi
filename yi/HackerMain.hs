@@ -7,7 +7,7 @@ increaseIndent = do
    r <- getSelectRegionB
    r' <- unitWiseRegion Line r -- extend the region to full lines.
    modifyRegionB (mapLines (' ':)) r'
-   
+
 comment :: Color
 comment       = white
 keyword       = RGB 0x8a 0xc6 0xf1
@@ -16,7 +16,6 @@ variable      = green
 interface     = RGB 0xaf 0x00 0x5f
 prompt        = RGB 0xaf 0x00 0x5f
 stringcolor   = RGB 0x00 0xd7 0x5f
-
 
 main :: IO ()
 main = do

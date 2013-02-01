@@ -26,6 +26,12 @@ killLineE a = withBuffer $ case a of
                Nothing -> killRestOfLine
                Just n -> replicateM_ (2*n) killRestOfLine
 
+killRegionOrLineE :: BufferM ()
+killRegionOrLineE = do
+    r <- getRawSelectRegionB
+    if (regionStart r) /= (regionEnd r) then killRegion
+    else killRestOfLine
+
 killringPut :: Direction -> String -> EditorM ()
 killringPut dir s = modA killringA $ krPut dir s
 
