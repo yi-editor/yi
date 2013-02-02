@@ -119,10 +119,12 @@ haskell :-
   "do" | "mdo"                                  { c (Reserved Do) }
   "class"                                       { c (Reserved Class) }
   "instance"                                    { c (Reserved Instance) }
+  ^@varid                                       { c Interface }
   `@qual @varid`                                { cs $ Operator . init . tail }
   `@qual @conid`                                { cs $ ConsOperator . init . tail }
   @qual @varid                                  { c VarIdent }
   @qual @conid                                  { c ConsIdent }
+
 
   "|"                                           { c (ReservedOp Pipe) }
   "="                                           { c (ReservedOp Equal) }
@@ -171,7 +173,8 @@ data Token = Number | CharTok | StringTok | VarIdent | ConsIdent
            | Comment !CommentType
            | THQuote
            | CppDirective | Unrecognized
-             deriving (Eq, Show)
+           | Interface
+           deriving (Eq, Show)
 
 tokenToStyle :: Token -> StyleName
 tokenToStyle tok = case tok of
@@ -191,6 +194,7 @@ tokenToStyle tok = case tok of
   Comment _          -> commentStyle
   THQuote            -> quoteStyle
   Unrecognized       -> errorStyle
+  Interface          -> interfaceStyle
 
 tokenToText :: Token -> Maybe String
 tokenToText (ReservedOp BackSlash) = Just "λ"

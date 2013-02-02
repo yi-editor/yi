@@ -13,9 +13,11 @@ comment       = white
 keyword       = RGB 0x8a 0xc6 0xf1
 typecolor     = RGB 0x9e 0x00 0xfe
 variable      = green
-interface     = RGB 0xaf 0x00 0x5f
+interface     = RGB 0x80 0x00 0x40
 prompt        = RGB 0xaf 0x00 0x5f
 stringcolor   = RGB 0x00 0xd7 0x5f
+selectbg      = RGB 0x00 0x33 0x33
+selectbg2     = RGB 0x00 0x33 0x55
 
 main :: IO ()
 main = do
@@ -50,6 +52,10 @@ main = do
           , miniBaseAttributes = emptyAttributes { foreground = prompt,  background = black }
           , variableStyle      = withFg green
           , stringStyle        = withFg stringcolor
+          , selectedStyle      = withBg selectbg
+          , hintStyle          = withBg selectbg
+          , strongHintStyle    = withBg selectbg2
+          , interfaceStyle     = withFg interface
           }
         }
   , debugMode = True

@@ -165,7 +165,7 @@ fromVtyKey (Vty.KMenu    ) = Yi.Event.KMenu
 fromVtyKey (Vty.KLeft    ) = Yi.Event.KLeft     
 fromVtyKey (Vty.KDown    ) = Yi.Event.KDown     
 fromVtyKey (Vty.KRight   ) = Yi.Event.KRight    
-fromVtyKey (Vty.KEnter   ) = Yi.Event.KEnter    
+fromVtyKey (Vty.KEnter   ) = trace "enter" Yi.Event.KEnter    
 fromVtyKey (Vty.KBackTab ) = error "This should be handled in fromVtyEvent"
 fromVtyKey (Vty.KBegin   ) = error "Yi.UI.Vty.fromVtyKey: can't handle KBegin"
 

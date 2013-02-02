@@ -34,6 +34,7 @@ defaultTheme = Proto $ const $ UIStyle
   , stringStyle        = withFg magenta
   , longStringStyle    = mempty
   , typeStyle          = withFg green
+  , interfaceStyle     = withFg red
   , dataConstructorStyle
                        = withBd True <> withFg green
   , importStyle        = withFg bright_blue

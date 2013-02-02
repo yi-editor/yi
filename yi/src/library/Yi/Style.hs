@@ -57,6 +57,7 @@ data UIStyle = UIStyle
   , stringStyle        :: Style      -- ^ constant strings
   , longStringStyle    :: Style      -- ^ additional style for long strings
   , typeStyle          :: Style      -- ^ type name (such as class in an OO language)
+  , interfaceStyle     :: Style      -- ^ interface
   , dataConstructorStyle
                        :: Style      -- ^ data constructor
   , importStyle        :: Style      -- ^ style of import names

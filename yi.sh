@@ -2,6 +2,6 @@ set -e
 cd yi/yi
 case $1 in
 	--rebuild)
-		sudo cabal install --enable-library-profiling
+		sudo cabal install
 esac
 runhaskell HackerMain.hs
