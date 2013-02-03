@@ -22,6 +22,7 @@ import System.FilePath (takeDirectory)
 import Yi.Config
 import Yi.Core
 import Yi.History
+import Yi.Hint
 import Yi.Completion (infixMatch, prefixMatch, containsMatch', completeInList, completeInList')
 import Yi.Style (defaultStyle, withFg, green)
 import Shim.Utils (fuzzyDistance)
@@ -107,18 +108,21 @@ withMinibufferGen proposal getHint prompt completer act = do
       -- apply it to the desired action
       closeMinibuffer = closeBufferAndWindowE >>
                         modA windowsA (fromJust . PL.find initialWindow)
+
       showMatchings = showMatchingsOf =<< withBuffer elemsB
-      
+      showMatchingsWithRotate = showMatchingsOfWithRotate =<< withBuffer elemsB
+
       -- add { | } to the status line, make it looks like ido-mode in emacs
       safeTail [] = []
       safeTail xs = tail xs
       
       transform = (++ ["}"]) . ("{" :) . safeTail . foldr (\x acc -> ["|", x] ++ acc) []
-      showMatchingsOf userInput = withEditor . printStatus =<< fmap (withHintStyle . transform) (getHint userInput)
+      showMatchingsOf' getHintFn userInput = withEditor . printStatus =<< fmap (withHintStyle . transform) (getHintFn userInput)
+      showMatchingsOf userInput = hintRotateClear >> showMatchingsOf' getHint userInput
+      showMatchingsOfWithRotate = showMatchingsOf' $ \s -> getHint s >>= hintRotateDo
       
       hintStyle = const $ withFg green
       withHintStyle msg = (msg, hintStyle)
-      
 
       getLineString = withEditor $ do historyFinishGen prompt (withBuffer0 elemsB)
                                       lineString <- withBuffer0 elemsB
@@ -154,18 +158,18 @@ withMinibufferGen proposal getHint prompt completer act = do
         if last lineString == '/' then gotoParentDir
           else withEditor $ withBuffer0 $ replaceBufferContent $ init lineString
                          
-      up   = historyMove prompt 1
-      down = historyMove prompt (-1)
+      --up   = historyMove prompt 1
+      --down = historyMove prompt (-1)
 
-      rebindings = choice [ctrl (char 'j')    		       ?>>! realDo,
+      rebindings = choice [ctrl (char 'j')                     ?>>! realDo,
                            oneOf [spec KEnter, ctrl $ char 'm'] >>! completionFunction completer >>! smartDo,
-                           ctrl (char 's') 		       ?>>! realDo, -- to-do: change the matchings order
-                           ctrl (char 'r') 		       ?>>! realDo, -- to-do: change the matchings order
+                           oneOf [ctrl (char 's')]              >>! hintRotateLeft >>! showMatchingsWithRotate,
+                           oneOf [ctrl (char 'r')]              >>! hintRotateRight >>! showMatchingsWithRotate,
                            oneOf [ctrl (char 'w')]              >>! gotoParentDir >>! showMatchings,
                            oneOf [spec KBS]                     >>! deleteChar >>! showMatchings,
---                           oneOf [spec KTab,   ctrl $ char 'i'] >>! completionFunction completer >>! showMatchings,
                            oneOf [spec KTab,   ctrl $ char 'i'] >>! realDo,
                            ctrl (char 'g')                     ?>>! closeMinibuffer]
+
   logPutStrLn "show matching of"
   showMatchingsOf ""
   logPutStrLn "show proposal"
@@ -183,14 +187,14 @@ withMinibufferFin prompt possibilities act
         -- the input, basically all those that currently match.
         hinter s = return $ match s
         -- just sort
+        match "" = possibilities
         match s = sortBy (compare `on` (fuzzyDistance s)) possibilities
 --        match s = filter (s `isInfixOf`) possibilities
 
         -- The best match from the list of matches
         -- If the string matches completely then we take that
         -- otherwise we just take the first match.
-        best s
-          | any (== s) matches = s
+        best s          
           | null matches       = s
           | otherwise          = head matches
           where matches = match s
@@ -198,9 +202,12 @@ withMinibufferFin prompt possibilities act
         -- return with an incomplete possibility. The reason is we may have for
         -- example two possibilities which share a long prefix and hence we wish
         -- to press tab to complete up to the point at which they differ.
-        completer s = return $ case commonPrefix $ catMaybes $ fmap (infixMatch s) possibilities of
+        completer s = fmap head . hintRotateDo $ match s
+        {-
+        return $ case commonPrefix $ catMaybes $ fmap (infixMatch s) possibilities of
             "" -> s
             p -> p
+        -}
 
 completionFunction :: (String -> YiM String) -> YiM ()
 completionFunction f = do

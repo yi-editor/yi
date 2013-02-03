@@ -158,6 +158,7 @@ library
     Yi.Main
     Yi.MiniBuffer
     Yi.Misc
+    Yi.Hint
     Yi.Mode.Abella
     Yi.Mode.Buffers
     Yi.Mode.Compilation

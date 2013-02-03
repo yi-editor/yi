@@ -40,6 +40,7 @@ import Yi.MiniBuffer
     ( withMinibufferGen
     , mkCompleteFn
     )
+import Yi.Hint (hintRotateDo)
 import Yi.Completion
     ( completeInList'
     )
@@ -77,8 +78,11 @@ getAppropriateFiles start s' = do
   -- need to complete or hint about these as they are known by users.
   let files' = files \\ [ ".", ".." ]
   fs <- liftIO $ mapM fixTrailingPathSeparator files'
-  let matching = sortBy (compare `on` (fuzzyDistance $ takeFileName s)) fs
-  return (sDir, matching)
+  -- if no filename do not sort
+  let match "" = fs
+      match filename = sortBy (compare `on` (fuzzyDistance $ filename)) fs
+  -- let matching = sortBy (compare `on` (fuzzyDistance $ takeFileName s)) fs
+  return (sDir, match $ takeFileName s)
 
 -- | Given a path, trim the file name bit if it exists.  If no path
 --   given, return current directory.
@@ -107,8 +111,8 @@ matchingFileNames start s = do
   let results = if (isNothing start && sDir == "." && not ("./" `isPrefixOf` s))
                    then files
                    else fmap (sDir </>) files
-
-  return results
+  hintRotateDo results
+  -- return results
 
 adjBlock :: Int -> BufferM ()
 adjBlock x = withSyntaxB' (\m s -> modeAdjustBlock m s x)
@@ -118,8 +122,6 @@ adjBlock x = withSyntaxB' (\m s -> modeAdjustBlock m s x)
 -- given indent behaviour.
 adjIndent :: IndentBehaviour -> BufferM ()
 adjIndent ib = withSyntaxB' (\m s -> modeIndent m s ib)
-
-
 
 -- | Generic emacs style prompt file action. Takes a @prompt and a continuation @act
 --   and prompts the user with file hints
