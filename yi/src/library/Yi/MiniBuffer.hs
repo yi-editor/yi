@@ -24,7 +24,7 @@ import Yi.Core
 import Yi.History
 import Yi.Hint
 import Yi.Completion (infixMatch, prefixMatch, containsMatch', completeInList, completeInList')
-import Yi.Style (defaultStyle, withFg, green)
+import Yi.Style (defaultStyle, withFg, green, promptStyle)
 import Shim.Utils (fuzzyDistance)
 import qualified Data.Rope as R
 
@@ -176,6 +176,7 @@ withMinibufferGen proposal getHint prompt completer act = do
   withEditor $ do 
       historyStartGen prompt
       discard $ spawnMinibufferE (prompt ++ " ") (\bindings -> rebindings <|| (bindings >> write showMatchings))
+      withBuffer0 $ setGroundStyleB promptStyle
       withBuffer0 $ replaceBufferContent proposal
 
 -- | Open a minibuffer, given a finite number of suggestions.

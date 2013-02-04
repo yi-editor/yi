@@ -56,6 +56,7 @@ main = do
           , hintStyle          = withBg selectbg
           , strongHintStyle    = withBg selectbg2
           , interfaceStyle     = withFg interface
+          , promptStyle        = withFg prompt
           }
         }
   , debugMode = True

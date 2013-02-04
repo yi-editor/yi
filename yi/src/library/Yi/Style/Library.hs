@@ -17,6 +17,8 @@ defaultTheme = Proto $ const $ UIStyle
   , tabInFocusStyle    = withFg black <> withBg bright_white
   , tabNotFocusedStyle = withFg bright_black <> withBg white
 
+  , promptStyle        = withFg red
+
   , baseAttributes     = error "base attributes must be redefined!"
   , miniBaseAttributes = error "mini window's base attributes must be redefined!"
 

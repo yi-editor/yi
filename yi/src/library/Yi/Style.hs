@@ -5,6 +5,7 @@ module Yi.Style where
 
 import Data.Word                (Word8)
 import Data.Char (chr, ord)
+import Data.Binary
 import Data.Monoid
 import Yi.Prelude
 import Prelude ()
@@ -36,6 +37,8 @@ data UIStyle = UIStyle
   , tabBarAttributes   :: Attributes -- ^ ground attributes for the tabbar
   , tabInFocusStyle    :: Style      -- ^ a tab that currently holds the focus
   , tabNotFocusedStyle :: Style      -- ^ a tab that does not have the current focus
+
+  , promptStyle        :: Style
 
   , baseAttributes     :: Attributes -- ^ ground attributes for the main text views
   , miniBaseAttributes  :: Attributes -- ^ mini window ground attributes for the main text views
