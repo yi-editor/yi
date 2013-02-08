@@ -19,7 +19,7 @@ import Yi.Keymap.Vim2.StyledRegion
 import Yi.Keymap.Vim2.Utils
 
 defVisualMap :: [VimBinding]
-defVisualMap = [escBinding, motionBinding]
+defVisualMap = [escBinding, motionBinding, changeVisualStyleBinding]
             ++ operatorBindings ++ digitBindings ++ [replaceBinding, switchEdgeBinding]
             ++ [insertBinding, exBinding]
 
@@ -63,6 +63,29 @@ zeroBinding = VimBindingE prereq action
                       withBuffer0 moveToSol
                       setDynamic $ resetCount currentState
                       return Continue
+
+changeVisualStyleBinding :: VimBinding
+changeVisualStyleBinding = VimBindingE prereq action
+    where prereq evs (VimState { vsMode = (Visual _) }) | evs `elem` ["v", "V", "<C-v>"] = WholeMatch ()
+          prereq _ _ = NoMatch
+          action evs = do
+              currentMode <- fmap vsMode getDynamic
+              let newStyle = case evs of
+                                 "v" -> Inclusive
+                                 "V" -> LineWise
+                                 "<C-v>" -> Block
+                  newMode = Visual newStyle
+              if newMode == currentMode
+              then do
+                  vbeAction escBinding "<Esc>"
+              else do
+                  modifyStateE $ \s -> s { vsMode = newMode }
+                  withBuffer0 $ do
+                      putA regionStyleA newStyle
+                      putA rectangleSelectionA $ Block == newStyle
+                      setVisibleSelection True
+                      pointB >>= setSelectionMarkPointB
+                  return Finish
 
 mkDigitBinding :: Char -> VimBinding
 mkDigitBinding c = VimBindingE prereq action
@@ -115,6 +138,10 @@ mkOperatorBinding (s, op) = VimBindingE prereq action
               region <- withBuffer0 regionOfSelectionB
               applyOperatorToRegionE op $ StyledRegion style region
               resetCountE
+              clrStatus
+              withBuffer0 $ do
+                  setVisibleSelection False
+                  putA regionStyleA Inclusive
               if op == OpChange
               then do
                   switchModeE $ Insert 'c'
