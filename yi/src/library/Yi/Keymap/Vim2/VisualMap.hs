@@ -84,7 +84,6 @@ changeVisualStyleBinding = VimBindingE prereq action
                       putA regionStyleA newStyle
                       putA rectangleSelectionA $ Block == newStyle
                       setVisibleSelection True
-                      pointB >>= setSelectionMarkPointB
                   return Finish
 
 mkDigitBinding :: Char -> VimBinding
