@@ -28,7 +28,7 @@ import Yi.Keymap.Vim2.StateUtils
 import Yi.Keymap.Vim2.StyledRegion
 import Yi.Keymap.Vim2.Utils
 import Yi.Regex (seInput)
-import Yi.Search (getRegexE, isearchInitE)
+import Yi.Search (getRegexE, isearchInitE, setRegexE, makeSimpleSearch)
 
 mkDigitBinding :: Char -> VimBinding
 mkDigitBinding c = mkBindingE Normal Continue (char c, return (), mutate)
@@ -223,8 +223,14 @@ nonrepeatableBindings = fmap (mkBindingE Normal Drop)
         , id) -- TODO
 
     -- Search
-    , (char '*', return (), id) -- TODO
-    , (char '#', return (), id) -- TODO
+    , (char '*', do
+                    setRegexE . makeSimpleSearch =<< withBuffer0 readCurrentWordB
+                    withCount $ continueSearching (const Forward)
+               , resetCount)
+    , (char '#', do
+                    setRegexE . makeSimpleSearch =<< withBuffer0 readCurrentWordB
+                    withCount $ continueSearching (const Backward)
+               , resetCount)
     , (char 'n', withCount $ continueSearching id, resetCount)
     , (char 'N', withCount $ continueSearching reverseDir, resetCount)
     , (char ';', repeatGotoCharE id, id)

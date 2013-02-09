@@ -20,6 +20,7 @@ module Yi.Search (
                             -- -> IO SearchExp
         continueSearch,          -- :: SearchExp
                             -- -> IO SearchResult
+        makeSimpleSearch,
 
         -- * Batch search-replace
         searchReplaceRegionB,
@@ -27,8 +28,8 @@ module Yi.Search (
         replaceString,
         searchAndRepRegion,
         searchAndRepUnit, -- :: String -> String -> Bool -> TextUnit -> EditorM Bool
-        -- * Incremental Search
 
+        -- * Incremental Search
         isearchInitE,
         isearchIsEmpty,
         isearchAddE,

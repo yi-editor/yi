@@ -210,6 +210,9 @@ nextPointB = do
          else do p <- pointB
                  return $ Point (fromPoint p + 1)
 
+readCurrentWordB :: BufferM String
+readCurrentWordB = readUnitB unitViWord
+
 readPrevWordB :: BufferM String
 readPrevWordB = readPrevUnitB unitViWordOnLine
 
