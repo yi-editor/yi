@@ -27,7 +27,7 @@ import Yi.Keymap.Vim2.Search
 import Yi.Keymap.Vim2.StateUtils
 import Yi.Keymap.Vim2.StyledRegion
 import Yi.Keymap.Vim2.Utils
-import Yi.Regex (seInput)
+import Yi.Regex (seInput, makeSearchOptsM)
 import Yi.Search (getRegexE, isearchInitE, setRegexE, makeSimpleSearch)
 
 mkDigitBinding :: Char -> VimBinding
@@ -223,14 +223,8 @@ nonrepeatableBindings = fmap (mkBindingE Normal Drop)
         , id) -- TODO
 
     -- Search
-    , (char '*', do
-                    setRegexE . makeSimpleSearch =<< withBuffer0 readCurrentWordB
-                    withCount $ continueSearching (const Forward)
-               , resetCount)
-    , (char '#', do
-                    setRegexE . makeSimpleSearch =<< withBuffer0 readCurrentWordB
-                    withCount $ continueSearching (const Backward)
-               , resetCount)
+    , (char '*', searchWordE True Forward, resetCount)
+    , (char '#', searchWordE True Backward, resetCount)
     , (char 'n', withCount $ continueSearching id, resetCount)
     , (char 'N', withCount $ continueSearching reverseDir, resetCount)
     , (char ';', repeatGotoCharE id, id)
@@ -262,7 +256,26 @@ nonrepeatableBindings = fmap (mkBindingE Normal Drop)
     , (char '"', return (), id)
     , (char 'q', return (), id)
     , (spec KEnter, return (), id)
+    ] ++ fmap (mkStringBindingE Normal Drop)
+    [ ("g*", searchWordE False Forward, resetCount)
+    , ("g#", searchWordE False Backward, resetCount)
     ]
+
+searchWordE :: Bool -> Direction -> EditorM ()
+searchWordE wholeWord dir = do
+    word <- withBuffer0 readCurrentWordB
+
+    let search re = do
+            setRegexE re
+            putA searchDirectionA dir
+            withCount $ continueSearching (const dir)
+
+    if wholeWord
+    then case makeSearchOptsM [] $ "\\<" ++ word ++ "\\>" of
+            Right re -> search re
+            Left _ -> return ()
+    else search $ makeSimpleSearch word
+
 
 searchBinding :: VimBinding
 searchBinding = VimBindingE prereq action
