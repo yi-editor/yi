@@ -30,6 +30,7 @@ actualReplaceBinding = VimBindingE prereq action
               let count = fromMaybe 1 $ vsCount currentState
               let replacer = case evs of
                               (c:[]) -> replaceCharB c
+                              "<lt>" -> replaceCharB '<'
                               "<C-e>" -> replaceCharWithBelowB
                               "<C-y>" -> replaceCharWithAboveB
                               _ -> return ()
