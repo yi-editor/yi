@@ -1,0 +1,12 @@
+-- Input
+(1,1)
+lorem ipsum lorem2 dolor sit amet
+dolor sit amet lorem ipsum
+lorem-lorem ipsumipsum
+-- Output
+(1,13)
+lorem ipsum lorem2 dolor sit amet
+dolor sit amet lorem ipsum
+lorem-lorem ipsumipsum
+-- Events
+g#nnn
