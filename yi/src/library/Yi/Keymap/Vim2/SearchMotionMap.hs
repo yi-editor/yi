@@ -49,6 +49,9 @@ otherBinding = VimBindingE prereq action
               case evs of
                 "<BS>" -> isearchDelE
                 "<C-h>" -> isearchDelE
+                "<lt>" -> do
+                    switchModeE $ Search (cmd ++ ['<']) pm dir
+                    isearchAddE "<"
                 [c] -> do
                     switchModeE $ Search (cmd ++ [c]) pm dir
                     isearchAddE evs
