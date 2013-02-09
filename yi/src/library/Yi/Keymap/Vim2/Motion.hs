@@ -179,7 +179,7 @@ withDefaultCount (s, f) = (s, f . defaultCount)
 matchGotoCharMove :: String -> MatchResult Move
 matchGotoCharMove (m:[]) | m `elem` "fFtT" = PartialMatch
 matchGotoCharMove (m:c:[]) | m `elem` "fFtT" = WholeMatch $ Move style action
-    where (direction, style, move) =
+    where (dir, style, move) =
               case m of
                   'f' -> (Forward, Inclusive, nextCInLineInc c)
                   't' -> (Forward, Exclusive, nextCInLineExc c)
@@ -191,7 +191,7 @@ matchGotoCharMove (m:c:[]) | m `elem` "fFtT" = WholeMatch $ Move style action
                   p0 <- pointB
                   replicateM_ (count - 1) $ do
                       move
-                      when (style == Exclusive) $ moveB Character direction
+                      when (style == Exclusive) $ moveB Character dir
                   p1 <- pointB
                   move
                   p2 <- pointB

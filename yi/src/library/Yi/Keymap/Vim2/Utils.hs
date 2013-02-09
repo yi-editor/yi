@@ -78,14 +78,14 @@ mkMotionBinding condition = VimBindingE prereq action
               let m = head evs
               when (m `elem` "fFtT") $ do
                   let c = last evs
-                      (direction, style) =
+                      (dir, style) =
                           case m of
                               'f' -> (Forward, Inclusive)
                               't' -> (Forward, Exclusive)
                               'F' -> (Backward, Inclusive)
                               'T' -> (Backward, Exclusive)
                               _ -> error "can't happen"
-                      command = GotoCharCommand c direction style
+                      command = GotoCharCommand c dir style
                   modifyStateE $ \s -> s { vsLastGotoCharCommand = Just command}
 
               return Drop

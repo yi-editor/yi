@@ -74,6 +74,7 @@ changeVisualStyleBinding = VimBindingE prereq action
                                  "v" -> Inclusive
                                  "V" -> LineWise
                                  "<C-v>" -> Block
+                                 _ -> error "Can't happen because of prereq, this just prevents warning"
                   newMode = Visual newStyle
               if newMode == currentMode
               then do

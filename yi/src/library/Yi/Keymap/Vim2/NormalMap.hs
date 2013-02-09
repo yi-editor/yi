@@ -8,8 +8,8 @@ import Prelude ()
 import Control.Monad (replicateM_)
 
 import Data.Char
-import Data.List (group, dropWhile)
-import Data.Maybe (fromMaybe, maybe)
+import Data.List (group)
+import Data.Maybe (fromMaybe)
 import Data.Prototype (extractValue)
 import qualified Data.Rope as R
 
@@ -102,7 +102,7 @@ finishingBingings = fmap (mkBindingE Normal Finish)
             (StyledRegion s r) <- case stringToMove "j" of
                 WholeMatch m -> regionOfMoveB $ CountedMove (Just count) m
                 _ -> error "can't happen"
-            lineMoveRel $ count - 1
+            discard $ lineMoveRel $ count - 1
             moveToEol
             joinLinesB =<< convertRegionToStyleB r s
        , resetCount)
