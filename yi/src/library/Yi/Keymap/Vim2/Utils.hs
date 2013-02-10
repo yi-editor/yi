@@ -72,7 +72,7 @@ mkMotionBinding condition = VimBindingE prereq action
               -- moving with j/k after $ sticks cursor to the right edge
               when (evs == "$") $ setStickyEolE True
               when (evs `elem` group "jk" && vsStickyEol state) $
-                  withBuffer0 $ moveToEol >> leftB
+                  withBuffer0 $ moveToEol >> moveXorSol 1
               when (evs `notElem` group "jk$") $ setStickyEolE False
 
               let m = head evs
