@@ -182,8 +182,8 @@ matchGotoCharMove (m:c:[]) | m `elem` "fFtT" = WholeMatch $ Move style action
     where (dir, style, move) =
               case m of
                   'f' -> (Forward, Inclusive, nextCInLineInc c)
-                  't' -> (Forward, Exclusive, nextCInLineExc c)
-                  'F' -> (Backward, Inclusive, prevCInLineInc c)
+                  't' -> (Forward, Inclusive, nextCInLineExc c)
+                  'F' -> (Backward, Exclusive, prevCInLineInc c)
                   'T' -> (Backward, Exclusive, prevCInLineExc c)
                   _ -> error "can't happen"
           action mcount = do
