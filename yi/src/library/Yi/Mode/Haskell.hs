@@ -4,6 +4,7 @@
 module Yi.Mode.Haskell 
   (
    -- * Modes
+   haskellAbstract,
    cleverMode, 
    preciseMode,
    literateMode,
