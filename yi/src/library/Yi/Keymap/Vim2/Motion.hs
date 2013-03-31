@@ -47,7 +47,7 @@ module Yi.Keymap.Vim2.Motion
 import Prelude ()
 import Yi.Prelude
 
-import Control.Monad (replicateM_)
+import Control.Monad (replicateM_, unless)
 
 import Data.List (isPrefixOf)
 import Data.Maybe (fromMaybe)
@@ -151,9 +151,6 @@ inclusiveMotions = fmap withDefaultCount
                 Nothing -> findMatchingPairB
                 Just percent -> movePercentageFileB percent)
     ]
-
-findMatchingPairB :: BufferM ()
-findMatchingPairB = return ()
 
 repeat :: BufferM () -> Int -> BufferM ()
 repeat = flip replicateM_

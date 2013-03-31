@@ -824,3 +824,24 @@ movePercentageFileB i = do
     lineCount <- lineCountB
     gotoLn $ floor (fromIntegral lineCount * f)
     firstNonSpaceB
+
+findMatchingPairB :: BufferM ()
+findMatchingPairB = do
+    let go dir a b = goUnmatchedB dir a b >> return True
+        goToMatch = do
+          c <- readB
+          case c of '(' -> go Forward  '(' ')'
+                    ')' -> go Backward '(' ')'
+                    '{' -> go Forward  '{' '}'
+                    '}' -> go Backward '{' '}'
+                    '[' -> go Forward  '[' ']'
+                    ']' -> go Backward '[' ']'
+                    _   -> otherChar
+        otherChar = do eof <- atEof
+                       eol <- atEol
+                       if eof || eol
+                           then return False
+                           else rightB >> goToMatch
+    p <- pointB
+    foundMatch <- goToMatch
+    unless foundMatch $ moveTo p
