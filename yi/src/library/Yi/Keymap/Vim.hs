@@ -1635,27 +1635,7 @@ withEditor' f = withEditor (f <* withBuffer0 leftOnEol)
 
 -- Find the item after or under the cursor and jump to its match
 percentMove :: (RegionStyle, ViMove)
-percentMove = (Inclusive, ArbMove tryGoingToMatch)
-    where tryGoingToMatch = do
-              p <- pointB
-              getViMarkB '\'' >>= flip setMarkPointB p
-              foundMatch <- goToMatch
-              unless foundMatch $ moveTo p
-          go dir a b = goUnmatchedB dir a b >> return True
-          goToMatch = do
-            c <- readB
-            case c of '(' -> go Forward  '(' ')'
-                      ')' -> go Backward '(' ')'
-                      '{' -> go Forward  '{' '}'
-                      '}' -> go Backward '{' '}'
-                      '[' -> go Forward  '[' ']'
-                      ']' -> go Backward '[' ']'
-                      _   -> otherChar
-          otherChar = do eof <- atEof
-                         eol <- atEol
-                         if eof || eol
-                             then return False
-                             else rightB >> goToMatch -- search for matchable character after the cursor
+percentMove = (Inclusive, ArbMove (setMarkHere '\'' >> findMatchingPairB))
 
 jumpToMark :: Char -> BufferM ()
 jumpToMark c = do
