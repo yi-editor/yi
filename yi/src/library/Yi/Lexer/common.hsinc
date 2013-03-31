@@ -69,16 +69,19 @@ alex_scan_tkn' user orig_input len input s last_acc =
           _ -> alex_scan_tkn' user orig_input new_len new_input new_s new_acc
 
   where
-    check_accs [] = last_acc
-    check_accs (AlexAcc a : _) = AlexLastAcc a input (I# len)
-    check_accs (AlexAccSkip : _)  = AlexLastSkip  input (I# len)
-    check_accs (AlexAccPred a pred : rest)
-       | pred user orig_input (I# len) input
-       = AlexLastAcc a input (I# len)
-    check_accs (AlexAccSkipPred pred : rest)
-       | pred user orig_input (I# len) input
-       = AlexLastSkip input (I# len)
-    check_accs (_ : rest) = check_accs rest
+	check_accs (AlexAccNone) = last_acc
+	check_accs (AlexAcc a  ) = AlexLastAcc a input (I# len)
+	check_accs (AlexAccSkip) = AlexLastSkip  input (I# len)
+	check_accs (AlexAccPred a predx rest)
+	   | predx user orig_input (I# len) input
+	   = AlexLastAcc a input (I# len)
+	   | otherwise
+	   = check_accs rest
+	check_accs (AlexAccSkipPred predx rest)
+	   | predx user orig_input (I# len) input
+	   = AlexLastSkip input (I# len)
+	   | otherwise
+	   = check_accs rest
 
 c = actionConst
 m = actionAndModify

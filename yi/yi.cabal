@@ -236,7 +236,7 @@ library
     unordered-containers >= 0.1.3 && < 0.3,
     xdg-basedir >= 0.2.1 && < 0.3
 
-  build-tools: alex >= 3
+  build-tools: alex >= 3.0.3
   ghc-options: -Wall -fno-warn-orphans
   ghc-prof-options: -prof -auto-all -rtsopts
   if flag(profiling)
@@ -399,6 +399,6 @@ executable yi
     base >=4 && <5
   if !flag(dochack)
     build-depends: yi
-  build-tools: alex >= 3
+  build-tools: alex >= 3.0.3
   ghc-options: -threaded
   ghc-prof-options: -prof -auto-all -rtsopts
