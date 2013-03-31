@@ -789,7 +789,7 @@ insertRopeWithStyleB rope _ = insertN' rope
 -- qwertyuio
 -- asdfgh
 --
--- The following examples use letters from that buffer as points.
+-- The following examples use characters from that buffer as points.
 -- h' denotes the newline after h
 --
 -- 1 r -> 4 q
@@ -813,3 +813,14 @@ flipRectangleB p0 p1 = savingPointB $ do
             moveXorEol $ c1 - c0
             flippedP0 <- pointB
             return (flippedP0, p1 -~ Size (c1 - c0))
+
+movePercentageFileB :: Int -> BufferM ()
+movePercentageFileB i = do
+    let f :: Double
+        f = case fromIntegral i / 100.0 of
+               x | x > 1.0 -> 1.0
+                 | x < 0.0 -> 0.0 -- Impossible?
+                 | otherwise -> x
+    lineCount <- lineCountB
+    gotoLn $ floor (fromIntegral lineCount * f)
+    firstNonSpaceB

@@ -19,6 +19,7 @@ module Yi.Buffer.Misc
   , curCol
   , colOf
   , lineOf
+  , lineCountB
   , sizeB
   , pointB
   , pointOfLineColB
@@ -1045,6 +1046,9 @@ colOf p = foldl' colMove 0 <$> queryBuffer (charsFromSolBI p)
 
 lineOf :: Point -> BufferM Int
 lineOf p = queryBuffer $ lineAt p
+
+lineCountB :: BufferM Int
+lineCountB = lineOf =<< sizeB
 
 colMove :: Int -> Char -> Int
 colMove col '\t' = (col + 7) `mod` 8

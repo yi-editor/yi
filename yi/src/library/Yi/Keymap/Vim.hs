@@ -324,7 +324,7 @@ viMove (MaybeMove unit          dir) = maybeMoveB unit dir
 viMove (Move      unit          dir) = moveB unit dir
 viMove (CharMove Forward)            = moveXorEol 1
 viMove (CharMove Backward)           = moveXorSol 1
-viMove (PercentageFile i)            = movePercentageFile i
+viMove (PercentageFile i)            = setMarkHere '\'' >> movePercentageFileB i
 viMove (ArbMove       move)          = move
 viMove (SeqMove move1 move2)         = viMove move1 >> viMove move2
 viMove (Replicate     move i)        = viReplicateMove move i
@@ -336,17 +336,6 @@ viReplicateMove (CharMove Forward)    i = moveXorEol i
 viReplicateMove (CharMove Backward)   i = moveXorSol i
 viReplicateMove (Replicate move j)    i = viReplicateMove move (i * j)
 viReplicateMove move                  i = replicateM_ i $ viMove move
-
-movePercentageFile :: Int -> BufferM ()
-movePercentageFile i = do let f :: Double
-                              f  = case fromIntegral i / 100.0 of
-                                      x | x > 1.0 -> 1.0
-                                        | x < 0.0 -> 0.0 -- Impossible?
-                                        | otherwise -> x
-                          Point max_p <- sizeB
-                          setMarkHere '\''
-                          moveTo $ Point $ floor (fromIntegral max_p * f)
-                          firstNonSpaceB
 
 mkKeymap :: Proto ModeMap -> KeymapSet
 mkKeymap p = KeymapSet

@@ -10,9 +10,6 @@ module Yi.Keymap.Vim2.Motion
 --
 -- respecting wrap in gj, g0, etc
 --
--- f, F, t, T, ';' and ',' are currently implemented in a separate mode,
--- preventing their use as operands
---
 -- gm, %, go
 -- ]], [[, [], ][
 -- [(, [{, ]), ]}
@@ -149,6 +146,14 @@ inclusiveMotions = fmap withDefaultCount
                 when (n > 1) $ discard $ lineMoveRel (n - 1)
                 lastNonSpaceB)
     ]
+    ++
+    [("%", \maybeCount -> case maybeCount of
+                Nothing -> findMatchingPairB
+                Just percent -> movePercentageFileB percent)
+    ]
+
+findMatchingPairB :: BufferM ()
+findMatchingPairB = return ()
 
 repeat :: BufferM () -> Int -> BufferM ()
 repeat = flip replicateM_
