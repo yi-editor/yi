@@ -1,6 +1,14 @@
 -- Copyright (c) 2008 Jean-Philippe Bernardy
 
-module Yi.Keymap.Cua (keymap, portableKeymap, cut, paste, copy, del) where
+module Yi.Keymap.Cua (
+      keymap
+    , portableKeymap
+    , customizedCuaKeymapSet
+    , cut
+    , paste
+    , copy
+    , del
+    ) where
 
 import Prelude (length, take, drop)
 import Yi.Core
@@ -9,6 +17,15 @@ import Yi.Keymap.Emacs.Utils
 import Yi.Misc (adjBlock)
 import Yi.Rectangle
 import Yi.String
+
+customizedCuaKeymapSet :: Keymap -> KeymapSet
+customizedCuaKeymapSet userKeymap =
+    modelessKeymapSet $ selfInsertKeymap
+                    <|> move
+                    <|> select
+                    <|> rect
+                    <|> userKeymap
+                    <|> other ctrl
 
 keymap :: KeymapSet
 keymap = portableKeymap ctrl
