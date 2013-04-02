@@ -121,6 +121,7 @@ library
     Yi.IReader
     Yi.IncrementalParse
     Yi.Interact
+    Yi.JumpList
     Yi.Keymap
     Yi.Keymap.Completion
     Yi.Keymap.Cua

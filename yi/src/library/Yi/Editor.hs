@@ -24,6 +24,7 @@ import Yi.Config
 import Yi.Dynamic
 import Yi.Event (Event)
 import Yi.Interact as I
+import Yi.JumpList
 import Yi.KillRing
 import Yi.Layout
 import Yi.Prelude
@@ -455,7 +456,7 @@ alternateBufferE n = do
 
 -- | Create a new zero size window on a given buffer
 newZeroSizeWindow ::Bool -> BufferRef -> WindowRef -> Window
-newZeroSizeWindow mini bk ref = Window mini bk [] 0 emptyRegion ref 0
+newZeroSizeWindow mini bk ref = Window mini bk [] 0 emptyRegion ref 0 $ jumpListSingleton bk
 
 -- | Create a new window onto the given buffer.
 newWindowE :: Bool -> BufferRef -> EditorM Window
@@ -730,3 +731,24 @@ instance Initializable TempBufferNameHint where
 
 instance YiVariable TempBufferNameHint
 
+addJumpHereE :: EditorM ()
+addJumpHereE = do
+    w <- getA currentWindowA
+    p <- withBuffer0 pointB
+    let bf = bufkey w
+        j = Jump p bf
+    putA currentWindowA $ w { jumpList = addJump j (jumpList w) }
+
+jumpBackE :: EditorM ()
+jumpBackE = modifyJumpListE jumpBack
+
+jumpForwardE :: EditorM ()
+jumpForwardE = modifyJumpListE jumpForward
+
+modifyJumpListE :: (JumpList -> JumpList) -> EditorM ()
+modifyJumpListE f = do
+    w <- getA currentWindowA
+    let w' = w { jumpList = f (jumpList w) }
+        (JumpList (PL.PointedList _ (Jump p bf) _)) = jumpList w'
+    withBuffer0 $ moveTo p
+    putA currentWindowA w'
