@@ -749,6 +749,11 @@ modifyJumpListE :: (JumpList -> JumpList) -> EditorM ()
 modifyJumpListE f = do
     w <- getA currentWindowA
     let w' = w { jumpList = f (jumpList w) }
-        (Just (PL.PointedList _ (Jump m bf) _)) = jumpList w'
-    withBuffer0 $ getMarkPointB m >>= moveTo
-    putA currentWindowA w'
+        jl = jumpList w'
+    case jl of
+        Nothing -> return ()
+        Just (PL.PointedList _ (Jump mark bf) _) -> do
+            switchToBufferE bf
+            withBuffer0 $ getMarkPointB mark >>= moveTo
+
+            modA currentWindowA (\win -> win { jumpList = f (jumpList win) })
