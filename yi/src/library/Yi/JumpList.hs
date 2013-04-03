@@ -1,9 +1,8 @@
 {-# LANGUAGE TemplateHaskell #-}
 
 module Yi.JumpList
-    ( JumpList(..)
+    ( JumpList
     , Jump(..)
-    , jumpListSingleton
     , addJump
     , jumpBack
     , jumpForward
@@ -13,32 +12,28 @@ import Prelude ()
 import Yi.Prelude
 
 import Yi.Buffer.Basic
-import System.FilePath
 
 import Data.Binary
 import Data.DeriveTH
 
 import Data.List.PointedList as PL
 
-data JumpList = JumpList (PL.PointedList Jump)
+type JumpList = Maybe (PL.PointedList Jump)
 
 data Jump = Jump {
-        jumpPoint :: Point
+        jumpMark :: Mark
       , jumpBufferRef :: BufferRef
     }
 
-$(derive makeBinary ''JumpList)
+-- $(derive makeBinary ''JumpList)
 $(derive makeBinary ''Jump)
 
-jumpListSingleton :: BufferRef -> JumpList
-jumpListSingleton b = JumpList $ PL.singleton $ Jump 0 b
-
 instance Show Jump where
-    show (Jump point bufref) = "<Jump " ++ show point ++ " " ++ show bufref ++ ">"
+    show (Jump mark bufref) = "<Jump " ++ show mark ++ " " ++ show bufref ++ ">"
 
 addJump :: Jump -> JumpList -> JumpList
-addJump j (JumpList (PL.PointedList past focus _future)) =
-     JumpList $ PL.PointedList (focus:past) j []
+addJump j (Just (PL.PointedList past present _future)) = Just $ PL.PointedList (present:past) j []
+addJump j Nothing = Just $ PL.PointedList [] j []
 
 jumpBack :: JumpList -> JumpList
 jumpBack = modifyJumpList previous
@@ -47,6 +42,7 @@ jumpForward :: JumpList -> JumpList
 jumpForward = modifyJumpList next
 
 modifyJumpList :: (PointedList Jump -> Maybe (PointedList Jump)) -> JumpList -> JumpList
-modifyJumpList f (JumpList jumps) = case f jumps of
-                                Nothing -> JumpList jumps
-                                Just jumps' -> JumpList jumps'
+modifyJumpList f (Just jumps) = case f jumps of
+                                Nothing -> Just jumps
+                                Just jumps' -> Just jumps'
+modifyJumpList _ Nothing = Nothing

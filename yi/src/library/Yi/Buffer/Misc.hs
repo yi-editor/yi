@@ -60,6 +60,7 @@ module Yi.Buffer.Misc
   , undoB
   , redoB
   , getMarkB
+  , setMarkHereB
   , mayGetMarkB
   , getMarkValueB
   , setMarkPointB
@@ -877,6 +878,9 @@ setMarkPointB m pos = modifyMarkB m (\v -> v {markPoint = pos})
 
 modifyMarkB :: Mark -> (MarkValue -> MarkValue) -> BufferM ()
 modifyMarkB m f = modifyBuffer $ modifyMarkBI m f
+
+setMarkHereB :: BufferM Mark
+setMarkHereB = getMarkB Nothing
 
 -- | Highlight the selection
 setVisibleSelection :: Bool -> BufferM ()

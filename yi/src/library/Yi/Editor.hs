@@ -456,7 +456,7 @@ alternateBufferE n = do
 
 -- | Create a new zero size window on a given buffer
 newZeroSizeWindow ::Bool -> BufferRef -> WindowRef -> Window
-newZeroSizeWindow mini bk ref = Window mini bk [] 0 emptyRegion ref 0 $ jumpListSingleton bk
+newZeroSizeWindow mini bk ref = Window mini bk [] 0 emptyRegion ref 0 Nothing
 
 -- | Create a new window onto the given buffer.
 newWindowE :: Bool -> BufferRef -> EditorM Window
@@ -734,9 +734,9 @@ instance YiVariable TempBufferNameHint
 addJumpHereE :: EditorM ()
 addJumpHereE = do
     w <- getA currentWindowA
-    p <- withBuffer0 pointB
+    m <- withBuffer0 setMarkHereB
     let bf = bufkey w
-        j = Jump p bf
+        j = Jump m bf
     putA currentWindowA $ w { jumpList = addJump j (jumpList w) }
 
 jumpBackE :: EditorM ()
@@ -749,6 +749,6 @@ modifyJumpListE :: (JumpList -> JumpList) -> EditorM ()
 modifyJumpListE f = do
     w <- getA currentWindowA
     let w' = w { jumpList = f (jumpList w) }
-        (JumpList (PL.PointedList _ (Jump p bf) _)) = jumpList w'
-    withBuffer0 $ moveTo p
+        (Just (PL.PointedList _ (Jump m bf) _)) = jumpList w'
+    withBuffer0 $ getMarkPointB m >>= moveTo
     putA currentWindowA w'
