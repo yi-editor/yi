@@ -56,23 +56,31 @@ import Yi.Buffer
 import Yi.Keymap.Vim2.Common
 import Yi.Keymap.Vim2.StyledRegion
 
-data Move = Move !RegionStyle (Maybe Int -> BufferM ())
+data Move = Move {
+    moveStyle :: !RegionStyle
+  , moveIsJump :: !Bool
+  , moveAction :: (Maybe Int -> BufferM ())
+  }
 
 data CountedMove = CountedMove !(Maybe Int) !Move
 
+-- see :help jump-motions in vim
+jumpyMoves :: [String]
+jumpyMoves = ["G", "%", "(", ")", "[[", "]]", "{", "}", "L", "M", "H"]
+
 stringToMove :: String -> MatchResult Move
 stringToMove s = case lookupMove s of
-                    Just m -> WholeMatch m
+                    Just m -> WholeMatch (m { moveIsJump = s `elem` jumpyMoves })
                     Nothing -> if any (isPrefixOf s . fst) allNonParametricMotions
                                then PartialMatch
                                else NoMatch
                  <|> matchGotoCharMove s
     
 lookupMove :: String -> Maybe Move
-lookupMove s = fmap (Move Exclusive) (lookup s exclusiveMotions)
-           <|> fmap (Move Inclusive) (lookup s inclusiveMotions)
-           <|> fmap (Move LineWise) (lookup s linewiseMotions)
-           <|> fmap (Move LineWise) (lookup s linewiseMaybeMotions)
+lookupMove s = fmap (Move Exclusive False) (lookup s exclusiveMotions)
+           <|> fmap (Move Inclusive False) (lookup s inclusiveMotions)
+           <|> fmap (Move LineWise  False) (lookup s linewiseMotions)
+           <|> fmap (Move LineWise  False) (lookup s linewiseMaybeMotions)
 
 allNonParametricMotions :: [(String, Maybe Int -> BufferM ())]
 allNonParametricMotions = concat
@@ -83,7 +91,7 @@ allNonParametricMotions = concat
     ]
 
 changeMoveStyle :: (RegionStyle -> RegionStyle) -> Move -> Move
-changeMoveStyle smod (Move s m) = Move (smod s) m
+changeMoveStyle smod (Move s j m) = Move (smod s) j m
 
 -- Linewise motions which treat no count as being the same as a count of 1.
 linewiseMotions :: [(String, Maybe Int -> BufferM ())]
@@ -159,7 +167,7 @@ regionOfMoveB :: CountedMove -> BufferM StyledRegion
 regionOfMoveB = normalizeRegion <=< regionOfMoveB'
 
 regionOfMoveB' :: CountedMove -> BufferM StyledRegion
-regionOfMoveB' (CountedMove n (Move style move)) = do
+regionOfMoveB' (CountedMove n (Move style _isJump move)) = do
     -- region <- mkRegion <$> pointB <*> destinationOfMoveB (move n >> leftOnEol)
     region <- mkRegion <$> pointB <*> destinationOfMoveB
         (move n >> when (style == Inclusive) leftOnEol)
@@ -180,7 +188,7 @@ withDefaultCount (s, f) = (s, f . defaultCount)
 
 matchGotoCharMove :: String -> MatchResult Move
 matchGotoCharMove (m:[]) | m `elem` "fFtT" = PartialMatch
-matchGotoCharMove (m:c:[]) | m `elem` "fFtT" = WholeMatch $ Move style action
+matchGotoCharMove (m:c:[]) | m `elem` "fFtT" = WholeMatch $ Move style False action
     where (dir, style, move) =
               case m of
                   'f' -> (Forward, Inclusive, nextCInLineInc c)

@@ -64,8 +64,9 @@ mkMotionBinding condition = VimBindingE prereq action
           prereq _ _ = NoMatch
           action evs = do
               state <- getDynamic
-              let WholeMatch (Move _style move) = stringToMove evs
+              let WholeMatch (Move _style isJump move) = stringToMove evs
               count <- getMaybeCountE
+              when isJump addJumpHereE
               withBuffer0 $ move count >> leftOnEol
               resetCountE
 
