@@ -17,9 +17,10 @@ import Yi.Keymap.Vim2.Digraph
 import Yi.Keymap.Vim2.EventUtils
 import Yi.Keymap.Vim2.Utils
 import Yi.Keymap.Vim2.StateUtils
+import Yi.TextCompletion (completeWordB)
 
 defInsertMap :: [VimBinding]
-defInsertMap = [exitBinding, digraphBinding, printable]
+defInsertMap = [exitBinding, digraphBinding, completionBinding, printable]
 
 exitBinding :: VimBinding
 exitBinding = VimBindingE prereq action
@@ -104,6 +105,16 @@ printableAction evs = do
         return updatedCursors
     modifyStateE $ \s -> s { vsSecondaryCursors = drop 1 updatedCursors }
     return Continue
+
+completionBinding :: VimBinding
+completionBinding = VimBindingE prereq action
+    where prereq evs (VimState { vsMode = (Insert _) }) =
+              matchFromBool $ evs `elem` ["<C-n>", "<C-p>"]
+          prereq _ _ = NoMatch
+          action evs = do
+              let _direction = if evs == "<C-n>" then Forward else Backward
+              completeWordB
+              return Continue
 
 save :: EventString -> EditorM ()
 save evs =
