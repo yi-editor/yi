@@ -46,6 +46,7 @@ pureBindings =
     finishingBingings ++
     continuingBindings ++
     nonrepeatableBindings ++
+    jumpBindings ++
     [tabTraversalBinding]
 
 motionBinding :: VimBinding
@@ -79,6 +80,12 @@ repeatBinding = VimBindingE prereq action
                         scheduleActionStringForEval $ show count ++ actionString
                         resetCountE
                 return Drop
+
+jumpBindings :: [VimBinding]
+jumpBindings = fmap (mkBindingE Normal Drop)
+    [ (ctrlCh 'o', jumpBackE, id)
+    , (spec KTab, jumpForwardE, id)
+    ]
 
 finishingBingings :: [VimBinding]
 finishingBingings = fmap (mkBindingE Normal Finish)
