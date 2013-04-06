@@ -171,12 +171,13 @@ continuingBindings = fmap (mkBindingE Normal Continue)
     , (char 'A', withBuffer0 moveToEol, switchMode $ Insert 'A')
     , (char 'o', withBuffer0 $ do
                      moveToEol
-                     insertB '\n'
+                     newlineAndIndentB
         , switchMode $ Insert 'o')
     , (char 'O', withBuffer0 $ do
                      moveToSol
-                     insertB '\n'
+                     newlineB
                      leftB
+                     indentAsNextB
         , switchMode $ Insert 'O')
 
     -- Transition to visual

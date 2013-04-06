@@ -78,7 +78,7 @@ printableAction evs = do
         getMarkB Nothing
     let bufAction = case evs of
                         (c:[]) -> insertB c
-                        "<CR>" -> insertB '\n'
+                        "<CR>" -> newlineAndIndentB
                         -- For testing purposes assume noexpandtab, tw=4
                         "<Tab>" -> insertN $ replicate 4 ' '
                         "<C-t>" -> shiftIndentOfRegion 1 =<< regionOfB Line
