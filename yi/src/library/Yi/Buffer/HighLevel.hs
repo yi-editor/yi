@@ -211,7 +211,7 @@ nextPointB = do
                  return $ Point (fromPoint p + 1)
 
 readCurrentWordB :: BufferM String
-readCurrentWordB = readUnitB unitViWord
+readCurrentWordB = readUnitB unitWord
 
 readPrevWordB :: BufferM String
 readPrevWordB = readPrevUnitB unitViWordOnLine
