@@ -1,3 +1,3 @@
 set -e
-cd yi/yi && sudo cabal install
+cd yi/yi && cabal install
 runhaskell HackerMain.hs
