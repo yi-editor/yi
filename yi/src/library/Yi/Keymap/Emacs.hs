@@ -42,6 +42,7 @@ import Yi.Keymap.Emacs.Utils
   , askSaveEditor
   , argToInt
   , promptTag
+  , jumpToTag
   , justOneSep
   , joinLinesE
   )
@@ -224,7 +225,10 @@ emacsKeys univArg =
   withIntArg :: YiAction (m ()) () => (Int -> m ()) -> YiM ()
   withIntArg cmd = withUnivArg $ \arg -> cmd (fromMaybe 1 arg)
 
-  ctrlC = choice [ ctrlCh 'c' ?>>! withModeB modeToggleCommentSelection ]
+  ctrlC = choice [ ctrlCh 'c' ?>>! withModeB modeToggleCommentSelection,
+                   char 'g'   ?>>! jumpToTag,
+                   char 'G'   ?>>! promptTag
+                 ]
 
 
   rectangleFuntions = choice [char 'a' ?>>! alignRegionOn,

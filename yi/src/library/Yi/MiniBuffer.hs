@@ -157,9 +157,6 @@ withMinibufferGen proposal getHint prompt completer act = do
         lineString <- withEditor $ withBuffer0 elemsB
         if last lineString == '/' then gotoParentDir
           else withEditor $ withBuffer0 $ replaceBufferContent $ init lineString
-                         
-      --up   = historyMove prompt 1
-      --down = historyMove prompt (-1)
 
       rebindings = choice [ctrl (char 'j')                     ?>>! realDo,
                            oneOf [spec KEnter, ctrl $ char 'm'] >>! completionFunction completer >>! smartDo,
@@ -170,9 +167,7 @@ withMinibufferGen proposal getHint prompt completer act = do
                            oneOf [spec KTab,   ctrl $ char 'i'] >>! realDo,
                            ctrl (char 'g')                     ?>>! closeMinibuffer]
 
-  logPutStrLn "show matching of"
   showMatchingsOf ""
-  logPutStrLn "show proposal"
   withEditor $ do 
       historyStartGen prompt
       discard $ spawnMinibufferE (prompt ++ " ") (\bindings -> rebindings <|| (bindings >> write showMatchings))
