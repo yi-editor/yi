@@ -9,7 +9,7 @@
 module Yi.UI.Vty (start) where
 
 import Yi.Prelude hiding ((<|>))
-import Prelude (map, take, zip, repeat, length, break, splitAt)
+import Prelude (map, take, zip, repeat, length, break, splitAt, (!!))
 import Control.Arrow
 import Control.Concurrent
 import Control.Exception
@@ -165,7 +165,7 @@ fromVtyKey (Vty.KMenu    ) = Yi.Event.KMenu
 fromVtyKey (Vty.KLeft    ) = Yi.Event.KLeft     
 fromVtyKey (Vty.KDown    ) = Yi.Event.KDown     
 fromVtyKey (Vty.KRight   ) = Yi.Event.KRight    
-fromVtyKey (Vty.KEnter   ) = Yi.Event.KEnter    
+fromVtyKey (Vty.KEnter   ) = trace "enter" Yi.Event.KEnter    
 fromVtyKey (Vty.KBackTab ) = error "This should be handled in fromVtyEvent"
 fromVtyKey (Vty.KBegin   ) = error "Yi.UI.Vty.fromVtyKey: can't handle KBegin"
 
@@ -302,7 +302,8 @@ drawWindow cfg e focused win w h = (Rendered { picture = pict,cursor = cur}, mkR
         -- off reserves space for the mode line. The mini window does not have a mode line.
         off = if notMini then 1 else 0
         h' = h - off
-        ground = baseAttributes sty
+        -- change the mini window's base attributes
+        ground = if isMini win then miniBaseAttributes sty else baseAttributes sty
         wsty = attributesToAttr ground Vty.def_attr
         eofsty = appEndo (eofStyle sty) ground
         (point, _) = runBuffer win b pointB
@@ -429,7 +430,7 @@ getY screenHeight numberOfWindows = screenHeight `quotRem` numberOfWindows
 
 -- | Convert a Yi Attr into a Vty attribute change.
 colorToAttr :: (Vty.Color -> Vty.Attr -> Vty.Attr) -> Vty.Color -> Style.Color -> (Vty.Attr -> Vty.Attr)
-colorToAttr set unknown c =
+colorToAttr set _ c =
   case c of 
     RGB 0 0 0         -> set Vty.black
     RGB 128 128 128   -> set Vty.bright_black
@@ -448,7 +449,22 @@ colorToAttr set unknown c =
     RGB 165 165 165   -> set Vty.white
     RGB 255 255 255   -> set Vty.bright_white
     Default           -> id
-    _                 -> set unknown -- NB
+    RGB r1 g1 b1      -> set (Vty.Color240 $ toEnum color)
+      where
+        r = fromEnum r1
+        g = fromEnum g1
+        b = fromEnum b1
+        rindex = r `div` (256 `div` 6)
+        gindex = g `div` (256 `div` 6)
+        bindex = b `div` (256 `div` (colorVec !! rindex !! gindex))
+        color  = if r == g && g == b then sum redArr + r `div` (256 `div` 21)
+                   else sum (take rindex redArr) + sum (take gindex $ colorVec !! rindex) + bindex
+        -- Color240 color space
+        colorVec = [[6,6,5,6,6,5], [6,5,6,6,5,6], [6,5,6,5,6,6]
+                   ,[5,6,6,5,6,5], [6,6,5,6,6,5], [6,5,6,6,5,6]
+                   ,[21] -- grey color
+                   ,[16]] -- 16 standard color
+        redArr = map sum colorVec
 
 attributesToAttr :: Attributes -> (Vty.Attr -> Vty.Attr)
 attributesToAttr (Attributes fg bg reverse bd _itlc underline') =

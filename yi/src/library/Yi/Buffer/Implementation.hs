@@ -42,6 +42,7 @@ module Yi.Buffer.Implementation
   , getIndexedStream
   , lineAt
   , SearchExp
+  , setGroundStyleBI
 )
 where
 
@@ -97,6 +98,7 @@ data BufferImpl syntax =
                     , hlCache    :: !(HLState syntax)       -- ^ syntax highlighting state
                     , overlays   :: !(Set.Set Overlay) -- ^ set of (non overlapping) visual overlay regions
                     , dirtyOffset :: !Point -- ^ Lowest modified offset since last recomputation of syntax 
+                    , groundStyle :: !StyleName
                     }
         deriving Typeable
 
@@ -108,8 +110,7 @@ dummyHlState = (HLState noHighlighter (hlStartState noHighlighter))
 -- TODO: ideally I'd like to get rid of overlays entirely; although we could imagine them storing mere styles.
 instance Binary (BufferImpl ()) where
     put b = put (mem b) >> put (marks b) >> put (markNames b)
-    get = pure FBufferData <*> get <*> get <*> get <*> pure dummyHlState <*> pure Set.empty <*> pure 0
-    
+    get = pure FBufferData <*> get <*> get <*> get <*> pure dummyHlState <*> pure Set.empty <*> pure 0 <*> pure mempty
     
 
 -- | Mutation actions (also used the undo or redo list)
@@ -150,7 +151,7 @@ $(derive makeBinary ''UIUpdate)
 
 -- | New FBuffer filled from string.
 newBI :: Rope -> BufferImpl ()
-newBI s = FBufferData s M.empty M.empty dummyHlState Set.empty 0
+newBI s = FBufferData s M.empty M.empty dummyHlState Set.empty 0 mempty
 
 -- | read @n@ bytes from buffer @b@, starting at @i@
 readChunk :: Rope -> Size -> Point -> Rope
@@ -243,7 +244,7 @@ strokesRangesBI getStrokes regex rgn  point fb = result
     dropBefore = dropWhile (\s ->spanEnd s <= i)
     takeIn  = takeWhile (\s -> spanBegin s <= j)
 
-    groundLayer = [(Span i mempty j)]
+    groundLayer = [(Span i (groundStyle fb) j)]
 
     -- zero-length spans seem to break stroking in general, so filter them out!
     syntaxHlLayer = filter (\(Span b _m a) -> b /= a)  $ getStrokes point i j
@@ -348,6 +349,9 @@ modifyMarkBI m f fb = fb {marks = mapAdjust' f m (marks fb)}
 
 setSyntaxBI :: ExtHL syntax -> BufferImpl oldSyntax -> BufferImpl syntax
 setSyntaxBI (ExtHL e) fb = touchSyntax 0 $ fb {hlCache = HLState e (hlStartState e)}
+
+setGroundStyleBI :: StyleName -> BufferImpl syntax -> BufferImpl syntax
+setGroundStyleBI styleName fb = fb {groundStyle = styleName}
 
 touchSyntax ::  Point -> BufferImpl syntax -> BufferImpl syntax
 touchSyntax touchedIndex fb = fb { dirtyOffset = min touchedIndex (dirtyOffset fb)}

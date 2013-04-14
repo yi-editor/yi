@@ -42,6 +42,7 @@ import Yi.Keymap.Emacs.Utils
   , askSaveEditor
   , argToInt
   , promptTag
+  , jumpToTag
   , justOneSep
   , joinLinesE
   )
@@ -137,10 +138,10 @@ emacsKeys univArg =
          , ctrlCh 'e'           ?>>! (repeatingArg (maybeMoveB Line Forward))
          , ctrlCh 'f'           ?>>! (repeatingArg rightB)
          , ctrlCh 'g'           ?>>! (setVisibleSelection False)               
-         , ctrlCh 'h'           ?>> char 'b' ?>>! acceptedInputs               
+         , ctrlCh 'h'           ?>>  char 'b' ?>>! acceptedInputs               
          , ctrlCh 'i'           ?>>! (adjIndent IncreaseOnly)
          , ctrlCh 'j'           ?>>! newlineAndIndentB
-         , ctrlCh 'k'           ?>>! killLineE univArg
+         , ctrlCh 'k'           ?>>! killRegionOrLineE
          , ctrlCh 'l'           ?>>! (withBuffer scrollToCursorB >> userForceRefresh)
          , ctrlCh 'm'           ?>>! (repeatingArg $ insertB '\n')
          , ctrlCh 'n'           ?>>! (repeatingArg $ moveB VLine Forward)
@@ -224,7 +225,10 @@ emacsKeys univArg =
   withIntArg :: YiAction (m ()) () => (Int -> m ()) -> YiM ()
   withIntArg cmd = withUnivArg $ \arg -> cmd (fromMaybe 1 arg)
 
-  ctrlC = choice [ ctrlCh 'c' ?>>! withModeB modeToggleCommentSelection ]
+  ctrlC = choice [ ctrlCh 'c' ?>>! withModeB modeToggleCommentSelection,
+                   char 'g'   ?>>! jumpToTag,
+                   char 'G'   ?>>! promptTag
+                 ]
 
 
   rectangleFuntions = choice [char 'a' ?>>! alignRegionOn,

@@ -11,69 +11,75 @@ type Theme = Proto UIStyle
 defaultTheme :: Theme
 defaultTheme = Proto $ const $ UIStyle
   { modelineAttributes = error "modeline attributes must be redefined!"
-  , modelineFocusStyle = withFg brightwhite
+  , modelineFocusStyle = withFg bright_white
 
   , tabBarAttributes   = error "tabbar attributes must be redefined!"
-  , tabInFocusStyle    = withFg black `mappend` withBg brightwhite
-  , tabNotFocusedStyle = withFg grey `mappend` withBg white
+  , tabInFocusStyle    = withFg black <> withBg bright_white
+  , tabNotFocusedStyle = withFg bright_black <> withBg white
+
+  , promptStyle        = withFg red
 
   , baseAttributes     = error "base attributes must be redefined!"
+  , miniBaseAttributes = error "mini window's base attributes must be redefined!"
 
-  , selectedStyle      = withFg black `mappend` withBg cyan
-  , eofStyle           = withFg blue
-  , errorStyle         = withBg red
-  , hintStyle          = withFg black `mappend` withBg cyan
-  , strongHintStyle    = withFg black `mappend` withBg magenta
+  , selectedStyle      = withFg black <> withBg bright_magenta
+  , eofStyle           = withFg bright_blue
+  , errorStyle         = withBg bright_red
+  , hintStyle          = withFg black <> withBg bright_magenta
+  , strongHintStyle    = withFg black <> withBg magenta
 
-  , commentStyle       = withFg purple
-  , blockCommentStyle  = withFg purple
-  , keywordStyle       = withFg darkblue
-  , numberStyle        = withFg darkred
-  , preprocessorStyle  = withFg red
-  , stringStyle        = withFg darkcyan
+  , commentStyle       = withFg white
+  , blockCommentStyle  = withFg white
+  , keywordStyle       = withFg bright_blue
+  , numberStyle        = withFg red
+  , preprocessorStyle  = withFg bright_red
+  , stringStyle        = withFg magenta
   , longStringStyle    = mempty
-  , typeStyle          = withFg darkgreen
+  , typeStyle          = withFg green
+  , interfaceStyle     = withFg red
   , dataConstructorStyle
-                       = withBd True `mappend` withFg darkgreen
-  , importStyle        = withFg grey
-  , builtinStyle       = withFg blue
-  , regexStyle         = withFg red
+                       = withBd True <> withFg green
+  , importStyle        = withFg bright_blue
+  , builtinStyle       = withFg bright_blue
+  , regexStyle         = withFg bright_red
   , variableStyle      = mempty
-  , operatorStyle      = withFg brown
-  , makeFileRuleHead   = withFg blue
-  , makeFileAction     = withFg grey
-  , quoteStyle         = withFg grey
+  , operatorStyle      = withFg yellow
+  , makeFileRuleHead   = withFg bright_blue
+  , makeFileAction     = withFg bright_black
+  , quoteStyle         = withFg bright_black
   }
 
 
 -- | The default Theme
 defaultLightTheme :: Theme
 defaultLightTheme = defaultTheme `override` \super _ -> super
-  { modelineAttributes = emptyAttributes { foreground = black,    background = darkcyan }
+  { modelineAttributes = emptyAttributes { foreground = bright_black,    background = white }
+  , modelineFocusStyle = withFg black <> withBg white
   , tabBarAttributes   = emptyAttributes { foreground = white,    background = black }
   , baseAttributes     = emptyAttributes
+  , miniBaseAttributes = emptyAttributes
   }
 
--- | A Theme inspired by the darkblue colorscheme of Vim.
+-- | A Theme inspired by the blue colorscheme of Vim.
 darkBlueTheme :: Theme
 darkBlueTheme = defaultTheme `override` \super _ -> super
-  { modelineAttributes = emptyAttributes { foreground = darkblue, background = white }
-  , modelineFocusStyle = withBg brightwhite
+  { modelineAttributes = emptyAttributes { foreground = blue, background = white }
+  , modelineFocusStyle = withBg bright_white
 
-  , tabBarAttributes   = emptyAttributes { foreground = darkblue, background = brightwhite }
-  , tabInFocusStyle    = withFg grey `mappend` withBg white
-  , tabNotFocusedStyle = withFg lightGrey `mappend` withBg white
+  , tabBarAttributes   = emptyAttributes { foreground = blue, background = bright_white }
+  , tabInFocusStyle    = withFg bright_black <> withBg white
+  , tabNotFocusedStyle = withFg white <> withBg white
 
   , baseAttributes     = emptyAttributes { foreground = white,    background = black }
 
-  , selectedStyle      = withFg white `mappend` withBg blue
-  , eofStyle           = withFg red
-  , hintStyle          = withBg darkblue
-  , strongHintStyle    = withBg blue
+  , selectedStyle      = withFg white <> withBg bright_blue
+  , eofStyle           = withFg bright_red
+  , hintStyle          = withBg blue
+  , strongHintStyle    = withBg bright_blue
 
-  , commentStyle       = withFg darkred
-  , keywordStyle       = withFg brown
-  , stringStyle        = withFg purple
-  , variableStyle      = withFg cyan
-  , operatorStyle      = withFg brown
+  , commentStyle       = withFg red
+  , keywordStyle       = withFg yellow
+  , stringStyle        = withFg magenta
+  , variableStyle      = withFg bright_magenta
+  , operatorStyle      = withFg yellow
   }

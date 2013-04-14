@@ -2,6 +2,7 @@
 module Yi.Debug (
         initDebug       -- :: FilePath -> IO ()
        ,trace           -- :: String -> a -> a
+       ,traceStack
        ,traceM
        ,traceM_
        ,logPutStrLn
@@ -17,6 +18,9 @@ import System.IO
 import System.IO.Unsafe ( unsafePerformIO )
 import Data.Time
 import System.Locale
+
+import GHC.Stack
+import Control.Monad (when)
 
 dbgHandle :: IORef (Maybe Handle)
 dbgHandle = unsafePerformIO $ newIORef Nothing
@@ -44,6 +48,12 @@ trace s e = unsafePerformIO $ do logPutStrLn s
                                  return e
 {-# NOINLINE trace #-}
 
+traceStack :: String -> a -> a
+traceStack str expr = unsafePerformIO $ do
+  logPutStrLn str
+  stack <- currentCallStack
+  when (not (null stack)) $ logPutStrLn (renderStack stack)
+  return expr
 
 error :: String -> a
 error s = unsafePerformIO $ do logPutStrLn s

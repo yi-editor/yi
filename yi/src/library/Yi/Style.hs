@@ -5,6 +5,7 @@ module Yi.Style where
 
 import Data.Word                (Word8)
 import Data.Char (chr, ord)
+import Data.Binary
 import Data.Monoid
 import Yi.Prelude
 import Prelude ()
@@ -37,7 +38,10 @@ data UIStyle = UIStyle
   , tabInFocusStyle    :: Style      -- ^ a tab that currently holds the focus
   , tabNotFocusedStyle :: Style      -- ^ a tab that does not have the current focus
 
+  , promptStyle        :: Style
+
   , baseAttributes     :: Attributes -- ^ ground attributes for the main text views
+  , miniBaseAttributes  :: Attributes -- ^ mini window ground attributes for the main text views
 
   -- General styles applied to the ground attributes above
   , selectedStyle      :: Style      -- ^ the selected portion
@@ -56,6 +60,7 @@ data UIStyle = UIStyle
   , stringStyle        :: Style      -- ^ constant strings
   , longStringStyle    :: Style      -- ^ additional style for long strings
   , typeStyle          :: Style      -- ^ type name (such as class in an OO language)
+  , interfaceStyle     :: Style      -- ^ interface
   , dataConstructorStyle
                        :: Style      -- ^ data constructor
   , importStyle        :: Style      -- ^ style of import names
@@ -115,22 +120,26 @@ colorToText (RGB r g b) = ('#':) . showsHex r . showsHex g . showsHex b $ []
 
 -- Some simple colours
 
-black, grey, lightGrey, darkred, red, darkgreen, green, brown, yellow :: Color
-darkblue, blue, purple, magenta, darkcyan, cyan, white, brightwhite   :: Color
-black       = RGB 0 0 0
-grey        = RGB 128 128 128
-lightGrey   = RGB 100 100 100
-darkred     = RGB 139 0 0
-red         = RGB 255 0 0
-darkgreen   = RGB 0 100 0
-green       = RGB 0 128 0
-brown       = RGB 165 42 42
-yellow      = RGB 255 255 0
-darkblue    = RGB 0 0 139
-blue        = RGB 0 0 255
-purple      = RGB 128 0 128
-magenta     = RGB 255 0 255
-darkcyan    = RGB 0 139 139 
-cyan        = RGB 0 255 255
-white       = RGB 165 165 165
-brightwhite = RGB 255 255 255
+black, bright_black, red, bright_red, green, bright_green, yellow, bright_yellow :: Color
+blue, bright_blue, magenta, bright_magenta, cyan, bright_cyan, white, bright_white :: Color
+black          = RGB 0 0 0
+bright_black   = RGB 128 128 128
+red            = RGB 139 0 0
+bright_red     = RGB 255 0 0
+green          = RGB 0 100 0
+bright_green   = RGB 0 128 0
+yellow         = RGB 165 42 42
+bright_yellow  = RGB 255 255 0
+blue           = RGB 0 0 139
+bright_blue    = RGB 0 0 255
+magenta        = RGB 128 0 128
+bright_magenta = RGB 255 0 255
+cyan           = RGB 0 139 139 
+bright_cyan    = RGB 0 205 205
+white          = RGB 165 165 165
+bright_white   = RGB 255 255 255
+
+brown, grey, darkcyan :: Color
+brown = yellow
+grey = bright_black
+darkcyan = cyan

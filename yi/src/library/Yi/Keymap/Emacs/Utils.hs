@@ -32,6 +32,7 @@ module Yi.Keymap.Emacs.Utils
   , findFileNewTab
   , promptFile
   , promptTag
+  , jumpToTag
   , justOneSep
   , joinLinesE
   )
@@ -43,7 +44,17 @@ import Prelude (take)
 import Data.List ((\\))
 import Data.Maybe (maybe)
 import System.FriendlyPath ()
-import System.FilePath (takeDirectory, takeFileName, (</>))
+
+import System.FilePath (
+  takeDirectory
+  , (</>)
+  , addTrailingPathSeparator
+  , hasTrailingPathSeparator
+  , takeFileName
+  )
+import System.Posix (fileExist)
+import System.CanonicalizePath (canonicalizePath)
+import System.IO
 import System.Directory
   ( doesDirectoryExist
   )
@@ -57,7 +68,7 @@ import Yi.Core
 import Yi.Eval
 import Yi.File
 import Yi.MiniBuffer
-import Yi.Misc (promptFile)
+import Yi.Misc (promptFile, getFolder)
 import Yi.Regex
 import Yi.Tag
 import Yi.Search
@@ -325,9 +336,15 @@ promptTag = do
   let hinter =  return . take 10 . maybe fail hintTags tagTable
   -- Completions are super-cheap. Go wild
   let completer =  return . maybe id completeTag tagTable
+  logPutStrLn "begin file tag"
   withMinibufferGen "" hinter ("Find tag: (default " ++ defaultTag ++ ")") completer  $
                  -- if the string is "" use the defaultTag
                  gotoTag . maybeList defaultTag
+
+jumpToTag :: YiM()
+jumpToTag = do
+    defaultTag <- withBuffer $ readUnitB unitWord
+    gotoTag defaultTag
 
 -- | Opens the file that contains @tag@. Uses the global tag table and prompts
 -- the user to open one if it does not exist
@@ -349,7 +366,17 @@ visitTagTable act = do
     -- does the tagtable exist?
     case posTagTable of
       Just tagTable -> act tagTable
-      Nothing ->
+      Nothing -> findTagsFile act
+
+findTagsFile :: (TagTable -> YiM ()) -> YiM()
+findTagsFile act = do
+    maybePath <- findExistTagsFile
+    case maybePath of
+        Just path -> do 
+            tagTable <- io $ importTagTable path
+            withEditor $ setTags tagTable
+            act tagTable
+        Nothing ->
           promptFile ("Visit tags table: (default tags)") $ \path -> do
                        -- default emacs behavior, append tags
                        let filename = maybeList "tags" $ takeFileName path
@@ -357,6 +384,19 @@ visitTagTable act = do
                                            takeDirectory path </> filename
                        withEditor $ setTags tagTable
                        act tagTable
+
+findExistTagsFile :: YiM (Maybe FilePath)
+findExistTagsFile = do
+    maybePath <- withBuffer $ gets file
+    startPath <- addTrailingPathSeparator <$> (liftIO $ canonicalizePath =<< getFolder maybePath)
+    existTagsFile startPath
+    where
+        existTagsFile :: FilePath -> YiM (Maybe FilePath)
+        existTagsFile (x:[]) = return Nothing
+        existTagsFile directory = do
+            exists <- io $ fileExist $ directory </> "TAGS"
+            if exists then return $ Just $ directory </> "TAGS"
+            else existTagsFile $ takeDirectory $ init directory
 
 {-
 TODO: export or remove

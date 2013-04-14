@@ -14,15 +14,18 @@ module Yi.MiniBuffer
  ) where
 
 import Prelude (filter, length, words)
-import Data.List (isInfixOf)
+import Data.List (isInfixOf, sortBy)
 import qualified Data.List.PointedList.Circular as PL
 import Data.Maybe
 import Data.String (IsString)
+import System.FilePath (takeDirectory)
 import Yi.Config
 import Yi.Core
 import Yi.History
+import Yi.Hint
 import Yi.Completion (infixMatch, prefixMatch, containsMatch', completeInList, completeInList')
-import Yi.Style (defaultStyle, withFg, darkgreen)
+import Yi.Style (defaultStyle, withFg, green, promptStyle)
+import Shim.Utils (fuzzyDistance)
 import qualified Data.Rope as R
 
 -- | Open a minibuffer window with the given prompt and keymap
@@ -99,43 +102,77 @@ withMinibufferGen :: String -> (String -> YiM [String]) ->
 withMinibufferGen proposal getHint prompt completer act = do
   initialBuffer <- gets currentBuffer
   initialWindow <- getA currentWindowA
-  let innerAction :: YiM ()
+  let realDo :: YiM ()
+      smartDo :: YiM ()
       -- ^ Read contents of current buffer (which should be the minibuffer), and
       -- apply it to the desired action
       closeMinibuffer = closeBufferAndWindowE >>
                         modA windowsA (fromJust . PL.find initialWindow)
+
       showMatchings = showMatchingsOf =<< withBuffer elemsB
-      
+      showMatchingsWithRotate = showMatchingsOfWithRotate =<< withBuffer elemsB
+
       -- add { | } to the status line, make it looks like ido-mode in emacs
-      transform = (++ ["}"]) . ("{" :) . tail . foldr (\x acc -> acc ++ ["|", x]) []
-      showMatchingsOf userInput = withEditor . printStatus =<< fmap (withHintStyle . transform) (getHint userInput)
+      safeTail [] = []
+      safeTail xs = tail xs
       
-      hintStyle = const $ withFg darkgreen
+      transform = (++ ["}"]) . ("{" :) . safeTail . foldr (\x acc -> ["|", x] ++ acc) []
+      showMatchingsOf' getHintFn userInput = withEditor . printStatus =<< fmap (withHintStyle . transform) (getHintFn userInput)
+      showMatchingsOf userInput = hintRotateClear >> showMatchingsOf' getHint userInput
+      showMatchingsOfWithRotate = showMatchingsOf' $ \s -> getHint s >>= hintRotateDo
+      
+      hintStyle = const $ withFg green
       withHintStyle msg = (msg, hintStyle)
-      
-      innerAction = do
-        lineString <- withEditor $ do historyFinishGen prompt (withBuffer0 elemsB)
+
+      getLineString = withEditor $ do historyFinishGen prompt (withBuffer0 elemsB)
                                       lineString <- withBuffer0 elemsB
                                       closeMinibuffer
                                       switchToBufferE initialBuffer
                                       -- The above ensures that the action is performed on the buffer
                                       -- that originated the minibuffer.
                                       return lineString
-        act lineString
-      up   = historyMove prompt 1
-      down = historyMove prompt (-1)
+      realDo = getLineString >>= act
+        
+      smartDo = do lineString <- withEditor $ withBuffer0 elemsB
+                   -- if is directory, continue, else open the file
+                   if not (null lineString) && last lineString == '/' then showMatchings
+                     else realDo
 
-      rebindings = choice [oneOf [spec KEnter, ctrl $ char 'm'] >>! innerAction,
-                           oneOf [spec KUp,    meta $ char 'p'] >>! up,
-                           oneOf [spec KDown,  meta $ char 'n'] >>! down,
-                           oneOf [spec KTab,   ctrl $ char 'i'] >>! completionFunction completer >>! showMatchings,
+      -- todo: this is find-file spec
+      gotoParentDir :: YiM ()
+      gotoParentDir = do
+        lineString <- withEditor $ withBuffer0 elemsB
+        toParent lineString
+        -- goto the parent's dir
+        where toParent []                   = error "path is nil."
+              toParent (x:[])               = error "Get to the root directory."
+              toParent xs | last xs == '/'  = replaceBuffer $ takeDirectory $ init xs
+                          | otherwise       = replaceBuffer $ takeDirectory xs
+
+              replaceBuffer = withEditor . withBuffer0 . replaceBufferContent . (++ "/")
+
+      -- delete one char
+      deleteChar :: YiM()
+      deleteChar = do
+        lineString <- withEditor $ withBuffer0 elemsB
+        if last lineString == '/' then gotoParentDir
+          else withEditor $ withBuffer0 $ replaceBufferContent $ init lineString
+
+      rebindings = choice [ctrl (char 'j')                     ?>>! realDo,
+                           oneOf [spec KEnter, ctrl $ char 'm'] >>! completionFunction completer >>! smartDo,
+                           oneOf [ctrl (char 's')]              >>! hintRotateLeft >>! showMatchingsWithRotate,
+                           oneOf [ctrl (char 'r')]              >>! hintRotateRight >>! showMatchingsWithRotate,
+                           oneOf [ctrl (char 'w')]              >>! gotoParentDir >>! showMatchings,
+                           oneOf [spec KBS]                     >>! deleteChar >>! showMatchings,
+                           oneOf [spec KTab,   ctrl $ char 'i'] >>! realDo,
                            ctrl (char 'g')                     ?>>! closeMinibuffer]
+
   showMatchingsOf ""
   withEditor $ do 
       historyStartGen prompt
       discard $ spawnMinibufferE (prompt ++ " ") (\bindings -> rebindings <|| (bindings >> write showMatchings))
+      withBuffer0 $ setGroundStyleB promptStyle
       withBuffer0 $ replaceBufferContent proposal
-
 
 -- | Open a minibuffer, given a finite number of suggestions.
 withMinibufferFin :: String -> [String] -> (String -> YiM ()) -> YiM ()
@@ -145,14 +182,15 @@ withMinibufferFin prompt possibilities act
         -- The function for returning the hints provided to the user underneath
         -- the input, basically all those that currently match.
         hinter s = return $ match s
-        -- All those which currently match.
-        match s = filter (s `isInfixOf`) possibilities
+        -- just sort
+        match "" = possibilities
+        match s = sortBy (compare `on` (fuzzyDistance s)) possibilities
+--        match s = filter (s `isInfixOf`) possibilities
 
         -- The best match from the list of matches
         -- If the string matches completely then we take that
         -- otherwise we just take the first match.
-        best s
-          | any (== s) matches = s
+        best s          
           | null matches       = s
           | otherwise          = head matches
           where matches = match s
@@ -160,9 +198,12 @@ withMinibufferFin prompt possibilities act
         -- return with an incomplete possibility. The reason is we may have for
         -- example two possibilities which share a long prefix and hence we wish
         -- to press tab to complete up to the point at which they differ.
-        completer s = return $ case commonPrefix $ catMaybes $ fmap (infixMatch s) possibilities of
+        completer s = fmap head . hintRotateDo $ match s
+        {-
+        return $ case commonPrefix $ catMaybes $ fmap (infixMatch s) possibilities of
             "" -> s
             p -> p
+        -}
 
 completionFunction :: (String -> YiM String) -> YiM ()
 completionFunction f = do

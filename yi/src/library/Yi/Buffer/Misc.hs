@@ -141,6 +141,7 @@ module Yi.Buffer.Misc
   , file
   , lastSyncTimeA
   , replaceCharB
+  , setGroundStyleB
   )
 where
 
@@ -153,6 +154,7 @@ import Yi.Syntax
 import Yi.Buffer.Undo
 import Yi.Dynamic
 import Yi.Window
+import Yi.Style (StyleName)
 import Control.Monad.RWS.Strict hiding (mapM_, mapM, get, put, forM)
 import Data.Accessor.Template
 import Data.Binary
@@ -857,6 +859,10 @@ regexB dir rx = do
   regexRegionB rx (mkRegion p (case dir of Forward -> s; Backward -> 0))
 
 ---------------------------------------------------------------------
+
+-- | Set the ground Style
+setGroundStyleB :: StyleName -> BufferM ()
+setGroundStyleB sty = modifyBuffer $ setGroundStyleBI sty
 
 -- | Set the given mark's point.
 setMarkPointB :: Mark -> Point -> BufferM ()

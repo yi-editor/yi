@@ -78,9 +78,7 @@ completeInListCustomShow showFunction s match possibilities
 completeInList' :: String -> (String -> Maybe String) -> [String] -> EditorM String
 completeInList' s match l
     | null filtered = printMsg "No match" >> return s
-    | isSingleton filtered && s == (head filtered) = printMsg "Sole completion" >> return s
-    | isSingleton filtered                         = return $ head filtered
-    | otherwise = printMsgs filtered >> return s
+    | otherwise = return $ head filtered
     where
     filtered = filterMatches match l
 

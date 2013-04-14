@@ -86,6 +86,8 @@ import qualified Yi.UI.Common as UI
 import Yi.Window (dummyWindow, bufkey, wkey, winRegion)
 import {-# source #-} Yi.PersistentState(loadPersistentState, savePersistentState)
 
+
+
 -- | Make an action suitable for an interactive run.
 -- UI will be refreshed.
 interactive :: [Action] -> YiM ()
@@ -340,7 +342,7 @@ msgEditor = withEditor . printMsg
 -- | Show an error on the status line and log it.
 errorEditor :: String -> YiM ()
 errorEditor s = do withEditor $ printStatus (["error: " ++ s], errorStyle)
-                   logPutStrLn $ "errorEditor: " ++ s
+                   logPutStrLn $ "errorEditor: " ++ (traceStack "stack" s)
 
 -- | Close the current window.
 -- If this is the last window open, quit the program.

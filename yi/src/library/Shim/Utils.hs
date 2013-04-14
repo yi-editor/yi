@@ -30,6 +30,7 @@ module Shim.Utils
   , unlessM
   , shorten
   , uncurry3
+  , fuzzyDistance
   ) where
   
 import System.IO
@@ -37,6 +38,9 @@ import System.Process
 import Control.Monad
 import Text.Printf
 import Data.Maybe
+import Data.Array
+import Data.Function
+import Data.Char
 import System.FilePath ( takeDirectory )
 -- import qualified Control.OldException as CE
 import System.IO.Unsafe ( unsafePerformIO )
@@ -185,3 +189,30 @@ shorten n s = if length s > n then take (n-4) s ++ "..." else s
   
 uncurry3 :: (a -> b -> c -> d) -> (a, b, c) -> d
 uncurry3 fn (a, b, c) = fn a b c
+
+fuzzyDistance' :: (Float,Float,Float) -> (a -> a -> Bool) -> [a] -> [a] -> Float
+fuzzyDistance' costTable eq xs ys = table ! (m,n)
+    where
+      (m,n) = (length xs, length ys)
+      x     = array (1,m) (zip [1..] xs)
+      y     = array (1,n) (zip [1..] ys)
+
+      table :: Array (Int, Int) Float
+      table = array bnds [(ij, dist ij) | ij <- range bnds]
+      bnds  = ((0,0),(m,n))
+
+      deletionCost     = let (cost, _, _) = costTable in cost
+      insertionCost    = let (_, cost, _) = costTable in cost
+      substitutionCost = let (_, _, cost) = costTable in cost
+
+      -- insert in the head and the tail has the lowerst cost
+      dist :: (Int, Int) -> Float
+      dist (0,j) = fromIntegral j * insertionCost / 10 
+      dist (i,0) = fromIntegral i * deletionCost
+      dist (i,j) = minimum [table ! (i-1,j) + deletionCost, -- deletion
+                            table ! (i,j-1) + (if i == m then insertionCost / 10 else insertionCost), -- insertion
+                            if (x ! i) `eq` (y ! j) then table ! (i-1,j-1) -- no change
+                            else table ! (i-1,j-1) + substitutionCost] -- substitution
+
+fuzzyDistance :: String -> String -> Float
+fuzzyDistance = fuzzyDistance' (2,1,3) ((==) `on` toLower)
