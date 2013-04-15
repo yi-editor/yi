@@ -109,23 +109,30 @@ withMinibufferGen proposal getHint prompt completer act = do
       closeMinibuffer = closeBufferAndWindowE >>
                         modA windowsA (fromJust . PL.find initialWindow)
 
-      showMatchings = showMatchingsOf =<< withBuffer elemsB
-      showMatchingsWithRotate = showMatchingsOfWithRotate =<< withBuffer elemsB
+      showMatchings = showMatchingsOf =<< withBuffer getContentString
+      showMatchingsWithRotate = showMatchingsOfWithRotate =<< withBuffer getContentString
 
       -- add { | } to the status line, make it looks like ido-mode in emacs
       safeTail [] = []
       safeTail xs = tail xs
       
-      transform = (++ ["}"]) . ("{" :) . safeTail . foldr (\x acc -> ["|", x] ++ acc) []
-      showMatchingsOf' getHintFn userInput = withEditor . printStatus =<< fmap (withHintStyle . transform) (getHintFn userInput)
+      transform = (++ ["}"]) . ("{" :) . safeTail . foldr (\x acc -> [" | ", x] ++ acc) []
+      joinstr = foldr (++) ""
+--       showMatchingsOf' getHintFn userInput = withEditor . printStatus =<< fmap (withHintStyle . transform) (getHintFn userInput)
+      showMatchingsOf' getHintFn userInput = showHint =<< fmap (joinstr . transform) (getHintFn userInput)
       showMatchingsOf userInput = hintRotateClear >> showMatchingsOf' getHint userInput
       showMatchingsOfWithRotate = showMatchingsOf' $ \s -> getHint s >>= hintRotateDo
       
       hintStyle = const $ withFg green
       withHintStyle msg = (msg, hintStyle)
 
-      getLineString = withEditor $ do historyFinishGen prompt (withBuffer0 elemsB)
-                                      lineString <- withBuffer0 elemsB
+      getContentString :: BufferM String
+      getContentString = do
+          p <- pointB
+          readRegionB $ mkRegion 0 p
+
+      getLineString = withEditor $ do historyFinishGen prompt (withBuffer0 $ getContentString)
+                                      lineString <- withBuffer0 $ getContentString
                                       closeMinibuffer
                                       switchToBufferE initialBuffer
                                       -- The above ensures that the action is performed on the buffer
@@ -133,7 +140,7 @@ withMinibufferGen proposal getHint prompt completer act = do
                                       return lineString
       realDo = getLineString >>= act
         
-      smartDo = do lineString <- withEditor $ withBuffer0 elemsB
+      smartDo = do lineString <- withEditor $ withBuffer0 $ getContentString
                    -- if is directory, continue, else open the file
                    if not (null lineString) && last lineString == '/' then showMatchings
                      else realDo
@@ -141,7 +148,7 @@ withMinibufferGen proposal getHint prompt completer act = do
       -- todo: this is find-file spec
       gotoParentDir :: YiM ()
       gotoParentDir = do
-        lineString <- withEditor $ withBuffer0 elemsB
+        lineString <- withEditor $ withBuffer0 $ getContentString
         toParent lineString
         -- goto the parent's dir
         where toParent []                   = error "path is nil."
@@ -154,25 +161,25 @@ withMinibufferGen proposal getHint prompt completer act = do
       -- delete one char
       deleteChar :: YiM()
       deleteChar = do
-        lineString <- withEditor $ withBuffer0 elemsB
+        lineString <- withEditor $ withBuffer0 $ getContentString
         if last lineString == '/' then gotoParentDir
           else withEditor $ withBuffer0 $ replaceBufferContent $ init lineString
 
       rebindings = choice [ctrl (char 'j')                     ?>>! realDo,
                            oneOf [spec KEnter, ctrl $ char 'm'] >>! completionFunction completer >>! smartDo,
-                           oneOf [ctrl (char 's')]              >>! hintRotateLeft >>! showMatchingsWithRotate,
+                           oneOf [spec KTab, ctrl (char 's')]   >>! hintRotateLeft >>! showMatchingsWithRotate,
                            oneOf [ctrl (char 'r')]              >>! hintRotateRight >>! showMatchingsWithRotate,
                            oneOf [ctrl (char 'w')]              >>! gotoParentDir >>! showMatchings,
                            oneOf [spec KBS]                     >>! deleteChar >>! showMatchings,
-                           oneOf [spec KTab,   ctrl $ char 'i'] >>! realDo,
+                           oneOf [ctrl $ char 'i']              >>! realDo,
                            ctrl (char 'g')                     ?>>! closeMinibuffer]
 
-  showMatchingsOf ""
   withEditor $ do 
       historyStartGen prompt
       discard $ spawnMinibufferE (prompt ++ " ") (\bindings -> rebindings <|| (bindings >> write showMatchings))
       withBuffer0 $ setGroundStyleB promptStyle
       withBuffer0 $ replaceBufferContent proposal
+  showMatchingsOf ""
 
 -- | Open a minibuffer, given a finite number of suggestions.
 withMinibufferFin :: String -> [String] -> (String -> YiM ()) -> YiM ()
@@ -204,6 +211,13 @@ withMinibufferFin prompt possibilities act
             "" -> s
             p -> p
         -}
+showHint :: String -> YiM()
+showHint str = do
+    p <- withBuffer pointB
+    size <- withBuffer sizeB
+    let r = mkRegion p size
+    withBuffer $ replaceRegionB r str
+    withBuffer $ moveTo p
 
 completionFunction :: (String -> YiM String) -> YiM ()
 completionFunction f = do
