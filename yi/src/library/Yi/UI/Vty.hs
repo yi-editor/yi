@@ -75,7 +75,9 @@ start cfg ch outCh editor = do
           oattr <- getTerminalAttributes stdInput
           v <- mkVtyEscDelay $ configVtyEscDelay $ configUI $ cfg
           nattr <- getTerminalAttributes stdInput
-          setTerminalAttributes stdInput (withoutMode nattr ExtendedFunctions) Immediately
+          let attr1 = withoutMode nattr ExtendedFunctions
+              attr = withoutMode attr1 MapCRtoLF
+          setTerminalAttributes stdInput attr Immediately
           -- remove the above call to setTerminalAttributes when vty does it.
           Vty.DisplayRegion x0 y0 <- Vty.display_bounds $ Vty.terminal v
           sz <- newIORef (fromEnum y0, fromEnum x0)
@@ -106,7 +108,9 @@ start cfg ch outCh editor = do
                       -- since any action will force a refresh, return () is probably 
                       -- sufficient instead of "layoutAction ui"
                       getKey
-                  _ -> return (fromVtyEvent event)
+                  _ -> do
+                      logPutStrLn . ("get key event:" ++) . prettyEvent $ fromVtyEvent event
+                      return (fromVtyEvent event)
 
               renderLoop :: IO ()
               renderLoop = do
@@ -165,7 +169,7 @@ fromVtyKey (Vty.KMenu    ) = Yi.Event.KMenu
 fromVtyKey (Vty.KLeft    ) = Yi.Event.KLeft     
 fromVtyKey (Vty.KDown    ) = Yi.Event.KDown     
 fromVtyKey (Vty.KRight   ) = Yi.Event.KRight    
-fromVtyKey (Vty.KEnter   ) = trace "enter" Yi.Event.KEnter    
+fromVtyKey (Vty.KEnter   ) = trace "enter" Yi.Event.KEnter
 fromVtyKey (Vty.KBackTab ) = error "This should be handled in fromVtyEvent"
 fromVtyKey (Vty.KBegin   ) = error "Yi.UI.Vty.fromVtyKey: can't handle KBegin"
 

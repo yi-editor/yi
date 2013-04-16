@@ -38,9 +38,6 @@ initDebug f = do
     Nothing -> do openFile f WriteMode >>= writeIORef dbgHandle . Just
                   logPutStrLn "Logging initialized."
     Just _ -> do logPutStrLn "Attempt to re-initialize the logging system."
-                     
-              
-               
 
 -- | Outputs the given string before returning the second argument.
 trace :: String -> a -> a

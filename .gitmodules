@@ -1,0 +1,3 @@
+[submodule "extlib/vty"]
+	path = extlib/vty
+	url = https://github.com/onlyu/vty.git
