@@ -14,7 +14,7 @@ module Yi.MiniBuffer
  ) where
 
 import Prelude (filter, length, words)
-import Data.List (isInfixOf, sortBy)
+import Data.List (isInfixOf, sortBy, map, reverse)
 import qualified Data.List.PointedList.Circular as PL
 import Data.Maybe
 import Data.String (IsString)
@@ -24,7 +24,7 @@ import Yi.Core
 import Yi.History
 import Yi.Hint
 import Yi.Completion (infixMatch, prefixMatch, containsMatch', completeInList, completeInList')
-import Yi.Style (defaultStyle, withFg, green, promptStyle)
+import Yi.Style (defaultStyle, withFg, green, grey, blue, yellow, promptStyle, cyan)
 import Shim.Utils (fuzzyDistance)
 import qualified Data.Rope as R
 
@@ -112,14 +112,7 @@ withMinibufferGen proposal getHint prompt completer act = do
       showMatchings = showMatchingsOf =<< withBuffer getContentString
       showMatchingsWithRotate = showMatchingsOfWithRotate =<< withBuffer getContentString
 
-      -- add { | } to the status line, make it looks like ido-mode in emacs
-      safeTail [] = []
-      safeTail xs = tail xs
-      
-      transform = (++ ["}"]) . ("{" :) . safeTail . foldr (\x acc -> [" | ", x] ++ acc) []
-      joinstr = foldr (++) ""
---       showMatchingsOf' getHintFn userInput = withEditor . printStatus =<< fmap (withHintStyle . transform) (getHintFn userInput)
-      showMatchingsOf' getHintFn userInput = showHint =<< fmap (joinstr . transform) (getHintFn userInput)
+      showMatchingsOf' getHintFn userInput = showHint =<< getHintFn userInput
       showMatchingsOf userInput = hintRotateClear >> showMatchingsOf' getHint userInput
       showMatchingsOfWithRotate = showMatchingsOf' $ \s -> getHint s >>= hintRotateDo
       
@@ -171,7 +164,6 @@ withMinibufferGen proposal getHint prompt completer act = do
                            oneOf [ctrl (char 'r')]              >>! hintRotateRight >>! showMatchingsWithRotate,
                            oneOf [ctrl (char 'w')]              >>! gotoParentDir >>! showMatchings,
                            oneOf [spec KBS]                     >>! deleteChar >>! showMatchings,
-                           oneOf [ctrl $ char 'i']              >>! realDo,
                            ctrl (char 'g')                     ?>>! closeMinibuffer]
 
   withEditor $ do 
@@ -211,13 +203,43 @@ withMinibufferFin prompt possibilities act
             "" -> s
             p -> p
         -}
-showHint :: String -> YiM()
-showHint str = do
-    p <- withBuffer pointB
-    size <- withBuffer sizeB
+
+-- show hint as ido-mode in emacs do, use different color with different hint item
+showHint :: [String] -> YiM()
+showHint hints = withBuffer $ do
+    p <- pointB
+    size <- sizeB
     let r = mkRegion p size
-    withBuffer $ replaceRegionB r str
-    withBuffer $ moveTo p
+        hintStyle = const (withFg green)
+        dirStyle = const (withFg cyan)
+        firstStyle = const (withFg yellow)
+        -- add { | } to the status line, make it looks like ido-mode in emacs
+        safeTail [] = []
+        safeTail xs = tail xs
+        hintStrs = (++ ["}"]) . ("{" :) . safeTail . foldr (\x acc -> [" | ", x] ++ acc) [] $ hints
+        str = foldr (++) "" hintStrs
+
+        -- first hight, dired blue, other green
+        firstHint = head hintStrs
+        firstStart = Point $ fromPoint p + 1
+        firstEnd = Point $ fromPoint p + 1 + length firstHint - 1
+        firstRegion = mkRegion firstStart firstEnd
+        tailHints = tail hintStrs
+        tailStart = Point $ fromPoint firstEnd
+        addHint hint (Point start, regions) = let end = start + length hint
+                                                  region = mkRegion (Point start) (Point end)
+                                                  isDir fileName = last fileName == '/'
+                                                  style = if isDir hint then dirStyle else hintStyle
+                                                  in (Point $ end, (region, style) : regions)
+        overlayRegions = foldr addHint (tailStart, [(firstRegion, firstStyle)]) $ reverse tailHints
+
+    replaceRegionB r str
+    moveTo p
+    newSize <- sizeB    
+    delOverlayLayerB UserLayer
+    -- addOverlayB $ mkOverlay UserLayer (mkRegion p newSize) hintStyle
+    mapM (addOverlayB . (\(region, style) -> mkOverlay UserLayer region style)) $ snd overlayRegions
+    return ()
 
 completionFunction :: (String -> YiM String) -> YiM ()
 completionFunction f = do

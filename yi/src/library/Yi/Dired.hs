@@ -1,7 +1,7 @@
 {-# LANGUAGE DeriveDataTypeable, TemplateHaskell #-}
 
 -- Copyright (c) 2007, 2008, 2009 Ben Moseley, Wen Pu
-
+-- Copyright (c) 2012, 2013 BlueQ
 
 -- | A Simple Dired Implementation for Yi
 
