@@ -40,7 +40,10 @@ exitBinding = VimBindingE prereq action
               modifyStateE $ \s -> s { vsSecondaryCursors = [] }
               resetCountE
               switchModeE Normal
+              withBuffer0 $ whenM isCurrentLineAllWhiteSpaceB $
+                  moveToSol >> deleteToEol
               return Finish
+
 
 replay :: [Event] -> EditorM ()
 -- TODO: make digraphs work here too
@@ -79,7 +82,16 @@ printableAction evs = do
         getMarkB Nothing
     let bufAction = case evs of
                         (c:[]) -> insertB c
-                        "<CR>" -> newlineAndIndentB
+                        "<CR>" -> do
+                            isOldLineEmpty <- isCurrentLineAllWhiteSpaceB
+                            if isOldLineEmpty
+                            then savingPointB $ do
+                                moveToSol
+                                newlineB
+                            else newlineAndIndentB
+                            firstNonSpaceB
+
+
                         -- For testing purposes assume noexpandtab, tw=4
                         "<Tab>" -> insertN $ replicate 4 ' '
                         "<C-t>" -> shiftIndentOfRegion 1 =<< regionOfB Line

@@ -126,6 +126,14 @@ moveNonspaceOrSol :: BufferM ()
 moveNonspaceOrSol = do prev <- readPreviousOfLnB
                        if and . map isSpace $ prev then moveToSol else firstNonSpaceB
 
+isCurrentLineAllWhiteSpaceB :: BufferM Bool
+isCurrentLineAllWhiteSpaceB = savingPointB $ do
+    moveToSol
+    p1 <- pointB
+    lastNonSpaceB
+    p2 <- pointB
+    return $ p1 == p2
+
 ------------
 
 -- | Move down next @n@ paragraphs
