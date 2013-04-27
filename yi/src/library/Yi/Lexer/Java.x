@@ -2,6 +2,7 @@
 --  Simple lexer for c
 
 {
+#define NO_ALEX_CONTEXTS
 {-# OPTIONS -w  #-} -- Alex generate warnings-ridden code.
 module Yi.Lexer.Java ( initState, alexScanToken ) where
 

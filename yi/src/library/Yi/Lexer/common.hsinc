@@ -74,6 +74,7 @@ alex_scan_tkn' user orig_input len input s last_acc =
     check_accs (AlexAccNone) = last_acc
     check_accs (AlexAcc a  ) = AlexLastAcc a input IBOX(len)
     check_accs (AlexAccSkip) = AlexLastSkip  input IBOX(len)
+#ifndef NO_ALEX_CONTEXTS
     check_accs (AlexAccPred a predx rest)
        | predx user orig_input IBOX(len) input
        = AlexLastAcc a input IBOX(len)
@@ -84,6 +85,7 @@ alex_scan_tkn' user orig_input len input s last_acc =
        = AlexLastSkip input IBOX(len)
        | otherwise
        = check_accs rest
+#endif
 
 c = actionConst
 m = actionAndModify

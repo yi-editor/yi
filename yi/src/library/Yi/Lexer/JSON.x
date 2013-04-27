@@ -4,6 +4,7 @@
 --
 
 {
+#define NO_ALEX_CONTEXTS
 {-# OPTIONS -w  #-}
 module Yi.Lexer.JSON (initState, alexScanToken, Token(..)) where
 import Yi.Lexer.Alex

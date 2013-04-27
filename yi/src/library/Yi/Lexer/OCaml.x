@@ -6,6 +6,7 @@
 --
 
 {
+#define NO_ALEX_CONTEXTS
 {-# OPTIONS -w  #-}
 module Yi.Lexer.OCaml ( initState, alexScanToken, tokenToStyle, Token(..) ) where
 import Yi.Lexer.Alex

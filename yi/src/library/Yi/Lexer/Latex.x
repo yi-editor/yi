@@ -8,6 +8,7 @@
 --
 
 {
+#define NO_ALEX_CONTEXTS
 {-# OPTIONS -w  #-}
 module Yi.Lexer.Latex ( initState, alexScanToken, Token(..), HlState, tokenToText ) where
 import Yi.Lexer.Alex

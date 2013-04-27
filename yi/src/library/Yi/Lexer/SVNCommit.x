@@ -1,6 +1,7 @@
 -- -*- haskell -*-
 -- Maintainer: Corey O'Connor
 {
+#define NO_ALEX_CONTEXTS
 {-# OPTIONS -w  #-}
 module Yi.Lexer.SVNCommit
   ( initState, alexScanToken )

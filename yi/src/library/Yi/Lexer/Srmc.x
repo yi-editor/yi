@@ -8,6 +8,7 @@
 --
 
 {
+#define NO_ALEX_CONTEXTS
 {-# OPTIONS -w  #-}
 module Yi.Lexer.Srmc ( initState, alexScanToken ) where
 {- Local Modules Imported -}
