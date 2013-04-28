@@ -1,6 +1,7 @@
 -- -*- haskell -*-
 
 {
+#define NO_ALEX_CONTEXTS
 {- The Ott website: http://www.cl.cam.ac.uk/~pes20/ott -}
 
 {-# OPTIONS -w  #-}

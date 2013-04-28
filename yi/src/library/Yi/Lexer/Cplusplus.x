@@ -2,6 +2,7 @@
 --  Simple lexer for c/c++ files
 
 {
+#define NO_ALEX_CONTEXTS
 {-# OPTIONS -w  #-}
 module Yi.Lexer.Cplusplus ( initState, alexScanToken ) where
 {- Standard Library Modules Imported -}

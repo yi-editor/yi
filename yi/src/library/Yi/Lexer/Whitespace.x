@@ -2,7 +2,7 @@
 -- (C) Copyright 2009 Deniz Dogan (mad credz)
 
 {
-
+#define NO_ALEX_CONTEXTS
 {-# OPTIONS -w  #-}
 
 module Yi.Lexer.Whitespace ( initState, alexScanToken ) where

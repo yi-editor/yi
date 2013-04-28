@@ -6,6 +6,7 @@
 --
 
 {
+#define NO_ALEX_CONTEXTS
 {-# OPTIONS -w  #-}
 module Yi.Lexer.Abella ( initState, alexScanToken, tokenToStyle,
                          tokenToText, TT,

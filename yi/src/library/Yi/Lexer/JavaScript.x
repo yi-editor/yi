@@ -24,7 +24,7 @@
 -- http://www.ecma-international.org/publications/files/ECMA-ST/Ecma-262.pdf
 
 {
-
+#define NO_ALEX_CONTEXTS
 {-# OPTIONS -w  #-}
 
 module Yi.Lexer.JavaScript ( initState, alexScanToken, tokenToStyle,

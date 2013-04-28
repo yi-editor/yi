@@ -6,6 +6,7 @@
 --  rewritten much, much better.
 
 {
+#define NO_ALEX_CONTEXTS
 {-# OPTIONS -w  #-}
 module Yi.Lexer.Python ( initState, alexScanToken ) where
 
