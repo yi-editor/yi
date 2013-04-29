@@ -5,6 +5,7 @@
 --  This is based on the Python lexer.
 
 {
+#define NO_ALEX_CONTEXTS
 {-# OPTIONS -w  #-}
 module Yi.Lexer.Ruby ( initState, alexScanToken ) where
 
