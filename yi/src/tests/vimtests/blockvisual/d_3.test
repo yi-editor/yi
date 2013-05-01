@@ -1,0 +1,18 @@
+-- Input
+(2,1)
+foo
+
+
+
+
+bar
+-- Output
+(2,1)
+foo
+
+
+
+
+bar
+-- Events
+<C-v>3jd
