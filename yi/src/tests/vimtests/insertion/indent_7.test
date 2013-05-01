@@ -1,0 +1,14 @@
+-- Input
+(1,1)
+    foo
+    bar
+    baz
+-- Output
+(4,5)
+    foo
+    bar
+
+xyzzy
+    baz
+-- Events
+jo<C-d><CR>xyzzy<Esc>

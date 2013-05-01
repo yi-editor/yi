@@ -126,13 +126,20 @@ moveNonspaceOrSol :: BufferM ()
 moveNonspaceOrSol = do prev <- readPreviousOfLnB
                        if and . map isSpace $ prev then moveToSol else firstNonSpaceB
 
+-- | True if current line consists of just a newline (no whitespace)
+isCurrentLineEmptyB :: BufferM Bool
+isCurrentLineEmptyB = savingPointB $ moveToSol >> atEol
+
+-- | Note: Returns False if line doesn't have any characters besides a newline
 isCurrentLineAllWhiteSpaceB :: BufferM Bool
 isCurrentLineAllWhiteSpaceB = savingPointB $ do
     moveToSol
-    p1 <- pointB
+    pSol <- pointB
     lastNonSpaceB
-    p2 <- pointB
-    return $ p1 == p2
+    p <- pointB
+    moveToEol
+    pEol <- pointB
+    return $ pSol /= pEol && pSol == p
 
 ------------
 

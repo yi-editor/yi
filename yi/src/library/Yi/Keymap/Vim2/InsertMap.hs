@@ -62,13 +62,12 @@ digraphBinding = VimBindingE prereq action
 
 -- TODO: split this binding into printable and specials
 printable :: VimBinding
-printable = VimBindingE prereq action
+printable = VimBindingE prereq printableAction
     where prereq evs state@(VimState { vsMode = Insert _ } ) =
               case vbPrerequisite digraphBinding evs state of
                   NoMatch -> WholeMatch ()
                   _ -> NoMatch
           prereq _ _ = NoMatch
-          action = printableAction
 
 printableAction :: EventString -> EditorM RepeatToken
 printableAction evs = do
@@ -83,15 +82,19 @@ printableAction evs = do
     let bufAction = case evs of
                         (c:[]) -> insertB c
                         "<CR>" -> do
-                            isOldLineEmpty <- isCurrentLineAllWhiteSpaceB
+                            isOldLineEmpty <- isCurrentLineEmptyB
+                            shouldTrimOldLine <- isCurrentLineAllWhiteSpaceB
                             if isOldLineEmpty
+                            then do
+                                newlineB
+                            else if shouldTrimOldLine
                             then savingPointB $ do
                                 moveToSol
                                 newlineB
-                            else newlineAndIndentB
+                            else do
+                                newlineB
+                                indentAsPreviousB
                             firstNonSpaceB
-
-
                         -- For testing purposes assume noexpandtab, tw=4
                         "<Tab>" -> insertN $ replicate 4 ' '
                         "<C-t>" -> shiftIndentOfRegion 1 =<< regionOfB Line
