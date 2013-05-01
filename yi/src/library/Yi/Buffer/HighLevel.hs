@@ -720,9 +720,12 @@ shapeOfBlockRegionB reg = savingPointB $ do
         then return 0
         else do
             moveToColB right
+            rightAtEol <- atEol
             leftOnEol
             currentRight <- curCol
-            return $ currentRight - currentLeft + 1
+            return $ if currentRight == 0 && rightAtEol
+                     then 0
+                     else currentRight - currentLeft + 1
     startingPoint <- pointOfLineColB top left
     return (startingPoint, lengths)
 
@@ -761,7 +764,6 @@ deleteRegionWithStyleB :: Region -> RegionStyle -> BufferM Point
 deleteRegionWithStyleB reg Block = savingPointB $ do
     (start, lengths) <- shapeOfBlockRegionB reg
     moveTo start
-    -- insertN $ show (start, lengths)
     forM_ lengths $ \l -> do
         deleteN l
         lineMoveRel 1
