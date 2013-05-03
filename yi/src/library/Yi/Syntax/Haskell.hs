@@ -214,7 +214,7 @@ noImports = notNext [Reserved Import] *> pure emptyNode
 pVarId :: Parser TT (Exp TT)
 pVarId = pAtom [VarIdent, (Reserved Other), (Reserved As)]
 
--- | Parse VarIdent and ConsIdent
+-- | Parse VarIdent and ConsIdent
 pQvarid :: Parser TT (Exp TT)
 pQvarid = pAtom [VarIdent, ConsIdent, (Reserved Other), (Reserved As)]
 
@@ -230,7 +230,7 @@ isOperator (ReservedOp _)   = True
 isOperator (ConsOperator _) = True
 isOperator _                = False
 
--- | Parse a consident
+-- | Parse a consident
 pQtycon :: Parser TT (Exp TT)
 pQtycon = pAtom [ConsIdent]
 
