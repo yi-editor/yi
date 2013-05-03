@@ -1,4 +1,4 @@
-{-# LANGUAGE DeriveDataTypeable #-}
+{-# LANGUAGE CPP, DeriveDataTypeable #-}
 -- Copyright (C) 2008 JP Bernardy
 
 -- | This module defines buffer operation on regions
@@ -61,11 +61,19 @@ replaceRegionClever region text' = savingExcursionB $ do
     text <- readRegionB region
     let diffs = getGroupedDiff text text'
     moveTo (regionStart region)
+#if MIN_VERSION_Diff(0,2,0)
+    forM_ diffs $ \d -> do
+        case d of
+            First str -> deleteN $ length str
+            Both str1 str2 -> rightN $ length str1 + length str2
+            Second str -> insertN str
+#else
     forM_ diffs $ \(d,str) -> do
         case d of
             F -> deleteN $ length str
             B -> rightN $ length str
             S -> insertN str
+#endif
 
 mapRegionB :: Region -> (Char -> Char) -> BufferM ()
 mapRegionB r f = do
