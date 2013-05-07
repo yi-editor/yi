@@ -1,0 +1,33 @@
+
+0.6.7
+-----
+
+ * Automatic padding within default modeline.
+ * Command history, search term, killing and tagstack are now persistent across Yi runs.
+ * Config and history file paths now follow XDG style: $HOME/.config/yi/yi.hs and $HOME/.share/yi/history
+ * File change polling on every refresh is now optional.
+ * JSON highlighting.
+ * Various improvements in vim emulation.
+ * Fuzzy open action for yi (like ctrlp or command-t for vim).
+ * Async refresh for vty frontend.
+ * Fixed memory leak in vty frontend.
+ * Introduced workaround to prevent crashes with unicode chars.
+ * -fhacking is deprecated.
+ * Applied patches from gentoo-haskell.
+
+ Contributors: Amy de Buitléir, Ben Armston, Corey O'Connor, Dmitry Ivanov,
+ Jean-Philippe Bernardy, Jonathan Paugh, Mark Wright, Michal J. Gajda, Nicolas Pouillard,
+ rustydc, Sergei Trofimovich, Tuncer Ayaz
+
+0.6.6
+-----
+
+ * Profiling yi is no longer too hard.
+ * Using new-style exceptions.
+ * Modelines may be now customized per-mode.
+ * Commandline option '-p' for opening multiple files in tabs.
+ * Various improvements in vim emulation.
+ * alex >=3.0.0 is now required.
+
+ Contributors: Alexandr Ruchkin, Corey O'Connor, Dmitry Ivanov,
+ Dominique Devriese, Jeff Wheeler, Mark Wright, Michał J. Gajda

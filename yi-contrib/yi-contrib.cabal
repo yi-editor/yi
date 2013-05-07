@@ -1,5 +1,5 @@
 name:           yi-contrib
-version:        0.6.6.1
+version:        0.6.7.0
 category:       Development, Editor
 synopsis:       Add-ons to Yi, the Haskell-Scriptable Editor
 description:
@@ -12,7 +12,7 @@ maintainer:     yi-devel@googlegroups.com
 homepage:       http://haskell.org/haskellwiki/Yi
 bug-reports:    http://code.google.com/p/yi-editor/issues/list
 Cabal-Version:  >= 1.6
-tested-with:    GHC==7.4.1
+tested-with:    GHC==7.4.2
 build-type:     Simple
 
 library
@@ -38,4 +38,4 @@ library
     filepath < 1.4,
     split >= 0.1 && < 0.3,
     mtl >= 0.1.0.1,
-    yi == 0.6.6.1
+    yi == 0.6.7.0
