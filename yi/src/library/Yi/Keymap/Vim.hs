@@ -414,7 +414,6 @@ mkExHistComplete matchFn compl s =
   where 
     testDeleteB = if null s then return () else deleteWordB
     deleteWordB = deleteUnitB unitSep Backward
-    deleteUnitB unit dir = deleteRegionB =<< regionOfPartNonEmptyB unit dir
 
 exHistComplete' :: Bool -> (String -> YiM [String]) -> String -> YiM ()
 exHistComplete' caseSensitive = mkExHistComplete (mkIsPrefixOf caseSensitive)

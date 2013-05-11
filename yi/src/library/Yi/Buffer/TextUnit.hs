@@ -27,6 +27,7 @@ module Yi.Buffer.TextUnit
     , genMoveB, BoundarySide(..), genAtBoundaryB
     , checkPeekB
     , halfUnit
+    , deleteUnitB
     ) where
 
 import Prelude (length, subtract)
@@ -381,6 +382,9 @@ readUnitB :: TextUnit -> BufferM String
 readUnitB = readRegionB <=< regionOfB
 
 halfUnit :: Direction -> TextUnit -> TextUnit
-halfUnit dir (GenUnit enclosing boundary) = GenUnit enclosing
-                                            (\d -> if d == dir then boundary d else return False)
+halfUnit dir (GenUnit enclosing boundary) =
+  GenUnit enclosing (\d -> if d == dir then boundary d else return False)
+
+deleteUnitB :: TextUnit -> Direction -> BufferM ()
+deleteUnitB unit dir = deleteRegionB =<< regionOfPartNonEmptyB unit dir
 

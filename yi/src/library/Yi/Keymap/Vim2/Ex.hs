@@ -1,13 +1,18 @@
 module Yi.Keymap.Vim2.Ex
     ( exEvalE
     , exEvalY
+    -- for testing purposes:
+    , ExCommand(..)
+    , ExReplaceFlag(..)
+    , stringToExCommand
     ) where
 
 import Prelude ()
 import Yi.Prelude
 
-import Data.Maybe (maybe)
 import Data.Either (either)
+import Data.List (reverse)
+import Data.Maybe (maybe)
 
 import qualified Text.ParserCombinators.Parsec as P
 
@@ -26,15 +31,35 @@ flagFromChar 'g' = Global
 flagFromChar 'i' = CaseInsensitive
 flagFromChar '%' = EveryLine
 
-data ExCommand = ExReplace String String [ExReplaceFlag]
+data ExCommand = ExGlobal String Bool ExCommand
+               | ExDelete
+               | ExReplace String String [ExReplaceFlag]
                | ExGotoLine Int
-    deriving Show
+    deriving (Show, Eq)
 
 parseExCommand :: P.GenParser Char st ExCommand
 parseExCommand = P.choice
-    [ parseExReplace
+    [ parseExGlobal
+    , parseExDelete
+    , parseExReplace
     , parseExGoto
     ]
+
+parseExDelete :: P.GenParser Char st ExCommand
+parseExDelete = do
+    P.try ( P.string "delete") <|> P.string "d"
+    return ExDelete
+
+parseExGlobal :: P.GenParser Char st ExCommand
+parseExGlobal = do
+    vs <- P.many (P.char 'v')
+    P.try (P.string "global") <|> (P.string "g")
+    bangs <- P.many (P.char '!')
+    P.char '/'
+    term <- P.many (P.noneOf "/")
+    P.char '/'
+    cmd <- parseExCommand
+    return $ ExGlobal term ((null bangs) /= (null vs)) cmd
 
 parseExReplace :: P.GenParser Char st ExCommand
 parseExReplace = do
@@ -66,13 +91,29 @@ executeExCommand (ExReplace from to flags) = withBuffer0 $ do
 
     moveToSol
 executeExCommand (ExGotoLine l) = discard $ withBuffer0 $ gotoLn l
+executeExCommand ExDelete =
+    withBuffer0 $ do
+        deleteUnitB Line Forward
+        deleteN 1
+executeExCommand (ExGlobal term _ cmd) = do
+    mark <- withBuffer0 setMarkHereB
+    lineCount <- withBuffer0 lineCountB
+    forM_ (reverse [1..lineCount]) $ \l -> do
+        withBuffer0 $ gotoLn l
+        executeExCommand cmd
+    withBuffer0 $ do
+        getMarkPointB mark >>= moveTo
+        deleteMarkB mark
+
+stringToExCommand :: String -> Either P.ParseError ExCommand
+stringToExCommand = P.parse parseExCommand ""
 
 exEvalE :: String -> EditorM ()
 exEvalE command =
     either
     (const $ return ())
     executeExCommand
-    (P.parse parseExCommand "" command)
+    (stringToExCommand command)
 
 exEvalY :: String -> YiM ()
 exEvalY command = return ()
