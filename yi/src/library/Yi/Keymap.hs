@@ -111,13 +111,13 @@ unsafeWithEditor cfg r f = modifyMVar r $ \var -> do
   -- TODO: can we simplify this?
   e' `seq` a `seq` return (var {yiEditor = e'}, a)
 
-withGivenBuffer :: BufferRef -> BufferM a -> YiM a
+withGivenBuffer :: MonadEditor m => BufferRef -> BufferM a -> m a
 withGivenBuffer b f = withEditor (Editor.withGivenBuffer0 b f)
 
-withBuffer :: BufferM a -> YiM a
+withBuffer :: MonadEditor m => BufferM a -> m a
 withBuffer f = withEditor (Editor.withBuffer0 f)
 
-readEditor :: (Editor -> a) -> YiM a
+readEditor :: MonadEditor m => (Editor -> a) -> m a
 readEditor f = withEditor (gets f)
 
 catchDynE :: Exception exception => YiM a -> (exception -> YiM a) -> YiM a

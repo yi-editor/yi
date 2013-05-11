@@ -6,7 +6,6 @@ import Prelude ()
 import Yi.Prelude
 
 import Yi.Buffer hiding (Insert)
-import Yi.Core (closeWindow)
 import Yi.Editor
 import Yi.Keymap.Vim2.Common
 import Yi.Keymap.Vim2.StateUtils
@@ -33,20 +32,29 @@ finishBindingY = VimBindingY prereq action
               matchFromBool . and $
                 [ vsMode s == Ex
                 , evs == "<CR>"
-                , vsOngoingInsertEvents s `elem` ["q!", "quit!"]
+                , case stringToExCommand (vsOngoingInsertEvents s) of
+                    Right (ExImpure _) -> True
+                    _ -> False
                 ]
-          action evs = do
+          action _ = do
+              s <- withEditor $ withBuffer0 elemsB
               withEditor $ do
                   resetCountE
                   switchModeE Normal
                   closeBufferAndWindowE
-              closeWindow
+              exEvalY s
               return Drop
 
 finishBindingE :: VimBinding
 finishBindingE = VimBindingE prereq action
-    where prereq evs (VimState { vsMode = Ex }) =
-              matchFromBool $ evs == "<CR>"
+    where prereq evs s =
+              matchFromBool . and $
+                [ vsMode s == Ex
+                , evs == "<CR>"
+                , case stringToExCommand (vsOngoingInsertEvents s) of
+                    Right (ExPure _) -> True
+                    _ -> False
+                ]
           prereq _ _ = NoMatch
           action _ = do
               resetCountE

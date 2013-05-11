@@ -254,7 +254,7 @@ emacsKeys univArg =
                  , ctrlCh 'b'    ?>>! listBuffers
                  , ctrlCh 'c'    ?>>! askQuitEditor
                  , ctrlCh 'f'    ?>>! findFile
-                 , ctrlCh 'q'      ?>>! (withBuffer $ modA readOnlyA not)
+                 , ctrlCh 'q'    ?>>! (withBuffer0 $ modA readOnlyA not)
                  , ctrlCh 's'    ?>>! fwriteE
                  , ctrlCh 'w'    ?>>! promptFile "Write file:" fwriteToE
                  , ctrlCh 'x'    ?>>! (exchangePointAndMarkB >> 

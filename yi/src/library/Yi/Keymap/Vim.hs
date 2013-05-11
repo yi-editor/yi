@@ -1514,7 +1514,7 @@ exEval self cmd =
 -- ---------------------------------------------------------------------
 -- Misc functions
 
-forAllBuffers :: (BufferRef -> YiM ()) -> YiM ()
+forAllBuffers :: MonadEditor m => (BufferRef -> m ()) -> m ()
 forAllBuffers f = mapM_ f =<< readEditor bufferStack
 
 viCharInfo :: EditorM ()
