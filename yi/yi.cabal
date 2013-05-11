@@ -138,6 +138,7 @@ library
     Yi.Keymap.Vim2.Eval
     Yi.Keymap.Vim2.EventUtils
     Yi.Keymap.Vim2.Ex
+    Yi.Keymap.Vim2.Ex.Completion
     Yi.Keymap.Vim2.Ex.Types
     Yi.Keymap.Vim2.Ex.Parse
     Yi.Keymap.Vim2.Ex.Eval

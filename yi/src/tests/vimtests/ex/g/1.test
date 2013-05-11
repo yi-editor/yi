@@ -17,4 +17,4 @@ ba 5
 bb x
 bb 7
 -- Events
-:g/bb/s/[3-6]/x<CR>
+:g/bb/s/[3-6]/x/<CR>

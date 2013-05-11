@@ -13,7 +13,23 @@ import Yi.Keymap.Vim2.Utils
 import Yi.Keymap.Vim2.Ex
 
 defExMap :: [VimBinding]
-defExMap = [exitBinding, finishBindingY, finishBindingE, printable]
+defExMap = [ exitBinding, completionBinding
+           , finishBindingY, finishBindingE
+           , failBindingE
+           , printable
+           ]
+
+completionBinding :: VimBinding
+completionBinding = VimBindingY prereq action
+    where prereq evs (VimState { vsMode = Ex }) = matchFromBool $ evs == "<Tab>"
+          prereq _ _ = NoMatch
+          action _ = do
+              commandString <- withEditor $ withBuffer0 elemsB
+              let command = case stringToExCommand commandString of
+                      Right cmd -> Just cmd
+                      _ -> Nothing
+              exComplete commandString command
+              return Drop
 
 exitBinding :: VimBinding
 exitBinding = VimBindingE prereq action
@@ -63,6 +79,15 @@ finishBindingE = VimBindingE prereq action
               closeBufferAndWindowE
               exEvalE s
               return Finish
+
+failBindingE :: VimBinding
+failBindingE = VimBindingE prereq action
+    where prereq evs s = matchFromBool . and $ [vsMode s == Ex, evs == "<CR>"]
+          action _ = do
+              resetCountE
+              switchModeE Normal
+              closeBufferAndWindowE
+              return Drop
 
 printable :: VimBinding
 printable = VimBindingE prereq printableAction
