@@ -27,6 +27,7 @@ module Yi.Search (
         searchReplaceSelectionB,
         replaceString,
         searchAndRepRegion,
+        searchAndRepRegion0,
         searchAndRepUnit, -- :: String -> String -> Bool -> TextUnit -> EditorM Bool
 
         -- * Incremental Search

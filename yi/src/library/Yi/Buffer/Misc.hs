@@ -151,6 +151,7 @@ module Yi.Buffer.Misc
   , insertCharWithAboveB
   , pointAfterCursorB
   , destinationOfMoveB
+  , withEveryLineB
   )
 where
 
@@ -163,7 +164,7 @@ import Yi.Syntax
 import Yi.Buffer.Undo
 import Yi.Dynamic
 import Yi.Window
-import Control.Monad.RWS.Strict hiding (mapM_, mapM, get, put, forM)
+import Control.Monad.RWS.Strict hiding (mapM_, mapM, get, put, forM_, forM)
 import Data.Accessor.Template
 import Data.Binary
 import Data.DeriveTH
@@ -1119,5 +1120,12 @@ destinationOfMoveB f = savingPointB (f >> pointB)
 
 askWindow :: (Window -> a) -> BufferM a
 askWindow = asks
+
+withEveryLineB :: BufferM () -> BufferM ()
+withEveryLineB action = savingPointB $ do
+  lineCount <- lineCountB
+  forM_ [1 .. lineCount] $ \l -> do
+    gotoLn l
+    action
 
 $(nameDeriveAccessors ''Mode (\n -> Just (n ++ "A")))

@@ -6,7 +6,6 @@ module Yi.Keymap.Vim2.Ex
 import Prelude ()
 import Yi.Prelude
 
-import Data.List (isPrefixOf, drop, take, break)
 import Data.Maybe (maybe)
 import Data.Either (either)
 
@@ -15,15 +14,17 @@ import qualified Text.ParserCombinators.Parsec as P
 import Yi.Buffer
 import Yi.Editor
 import Yi.Keymap
-import Yi.Search (searchAndRepUnit)
+import Yi.Search (searchAndRepRegion0, makeSimpleSearch)
 
 data ExReplaceFlag = Global
                    | CaseInsensitive
+                   | EveryLine
     deriving (Show, Eq)
 
 flagFromChar :: Char -> ExReplaceFlag
 flagFromChar 'g' = Global
 flagFromChar 'i' = CaseInsensitive
+flagFromChar '%' = EveryLine
 
 data ExCommand = ExReplace String String [ExReplaceFlag]
                | ExGotoLine Int
@@ -37,13 +38,15 @@ parseExCommand = P.choice
 
 parseExReplace :: P.GenParser Char st ExCommand
 parseExReplace = do
+    percents <- P.many (P.char '%')
     P.string "s/"
     from <- P.many (P.noneOf "/")
     P.char '/'
     to <- P.many (P.noneOf "/")
     P.char '/'
     flagChars <- P.many (P.oneOf "gi")
-    return $ ExReplace from to (fmap flagFromChar flagChars)
+    let flags = fmap flagFromChar (flagChars ++ percents)
+    return $ ExReplace from to flags
 
 parseExGoto :: P.GenParser Char st ExCommand
 parseExGoto = do
@@ -51,9 +54,17 @@ parseExGoto = do
     return $ ExGotoLine (read ds)
 
 executeExCommand :: ExCommand -> EditorM ()
-executeExCommand (ExReplace from to flags) = do
-    searchAndRepUnit from to (Global `elem` flags) Line
-    withBuffer0 moveToSol
+executeExCommand (ExReplace from to flags) = withBuffer0 $ do
+    let regex = makeSimpleSearch from
+        replace = do
+            region <- regionOfB Line
+            discard $ searchAndRepRegion0 regex to (Global `elem` flags) region
+
+    if EveryLine `elem` flags
+    then withEveryLineB replace
+    else replace
+
+    moveToSol
 executeExCommand (ExGotoLine l) = discard $ withBuffer0 $ gotoLn l
 
 exEvalE :: String -> EditorM ()
