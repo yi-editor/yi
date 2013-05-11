@@ -51,10 +51,13 @@ parseQuit = do
 
 parseOpenFile :: P.GenParser Char st ExImpureCommand
 parseOpenFile = do
+    tab <- P.many (P.string "tab")
     P.try ( P.string "edit") <|> P.string "e"
     P.many1 P.space
     filename <- P.many1 P.anyChar
-    return $ ExOpenFile filename
+    if null tab
+    then return $ ExEdit filename
+    else return $ ExTabedit filename
 
 parseDelete :: P.GenParser Char st ExPureCommand
 parseDelete = do

@@ -12,11 +12,12 @@ import Data.List (reverse)
 import Yi.Buffer
 import Yi.Core (closeWindow, quitEditor, errorEditor)
 import Yi.Editor
-import Yi.File (fwriteBufferE)
+import Yi.File (fwriteBufferE, editFile)
 import Yi.Keymap
 import Yi.Keymap.Vim2.Ex.Types
 import Yi.Keymap.Vim2.Ex.Parse
 import Yi.Search
+import Yi.String
 
 executePureExCommand :: ExPureCommand -> EditorM ()
 executePureExCommand (ExReplace from to flags) = withBuffer0 $ do
@@ -49,7 +50,10 @@ executeImpureExCommand (ExQuit False) = closeWindow
 executeImpureExCommand (ExQuit True) = closeWindow
 executeImpureExCommand (ExQuitAll True) = quitEditor
 executeImpureExCommand (ExQuitAll False) = quitAllE
-executeImpureExCommand (ExOpenFile f) = return ()
+executeImpureExCommand (ExEdit f) = discard . editFile . dropSpace $ f
+executeImpureExCommand (ExTabedit f) = do
+    withEditor newTabE
+    discard . editFile . dropSpace $ f
 
 exEvalE :: String -> EditorM ()
 exEvalE command =

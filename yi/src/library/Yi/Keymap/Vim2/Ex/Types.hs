@@ -16,7 +16,8 @@ data ExPureCommand = ExGlobal String Bool ExPureCommand
                    | ExGotoLine Int
     deriving (Show, Eq)
 
-data ExImpureCommand = ExOpenFile FilePath
+data ExImpureCommand = ExEdit FilePath
+                     | ExTabedit FilePath
                      | ExQuit Bool
                      | ExQuitAll Bool
     deriving (Show, Eq)

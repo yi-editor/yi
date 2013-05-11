@@ -21,8 +21,8 @@ commands = fmap (fmap ExPure)
     fmap (fmap ExImpure)
     [ ("q", ExQuit False)
     , ("q!", ExQuit True)
-    , ("e foo.txt", ExOpenFile "foo.txt")
-    , ("edit foo.txt", ExOpenFile "foo.txt")
+    , ("e foo.txt", ExEdit "foo.txt")
+    , ("edit foo.txt", ExEdit "foo.txt")
     ]
 
 main :: IO ()
