@@ -47,7 +47,7 @@ module Yi.Keymap.Vim2.Motion
 import Prelude ()
 import Yi.Prelude
 
-import Control.Monad (replicateM_, unless)
+import Control.Monad (replicateM_)
 
 import Data.List (isPrefixOf)
 import Data.Maybe (fromMaybe)

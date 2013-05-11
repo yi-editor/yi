@@ -1,0 +1,12 @@
+-- Input
+(1,1)
+foo
+bbar
+baz
+-- Output
+(2,1)
+foo
+cbar
+baz
+-- Events
+j:s/b/c/<CR>

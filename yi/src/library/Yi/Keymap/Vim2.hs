@@ -25,6 +25,7 @@ import Yi.Keymap.Keys (anyEvent)
 
 import Yi.Keymap.Vim2.Common
 import Yi.Keymap.Vim2.EventUtils
+import Yi.Keymap.Vim2.ExMap
 import Yi.Keymap.Vim2.InsertMap
 import Yi.Keymap.Vim2.NormalMap
 import Yi.Keymap.Vim2.NormalOperatorPendingMap
@@ -39,6 +40,7 @@ data ModeMap = ModeMap {
         vimKeymap :: Keymap,
         normalMap :: [VimBinding],
         normalOperatorPendingMap :: [VimBinding],
+        exMap :: [VimBinding],
         insertMap :: [VimBinding],
         replaceSingleMap :: [VimBinding],
         replaceMap :: [VimBinding],
@@ -58,6 +60,7 @@ defModeMapProto = Proto template
                               vimKeymap = defVimKeymap self,
                               normalMap = defNormalMap,
                               normalOperatorPendingMap = defNormalOperatorPendingMap,
+                              exMap = defExMap,
                               insertMap = defInsertMap,
                               replaceSingleMap = defReplaceSingleMap,
                               replaceMap = defReplaceMap,
@@ -103,6 +106,7 @@ handleEvent mm event = do
 allBindings :: ModeMap -> [VimBinding]
 allBindings m = concat [ normalMap m
                        , normalOperatorPendingMap m
+                       , exMap m
                        , insertMap m
                        , replaceSingleMap m
                        , replaceMap m

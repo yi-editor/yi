@@ -20,6 +20,7 @@ module Yi.Keymap.Vim2.StateUtils
     , setStickyEolE
     , maybeMult
     , updateModeIndicatorE
+    , saveInsertEventStringE
     ) where
 
 import Yi.Prelude
@@ -135,3 +136,7 @@ updateModeIndicatorE prevMode = do
                         _ -> ""
             decoratedModeName = if null modeName then "" else "-- " ++ modeName ++ " --"
         setStatus ([decoratedModeName], defaultStyle)
+
+saveInsertEventStringE :: EventString -> EditorM ()
+saveInsertEventStringE evs =
+    modifyStateE $ \s -> s { vsOngoingInsertEvents = vsOngoingInsertEvents s ++ evs }

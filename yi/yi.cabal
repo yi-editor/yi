@@ -137,6 +137,8 @@ library
     Yi.Keymap.Vim2.Digraph
     Yi.Keymap.Vim2.Eval
     Yi.Keymap.Vim2.EventUtils
+    Yi.Keymap.Vim2.Ex
+    Yi.Keymap.Vim2.ExMap
     Yi.Keymap.Vim2.InsertMap
     Yi.Keymap.Vim2.Motion
     Yi.Keymap.Vim2.NormalMap
@@ -251,6 +253,7 @@ library
     hashable < 1.2,
     hint > 0.3.1,
     mtl >= 0.1.0.1,
+    parsec >= 3.0,
     pointedlist >= 0.4 && < 0.6,
     pureMD5 >= 0.2.3,
     random,

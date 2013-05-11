@@ -60,7 +60,7 @@ data VimMode = Normal
              | InsertNormal -- ^ after C-o
              | InsertVisual -- ^ after C-o and one of v, V, C-v
              | Visual RegionStyle
-             | CmdLine
+             | Ex
              | Search { searchCommand :: String, previousMode :: VimMode, direction :: Direction }
     deriving (Typeable, Eq, Show)
 

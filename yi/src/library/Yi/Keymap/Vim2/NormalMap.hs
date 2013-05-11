@@ -18,7 +18,6 @@ import Yi.Core (quitEditor)
 import Yi.Editor
 import Yi.Event
 import Yi.Keymap.Keys
-import Yi.Keymap.Vim (exMode, defKeymap)
 import Yi.Keymap.Vim2.Common
 import Yi.Keymap.Vim2.Eval
 import Yi.Keymap.Vim2.Motion
@@ -27,6 +26,7 @@ import Yi.Keymap.Vim2.Search
 import Yi.Keymap.Vim2.StateUtils
 import Yi.Keymap.Vim2.StyledRegion
 import Yi.Keymap.Vim2.Utils
+import Yi.MiniBuffer
 import Yi.Regex (seInput, makeSearchOptsM)
 import Yi.Search (getRegexE, isearchInitE, setRegexE, makeSimpleSearch)
 
@@ -242,7 +242,7 @@ nonrepeatableBindings = fmap (mkBindingE Normal Drop)
     , (char '&', return (), id) -- TODO
 
     -- Transition to ex
-    , (char ':', switchToExE, id) -- TODO
+    , (char ':', discard $ spawnMinibufferE ":" id, switchMode Ex)
 
     -- Undo
     , (char 'u', withCountOnBuffer0 undoB >> withBuffer0 leftOnEol, id)
@@ -305,9 +305,6 @@ continueSearching fdir = do
             printMsg $ (if dir == Forward then '/' else '?') : seInput regex
             discard $ doVimSearch Nothing [] dir
         Nothing -> printMsg "No previous search pattern"
-
-switchToExE :: EditorM ()
-switchToExE = exMode (extractValue defKeymap) ":"
 
 repeatGotoCharE :: (Direction -> Direction) -> EditorM ()
 repeatGotoCharE mutateDir = do

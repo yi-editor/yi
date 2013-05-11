@@ -71,7 +71,7 @@ printable = VimBindingE prereq printableAction
 
 printableAction :: EventString -> EditorM RepeatToken
 printableAction evs = do
-    save evs
+    saveInsertEventStringE evs
     currentCursor <- withBuffer0 pointB
     secondaryCursors <- fmap vsSecondaryCursors getDynamic
     let allCursors = currentCursor:secondaryCursors
@@ -131,6 +131,3 @@ completionBinding = VimBindingE prereq action
               completeWordB
               return Continue
 
-save :: EventString -> EditorM ()
-save evs =
-    modifyStateE $ \s -> s { vsOngoingInsertEvents = vsOngoingInsertEvents s ++ evs }

@@ -40,7 +40,7 @@ printable = VimBindingE prereq action
 
 printableAction :: EventString -> EditorM RepeatToken
 printableAction evs = do
-    save evs
+    saveInsertEventStringE evs
     withBuffer0 $ case evs of
         (c:[]) -> insertOrReplaceB c
         "<CR>" -> insertOrReplaceB '\n'
@@ -82,7 +82,3 @@ insertOrReplaceCharWithAboveB = do
     then insertCharWithAboveB
     else replaceCharWithAboveB
     rightB
-
-save :: EventString -> EditorM ()
-save evs =
-    modifyStateE $ \s -> s { vsOngoingInsertEvents = vsOngoingInsertEvents s ++ evs }
