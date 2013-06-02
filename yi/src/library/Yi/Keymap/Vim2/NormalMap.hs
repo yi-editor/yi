@@ -266,6 +266,13 @@ nonrepeatableBindings = fmap (mkBindingE Normal Drop)
     ] ++ fmap (mkStringBindingE Normal Drop)
     [ ("g*", searchWordE False Forward, resetCount)
     , ("g#", searchWordE False Backward, resetCount)
+    , ("<C-w>c", tryCloseE, resetCount)
+    , ("<C-w>o", closeOtherE, resetCount)
+    , ("<C-w>s", splitE, resetCount)
+    , ("<C-w>w", nextWinE, resetCount)
+    , ("<C-w><C-w>", nextWinE, resetCount)
+    , ("<C-w>W", prevWinE, resetCount)
+    , ("<C-w>p", prevWinE, resetCount)
     ]
 
 searchWordE :: Bool -> Direction -> EditorM ()
