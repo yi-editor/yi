@@ -34,7 +34,6 @@ import Prelude (length, subtract)
 import Yi.Prelude
 
 import Data.Char
-import Control.Monad
 
 import Yi.Buffer.Basic
 import Yi.Buffer.Misc

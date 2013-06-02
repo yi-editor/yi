@@ -1125,7 +1125,7 @@ withEveryLineB :: BufferM () -> BufferM ()
 withEveryLineB action = savingPointB $ do
   lineCount <- lineCountB
   forM_ [1 .. lineCount] $ \l -> do
-    gotoLn l
+    discard $ gotoLn l
     action
 
 $(nameDeriveAccessors ''Mode (\n -> Just (n ++ "A")))

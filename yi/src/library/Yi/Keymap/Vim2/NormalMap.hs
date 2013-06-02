@@ -10,7 +10,6 @@ import Control.Monad (replicateM_)
 import Data.Char
 import Data.List (group)
 import Data.Maybe (fromMaybe)
-import Data.Prototype (extractValue)
 import qualified Data.Rope as R
 
 import Yi.Buffer hiding (Insert)

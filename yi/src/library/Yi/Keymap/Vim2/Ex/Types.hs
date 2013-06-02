@@ -1,27 +1,34 @@
+{-# LANGUAGE ExistentialQuantification #-}
+
 module Yi.Keymap.Vim2.Ex.Types where
 
 import Prelude ()
 import Yi.Prelude
 
-import System.FilePath
+import Data.Maybe
 
-data ExReplaceFlag = Global
-                   | CaseInsensitive
-                   | EveryLine
-    deriving (Show, Eq)
+import Yi.Editor
+import Yi.Keymap
 
-data ExPureCommand = ExGlobal String Bool ExPureCommand
-                   | ExDelete
-                   | ExReplace String String [ExReplaceFlag]
-                   | ExGotoLine Int
-    deriving (Show, Eq)
+class Show e => ExCommand e where
+    cmdParse :: e -> String -> Maybe e
+    cmdComplete :: e -> YiM (Maybe String)
+    cmdIsPure :: e -> Bool
+    cmdAction :: e -> Either (EditorM ()) (YiM ())
 
-data ExImpureCommand = ExEdit FilePath
-                     | ExTabedit FilePath
-                     | ExQuit Bool
-                     | ExQuitAll Bool
-    deriving (Show, Eq)
+data ExCommandBox = forall a. ExCommand a => ExCommandBox a
 
-data ExCommand = ExPure ExPureCommand
-               | ExImpure ExImpureCommand
-    deriving (Show, Eq)
+pack :: forall a. ExCommand a => a -> ExCommandBox
+pack = ExCommandBox
+
+instance ExCommand ExCommandBox where
+    cmdParse (ExCommandBox e) = fmap ExCommandBox . cmdParse e
+    cmdComplete (ExCommandBox e) = cmdComplete e
+    cmdIsPure (ExCommandBox e) = cmdIsPure e
+    cmdAction (ExCommandBox e) = cmdAction e
+
+instance Show ExCommandBox where
+    show (ExCommandBox e) = show e
+
+stringToExCommand :: [ExCommandBox] -> String -> Maybe ExCommandBox
+stringToExCommand cmds s = listToMaybe . mapMaybe (`cmdParse` s) $ cmds

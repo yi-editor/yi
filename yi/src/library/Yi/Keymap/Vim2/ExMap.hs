@@ -7,6 +7,7 @@ import Yi.Prelude
 
 import Yi.Buffer hiding (Insert)
 import Yi.Editor
+import Yi.Keymap
 import Yi.Keymap.Vim2.Common
 import Yi.Keymap.Vim2.StateUtils
 import Yi.Keymap.Vim2.Utils
@@ -25,11 +26,20 @@ completionBinding = VimBindingY prereq action
           prereq _ _ = NoMatch
           action _ = do
               commandString <- withEditor $ withBuffer0 elemsB
-              let command = case stringToExCommand commandString of
-                      Right cmd -> Just cmd
-                      _ -> Nothing
-              exComplete commandString command
+              case stringToExCommand allExCommands commandString of
+                  Just cmd -> do
+                      maybeNewString <- cmdComplete cmd
+                      case maybeNewString of
+                        Just s -> withBuffer $ replaceBufferContent s
+                        Nothing -> return ()
+                  Nothing -> return ()
               return Drop
+
+exitEx :: EditorM ()
+exitEx = do
+    resetCountE
+    switchModeE Normal
+    closeBufferAndWindowE
 
 exitBinding :: VimBinding
 exitBinding = VimBindingE prereq action
@@ -37,56 +47,42 @@ exitBinding = VimBindingE prereq action
               matchFromBool $ evs `elem` ["<Esc>", "<C-c>"]
           prereq _ _ = NoMatch
           action _ = do
-              resetCountE
-              switchModeE Normal
-              withEditor closeBufferAndWindowE
+              exitEx
               return Drop
 
 finishBindingY :: VimBinding
-finishBindingY = VimBindingY prereq action
-    where prereq evs s =
-              matchFromBool . and $
-                [ vsMode s == Ex
-                , evs == "<CR>"
-                , case stringToExCommand (vsOngoingInsertEvents s) of
-                    Right (ExImpure _) -> True
-                    _ -> False
-                ]
-          action _ = do
-              s <- withEditor $ withBuffer0 elemsB
-              withEditor $ do
-                  resetCountE
-                  switchModeE Normal
-                  closeBufferAndWindowE
-              exEvalY s
-              return Drop
+finishBindingY = VimBindingY
+    (finishPrereq (not . cmdIsPure))
+    (const $ finishAction exEvalY)
 
 finishBindingE :: VimBinding
-finishBindingE = VimBindingE prereq action
-    where prereq evs s =
-              matchFromBool . and $
-                [ vsMode s == Ex
-                , evs == "<CR>"
-                , case stringToExCommand (vsOngoingInsertEvents s) of
-                    Right (ExPure _) -> True
-                    _ -> False
-                ]
-          prereq _ _ = NoMatch
-          action _ = do
-              resetCountE
-              switchModeE Normal
-              s <- withBuffer0 elemsB
-              closeBufferAndWindowE
-              exEvalE s
-              return Finish
+finishBindingE = VimBindingE
+    (finishPrereq cmdIsPure)
+    (const $ finishAction exEvalE)
+
+finishPrereq :: (ExCommandBox -> Bool) -> EventString -> VimState -> MatchResult ()
+finishPrereq cmdPred evs s =
+    matchFromBool . and $
+        [ vsMode s == Ex
+        , evs == "<CR>"
+        , case stringToExCommand allExCommands (vsOngoingInsertEvents s) of
+            Just cmd -> cmdPred cmd
+            _ -> False
+        ]
+
+finishAction :: MonadEditor m => ([ExCommandBox] -> String -> m ()) -> m RepeatToken
+finishAction execute = do
+    s <- withEditor $ withBuffer0 elemsB
+    withEditor exitEx
+    execute allExCommands s
+    return Drop
 
 failBindingE :: VimBinding
 failBindingE = VimBindingE prereq action
     where prereq evs s = matchFromBool . and $ [vsMode s == Ex, evs == "<CR>"]
           action _ = do
-              resetCountE
-              switchModeE Normal
-              closeBufferAndWindowE
+              exitEx
+              printMsg "Unknown command"
               return Drop
 
 printable :: VimBinding

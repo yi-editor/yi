@@ -138,9 +138,15 @@ library
     Yi.Keymap.Vim2.Eval
     Yi.Keymap.Vim2.EventUtils
     Yi.Keymap.Vim2.Ex
-    Yi.Keymap.Vim2.Ex.Completion
+    Yi.Keymap.Vim2.Ex.Commands.Common
+    Yi.Keymap.Vim2.Ex.Commands.Delete
+    Yi.Keymap.Vim2.Ex.Commands.Edit
+    Yi.Keymap.Vim2.Ex.Commands.Nohl
+    Yi.Keymap.Vim2.Ex.Commands.Quit
+    Yi.Keymap.Vim2.Ex.Commands.Reload
+    Yi.Keymap.Vim2.Ex.Commands.Substitute
+    Yi.Keymap.Vim2.Ex.Commands.Write
     Yi.Keymap.Vim2.Ex.Types
-    Yi.Keymap.Vim2.Ex.Parse
     Yi.Keymap.Vim2.Ex.Eval
     Yi.Keymap.Vim2.ExMap
     Yi.Keymap.Vim2.InsertMap
@@ -244,7 +250,7 @@ library
     binary == 0.5.*,
     bytestring >= 0.9.1 && < 0.11,
     cautious-file >= 1.0.1,
-    concrete-typerep == 0.1.*,
+    concrete-typerep >= 0.1.0.2 && < 0.1.1,
     derive >=2.4 && <2.7,
     data-accessor >= 0.2.1.4 && < 0.3,
     data-accessor-mtl == 0.2.*,
@@ -254,7 +260,7 @@ library
     filepath>=1.1 && <1.4,
     fingertree >= 0 && <0.1,
     ghc-paths ==0.1.*,
-    hashable < 1.2,
+    hashable ==1.2.*,
     hint > 0.3.1,
     mtl >= 0.1.0.1,
     parsec >= 3.0,
