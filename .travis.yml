@@ -5,7 +5,11 @@ before_install:
  - cabal install gtk2hs-buildtools
 install: 
  - cd yi
- - cabal install -fpango --alex-options="--debug"
+ - cabal install -fpango --enable-tests -ftesting --only-dependencies
+ - cabal configure -fpango --enable-tests -ftesting
+ - cabal build
+ - cabal test
+ - cabal install -fpango
  - cd -
  - cd yi-contrib
  - cabal install

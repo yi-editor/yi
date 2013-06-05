@@ -31,10 +31,6 @@ import Yi.Core
 import Yi.File
 import Paths_yi
 
-#ifdef TESTING
-import qualified TestSuite
-#endif
-
 #ifdef FRONTEND_COCOA
 import HOC (withAutoreleasePool)
 #endif
@@ -162,10 +158,6 @@ main :: (Config, ConsoleConfig) -> Maybe Editor -> IO ()
 main (cfg, cfgcon) state = do
 #ifdef FRONTEND_COCOA
        withAutoreleasePool $ do
-#endif
-#ifdef TESTING
-         when (selfCheck cfgcon)
-              TestSuite.main
 #endif
          when (debugMode cfg) $ initDebug ".yi.dbg"
          startEditor cfg state

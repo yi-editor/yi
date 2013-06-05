@@ -1,6 +1,10 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 
-module Main (main) where
+module TestVim (getTests) where
+
+import Test.HUnit
+import Test.Framework.Providers.HUnit
+import qualified Test.Framework as TF
 
 import Control.Monad (filterM, forM, void, unless)
 
@@ -103,23 +107,23 @@ discoverTests topdir = do
     testsFromFiles <- mapM loadTestFromFile testFiles
     return $ testsFromDirs ++ testsFromFiles
 
-runTest :: VimTest -> TestResult
-runTest t = if outputMatches then TestPassed (vtName t)
-                             else TestFailed (vtName t) $
-                                      unlines [ "Input:", vtInput t
-                                              , "Expected:", vtOutput t
-                                              , "Got:", actualOut
-                                              , "Events:", vtEventString t
-                                              , "---"]
+mkTestCase :: VimTest -> TF.Test
+mkTestCase t = testCase (vtName t) $ assertEqual errorMsg actualOut (vtOutput t)
     where outputMatches = vtOutput t == actualOut
-          actualOut = extractBufferString $ fst $
-              runEditor' (defaultVimEval $ vtEventString t) (initialEditor $ vtInput t)
+          actualOut = extractBufferString . fst $
+              runEditor' (defaultVimEval $ vtEventString t)
+                         (initialEditor $ vtInput t)
           extractBufferString editor = cursorPos editor ++ "\n" ++
                                        snd (runEditor' (withBuffer0 elemsB) editor)
           cursorPos = show . snd . runEditor' (withBuffer0 $ do
                                                   l <- curLn
                                                   c <- curCol
                                                   return (l, c + 1))
+          errorMsg = unlines [ "Input:", vtInput t
+                             , "Expected:", vtOutput t
+                             , "Got:", actualOut
+                             , "Events:", vtEventString t
+                             , "---"]
 
 initialEditor :: String -> Editor
 initialEditor input = fst $ runEditor' action emptyEditor
@@ -132,34 +136,7 @@ initialEditor input = fst $ runEditor' action emptyEditor
 runEditor' :: EditorM a -> Editor -> (Editor, a)
 runEditor' = runEditor defaultVimConfig
 
-runTests :: [VimTest] -> ([TestResult], [TestResult])
-runTests tests = (successes, failures)
-    where results = map runTest tests
-          successes = filter successful results
-          failures = filter (not . successful) results
-          successful (TestPassed _) = True
-          successful _ = False
-
-main :: IO ()
-main = do
-    args <- getArgs
-
-    let topDir = case take 1 args of
-                    [s] -> s
-                    _ -> "vimtests"
-
-    tests <- fmap sort (discoverTests topDir)
-
-    void $ printf "Found %d tests\n\n" $ length tests
-
-    let (successes, failures) = runTests tests
-
-    mapM_ print failures
-
-    let passed = length successes
-
-    putStrLn ""
-    void $ printf "PASSED: %d\n" passed
-    void $ printf "FAILED: %d\n" $ length tests - passed
-
-    return ()
+getTests :: IO [TF.Test]
+getTests = do
+    vimtests <- discoverTests "src/tests/vimtests"
+    return $! fmap mkTestCase . sort $ vimtests
