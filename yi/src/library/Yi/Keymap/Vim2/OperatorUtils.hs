@@ -18,13 +18,13 @@ import Yi.Keymap.Vim2.StyledRegion
 import Yi.Keymap.Vim2.TextObject
 import Yi.Misc
 
-applyOperatorToTextObjectE :: VimOperator -> CountedTextObject -> EditorM ()
-applyOperatorToTextObjectE op cto = do
+applyOperatorToTextObjectE :: Int -> VimOperator -> CountedTextObject -> EditorM ()
+applyOperatorToTextObjectE count op cto = do
     styledRegion <- withBuffer0 $ regionOfTextObjectB cto
-    applyOperatorToRegionE op styledRegion
+    applyOperatorToRegionE count op styledRegion
 
-applyOperatorToRegionE :: VimOperator -> StyledRegion -> EditorM ()
-applyOperatorToRegionE op sreg@(StyledRegion style reg) = case op of
+applyOperatorToRegionE :: Int -> VimOperator -> StyledRegion -> EditorM ()
+applyOperatorToRegionE count op sreg@(StyledRegion style reg) = case op of
     OpDelete -> do
         s <- withBuffer0 $ readRegionRopeWithStyleB reg style
         setDefaultRegisterE style s
@@ -53,9 +53,14 @@ applyOperatorToRegionE op sreg@(StyledRegion style reg) = case op of
         s <- withBuffer0 $ readRegionRopeWithStyleB reg style
         setDefaultRegisterE style s
         withBuffer0 $ moveTo (regionStart reg)
-    OpShiftRight -> withBuffer0 $ shiftIndentOfRegion 1 =<< convertRegionToStyleB reg style
-    OpShiftLeft -> withBuffer0 $ shiftIndentOfRegion (-1) =<< convertRegionToStyleB reg style
+    OpShiftRight -> shiftRight count reg style
+    OpShiftLeft -> shiftLeft count reg style
     _ -> withBuffer0 $ insertN $ "Operator not supported " ++ show op
+
+shiftRight, shiftLeft :: Int -> Region -> RegionStyle -> EditorM ()
+shiftRight count reg style =
+    withBuffer0 $ shiftIndentOfRegion count =<< convertRegionToStyleB reg style
+shiftLeft count reg style = shiftRight (negate count) reg style
 
 -- TODO eliminate redundancy
 lastCharForOperator :: VimOperator -> Char

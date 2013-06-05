@@ -50,17 +50,18 @@ textObject = VimBindingE prereq action
                     case operand of
                         JustTextObject cto@(CountedTextObject n _) -> do
                             normalizeCountE (Just n)
-                            applyOperatorToTextObjectE op $ changeTextObjectCount (count * n) cto
+                            applyOperatorToTextObjectE 1 op $
+                                changeTextObjectCount (count * n) cto
                         JustMove (CountedMove n m) -> do
                             mcount <- getMaybeCountE
                             normalizeCountE n
                             region <- withBuffer0 $ regionOfMoveB $ CountedMove (maybeMult mcount n) m
-                            applyOperatorToRegionE op region
+                            applyOperatorToRegionE 1 op region
                         JustOperator n style -> do
                             normalizeCountE (Just n)
                             normalizedCount <- getCountE
                             region <- withBuffer0 $ regionForOperatorLineB normalizedCount style
-                            applyOperatorToRegionE op region
+                            applyOperatorToRegionE 1 op region
                         _ -> error "can't happen"
                     resetCountE
                     if op == OpChange

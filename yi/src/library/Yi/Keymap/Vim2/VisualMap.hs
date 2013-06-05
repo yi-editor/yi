@@ -146,7 +146,8 @@ mkOperatorBinding (s, op) = VimBindingE prereq action
           action _ = do
               (Visual style) <- vsMode <$> getDynamic
               region <- withBuffer0 regionOfSelectionB
-              applyOperatorToRegionE op $ StyledRegion style region
+              count <- getCountE
+              applyOperatorToRegionE count op $ StyledRegion style region
               resetCountE
               clrStatus
               withBuffer0 $ do

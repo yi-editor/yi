@@ -209,12 +209,12 @@ nonrepeatableBindings = fmap (mkBindingE Normal Drop)
     -- Changing
     , (char 'C', do
         region <- withBuffer0 $ regionWithTwoMovesB (return ()) moveToEol
-        applyOperatorToRegionE OpDelete $ StyledRegion Exclusive region
+        applyOperatorToRegionE 1 OpDelete $ StyledRegion Exclusive region
         return (), switchMode $ Insert 'C')
     , (char 's', cutCharE Forward =<< getCountE, switchMode $ Insert 's')
     , (char 'S', do
         region <- withBuffer0 $ regionWithTwoMovesB firstNonSpaceB moveToEol
-        applyOperatorToRegionE OpDelete $ StyledRegion Exclusive region
+        applyOperatorToRegionE 1 OpDelete $ StyledRegion Exclusive region
         , switchMode $ Insert 'S')
 
     -- Replacing
@@ -227,7 +227,7 @@ nonrepeatableBindings = fmap (mkBindingE Normal Drop)
     , (char 'y', return (), switchMode $ NormalOperatorPending OpYank) -- TODO
     , (char 'Y', do
         region <- withBuffer0 $ regionWithTwoMovesB (return ()) moveToEol
-        applyOperatorToRegionE OpYank $ StyledRegion Exclusive region
+        applyOperatorToRegionE 1 OpYank $ StyledRegion Exclusive region
         , id) -- TODO
 
     -- Search
