@@ -744,7 +744,7 @@ defKeymap = Proto template
      -- Usually the integer argument is the number of times an action should be repeated.
      cmdFM :: [([Event], Int -> YiM ())]
      cmdFM =
-         [([ctrlCh 'g'],    const $ withEditor viFileInfo)
+         [([ctrlCh 'g'],    const $ withEditor printFileInfoE)
 
          ,([ctrlCh '^'],    withEditor . alternateBufferE . (+ (-1)) )
 
@@ -1533,20 +1533,6 @@ viChar8Info = do c <- withBuffer0' readB
                           . showString ",  Hex " . showSeq showHex w8
                           . showString ",  Octal " . showSeq showOct w8 $ ""
     where showSeq showX xs s = foldr ($) s $ intersperse (showChar ' ') $ map showX xs
-
-viFileInfo :: EditorM ()
-viFileInfo =
-    do bufInfo <- withBuffer0' bufInfoB
-       printMsg $ showBufInfo bufInfo
-    where
-    showBufInfo :: BufferFileInfo -> String
-    showBufInfo bufInfo = concat [ show $ bufInfoFileName bufInfo
-         , " Line "
-         , show $ bufInfoLineNo bufInfo
-         , " ["
-         , bufInfoPercent bufInfo
-         , "]"
-         ]
 
 -- | write the current buffer, but only if modified (cf. :help :x)
 viWriteModified :: YiM ()

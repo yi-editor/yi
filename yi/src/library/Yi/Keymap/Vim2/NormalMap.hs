@@ -26,6 +26,7 @@ import Yi.Keymap.Vim2.StateUtils
 import Yi.Keymap.Vim2.StyledRegion
 import Yi.Keymap.Vim2.Utils
 import Yi.MiniBuffer
+import Yi.Misc
 import Yi.Regex (seInput, makeSearchOptsM)
 import Yi.Search (getRegexE, isearchInitE, setRegexE, makeSimpleSearch)
 
@@ -266,6 +267,7 @@ nonrepeatableBindings = fmap (mkBindingE Normal Drop)
     ] ++ fmap (mkStringBindingE Normal Drop)
     [ ("g*", searchWordE False Forward, resetCount)
     , ("g#", searchWordE False Backward, resetCount)
+    , ("<C-g>", printFileInfoE, resetCount)
     , ("<C-w>c", tryCloseE, resetCount)
     , ("<C-w>o", closeOtherE, resetCount)
     , ("<C-w>s", splitE, resetCount)

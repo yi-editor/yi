@@ -162,3 +162,13 @@ onCharLetterCode f c | isUpper c || isLower c = chr (f (ord c - a) `mod` 26 + a)
 rot13Char :: Char -> Char
 rot13Char = onCharLetterCode (+13)
 
+printFileInfoE :: EditorM ()
+printFileInfoE = printMsg . showBufInfo =<< withBuffer0 bufInfoB
+    where showBufInfo :: BufferFileInfo -> String
+          showBufInfo bufInfo = concat [ show $ bufInfoFileName bufInfo
+               , " Line "
+               , show $ bufInfoLineNo bufInfo
+               , " ["
+               , bufInfoPercent bufInfo
+               , "]"
+               ]
