@@ -189,7 +189,7 @@ cmdCmdFM :: [(Char, Int -> Action)]
 cmdCmdFM =
     [('\^B',    upScreensB)
     ,('\^F',    downScreensB)
-    ,('\^G',    const viFileInfo)
+    ,('\^G',    const printFileInfoE)
     ,('\^W',    const nextWinE)
     ,('\^Z',    const suspendEditor)
     ,('D',      killLineE)
@@ -437,21 +437,6 @@ not_implemented c = errorEditor $ "Not implemented: " ++ show c
 
 -- ---------------------------------------------------------------------
 -- Misc functions
-
-viFileInfo :: Action
-viFileInfo =
-    do bufInfo <- bufInfoB
-       msgEditor $ showBufInfo bufInfo
-    where
-    showBufInfo :: BufferFileInfo -> String
-    showBufInfo bufInfo = concat [ show $ bufInfoFileName bufInfo
-                                 , " Line "
-                                 , show $ bufInfoLineNo bufInfo
-                                 , " ["
-                                 , bufInfoPercent bufInfo
-                                 , "]"
-                                 ]
-
 
 -- | Try to write a file in the manner of vi\/vim
 -- Need to catch any exception to avoid losing bindings

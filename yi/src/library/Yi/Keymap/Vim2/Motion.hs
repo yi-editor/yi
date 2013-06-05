@@ -75,6 +75,7 @@ stringToMove s = case lookupMove s of
                                then PartialMatch
                                else NoMatch
                  <|> matchGotoCharMove s
+                 <|> matchGotoMarkMove s
     
 lookupMove :: String -> Maybe Move
 lookupMove s = fmap (Move Exclusive False) (lookup s exclusiveMotions)
@@ -185,6 +186,19 @@ gotoXOrEOF n = case n of
 withDefaultCount :: (String, Int -> BufferM ()) -> (String, Maybe Int -> BufferM ())
 withDefaultCount (s, f) = (s, f . defaultCount)
     where defaultCount = fromMaybe 1
+
+matchGotoMarkMove :: String -> MatchResult Move
+matchGotoMarkMove (m:_) | m `notElem` "'`" = NoMatch
+matchGotoMarkMove (_:[]) = PartialMatch
+matchGotoMarkMove (m:c:[]) = WholeMatch $ Move style True action
+    where style = if m == '`' then Inclusive else LineWise
+          action _mcount = do
+              mmark <- mayGetMarkB [c]
+              case mmark of
+                  Nothing -> insertN $ "Mark " ++ show c ++ " not set"
+                  -- Nothing -> fail $ "Mark " ++ show c ++ " not set"
+                  Just mark -> moveTo =<< getMarkPointB mark
+matchGotoMarkMove _ = NoMatch
 
 matchGotoCharMove :: String -> MatchResult Move
 matchGotoCharMove (m:[]) | m `elem` "fFtT" = PartialMatch

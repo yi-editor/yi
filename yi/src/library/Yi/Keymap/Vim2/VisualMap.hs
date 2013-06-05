@@ -11,15 +11,15 @@ import Data.Prototype (extractValue)
 
 import Yi.Buffer hiding (Insert)
 import Yi.Editor
-import Yi.Keymap.Vim (exMode, defKeymap)
 import Yi.Keymap.Vim2.Common
 import Yi.Keymap.Vim2.OperatorUtils
 import Yi.Keymap.Vim2.StateUtils
 import Yi.Keymap.Vim2.StyledRegion
 import Yi.Keymap.Vim2.Utils
+import Yi.MiniBuffer
 
 defVisualMap :: [VimBinding]
-defVisualMap = [escBinding, motionBinding, changeVisualStyleBinding]
+defVisualMap = [escBinding, motionBinding, changeVisualStyleBinding, setMarkBinding]
             ++ operatorBindings ++ digitBindings ++ [replaceBinding, switchEdgeBinding]
             ++ [insertBinding, exBinding]
 
@@ -42,8 +42,8 @@ exBinding = VimBindingE prereq action
     where prereq ":" (VimState { vsMode = (Visual _) }) = WholeMatch ()
           prereq _ _ = NoMatch
           action _ = do
-              exMode (extractValue defKeymap) ":'<,'>"
-              switchModeE Normal
+              discard $ spawnMinibufferE ":'<,'>" id
+              switchModeE Ex
               return Finish
 
 digitBindings :: [VimBinding]
@@ -63,6 +63,16 @@ zeroBinding = VimBindingE prereq action
                       withBuffer0 moveToSol
                       setDynamic $ resetCount currentState
                       return Continue
+
+setMarkBinding :: VimBinding
+setMarkBinding = VimBindingE prereq action
+    where prereq "m" (VimState { vsMode = (Visual _) }) = PartialMatch
+          prereq ('m':_:[]) (VimState { vsMode = (Visual _) }) = WholeMatch ()
+          prereq _ _ = NoMatch
+          action ('m':c:[]) = do
+              withBuffer0 $ setNamedMarkHereB [c]
+              return Continue 
+          action _ = error "Can't happen"
 
 changeVisualStyleBinding :: VimBinding
 changeVisualStyleBinding = VimBindingE prereq action

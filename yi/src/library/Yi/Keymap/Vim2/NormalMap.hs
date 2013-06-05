@@ -41,7 +41,7 @@ defNormalMap = mkBindingY Normal (spec (KFun 10), quitEditor, id) : pureBindings
 
 pureBindings :: [VimBinding]
 pureBindings =
-    [zeroBinding, repeatBinding, motionBinding, searchBinding] ++
+    [zeroBinding, repeatBinding, motionBinding, searchBinding, setMarkBinding] ++
     fmap mkDigitBinding ['1' .. '9'] ++
     finishingBingings ++
     continuingBindings ++
@@ -258,7 +258,6 @@ nonrepeatableBindings = fmap (mkBindingE Normal Drop)
     ,(ctrlCh 'e', getCountE >>= withBuffer0 . vimScrollB, id)
 
     -- unsorted TODO
-    , (char 'm', return (), id)
     , (char '-', return (), id)
     , (char '+', return (), id)
     , (char '"', return (), id)
@@ -276,6 +275,17 @@ nonrepeatableBindings = fmap (mkBindingE Normal Drop)
     , ("<C-w>W", prevWinE, resetCount)
     , ("<C-w>p", prevWinE, resetCount)
     ]
+
+setMarkBinding :: VimBinding
+setMarkBinding = VimBindingE prereq action
+    where prereq _ s | vsMode s /= Normal = NoMatch
+          prereq "m" _ = PartialMatch
+          prereq ('m':_:[]) _ = WholeMatch ()
+          prereq _ _ = NoMatch
+          action ('m':c:[]) = do
+              withBuffer0 $ setNamedMarkHereB [c]
+              return Drop
+          action _ = error "Can't happen"
 
 searchWordE :: Bool -> Direction -> EditorM ()
 searchWordE wholeWord dir = do
