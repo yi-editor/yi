@@ -1,10 +1,10 @@
 -- Input
 (1,1)
-12
-34
+ab1
+cd2
 -- Output
 (1,1)
-2
-34
+b1
+cd2
 -- Events
-lVjyx
+jVlkgux
