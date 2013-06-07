@@ -20,7 +20,7 @@ import Yi.Keymap.Keys
 import Yi.Keymap.Vim2.Common
 import Yi.Keymap.Vim2.Eval
 import Yi.Keymap.Vim2.Motion
-import Yi.Keymap.Vim2.OperatorUtils
+import Yi.Keymap.Vim2.Operator
 import Yi.Keymap.Vim2.Search
 import Yi.Keymap.Vim2.StateUtils
 import Yi.Keymap.Vim2.StyledRegion
@@ -43,6 +43,7 @@ pureBindings :: [VimBinding]
 pureBindings =
     [zeroBinding, repeatBinding, motionBinding, searchBinding, setMarkBinding] ++
     fmap mkDigitBinding ['1' .. '9'] ++
+    operatorBindings ++
     finishingBingings ++
     continuingBindings ++
     nonrepeatableBindings ++
@@ -162,14 +163,15 @@ pasteInclusiveB rope style = do
     then leftB
     else moveTo p0
 
+operatorBindings :: [VimBinding]
+operatorBindings = fmap mkOperatorBinding operators
+    where mkOperatorBinding (VimOperator {operatorName = opName}) =
+              mkStringBindingE Normal (if opName == "y" then Drop else Continue)
+                  (opName, return (), switchMode (NormalOperatorPending opName))
+
 continuingBindings :: [VimBinding]
 continuingBindings = fmap (mkBindingE Normal Continue)
     [ (char 'r', return (), switchMode ReplaceSingleChar) -- TODO make it just a binding
-    , (char 'd', return (), switchMode (NormalOperatorPending OpDelete))
-    , (char 'y', return (), switchMode (NormalOperatorPending OpYank))
-    , (char 'c', return (), switchMode (NormalOperatorPending OpChange))
-    , (char '=', return (), switchMode (NormalOperatorPending OpReindent))
-    , (char '>', return (), switchMode (NormalOperatorPending OpShiftRight))
 
     -- Transition to insert mode
     , (char 'i', return (), switchMode $ Insert 'i')
@@ -192,14 +194,6 @@ continuingBindings = fmap (mkBindingE Normal Continue)
     , (char 'V', enableVisualE LineWise, resetCount . switchMode (Visual LineWise))
     , (ctrlCh 'v', enableVisualE Block, resetCount . switchMode (Visual Block))
     ]
-    ++ fmap (mkStringBindingE Normal Continue)
-    [ ("gu", return (), switchMode (NormalOperatorPending OpLowerCase))
-    , ("gU", return (), switchMode (NormalOperatorPending OpUpperCase))
-    , ("g~", return (), switchMode (NormalOperatorPending OpSwitchCase))
-    , ("gq", return (), switchMode (NormalOperatorPending OpFormat))
-    , ("g?", return (), switchMode (NormalOperatorPending OpRot13))
-    , ("<lt>", return (), switchMode (NormalOperatorPending OpShiftLeft))
-    ]
 
 nonrepeatableBindings :: [VimBinding]
 nonrepeatableBindings = fmap (mkBindingE Normal Drop)
@@ -207,14 +201,14 @@ nonrepeatableBindings = fmap (mkBindingE Normal Drop)
     , (ctrlCh 'c', return (), resetCount)
 
     -- Changing
-    , (char 'C', do
-        region <- withBuffer0 $ regionWithTwoMovesB (return ()) moveToEol
-        applyOperatorToRegionE 1 OpDelete $ StyledRegion Exclusive region
-        return (), switchMode $ Insert 'C')
+    , (char 'C',
+        do region <- withBuffer0 $ regionWithTwoMovesB (return ()) moveToEol
+           discard $ operatorApplyToRegionE delete 1 $ StyledRegion Exclusive region
+        , switchMode $ Insert 'C')
     , (char 's', cutCharE Forward =<< getCountE, switchMode $ Insert 's')
-    , (char 'S', do
-        region <- withBuffer0 $ regionWithTwoMovesB firstNonSpaceB moveToEol
-        applyOperatorToRegionE 1 OpDelete $ StyledRegion Exclusive region
+    , (char 'S',
+        do region <- withBuffer0 $ regionWithTwoMovesB firstNonSpaceB moveToEol
+           discard $ operatorApplyToRegionE delete 1 $ StyledRegion Exclusive region
         , switchMode $ Insert 'S')
 
     -- Replacing
@@ -224,10 +218,9 @@ nonrepeatableBindings = fmap (mkBindingE Normal Drop)
     , (char 'D', return (), id) -- TODO
 
     -- Yanking
-    , (char 'y', return (), switchMode $ NormalOperatorPending OpYank) -- TODO
     , (char 'Y', do
         region <- withBuffer0 $ regionWithTwoMovesB (return ()) moveToEol
-        applyOperatorToRegionE 1 OpYank $ StyledRegion Exclusive region
+        discard $ operatorApplyToRegionE yank 1 $ StyledRegion Exclusive region
         , id) -- TODO
 
     -- Search

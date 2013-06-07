@@ -153,6 +153,7 @@ library
     Yi.Keymap.Vim2.Motion
     Yi.Keymap.Vim2.NormalMap
     Yi.Keymap.Vim2.NormalOperatorPendingMap
+    Yi.Keymap.Vim2.Operator
     Yi.Keymap.Vim2.ReplaceMap
     Yi.Keymap.Vim2.ReplaceSingleCharMap
     Yi.Keymap.Vim2.Search
@@ -162,7 +163,6 @@ library
     Yi.Keymap.Vim2.TextObject
     Yi.Keymap.Vim2.Utils
     Yi.Keymap.Vim2.VisualMap
-    Yi.Keymap.Vim2.OperatorUtils
     Yi.KillRing
     Yi.Layout
     Yi.Lexer.Abella

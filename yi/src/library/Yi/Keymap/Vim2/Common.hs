@@ -5,12 +5,12 @@ module Yi.Keymap.Vim2.Common
     , VimBinding(..)
     , GotoCharCommand(..)
     , VimState(..)
-    , VimOperator(..)
     , Register(..)
     , RepeatToken(..)
     , RepeatableAction(..)
     , MatchResult(..)
     , EventString
+    , OperatorName
     ) where
 
 import Yi.Prelude
@@ -28,18 +28,7 @@ import Yi.Keymap
 
 type EventString = String
 
-data VimOperator = OpYank
-                 | OpDelete
-                 | OpChange
-                 | OpSwitchCase
-                 | OpUpperCase
-                 | OpLowerCase
-                 | OpReindent
-                 | OpShiftRight
-                 | OpShiftLeft
-                 | OpRot13
-                 | OpFormat
-    deriving (Typeable, Eq, Show)
+type OperatorName = String
 
 data RepeatableAction = RepeatableAction {
           raPreviousCount :: !Int
@@ -53,7 +42,7 @@ data Register = Register {
     }
 
 data VimMode = Normal
-             | NormalOperatorPending VimOperator
+             | NormalOperatorPending OperatorName
              | Insert Char -- ^ char denotes how state got into insert mode ('i', 'a', etc.)
              | Replace
              | ReplaceSingleChar
@@ -80,8 +69,6 @@ data VimState = VimState {
         , vsBindingAccumulator :: !EventString
         , vsSecondaryCursors :: ![Point]
     } deriving (Typeable)
-
-$(derive makeBinary ''VimOperator)
 
 $(derive makeBinary ''RepeatableAction)
 

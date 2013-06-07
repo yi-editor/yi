@@ -7,14 +7,14 @@ import Yi.Prelude
 
 import Data.Char (isDigit)
 import Data.List (isPrefixOf, drop)
-import Data.Maybe (fromMaybe)
+import Data.Maybe (fromMaybe, fromJust)
 
 import Yi.Buffer hiding (Insert)
 import Yi.Editor
 import Yi.Keymap.Keys
 import Yi.Keymap.Vim2.Common
 import Yi.Keymap.Vim2.Motion
-import Yi.Keymap.Vim2.OperatorUtils
+import Yi.Keymap.Vim2.Operator
 import Yi.Keymap.Vim2.StateUtils
 import Yi.Keymap.Vim2.StyledRegion
 import Yi.Keymap.Vim2.TextObject
@@ -34,7 +34,8 @@ textObject = VimBindingE prereq action
             let partial = vsTextObjectAccumulator currentState
                 operand = parseOperand opChar (partial ++ evs)
                 opChar = lastCharForOperator op
-                (NormalOperatorPending op) = vsMode currentState
+                op = fromJust $ stringToOperator operators opname
+                (NormalOperatorPending opname) = vsMode currentState
             case operand of
                 NoOperand -> do
                     dropTextObjectAccumulatorE
@@ -47,30 +48,24 @@ textObject = VimBindingE prereq action
                 _ -> do
                     count <- getCountE
                     dropTextObjectAccumulatorE
-                    case operand of
+                    token <- case operand of
                         JustTextObject cto@(CountedTextObject n _) -> do
                             normalizeCountE (Just n)
-                            applyOperatorToTextObjectE 1 op $
+                            operatorApplyToTextObjectE op 1 $
                                 changeTextObjectCount (count * n) cto
                         JustMove (CountedMove n m) -> do
                             mcount <- getMaybeCountE
                             normalizeCountE n
                             region <- withBuffer0 $ regionOfMoveB $ CountedMove (maybeMult mcount n) m
-                            applyOperatorToRegionE 1 op region
+                            operatorApplyToRegionE op 1 region
                         JustOperator n style -> do
                             normalizeCountE (Just n)
                             normalizedCount <- getCountE
                             region <- withBuffer0 $ regionForOperatorLineB normalizedCount style
-                            applyOperatorToRegionE 1 op region
+                            operatorApplyToRegionE op 1 region
                         _ -> error "can't happen"
                     resetCountE
-                    if op == OpChange
-                    then do
-                        switchModeE $ Insert 'c'
-                        return Continue
-                    else do
-                        switchModeE Normal
-                        return Finish
+                    return token
 
 regionForOperatorLineB :: Int -> RegionStyle -> BufferM StyledRegion
 regionForOperatorLineB n style = normalizeRegion =<< StyledRegion style <$> savingPointB (do

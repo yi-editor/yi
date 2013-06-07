@@ -7,12 +7,14 @@ import Prelude ()
 
 import Data.Char (ord)
 import Data.List (drop, group)
+import Data.Maybe (fromJust)
 import Data.Prototype (extractValue)
+import Data.Tuple (uncurry)
 
 import Yi.Buffer hiding (Insert)
 import Yi.Editor
 import Yi.Keymap.Vim2.Common
-import Yi.Keymap.Vim2.OperatorUtils
+import Yi.Keymap.Vim2.Operator
 import Yi.Keymap.Vim2.StateUtils
 import Yi.Keymap.Vim2.StyledRegion
 import Yi.Keymap.Vim2.Utils
@@ -112,54 +114,44 @@ motionBinding :: VimBinding
 motionBinding = mkMotionBinding $ \m -> case m of
                                      Visual _ -> True
                                      _ -> False
-
--- TODO reduce duplication of operator list
-operatorBindings :: [VimBinding]
-operatorBindings = fmap mkOperatorBinding
-    [ ("y", OpYank)
-    , ("Y", OpYank)
-    , ("d", OpDelete)
-    , ("D", OpDelete) -- TODO: make D delete to eol
-    , ("x", OpDelete)
-    , ("X", OpDelete)
-    , ("c", OpChange)
-    , ("u", OpLowerCase)
-    , ("U", OpUpperCase)
-    , ("~", OpSwitchCase)
-    , ("gu", OpLowerCase)
-    , ("gU", OpUpperCase)
-    , ("g~", OpSwitchCase)
-    , (">", OpShiftRight)
-    , ("<lt>", OpShiftLeft)
-    ]
-
 regionOfSelectionB :: BufferM Region
 regionOfSelectionB = savingPointB $ do
     start <- getSelectionMarkPointB
     stop <- pointB
     return $! mkRegion start stop
 
-mkOperatorBinding :: (String, VimOperator) -> VimBinding
-mkOperatorBinding (s, op) = VimBindingE prereq action
-    where prereq evs (VimState { vsMode = (Visual _) }) = evs `matchesString` s
+operatorBindings :: [VimBinding]
+operatorBindings = fmap mkOperatorBinding $ operators ++ visualOperators
+
+visualOperators :: [VimOperator]
+visualOperators =
+    let synonymOp (newName, existingName) =
+            VimOperator newName . operatorApplyToRegionE . fromJust
+            . stringToOperator operators $ existingName
+    in fmap synonymOp
+    [ ("x", "d")
+    , ("~", "g~")
+    , ("Y", "y")
+    , ("u", "gu")
+    , ("U", "gU")
+    ]
+
+mkOperatorBinding :: VimOperator -> VimBinding
+mkOperatorBinding op = VimBindingE prereq action
+    where prereq evs (VimState { vsMode = (Visual _) }) =
+              evs `matchesString` (operatorName op)
           prereq _ _ = NoMatch
           action _ = do
               (Visual style) <- vsMode <$> getDynamic
               region <- withBuffer0 regionOfSelectionB
               count <- getCountE
-              applyOperatorToRegionE count op $ StyledRegion style region
+              token <- operatorApplyToRegionE op count $ StyledRegion style region
               resetCountE
               clrStatus
               withBuffer0 $ do
                   setVisibleSelection False
                   putA regionStyleA Inclusive
-              if op == OpChange
-              then do
-                  switchModeE $ Insert 'c'
-                  return Continue
-              else do
-                  switchModeE Normal
-                  return Finish
+              return token
 
 replaceBinding :: VimBinding
 replaceBinding = VimBindingE prereq action
