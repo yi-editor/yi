@@ -1,9 +1,10 @@
 module Yi.Keymap.Vim2.Operator
     ( VimOperator(..)
     , operators
-    , delete
-    , change
-    , yank
+    , opDelete
+    , opChange
+    , opYank
+    , opFormat
     , stringToOperator
     , mkCharTransformOperator
     , operatorApplyToTextObjectE
@@ -30,9 +31,10 @@ data VimOperator = VimOperator {
 
 operators :: [VimOperator]
 operators =
-    [ yank
-    , delete
-    , change
+    [ opYank
+    , opDelete
+    , opChange
+    , opFormat
     , mkCharTransformOperator "gu" toLower
     , mkCharTransformOperator "gU" toUpper
     , mkCharTransformOperator "g~" switchCaseChar
@@ -49,19 +51,19 @@ operatorApplyToTextObjectE op count cto = do
     styledRegion <- withBuffer0 $ regionOfTextObjectB cto
     operatorApplyToRegionE op count styledRegion
 
-yank :: VimOperator
-yank = VimOperator {
+opYank :: VimOperator
+opYank = VimOperator {
     operatorName = "y"
   , operatorApplyToRegionE = \_count (StyledRegion style reg) -> do
         s <- withBuffer0 $ readRegionRopeWithStyleB reg style
         setDefaultRegisterE style s
-        withBuffer0 $ moveTo (regionStart reg)
+        withBuffer0 $ moveTo . regionStart =<< convertRegionToStyleB reg style
         switchModeE Normal
         return Finish
 }
 
-delete :: VimOperator
-delete = VimOperator {
+opDelete :: VimOperator
+opDelete = VimOperator {
     operatorName = "d"
   , operatorApplyToRegionE = \_count (StyledRegion style reg) -> do
         s <- withBuffer0 $ readRegionRopeWithStyleB reg style
@@ -80,8 +82,8 @@ delete = VimOperator {
         return Finish
 }
 
-change :: VimOperator
-change = VimOperator {
+opChange :: VimOperator
+opChange = VimOperator {
     operatorName = "c"
   , operatorApplyToRegionE = \_count (StyledRegion style reg) -> do
         s <- withBuffer0 $ readRegionRopeWithStyleB reg style
@@ -91,6 +93,15 @@ change = VimOperator {
             moveTo point
         switchModeE $ Insert 'c'
         return Continue
+}
+
+opFormat :: VimOperator
+opFormat = VimOperator {
+    operatorName = "gq"
+  , operatorApplyToRegionE = \_count (StyledRegion style reg) -> do
+      -- TODO
+      switchModeE Normal
+      return Finish
 }
 
 mkCharTransformOperator :: OperatorName -> (Char -> Char) -> VimOperator

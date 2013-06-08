@@ -5,8 +5,9 @@ module Yi.Keymap.Vim2.VisualMap
 import Yi.Prelude
 import Prelude ()
 
+import Control.Monad (replicateM_)
 import Data.Char (ord)
-import Data.List (drop, group)
+import Data.List (drop, group, length)
 import Data.Maybe (fromJust)
 import Data.Prototype (extractValue)
 import Data.Tuple (uncurry)
@@ -23,7 +24,7 @@ import Yi.MiniBuffer
 defVisualMap :: [VimBinding]
 defVisualMap = [escBinding, motionBinding, changeVisualStyleBinding, setMarkBinding]
             ++ operatorBindings ++ digitBindings ++ [replaceBinding, switchEdgeBinding]
-            ++ [insertBinding, exBinding]
+            ++ [insertBinding, exBinding, shiftDBinding]
 
 escBinding :: VimBinding
 escBinding = VimBindingE prereq action
@@ -135,6 +136,29 @@ visualOperators =
     , ("u", "gu")
     , ("U", "gU")
     ]
+
+shiftDBinding :: VimBinding
+shiftDBinding = VimBindingE prereq action
+    where prereq "D" (VimState { vsMode = (Visual _) }) = WholeMatch ()
+          prereq _ _ = NoMatch
+          action _ = do
+              (Visual style) <- vsMode <$> getDynamic
+              reg <- withBuffer0 regionOfSelectionB
+              case style of
+                  Block -> withBuffer0 $ do
+                      (start, lengths) <- shapeOfBlockRegionB reg
+                      moveTo start
+                      replicateM_ (length lengths) (deleteToEol >> lineMoveRel 1)
+                      moveTo start
+                  _ ->  do
+                      reg' <- withBuffer0 $ convertRegionToStyleB reg LineWise
+                      reg'' <- withBuffer0 $ mkRegionOfStyleB (regionStart reg')
+                                                              (regionEnd reg' -~ Size 1)
+                                                              Exclusive
+                      discard $ operatorApplyToRegionE opDelete 1 $ StyledRegion LineWise reg''
+              resetCountE
+              switchModeE Normal
+              return Finish
 
 mkOperatorBinding :: VimOperator -> VimBinding
 mkOperatorBinding op = VimBindingE prereq action

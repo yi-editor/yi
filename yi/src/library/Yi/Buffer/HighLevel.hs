@@ -744,8 +744,25 @@ leftEdgesOfRegionB Block reg = savingPointB $ do
 leftEdgesOfRegionB _ r = return [regionStart r]
 
 rightEdgesOfRegionB :: RegionStyle -> Region -> BufferM [Point]
--- TODO
-rightEdgesOfRegionB style reg = return [regionEnd reg]
+-- rightEdgesOfRegionB Block reg = return [regionEnd reg]
+rightEdgesOfRegionB LineWise reg = savingPointB $ do
+    lastEol <- do
+        moveTo $ regionEnd reg
+        moveToEol
+        pointB
+    let  go acc p = do moveTo p
+                       moveToEol
+                       edge <- pointB
+                       if edge > lastEol
+                       then return $ reverse acc
+                       else do
+                           discard $ lineMoveRel 1
+                           go (edge:acc) =<< pointB
+    go [] (regionStart reg)
+rightEdgesOfRegionB _ reg = savingPointB $ do
+    moveTo $ regionEnd reg
+    leftOnEol
+    fmap singleton pointB
 
 splitBlockRegionToContiguousSubRegionsB :: Region -> BufferM [Region]
 splitBlockRegionToContiguousSubRegionsB reg = savingPointB $ do
@@ -839,7 +856,7 @@ movePercentageFileB i = do
                  | x < 0.0 -> 0.0 -- Impossible?
                  | otherwise -> x
     lineCount <- lineCountB
-    gotoLn $ floor (fromIntegral lineCount * f)
+    discard $ gotoLn $ floor (fromIntegral lineCount * f)
     firstNonSpaceB
 
 findMatchingPairB :: BufferM ()
