@@ -7,7 +7,7 @@ import Prelude ()
 
 import Control.Monad (replicateM_)
 import Data.Char (ord)
-import Data.List (drop, group, length)
+import Data.List (drop, group, length, reverse)
 import Data.Maybe (fromJust)
 import Data.Prototype (extractValue)
 import Data.Tuple (uncurry)
@@ -23,6 +23,7 @@ import Yi.MiniBuffer
 
 defVisualMap :: [VimBinding]
 defVisualMap = [escBinding, motionBinding, changeVisualStyleBinding, setMarkBinding]
+            ++ [chooseRegisterBinding]
             ++ operatorBindings ++ digitBindings ++ [replaceBinding, switchEdgeBinding]
             ++ [insertBinding, exBinding, shiftDBinding]
 
@@ -139,6 +140,12 @@ visualOperators =
     , ("U", "gU")
     ]
 
+chooseRegisterBinding :: VimBinding
+chooseRegisterBinding = mkChooseRegisterBinding $
+    \s -> case s of
+        (VimState { vsMode = (Visual _) }) -> True
+        _ -> False
+
 shiftDBinding :: VimBinding
 shiftDBinding = VimBindingE prereq action
     where prereq "D" (VimState { vsMode = (Visual _) }) = WholeMatch ()
@@ -150,8 +157,12 @@ shiftDBinding = VimBindingE prereq action
                   Block -> withBuffer0 $ do
                       (start, lengths) <- shapeOfBlockRegionB reg
                       moveTo start
-                      replicateM_ (length lengths) (deleteToEol >> lineMoveRel 1)
-                      moveTo start
+                      startCol <- curCol
+                      forM_ (reverse [0 .. length lengths - 1]) $ \l -> do
+                          moveTo start
+                          lineMoveRel l
+                          whenM (fmap (== startCol) curCol) deleteToEol
+                      leftOnEol
                   _ ->  do
                       reg' <- withBuffer0 $ convertRegionToStyleB reg LineWise
                       reg'' <- withBuffer0 $ mkRegionOfStyleB (regionStart reg')

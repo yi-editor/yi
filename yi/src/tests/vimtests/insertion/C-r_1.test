@@ -3,7 +3,9 @@
 bar
 baz
 -- Output
-(1,3)
-barbarbaz
+(2,1)
+babar
+r
+baz
 -- Events
 "byylli<C-r>b<Esc>

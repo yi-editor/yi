@@ -11,6 +11,7 @@ module Yi.Keymap.Vim2.Common
     , MatchResult(..)
     , EventString
     , OperatorName
+    , RegisterName
     ) where
 
 import Yi.Prelude
@@ -29,6 +30,8 @@ import Yi.Keymap
 type EventString = String
 
 type OperatorName = String
+
+type RegisterName = Char
 
 data RepeatableAction = RepeatableAction {
           raPreviousCount :: !Int
@@ -60,7 +63,8 @@ data VimState = VimState {
         , vsCount :: !(Maybe Int)
         , vsAccumulator :: !EventString -- ^ for repeat and potentially macros
         , vsTextObjectAccumulator :: !EventString
-        , vsRegisterMap :: !(HM.HashMap Char Register)
+        , vsRegisterMap :: !(HM.HashMap RegisterName Register)
+        , vsActiveRegister :: !RegisterName
         , vsRepeatableAction :: !(Maybe RepeatableAction)
         , vsStringToEval :: !EventString -- ^ see Yi.Keymap.Vim2.vimEval comment
         , vsStickyEol :: !Bool -- ^ is set on $, allows j and k walk the right edge of lines
@@ -82,7 +86,7 @@ instance Initializable VimMode where
 $(derive makeBinary ''VimMode)
 
 instance Initializable VimState where
-    initial = VimState Normal Nothing [] [] HM.empty Nothing [] False [] Nothing [] []
+    initial = VimState Normal Nothing [] [] HM.empty '\0' Nothing [] False [] Nothing [] []
 
 $(derive makeBinary ''VimState)
 

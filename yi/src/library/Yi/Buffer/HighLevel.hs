@@ -133,13 +133,21 @@ isCurrentLineEmptyB = savingPointB $ moveToSol >> atEol
 -- | Note: Returns False if line doesn't have any characters besides a newline
 isCurrentLineAllWhiteSpaceB :: BufferM Bool
 isCurrentLineAllWhiteSpaceB = savingPointB $ do
-    moveToSol
-    pSol <- pointB
-    lastNonSpaceB
-    p <- pointB
-    moveToEol
-    pEol <- pointB
-    return $ pSol /= pEol && pSol == p
+    empty <- isCurrentLineEmptyB
+    if empty
+    then return False
+    else do
+        let go = do
+                  eol <- atEol
+                  if eol
+                  then return True
+                  else do
+                      c <- readB
+                      if isSpace c
+                      then rightB >> go
+                      else return False
+        moveToSol
+        go
 
 ------------
 

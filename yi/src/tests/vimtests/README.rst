@@ -32,8 +32,6 @@ Event notation
 
   Event parsing expects a subset of vim notation (see :help <>). Backslash escaping is not supported. So to enter left angle bracket one must write <lt> and not \<.
 
-Vim features not supported intentionally
-
 Intentionally not supported features of Vim
 -------------------------------------------
 

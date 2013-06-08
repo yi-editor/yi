@@ -6,8 +6,10 @@ import Yi.Prelude
 import Prelude ()
 
 import Control.Monad (replicateM_)
+import Data.Foldable (all)
 import Data.List (drop)
 import Data.Maybe (maybe)
+import qualified Data.Rope as R
 
 import Yi.Buffer hiding (Insert)
 import Yi.Editor
@@ -20,7 +22,9 @@ import Yi.Keymap.Vim2.StateUtils
 import Yi.TextCompletion (completeWordB)
 
 defInsertMap :: [VimBinding]
-defInsertMap = [exitBinding, digraphBinding, completionBinding, printable]
+defInsertMap = specials ++ [printable]
+
+specials = [exitBinding, pasteRegisterBinding, digraphBinding, completionBinding]
 
 exitBinding :: VimBinding
 exitBinding = VimBindingE prereq action
@@ -40,14 +44,27 @@ exitBinding = VimBindingE prereq action
               modifyStateE $ \s -> s { vsSecondaryCursors = [] }
               resetCountE
               switchModeE Normal
-              withBuffer0 $ whenM isCurrentLineAllWhiteSpaceB $
-                  moveToSol >> deleteToEol
+              withBuffer0 $ do
+                  whenM isCurrentLineAllWhiteSpaceB $ moveToSol >> deleteToEol
               return Finish
-
 
 replay :: [Event] -> EditorM ()
 -- TODO: make digraphs work here too
 replay = mapM_ (printableAction . eventToString)
+
+pasteRegisterBinding :: VimBinding
+pasteRegisterBinding = VimBindingE prereq action
+    where prereq "<C-r>" (VimState { vsMode = Insert _ }) = PartialMatch
+          prereq ('<':'C':'-':'r':'>':_c1:[]) (VimState { vsMode = Insert _ }) = WholeMatch ()
+          prereq _ _ = NoMatch
+          action evs = do
+              let regName = last evs
+              mr <- getRegisterE regName
+              case mr of
+                Nothing -> return ()
+                Just (Register style rope) -> withBuffer0 $ do
+                    insertRopeWithStyleB rope Inclusive
+              return Continue
 
 digraphBinding :: VimBinding
 digraphBinding = VimBindingE prereq action
@@ -64,9 +81,10 @@ digraphBinding = VimBindingE prereq action
 printable :: VimBinding
 printable = VimBindingE prereq printableAction
     where prereq evs state@(VimState { vsMode = Insert _ } ) =
-              case vbPrerequisite digraphBinding evs state of
-                  NoMatch -> WholeMatch ()
-                  _ -> NoMatch
+              matchFromBool $
+                  all (\b -> case vbPrerequisite b evs state of
+                              NoMatch -> True
+                              _ -> False) specials
           prereq _ _ = NoMatch
 
 printableAction :: EventString -> EditorM RepeatToken
@@ -106,8 +124,6 @@ printableAction evs = do
                         "<C-j>" -> insertB '\n'
                         "<C-o>" -> return () -- TODO
                         "<C-w>" -> deleteRegionB =<< regionOfPartNonEmptyB unitViWordOnLine Backward
-                        "<C-r>" -> return () -- TODO
-                        "<C-k>" -> return () -- TODO
                         "<lt>" -> insertB '<'
                         evs' -> error $ "Unhandled event " ++ evs' ++ " in insert mode"
     updatedCursors <- withBuffer0 $ do

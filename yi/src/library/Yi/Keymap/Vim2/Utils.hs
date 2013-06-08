@@ -6,13 +6,17 @@ module Yi.Keymap.Vim2.Utils
   , selectBinding
   , matchFromBool
   , mkMotionBinding
+  , mkChooseRegisterBinding
   , matchesString
+  , pasteInclusiveB
+  , addNewLineIfNecessary
   ) where
 
 import Yi.Prelude
 import Prelude ()
 
 import Data.List (isPrefixOf, group)
+import qualified Data.Rope as R
 
 import Yi.Buffer hiding (Insert)
 import Yi.Editor
@@ -90,7 +94,30 @@ mkMotionBinding token condition = VimBindingE prereq action
 
               return token
 
+mkChooseRegisterBinding :: (VimState -> Bool) -> VimBinding
+mkChooseRegisterBinding statePredicate = VimBindingE prereq action
+    where prereq "\"" s | statePredicate s = PartialMatch
+          prereq ('"':c:[]) s | statePredicate s = WholeMatch ()
+          prereq _ _ = NoMatch
+          action ('"':c:[]) = do
+              modifyStateE $ \s -> s { vsActiveRegister = c }
+              return Continue
+
+pasteInclusiveB :: Rope -> RegionStyle -> BufferM ()
+pasteInclusiveB rope style = do
+    p0 <- pointB
+    insertRopeWithStyleB rope style
+    if R.countNewLines rope == 0 && style `elem` [Exclusive, Inclusive]
+    then leftB
+    else moveTo p0
+
 matchesString :: String -> String -> MatchResult ()
 matchesString got expected | expected == got = WholeMatch ()
                            | got `isPrefixOf` expected = PartialMatch
                            | otherwise = NoMatch
+
+addNewLineIfNecessary :: Rope -> Rope
+addNewLineIfNecessary rope = if lastChar == '\n'
+                             then rope
+                             else R.append rope (R.fromString "\n")
+    where lastChar = head $ R.toString $ R.drop (R.length rope - 1) rope

@@ -14,8 +14,8 @@ module Yi.Keymap.Vim2.StateUtils
     , dropAccumulatorE
     , dropBindingAccumulatorE
     , dropTextObjectAccumulatorE
-    , setDefaultRegisterE
-    , getDefaultRegisterE
+    , setRegisterE
+    , getRegisterE
     , normalizeCountE
     , setStickyEolE
     , maybeMult
@@ -94,13 +94,13 @@ dropBindingAccumulatorE = modifyStateE $ \s -> s { vsBindingAccumulator = [] }
 dropTextObjectAccumulatorE :: EditorM ()
 dropTextObjectAccumulatorE = modifyStateE $ \s -> s { vsTextObjectAccumulator = [] }
 
-getDefaultRegisterE :: EditorM (Maybe Register)
-getDefaultRegisterE = fmap (HM.lookup '\0' . vsRegisterMap) getDynamic
+getRegisterE :: RegisterName -> EditorM (Maybe Register)
+getRegisterE name = fmap (HM.lookup name . vsRegisterMap) getDynamic
 
-setDefaultRegisterE :: RegionStyle -> R.Rope -> EditorM ()
-setDefaultRegisterE style rope = do
+setRegisterE :: RegisterName -> RegionStyle -> R.Rope -> EditorM ()
+setRegisterE name style rope = do
     rmap <- fmap vsRegisterMap getDynamic
-    let rmap' = HM.insert '\0' (Register style rope) rmap
+    let rmap' = HM.insert name (Register style rope) rmap
     modifyStateE $ \state -> state { vsRegisterMap = rmap' }
 
 normalizeCountE :: Maybe Int -> EditorM ()

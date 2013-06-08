@@ -37,11 +37,12 @@ mkDigitBinding c = mkBindingE Normal Continue (char c, return (), mutate)
           d = ord c - ord '0'
 
 defNormalMap :: [VimBinding]
-defNormalMap = mkBindingY Normal (spec (KFun 10), quitEditor, id) : pureBindings
+defNormalMap = pureBindings
 
 pureBindings :: [VimBinding]
 pureBindings =
-    [zeroBinding, repeatBinding, motionBinding, searchBinding, setMarkBinding] ++
+    [zeroBinding, repeatBinding, motionBinding, searchBinding] ++
+    [chooseRegisterBinding, setMarkBinding] ++
     fmap mkDigitBinding ['1' .. '9'] ++
     operatorBindings ++
     finishingBingings ++
@@ -55,6 +56,9 @@ motionBinding = mkMotionBinding Drop $
     \m -> case m of
         Normal -> True
         _ -> False
+
+chooseRegisterBinding :: VimBinding
+chooseRegisterBinding = mkChooseRegisterBinding ((== Normal) . vsMode)
 
 zeroBinding :: VimBinding
 zeroBinding = VimBindingE prereq action
@@ -117,17 +121,11 @@ finishingBingings = fmap (mkBindingE Normal Finish)
        , resetCount)
     ]
 
-addNewLineIfNecessary :: Rope -> Rope
-addNewLineIfNecessary rope = if lastChar == '\n'
-                             then rope
-                             else R.append rope (R.fromString "\n")
-    where lastChar = head $ R.toString $ R.drop (R.length rope - 1) rope
-
 pasteBefore :: EditorM ()
 pasteBefore = do
     -- TODO: use count
-    s <- getDefaultRegisterE
-    case s of
+    register <- getRegisterE . vsActiveRegister =<< getDynamic
+    case register of
         Nothing -> return ()
         Just (Register LineWise rope) -> withBuffer0 $ when (not $ R.null rope) $
             -- Beware of edge cases ahead
@@ -137,7 +135,7 @@ pasteBefore = do
 pasteAfter :: EditorM ()
 pasteAfter = do
     -- TODO: use count
-    register <- getDefaultRegisterE
+    register <- getRegisterE . vsActiveRegister =<< getDynamic
     case register of
         Nothing -> return ()
         Just (Register LineWise rope) -> withBuffer0 $ do
@@ -155,14 +153,6 @@ pasteAfter = do
         Just (Register style rope) -> withBuffer0 $ do
             whenM (fmap not atEol) rightB
             pasteInclusiveB rope style
-
-pasteInclusiveB :: Rope -> RegionStyle -> BufferM ()
-pasteInclusiveB rope style = do
-    p0 <- pointB
-    insertRopeWithStyleB rope style
-    if R.countNewLines rope == 0 && style `elem` [Exclusive, Inclusive]
-    then leftB
-    else moveTo p0
 
 operatorBindings :: [VimBinding]
 operatorBindings = fmap mkOperatorBinding operators
@@ -251,7 +241,6 @@ nonrepeatableBindings = fmap (mkBindingE Normal Drop)
     -- unsorted TODO
     , (char '-', return (), id)
     , (char '+', return (), id)
-    , (char '"', return (), id)
     , (char 'q', return (), id)
     , (spec KEnter, return (), id)
     ] ++ fmap (mkStringBindingE Normal Drop)
@@ -351,7 +340,8 @@ cutCharE dir count = do
         deleteRegionB $ mkRegion p0 p1
         leftOnEol
         return rope
-    setDefaultRegisterE Inclusive r
+    regName <- fmap vsActiveRegister getDynamic
+    setRegisterE regName Inclusive r
 
 tabTraversalBinding :: VimBinding
 tabTraversalBinding = VimBindingE prereq action
