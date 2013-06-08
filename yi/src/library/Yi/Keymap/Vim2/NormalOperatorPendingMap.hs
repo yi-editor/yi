@@ -31,11 +31,22 @@ textObject = VimBindingE prereq action
                             _ -> NoMatch
         action evs = do
             currentState <- getDynamic
+
             let partial = vsTextObjectAccumulator currentState
-                operand = parseOperand opChar (partial ++ evs)
                 opChar = lastCharForOperator op
                 op = fromJust $ stringToOperator operators opname
                 (NormalOperatorPending opname) = vsMode currentState
+
+            -- vim treats cw as ce
+            let evs' = if opname == "c" &&
+                           last evs == 'w' &&
+                           (case parseOperand opChar (partial ++ evs) of
+                               JustMove _ -> True
+                               _ -> False)
+                       then init evs ++ "e"
+                       else evs
+                operand = parseOperand opChar (partial ++ evs')
+
             case operand of
                 NoOperand -> do
                     dropTextObjectAccumulatorE
