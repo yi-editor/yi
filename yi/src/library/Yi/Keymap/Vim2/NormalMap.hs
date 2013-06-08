@@ -152,7 +152,7 @@ pasteAfter = do
                 curChar <- readB
                 when (curChar == '\n') $ deleteN 1
         Just (Register style rope) -> withBuffer0 $ do
-            rightB
+            whenM (fmap not atEol) rightB
             pasteInclusiveB rope style
 
 pasteInclusiveB :: Rope -> RegionStyle -> BufferM ()
