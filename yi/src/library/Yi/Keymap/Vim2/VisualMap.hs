@@ -112,9 +112,11 @@ mkDigitBinding c = VimBindingE prereq action
           d = ord c - ord '0'
 
 motionBinding :: VimBinding
-motionBinding = mkMotionBinding $ \m -> case m of
-                                     Visual _ -> True
-                                     _ -> False
+motionBinding = mkMotionBinding Continue $
+    \m -> case m of
+        Visual _ -> True
+        _ -> False
+
 regionOfSelectionB :: BufferM Region
 regionOfSelectionB = savingPointB $ do
     start <- getSelectionMarkPointB

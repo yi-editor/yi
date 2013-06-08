@@ -14,7 +14,6 @@ import Prelude ()
 
 import Data.List (isPrefixOf, group)
 
-
 import Yi.Buffer hiding (Insert)
 import Yi.Editor
 import Yi.Event
@@ -58,8 +57,8 @@ selectBinding eventString state = foldl go NoMatch
 matchFromBool :: Bool -> MatchResult ()
 matchFromBool b = if b then WholeMatch () else NoMatch
 
-mkMotionBinding :: (VimMode -> Bool) -> VimBinding
-mkMotionBinding condition = VimBindingE prereq action
+mkMotionBinding :: RepeatToken -> (VimMode -> Bool) -> VimBinding
+mkMotionBinding token condition = VimBindingE prereq action
     where prereq evs state | condition (vsMode state) = fmap (const ()) (stringToMove evs)
           prereq _ _ = NoMatch
           action evs = do
@@ -89,7 +88,7 @@ mkMotionBinding condition = VimBindingE prereq action
                       command = GotoCharCommand c dir style
                   modifyStateE $ \s -> s { vsLastGotoCharCommand = Just command}
 
-              return Drop
+              return token
 
 matchesString :: String -> String -> MatchResult ()
 matchesString got expected | expected == got = WholeMatch ()

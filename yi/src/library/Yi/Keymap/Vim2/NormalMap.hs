@@ -51,9 +51,10 @@ pureBindings =
     [tabTraversalBinding]
 
 motionBinding :: VimBinding
-motionBinding = mkMotionBinding $ \m -> case m of
-                                     Normal -> True
-                                     _ -> False
+motionBinding = mkMotionBinding Drop $
+    \m -> case m of
+        Normal -> True
+        _ -> False
 
 zeroBinding :: VimBinding
 zeroBinding = VimBindingE prereq action
