@@ -12,6 +12,7 @@ import Yi.Keymap.Vim2.Ex.Eval
 
 import qualified Yi.Keymap.Vim2.Ex.Commands.Delete as Delete
 import qualified Yi.Keymap.Vim2.Ex.Commands.Edit as Edit
+import qualified Yi.Keymap.Vim2.Ex.Commands.GotoLine as GotoLine
 import qualified Yi.Keymap.Vim2.Ex.Commands.Nohl as Nohl
 import qualified Yi.Keymap.Vim2.Ex.Commands.Quit as Quit
 import qualified Yi.Keymap.Vim2.Ex.Commands.Reload as Reload
@@ -22,6 +23,7 @@ allExCommands :: [ExCommandBox]
 allExCommands = concat
     [ Delete.commands
     , Edit.commands
+    , GotoLine.commands
     , Nohl.commands
     , Quit.commands
     , Reload.commands

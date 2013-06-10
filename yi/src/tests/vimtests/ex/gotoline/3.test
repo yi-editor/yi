@@ -1,0 +1,14 @@
+-- Input
+(1,1)
+foo
+bar
+  baz
+xyzzy
+-- Output
+(1,1)
+foo
+bar
+  baz
+xyzzy
+-- Events
+:0<CR>
