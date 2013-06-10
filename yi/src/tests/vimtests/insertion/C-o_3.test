@@ -4,9 +4,8 @@ foo
 bar
 baz
 -- Output
-(3,1)
+(2,3)
 foo
-ar
-az
+arbaz
 -- Events
 li<C-o>j<C-w><C-o>j<C-w>

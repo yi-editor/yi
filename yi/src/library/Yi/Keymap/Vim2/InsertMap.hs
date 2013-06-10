@@ -17,6 +17,7 @@ import Yi.Event
 import Yi.Keymap.Vim2.Common
 import Yi.Keymap.Vim2.Digraph
 import Yi.Keymap.Vim2.EventUtils
+import Yi.Keymap.Vim2.Motion
 import Yi.Keymap.Vim2.Utils
 import Yi.Keymap.Vim2.StateUtils
 import Yi.TextCompletion (completeWordB)
@@ -24,7 +25,7 @@ import Yi.TextCompletion (completeWordB)
 defInsertMap :: [VimBinding]
 defInsertMap = specials ++ [printable]
 
-specials = [exitBinding, pasteRegisterBinding, digraphBinding, completionBinding]
+specials = [exitBinding, pasteRegisterBinding, digraphBinding, oneshotNormalBinding, completionBinding]
 
 exitBinding :: VimBinding
 exitBinding = VimBindingE prereq action
@@ -51,6 +52,17 @@ exitBinding = VimBindingE prereq action
 replay :: [Event] -> EditorM ()
 -- TODO: make digraphs work here too
 replay = mapM_ (printableAction . eventToString)
+
+oneshotNormalBinding :: VimBinding
+oneshotNormalBinding = VimBindingE prereq action
+    where prereq "<C-o>" (VimState { vsMode = Insert _ }) = PartialMatch
+          prereq ('<':'C':'-':'o':'>':motionCmd) (VimState { vsMode = Insert _ }) =
+              fmap (const ()) (stringToMove motionCmd)
+          prereq _ _ = NoMatch
+          action ('<':'C':'-':'o':'>':motionCmd) = do
+              let WholeMatch (Move _style isJump move) = stringToMove motionCmd
+              withBuffer0 $ move Nothing
+              return Continue
 
 pasteRegisterBinding :: VimBinding
 pasteRegisterBinding = VimBindingE prereq action
@@ -146,4 +158,3 @@ completionBinding = VimBindingE prereq action
               let _direction = if evs == "<C-n>" then Forward else Backward
               completeWordB
               return Continue
-
