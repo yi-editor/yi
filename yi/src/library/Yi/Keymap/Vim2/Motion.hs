@@ -193,7 +193,7 @@ matchGotoCharMove (m:c:[]) | m `elem` "fFtT" = WholeMatch $ Move style False act
                   p0 <- pointB
                   replicateM_ (count - 1) $ do
                       move
-                      when (style == Exclusive) $ moveB Character dir
+                      moveB Character dir
                   p1 <- pointB
                   move
                   p2 <- pointB
