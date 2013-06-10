@@ -150,6 +150,7 @@ library
     Yi.Keymap.Vim2.Ex.Eval
     Yi.Keymap.Vim2.ExMap
     Yi.Keymap.Vim2.InsertMap
+    Yi.Keymap.Vim2.MatchResult
     Yi.Keymap.Vim2.Motion
     Yi.Keymap.Vim2.NormalMap
     Yi.Keymap.Vim2.NormalOperatorPendingMap

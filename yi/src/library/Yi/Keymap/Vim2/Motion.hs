@@ -10,7 +10,7 @@ module Yi.Keymap.Vim2.Motion
 --
 -- respecting wrap in gj, g0, etc
 --
--- gm, %, go
+-- gm, go
 -- ]], [[, [], ][
 -- [(, [{, ]), ]}
 -- ]m, ]M, [m, [M
@@ -18,11 +18,7 @@ module Yi.Keymap.Vim2.Motion
 -- [*, [/, ]*, ]/
 -- H, M, L
 --
--- Moving to marks
---
--- jump-motions are not specified
---
--- Traversing jumplist and changelist
+-- Traversing changelist
 
 -- TODO:
 -- from vim help:
@@ -49,8 +45,8 @@ import Yi.Prelude
 
 import Control.Monad (replicateM_)
 
-import Data.List (isPrefixOf)
 import Data.Maybe (fromMaybe)
+import Data.Tuple (uncurry)
 
 import Yi.Buffer
 import Yi.Keymap.Vim2.Common
@@ -64,78 +60,62 @@ data Move = Move {
 
 data CountedMove = CountedMove !(Maybe Int) !Move
 
--- see :help jump-motions in vim
-jumpyMoves :: [String]
-jumpyMoves = ["G", "%", "(", ")", "[[", "]]", "{", "}", "L", "M", "H"]
-
 stringToMove :: String -> MatchResult Move
-stringToMove s = case lookupMove s of
-                    Just m -> WholeMatch (m { moveIsJump = s `elem` jumpyMoves })
-                    Nothing -> if any (isPrefixOf s . fst) allNonParametricMotions
-                               then PartialMatch
-                               else NoMatch
+stringToMove s = lookupMove s
                  <|> matchGotoCharMove s
                  <|> matchGotoMarkMove s
-    
-lookupMove :: String -> Maybe Move
-lookupMove s = fmap (Move Exclusive False) (lookup s exclusiveMotions)
-           <|> fmap (Move Inclusive False) (lookup s inclusiveMotions)
-           <|> fmap (Move LineWise  False) (lookup s linewiseMotions)
-           <|> fmap (Move LineWise  False) (lookup s linewiseMaybeMotions)
 
-allNonParametricMotions :: [(String, Maybe Int -> BufferM ())]
-allNonParametricMotions = concat
-    [ exclusiveMotions
-    , inclusiveMotions
-    , linewiseMotions
-    , linewiseMaybeMotions
-    ]
+lookupMove :: String -> MatchResult Move
+lookupMove s = findMoveWithStyle Exclusive exclusiveMotions
+           <|> findMoveWithStyle Inclusive inclusiveMotions
+           <|> findMoveWithStyle LineWise linewiseMotions
+    where findMoveWithStyle style choices = fmap (uncurry (Move style))
+                                            (lookupBestMatch s (fmap regroup choices))
+          regroup (a, b, c) = (a, (b, c))
 
 changeMoveStyle :: (RegionStyle -> RegionStyle) -> Move -> Move
 changeMoveStyle smod (Move s j m) = Move (smod s) j m
 
+instance Functor ((,,) a b) where
+    fmap f (a, b, c) = (a, b, f c)
+
 -- Linewise motions which treat no count as being the same as a count of 1.
-linewiseMotions :: [(String, Maybe Int -> BufferM ())]
+linewiseMotions :: [(String, Bool, Maybe Int -> BufferM ())]
 linewiseMotions = fmap withDefaultCount
-    [ ("j", discard . lineMoveRel)
-    , ("k", discard . lineMoveRel . negate)
-    , ("-", const firstNonSpaceB <=< discard . lineMoveRel . negate)
-    , ("+", const firstNonSpaceB <=< discard . lineMoveRel)
-    , ("_", \n -> do
+    [ ("j", False, discard . lineMoveRel)
+    , ("k", False, discard . lineMoveRel . negate)
+    , ("-", False, const firstNonSpaceB <=< discard . lineMoveRel . negate)
+    , ("+", False, const firstNonSpaceB <=< discard . lineMoveRel)
+    , ("_", False, \n -> do
                 when (n > 1) $ discard $ lineMoveRel (n - 1)
                 firstNonSpaceB)
-    , ("gg", discard . gotoLn) -- TODO: save column
+    , ("gg", True, discard . gotoLn) -- TODO: save column
     ]
-
--- Linewise motions which differentiate no count and a count of 1.
-linewiseMaybeMotions :: [(String, Maybe Int -> BufferM ())]
-linewiseMaybeMotions =
-    [ ("G", gotoXOrEOF)
-    ]
+    ++ [("G", True, gotoXOrEOF)]
 
 -- Exclusive motions which treat no count as being the same as a count of 1.
-exclusiveMotions :: [(String, Maybe Int -> BufferM ())]
+exclusiveMotions :: [(String, Bool, Maybe Int -> BufferM ())]
 exclusiveMotions = fmap withDefaultCount
-    [ ("h", moveXorSol)
-    , ("l", moveXorEol)
-    , ("w", moveForwardB unitViWord)
-    , ("W", moveForwardB unitViWORD)
-    , ("b", moveBackwardB unitViWord)
-    , ("B", moveBackwardB unitViWORD)
-    , ("^", const firstNonSpaceB)
-    , ("g^", const firstNonSpaceB) -- TODO: respect wrapping
-    , ("g0", const moveToSol) -- TODO: respect wrapping
+    [ ("h", False, moveXorSol)
+    , ("l", False, moveXorEol)
+    , ("w", False, moveForwardB unitViWord)
+    , ("W", False, moveForwardB unitViWORD)
+    , ("b", False, moveBackwardB unitViWord)
+    , ("B", False, moveBackwardB unitViWORD)
+    , ("^", False, const firstNonSpaceB)
+    , ("g^", False, const firstNonSpaceB) -- TODO: respect wrapping
+    , ("g0", False, const moveToSol) -- TODO: respect wrapping
     -- "0" sort of belongs here, but is currently handled as a special case in some modes
-    , ("|", \n -> moveToSol >> moveXorEol (n - 1))
-    , ("(", moveBackwardB unitSentence)
-    , (")", moveForwardB unitSentence)
-    , ("{", moveBackwardB unitEmacsParagraph)
-    , ("}", moveForwardB unitEmacsParagraph)
+    , ("|", False, \n -> moveToSol >> moveXorEol (n - 1))
+    , ("(", True, moveBackwardB unitSentence)
+    , (")", True, moveForwardB unitSentence)
+    , ("{", True, moveBackwardB unitEmacsParagraph)
+    , ("}", True, moveForwardB unitEmacsParagraph)
     ]
 
 -- Inclusive motions which treat no count as being the same as a count of 1.
-inclusiveMotions :: [(String, Maybe Int -> BufferM ())]
-inclusiveMotions = fmap withDefaultCount
+inclusiveMotions :: [(String, Bool, Maybe Int -> BufferM ())]
+inclusiveMotions = fmap (\(key, action) -> (key, False, action . fromMaybe 1))
     [
     -- Word motions
       ("e", repeat $ genMoveB unitViWord (Forward, InsideBound) Forward)
@@ -156,9 +136,10 @@ inclusiveMotions = fmap withDefaultCount
                 lastNonSpaceB)
     ]
     ++
-    [("%", \maybeCount -> case maybeCount of
-                Nothing -> findMatchingPairB
-                Just percent -> movePercentageFileB percent)
+    [("%", True,
+        \maybeCount -> case maybeCount of
+            Nothing -> findMatchingPairB
+            Just percent -> movePercentageFileB percent)
     ]
 
 repeat :: BufferM () -> Int -> BufferM ()
@@ -169,7 +150,6 @@ regionOfMoveB = normalizeRegion <=< regionOfMoveB'
 
 regionOfMoveB' :: CountedMove -> BufferM StyledRegion
 regionOfMoveB' (CountedMove n (Move style _isJump move)) = do
-    -- region <- mkRegion <$> pointB <*> destinationOfMoveB (move n >> leftOnEol)
     region <- mkRegion <$> pointB <*> destinationOfMoveB
         (move n >> when (style == Inclusive) leftOnEol)
     return $! StyledRegion style region
@@ -183,9 +163,8 @@ gotoXOrEOF n = case n of
     Nothing -> botB >> moveToSol
     Just n' -> gotoLn n' >> moveToSol
 
-withDefaultCount :: (String, Int -> BufferM ()) -> (String, Maybe Int -> BufferM ())
-withDefaultCount (s, f) = (s, f . defaultCount)
-    where defaultCount = fromMaybe 1
+withDefaultCount :: (String, Bool, Int -> BufferM ()) -> (String, Bool, Maybe Int -> BufferM ())
+withDefaultCount = fmap (. fromMaybe 1)
 
 matchGotoMarkMove :: String -> MatchResult Move
 matchGotoMarkMove (m:_) | m `notElem` "'`" = NoMatch
@@ -195,8 +174,7 @@ matchGotoMarkMove (m:c:[]) = WholeMatch $ Move style True action
           action _mcount = do
               mmark <- mayGetMarkB [c]
               case mmark of
-                  Nothing -> insertN $ "Mark " ++ show c ++ " not set"
-                  -- Nothing -> fail $ "Mark " ++ show c ++ " not set"
+                  Nothing -> fail $ "Mark " ++ show c ++ " not set"
                   Just mark -> moveTo =<< getMarkPointB mark
 matchGotoMarkMove _ = NoMatch
 

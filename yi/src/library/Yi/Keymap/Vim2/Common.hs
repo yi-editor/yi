@@ -12,6 +12,7 @@ module Yi.Keymap.Vim2.Common
     , EventString
     , OperatorName
     , RegisterName
+    , module Yi.Keymap.Vim2.MatchResult
     ) where
 
 import Yi.Prelude
@@ -26,6 +27,7 @@ import Yi.Buffer hiding (Insert)
 import Yi.Dynamic
 import Yi.Editor
 import Yi.Keymap
+import Yi.Keymap.Vim2.MatchResult
 
 type EventString = String
 
@@ -105,33 +107,6 @@ data RepeatToken = Finish
                  | Drop
                  | Continue
     deriving Show
-
-data MatchResult a = NoMatch
-                   | PartialMatch
-                   | WholeMatch a
-
-instance Functor MatchResult where
-    fmap f (WholeMatch x) = WholeMatch (f x)
-    fmap _ NoMatch = NoMatch
-    fmap _ PartialMatch = PartialMatch
-
-instance Applicative MatchResult where
-    pure = WholeMatch
-    WholeMatch f <*> WholeMatch x = WholeMatch (f x)
-    _ <*> _ = NoMatch
-
-instance Alternative MatchResult where
-    empty = NoMatch
-    WholeMatch x <|> _ = WholeMatch x
-    _ <|> WholeMatch x = WholeMatch x
-    PartialMatch <|> _ = PartialMatch
-    _ <|> PartialMatch = PartialMatch
-    _ <|> _ = NoMatch
-
-instance Show (MatchResult a) where
-    show (WholeMatch _) = "WholeMatch"
-    show PartialMatch = "PartialMatch"
-    show NoMatch = "NoMatch"
 
 -- Distinction between YiM and EditorM variants is for testing.
 data VimBinding = VimBindingY {

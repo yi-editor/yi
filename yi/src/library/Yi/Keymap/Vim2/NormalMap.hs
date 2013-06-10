@@ -13,7 +13,6 @@ import Data.Maybe (fromMaybe)
 import qualified Data.Rope as R
 
 import Yi.Buffer hiding (Insert)
-import Yi.Core (quitEditor)
 import Yi.Editor
 import Yi.Event
 import Yi.Keymap.Keys

@@ -5,12 +5,9 @@ module Yi.Keymap.Vim2.VisualMap
 import Yi.Prelude
 import Prelude ()
 
-import Control.Monad (replicateM_)
 import Data.Char (ord)
 import Data.List (drop, group, length, reverse)
 import Data.Maybe (fromJust)
-import Data.Prototype (extractValue)
-import Data.Tuple (uncurry)
 
 import Yi.Buffer hiding (Insert)
 import Yi.Editor
@@ -160,7 +157,7 @@ shiftDBinding = VimBindingE prereq action
                       startCol <- curCol
                       forM_ (reverse [0 .. length lengths - 1]) $ \l -> do
                           moveTo start
-                          lineMoveRel l
+                          discard $ lineMoveRel l
                           whenM (fmap (== startCol) curCol) deleteToEol
                       leftOnEol
                   _ ->  do

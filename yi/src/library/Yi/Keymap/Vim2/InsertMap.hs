@@ -6,10 +6,8 @@ import Yi.Prelude
 import Prelude ()
 
 import Control.Monad (replicateM_)
-import Data.Foldable (all)
 import Data.List (drop)
 import Data.Maybe (maybe)
-import qualified Data.Rope as R
 
 import Yi.Buffer hiding (Insert)
 import Yi.Editor
@@ -25,6 +23,7 @@ import Yi.TextCompletion (completeWordB)
 defInsertMap :: [VimBinding]
 defInsertMap = specials ++ [printable]
 
+specials :: [VimBinding]
 specials = [exitBinding, pasteRegisterBinding, digraphBinding, oneshotNormalBinding, completionBinding]
 
 exitBinding :: VimBinding
@@ -60,9 +59,10 @@ oneshotNormalBinding = VimBindingE prereq action
               fmap (const ()) (stringToMove motionCmd)
           prereq _ _ = NoMatch
           action ('<':'C':'-':'o':'>':motionCmd) = do
-              let WholeMatch (Move _style isJump move) = stringToMove motionCmd
+              let WholeMatch (Move _style _isJump move) = stringToMove motionCmd
               withBuffer0 $ move Nothing
               return Continue
+          action _ = error "can't happen"
 
 pasteRegisterBinding :: VimBinding
 pasteRegisterBinding = VimBindingE prereq action
@@ -74,7 +74,7 @@ pasteRegisterBinding = VimBindingE prereq action
               mr <- getRegisterE regName
               case mr of
                 Nothing -> return ()
-                Just (Register style rope) -> withBuffer0 $ do
+                Just (Register _style rope) -> withBuffer0 $ do
                     insertRopeWithStyleB rope Inclusive
               return Continue
 
