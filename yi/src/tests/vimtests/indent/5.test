@@ -1,0 +1,14 @@
+-- Input
+(2,5)
+foo
+    bar
+    baz
+    123
+-- Output
+(2,1)
+foo
+bar
+baz
+    123
+-- Events
+2<lt><lt>

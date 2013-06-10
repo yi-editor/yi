@@ -15,6 +15,7 @@ import Prelude ()
 import Yi.Prelude
 
 import Data.Char (toLower, toUpper)
+import Data.List (isSuffixOf)
 
 import Yi.Buffer hiding (Insert)
 import Yi.Editor
@@ -126,5 +127,6 @@ mkShiftOperator name countMod = VimOperator {
         return Finish
 }
 
-lastCharForOperator :: VimOperator -> Char
-lastCharForOperator = last . operatorName
+lastCharForOperator :: VimOperator -> String
+lastCharForOperator (VimOperator { operatorName = name }) =
+    if "<lt>" `isSuffixOf` name then "<lt>" else [last name]

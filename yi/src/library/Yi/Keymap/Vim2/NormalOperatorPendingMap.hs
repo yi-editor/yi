@@ -103,7 +103,7 @@ data OperandParseResult = JustTextObject !CountedTextObject
                          | PartialOperand
                          | NoOperand
 
-parseOperand :: Char -> String -> OperandParseResult
+parseOperand :: EventString -> String -> OperandParseResult
 parseOperand opChar s = parseCommand mcount styleMod opChar commandString
     where (mcount, styleModString, commandString) = splitCountModifierCommand s
           styleMod = case styleModString of
@@ -115,12 +115,13 @@ parseOperand opChar s = parseCommand mcount styleMod opChar commandString
                                             _ -> Exclusive
                         _ -> error "Can't happen"
 
-parseCommand :: Maybe Int -> (RegionStyle -> RegionStyle) -> Char -> String -> OperandParseResult
+parseCommand :: Maybe Int -> (RegionStyle -> RegionStyle)
+             -> EventString -> String -> OperandParseResult
 parseCommand _ _ _ "" = PartialOperand
 parseCommand _ _ _ "i" = PartialOperand
 parseCommand _ _ _ "a" = PartialOperand
 parseCommand _ _ _ "g" = PartialOperand
-parseCommand n sm o s | [o] == s = JustOperator (fromMaybe 1 n) (sm LineWise)
+parseCommand n sm o s | o == s = JustOperator (fromMaybe 1 n) (sm LineWise)
 parseCommand n sm _ s =
     case stringToMove s of
         WholeMatch m -> JustMove $ CountedMove n $ changeMoveStyle sm m
