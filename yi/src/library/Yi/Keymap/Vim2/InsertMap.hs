@@ -6,7 +6,8 @@ import Yi.Prelude
 import Prelude ()
 
 import Control.Monad (replicateM_)
-import Data.List (drop)
+import Data.Char (isDigit)
+import Data.List (break, drop, dropWhile)
 import Data.Maybe (maybe)
 
 import Yi.Buffer hiding (Insert)
@@ -55,12 +56,13 @@ replay = mapM_ (printableAction . eventToString)
 oneshotNormalBinding :: VimBinding
 oneshotNormalBinding = VimBindingE prereq action
     where prereq "<C-o>" (VimState { vsMode = Insert _ }) = PartialMatch
-          prereq ('<':'C':'-':'o':'>':motionCmd) (VimState { vsMode = Insert _ }) =
-              fmap (const ()) (stringToMove motionCmd)
+          prereq ('<':'C':'-':'o':'>':evs) (VimState { vsMode = Insert _ }) =
+              fmap (const ()) (stringToMove (dropWhile isDigit evs))
           prereq _ _ = NoMatch
-          action ('<':'C':'-':'o':'>':motionCmd) = do
-              let WholeMatch (Move _style _isJump move) = stringToMove motionCmd
-              withBuffer0 $ move Nothing
+          action ('<':'C':'-':'o':'>':evs) = do
+              let (countString, motionCmd) = break (not . isDigit) evs
+                  WholeMatch (Move _style _isJump move) = stringToMove motionCmd
+              withBuffer0 $ move (if null countString then Nothing else Just (read countString))
               return Continue
           action _ = error "can't happen"
 

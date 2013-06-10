@@ -1,8 +1,0 @@
--- Input
-(1,1)
-foo bar baz
--- Output
-(1,4)
-foobaz
--- Events
-3li<C-o>d2w

@@ -38,6 +38,7 @@ Intentionally not supported features of Vim
   * select mode
   * folds
   * 0<C-d> and ^<C-d> in insert mode
+  * After i_<C-o> only motions are allowed
 
 Features incompatible with Vim because why not
 ----------------------------------------------
