@@ -47,4 +47,5 @@ Features incompatible with Vim because why not
   * A and I in linewise visual mode behave like in blockwise visual mode
   * 999rZ turns ABC into ZZZ instead of doing nothing
   * Operators in visual mode always leave cursor at selection start. Vim doesn't do this in some cases and I don't understand the pattern.
+  * Paragraph text object is slightly different
 
