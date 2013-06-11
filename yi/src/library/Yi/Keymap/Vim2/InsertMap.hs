@@ -50,8 +50,23 @@ exitBinding = VimBindingE prereq action
               return Finish
 
 replay :: [Event] -> EditorM ()
--- TODO: make digraphs work here too
-replay = mapM_ (printableAction . eventToString)
+replay [] = return ()
+replay (e1:es1) = do
+    state <- getDynamic
+    let evs1 = eventToString e1
+        bindingMatch1 = selectBinding evs1 state defInsertMap
+    case bindingMatch1 of
+        WholeMatch (VimBindingE _ action) -> discard (action evs1) >> replay es1
+        PartialMatch -> do
+            case es1 of
+                [] -> return ()
+                (e2:es2) -> do
+                    let evs2 = evs1 ++ eventToString e2
+                        bindingMatch2 = selectBinding evs2 state defInsertMap
+                    case bindingMatch2 of
+                        WholeMatch (VimBindingE _ action) -> discard (action evs2) >> replay es2
+                        _ -> replay es2
+        _ -> replay es1
 
 oneshotNormalBinding :: VimBinding
 oneshotNormalBinding = VimBindingE prereq action

@@ -48,4 +48,5 @@ Features incompatible with Vim because why not
   * 999rZ turns ABC into ZZZ instead of doing nothing
   * Operators in visual mode always leave cursor at selection start. Vim doesn't do this in some cases and I don't understand the pattern.
   * Paragraph text object is slightly different
+  * Repeating insert actions with dot works differently when insertion events contain oneshot normal commands, e.g. "ifoo<C-o>hbar<Esc>". In Vim dot would insert only "bar", but yi dot inserts "fobaro"
 
