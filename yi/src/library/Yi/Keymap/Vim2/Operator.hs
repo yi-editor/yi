@@ -103,10 +103,32 @@ opFormat :: VimOperator
 opFormat = VimOperator {
     operatorName = "gq"
   , operatorApplyToRegionE = \_count (StyledRegion style reg) -> do
-      -- TODO
+      withBuffer0 $ formatRegionB style reg
       switchModeE Normal
       return Finish
 }
+
+formatRegionB :: RegionStyle -> Region -> BufferM ()
+formatRegionB Block reg = return ()
+formatRegionB style reg = do
+    -- TODO: handle indentation
+    -- TODO: break words
+    let (start, end) = (regionStart reg, regionEnd reg)
+    moveTo start
+    let go = do
+            rightB
+            p <- pointB
+            col <- curCol
+            char <- readB
+            if p >= end
+            then return ()
+            else if col < 80 && char == '\n'
+            then writeB ' ' >> go
+            else if col == 80 && char /= '\n'
+            then writeB '\n' >> go
+            else go
+    go
+    moveTo start
 
 mkCharTransformOperator :: OperatorName -> (Char -> Char) -> VimOperator
 mkCharTransformOperator name f = VimOperator {
