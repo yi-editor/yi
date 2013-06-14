@@ -25,7 +25,6 @@ instance Show Edit where
     show (Edit tab f) = (if tab then "tab" else "") ++ "edit " ++ f
 
 instance ExCommand Edit where
-    cmdIsPure _ = False
     cmdComplete (Edit tab f) = (fmap . fmap) (show . Edit tab)
                                 (filenameComplete f)
     cmdParse _ = parse $ do

@@ -17,7 +17,5 @@ instance Show Reload where
     show _ = "reload"
 
 instance ExCommand Reload where
-    cmdIsPure _ = False
-    cmdComplete _ = return Nothing
     cmdParse _ s = if s == "reload" then Just Reload else Nothing
     cmdAction _ = Right reload

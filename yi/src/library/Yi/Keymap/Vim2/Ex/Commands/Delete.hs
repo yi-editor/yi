@@ -22,7 +22,6 @@ instance Show Delete where
 
 instance ExCommand Delete where
     cmdIsPure _ = True
-    cmdComplete _ = return Nothing
     cmdParse _ = parse $ do
         discard $ P.try ( P.string "delete") <|> P.string "d"
         return Delete

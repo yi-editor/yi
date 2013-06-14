@@ -27,7 +27,6 @@ data Substitute = Substitute {
 
 instance ExCommand Substitute where
     cmdIsPure _ = True
-    cmdComplete _ = return Nothing
     cmdParse _ = parse $ do
         percents <- P.many (P.char '%')
         discard $ P.try (P.string "substitute/") <|> P.string "s/"

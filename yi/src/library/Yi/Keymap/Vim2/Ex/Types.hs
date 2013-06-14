@@ -15,6 +15,16 @@ class Show e => ExCommand e where
     cmdComplete :: e -> YiM (Maybe String)
     cmdIsPure :: e -> Bool
     cmdAction :: e -> Either (EditorM ()) (YiM ())
+    cmdAcceptsRange :: e -> Bool
+    -- Default implementation
+    cmdAcceptsRange _ = False
+    cmdComplete _ = return Nothing
+    cmdIsPure _ = False
+
+data LineRange
+    = MarkRange String String -- ^ 'a,'b
+    | FullRange               -- ^ %
+    | CurrentLineRange
 
 data ExCommandBox = forall a. ExCommand a => ExCommandBox a
 

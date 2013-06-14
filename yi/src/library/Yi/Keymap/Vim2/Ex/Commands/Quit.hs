@@ -36,8 +36,6 @@ instance Show Quit where
                      ++ (if f then "!" else "")
 
 instance ExCommand Quit where
-    cmdIsPure _ = False
-    cmdComplete _ = return Nothing
     cmdParse _ = parse $ do
         ws <- P.many (P.char 'w')
         discard $ P.try ( P.string "quit") <|> P.string "q"
@@ -53,7 +51,7 @@ action (Quit  True False False) = quitEditor
 action (Quit  True False  True) = saveAndQuitAllE
 action (Quit False  True False) = quitEditor
 action (Quit False  True  True) = closeWindow
-action (Quit  True  True False) = quitEditor
+action (Quit  True  True False) = viWrite >> closeWindow
 action (Quit  True  True  True) = saveAndQuitAllE
 
 

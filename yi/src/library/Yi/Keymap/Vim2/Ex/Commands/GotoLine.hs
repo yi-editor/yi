@@ -21,6 +21,5 @@ instance Show GotoLine where
 
 instance ExCommand GotoLine where
     cmdIsPure _ = True
-    cmdComplete _ = return Nothing
     cmdParse _ s = if and (fmap isDigit s) then Just (GotoLine (read s)) else Nothing
     cmdAction (GotoLine l) = Left . withBuffer0 $gotoLn l >> firstNonSpaceB

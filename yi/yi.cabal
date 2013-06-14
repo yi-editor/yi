@@ -141,6 +141,7 @@ library
     Yi.Keymap.Vim2.Ex.Commands.Common
     Yi.Keymap.Vim2.Ex.Commands.Delete
     Yi.Keymap.Vim2.Ex.Commands.Edit
+    Yi.Keymap.Vim2.Ex.Commands.Global
     Yi.Keymap.Vim2.Ex.Commands.GotoLine
     Yi.Keymap.Vim2.Ex.Commands.Nohl
     Yi.Keymap.Vim2.Ex.Commands.Quit

@@ -1,5 +1,6 @@
 module Yi.Keymap.Vim2.Ex.Commands.Common
     ( parse
+    , parseRange
     , filenameComplete
     , forAllBuffers
     ) where
@@ -14,12 +15,16 @@ import System.FilePath
 import qualified Text.ParserCombinators.Parsec as P
 
 import Yi.Buffer
-import Yi.Keymap
 import Yi.Editor
+import Yi.Keymap
+import Yi.Keymap.Vim2.Ex.Types
 import Yi.Misc
 
 parse :: P.GenParser Char () a -> String -> Maybe a
 parse parser s = either (const Nothing) Just (P.parse parser "" s)
+
+parseRange :: P.GenParser Char () LineRange
+parseRange = return CurrentLineRange
 
 removePwd :: FilePath -> YiM FilePath
 removePwd path = do

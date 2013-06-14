@@ -31,8 +31,6 @@ instance Show Write where
     show (Write a) = "write" ++ (if a then "all" else "")
 
 instance ExCommand Write where
-    cmdIsPure _ = False
-    cmdComplete _ = return Nothing
     cmdParse _ = parse $ do
         discard $ P.try ( P.string "write") <|> P.string "w"
         alls <- P.many (P.try ( P.string "all") <|> P.string "a")
@@ -41,8 +39,6 @@ instance ExCommand Write where
     cmdAction (Write True) = Right $ forAllBuffers fwriteBufferE
 
 instance ExCommand WriteAs where
-    cmdIsPure _ = False
-    cmdComplete _ = return Nothing
     cmdParse _ = parse $ do
         discard $ P.try ( P.string "write") <|> P.string "w"
         discard $ P.many1 P.space

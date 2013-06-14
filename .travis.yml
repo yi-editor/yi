@@ -8,7 +8,7 @@ install:
  - cabal install -fpango --enable-tests -ftesting --only-dependencies
  - cabal configure -fpango --enable-tests -ftesting
  - cabal build
- - cabal test | grep -v '\[OK\]'
+ - cabal test
  - cabal install -fpango
  - cd -
  - cd yi-contrib
