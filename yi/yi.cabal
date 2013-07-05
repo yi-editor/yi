@@ -148,6 +148,7 @@ library
     Yi.Keymap.Vim2.Ex.Commands.Reload
     Yi.Keymap.Vim2.Ex.Commands.Substitute
     Yi.Keymap.Vim2.Ex.Commands.Write
+    Yi.Keymap.Vim2.Ex.Commands.Yi
     Yi.Keymap.Vim2.Ex.Types
     Yi.Keymap.Vim2.Ex.Eval
     Yi.Keymap.Vim2.ExMap

@@ -47,7 +47,7 @@ instance ExCommand Quit where
 action :: Quit -> YiM ()
 action (Quit False False False) = closeWindow
 action (Quit False False  True) = quitAllE
-action (Quit  True False False) = quitEditor
+action (Quit  True False False) = viWrite >> closeWindow
 action (Quit  True False  True) = saveAndQuitAllE
 action (Quit False  True False) = quitEditor
 action (Quit False  True  True) = closeWindow

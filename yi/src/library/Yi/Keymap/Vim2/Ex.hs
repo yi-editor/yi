@@ -19,6 +19,7 @@ import qualified Yi.Keymap.Vim2.Ex.Commands.Quit as Quit
 import qualified Yi.Keymap.Vim2.Ex.Commands.Reload as Reload
 import qualified Yi.Keymap.Vim2.Ex.Commands.Substitute as Substitute
 import qualified Yi.Keymap.Vim2.Ex.Commands.Write as Write
+import qualified Yi.Keymap.Vim2.Ex.Commands.Yi as Yi
 
 allExCommands :: [ExCommandBox]
 allExCommands = concat
@@ -31,4 +32,5 @@ allExCommands = concat
     , Reload.commands
     , Substitute.commands
     , Write.commands
+    , Yi.commands
     ]
