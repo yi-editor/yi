@@ -1,5 +1,5 @@
 module Yi.Keymap.Vim2.Ex.Commands.GotoLine
-    ( commands
+    ( parse
     ) where
 
 import Prelude ()
@@ -7,19 +7,16 @@ import Yi.Prelude
 
 import Data.Char (isDigit)
 
-import Yi.Buffer hiding (Delete)
+import Yi.Buffer
 import Yi.Editor
 import Yi.Keymap.Vim2.Ex.Types
+import Yi.Keymap.Vim2.Ex.Commands.Common (pureExCommand)
 
-commands :: [ExCommandBox]
-commands = [pack $ GotoLine undefined]
-
-data GotoLine = GotoLine Int
-
-instance Show GotoLine where
-    show (GotoLine l) = show l
-
-instance ExCommand GotoLine where
-    cmdIsPure _ = True
-    cmdParse _ s = if and (fmap isDigit s) then Just (GotoLine (read s)) else Nothing
-    cmdAction (GotoLine l) = Left . withBuffer0 $gotoLn l >> firstNonSpaceB
+parse :: String -> Maybe ExCommand
+parse s = if and (fmap isDigit s)
+    then let l = read s in
+         Just $ pureExCommand {
+             cmdAction = Left . withBuffer0 $gotoLn l >> firstNonSpaceB
+           , cmdShow = s
+         }
+    else Nothing

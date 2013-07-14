@@ -3,7 +3,6 @@ module Yi.Keymap.Vim2.Ex
     , exEvalY
     , stringToExCommand
     , ExCommand(..)
-    , ExCommandBox(..)
     , allExCommands
     ) where
 
@@ -21,16 +20,16 @@ import qualified Yi.Keymap.Vim2.Ex.Commands.Substitute as Substitute
 import qualified Yi.Keymap.Vim2.Ex.Commands.Write as Write
 import qualified Yi.Keymap.Vim2.Ex.Commands.Yi as Yi
 
-allExCommands :: [ExCommandBox]
-allExCommands = concat
-    [ Delete.commands
-    , Edit.commands
-    , Global.commands
-    , GotoLine.commands
-    , Nohl.commands
-    , Quit.commands
-    , Reload.commands
-    , Substitute.commands
-    , Write.commands
-    , Yi.commands
+allExCommands :: [String -> Maybe ExCommand]
+allExCommands =
+    [ Delete.parse
+    , Edit.parse
+    , Global.parse
+    , GotoLine.parse
+    , Nohl.parse
+    , Quit.parse
+    , Reload.parse
+    , Substitute.parse
+    , Write.parse
+    , Yi.parse
     ]

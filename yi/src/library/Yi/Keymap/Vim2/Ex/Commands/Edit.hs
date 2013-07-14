@@ -1,5 +1,5 @@
 module Yi.Keymap.Vim2.Ex.Commands.Edit 
-    ( commands
+    ( parse
     ) where
 
 import Prelude ()
@@ -11,28 +11,24 @@ import qualified Text.ParserCombinators.Parsec as P
 import Yi.Editor
 import Yi.File
 import Yi.Keymap.Vim2.Ex.Types
-import Yi.Keymap.Vim2.Ex.Commands.Common
+import qualified Yi.Keymap.Vim2.Ex.Commands.Common as Common
 
-commands :: [ExCommandBox]
-commands = [pack $ Edit undefined undefined]
+parse :: String -> Maybe ExCommand
+parse = Common.parse $ do
+    tab <- P.many (P.string "tab")
+    discard $ P.try ( P.string "edit") <|> P.string "e"
+    discard $ P.many1 P.space
+    filename <- P.many1 P.anyChar
+    return $! edit (not (null tab)) filename
 
-data Edit = Edit {
-    _shouldOpenInNewTab :: !Bool
-  , _filename :: !FilePath
-}
-
-instance Show Edit where
-    show (Edit tab f) = (if tab then "tab" else "") ++ "edit " ++ f
-
-instance ExCommand Edit where
-    cmdComplete (Edit tab f) = (fmap . fmap) (show . Edit tab)
-                                (filenameComplete f)
-    cmdParse _ = parse $ do
-        tab <- P.many (P.string "tab")
-        discard $ P.try ( P.string "edit") <|> P.string "e"
-        discard $ P.many1 P.space
-        filename <- P.many1 P.anyChar
-        return $! Edit (not (null tab)) filename
-    cmdAction (Edit tab f) = Right $ do
+edit :: Bool -> FilePath -> ExCommand
+edit tab f = Common.impureExCommand {
+    cmdShow = showEdit tab f
+  , cmdAction = Right $ do
         when tab $ withEditor newTabE
         discard . editFile $ f
+  , cmdComplete = (fmap . fmap) (showEdit tab) (Common.filenameComplete f)
+  }
+
+showEdit :: Bool -> FilePath -> String
+showEdit tab f = (if tab then "tab" else "") ++ "edit " ++ f

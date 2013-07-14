@@ -1,25 +1,21 @@
 module Yi.Keymap.Vim2.Ex.Commands.Nohl
-    ( commands
+    ( parse 
     ) where
 
 import Prelude ()
 import Yi.Prelude
 
 import Yi.Keymap.Vim2.Ex.Types
+import Yi.Keymap.Vim2.Ex.Commands.Common (pureExCommand)
 import Yi.Search
 
-commands :: [ExCommandBox]
-commands = [pack Nohl]
+parse :: String -> Maybe ExCommand
+parse s = if s == "nohl" || s == "nohlsearch"
+    then Just nohl
+    else Nothing
 
-data Nohl = Nohl
-
-instance Show Nohl where
-    show _ = "nohlsearch"
-
-instance ExCommand Nohl where
-    cmdIsPure _ = True
-    cmdComplete _ = return $! Just "nohlsearch"
-    cmdParse _ s = if s == "nohl" || s == "nohlsearch"
-                   then Just Nohl
-                   else Nothing
-    cmdAction _ = Left resetRegexE
+nohl :: ExCommand
+nohl = pureExCommand {
+    cmdAction = Left resetRegexE
+  , cmdShow = "nohlsearch"
+  }

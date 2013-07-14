@@ -1,5 +1,5 @@
 module Yi.Keymap.Vim2.Ex.Commands.Quit
-    ( commands
+    ( parse
     ) where
 
 import Prelude ()
@@ -15,45 +15,36 @@ import Yi.Editor
 import Yi.File
 import Yi.Keymap
 import Yi.Keymap.Vim2.Ex.Types
-import Yi.Keymap.Vim2.Ex.Commands.Common
+import qualified Yi.Keymap.Vim2.Ex.Commands.Common as Common
 
-commands :: [ExCommandBox]
-commands =
-    [ pack (Quit undefined undefined undefined)
-    ]
+parse :: String -> Maybe ExCommand
+parse = Common.parse $ do
+    ws <- P.many (P.char 'w')
+    discard $ P.try ( P.string "quit") <|> P.string "q"
+    as <- P.many (P.try ( P.string "all") <|> P.string "a")
+    bangs <- P.many (P.char '!')
+    return $! quit (not $ null ws) (not $ null bangs) (not $ null as)
 
--- | "q", "wq", "q!", ..
-data Quit = Quit {
-        _quitWrite :: !Bool
-      , _quitForce :: !Bool
-      , _quitAll :: !Bool
-    }
+quit :: Bool -> Bool -> Bool -> ExCommand
+quit w f a = Common.impureExCommand {
+    cmdShow = concat
+        [ (if w then "w" else "")
+        , "quit"
+        , (if a then "all" else "")
+        , (if f then "!" else "")
+        ]
+  , cmdAction = Right $ action w f a
+  }
 
-instance Show Quit where
-    show (Quit w f a) = (if w then "w" else "")
-                     ++ "quit"
-                     ++ (if a then "all" else "")
-                     ++ (if f then "!" else "")
-
-instance ExCommand Quit where
-    cmdParse _ = parse $ do
-        ws <- P.many (P.char 'w')
-        discard $ P.try ( P.string "quit") <|> P.string "q"
-        as <- P.many (P.try ( P.string "all") <|> P.string "a")
-        bangs <- P.many (P.char '!')
-        return $! Quit (not $ null ws) (not $ null bangs) (not $ null as)
-    cmdAction = Right . action
-
-action :: Quit -> YiM ()
-action (Quit False False False) = closeWindow
-action (Quit False False  True) = quitAllE
-action (Quit  True False False) = viWrite >> closeWindow
-action (Quit  True False  True) = saveAndQuitAllE
-action (Quit False  True False) = quitEditor
-action (Quit False  True  True) = closeWindow
-action (Quit  True  True False) = viWrite >> closeWindow
-action (Quit  True  True  True) = saveAndQuitAllE
-
+action :: Bool -> Bool -> Bool -> YiM ()
+action False False False = closeWindow
+action False False  True = quitAllE
+action  True False False = viWrite >> closeWindow
+action  True False  True = saveAndQuitAllE
+action False  True False = quitEditor
+action False  True  True = closeWindow
+action  True  True False = viWrite >> closeWindow
+action  True  True  True = saveAndQuitAllE
 
 quitAllE :: YiM ()
 quitAllE = do
@@ -68,7 +59,7 @@ quitAllE = do
                         ++ " (add ! to override)"
 
 saveAndQuitAllE :: YiM ()
-saveAndQuitAllE = forAllBuffers fwriteBufferE >> quitEditor
+saveAndQuitAllE = Common.forAllBuffers fwriteBufferE >> quitEditor
 
 needsAWindowB :: BufferM Bool
 needsAWindowB = do

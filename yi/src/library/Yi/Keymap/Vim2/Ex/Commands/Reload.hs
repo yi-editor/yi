@@ -1,5 +1,5 @@
 module Yi.Keymap.Vim2.Ex.Commands.Reload
-    ( commands
+    ( parse
     ) where
 
 import Prelude ()
@@ -7,15 +7,11 @@ import Yi.Prelude
 
 import {-# source #-} Yi.Boot (reload)
 import Yi.Keymap.Vim2.Ex.Types
+import Yi.Keymap.Vim2.Ex.Commands.Common (impureExCommand)
 
-commands :: [ExCommandBox]
-commands = [pack Reload]
-
-data Reload = Reload
-
-instance Show Reload where
-    show _ = "reload"
-
-instance ExCommand Reload where
-    cmdParse _ s = if s == "reload" then Just Reload else Nothing
-    cmdAction _ = Right reload
+parse :: String -> Maybe ExCommand
+parse "reload" = Just $ impureExCommand {
+    cmdShow = "reload"
+  , cmdAction = Right reload
+  }
+parse _ = Nothing

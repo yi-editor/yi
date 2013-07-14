@@ -1,5 +1,3 @@
-{-# LANGUAGE ExistentialQuantification #-}
-
 module Yi.Keymap.Vim2.Ex.Types where
 
 import Prelude ()
@@ -10,35 +8,21 @@ import Data.Maybe
 import Yi.Editor
 import Yi.Keymap
 
-class Show e => ExCommand e where
-    cmdParse :: e -> String -> Maybe e
-    cmdComplete :: e -> YiM (Maybe String)
-    cmdIsPure :: e -> Bool
-    cmdAction :: e -> Either (EditorM ()) (YiM ())
-    cmdAcceptsRange :: e -> Bool
-    -- Default implementation
-    cmdAcceptsRange _ = False
-    cmdComplete _ = return Nothing
-    cmdIsPure _ = False
+data ExCommand = ExCommand {
+    cmdComplete :: YiM (Maybe String)
+  , cmdIsPure :: Bool
+  , cmdAction :: Either (EditorM ()) (YiM ())
+  , cmdAcceptsRange :: Bool
+  , cmdShow :: String
+}
+
+instance Show ExCommand where
+    show = cmdShow
 
 data LineRange
     = MarkRange String String -- ^ 'a,'b
     | FullRange               -- ^ %
     | CurrentLineRange
 
-data ExCommandBox = forall a. ExCommand a => ExCommandBox a
-
-pack :: forall a. ExCommand a => a -> ExCommandBox
-pack = ExCommandBox
-
-instance ExCommand ExCommandBox where
-    cmdParse (ExCommandBox e) = fmap ExCommandBox . cmdParse e
-    cmdComplete (ExCommandBox e) = cmdComplete e
-    cmdIsPure (ExCommandBox e) = cmdIsPure e
-    cmdAction (ExCommandBox e) = cmdAction e
-
-instance Show ExCommandBox where
-    show (ExCommandBox e) = show e
-
-stringToExCommand :: [ExCommandBox] -> String -> Maybe ExCommandBox
-stringToExCommand cmds s = listToMaybe . mapMaybe (`cmdParse` s) $ cmds
+stringToExCommand :: [String -> Maybe ExCommand] -> String -> Maybe ExCommand
+stringToExCommand parsers s = listToMaybe . mapMaybe ($ s) $ parsers

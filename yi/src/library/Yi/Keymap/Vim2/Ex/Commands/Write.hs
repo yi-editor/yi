@@ -1,5 +1,5 @@
 module Yi.Keymap.Vim2.Ex.Commands.Write
-    ( commands
+    ( parse
     ) where
 
 import Prelude ()
@@ -11,37 +11,29 @@ import qualified Text.ParserCombinators.Parsec as P
 
 import Yi.File
 import Yi.Keymap.Vim2.Ex.Types
-import Yi.Keymap.Vim2.Ex.Commands.Common
+import qualified Yi.Keymap.Vim2.Ex.Commands.Common as Common
 
-commands :: [ExCommandBox]
-commands = [ pack $ WriteAs undefined
-           , pack $ Write undefined
-           ]
+parse :: String -> Maybe ExCommand
+parse = Common.parse $ P.choice [parseWrite, parseWriteAs]
+    where parseWrite = do
+            discard $ P.try ( P.string "write") <|> P.string "w"
+            alls <- P.many (P.try ( P.string "all") <|> P.string "a")
+            return $! writeCmd $ not (null alls)
 
-data WriteAs = WriteAs FilePath
+          parseWriteAs = do
+            discard $ P.try ( P.string "write") <|> P.string "w"
+            discard $ P.many1 P.space
+            filename <- P.many1 P.anyChar
+            return $! writeAsCmd filename
 
-data Write = Write {
-    _all :: !Bool
-}
+writeCmd :: Bool -> ExCommand
+writeCmd allFlag = Common.impureExCommand {
+    cmdShow = "write" ++ (if allFlag then "all" else "")
+  , cmdAction = Right $ if allFlag then Common.forAllBuffers fwriteBufferE else viWrite
+  }
 
-instance Show WriteAs where
-    show (WriteAs f) = "write " ++ f
-
-instance Show Write where
-    show (Write a) = "write" ++ (if a then "all" else "")
-
-instance ExCommand Write where
-    cmdParse _ = parse $ do
-        discard $ P.try ( P.string "write") <|> P.string "w"
-        alls <- P.many (P.try ( P.string "all") <|> P.string "a")
-        return $! Write (not (null alls))
-    cmdAction (Write False) = Right viWrite
-    cmdAction (Write True) = Right $ forAllBuffers fwriteBufferE
-
-instance ExCommand WriteAs where
-    cmdParse _ = parse $ do
-        discard $ P.try ( P.string "write") <|> P.string "w"
-        discard $ P.many1 P.space
-        filename <- P.many1 P.anyChar
-        return $! WriteAs filename
-    cmdAction (WriteAs f) = Right $ viWriteTo f
+writeAsCmd :: FilePath -> ExCommand
+writeAsCmd filename = Common.impureExCommand {
+    cmdShow = "write " ++ filename
+  , cmdAction = Right $ viWriteTo filename
+  }

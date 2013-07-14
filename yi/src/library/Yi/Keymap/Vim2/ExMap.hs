@@ -60,7 +60,7 @@ finishBindingE = VimBindingE
     (finishPrereq cmdIsPure)
     (const $ finishAction exEvalE)
 
-finishPrereq :: (ExCommandBox -> Bool) -> EventString -> VimState -> MatchResult ()
+finishPrereq :: (ExCommand -> Bool) -> EventString -> VimState -> MatchResult ()
 finishPrereq cmdPred evs s =
     matchFromBool . and $
         [ vsMode s == Ex
@@ -70,7 +70,8 @@ finishPrereq cmdPred evs s =
             _ -> False
         ]
 
-finishAction :: MonadEditor m => ([ExCommandBox] -> String -> m ()) -> m RepeatToken
+finishAction :: MonadEditor m =>
+    ([String -> Maybe ExCommand] -> String -> m ()) -> m RepeatToken
 finishAction execute = do
     s <- withEditor $ withBuffer0 elemsB
     withEditor exitEx

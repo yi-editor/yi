@@ -1,5 +1,5 @@
 module Yi.Keymap.Vim2.Ex.Commands.Yi
-    ( commands
+    ( parse
     ) where
 
 import Prelude ()
@@ -9,22 +9,14 @@ import qualified Text.ParserCombinators.Parsec as P
 
 import Yi.Eval (execEditorAction)
 import Yi.Keymap.Vim2.Ex.Types
-import Yi.Keymap.Vim2.Ex.Commands.Common
+import qualified Yi.Keymap.Vim2.Ex.Commands.Common as Common
 
-commands :: [ExCommandBox]
-commands = [pack $ Eval undefined]
-
-data Eval = Eval {
-    _cmd :: !String
-}
-
-instance Show Eval where
-    show (Eval cmd) = "yi " ++ cmd
-
-instance ExCommand Eval where
-    cmdParse _ = parse $ do
-        discard $ P.string "yi"
-        discard $ P.many1 P.space
-        cmd <- P.many1 P.anyChar
-        return $! Eval cmd
-    cmdAction (Eval cmd) = Right $ execEditorAction cmd
+parse :: String -> Maybe ExCommand
+parse = Common.parse $ do
+    discard $ P.string "yi"
+    discard $ P.many1 P.space
+    cmd <- P.many1 P.anyChar
+    return $! Common.impureExCommand {
+        cmdAction = Right $ execEditorAction cmd
+      , cmdShow = cmd
+      }

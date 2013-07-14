@@ -3,6 +3,8 @@ module Yi.Keymap.Vim2.Ex.Commands.Common
     , parseRange
     , filenameComplete
     , forAllBuffers
+    , pureExCommand
+    , impureExCommand
     ) where
 
 import Prelude ()
@@ -57,3 +59,15 @@ filenameComplete f = do
 
 forAllBuffers :: MonadEditor m => (BufferRef -> m ()) -> m ()
 forAllBuffers f = mapM_ f =<< readEditor bufferStack
+
+pureExCommand :: ExCommand
+pureExCommand = ExCommand {
+    cmdIsPure = True
+  , cmdComplete = return Nothing
+  , cmdAcceptsRange = False
+  , cmdAction = undefined
+  , cmdShow = undefined
+  }
+
+impureExCommand :: ExCommand
+impureExCommand = pureExCommand { cmdIsPure = False }

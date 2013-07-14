@@ -1,5 +1,5 @@
 module Yi.Keymap.Vim2.Ex.Commands.Delete
-    ( commands
+    ( parse
     ) where
 
 import Prelude ()
@@ -10,21 +10,14 @@ import qualified Text.ParserCombinators.Parsec as P
 import Yi.Buffer hiding (Delete)
 import Yi.Editor
 import Yi.Keymap.Vim2.Ex.Types
-import Yi.Keymap.Vim2.Ex.Commands.Common
+import qualified Yi.Keymap.Vim2.Ex.Commands.Common as Common
 
-commands :: [ExCommandBox]
-commands = [pack Delete]
-
-data Delete = Delete
-
-instance Show Delete where
-    show Delete = "delete"
-
-instance ExCommand Delete where
-    cmdIsPure _ = True
-    cmdParse _ = parse $ do
-        discard $ P.try ( P.string "delete") <|> P.string "d"
-        return Delete
-    cmdAction _ = Left . withBuffer0 $ do
-        deleteUnitB Line Forward
-        deleteN 1
+parse :: String -> Maybe ExCommand
+parse = Common.parse $ do
+    discard $ P.try ( P.string "delete") <|> P.string "d"
+    return $ Common.pureExCommand {
+        cmdShow = "delete"
+      , cmdAction = Left . withBuffer0 $ do
+            deleteUnitB Line Forward
+            deleteN 1
+      }
