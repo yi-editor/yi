@@ -97,6 +97,11 @@ finishingBingings = fmap (mkBindingE Normal Finish)
     [ (char 'x', cutCharE Forward =<< getCountE, resetCount)
     , (char 'X', cutCharE Backward =<< getCountE, resetCount)
 
+    , (char 'D',
+        do region <- withBuffer0 $ regionWithTwoMovesB (return ()) moveToEol
+           discard $ operatorApplyToRegionE opDelete 1 $ StyledRegion Exclusive region
+        , id)
+
     -- Pasting
     , (char 'p', pasteAfter, id)
     , (char 'P', pasteBefore, id)
