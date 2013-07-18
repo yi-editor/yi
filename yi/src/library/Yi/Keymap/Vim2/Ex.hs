@@ -3,7 +3,7 @@ module Yi.Keymap.Vim2.Ex
     , exEvalY
     , stringToExCommand
     , ExCommand(..)
-    , allExCommands
+    , defExCommandParsers
     ) where
 
 import Yi.Keymap.Vim2.Ex.Types
@@ -20,8 +20,8 @@ import qualified Yi.Keymap.Vim2.Ex.Commands.Substitute as Substitute
 import qualified Yi.Keymap.Vim2.Ex.Commands.Write as Write
 import qualified Yi.Keymap.Vim2.Ex.Commands.Yi as Yi
 
-allExCommands :: [String -> Maybe ExCommand]
-allExCommands =
+defExCommandParsers :: [String -> Maybe ExCommand]
+defExCommandParsers =
     [ Delete.parse
     , Edit.parse
     , Global.parse

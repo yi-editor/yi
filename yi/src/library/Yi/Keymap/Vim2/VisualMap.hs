@@ -18,11 +18,12 @@ import Yi.Keymap.Vim2.StyledRegion
 import Yi.Keymap.Vim2.Utils
 import Yi.MiniBuffer
 
-defVisualMap :: [VimBinding]
-defVisualMap = [escBinding, motionBinding, changeVisualStyleBinding, setMarkBinding]
-            ++ [chooseRegisterBinding]
-            ++ operatorBindings ++ digitBindings ++ [replaceBinding, switchEdgeBinding]
-            ++ [insertBinding, exBinding, shiftDBinding]
+defVisualMap :: [VimOperator] -> [VimBinding]
+defVisualMap operators =
+    [escBinding, motionBinding, changeVisualStyleBinding, setMarkBinding]
+    ++ [chooseRegisterBinding]
+    ++ operatorBindings operators ++ digitBindings ++ [replaceBinding, switchEdgeBinding]
+    ++ [insertBinding, exBinding, shiftDBinding]
 
 escBinding :: VimBinding
 escBinding = VimBindingE prereq action
@@ -121,21 +122,18 @@ regionOfSelectionB = savingPointB $ do
     stop <- pointB
     return $! mkRegion start stop
 
-operatorBindings :: [VimBinding]
-operatorBindings = fmap mkOperatorBinding $ operators ++ visualOperators
-
-visualOperators :: [VimOperator]
-visualOperators =
-    let synonymOp (newName, existingName) =
-            VimOperator newName . operatorApplyToRegionE . fromJust
-            . stringToOperator operators $ existingName
-    in fmap synonymOp
-    [ ("x", "d")
-    , ("~", "g~")
-    , ("Y", "y")
-    , ("u", "gu")
-    , ("U", "gU")
-    ]
+operatorBindings :: [VimOperator] -> [VimBinding]
+operatorBindings operators = fmap mkOperatorBinding $ operators ++ visualOperators
+    where visualOperators = fmap synonymOp
+                                  [ ("x", "d")
+                                  , ("~", "g~")
+                                  , ("Y", "y")
+                                  , ("u", "gu")
+                                  , ("U", "gU")
+                                  ]
+          synonymOp (newName, existingName) =
+                    VimOperator newName . operatorApplyToRegionE . fromJust
+                    . stringToOperator operators $ existingName
 
 chooseRegisterBinding :: VimBinding
 chooseRegisterBinding = mkChooseRegisterBinding $

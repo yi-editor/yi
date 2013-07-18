@@ -1,6 +1,6 @@
 module Yi.Keymap.Vim2.Operator
     ( VimOperator(..)
-    , operators
+    , defOperators
     , opDelete
     , opChange
     , opYank
@@ -30,8 +30,8 @@ data VimOperator = VimOperator {
   , operatorApplyToRegionE :: Int -> StyledRegion -> EditorM RepeatToken
 }
 
-operators :: [VimOperator]
-operators =
+defOperators :: [VimOperator]
+defOperators =
     [ opYank
     , opDelete
     , opChange

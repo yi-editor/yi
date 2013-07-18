@@ -13,20 +13,23 @@ import Yi.Keymap.Vim2.StateUtils
 import Yi.Keymap.Vim2.Utils
 import Yi.Keymap.Vim2.Ex
 
-defExMap :: [VimBinding]
-defExMap = [ exitBinding, completionBinding
-           , finishBindingY, finishBindingE
-           , failBindingE
-           , printable
-           ]
+defExMap :: [String -> Maybe ExCommand] -> [VimBinding]
+defExMap cmdParsers =
+    [ exitBinding
+    , completionBinding cmdParsers
+    , finishBindingY cmdParsers
+    , finishBindingE cmdParsers
+    , failBindingE
+    , printable
+    ]
 
-completionBinding :: VimBinding
-completionBinding = VimBindingY prereq action
+completionBinding :: [String -> Maybe ExCommand] -> VimBinding
+completionBinding commandParsers = VimBindingY prereq action
     where prereq evs (VimState { vsMode = Ex }) = matchFromBool $ evs == "<Tab>"
           prereq _ _ = NoMatch
           action _ = do
               commandString <- withEditor $ withBuffer0 elemsB
-              case stringToExCommand allExCommands commandString of
+              case stringToExCommand commandParsers commandString of
                   Just cmd -> do
                       maybeNewString <- cmdComplete cmd
                       case maybeNewString of
@@ -50,32 +53,33 @@ exitBinding = VimBindingE prereq action
               exitEx
               return Drop
 
-finishBindingY :: VimBinding
-finishBindingY = VimBindingY
-    (finishPrereq (not . cmdIsPure))
-    (const $ finishAction exEvalY)
+finishBindingY :: [String -> Maybe ExCommand] -> VimBinding
+finishBindingY commandParsers = VimBindingY
+    (finishPrereq commandParsers (not . cmdIsPure))
+    (const $ finishAction commandParsers exEvalY)
 
-finishBindingE :: VimBinding
-finishBindingE = VimBindingE
-    (finishPrereq cmdIsPure)
-    (const $ finishAction exEvalE)
+finishBindingE :: [String -> Maybe ExCommand] -> VimBinding
+finishBindingE commandParsers = VimBindingE
+    (finishPrereq commandParsers cmdIsPure)
+    (const $ finishAction commandParsers exEvalE)
 
-finishPrereq :: (ExCommand -> Bool) -> EventString -> VimState -> MatchResult ()
-finishPrereq cmdPred evs s =
+finishPrereq :: [String -> Maybe ExCommand] -> (ExCommand -> Bool)
+    -> EventString -> VimState -> MatchResult ()
+finishPrereq commandParsers cmdPred evs s =
     matchFromBool . and $
         [ vsMode s == Ex
         , evs == "<CR>"
-        , case stringToExCommand allExCommands (vsOngoingInsertEvents s) of
+        , case stringToExCommand commandParsers (vsOngoingInsertEvents s) of
             Just cmd -> cmdPred cmd
             _ -> False
         ]
 
-finishAction :: MonadEditor m =>
+finishAction :: MonadEditor m => [String -> Maybe ExCommand] ->
     ([String -> Maybe ExCommand] -> String -> m ()) -> m RepeatToken
-finishAction execute = do
+finishAction commandParsers execute = do
     s <- withEditor $ withBuffer0 elemsB
     withEditor exitEx
-    execute allExCommands s
+    execute commandParsers s
     return Drop
 
 failBindingE :: VimBinding

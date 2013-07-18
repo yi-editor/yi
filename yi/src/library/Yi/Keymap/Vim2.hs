@@ -3,13 +3,12 @@
 module Yi.Keymap.Vim2
     ( keymapSet
     , mkKeymapSet
-    , defModeMapProto
+    , defVimConfig
     , VimBinding (..)
-    , ModeMap (..)
-    , vimEval
-    -- | for testing purposes
-    , allBindings
-    , defaultVimEval
+    , VimOperator (..)
+    , VimConfig (..)
+    , pureEval
+    , impureEval
     ) where
 
 import Prelude ()
@@ -25,10 +24,12 @@ import Yi.Keymap.Keys (anyEvent)
 
 import Yi.Keymap.Vim2.Common
 import Yi.Keymap.Vim2.EventUtils
+import Yi.Keymap.Vim2.Ex
 import Yi.Keymap.Vim2.ExMap
 import Yi.Keymap.Vim2.InsertMap
 import Yi.Keymap.Vim2.NormalMap
 import Yi.Keymap.Vim2.NormalOperatorPendingMap
+import Yi.Keymap.Vim2.Operator
 import Yi.Keymap.Vim2.ReplaceMap
 import Yi.Keymap.Vim2.ReplaceSingleCharMap
 import Yi.Keymap.Vim2.SearchMotionMap
@@ -36,48 +37,46 @@ import Yi.Keymap.Vim2.StateUtils
 import Yi.Keymap.Vim2.Utils
 import Yi.Keymap.Vim2.VisualMap
 
-data ModeMap = ModeMap {
-        vimKeymap :: Keymap,
-        normalMap :: [VimBinding],
-        normalOperatorPendingMap :: [VimBinding],
-        exMap :: [VimBinding],
-        insertMap :: [VimBinding],
-        replaceSingleMap :: [VimBinding],
-        replaceMap :: [VimBinding],
-        visualMap :: [VimBinding],
-        searchMotionMap :: [VimBinding]
-    }
+data VimConfig = VimConfig {
+    vimKeymap :: Keymap
+  , vimBindings :: [VimBinding]
+  , vimOperators :: [VimOperator]
+  , vimExCommandParsers :: [String -> Maybe ExCommand]
+  }
 
-mkKeymapSet :: Proto ModeMap -> KeymapSet
+mkKeymapSet :: Proto VimConfig -> KeymapSet
 mkKeymapSet = modelessKeymapSet . vimKeymap . extractValue
 
 keymapSet :: KeymapSet
-keymapSet = mkKeymapSet defModeMapProto
+keymapSet = mkKeymapSet defVimConfig
 
-defModeMapProto :: Proto ModeMap
-defModeMapProto = Proto template
-    where template self = ModeMap {
-                              vimKeymap = defVimKeymap self,
-                              normalMap = defNormalMap,
-                              normalOperatorPendingMap = defNormalOperatorPendingMap,
-                              exMap = defExMap,
-                              insertMap = defInsertMap,
-                              replaceSingleMap = defReplaceSingleMap,
-                              replaceMap = defReplaceMap,
-                              visualMap = defVisualMap,
-                              searchMotionMap = defSearchMotionMap
-                          }
+defVimConfig :: Proto VimConfig
+defVimConfig = Proto $ \this -> VimConfig {
+    vimKeymap = defVimKeymap this
+  , vimBindings = concat
+        [ defNormalMap (vimOperators this)
+        , defNormalOperatorPendingMap (vimOperators this)
+        , defExMap (vimExCommandParsers this)
+        , defInsertMap
+        , defReplaceSingleMap
+        , defReplaceMap
+        , defVisualMap (vimOperators this)
+        , defSearchMotionMap
+        ]
+  , vimOperators = defOperators
+  , vimExCommandParsers = defExCommandParsers
+  }
 
-defVimKeymap :: ModeMap -> KeymapM ()
-defVimKeymap mm = do
+defVimKeymap :: VimConfig -> KeymapM ()
+defVimKeymap config = do
     e <- anyEvent
-    write $ handleEvent mm e
+    write $ handleEvent config e
 
-handleEvent :: ModeMap -> Event -> YiM ()
-handleEvent mm event = do
+handleEvent :: VimConfig -> Event -> YiM ()
+handleEvent config event = do
     currentState <- withEditor getDynamic
     let evs = vsBindingAccumulator currentState ++ eventToString event
-        bindingMatch = selectBinding evs currentState (allBindings mm)
+        bindingMatch = selectBinding evs currentState (vimBindings config)
         prevMode = vsMode currentState
 
     repeatToken <- case bindingMatch of
@@ -100,37 +99,27 @@ handleEvent mm event = do
                 accumulateEventE event
                 flushAccumulatorIntoRepeatableActionE
 
-        performEvalIfNecessary mm
+        performEvalIfNecessary config
         updateModeIndicatorE prevMode
-
-allBindings :: ModeMap -> [VimBinding]
-allBindings m = concat [ normalMap m
-                       , normalOperatorPendingMap m
-                       , exMap m
-                       , insertMap m
-                       , replaceSingleMap m
-                       , replaceMap m
-                       , visualMap m
-                       , searchMotionMap m
-                       ]
 
 -- This is not in Yi.Keymap.Vim2.Eval to avoid circular dependency:
 -- eval needs to know about bindings, which contains normal bindings,
 -- which contains '.', which needs to eval things
 -- So as a workaround '.' just saves a string that needs eval in VimState
 -- and the actual evaluation happens in handleEvent
-vimEval :: ModeMap -> String -> EditorM ()
-vimEval mm s = sequence_ actions
-        where actions = map (pureHandleEvent mm) $ parseEvents s
+pureEval :: VimConfig -> String -> EditorM ()
+pureEval config s = sequence_ actions
+        where actions = map (pureHandleEvent config) $ parseEvents s
 
-defaultVimEval :: String -> EditorM ()
-defaultVimEval = vimEval $ extractValue defModeMapProto
+impureEval :: VimConfig -> String -> YiM ()
+impureEval config s = sequence_ actions
+        where actions = map (handleEvent config) $ parseEvents s
 
-pureHandleEvent :: ModeMap -> Event -> EditorM ()
-pureHandleEvent mm event = do
+pureHandleEvent :: VimConfig -> Event -> EditorM ()
+pureHandleEvent config event = do
     currentState <- getDynamic
     let evs = vsBindingAccumulator currentState ++ eventToString event
-        bindingMatch = selectBinding evs currentState (allPureBindings mm)
+        bindingMatch = selectBinding evs currentState (allPureBindings config)
         prevMode = vsMode currentState
     case bindingMatch of
         NoMatch -> dropBindingAccumulatorE
@@ -146,18 +135,18 @@ pureHandleEvent mm event = do
                 Finish -> accumulateEventE event >> flushAccumulatorIntoRepeatableActionE
         WholeMatch (VimBindingY _ _) -> fail "Impure binding found"
 
-    performEvalIfNecessary mm
+    performEvalIfNecessary config
     updateModeIndicatorE prevMode
 
-performEvalIfNecessary :: ModeMap -> EditorM ()
-performEvalIfNecessary mm = do
+performEvalIfNecessary :: VimConfig -> EditorM ()
+performEvalIfNecessary config = do
     stateAfterAction <- getDynamic
 
-    -- see comment for 'vimEval' below
+    -- see comment for 'pureEval'
     modifyStateE $ \s -> s { vsStringToEval = "" }
-    vimEval mm $ vsStringToEval stateAfterAction
+    pureEval config $ vsStringToEval stateAfterAction
 
-allPureBindings :: ModeMap -> [VimBinding]
-allPureBindings mm = filter isPure $ allBindings mm
+allPureBindings :: VimConfig -> [VimBinding]
+allPureBindings config = filter isPure $ vimBindings config
     where isPure (VimBindingE _ _) = True
           isPure _ = False

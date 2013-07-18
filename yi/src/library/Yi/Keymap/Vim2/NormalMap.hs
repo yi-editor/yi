@@ -35,15 +35,12 @@ mkDigitBinding c = mkBindingE Normal Continue (char c, return (), mutate)
           mutate vs@(VimState {vsCount = Just count}) = vs { vsCount = Just $ count * 10 + d }
           d = ord c - ord '0'
 
-defNormalMap :: [VimBinding]
-defNormalMap = pureBindings
-
-pureBindings :: [VimBinding]
-pureBindings =
+defNormalMap :: [VimOperator] -> [VimBinding]
+defNormalMap operators =
     [zeroBinding, repeatBinding, motionBinding, searchBinding] ++
     [chooseRegisterBinding, setMarkBinding] ++
     fmap mkDigitBinding ['1' .. '9'] ++
-    operatorBindings ++
+    operatorBindings operators ++
     finishingBingings ++
     continuingBindings ++
     nonrepeatableBindings ++
@@ -158,8 +155,8 @@ pasteAfter = do
             whenM (fmap not atEol) rightB
             pasteInclusiveB rope style
 
-operatorBindings :: [VimBinding]
-operatorBindings = fmap mkOperatorBinding operators
+operatorBindings :: [VimOperator] -> [VimBinding]
+operatorBindings = fmap mkOperatorBinding
     where mkOperatorBinding (VimOperator {operatorName = opName}) =
               mkStringBindingE Normal (if opName == "y" then Drop else Continue)
                   (opName, return (), switchMode (NormalOperatorPending opName))

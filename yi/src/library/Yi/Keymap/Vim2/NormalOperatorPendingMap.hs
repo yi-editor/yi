@@ -20,11 +20,11 @@ import Yi.Keymap.Vim2.StyledRegion
 import Yi.Keymap.Vim2.TextObject
 import Yi.Keymap.Vim2.Utils
 
-defNormalOperatorPendingMap :: [VimBinding]
-defNormalOperatorPendingMap = [textObject, escBinding]
+defNormalOperatorPendingMap :: [VimOperator] -> [VimBinding]
+defNormalOperatorPendingMap operators = [textObject operators, escBinding]
 
-textObject :: VimBinding
-textObject = VimBindingE prereq action
+textObject :: [VimOperator] -> VimBinding
+textObject operators = VimBindingE prereq action
     where
         prereq _ vs = case vsMode vs of
                             NormalOperatorPending _ -> WholeMatch ()

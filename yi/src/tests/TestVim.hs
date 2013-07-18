@@ -8,6 +8,7 @@ import qualified Test.Framework as TF
 
 import Control.Monad (filterM, forM, void, unless)
 
+import Data.Prototype (extractValue)
 import Data.List (sort, isSuffixOf, intercalate)
 
 import System.Directory
@@ -111,7 +112,7 @@ mkTestCase :: VimTest -> TF.Test
 mkTestCase t = testCase (vtName t) $ assertEqual errorMsg actualOut (vtOutput t)
     where outputMatches = vtOutput t == actualOut
           actualOut = extractBufferString . fst $
-              runEditor' (defaultVimEval $ vtEventString t)
+              runEditor' (defVimEval $ vtEventString t)
                          (initialEditor $ vtInput t)
           extractBufferString editor = cursorPos editor ++ "\n" ++
                                        snd (runEditor' (withBuffer0 elemsB) editor)
@@ -124,6 +125,7 @@ mkTestCase t = testCase (vtName t) $ assertEqual errorMsg actualOut (vtOutput t)
                              , "Got:", actualOut
                              , "Events:", vtEventString t
                              , "---"]
+          defVimEval = pureEval (extractValue defVimConfig)
 
 initialEditor :: String -> Editor
 initialEditor input = fst $ runEditor' action emptyEditor
