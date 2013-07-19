@@ -84,6 +84,8 @@ linewiseMotions :: [(String, Bool, Maybe Int -> BufferM ())]
 linewiseMotions = fmap withDefaultCount
     [ ("j", False, discard . lineMoveRel)
     , ("k", False, discard . lineMoveRel . negate)
+    , ("<Down>", False, discard . lineMoveRel)
+    , ("<Up>", False, discard . lineMoveRel . negate)
     , ("-", False, const firstNonSpaceB <=< discard . lineMoveRel . negate)
     , ("+", False, const firstNonSpaceB <=< discard . lineMoveRel)
     , ("_", False, \n -> do
@@ -98,6 +100,8 @@ exclusiveMotions :: [(String, Bool, Maybe Int -> BufferM ())]
 exclusiveMotions = fmap withDefaultCount
     [ ("h", False, moveXorSol)
     , ("l", False, moveXorEol)
+    , ("<Left>", False, moveXorSol)
+    , ("<Right>", False, moveXorEol)
     , ("w", False, moveForwardB unitViWord)
     , ("W", False, moveForwardB unitViWORD)
     , ("b", False, moveBackwardB unitViWord)

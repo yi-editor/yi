@@ -1,0 +1,12 @@
+-- Input
+(2,2)
+foo
+bar
+baz
+-- Output
+(3,3)
+foo
+b1ar
+ba3z
+-- Events
+i1<Down>3<Esc>

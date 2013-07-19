@@ -17,12 +17,17 @@ import Yi.Event
 import Yi.Keymap.Keys (char, ctrlCh, spec)
 import Yi.Keymap.Vim2.Common
 
+-- TODO: Remove duplication between stringToEvent and eventToString
 stringToEvent :: String -> Event
 stringToEvent ('<':'C':'-':c:'>':[]) = ctrlCh c
 stringToEvent "<Esc>" = spec KEsc
 stringToEvent "<CR>" = spec KEnter
 stringToEvent "<BS>" = spec KBS
 stringToEvent "<Tab>" = spec KTab
+stringToEvent "<Down>" = spec KDown
+stringToEvent "<Up>" = spec KUp
+stringToEvent "<Left>" = spec KLeft
+stringToEvent "<Right>" = spec KRight
 stringToEvent "<lt>" = char '<'
 stringToEvent (c:[]) = char c
 stringToEvent ('<':'F':d:'>':[]) | isDigit d = spec (KFun $ read [d])
@@ -38,6 +43,10 @@ eventToString (Event KEsc []) = "<Esc>"
 eventToString (Event KBS []) = "<BS>"
 eventToString (Event KTab []) = "<Tab>"
 eventToString (Event KEnter []) = "<CR>"
+eventToString (Event KUp []) = "<Up>"
+eventToString (Event KDown []) = "<Down>"
+eventToString (Event KLeft []) = "<Left>"
+eventToString (Event KRight []) = "<Right>"
 eventToString (Event (KFun x) []) = "<F" ++ show x ++ ">"
 eventToString e = error $ "Couldn't convert event <" ++ show e ++ "> to string"
 

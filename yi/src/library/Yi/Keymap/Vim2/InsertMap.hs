@@ -25,7 +25,8 @@ defInsertMap :: [VimBinding]
 defInsertMap = specials ++ [printable]
 
 specials :: [VimBinding]
-specials = [exitBinding, pasteRegisterBinding, digraphBinding, oneshotNormalBinding, completionBinding]
+specials = [ exitBinding, pasteRegisterBinding, digraphBinding
+           , oneshotNormalBinding, completionBinding, cursorBinding]
 
 exitBinding :: VimBinding
 exitBinding = VimBindingE prereq action
@@ -174,4 +175,14 @@ completionBinding = VimBindingE prereq action
           action evs = do
               let _direction = if evs == "<C-n>" then Forward else Backward
               completeWordB
+              return Continue
+
+cursorBinding :: VimBinding
+cursorBinding = VimBindingE prereq action
+    where prereq evs (VimState { vsMode = (Insert _) }) =
+              matchFromBool $ evs `elem` ["<Up>", "<Left>", "<Down>", "<Right>"]
+          prereq _ _ = NoMatch
+          action evs = do
+              let WholeMatch (Move _style _isJump move) = stringToMove evs
+              withBuffer0 $ move Nothing
               return Continue
