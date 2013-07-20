@@ -12,42 +12,57 @@ import Prelude ()
 
 import Data.Char (toUpper, isDigit)
 import Data.List (break)
+import qualified Data.Map as M
+import Data.Tuple (swap)
 
 import Yi.Event
 import Yi.Keymap.Keys (char, ctrlCh, spec)
 import Yi.Keymap.Vim2.Common
 
--- TODO: Remove duplication between stringToEvent and eventToString
+specMap :: M.Map EventString Key
+specMap = M.fromList $ specList
+
+invSpecMap :: M.Map Key EventString
+invSpecMap = M.fromList $ fmap swap specList
+
+specList =
+    [ ("<Esc>", KEsc)
+    , ("<CR>", KEnter)
+    , ("<BS>", KBS)
+    , ("<Tab>", KTab)
+    , ("<Down>", KDown)
+    , ("<Up>", KUp)
+    , ("<Left>", KLeft)
+    , ("<Right>", KRight)
+    , ("<PageUp>", KPageUp)
+    , ("<PageDown>", KPageDown)
+    , ("<Home>", KHome)
+    , ("<End>", KEnd)
+    , ("<Ins>", KIns)
+    , ("<Del>", KDel)
+    ]
+
 stringToEvent :: String -> Event
 stringToEvent ('<':'C':'-':c:'>':[]) = ctrlCh c
-stringToEvent "<Esc>" = spec KEsc
-stringToEvent "<CR>" = spec KEnter
-stringToEvent "<BS>" = spec KBS
-stringToEvent "<Tab>" = spec KTab
-stringToEvent "<Down>" = spec KDown
-stringToEvent "<Up>" = spec KUp
-stringToEvent "<Left>" = spec KLeft
-stringToEvent "<Right>" = spec KRight
 stringToEvent "<lt>" = char '<'
-stringToEvent (c:[]) = char c
+stringToEvent [c] = char c
 stringToEvent ('<':'F':d:'>':[]) | isDigit d = spec (KFun $ read [d])
-stringToEvent ('<':'F':'1':d:'>':[]) | isDigit d = spec (KFun $ 9 + read [d])
-stringToEvent s = error $ "Couldn't convert string <" ++ s ++ "> to event"
+stringToEvent ('<':'F':'1':d:'>':[]) | isDigit d = spec (KFun $ 10 + read [d])
+stringToEvent s =
+    case M.lookup s specMap of
+        Just k -> spec k
+        Nothing -> error $ "Couldn't convert string <" ++ s ++ "> to event"
 
 eventToString :: Event -> String
 eventToString (Event (KASCII '<') []) = "<lt>"
 eventToString (Event (KASCII c) []) = [c]
 eventToString (Event (KASCII c) [MCtrl]) = ['<', 'C', '-', c, '>']
 eventToString (Event (KASCII c) [MShift]) = [toUpper c]
-eventToString (Event KEsc []) = "<Esc>"
-eventToString (Event KBS []) = "<BS>"
-eventToString (Event KTab []) = "<Tab>"
-eventToString (Event KEnter []) = "<CR>"
-eventToString (Event KUp []) = "<Up>"
-eventToString (Event KDown []) = "<Down>"
-eventToString (Event KLeft []) = "<Left>"
-eventToString (Event KRight []) = "<Right>"
 eventToString (Event (KFun x) []) = "<F" ++ show x ++ ">"
+eventToString e@(Event k []) =
+    case M.lookup k invSpecMap of
+        Just s -> s
+        Nothing -> error $ "Couldn't convert event <" ++ show e ++ "> to string"
 eventToString e = error $ "Couldn't convert event <" ++ show e ++ "> to string"
 
 parseEvents :: String -> [Event]

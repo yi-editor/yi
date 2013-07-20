@@ -92,6 +92,10 @@ linewiseMotions = fmap withDefaultCount
                 when (n > 1) $ discard $ lineMoveRel (n - 1)
                 firstNonSpaceB)
     , ("gg", True, discard . gotoLn) -- TODO: save column
+    , ("<C-b>", False, scrollScreensB . negate)
+    , ("<PageUp>", False, scrollScreensB . negate)
+    , ("<C-f>", False, scrollScreensB)
+    , ("<PageDown>", False, scrollScreensB)
     ]
     ++ [("G", True, gotoXOrEOF)]
 
@@ -109,6 +113,7 @@ exclusiveMotions = fmap withDefaultCount
     , ("^", False, const firstNonSpaceB)
     , ("g^", False, const firstNonSpaceB) -- TODO: respect wrapping
     , ("g0", False, const moveToSol) -- TODO: respect wrapping
+    , ("<Home>", False, const moveToSol)
     -- "0" sort of belongs here, but is currently handled as a special case in some modes
     , ("|", False, \n -> moveToSol >> moveXorEol (n - 1))
     , ("(", True, moveBackwardB unitSentence)
@@ -131,6 +136,7 @@ inclusiveMotions = fmap (\(key, action) -> (key, False, action . fromMaybe 1))
     , ("g$", \n -> do
                 when (n > 1) $ discard $ lineMoveRel (n - 1)
                 moveToEol)
+    , ("<End>", const $ moveToEol >> leftOnEol)
     , ("$", \n -> do
                 when (n > 1) $ discard $ lineMoveRel (n - 1)
                 moveToEol

@@ -151,8 +151,8 @@ printableAction evs = do
                         "<C-y>" -> insertCharWithAboveB
                         "<BS>"  -> deleteB Character Backward
                         "<C-h>" -> deleteB Character Backward
+                        "<Del>" -> deleteB Character Forward
                         "<C-j>" -> insertB '\n'
-                        "<C-o>" -> return () -- TODO
                         "<C-w>" -> deleteRegionB =<< regionOfPartNonEmptyB unitViWordOnLine Backward
                         "<lt>" -> insertB '<'
                         evs' -> error $ "Unhandled event " ++ evs' ++ " in insert mode"

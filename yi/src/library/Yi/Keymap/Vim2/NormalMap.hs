@@ -90,27 +90,28 @@ jumpBindings = fmap (mkBindingE Normal Drop)
     ]
 
 finishingBingings :: [VimBinding]
-finishingBingings = fmap (mkBindingE Normal Finish)
-    [ (char 'x', cutCharE Forward =<< getCountE, resetCount)
-    , (char 'X', cutCharE Backward =<< getCountE, resetCount)
+finishingBingings = fmap (mkStringBindingE Normal Finish)
+    [ ("x", cutCharE Forward =<< getCountE, resetCount)
+    , ("<Del>", cutCharE Forward =<< getCountE, resetCount)
+    , ("X", cutCharE Backward =<< getCountE, resetCount)
 
-    , (char 'D',
+    , ("D",
         do region <- withBuffer0 $ regionWithTwoMovesB (return ()) moveToEol
            discard $ operatorApplyToRegionE opDelete 1 $ StyledRegion Exclusive region
         , id)
 
     -- Pasting
-    , (char 'p', pasteAfter, id)
-    , (char 'P', pasteBefore, id)
+    , ("p", pasteAfter, id)
+    , ("P", pasteBefore, id)
 
     -- Miscellaneous.
-    , (char '~', do
+    , ("~", do
            count <- getCountE
            withBuffer0 $ do
                transformCharactersInLineN count switchCaseChar
                leftOnEol
         , resetCount)
-    , (char 'J', do
+    , ("J", do
         count <- fmap (flip (-) 1 . max 2) getCountE
         withBuffer0 $ do
             (StyledRegion s r) <- case stringToMove "j" of
@@ -162,19 +163,20 @@ operatorBindings = fmap mkOperatorBinding
                   (opName, return (), switchMode (NormalOperatorPending opName))
 
 continuingBindings :: [VimBinding]
-continuingBindings = fmap (mkBindingE Normal Continue)
-    [ (char 'r', return (), switchMode ReplaceSingleChar) -- TODO make it just a binding
+continuingBindings = fmap (mkStringBindingE Normal Continue)
+    [ ("r", return (), switchMode ReplaceSingleChar) -- TODO make it just a binding
 
     -- Transition to insert mode
-    , (char 'i', return (), switchMode $ Insert 'i')
-    , (char 'I', withBuffer0 firstNonSpaceB, switchMode $ Insert 'I')
-    , (char 'a', withBuffer0 rightB, switchMode $ Insert 'a')
-    , (char 'A', withBuffer0 moveToEol, switchMode $ Insert 'A')
-    , (char 'o', withBuffer0 $ do
+    , ("i", return (), switchMode $ Insert 'i')
+    , ("<Ins>", return (), switchMode $ Insert 'i')
+    , ("I", withBuffer0 firstNonSpaceB, switchMode $ Insert 'I')
+    , ("a", withBuffer0 rightB, switchMode $ Insert 'a')
+    , ("A", withBuffer0 moveToEol, switchMode $ Insert 'A')
+    , ("o", withBuffer0 $ do
                      moveToEol
                      newlineAndIndentB
         , switchMode $ Insert 'o')
-    , (char 'O', withBuffer0 $ do
+    , ("O", withBuffer0 $ do
                      moveToSol
                      newlineB
                      leftB
@@ -182,9 +184,9 @@ continuingBindings = fmap (mkBindingE Normal Continue)
         , switchMode $ Insert 'O')
 
     -- Transition to visual
-    , (char 'v', enableVisualE Inclusive, resetCount . switchMode (Visual Inclusive))
-    , (char 'V', enableVisualE LineWise, resetCount . switchMode (Visual LineWise))
-    , (ctrlCh 'v', enableVisualE Block, resetCount . switchMode (Visual Block))
+    , ("v", enableVisualE Inclusive, resetCount . switchMode (Visual Inclusive))
+    , ("V", enableVisualE LineWise, resetCount . switchMode (Visual LineWise))
+    , ("<C-v>", enableVisualE Block, resetCount . switchMode (Visual Block))
     ]
 
 nonrepeatableBindings :: [VimBinding]
