@@ -73,7 +73,12 @@ textObject operators = VimBindingE prereq action
                             normalizeCountE (Just n)
                             normalizedCount <- getCountE
                             region <- withBuffer0 $ regionForOperatorLineB normalizedCount style
-                            operatorApplyToRegionE op 1 region
+                            curPoint <- withBuffer0 pointB
+                            token <- operatorApplyToRegionE op 1 region
+                            when (opname == "y") $
+                                withBuffer0 $ moveTo curPoint
+                            return token
+
                         _ -> error "can't happen"
                     resetCountE
                     return token
