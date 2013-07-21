@@ -6,7 +6,7 @@ import Prelude (FilePath)
 import Yi.Prelude
 
 import Control.Monad.RWS.Strict (ask)
-import Control.Monad.State hiding (forM, forM_)
+import Control.Monad.State hiding (forM, forM_, sequence_)
 
 import Data.Char
 import Data.List (isPrefixOf, sort, lines, drop, filter, length,
@@ -191,6 +191,12 @@ atSof = atBoundaryB Document Backward
 -- | True if point at end of file
 atEof :: BufferM Bool
 atEof = atBoundaryB Document Forward
+
+-- | True if point at the last line
+atLastLine :: BufferM Bool
+atLastLine = savingPointB $ do
+    moveToEol
+    (==) <$> sizeB <*> pointB
 
 -- | Get the current line and column number
 getLineAndCol :: BufferM (Int, Int)
@@ -817,9 +823,16 @@ readRegionRopeWithStyleB reg style = readRegionB' =<< convertRegionToStyleB reg 
 insertRopeWithStyleB :: Rope -> RegionStyle -> BufferM ()
 insertRopeWithStyleB rope Block = savingPointB $ do
     let ls = R.split (fromIntegral (ord '\n')) rope
-    forM_ ls $ \line -> do
-        savingPointB $ insertN' line
-        discard $ lineMoveRel 1
+        advanceLine = do
+            bottom <- atLastLine
+            if bottom
+            then do
+                col <- curCol
+                moveToEol
+                newlineB
+                insertN $ replicate col ' '
+            else discard $ lineMoveRel 1
+    sequence_ $ intersperse advanceLine $ fmap (savingPointB . insertN') ls
 insertRopeWithStyleB rope LineWise = do
     moveToSol
     savingPointB $ insertN' rope
