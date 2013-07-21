@@ -231,7 +231,7 @@ nonrepeatableBindings = fmap (mkBindingE Normal Drop)
     -- Undo
     , (char 'u', withCountOnBuffer0 undoB >> withBuffer0 leftOnEol, id)
     , (char 'U', withCountOnBuffer0 undoB >> withBuffer0 leftOnEol, id) -- TODO
-    , (ctrlCh 'r', withCountOnBuffer0 redoB, id)
+    , (ctrlCh 'r', withCountOnBuffer0 redoB >> withBuffer0 leftOnEol, id)
 
     -- scrolling
     ,(ctrlCh 'b', getCountE >>= withBuffer0 . upScreensB, id)

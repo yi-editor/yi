@@ -17,7 +17,7 @@ import System.FilePath
 
 import Text.Printf
 
-import Yi.Buffer.Misc
+import Yi.Buffer
 import Yi.Config.Default (defaultVimConfig)
 import Yi.Editor
 import Yi.Keymap.Vim2
@@ -130,7 +130,9 @@ mkTestCase t = testCase (vtName t) $ assertEqual errorMsg actualOut (vtOutput t)
 initialEditor :: String -> Editor
 initialEditor input = fst $ runEditor' action emptyEditor
     where action = withBuffer0 $ do
+                       startUpdateTransactionB
                        insertN text
+                       commitUpdateTransactionB
                        let (x, y) = read cursorLine
                        moveToLineColB x (y - 1)
           (cursorLine, '\n':text) = break (== '\n') input

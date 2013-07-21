@@ -153,6 +153,8 @@ module Yi.Buffer.Misc
   , pointAfterCursorB
   , destinationOfMoveB
   , withEveryLineB
+  , startUpdateTransactionB
+  , commitUpdateTransactionB
   )
 where
 
@@ -245,17 +247,21 @@ data Attributes = Attributes
                 , readOnly :: !Bool                -- ^ read-only flag
                 , inserting :: !Bool -- ^ the keymap is ready for insertion into this buffer
                 , pointFollowsWindow :: !(WindowRef -> Bool)
+                , updateTransactionInFlight :: !Bool
+                , updateTransactionAccum :: ![Update]
                 } deriving Typeable
 
 $(nameDeriveAccessors ''Attributes (\n -> Just (n ++ "AA")))
 
 instance Binary Attributes where
-    put (Attributes n b u bd pc pu selectionStyle_ _proc wm law lst ro ins _pfw) = do
+    put (Attributes n b u bd pc pu selectionStyle_ _proc wm law lst ro ins _pfw
+        isTransacPresent transacAccum) = do
           put n >> put b >> put u >> put bd
           put pc >> put pu >> put selectionStyle_ >> put wm
-          put law >> put lst >> put ro >> put ins
+          put law >> put lst >> put ro >> put ins >> put isTransacPresent >> put transacAccum
     get = Attributes <$> get <*> get <*> get <*> 
-          get <*> get <*> get <*> get <*> pure I.End <*> get <*> get <*> get <*> get <*> get <*> pure (const False)
+          get <*> get <*> get <*> get <*> pure I.End <*> get <*> get <*> get <*> get <*>
+              get <*> pure (const False) <*> get <*> get
 
 instance Binary UTCTime where
     put (UTCTime x y) = put (fromEnum x) >> put (fromEnum y)
@@ -344,6 +350,10 @@ insertingA = insertingAA . attrsA
 pointFollowsWindowA :: Accessor FBuffer (WindowRef -> Bool)
 pointFollowsWindowA = pointFollowsWindowAA . attrsA
 
+-- updateTransactionInFlightA :: Accessor FBuffer (WindowRef -> Bool)
+updateTransactionInFlightA = updateTransactionInFlightAA . attrsA
+
+updateTransactionAccumA = updateTransactionAccumAA . attrsA
 
 file :: FBuffer -> (Maybe FilePath)
 file b = case b ^. identA of
@@ -595,6 +605,28 @@ bkey = getVal (bkey__AA . attrsA)
 isUnchangedBuffer :: FBuffer -> Bool
 isUnchangedBuffer = isAtSavedFilePointU . getVal undosA
 
+startUpdateTransactionB :: BufferM ()
+startUpdateTransactionB = do
+  transactionPresent <- getA updateTransactionInFlightA
+  if transactionPresent
+  then error "Already started update transaction"
+  else do
+    modA undosA $ addChangeU InteractivePoint
+    putA updateTransactionInFlightA True
+
+commitUpdateTransactionB :: BufferM ()
+commitUpdateTransactionB = do
+  transactionPresent <- getA updateTransactionInFlightA
+  if not transactionPresent
+  then error "Not in update transaction"
+  else do
+    putA updateTransactionInFlightA False
+    transacAccum <- getA updateTransactionAccumA
+    putA updateTransactionAccumA []
+
+    modA undosA $ appEndo . mconcat $ fmap (Endo . addChangeU . AtomicChange) transacAccum
+    modA undosA $ addChangeU InteractivePoint
+
 
 undoRedo :: (forall syntax. Mark -> URList -> BufferImpl syntax -> (BufferImpl syntax, (URList, [Update])) ) -> BufferM ()
 undoRedo f = do
@@ -605,10 +637,19 @@ undoRedo f = do
   tell updates
 
 undoB :: BufferM ()
-undoB = undoRedo undoU
+undoB = do
+    isTransacPresent <- getA updateTransactionInFlightA
+    if isTransacPresent
+    then error "Can't undo while undo transaction is in progress"
+    else undoRedo undoU
 
 redoB :: BufferM ()
-redoB = undoRedo redoU
+redoB = do
+    isTransacPresent <- getA updateTransactionInFlightA
+    if isTransacPresent
+    then error "Can't undo while undo transaction is in progress"
+    else undoRedo redoU
+
 
 -- | Analogous to const, but returns a function that takes two parameters,
 -- rather than one.
@@ -667,6 +708,8 @@ newB unique nm s =
             , readOnly = False
             , inserting = True
             , pointFollowsWindow = const False
+            , updateTransactionInFlight = False
+            , updateTransactionAccum = []
             } }
 
 epoch :: UTCTime
@@ -728,7 +771,12 @@ applyUpdate update = do
         forgetPreferCol
         let reversed = reverseUpdateI update
         modifyBuffer (applyUpdateI update)
-        modA undosA $ addChangeU $ AtomicChange $ reversed
+
+        isTransacPresent <- getA updateTransactionInFlightA
+        if isTransacPresent
+        then modA updateTransactionAccumA $ (reversed:)
+        else modA undosA $ addChangeU $ AtomicChange $ reversed
+
         tell [update]
    -- otherwise, just ignore.
 

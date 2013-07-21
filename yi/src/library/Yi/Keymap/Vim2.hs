@@ -17,6 +17,7 @@ import Yi.Prelude
 import Data.List (map, filter)
 import Data.Prototype
 
+import Yi.Buffer hiding (Insert)
 import Yi.Editor
 import Yi.Event
 import Yi.Keymap
@@ -95,6 +96,15 @@ handleEvent config event = do
             return Continue
 
     withEditor $ do
+        newMode <- vsMode <$> getDynamic
+
+        -- TODO: we should introduce some hook mechanism like autocommands in vim
+        case (prevMode, newMode) of
+            (Insert _, Insert _) -> return ()
+            (Insert _, _) -> withBuffer0 commitUpdateTransactionB
+            (_, Insert _) -> withBuffer0 startUpdateTransactionB
+            _ -> return ()
+
         case repeatToken of
             Drop -> dropAccumulatorE
             Continue -> accumulateEventE event
@@ -118,6 +128,7 @@ impureEval :: VimConfig -> String -> YiM ()
 impureEval config s = sequence_ actions
         where actions = map (handleEvent config) $ parseEvents s
 
+-- TODO: merge handleEvent and pureHandleEvent somehow
 pureHandleEvent :: VimConfig -> Event -> EditorM ()
 pureHandleEvent config event = do
     currentState <- getDynamic
@@ -137,6 +148,15 @@ pureHandleEvent config event = do
                 Continue -> accumulateEventE event
                 Finish -> accumulateEventE event >> flushAccumulatorIntoRepeatableActionE
         WholeMatch (VimBindingY _ _) -> fail "Impure binding found"
+
+    newMode <- vsMode <$> getDynamic
+
+    -- TODO: we should introduce some hook mechanism like autocommands in vim
+    case (prevMode, newMode) of
+        (Insert _, Insert _) -> return ()
+        (Insert _, _) -> withBuffer0 commitUpdateTransactionB
+        (_, Insert _) -> withBuffer0 startUpdateTransactionB
+        _ -> return ()
 
     performEvalIfNecessary config
     updateModeIndicatorE prevMode
