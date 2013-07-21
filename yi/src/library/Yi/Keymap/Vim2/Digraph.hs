@@ -1,15 +1,17 @@
 module Yi.Keymap.Vim2.Digraph
     ( charFromDigraph
+    , defDigraphs
     ) where
 
 import Prelude ()
 import Yi.Prelude
 
-charFromDigraph :: Char -> Char -> Maybe Char
-charFromDigraph c1 c2 = lookup [c1, c2] digraphTable <|> lookup [c2, c1] digraphTable
+charFromDigraph :: [(String, Char)] -> Char -> Char -> Maybe Char
+charFromDigraph digraphTable c1 c2 =
+    lookup [c1, c2] digraphTable <|> lookup [c2, c1] digraphTable
 
-digraphTable :: [(String, Char)]
-digraphTable =
+defDigraphs :: [(String, Char)]
+defDigraphs =
     [ ("ae",  'æ')
     , ("a'",  'á')
     , ("e'",  'é')

@@ -23,6 +23,7 @@ import Yi.Keymap
 import Yi.Keymap.Keys (anyEvent)
 
 import Yi.Keymap.Vim2.Common
+import Yi.Keymap.Vim2.Digraph
 import Yi.Keymap.Vim2.EventUtils
 import Yi.Keymap.Vim2.Ex
 import Yi.Keymap.Vim2.ExMap
@@ -42,6 +43,7 @@ data VimConfig = VimConfig {
   , vimBindings :: [VimBinding]
   , vimOperators :: [VimOperator]
   , vimExCommandParsers :: [String -> Maybe ExCommand]
+  , vimDigraphs :: [(String, Char)]
   }
 
 mkKeymapSet :: Proto VimConfig -> KeymapSet
@@ -57,7 +59,7 @@ defVimConfig = Proto $ \this -> VimConfig {
         [ defNormalMap (vimOperators this)
         , defNormalOperatorPendingMap (vimOperators this)
         , defExMap (vimExCommandParsers this)
-        , defInsertMap
+        , defInsertMap (vimDigraphs this)
         , defReplaceSingleMap
         , defReplaceMap
         , defVisualMap (vimOperators this)
@@ -65,6 +67,7 @@ defVimConfig = Proto $ \this -> VimConfig {
         ]
   , vimOperators = defOperators
   , vimExCommandParsers = defExCommandParsers
+  , vimDigraphs = defDigraphs
   }
 
 defVimKeymap :: VimConfig -> KeymapM ()

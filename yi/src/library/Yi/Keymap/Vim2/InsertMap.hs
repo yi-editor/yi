@@ -21,15 +21,16 @@ import Yi.Keymap.Vim2.Utils
 import Yi.Keymap.Vim2.StateUtils
 import Yi.TextCompletion (completeWordB)
 
-defInsertMap :: [VimBinding]
-defInsertMap = specials ++ [printable]
+defInsertMap :: [(String, Char)] -> [VimBinding]
+defInsertMap digraphs = specials digraphs ++ [printable]
 
-specials :: [VimBinding]
-specials = [ exitBinding, pasteRegisterBinding, digraphBinding
-           , oneshotNormalBinding, completionBinding, cursorBinding]
+specials :: [(String, Char)] -> [VimBinding]
+specials digraphs =
+    [exitBinding digraphs, pasteRegisterBinding, digraphBinding digraphs
+    , oneshotNormalBinding, completionBinding, cursorBinding]
 
-exitBinding :: VimBinding
-exitBinding = VimBindingE prereq action
+-- exitBinding :: VimBinding
+exitBinding digraphs = VimBindingE prereq action
     where prereq evs (VimState { vsMode = (Insert _) }) =
               matchFromBool $ evs `elem` ["<Esc>", "<C-c>"]
           prereq _ _ = NoMatch
@@ -40,7 +41,7 @@ exitBinding = VimBindingE prereq action
                   inputEvents <- fmap (parseEvents . vsOngoingInsertEvents) getDynamic
                   replicateM_ (count - 1) $ do
                       when (starter `elem` "Oo") $ withBuffer0 $ insertB '\n'
-                      replay inputEvents
+                      replay digraphs inputEvents
               modifyStateE $ \s -> s { vsOngoingInsertEvents = "" }
               withBuffer0 $ moveXorSol 1
               modifyStateE $ \s -> s { vsSecondaryCursors = [] }
@@ -50,24 +51,25 @@ exitBinding = VimBindingE prereq action
                   whenM isCurrentLineAllWhiteSpaceB $ moveToSol >> deleteToEol
               return Finish
 
-replay :: [Event] -> EditorM ()
-replay [] = return ()
-replay (e1:es1) = do
+-- replay :: [Event] -> EditorM ()
+replay _ [] = return ()
+replay digraphs (e1:es1) = do
     state <- getDynamic
-    let evs1 = eventToString e1
-        bindingMatch1 = selectBinding evs1 state defInsertMap
+    let recurse = replay digraphs
+        evs1 = eventToString e1
+        bindingMatch1 = selectBinding evs1 state (defInsertMap digraphs)
     case bindingMatch1 of
-        WholeMatch (VimBindingE _ action) -> discard (action evs1) >> replay es1
+        WholeMatch (VimBindingE _ action) -> discard (action evs1) >> recurse es1
         PartialMatch -> do
             case es1 of
                 [] -> return ()
                 (e2:es2) -> do
                     let evs2 = evs1 ++ eventToString e2
-                        bindingMatch2 = selectBinding evs2 state defInsertMap
+                        bindingMatch2 = selectBinding evs2 state (defInsertMap digraphs)
                     case bindingMatch2 of
-                        WholeMatch (VimBindingE _ action) -> discard (action evs2) >> replay es2
-                        _ -> replay es2
-        _ -> replay es1
+                        WholeMatch (VimBindingE _ action) -> discard (action evs2) >> recurse es2
+                        _ -> recurse es2
+        _ -> recurse es1
 
 oneshotNormalBinding :: VimBinding
 oneshotNormalBinding = VimBindingE prereq action
@@ -96,14 +98,14 @@ pasteRegisterBinding = VimBindingE prereq action
                     insertRopeWithStyleB rope Inclusive
               return Continue
 
-digraphBinding :: VimBinding
-digraphBinding = VimBindingE prereq action
+digraphBinding :: [(String, Char)] -> VimBinding
+digraphBinding digraphs = VimBindingE prereq action
     where prereq ('<':'C':'-':'k':'>':_c1:_c2:[]) (VimState { vsMode = Insert _ }) = WholeMatch ()
           prereq ('<':'C':'-':'k':'>':_c1:[]) (VimState { vsMode = Insert _ }) = PartialMatch
           prereq "<C-k>" (VimState { vsMode = Insert _ }) = PartialMatch
           prereq _ _ = NoMatch
           action ('<':'C':'-':'k':'>':c1:c2:[]) = do
-              maybe (return ()) (withBuffer0 . insertB) $ charFromDigraph c1 c2
+              maybe (return ()) (withBuffer0 . insertB) $ charFromDigraph digraphs c1 c2
               return Continue
           action _ = error "can't happen"
 
@@ -114,7 +116,7 @@ printable = VimBindingE prereq printableAction
               matchFromBool $
                   all (\b -> case vbPrerequisite b evs state of
                               NoMatch -> True
-                              _ -> False) specials
+                              _ -> False) (specials undefined)
           prereq _ _ = NoMatch
 
 printableAction :: EventString -> EditorM RepeatToken
