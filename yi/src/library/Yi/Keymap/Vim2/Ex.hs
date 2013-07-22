@@ -9,6 +9,7 @@ module Yi.Keymap.Vim2.Ex
 import Yi.Keymap.Vim2.Ex.Types
 import Yi.Keymap.Vim2.Ex.Eval
 
+import qualified Yi.Keymap.Vim2.Ex.Commands.BufferDelete as BufferDelete
 import qualified Yi.Keymap.Vim2.Ex.Commands.Delete as Delete
 import qualified Yi.Keymap.Vim2.Ex.Commands.Edit as Edit
 import qualified Yi.Keymap.Vim2.Ex.Commands.Global as Global
@@ -22,7 +23,8 @@ import qualified Yi.Keymap.Vim2.Ex.Commands.Yi as Yi
 
 defExCommandParsers :: [String -> Maybe ExCommand]
 defExCommandParsers =
-    [ Delete.parse
+    [ BufferDelete.parse
+    , Delete.parse
     , Edit.parse
     , Global.parse
     , GotoLine.parse
