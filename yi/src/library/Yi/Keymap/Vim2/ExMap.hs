@@ -46,8 +46,10 @@ exitEx = do
 
 exitBinding :: VimBinding
 exitBinding = VimBindingE prereq action
-    where prereq evs (VimState { vsMode = Ex }) =
-              matchFromBool $ evs `elem` ["<Esc>", "<C-c>"]
+    where prereq "<CR>" (VimState { vsMode = Ex, vsOngoingInsertEvents = [] })
+              = WholeMatch ()
+          prereq evs s@(VimState { vsMode = Ex })
+              = matchFromBool $ evs `elem` ["<Esc>", "<C-c>"]
           prereq _ _ = NoMatch
           action _ = do
               exitEx
