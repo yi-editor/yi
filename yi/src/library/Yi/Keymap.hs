@@ -2,7 +2,36 @@
 
 -- Copyright (c) Jean-Philippe Bernardy 2007,8.
 
-module Yi.Keymap where
+module Yi.Keymap
+    ( Action(..)
+    , emptyAction
+    , Interact
+    , KeymapM
+    , Keymap
+    , KeymapEndo
+    , KeymapProcess
+    , KeymapSet(..)
+    , topKeymapA
+    , startInsertKeymapA
+    , insertKeymapA
+    , startTopKeymapA
+    , extractTopKeymap
+    , modelessKeymapSet
+    , YiM(..)
+    , withUI
+    , unsafeWithEditor
+    , withGivenBuffer
+    , withBuffer
+    , readEditor
+    , catchDynE
+    , catchJustE
+    , handleJustE
+    , shutdown
+    , YiAction (..)
+    , Yi(..)
+    , YiVar(..)
+    , write
+    ) where
 
 import Control.Applicative 
 import Control.Concurrent
@@ -10,7 +39,7 @@ import Control.Monad.Reader
 import Control.Monad.State
 import Control.Exception
 import Data.Typeable
-import Prelude hiding (error, catch)
+import Prelude hiding (error)
 import Yi.Buffer
 import Yi.Config
 import Yi.Editor (EditorM, Editor, runEditor, MonadEditor(..))
@@ -27,9 +56,6 @@ import Data.Accessor.Template
 data Action = forall a. Show a => YiA (YiM a)
             | forall a. Show a => EditorA (EditorM a)
             | forall a. Show a => BufferA (BufferM a)
-            | TaggedA String Action
---            | InsertA String
---             | TextA Direction Unit Operation
         deriving Typeable
 
 emptyAction :: Action
@@ -42,7 +68,6 @@ instance Show Action where
     show (YiA _) = "@Y"
     show (EditorA _) = "@E"
     show (BufferA _) = "@B"
-    show (TaggedA s a) = s ++ show a
 
 type Interact ev a = I.I ev Action a
 
@@ -89,9 +114,6 @@ instance MonadEditor YiM where
 -- | @write a@ returns a keymap that just outputs the action @a@.
 write :: (I.MonadInteract m Action ev, YiAction a x, Show x) => a -> m ()
 write x = I.write (makeAction x)
-
-write' :: (I.MonadInteract m Action e, YiAction a x, Show x) => String -> a -> m ()
-write' s x = I.write (TaggedA s (makeAction x))
 
 --------------------------------
 -- Uninteresting glue code
@@ -172,8 +194,7 @@ data KeymapSet = KeymapSet
 $(nameDeriveAccessors ''KeymapSet $ Just.(++ "A"))
 
 extractTopKeymap :: KeymapSet -> Keymap
-extractTopKeymap kms = do
-    startTopKeymap kms >> forever (topKeymap kms)
+extractTopKeymap kms = startTopKeymap kms >> forever (topKeymap kms)
     -- Note the use of "forever": this has quite subtle implications, as it means that
     -- failures in one iteration can yield to jump to the next iteration seamlessly.
     -- eg. in emacs keybinding, failures in incremental search, like <left>, will "exit"
