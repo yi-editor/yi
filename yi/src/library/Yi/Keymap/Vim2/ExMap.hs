@@ -93,12 +93,12 @@ failBindingE = VimBindingE prereq action
               return Drop
 
 printable :: VimBinding
-printable = VimBindingE prereq printableAction
+printable = VimBindingE prereq editAction
     where prereq _ (VimState { vsMode = Ex }) = WholeMatch ()
           prereq _ _ = NoMatch
 
-printableAction :: EventString -> EditorM RepeatToken
-printableAction evs = do
+editAction :: EventString -> EditorM RepeatToken
+editAction evs = do
     let bufAction = case evs of
             (c:[]) -> insertB c
             "<BS>"  -> deleteB Character Backward
@@ -108,6 +108,17 @@ printableAction evs = do
                 deleteRegionB r
             "<C-r>" -> return () -- TODO
             "<lt>" -> insertB '<'
+            "<Del>" -> deleteB Character Forward
+            "<Left>" -> moveXorSol 1
+            "<C-b>" -> moveXorSol 1
+            "<Right>" -> moveXorEol 1
+            "<C-f>" -> moveXorEol 1
+            "<Home>" -> moveToSol
+            "<C-a>" -> moveToSol
+            "<End>" -> moveToEol
+            "<C-e>" -> moveToEol
+            "<C-u>" -> moveToSol >> deleteToEol
+            "<C-k>" -> deleteToEol
             evs' -> error $ "Unhandled event " ++ evs' ++ " in ex mode"
     command <- withBuffer0 $ bufAction >> elemsB
     modifyStateE $ \state -> state {
