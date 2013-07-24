@@ -8,7 +8,7 @@ import Yi.Prelude
 import qualified Text.ParserCombinators.Parsec as P
 
 import Yi.Buffer hiding (Delete)
-import Yi.Editor
+import Yi.Keymap
 import Yi.Keymap.Vim2.Ex.Types
 import qualified Yi.Keymap.Vim2.Ex.Commands.Common as Common
 
@@ -17,7 +17,7 @@ parse = Common.parse $ do
     discard $ P.try ( P.string "delete") <|> P.string "d"
     return $ Common.pureExCommand {
         cmdShow = "delete"
-      , cmdAction = Left . withBuffer0 $ do
+      , cmdAction = BufferA $ do
             deleteUnitB Line Forward
             deleteN 1
       }

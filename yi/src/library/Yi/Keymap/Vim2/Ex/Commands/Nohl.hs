@@ -5,6 +5,7 @@ module Yi.Keymap.Vim2.Ex.Commands.Nohl
 import Prelude ()
 import Yi.Prelude
 
+import Yi.Keymap
 import Yi.Keymap.Vim2.Ex.Types
 import Yi.Keymap.Vim2.Ex.Commands.Common (pureExCommand)
 import Yi.Search
@@ -16,6 +17,6 @@ parse s = if s == "nohl" || s == "nohlsearch"
 
 nohl :: ExCommand
 nohl = pureExCommand {
-    cmdAction = Left resetRegexE
+    cmdAction = EditorA resetRegexE
   , cmdShow = "nohlsearch"
   }

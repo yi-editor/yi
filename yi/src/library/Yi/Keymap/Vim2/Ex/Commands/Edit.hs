@@ -10,6 +10,7 @@ import qualified Text.ParserCombinators.Parsec as P
 
 import Yi.Editor
 import Yi.File
+import Yi.Keymap
 import Yi.Keymap.Vim2.Ex.Types
 import qualified Yi.Keymap.Vim2.Ex.Commands.Common as Common
 
@@ -24,7 +25,7 @@ parse = Common.parse $ do
 edit :: Bool -> FilePath -> ExCommand
 edit tab f = Common.impureExCommand {
     cmdShow = showEdit tab f
-  , cmdAction = Right $ do
+  , cmdAction = YiA $ do
         when tab $ withEditor newTabE
         discard . editFile $ f
   , cmdComplete = (fmap . fmap) (showEdit tab) (Common.filenameComplete f)

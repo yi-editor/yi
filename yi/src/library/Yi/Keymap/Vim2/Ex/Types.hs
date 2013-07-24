@@ -11,7 +11,7 @@ import Yi.Keymap
 data ExCommand = ExCommand {
     cmdComplete :: YiM (Maybe String)
   , cmdIsPure :: Bool
-  , cmdAction :: Either (EditorM ()) (YiM ())
+  , cmdAction :: Action
   , cmdAcceptsRange :: Bool
   , cmdShow :: String
 }

@@ -8,7 +8,7 @@ import Yi.Prelude
 import qualified Text.ParserCombinators.Parsec as P
 
 import Yi.Buffer hiding (Delete)
-import Yi.Editor
+import Yi.Keymap
 import Yi.Keymap.Vim2.Ex.Types
 import qualified Yi.Keymap.Vim2.Ex.Commands.Common as Common
 import Yi.Search
@@ -35,7 +35,7 @@ substitute from to global caseInsensitive allLines = Common.pureExCommand {
         , if caseInsensitive then "i" else ""
         , if global then "g" else ""
         ]
-  , cmdAction = Left . withBuffer0 $ do
+  , cmdAction = BufferA $ do
         let regex = makeSimpleSearch from
             replace = do
                 region <- regionOfB Line

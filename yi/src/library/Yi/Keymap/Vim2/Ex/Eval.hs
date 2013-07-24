@@ -23,6 +23,7 @@ evalHelper :: MonadEditor m =>
 evalHelper pureHandler impureHandler cmds cmdString =
     case stringToExCommand cmds cmdString of
         Just cmd -> case cmdAction cmd of
-                      Left pureAction -> pureHandler pureAction
-                      Right impureAction -> impureHandler impureAction
+            BufferA actionB -> pureHandler $ withBuffer0 (discard actionB)
+            EditorA actionE -> pureHandler (discard actionE)
+            YiA actionY -> impureHandler (discard actionY)
         _ -> return ()

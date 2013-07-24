@@ -10,6 +10,7 @@ import System.FilePath
 import qualified Text.ParserCombinators.Parsec as P
 
 import Yi.File
+import Yi.Keymap
 import Yi.Keymap.Vim2.Ex.Types
 import qualified Yi.Keymap.Vim2.Ex.Commands.Common as Common
 
@@ -29,11 +30,11 @@ parse = Common.parse $ P.choice [parseWrite, parseWriteAs]
 writeCmd :: Bool -> ExCommand
 writeCmd allFlag = Common.impureExCommand {
     cmdShow = "write" ++ (if allFlag then "all" else "")
-  , cmdAction = Right $ if allFlag then Common.forAllBuffers fwriteBufferE else viWrite
+  , cmdAction = YiA $ if allFlag then Common.forAllBuffers fwriteBufferE else viWrite
   }
 
 writeAsCmd :: FilePath -> ExCommand
 writeAsCmd filename = Common.impureExCommand {
     cmdShow = "write " ++ filename
-  , cmdAction = Right $ viWriteTo filename
+  , cmdAction = YiA $ viWriteTo filename
   }

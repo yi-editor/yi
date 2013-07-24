@@ -33,7 +33,7 @@ quit w f a = Common.impureExCommand {
         , (if a then "all" else "")
         , (if f then "!" else "")
         ]
-  , cmdAction = Right $ action w f a
+  , cmdAction = YiA $ action w f a
   }
 
 action :: Bool -> Bool -> Bool -> YiM ()
@@ -42,7 +42,7 @@ action False False  True = quitAllE
 action  True False False = viWrite >> closeWindow
 action  True False  True = saveAndQuitAllE
 action False  True False = quitEditor
-action False  True  True = closeWindow
+action False  True  True = quitAllE
 action  True  True False = viWrite >> closeWindow
 action  True  True  True = saveAndQuitAllE
 
