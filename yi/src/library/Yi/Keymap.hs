@@ -33,19 +33,20 @@ module Yi.Keymap
     , write
     ) where
 
+import Prelude ()
+import Yi.Prelude
+
 import Control.Applicative 
 import Control.Concurrent
-import Control.Monad.Reader
-import Control.Monad.State
+import Control.Monad.Reader hiding (mapM_)
+import Control.Monad.State hiding (mapM_)
 import Control.Exception
 import Data.Typeable
-import Prelude hiding (error)
 import Yi.Buffer
 import Yi.Config
 import Yi.Editor (EditorM, Editor, runEditor, MonadEditor(..))
 import Yi.Event
 import Yi.Monad
-import Yi.Prelude (io)
 import Yi.Process (SubprocessInfo, SubprocessId)
 import Yi.UI.Common
 import qualified Data.Map as M
