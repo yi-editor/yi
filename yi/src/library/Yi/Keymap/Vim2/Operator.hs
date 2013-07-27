@@ -23,6 +23,7 @@ import Yi.Keymap.Vim2.Common
 import Yi.Keymap.Vim2.StateUtils
 import Yi.Keymap.Vim2.StyledRegion
 import Yi.Keymap.Vim2.TextObject
+import Yi.Keymap.Vim2.Utils
 import Yi.Misc
 
 data VimOperator = VimOperator {
@@ -144,7 +145,13 @@ mkShiftOperator :: OperatorName -> (Int -> Int) -> VimOperator
 mkShiftOperator name countMod = VimOperator {
     operatorName = name
   , operatorApplyToRegionE = \count (StyledRegion style reg) -> do
-        withBuffer0 $ shiftIndentOfRegion (countMod count) =<< convertRegionToStyleB reg style
+        withBuffer0 $
+            if (style == Block)
+            then do
+                indentBlockRegionB (countMod count) reg
+            else do
+                reg' <- convertRegionToStyleB reg style
+                shiftIndentOfRegion (countMod count) reg'
         switchModeE Normal
         return Finish
 }

@@ -9,12 +9,13 @@ module Yi.Keymap.Vim2.Utils
   , mkChooseRegisterBinding
   , pasteInclusiveB
   , addNewLineIfNecessary
+  , indentBlockRegionB
   ) where
 
 import Yi.Prelude
 import Prelude ()
 
-import Data.List (group)
+import Data.List (group, zip)
 import qualified Data.Rope as R
 
 import Yi.Buffer hiding (Insert)
@@ -102,6 +103,26 @@ mkChooseRegisterBinding statePredicate = VimBindingE prereq action
               modifyStateE $ \s -> s { vsActiveRegister = c }
               return Continue
           action _ = error "can't happen"
+
+indentBlockRegionB :: Int -> Region -> BufferM ()
+indentBlockRegionB count reg = do
+    indentSettings <- indentSettingsB
+    (start, lengths) <- shapeOfBlockRegionB reg
+    moveTo start
+    forM_ (zip [1..] lengths) $ \(i, _) -> do
+        whenM (not <$> atEol) $ do
+            if count > 0
+            then insertN $ replicate (count * shiftWidth indentSettings) ' '
+            else do
+                let go 0 = return ()
+                    go n = do
+                        c <- readB
+                        when (c == ' ') $
+                            deleteN 1 >> go (n - 1)
+                go (abs count * shiftWidth indentSettings)
+            moveTo start
+            discard $ lineMoveRel i
+    moveTo start
 
 pasteInclusiveB :: Rope -> RegionStyle -> BufferM ()
 pasteInclusiveB rope style = do

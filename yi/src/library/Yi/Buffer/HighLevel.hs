@@ -10,7 +10,7 @@ import Control.Monad.State hiding (forM, forM_, sequence_)
 
 import Data.Char
 import Data.List (isPrefixOf, sort, lines, drop, filter, length,
-                  takeWhile, dropWhile, reverse, map, intersperse)
+                  takeWhile, dropWhile, reverse, map, intersperse, zip)
 import Data.Maybe (fromMaybe, listToMaybe, catMaybes)
 import Data.Ord
 import qualified Data.Rope as R
@@ -795,9 +795,10 @@ deleteRegionWithStyleB :: Region -> RegionStyle -> BufferM Point
 deleteRegionWithStyleB reg Block = savingPointB $ do
     (start, lengths) <- shapeOfBlockRegionB reg
     moveTo start
-    forM_ lengths $ \l -> do
+    forM_ (zip [1..] lengths) $ \(i, l) -> do
         deleteN l
-        lineMoveRel 1
+        moveTo start
+        lineMoveRel i
     return start
 
 deleteRegionWithStyleB reg style = savingPointB $ do
