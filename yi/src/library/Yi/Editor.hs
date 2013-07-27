@@ -670,12 +670,15 @@ deleteTabE = modA tabsA $ maybe failure id . deleteTab
 -- contains only one window then do nothing.
 tryCloseE :: EditorM ()
 tryCloseE = do
-    n <- getsA windowsA PL.length
-    if n == 1
-        -- Could the Maybe response from deleteLeft be used instead of the
-        -- initial 'if'?
-        then modA tabsA (fromJust . PL.deleteLeft)
-        else modA windowsA (fromJust . PL.deleteLeft)
+    ntabs <- getsA tabsA PL.length
+    nwins <- getsA windowsA PL.length
+    if ntabs == 1 && nwins == 1
+        then return ()
+        else if nwins == 1
+                -- Could the Maybe response from deleteLeft be used instead of the
+                -- initial 'if'?
+                then modA tabsA (fromJust . PL.deleteLeft)
+                else modA windowsA (fromJust . PL.deleteLeft)
 
 -- | Make the current window the only window on the screen
 closeOtherE :: EditorM ()
