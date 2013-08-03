@@ -737,15 +737,20 @@ addJumpHereE = do
     let jl = jumpList w
     curPoint <- withBuffer0 $ pointB
     shouldAddJump <- case jl of
-                        Just (PL.PointedList _ (Jump mark bf) _) -> do
-                            p <- withGivenBuffer0 bf $ getMarkPointB mark
-                            return $! (p, bf) /= (curPoint, bufkey w)
-                        _ -> return True
+        Just (PL.PointedList _ (Jump mark bf) _) -> do
+            bfStillAlive <- gets (M.lookup bf . buffers)
+            case bfStillAlive of
+                Nothing -> return False
+                _ -> do
+                    p <- withGivenBuffer0 bf $ getMarkPointB mark
+                    return $! (p, bf) /= (curPoint, bufkey w)
+        _ -> return True
     when shouldAddJump $ do
         m <- withBuffer0 setMarkHereB
         let bf = bufkey w
             j = Jump m bf
         putA currentWindowA $ w { jumpList = addJump j (jumpList w) }
+        return ()
 
 jumpBackE :: EditorM ()
 jumpBackE = addJumpHereE >> modifyJumpListE jumpBack
