@@ -25,6 +25,7 @@ specMap = M.fromList $ specList
 invSpecMap :: M.Map Key EventString
 invSpecMap = M.fromList $ fmap swap specList
 
+specList :: [(String, Key)]
 specList =
     [ ("<Esc>", KEsc)
     , ("<CR>", KEnter)

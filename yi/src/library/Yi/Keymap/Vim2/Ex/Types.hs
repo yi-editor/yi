@@ -5,7 +5,6 @@ import Yi.Prelude
 
 import Data.Maybe
 
-import Yi.Editor
 import Yi.Keymap
 
 data ExCommand = ExCommand {

@@ -110,8 +110,8 @@ opFormat = VimOperator {
 }
 
 formatRegionB :: RegionStyle -> Region -> BufferM ()
-formatRegionB Block reg = return ()
-formatRegionB style reg = do
+formatRegionB Block _reg = return ()
+formatRegionB _style reg = do
     -- TODO: handle indentation
     -- TODO: break words
     let (start, end) = (regionStart reg, regionEnd reg)

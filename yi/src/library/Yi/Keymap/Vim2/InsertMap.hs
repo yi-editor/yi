@@ -29,7 +29,7 @@ specials digraphs =
     [exitBinding digraphs, pasteRegisterBinding, digraphBinding digraphs
     , oneshotNormalBinding, completionBinding, cursorBinding]
 
--- exitBinding :: VimBinding
+exitBinding :: [(String, Char)] -> VimBinding
 exitBinding digraphs = VimBindingE prereq action
     where prereq evs (VimState { vsMode = (Insert _) }) =
               matchFromBool $ evs `elem` ["<Esc>", "<C-c>"]
@@ -51,7 +51,7 @@ exitBinding digraphs = VimBindingE prereq action
                   whenM isCurrentLineAllWhiteSpaceB $ moveToSol >> deleteToEol
               return Finish
 
--- replay :: [Event] -> EditorM ()
+replay :: [(String, Char)] -> [Event] -> EditorM ()
 replay _ [] = return ()
 replay digraphs (e1:es1) = do
     state <- getDynamic
