@@ -5,8 +5,11 @@ module Yi.Keymap.Vim2.ExMap
 import Prelude ()
 import Yi.Prelude
 
+import Data.Maybe (fromJust)
+
 import Yi.Buffer hiding (Insert)
 import Yi.Editor
+import Yi.History
 import Yi.Keymap
 import Yi.Keymap.Vim2.Common
 import Yi.Keymap.Vim2.StateUtils
@@ -20,6 +23,7 @@ defExMap cmdParsers =
     , finishBindingY cmdParsers
     , finishBindingE cmdParsers
     , failBindingE
+    , historyBinding
     , printable
     ]
 
@@ -33,13 +37,20 @@ completionBinding commandParsers = VimBindingY prereq action
                   Just cmd -> do
                       maybeNewString <- cmdComplete cmd
                       case maybeNewString of
-                        Just s -> withBuffer $ replaceBufferContent s
+                        Just s -> do
+                            withBuffer $ replaceBufferContent s
+                            withEditor $ do
+                                historyPrefixSet s
+                                modifyStateE $ \state -> state {
+                                    vsOngoingInsertEvents = s
+                                }
                         Nothing -> return ()
                   Nothing -> return ()
               return Drop
 
-exitEx :: EditorM ()
-exitEx = do
+exitEx :: Bool -> EditorM ()
+exitEx success = do
+    if success then historyFinish else return ()
     resetCountE
     switchModeE Normal
     closeBufferAndWindowE
@@ -52,7 +63,7 @@ exitBinding = VimBindingE prereq action
               = matchFromBool $ evs `elem` ["<Esc>", "<C-c>"]
           prereq _ _ = NoMatch
           action _ = do
-              exitEx
+              exitEx False
               return Drop
 
 finishBindingY :: [String -> Maybe ExCommand] -> VimBinding
@@ -80,7 +91,7 @@ finishAction :: MonadEditor m => [String -> Maybe ExCommand] ->
     ([String -> Maybe ExCommand] -> String -> m ()) -> m RepeatToken
 finishAction commandParsers execute = do
     s <- withEditor $ withBuffer0 elemsB
-    withEditor exitEx
+    withEditor $ exitEx True
     execute commandParsers s
     return Drop
 
@@ -88,7 +99,7 @@ failBindingE :: VimBinding
 failBindingE = VimBindingE prereq action
     where prereq evs s = matchFromBool . and $ [vsMode s == Ex, evs == "<CR>"]
           action _ = do
-              exitEx
+              exitEx False
               printMsg "Unknown command"
               return Drop
 
@@ -97,31 +108,51 @@ printable = VimBindingE prereq editAction
     where prereq _ (VimState { vsMode = Ex }) = WholeMatch ()
           prereq _ _ = NoMatch
 
+historyBinding :: VimBinding
+historyBinding = VimBindingE prereq action
+    where prereq evs (VimState { vsMode = Ex }) =
+              matchFromBool $ evs `elem` (fmap fst binds)
+          prereq _ _ = NoMatch
+          action evs = do
+              fromJust $ lookup evs binds
+              command <- withBuffer0 elemsB
+              modifyStateE $ \state -> state {
+                  vsOngoingInsertEvents = command
+              }
+              return Drop
+          binds =
+              [ ("<Up>", historyUp)
+              , ("<C-p>", historyUp)
+              , ("<Down>", historyDown)
+              , ("<C-n>", historyDown)
+              ]
+
 editAction :: EventString -> EditorM RepeatToken
 editAction evs = do
-    let bufAction = case evs of
-            (c:[]) -> insertB c
-            "<BS>"  -> deleteB Character Backward
-            "<C-h>" -> deleteB Character Backward
-            "<C-w>" -> do
-                r <- regionOfPartNonEmptyB unitViWordOnLine Backward
-                deleteRegionB r
-            "<C-r>" -> return () -- TODO
-            "<lt>" -> insertB '<'
-            "<Del>" -> deleteB Character Forward
-            "<Left>" -> moveXorSol 1
-            "<C-b>" -> moveXorSol 1
-            "<Right>" -> moveXorEol 1
-            "<C-f>" -> moveXorEol 1
-            "<Home>" -> moveToSol
-            "<C-a>" -> moveToSol
-            "<End>" -> moveToEol
-            "<C-e>" -> moveToEol
-            "<C-u>" -> moveToSol >> deleteToEol
-            "<C-k>" -> deleteToEol
-            evs' -> error $ "Unhandled event " ++ evs' ++ " in ex mode"
-    command <- withBuffer0 $ bufAction >> elemsB
+    withBuffer0 $ case evs of
+        (c:[]) -> insertB c
+        "<BS>"  -> deleteB Character Backward
+        "<C-h>" -> deleteB Character Backward
+        "<C-w>" -> do
+            r <- regionOfPartNonEmptyB unitViWordOnLine Backward
+            deleteRegionB r
+        "<C-r>" -> return () -- TODO
+        "<lt>" -> insertB '<'
+        "<Del>" -> deleteB Character Forward
+        "<Left>" -> moveXorSol 1
+        "<C-b>" -> moveXorSol 1
+        "<Right>" -> moveXorEol 1
+        "<C-f>" -> moveXorEol 1
+        "<Home>" -> moveToSol
+        "<C-a>" -> moveToSol
+        "<End>" -> moveToEol
+        "<C-e>" -> moveToEol
+        "<C-u>" -> moveToSol >> deleteToEol
+        "<C-k>" -> deleteToEol
+        evs' -> error $ "Unhandled event " ++ evs' ++ " in ex mode"
+    command <- withBuffer0 elemsB
+    historyPrefixSet command
     modifyStateE $ \state -> state {
         vsOngoingInsertEvents = command
     }
-    return Continue
+    return Drop

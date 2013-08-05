@@ -15,6 +15,7 @@ import qualified Data.Rope as R
 import Yi.Buffer hiding (Insert)
 import Yi.Editor
 import Yi.Event
+import Yi.History
 import Yi.Keymap.Keys
 import Yi.Keymap.Vim2.Common
 import Yi.Keymap.Vim2.Eval
@@ -226,7 +227,11 @@ nonrepeatableBindings = fmap (mkBindingE Normal Drop)
     , (char '&', return (), id) -- TODO
 
     -- Transition to ex
-    , (char ':', discard $ spawnMinibufferE ":" id, switchMode Ex)
+    , (char ':', do
+        discard (spawnMinibufferE ":" id)
+        historyStart
+        historyPrefixSet ""
+      , switchMode Ex)
 
     -- Undo
     , (char 'u', withCountOnBuffer0 undoB >> withBuffer0 leftOnEol, id)

@@ -52,7 +52,6 @@ historyStartGen :: String -> EditorM ()
 historyStartGen ident = do
   (History _cur cont pref) <- getA (dynKeyA ident . dynA)
   putA (dynKeyA ident . dynA) (History 0 (nub ("":cont)) pref)
-  debugHist
 
 historyFinish :: EditorM ()
 historyFinish = historyFinishGen miniBuffer (withBuffer0 elemsB)
@@ -66,15 +65,6 @@ historyFinishGen ident getCurValue = do
   length curValue `seq` -- force the new value, otherwise we'll hold on to the buffer from which it's computed
     cont'         `seq` -- force checking the top of the history, otherwise we'll build up thunks
     putA (dynKeyA ident . dynA) $ History (-1) (curValue:cont') pref
-
--- historyGetGen :: String -> EditorM String
--- historyGetGen ident = do
---   (History cur cont) <- getA (dynKeyA ident .> dynA)
---   return $ cont !! cur
-
--- TODO: scrap
-debugHist :: EditorM ()
-debugHist = return ()
 
 historyFind :: [String] -> Int -> Int -> Int -> String -> Int
 historyFind cont len cur delta pref =
@@ -106,7 +96,6 @@ historyMoveGen ident delta getCurValue = do
                     return curValue
     (_,_) -> do
          putA (dynKeyA ident . dynA) (History next (take cur cont ++ [curValue] ++ drop (cur+1) cont) pref)
-         debugHist
          return nextValue
 
 historyPrefixSet :: String -> EditorM ()
