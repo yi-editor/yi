@@ -123,10 +123,12 @@ setStickyEolE b = modifyStateE $ \s -> s { vsStickyEol = b }
 
 updateModeIndicatorE :: VimMode -> EditorM ()
 updateModeIndicatorE prevMode = do
-    mode <- fmap vsMode getDynamic
+    currentState <- getDynamic
+    let mode = vsMode currentState
+        paste = vsPaste currentState
     when (mode /= prevMode) $ do
         let modeName = case mode of
-                        Insert _ -> "INSERT"
+                        Insert _ -> "INSERT" ++ if paste then " (paste) " else ""
                         InsertNormal -> "(insert)"
                         InsertVisual -> "(insert) VISUAL"
                         Replace -> "REPLACE"

@@ -74,6 +74,7 @@ data VimState = VimState {
         , vsLastGotoCharCommand :: !(Maybe GotoCharCommand)
         , vsBindingAccumulator :: !EventString
         , vsSecondaryCursors :: ![Point]
+        , vsPaste :: !Bool -- ^ like vim's :help paste
     } deriving (Typeable)
 
 $(derive makeBinary ''RepeatableAction)
@@ -88,7 +89,7 @@ instance Initializable VimMode where
 $(derive makeBinary ''VimMode)
 
 instance Initializable VimState where
-    initial = VimState Normal Nothing [] [] HM.empty '\0' Nothing [] False [] Nothing [] []
+    initial = VimState Normal Nothing [] [] HM.empty '\0' Nothing [] False [] Nothing [] [] False
 
 $(derive makeBinary ''VimState)
 
