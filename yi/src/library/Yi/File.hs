@@ -29,6 +29,7 @@ import qualified Data.Rope as R
 import Yi.Config
 import Yi.Core
 import Yi.Dired
+import Yi.Editor
 import Yi.Regex
 
 -- | If file exists, read contents of file into a new buffer, otherwise
@@ -56,7 +57,7 @@ editFile filename = do
                                        else newEmptyBuffer f
       (h:_) -> return $ bkey h
 
-    withEditor $ switchToBufferE b
+    withEditor $ switchToBufferE b >> addJumpHereE
     return b
   where
     fileToNewBuffer :: FilePath -> YiM BufferRef

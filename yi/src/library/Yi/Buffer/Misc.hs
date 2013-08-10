@@ -19,6 +19,7 @@ module Yi.Buffer.Misc
   , curCol
   , colOf
   , lineOf
+  , lineCountB
   , sizeB
   , pointB
   , pointOfLineColB
@@ -41,12 +42,14 @@ module Yi.Buffer.Misc
   , moveN
   , leftN
   , rightN
+  , insertN'
   , insertN
   , insertNAt'
   , insertNAt
   , insertB
   , deleteN
   , nelemsB
+  , nelemsB'
   , writeB
   , writeN
   , newlineB
@@ -57,6 +60,8 @@ module Yi.Buffer.Misc
   , undoB
   , redoB
   , getMarkB
+  , setMarkHereB
+  , setNamedMarkHereB
   , mayGetMarkB
   , getMarkValueB
   , setMarkPointB
@@ -141,6 +146,15 @@ module Yi.Buffer.Misc
   , file
   , lastSyncTimeA
   , replaceCharB
+  , replaceCharWithBelowB
+  , replaceCharWithAboveB
+  , insertCharWithBelowB
+  , insertCharWithAboveB
+  , pointAfterCursorB
+  , destinationOfMoveB
+  , withEveryLineB
+  , startUpdateTransactionB
+  , commitUpdateTransactionB
   )
 where
 
@@ -153,7 +167,7 @@ import Yi.Syntax
 import Yi.Buffer.Undo
 import Yi.Dynamic
 import Yi.Window
-import Control.Monad.RWS.Strict hiding (mapM_, mapM, get, put, forM)
+import Control.Monad.RWS.Strict hiding (mapM_, mapM, get, put, forM_, forM)
 import Data.Accessor.Template
 import Data.Binary
 import Data.DeriveTH
@@ -233,17 +247,21 @@ data Attributes = Attributes
                 , readOnly :: !Bool                -- ^ read-only flag
                 , inserting :: !Bool -- ^ the keymap is ready for insertion into this buffer
                 , pointFollowsWindow :: !(WindowRef -> Bool)
+                , updateTransactionInFlight :: !Bool
+                , updateTransactionAccum :: ![Update]
                 } deriving Typeable
 
 $(nameDeriveAccessors ''Attributes (\n -> Just (n ++ "AA")))
 
 instance Binary Attributes where
-    put (Attributes n b u bd pc pu selectionStyle_ _proc wm law lst ro ins _pfw) = do
+    put (Attributes n b u bd pc pu selectionStyle_ _proc wm law lst ro ins _pfw
+        isTransacPresent transacAccum) = do
           put n >> put b >> put u >> put bd
           put pc >> put pu >> put selectionStyle_ >> put wm
-          put law >> put lst >> put ro >> put ins
+          put law >> put lst >> put ro >> put ins >> put isTransacPresent >> put transacAccum
     get = Attributes <$> get <*> get <*> get <*> 
-          get <*> get <*> get <*> get <*> pure I.End <*> get <*> get <*> get <*> get <*> get <*> pure (const False)
+          get <*> get <*> get <*> get <*> pure I.End <*> get <*> get <*> get <*> get <*>
+              get <*> pure (const False) <*> get <*> get
 
 instance Binary UTCTime where
     put (UTCTime x y) = put (fromEnum x) >> put (fromEnum y)
@@ -332,6 +350,10 @@ insertingA = insertingAA . attrsA
 pointFollowsWindowA :: Accessor FBuffer (WindowRef -> Bool)
 pointFollowsWindowA = pointFollowsWindowAA . attrsA
 
+-- updateTransactionInFlightA :: Accessor FBuffer (WindowRef -> Bool)
+updateTransactionInFlightA = updateTransactionInFlightAA . attrsA
+
+updateTransactionAccumA = updateTransactionAccumAA . attrsA
 
 file :: FBuffer -> (Maybe FilePath)
 file b = case b ^. identA of
@@ -585,6 +607,28 @@ bkey = getVal (bkey__AA . attrsA)
 isUnchangedBuffer :: FBuffer -> Bool
 isUnchangedBuffer = isAtSavedFilePointU . getVal undosA
 
+startUpdateTransactionB :: BufferM ()
+startUpdateTransactionB = do
+  transactionPresent <- getA updateTransactionInFlightA
+  if transactionPresent
+  then error "Already started update transaction"
+  else do
+    modA undosA $ addChangeU InteractivePoint
+    putA updateTransactionInFlightA True
+
+commitUpdateTransactionB :: BufferM ()
+commitUpdateTransactionB = do
+  transactionPresent <- getA updateTransactionInFlightA
+  if not transactionPresent
+  then error "Not in update transaction"
+  else do
+    putA updateTransactionInFlightA False
+    transacAccum <- getA updateTransactionAccumA
+    putA updateTransactionAccumA []
+
+    modA undosA $ appEndo . mconcat $ fmap (Endo . addChangeU . AtomicChange) transacAccum
+    modA undosA $ addChangeU InteractivePoint
+
 
 undoRedo :: (forall syntax. Mark -> URList -> BufferImpl syntax -> (BufferImpl syntax, (URList, [Update])) ) -> BufferM ()
 undoRedo f = do
@@ -595,10 +639,19 @@ undoRedo f = do
   tell updates
 
 undoB :: BufferM ()
-undoB = undoRedo undoU
+undoB = do
+    isTransacPresent <- getA updateTransactionInFlightA
+    if isTransacPresent
+    then error "Can't undo while undo transaction is in progress"
+    else undoRedo undoU
 
 redoB :: BufferM ()
-redoB = undoRedo redoU
+redoB = do
+    isTransacPresent <- getA updateTransactionInFlightA
+    if isTransacPresent
+    then error "Can't undo while undo transaction is in progress"
+    else undoRedo redoU
+
 
 -- | Analogous to const, but returns a function that takes two parameters,
 -- rather than one.
@@ -657,6 +710,8 @@ newB unique nm s =
             , readOnly = False
             , inserting = True
             , pointFollowsWindow = const False
+            , updateTransactionInFlight = False
+            , updateTransactionAccum = []
             } }
 
 epoch :: UTCTime
@@ -674,6 +729,9 @@ pointB = getMarkPointB =<< getInsMark
 -- | Return @n@ elems starting at @i@ of the buffer as a list
 nelemsB :: Int -> Point -> BufferM String
 nelemsB n i = queryBuffer $ nelemsBI n i
+
+nelemsB' :: Int -> Point -> BufferM Rope
+nelemsB' n i = fmap (R.take n) (streamB Forward i)
 
 streamB :: Direction -> Point -> BufferM Rope
 streamB dir i = queryBuffer (getStream dir i)
@@ -715,7 +773,12 @@ applyUpdate update = do
         forgetPreferCol
         let reversed = reverseUpdateI update
         modifyBuffer (applyUpdateI update)
-        modA undosA $ addChangeU $ AtomicChange $ reversed
+
+        isTransacPresent <- getA updateTransactionInFlightA
+        if isTransacPresent
+        then modA updateTransactionAccumA $ (reversed:)
+        else modA undosA $ addChangeU $ AtomicChange $ reversed
+
         tell [update]
    -- otherwise, just ignore.
 
@@ -745,7 +808,7 @@ newlineB = insertB '\n'
 
 ------------------------------------------------------------------------
 insertNAt' :: Rope -> Point -> BufferM ()
-insertNAt' rope pnt = applyUpdate (Insert pnt Forward $ rope)
+insertNAt' rope pnt = applyUpdate (Insert pnt Forward rope)
 
 -- | Insert the list at specified point, extending size of buffer
 insertNAt :: String -> Point -> BufferM ()
@@ -754,6 +817,9 @@ insertNAt cs pnt = insertNAt' (R.fromString cs) pnt
 -- | Insert the list at current point, extending size of buffer
 insertN :: String -> BufferM ()
 insertN cs = insertNAt cs =<< pointB
+
+insertN' :: Rope -> BufferM ()
+insertN' rope = insertNAt' rope =<< pointB
 
 -- | Insert the char at current point, extending size of buffer
 insertB :: Char -> BufferM ()
@@ -864,6 +930,14 @@ setMarkPointB m pos = modifyMarkB m (\v -> v {markPoint = pos})
 
 modifyMarkB :: Mark -> (MarkValue -> MarkValue) -> BufferM ()
 modifyMarkB m f = modifyBuffer $ modifyMarkBI m f
+
+setMarkHereB :: BufferM Mark
+setMarkHereB = getMarkB Nothing
+
+setNamedMarkHereB :: String -> BufferM ()
+setNamedMarkHereB name = do
+    p <- pointB
+    getMarkB (Just name) >>= flip setMarkPointB p
 
 -- | Highlight the selection
 setVisibleSelection :: Bool -> BufferM ()
@@ -981,6 +1055,40 @@ replaceCharB c = do
     insertB c
     leftB
 
+replaceCharWithBelowB :: BufferM ()
+replaceCharWithBelowB = replaceCharWithVerticalOffset 1
+
+replaceCharWithAboveB :: BufferM ()
+replaceCharWithAboveB = replaceCharWithVerticalOffset (-1)
+
+insertCharWithBelowB :: BufferM ()
+insertCharWithBelowB = maybe (return ()) insertB =<< maybeCharBelowB
+
+insertCharWithAboveB :: BufferM ()
+insertCharWithAboveB = maybe (return ()) insertB =<< maybeCharAboveB
+
+replaceCharWithVerticalOffset :: Int -> BufferM ()
+replaceCharWithVerticalOffset offset =
+    maybe (return ()) replaceCharB =<< maybeCharWithVerticalOffset offset
+
+maybeCharBelowB :: BufferM (Maybe Char)
+maybeCharBelowB = maybeCharWithVerticalOffset 1
+
+maybeCharAboveB :: BufferM (Maybe Char)
+maybeCharAboveB = maybeCharWithVerticalOffset (-1)
+
+maybeCharWithVerticalOffset :: Int -> BufferM (Maybe Char)
+maybeCharWithVerticalOffset offset = savingPointB $ do
+    l0 <- curLn
+    c0 <- curCol
+    discard $ lineMoveRel offset
+    l1 <- curLn
+    c1 <- curCol
+    curChar <- readB
+    if c0 == c1 && l0 + offset == l1 && curChar `notElem` "\n\0"
+    then return $ Just curChar
+    else return Nothing
+
 -- | Delete @n@ characters forward from the current point
 deleteN :: Int -> BufferM ()
 deleteN n = pointB >>= deleteNAt Forward n
@@ -999,6 +1107,9 @@ colOf p = foldl' colMove 0 <$> queryBuffer (charsFromSolBI p)
 
 lineOf :: Point -> BufferM Int
 lineOf p = queryBuffer $ lineAt p
+
+lineCountB :: BufferM Int
+lineCountB = lineOf =<< sizeB
 
 colMove :: Int -> Char -> Int
 colMove col '\t' = (col + 7) `mod` 8
@@ -1050,10 +1161,27 @@ savingPointB f = savingPrefCol $ do
 pointAt :: forall a. BufferM a -> BufferM Point
 pointAt f = savingPointB (f *> pointB)
 
+pointAfterCursorB :: Point -> BufferM Point
+pointAfterCursorB p = pointAt $ do
+  moveTo p
+  rightB
+
+-- | What would be the point after doing the given action?
+-- The argument must not modify the buffer.
+destinationOfMoveB :: BufferM a -> BufferM Point
+destinationOfMoveB f = savingPointB (f >> pointB)
+
 -------------
 -- Window
 
 askWindow :: (Window -> a) -> BufferM a
 askWindow = asks
+
+withEveryLineB :: BufferM () -> BufferM ()
+withEveryLineB action = savingPointB $ do
+  lineCount <- lineCountB
+  forM_ [1 .. lineCount] $ \l -> do
+    discard $ gotoLn l
+    action
 
 $(nameDeriveAccessors ''Mode (\n -> Just (n ++ "A")))

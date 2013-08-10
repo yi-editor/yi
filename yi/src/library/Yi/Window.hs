@@ -12,6 +12,7 @@ import Yi.Prelude
 import Data.Binary
 import Yi.Buffer.Basic (BufferRef, WindowRef)
 import Yi.Region (Region,emptyRegion)
+import Yi.JumpList
 
 ------------------------------------------------------------------------
 -- | A window onto a buffer.
@@ -30,14 +31,16 @@ data Window = Window {
                      -- relative to the height so we can't use height for that
                      -- purpose.
                      ,actualLines :: Int-- ^ The actual number of buffer lines displayed. Taking into account line wrapping
+                     ,jumpList :: JumpList
                      }
         deriving (Typeable)
 
 instance Binary Window where
-    put (Window mini bk bl _h _rgn key lns) = put mini >> put bk >> put bl >> put key >> put lns
+    put (Window mini bk bl _h _rgn key lns jumpList) =
+        put mini >> put bk >> put bl >> put key >> put lns >> put jumpList
     get = Window <$> get <*> get <*> get
                    <*> return 0 <*> return emptyRegion
-                   <*> get <*> get
+                   <*> get <*> get <*> get
 
 
 -- | Get the identification of a window.
@@ -60,5 +63,5 @@ pointInWindow point win = tospnt win <= point && point <= bospnt win
 
 -- | Return a "fake" window onto a buffer.
 dummyWindow :: BufferRef -> Window
-dummyWindow b = Window False b [] 0 emptyRegion initial 0
+dummyWindow b = Window False b [] 0 emptyRegion initial 0 Nothing
 

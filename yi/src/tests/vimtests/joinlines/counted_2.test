@@ -1,0 +1,10 @@
+-- Input
+(1,2)
+aaa
+bbb
+ccc
+-- Output
+(1,8)
+aaa bbb ccc
+-- Events
+3J

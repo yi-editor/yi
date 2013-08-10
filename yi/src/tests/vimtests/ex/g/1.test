@@ -1,0 +1,20 @@
+-- Input
+(2,1)
+a 1
+bb 2
+bb 3
+bb 4
+ba 5
+bb 6
+bb 3
+-- Output
+(2,1)
+a 1
+bb 2
+bb x
+bb 4
+ba 5
+bb 6
+bb x
+-- Events
+:g/bb/s/3/x/<CR>

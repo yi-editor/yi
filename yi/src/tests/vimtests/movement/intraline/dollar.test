@@ -1,0 +1,14 @@
+-- Input
+(1,1)
+abc
+eee
+cd
+ddd
+-- Output
+(1,3)
+abc
+eee
+cd
+ddd
+-- Events
+$

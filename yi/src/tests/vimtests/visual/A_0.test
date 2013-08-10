@@ -1,0 +1,14 @@
+-- Input
+(1,1)
+averyverylongline
+shortline
+shorter
+
+-- Output
+(1,18)
+averyverylonglineb
+shortlineb
+shorterb
+
+-- Events
+jjVkkAb<Esc>

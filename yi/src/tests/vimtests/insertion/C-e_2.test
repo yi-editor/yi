@@ -1,0 +1,10 @@
+-- Input
+(1,1)
+foo
+b
+-- Output
+(1,1)
+bfoo
+b
+-- Events
+i<C-e><C-e><C-e><Esc>

@@ -1,0 +1,12 @@
+-- Input
+(2,2)
+foo
+bar
+baz
+-- Output
+(2,3)
+foo
+bar
+baz
+-- Events
+A 123<Esc>u

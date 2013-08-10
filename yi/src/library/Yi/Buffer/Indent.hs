@@ -34,7 +34,7 @@ tabB = do
   Retrieve the current indentation settings for the buffer.
 -}
 indentSettingsB :: BufferM IndentSettings
-indentSettingsB = withModeB (\Mode {modeIndentSettings = x} -> return x)
+indentSettingsB = withModeB $ return . modeIndentSettings
 
 
 {-|
@@ -381,10 +381,17 @@ indentToB level = do
 
 -- | Indent as much as the previous line
 indentAsPreviousB :: BufferM ()
-indentAsPreviousB =
-  do previousLine   <- getNextNonBlankLineB Backward
-     previousIndent <- indentOfB previousLine
-     indentToB previousIndent
+indentAsPreviousB = indentAsNeighborLineB Backward
+
+-- | Indent as much as the previous line
+indentAsNextB :: BufferM ()
+indentAsNextB = indentAsNeighborLineB Forward
+
+indentAsNeighborLineB :: Direction -> BufferM ()
+indentAsNeighborLineB dir =
+  do otherLine   <- getNextNonBlankLineB dir
+     otherIndent <- indentOfB otherLine
+     indentToB otherIndent
 
 -- | Insert a newline at point and indent the new line as the previous one.
 newlineAndIndentB :: BufferM ()

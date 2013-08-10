@@ -1,0 +1,14 @@
+-- Input
+(1,4)
+ABCD
+ABCD
+ABCD
+ABCD
+-- Output
+(2,2)
+ABCD
+AD
+AD
+ABCD
+-- Events
+hj<C-v>jhd

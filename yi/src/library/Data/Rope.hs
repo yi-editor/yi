@@ -25,7 +25,11 @@ module Data.Rope (
    toString, toReverseString,
  
    -- * List-like functions
-   null, empty, take, drop, append, splitAt, splitAtLine, length, reverse, countNewLines,
+   null, empty, take, drop,  length, reverse, countNewLines,
+
+   split, splitAt, splitAtLine,
+
+   append, concat,
  
    -- * IO
    readFile, writeFile,
@@ -34,18 +38,18 @@ module Data.Rope (
    splitAtChunkBefore
   ) where
  
-import Prelude hiding (null, head, tail, length, take, drop, splitAt, head, tail, foldl, reverse, readFile, writeFile)
+import Prelude hiding (null, head, tail, length, take, drop, splitAt, head, tail, foldl, reverse, readFile, writeFile, concat)
 import qualified Data.List as L
  
 import qualified Data.ByteString.UTF8 as B
 import qualified Data.ByteString as B (append, concat)
 import qualified Data.ByteString as Byte 
 import Data.ByteString (ByteString)
-import qualified Data.ByteString.Lazy as LB (toChunks, fromChunks, null, readFile)
+import qualified Data.ByteString.Lazy as LB (toChunks, fromChunks, null, readFile, split)
 import qualified Data.ByteString.Lazy.UTF8 as LB 
  
 import qualified Data.FingerTree as T
-import Data.FingerTree hiding (null, empty, reverse)
+import Data.FingerTree hiding (null, empty, reverse, split)
  
 import Data.Binary
 import Data.Char (ord)
@@ -149,6 +153,9 @@ append (Rope a) (Rope b) = Rope $
                    (Chunk len' x') :< r -> if (fromIntegral len) + (fromIntegral len') < defaultChunkSize
                                 then l >< singleton (Chunk (len + len') (x `B.append` x')) >< r
                                 else a >< b
+
+concat :: [Rope] -> Rope
+concat = L.foldl1' append
  
 take, drop :: Int -> Rope -> Rope
 take n = fst . splitAt n
@@ -188,6 +195,8 @@ splitAtLine' n (Rope t) =
    where
      (l, c) = T.split ((n <) . lineIndex) t
 
+split :: Word8 -> Rope -> [Rope]
+split c = map fromLazyByteString . LB.split c . toLazyByteString
 
 cutExcess :: Int -> ByteString -> (ByteString, ByteString)
 cutExcess i s = let idx = gt i $ L.reverse $ Byte.elemIndices newline s

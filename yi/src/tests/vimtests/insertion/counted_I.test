@@ -1,0 +1,8 @@
+-- Input
+(1,2)
+aa
+-- Output
+(1,42)
+xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxaa
+-- Events
+42Ix<Esc>

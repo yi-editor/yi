@@ -64,7 +64,7 @@ flag hacking
   Default: False
   Description:
      Hacking mode:
-        * Create HackerMain.hs by copying your ~/.yi/yi.hs
+        * Create HackerMain.hs by copying your ~/.config/yi/yi.hs
         * Skip library compilation
         * You can run yi in-place with dist/build/yi/yi
 
@@ -98,6 +98,7 @@ library
     Yi.Buffer.Normal
     Yi.Buffer.Misc
     Yi.Buffer.Region
+    Yi.Buffer.TextUnit
     Yi.Buffer.Undo
     Yi.Command
     Yi.Completion
@@ -120,6 +121,7 @@ library
     Yi.IReader
     Yi.IncrementalParse
     Yi.Interact
+    Yi.JumpList
     Yi.Keymap
     Yi.Keymap.Completion
     Yi.Keymap.Cua
@@ -130,6 +132,42 @@ library
     Yi.Keymap.Readline
     Yi.Keymap.Vim
     Yi.Keymap.Vim.TagStack
+    Yi.Keymap.Vim2
+    Yi.Keymap.Vim2.Common
+    Yi.Keymap.Vim2.Digraph
+    Yi.Keymap.Vim2.Eval
+    Yi.Keymap.Vim2.EventUtils
+    Yi.Keymap.Vim2.Ex
+    Yi.Keymap.Vim2.Ex.Commands.Common
+    Yi.Keymap.Vim2.Ex.Commands.BufferDelete
+    Yi.Keymap.Vim2.Ex.Commands.Delete
+    Yi.Keymap.Vim2.Ex.Commands.Edit
+    Yi.Keymap.Vim2.Ex.Commands.Global
+    Yi.Keymap.Vim2.Ex.Commands.GotoLine
+    Yi.Keymap.Vim2.Ex.Commands.Nohl
+    Yi.Keymap.Vim2.Ex.Commands.Quit
+    Yi.Keymap.Vim2.Ex.Commands.Reload
+    Yi.Keymap.Vim2.Ex.Commands.Substitute
+    Yi.Keymap.Vim2.Ex.Commands.Write
+    Yi.Keymap.Vim2.Ex.Commands.Yi
+    Yi.Keymap.Vim2.Ex.Types
+    Yi.Keymap.Vim2.Ex.Eval
+    Yi.Keymap.Vim2.ExMap
+    Yi.Keymap.Vim2.InsertMap
+    Yi.Keymap.Vim2.MatchResult
+    Yi.Keymap.Vim2.Motion
+    Yi.Keymap.Vim2.NormalMap
+    Yi.Keymap.Vim2.NormalOperatorPendingMap
+    Yi.Keymap.Vim2.Operator
+    Yi.Keymap.Vim2.ReplaceMap
+    Yi.Keymap.Vim2.ReplaceSingleCharMap
+    Yi.Keymap.Vim2.Search
+    Yi.Keymap.Vim2.SearchMotionMap
+    Yi.Keymap.Vim2.StateUtils
+    Yi.Keymap.Vim2.StyledRegion
+    Yi.Keymap.Vim2.TextObject
+    Yi.Keymap.Vim2.Utils
+    Yi.Keymap.Vim2.VisualMap
     Yi.KillRing
     Yi.Layout
     Yi.Lexer.Abella
@@ -211,7 +249,7 @@ library
     binary >= 0.5,
     bytestring >= 0.9.1 && < 0.11,
     cautious-file >= 1.0.1,
-    concrete-typerep == 0.1.*,
+    concrete-typerep >= 0.1.0.2 && < 0.1.1,
     derive >=2.4 && <2.7,
     data-accessor >= 0.2.1.4 && < 0.3,
     data-accessor-mtl == 0.2.*,
@@ -220,10 +258,13 @@ library
     dyre >=0.8.11,
     filepath>=1.1 && <1.4,
     fingertree >= 0 && <0.1,
-    hashable >= 1.1 && < 1.3,
+    ghc-paths ==0.1.*,
+    hashable ==1.2.*,
     hint > 0.3.1,
     mtl >= 0.1.0.1,
+    parsec >= 3.0,
     pointedlist >= 0.4 && < 0.6,
+    pureMD5 >= 0.2.3,
     random,
     regex-base ==0.93.*,
     regex-tdfa == 1.1.*,
@@ -260,8 +301,6 @@ library
 
   if flag(testing)
     cpp-options: -DTESTING
-    hs-source-dirs: src/tests
-    other-modules: Driver, TestSuite
     build-depends:
       QuickCheck >= 2.1.0.2,
       random
@@ -402,3 +441,19 @@ executable yi
   build-tools: alex >= 3.0.3 && <= 3.0.5
   ghc-options: -threaded
   ghc-prof-options: -prof -auto-all -rtsopts
+
+Test-Suite test-suite
+  default-language: Haskell2010
+  hs-source-dirs: src/tests
+  type: exitcode-stdio-1.0
+  main-is: TestSuite.hs
+  build-depends:
+    base,
+    test-framework,
+    test-framework-hunit,
+    HUnit,
+    QuickCheck,
+    filepath,
+    directory,
+    yi
+

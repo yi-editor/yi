@@ -1,0 +1,11 @@
+-- Input
+(1,1)
+bar
+baz
+-- Output
+(2,1)
+babar
+r
+baz
+-- Events
+"byylli<C-r>b<Esc>

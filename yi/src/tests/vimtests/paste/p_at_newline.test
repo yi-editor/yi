@@ -1,0 +1,18 @@
+-- Input
+(1,1)
+abc
+def
+
+123
+456 789
+xxx
+-- Output
+(3,3)
+abc
+def
+789
+123
+456 
+xxx
+-- Events
+4j4ld$2kp

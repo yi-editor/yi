@@ -1,0 +1,8 @@
+-- Input
+(1,1)
+foobar
+-- Output
+(1,4)
+fooar
+-- Events
+lv2lo2ld

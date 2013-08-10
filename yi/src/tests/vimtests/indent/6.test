@@ -1,0 +1,14 @@
+-- Input
+(2,6)
+foo
+    bar
+    baz
+    123
+-- Output
+(2,1)
+foo
+bar
+baz
+    123
+-- Events
+Vj<lt>

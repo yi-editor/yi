@@ -12,20 +12,28 @@ module Yi.Buffer.Region
   , replaceRegionB'
   , replaceRegionClever
   , readRegionB
+  , readRegionB'
   , mapRegionB
   , modifyRegionB
   , modifyRegionClever
   , winRegionB
   , inclusiveRegionB
   , blockifyRegion
+  , joinLinesB
+  , concatLinesB
   )
 where
-import Data.Algorithm.Diff
-import Yi.Region
-import Yi.Buffer.Misc
-import Yi.Prelude
+
 import Prelude ()
-import Data.List (length, sort)
+import Yi.Prelude
+
+import Data.Algorithm.Diff
+import Data.Char (isSpace)
+import Data.List (filter, length, sort, dropWhile)
+
+import Yi.Buffer.Misc
+import Yi.Region
+import Yi.String (lines')
 import Yi.Window (winRegion)
 
 winRegionB :: BufferM Region
@@ -38,6 +46,10 @@ deleteRegionB r = deleteNAt (regionDirection r) (fromIntegral (regionEnd r ~- re
 -- | Read an arbitrary part of the buffer
 readRegionB :: Region -> BufferM String
 readRegionB r = nelemsB (fromIntegral (regionEnd r - i)) i
+    where i = regionStart r
+
+readRegionB' :: Region -> BufferM Rope
+readRegionB' r = nelemsB' (fromIntegral (regionEnd r - i)) i
     where i = regionStart r
 
 -- | Replace a region with a given string.
@@ -112,11 +124,8 @@ modifyRegionClever =  replToMod replaceRegionClever
 inclusiveRegionB :: Region -> BufferM Region
 inclusiveRegionB r =
           if regionStart r <= regionEnd r
-              then mkRegion (regionStart r) <$> pointAfter (regionEnd r)
-              else mkRegion <$> pointAfter (regionStart r) <*> pure (regionEnd r)
-    where pointAfter p = pointAt $ do 
-                           moveTo p
-                           rightB
+              then mkRegion (regionStart r) <$> pointAfterCursorB (regionEnd r)
+              else mkRegion <$> pointAfterCursorB (regionStart r) <*> pure (regionEnd r)
 
 -- | See a region as a block/rectangular region,
 -- since regions are represented by two point, this returns
@@ -130,3 +139,21 @@ blockifyRegion r = savingPointB $ do
   mapM (\line -> mkRegion <$> pointOfLineColB line lowCol <*> pointOfLineColB line (1 + highCol))
        [startLine..endLine]
 
+skippingFirst :: ([a] -> [a]) -> [a] -> [a]
+skippingFirst f = list [] (\x -> (x :) . f)
+
+skippingLast :: ([a] -> [a]) -> [a] -> [a]
+skippingLast f xs = f (init xs) ++ [last xs]
+
+skippingNull :: ([a] -> [b]) -> [a] -> [b]
+skippingNull _ [] = []
+skippingNull f xs = f xs
+
+joinLinesB :: Region -> BufferM ()
+joinLinesB =
+  savingPointB .
+    (modifyRegionClever $ skippingLast $
+       concat . (skippingFirst $ fmap $ skippingNull ((' ':) . dropWhile isSpace)) . lines')
+
+concatLinesB :: Region -> BufferM ()
+concatLinesB = savingPointB . (modifyRegionClever $ skippingLast $ filter (/='\n'))

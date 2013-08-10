@@ -1,0 +1,19 @@
+-- Input
+(1,1)
+a 1
+bb 2
+bb 3
+bb 4
+ba 5
+bb 6
+bb 7
+-- Output
+(1,1)
+a 1
+bb 2
+bb 3
+bb 4
+bb 6
+bb 7
+-- Events
+:g/ba/d<CR>

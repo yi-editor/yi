@@ -1,0 +1,11 @@
+-- Input
+(1,1)
+foo
+bar
+-- Output
+(1,4)
+fooo
+bar
+bar
+-- Events
+llvjyp

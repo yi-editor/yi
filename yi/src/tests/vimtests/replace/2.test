@@ -1,0 +1,8 @@
+-- Input
+(1,1)
+foobarbaz
+-- Output
+(1,6)
+fooxxxbaz
+-- Events
+3l3rx

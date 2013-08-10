@@ -1,0 +1,14 @@
+-- Input
+(2,1)
+abc
+def
+ghi
+-- Output
+(3,3)
+abc
+123
+456
+def
+ghi
+-- Events
+O123<CR>456<Esc>

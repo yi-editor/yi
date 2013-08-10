@@ -1,0 +1,13 @@
+-- Input
+(1,1)
+foo
+bar
+baz
+-- Output
+(3,1)
+foo
+bar
+
+baz
+-- Events
+jo<C-c>

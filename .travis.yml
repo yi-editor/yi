@@ -5,14 +5,11 @@ before_install:
  - cabal install gtk2hs-buildtools
 install: 
  - cd yi
+ - cabal install -fpango --enable-tests -ftesting --only-dependencies
+ - cabal configure -fpango --enable-tests -ftesting
+ - cabal build
+ - cabal test
  - cabal install -fpango
  - cd -
  - cd yi-contrib
  - cabal install
-notifications:
-  irc:
-    channels:
-      - "irc.freenode.org#yi"
-  email:
-    recipients:
-      - yi-devel@googlegroups.com

@@ -1,0 +1,8 @@
+-- Input
+(1,5)
+abcdf
+-- Output
+(1,5)
+abcdæf
+-- Events
+i<C-k>ae<Esc>

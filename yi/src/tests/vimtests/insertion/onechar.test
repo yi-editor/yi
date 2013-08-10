@@ -1,0 +1,11 @@
+-- Input
+(1,4)
+foo
+bar
+-- Output
+(2,1)
+foo
+x
+bar
+-- Events
+i<CR>x<Esc>

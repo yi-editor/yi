@@ -1,0 +1,10 @@
+-- Input
+(1,1)
+ab
+cd
+-- Output
+(1,1)
+b
+cd
+-- Events
+jVlkgux

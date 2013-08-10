@@ -1,0 +1,14 @@
+-- Input
+(1,3)
+  foo bar
+  baz xyzzy
+  abc
+123
+-- Output
+(1,3)
+  xoo bar
+  xaz xyzzy
+  xbc
+12x
+-- Events
+<C-v>3jrx

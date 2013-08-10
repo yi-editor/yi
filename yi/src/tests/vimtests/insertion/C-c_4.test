@@ -1,0 +1,8 @@
+-- Input
+(1,1)
+baz bar
+-- Output
+(1,2)
+bz bar
+-- Events
+la<C-c>x

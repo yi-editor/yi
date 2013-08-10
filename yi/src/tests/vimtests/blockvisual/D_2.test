@@ -1,0 +1,20 @@
+-- Input
+(2,2)
+foo
+44444444
+bar
+
+baz
+xyzzy
+123123
+-- Output
+(2,1)
+foo
+4
+b
+
+b
+x
+123123
+-- Events
+<C-v>4jD

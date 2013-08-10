@@ -1,0 +1,8 @@
+-- Input
+(1,1)
+1234567890
+-- Output
+(1,5)
+12345
+-- Events
+A<C-h><C-h><C-h><C-h><C-h><Esc>

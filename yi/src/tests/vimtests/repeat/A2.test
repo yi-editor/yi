@@ -1,0 +1,8 @@
+-- Input
+(1,1)
+foo
+-- Output
+(1,12)
+fooABCABCABC
+-- Events
+AABC<Esc>2.

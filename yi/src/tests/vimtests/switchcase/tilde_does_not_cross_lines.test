@@ -1,0 +1,12 @@
+-- Input
+(1,1)
+abcdefghijklmnopqrstuvwxyz
+abc def ghi
+qwe rty uiop
+-- Output
+(1,26)
+ABCDEFGHIJKLMNOPQRSTUVWXYZ
+abc def ghi
+qwe rty uiop
+-- Events
+30~

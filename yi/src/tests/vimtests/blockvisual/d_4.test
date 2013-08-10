@@ -1,0 +1,12 @@
+-- Input
+(1,6)
+xyzzy123
+foo
+barbaz90
+-- Output
+(1,6)
+xyzzy3
+foo
+barba0
+-- Events
+<C-v>jjld

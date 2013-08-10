@@ -1,0 +1,12 @@
+-- Input
+(2,10)
+Lorem ipsum dolor sit amet
+[peanut butter and jelly]
+qwe rty uiop
+-- Output
+(2,10)
+Lorem ipsum dolor sit amet
+[peanut b]
+qwe rty uiop
+-- Events
+dt]

@@ -71,9 +71,9 @@ import Yi.Core
 import Yi.Eval (execEditorAction, getAllNamesInScope)
 import Yi.File
 import Yi.History
-import Yi.Misc (matchingFileNames,adjBlock,adjIndent)
-import Yi.String (dropSpace,lines')
+import Yi.String (dropSpace)
 import Yi.MiniBuffer
+import Yi.Misc
 import Yi.Regex (seInput, regexEscapeString)
 import Yi.Search
 import Yi.Style
@@ -326,7 +326,7 @@ viMove (MaybeMove unit          dir) = maybeMoveB unit dir
 viMove (Move      unit          dir) = moveB unit dir
 viMove (CharMove Forward)            = moveXorEol 1
 viMove (CharMove Backward)           = moveXorSol 1
-viMove (PercentageFile i)            = movePercentageFile i
+viMove (PercentageFile i)            = setMarkHere '\'' >> movePercentageFileB i
 viMove (ArbMove       move)          = move
 viMove (SeqMove move1 move2)         = viMove move1 >> viMove move2
 viMove (Replicate     move i)        = viReplicateMove move i
@@ -338,17 +338,6 @@ viReplicateMove (CharMove Forward)    i = moveXorEol i
 viReplicateMove (CharMove Backward)   i = moveXorSol i
 viReplicateMove (Replicate move j)    i = viReplicateMove move (i * j)
 viReplicateMove move                  i = replicateM_ i $ viMove move
-
-movePercentageFile :: Int -> BufferM ()
-movePercentageFile i = do let f :: Double
-                              f  = case fromIntegral i / 100.0 of
-                                      x | x > 1.0 -> 1.0
-                                        | x < 0.0 -> 0.0 -- Impossible?
-                                        | otherwise -> x
-                          Point max_p <- sizeB
-                          setMarkHere '\''
-                          moveTo $ Point $ floor (fromIntegral max_p * f)
-                          firstNonSpaceB
 
 mkKeymap :: Proto ModeMap -> KeymapSet
 mkKeymap p = KeymapSet
@@ -427,7 +416,6 @@ mkExHistComplete matchFn compl s =
   where 
     testDeleteB = if null s then return () else deleteWordB
     deleteWordB = deleteUnitB unitSep Backward
-    deleteUnitB unit dir = deleteRegionB =<< regionOfPartNonEmptyB unit dir
 
 exHistComplete' :: Bool -> (String -> YiM [String]) -> String -> YiM ()
 exHistComplete' caseSensitive = mkExHistComplete (mkIsPrefixOf caseSensitive)
@@ -702,25 +690,6 @@ defKeymap = Proto template
        printMsg $ directionElim dir '?' '/' : maybe "" seInput m
        viSearch "" [] dir
 
-     skippingFirst :: ([a] -> [a]) -> [a] -> [a]
-     skippingFirst f = list [] (\x -> (x :) . f)
-
-     skippingLast :: ([a] -> [a]) -> [a] -> [a]
-     skippingLast f xs = f (init xs) ++ [last xs]
-
-     skippingNull :: ([a] -> [b]) -> [a] -> [b]
-     skippingNull _ [] = []
-     skippingNull f xs = f xs
-
-     joinLinesB :: Region -> BufferM ()
-     joinLinesB =
-       savingPointB .
-         (modifyRegionClever $ skippingLast $
-            concat . (skippingFirst $ map $ skippingNull ((' ':) . dropWhile isSpace)) . lines')
-
-     concatLinesB :: Region -> BufferM ()
-     concatLinesB = savingPointB . (modifyRegionClever $ skippingLast $ filter (/='\n'))
-
      onCurrentWord :: (String -> String) -> BufferM ()
      onCurrentWord f = savingPointB $ modifyRegionClever f =<< regionOfNonEmptyB unitViWord
 
@@ -781,7 +750,7 @@ defKeymap = Proto template
      -- Usually the integer argument is the number of times an action should be repeated.
      cmdFM :: [([Event], Int -> YiM ())]
      cmdFM =
-         [([ctrlCh 'g'],    const $ withEditor viFileInfo)
+         [([ctrlCh 'g'],    const $ withEditor printFileInfoE)
 
          ,([ctrlCh '^'],    withEditor . alternateBufferE . (+ (-1)) )
 
@@ -1011,18 +980,6 @@ defKeymap = Proto template
          case txt' of
            '\n':txt -> moveToSol >> insertN txt >> leftN (length txt)
            _        -> insertN txt' >> leftB
-     switchCaseChar :: Char -> Char
-     switchCaseChar c = if isUpper c then toLower c else toUpper c
-
-     onCharLetterCode :: (Int -> Int) -> Char -> Char
-     onCharLetterCode f c | isUpper c || isLower c = chr (f (ord c - a) `mod` 26 + a)
-                          | otherwise              = c
-                         where a | isUpper c = ord 'A'
-                                 | isLower c = ord 'a'
-                                 | otherwise = undefined
-
-     rot13Char :: Char -> Char
-     rot13Char = onCharLetterCode (+13)
 
      viMapRegion :: (Char -> Char) -> RegionStyle -> Region -> EditorM ()
      viMapRegion f Block region = withBuffer0' $ mapM_ (`mapRegionB` f) =<< blockifyRegion region
@@ -1564,7 +1521,7 @@ exEval self cmd =
 -- ---------------------------------------------------------------------
 -- Misc functions
 
-forAllBuffers :: (BufferRef -> YiM ()) -> YiM ()
+forAllBuffers :: MonadEditor m => (BufferRef -> m ()) -> m ()
 forAllBuffers f = mapM_ f =<< readEditor bufferStack
 
 viCharInfo :: EditorM ()
@@ -1583,20 +1540,6 @@ viChar8Info = do c <- withBuffer0' readB
                           . showString ",  Hex " . showSeq showHex w8
                           . showString ",  Octal " . showSeq showOct w8 $ ""
     where showSeq showX xs s = foldr ($) s $ intersperse (showChar ' ') $ map showX xs
-
-viFileInfo :: EditorM ()
-viFileInfo =
-    do bufInfo <- withBuffer0' bufInfoB
-       printMsg $ showBufInfo bufInfo
-    where
-    showBufInfo :: BufferFileInfo -> String
-    showBufInfo bufInfo = concat [ show $ bufInfoFileName bufInfo
-         , " Line "
-         , show $ bufInfoLineNo bufInfo
-         , " ["
-         , bufInfoPercent bufInfo
-         , "]"
-         ]
 
 -- | write the current buffer, but only if modified (cf. :help :x)
 viWriteModified :: YiM ()
@@ -1684,27 +1627,7 @@ withEditor' f = withEditor (f <* withBuffer0 leftOnEol)
 
 -- Find the item after or under the cursor and jump to its match
 percentMove :: (RegionStyle, ViMove)
-percentMove = (Inclusive, ArbMove tryGoingToMatch)
-    where tryGoingToMatch = do
-              p <- pointB
-              getViMarkB '\'' >>= flip setMarkPointB p
-              foundMatch <- goToMatch
-              unless foundMatch $ moveTo p
-          go dir a b = goUnmatchedB dir a b >> return True
-          goToMatch = do
-            c <- readB
-            case c of '(' -> go Forward  '(' ')'
-                      ')' -> go Backward '(' ')'
-                      '{' -> go Forward  '{' '}'
-                      '}' -> go Backward '{' '}'
-                      '[' -> go Forward  '[' ']'
-                      ']' -> go Backward '[' ']'
-                      _   -> otherChar
-          otherChar = do eof <- atEof
-                         eol <- atEol
-                         if eof || eol
-                             then return False
-                             else rightB >> goToMatch -- search for matchable character after the cursor
+percentMove = (Inclusive, ArbMove (setMarkHere '\'' >> findMatchingPairB))
 
 jumpToMark :: Char -> BufferM ()
 jumpToMark c = do

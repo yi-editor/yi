@@ -1,0 +1,10 @@
+-- Input
+(1,1)
+f
+bar
+-- Output
+(2,1)
+f
+fbar
+-- Events
+ji<C-y><C-y><C-y><Esc>

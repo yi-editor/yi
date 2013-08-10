@@ -1,0 +1,14 @@
+-- Input
+(1,1)
+abc
+eee
+cd
+ddd
+-- Output
+(3,1)
+abc
+eee
+cd
+ddd
+-- Events
+3<Esc>2j

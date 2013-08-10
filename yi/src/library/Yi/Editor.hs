@@ -24,6 +24,7 @@ import Yi.Config
 import Yi.Dynamic
 import Yi.Event (Event)
 import Yi.Interact as I
+import Yi.JumpList
 import Yi.KillRing
 import Yi.Layout
 import Yi.Prelude
@@ -455,7 +456,7 @@ alternateBufferE n = do
 
 -- | Create a new zero size window on a given buffer
 newZeroSizeWindow ::Bool -> BufferRef -> WindowRef -> Window
-newZeroSizeWindow mini bk ref = Window mini bk [] 0 emptyRegion ref 0
+newZeroSizeWindow mini bk ref = Window mini bk [] 0 emptyRegion ref 0 Nothing
 
 -- | Create a new window onto the given buffer.
 newWindowE :: Bool -> BufferRef -> EditorM Window
@@ -669,12 +670,15 @@ deleteTabE = modA tabsA $ maybe failure id . deleteTab
 -- contains only one window then do nothing.
 tryCloseE :: EditorM ()
 tryCloseE = do
-    n <- getsA windowsA PL.length
-    if n == 1
-        -- Could the Maybe response from deleteLeft be used instead of the
-        -- initial 'if'?
-        then modA tabsA (fromJust . PL.deleteLeft)
-        else modA windowsA (fromJust . PL.deleteLeft)
+    ntabs <- getsA tabsA PL.length
+    nwins <- getsA windowsA PL.length
+    if ntabs == 1 && nwins == 1
+        then return ()
+        else if nwins == 1
+                -- Could the Maybe response from deleteLeft be used instead of the
+                -- initial 'if'?
+                then modA tabsA (fromJust . PL.deleteLeft)
+                else modA windowsA (fromJust . PL.deleteLeft)
 
 -- | Make the current window the only window on the screen
 closeOtherE :: EditorM ()
@@ -730,3 +734,42 @@ instance Initializable TempBufferNameHint where
 
 instance YiVariable TempBufferNameHint
 
+addJumpHereE :: EditorM ()
+addJumpHereE = do
+    w <- getA currentWindowA
+    let jl = jumpList w
+    curPoint <- withBuffer0 $ pointB
+    shouldAddJump <- case jl of
+        Just (PL.PointedList _ (Jump mark bf) _) -> do
+            bfStillAlive <- gets (M.lookup bf . buffers)
+            case bfStillAlive of
+                Nothing -> return False
+                _ -> do
+                    p <- withGivenBuffer0 bf $ getMarkPointB mark
+                    return $! (p, bf) /= (curPoint, bufkey w)
+        _ -> return True
+    when shouldAddJump $ do
+        m <- withBuffer0 setMarkHereB
+        let bf = bufkey w
+            j = Jump m bf
+        putA currentWindowA $ w { jumpList = addJump j (jumpList w) }
+        return ()
+
+jumpBackE :: EditorM ()
+jumpBackE = addJumpHereE >> modifyJumpListE jumpBack
+
+jumpForwardE :: EditorM ()
+jumpForwardE = modifyJumpListE jumpForward
+
+modifyJumpListE :: (JumpList -> JumpList) -> EditorM ()
+modifyJumpListE f = do
+    w <- getA currentWindowA
+    let w' = w { jumpList = f (jumpList w) }
+        jl = jumpList w'
+    case jl of
+        Nothing -> return ()
+        Just (PL.PointedList _ (Jump mark bf) _) -> do
+            switchToBufferE bf
+            withBuffer0 $ getMarkPointB mark >>= moveTo
+
+            modA currentWindowA (\win -> win { jumpList = f (jumpList win) })

@@ -1,0 +1,12 @@
+-- Input
+(2,2)
+Lorem ipsum dolor sit amet
+abc def ghi
+qwe rty uiop
+-- Output
+(2,2)
+Lorem ipsum dolor sit amet
+aoc def ghi
+qwe rty uiop
+-- Events
+r<C-y>

@@ -1,0 +1,13 @@
+-- Input
+(2,2)
+Lorem ipsum dolor sit amet
+abc def ghi
+qwe rty uiop
+-- Output
+(2,3)
+Lorem ipsum dolor sit amet
+abbc def ghi
+qwec def ghi
+qwe rty uiop
+-- Events
+vjlyp

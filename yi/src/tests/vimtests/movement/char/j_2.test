@@ -1,0 +1,10 @@
+-- Input
+(1,1)
+bar
+bara
+-- Output
+(2,3)
+bar
+baa
+-- Events
+llljx

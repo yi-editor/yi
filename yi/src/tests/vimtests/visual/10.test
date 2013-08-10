@@ -1,0 +1,8 @@
+-- Input
+(1,1)
+12345678
+-- Output
+(1,5)
+1234678
+-- Events
+lv3l<Esc>x

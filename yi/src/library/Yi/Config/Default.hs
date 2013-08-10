@@ -3,7 +3,7 @@
 
 module Yi.Config.Default (defaultConfig, availableFrontends, 
                           defaultEmacsConfig, defaultVimConfig, defaultCuaConfig,
-                          toVimStyleConfig, toEmacsStyleConfig, toCuaStyleConfig) where
+                          toVimStyleConfig, toVim2StyleConfig, toEmacsStyleConfig, toCuaStyleConfig) where
 
 import Control.Monad (forever)
 import Data.Either (rights)
@@ -34,6 +34,7 @@ import qualified Data.HashMap.Strict as HM
 import qualified Yi.Keymap.Cua  as Cua
 import qualified Yi.Keymap.Emacs  as Emacs
 import qualified Yi.Keymap.Vim  as Vim
+import qualified Yi.Keymap.Vim2  as Vim2
 import qualified Yi.Mode.Abella as Abella
 import qualified Yi.Mode.Haskell as Haskell
 import qualified Yi.Mode.JavaScript as JS
@@ -189,7 +190,7 @@ defaultEmacsConfig = toEmacsStyleConfig defaultConfig
 defaultVimConfig = toVimStyleConfig defaultConfig
 defaultCuaConfig = toCuaStyleConfig defaultConfig
 
-toEmacsStyleConfig, toVimStyleConfig, toCuaStyleConfig :: Config -> Config
+toEmacsStyleConfig, toVimStyleConfig, toVim2StyleConfig, toCuaStyleConfig :: Config -> Config
 toEmacsStyleConfig cfg 
     = cfg {
             configUI = (configUI cfg) { configVtyEscDelay = 1000 , configScrollStyle = Just SnapToCenter},
@@ -211,6 +212,11 @@ toVimStyleConfig cfg = cfg { defaultKm = Vim.keymapSet
                            , configUI = (configUI cfg) { configScrollStyle = Just SingleLine}
                            , configRegionStyle = Inclusive
                            , modeTable = AnyMode Abella.abellaModeVim : modeTable cfg }
+
+toVim2StyleConfig cfg = cfg { defaultKm = Vim2.keymapSet
+                            , configUI = (configUI cfg) { configScrollStyle = Just SingleLine}
+                            , configRegionStyle = Inclusive }
+
 toCuaStyleConfig cfg = cfg {defaultKm = Cua.keymap}
 
 -- | Open an emacs-like scratch buffer if no file is open.

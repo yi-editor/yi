@@ -1,0 +1,10 @@
+-- Input
+(1,1)
+abc def ghi
+    qwe rty uiop
+-- Output
+(2,5)
+abc def ghi
+    qwe rty uiop
+-- Events
+$j^

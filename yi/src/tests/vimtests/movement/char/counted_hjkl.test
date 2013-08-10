@@ -1,0 +1,16 @@
+-- Input
+(1,2)
+aaaaaaaaaaaaaa
+bbbbbbbbbbbbbb
+cccccccccccccc
+dddddddddddddd
+eeeeeeeeeeeeee
+-- Output
+(5,4)
+aaaaaaaaaaaaaa
+bbbbbbbbbbbbbb
+cccccccccccccc
+dddddddddddddd
+eeeeeeeeeeeeee
+-- Events
+h2j3l1k2lkk4j2h

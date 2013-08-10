@@ -2,15 +2,20 @@
 -- Copyright (C) 2008 JP Bernardy
 module Yi.Buffer.HighLevel where
 
-import Control.Monad.RWS.Strict (ask)
-import Control.Monad.State
-import Data.Char
-import Data.List (isPrefixOf, sort, lines, drop, filter, length, takeWhile, dropWhile, reverse)
-import qualified Data.Rope as R
-import Data.Maybe (fromMaybe, listToMaybe)
-import Data.Time (UTCTime)
-import Prelude (FilePath, map)
+import Prelude (FilePath)
 import Yi.Prelude
+
+import Control.Monad.RWS.Strict (ask)
+import Control.Monad.State hiding (forM, forM_, sequence_)
+
+import Data.Char
+import Data.List (isPrefixOf, sort, lines, drop, filter, length,
+                  takeWhile, dropWhile, reverse, map, intersperse, zip)
+import Data.Maybe (fromMaybe, listToMaybe, catMaybes)
+import Data.Ord
+import qualified Data.Rope as R
+import Data.Time (UTCTime)
+import Data.Tuple (swap)
 
 import Yi.Buffer.Basic
 import Yi.Buffer.Misc
@@ -66,21 +71,44 @@ prevWordB = moveB unitWord Backward
 
 -- * Char-based movement actions.
 
+gotoCharacterB :: Char -> Direction -> RegionStyle -> Bool -> BufferM ()
+gotoCharacterB c dir style stopAtLineBreaks = do
+    start <- pointB
+    let pred = if stopAtLineBreaks then (`elem` [c, '\n']) else (== c)
+        (move, moveBack) = if dir == Forward then (rightB, leftB) else (leftB, rightB)
+    doUntilB_ (pred <$> readB) move
+    b <- readB
+    if stopAtLineBreaks && b == '\n'
+    then moveTo start
+    else when (style == Exclusive && b == c) moveBack
+
 -- | Move to the next occurence of @c@
 nextCInc :: Char -> BufferM ()
-nextCInc c = doUntilB_ ((c ==) <$> readB) rightB
+nextCInc c = gotoCharacterB c Forward Inclusive False
+
+nextCInLineInc :: Char -> BufferM ()
+nextCInLineInc c = gotoCharacterB c Forward Inclusive True
 
 -- | Move to the character before the next occurence of @c@
 nextCExc :: Char -> BufferM ()
-nextCExc c = nextCInc c >> leftB
+nextCExc c = gotoCharacterB c Forward Exclusive False
+
+nextCInLineExc :: Char -> BufferM ()
+nextCInLineExc c = gotoCharacterB c Forward Exclusive True
 
 -- | Move to the previous occurence of @c@
 prevCInc :: Char -> BufferM ()
-prevCInc c = doUntilB_ ((c ==) <$> readB) leftB
+prevCInc c = gotoCharacterB c Backward Inclusive False
+
+prevCInLineInc :: Char -> BufferM ()
+prevCInLineInc c = gotoCharacterB c Backward Inclusive True
 
 -- | Move to the character after the previous occurence of @c@
 prevCExc :: Char -> BufferM ()
-prevCExc c = prevCInc c >> rightB
+prevCExc c = gotoCharacterB c Backward Exclusive False
+
+prevCInLineExc :: Char -> BufferM ()
+prevCInLineExc c = gotoCharacterB c Backward Exclusive True
 
 -- | Move to first non-space character in this line
 firstNonSpaceB :: BufferM ()
@@ -97,6 +125,29 @@ lastNonSpaceB = do moveToEol
 moveNonspaceOrSol :: BufferM ()
 moveNonspaceOrSol = do prev <- readPreviousOfLnB
                        if and . map isSpace $ prev then moveToSol else firstNonSpaceB
+
+-- | True if current line consists of just a newline (no whitespace)
+isCurrentLineEmptyB :: BufferM Bool
+isCurrentLineEmptyB = savingPointB $ moveToSol >> atEol
+
+-- | Note: Returns False if line doesn't have any characters besides a newline
+isCurrentLineAllWhiteSpaceB :: BufferM Bool
+isCurrentLineAllWhiteSpaceB = savingPointB $ do
+    empty <- isCurrentLineEmptyB
+    if empty
+    then return False
+    else do
+        let go = do
+                  eol <- atEol
+                  if eol
+                  then return True
+                  else do
+                      c <- readB
+                      if isSpace c
+                      then rightB >> go
+                      else return False
+        moveToSol
+        go
 
 ------------
 
@@ -141,9 +192,18 @@ atSof = atBoundaryB Document Backward
 atEof :: BufferM Bool
 atEof = atBoundaryB Document Forward
 
+-- | True if point at the last line
+atLastLine :: BufferM Bool
+atLastLine = savingPointB $ do
+    moveToEol
+    (==) <$> sizeB <*> pointB
+
 -- | Get the current line and column number
 getLineAndCol :: BufferM (Int, Int)
 getLineAndCol = (,) <$> curLn <*> curCol
+
+getLineAndColOfPoint :: Point -> BufferM (Int, Int)
+getLineAndColOfPoint p = savingPointB $ moveTo p >> getLineAndCol
 
 -- | Read the line the point is on
 readLnB :: BufferM String
@@ -178,6 +238,9 @@ nextPointB = do
   if eof then pointB
          else do p <- pointB
                  return $ Point (fromPoint p + 1)
+
+readCurrentWordB :: BufferM String
+readCurrentWordB = readUnitB unitWord
 
 readPrevWordB :: BufferM String
 readPrevWordB = readPrevUnitB unitViWordOnLine
@@ -215,6 +278,12 @@ lowercaseWordB = transformB (fmap toLower) unitWord Forward
 capitaliseWordB :: BufferM ()
 capitaliseWordB = transformB capitalizeFirst unitWord Forward
 
+-- | switch the case of the letter under the cursor
+switchCaseCharB :: BufferM ()
+switchCaseCharB = transformB (fmap switchCaseChar) Character Forward
+
+switchCaseChar :: Char -> Char
+switchCaseChar c = if isUpper c then toLower c else toUpper c
 
 -- | Delete to the end of line, excluding it.
 deleteToEol :: BufferM ()
@@ -237,7 +306,7 @@ swapB = do eol <- atEol
 -- | Delete trailing whitespace from all lines
 deleteTrailingSpaceB :: BufferM ()
 deleteTrailingSpaceB = modifyRegionClever deleteSpaces =<< regionOfB Document
-  where deleteSpaces = mapLines $ reverse . dropWhile (' ' ==) . reverse
+  where deleteSpaces = mapLines $ reverse . dropWhile (`elem` " \t") . reverse
 
 -- ----------------------------------------------------
 -- | Marks
@@ -633,3 +702,202 @@ revertB s now = do
 
 smallBufferSize :: Int
 smallBufferSize = 1000000
+
+-- get lengths of parts covered by block region
+--
+-- Consider block region starting at 'o' and ending at 'z':
+--
+--    start
+--      |
+--     \|/
+-- def foo(bar):
+--     baz
+--
+--     ab
+--     xyz0
+--      /|\
+--       |
+--     finish
+--
+-- shapeOfBlockRegionB returns (regionStart, [2, 2, 0, 1, 2])
+-- TODO: accept stickToEol flag
+shapeOfBlockRegionB :: Region -> BufferM (Point, [Int])
+shapeOfBlockRegionB reg = savingPointB $ do
+    (l0, c0) <- getLineAndColOfPoint $ regionStart reg
+    (l1, c1) <- getLineAndColOfPoint $ regionEnd reg
+    let (left, top, bottom, right) = (min c0 c1, min l0 l1, max l0 l1, max c0 c1)
+    lengths <- forM [top .. bottom] $ \l -> do
+        discard $ gotoLn l
+        moveToColB left
+        currentLeft <- curCol
+        if currentLeft /= left
+        then return 0
+        else do
+            moveToColB right
+            rightAtEol <- atEol
+            leftOnEol
+            currentRight <- curCol
+            return $ if currentRight == 0 && rightAtEol
+                     then 0
+                     else currentRight - currentLeft + 1
+    startingPoint <- pointOfLineColB top left
+    return (startingPoint, lengths)
+
+leftEdgesOfRegionB :: RegionStyle -> Region -> BufferM [Point]
+leftEdgesOfRegionB Block reg = savingPointB $ do
+    (l0, _) <- getLineAndColOfPoint $ regionStart reg
+    (l1, _) <- getLineAndColOfPoint $ regionEnd reg
+    moveTo $ regionStart reg
+    fmap catMaybes $ forM [0 .. abs (l0 - l1)] $ \i -> savingPointB $ do
+        discard $ lineMoveRel i
+        p <- pointB
+        eol <- atEol
+        if not eol
+        then return $ Just p
+        else return Nothing
+leftEdgesOfRegionB _ r = return [regionStart r]
+
+rightEdgesOfRegionB :: RegionStyle -> Region -> BufferM [Point]
+-- rightEdgesOfRegionB Block reg = return [regionEnd reg]
+rightEdgesOfRegionB LineWise reg = savingPointB $ do
+    lastEol <- do
+        moveTo $ regionEnd reg
+        moveToEol
+        pointB
+    let  go acc p = do moveTo p
+                       moveToEol
+                       edge <- pointB
+                       if edge > lastEol
+                       then return $ reverse acc
+                       else do
+                           discard $ lineMoveRel 1
+                           go (edge:acc) =<< pointB
+    go [] (regionStart reg)
+rightEdgesOfRegionB _ reg = savingPointB $ do
+    moveTo $ regionEnd reg
+    leftOnEol
+    fmap singleton pointB
+
+splitBlockRegionToContiguousSubRegionsB :: Region -> BufferM [Region]
+splitBlockRegionToContiguousSubRegionsB reg = savingPointB $ do
+    (start, lengths) <- shapeOfBlockRegionB reg
+    moveTo start
+    forM lengths $ \l -> do
+        p0 <- pointB
+        moveXorEol l
+        p1 <- pointB
+        let subRegion = mkRegion p0 p1
+        moveTo p0
+        discard $ lineMoveRel 1
+        return subRegion
+
+deleteRegionWithStyleB :: Region -> RegionStyle -> BufferM Point
+deleteRegionWithStyleB reg Block = savingPointB $ do
+    (start, lengths) <- shapeOfBlockRegionB reg
+    moveTo start
+    forM_ (zip [1..] lengths) $ \(i, l) -> do
+        deleteN l
+        moveTo start
+        lineMoveRel i
+    return start
+
+deleteRegionWithStyleB reg style = savingPointB $ do
+    effectiveRegion <- convertRegionToStyleB reg style
+    deleteRegionB effectiveRegion
+    return $! regionStart effectiveRegion
+
+readRegionRopeWithStyleB :: Region -> RegionStyle -> BufferM Rope
+readRegionRopeWithStyleB reg Block = savingPointB $ do
+    (start, lengths) <- shapeOfBlockRegionB reg
+    moveTo start
+    chunks <- forM lengths $ \l ->
+        if l == 0
+        then lineMoveRel 1 >> return R.empty
+        else do
+            p <- pointB
+            r <- readRegionB' $ mkRegion p (p +~ Size l)
+            discard $ lineMoveRel 1
+            return r
+    return $ R.concat $ intersperse (R.fromString "\n") chunks
+readRegionRopeWithStyleB reg style = readRegionB' =<< convertRegionToStyleB reg style
+
+insertRopeWithStyleB :: Rope -> RegionStyle -> BufferM ()
+insertRopeWithStyleB rope Block = savingPointB $ do
+    let ls = R.split (fromIntegral (ord '\n')) rope
+        advanceLine = do
+            bottom <- atLastLine
+            if bottom
+            then do
+                col <- curCol
+                moveToEol
+                newlineB
+                insertN $ replicate col ' '
+            else discard $ lineMoveRel 1
+    sequence_ $ intersperse advanceLine $ fmap (savingPointB . insertN') ls
+insertRopeWithStyleB rope LineWise = do
+    moveToSol
+    savingPointB $ insertN' rope
+insertRopeWithStyleB rope _ = insertN' rope
+
+-- consider the following buffer content
+--
+-- 123456789
+-- qwertyuio
+-- asdfgh
+--
+-- The following examples use characters from that buffer as points.
+-- h' denotes the newline after h
+--
+-- 1 r -> 4 q
+-- 9 q -> 1 o
+-- q h -> y a
+-- a o -> h' q
+-- o a -> q h'
+-- 1 a -> 1 a
+--
+-- property: fmap swap (flipRectangleB a b) = flipRectangleB b a
+flipRectangleB :: Point -> Point -> BufferM (Point, Point)
+flipRectangleB p0 p1 = savingPointB $ do
+    (_, c0) <- getLineAndColOfPoint p0
+    (_, c1) <- getLineAndColOfPoint p1
+    case compare c0 c1 of
+        EQ -> return (p0, p1)
+        GT -> fmap swap $ flipRectangleB p1 p0
+        LT -> do
+            -- now we know that c0 < c1
+            moveTo p0
+            moveXorEol $ c1 - c0
+            flippedP0 <- pointB
+            return (flippedP0, p1 -~ Size (c1 - c0))
+
+movePercentageFileB :: Int -> BufferM ()
+movePercentageFileB i = do
+    let f :: Double
+        f = case fromIntegral i / 100.0 of
+               x | x > 1.0 -> 1.0
+                 | x < 0.0 -> 0.0 -- Impossible?
+                 | otherwise -> x
+    lineCount <- lineCountB
+    discard $ gotoLn $ floor (fromIntegral lineCount * f)
+    firstNonSpaceB
+
+findMatchingPairB :: BufferM ()
+findMatchingPairB = do
+    let go dir a b = goUnmatchedB dir a b >> return True
+        goToMatch = do
+          c <- readB
+          case c of '(' -> go Forward  '(' ')'
+                    ')' -> go Backward '(' ')'
+                    '{' -> go Forward  '{' '}'
+                    '}' -> go Backward '{' '}'
+                    '[' -> go Forward  '[' ']'
+                    ']' -> go Backward '[' ']'
+                    _   -> otherChar
+        otherChar = do eof <- atEof
+                       eol <- atEol
+                       if eof || eol
+                           then return False
+                           else rightB >> goToMatch
+    p <- pointB
+    foundMatch <- goToMatch
+    unless foundMatch $ moveTo p

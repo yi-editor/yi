@@ -1,0 +1,15 @@
+-- Input
+(2,2)
+abcdef
+abcdef
+abcdef
+abcdef
+-- Output
+(3,3)
+abcdef
+abcdef
+abbcdcdef
+abbcdcdef
+  bcd
+-- Events
+<C-v>lljjyjp

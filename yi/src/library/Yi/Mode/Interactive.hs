@@ -11,11 +11,6 @@ import Yi.Lexer.Compilation (Token)
 import qualified Yi.Mode.Compilation as Compilation
 import qualified Yi.Syntax.OnlineTree as OnlineTree
 
-atLastLine :: BufferM Bool
-atLastLine = savingPointB $ do
-    moveToEol
-    (==) <$> sizeB <*> pointB
-
 mode :: Mode (OnlineTree.Tree (Tok Token))
 mode = Compilation.mode
   { modeApplies = modeNeverApplies,

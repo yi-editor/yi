@@ -1,0 +1,12 @@
+-- Input
+(3,3)
+a b
+ ccc 111 22 3
+d e
+-- Output
+(1,1)
+a b
+ ccc 111 22 3
+d e
+-- Events
+bbbbbbbbbbbbbbbbbbbbbbbbbbbbbb

@@ -1,0 +1,8 @@
+-- Input
+(1,1)
+aa bb cc dd
+-- Output
+(1,4)
+aa bb cc dd
+-- Events
+W

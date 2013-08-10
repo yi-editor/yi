@@ -4,6 +4,13 @@
 *.o-boot
 *.o.cmd
 *.swp
+*.prof
+*.hp
+*.aux
 Yi/Lexer/*.hs
-.yi.*.dbg
+.yi*.dbg
 dist/
+dist_yi/
+*~
+.hsenv_yi
+hsenv.log

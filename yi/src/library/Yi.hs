@@ -8,7 +8,7 @@
 --
 -- You should therefore:
 --      import Yi
--- in your ~/.yi/ scripts
+-- in your ~/.config/yi/ scripts
 --
 
 module Yi
