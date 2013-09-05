@@ -24,6 +24,8 @@ import Yi.Prelude
 import Yi.Editor
 import Yi.Dynamic 
 
+import qualified Data.ByteString as BS
+import qualified Data.ByteString.UTF8 as BS8
 import Data.Maybe (mapMaybe)
 import Data.List (isPrefixOf)
 import System.FilePath (takeFileName, takeDirectory, FilePath, (</>))
@@ -79,7 +81,7 @@ readCTags =
 importTagTable :: FilePath -> IO TagTable
 importTagTable filename = do
   friendlyName <-  expandTilda filename
-  tagStr <- readFile friendlyName
+  tagStr <- fmap BS8.toString $ BS.readFile friendlyName
   let ctags = readCTags tagStr
   return $ TagTable { tagFileName = takeFileName filename,
                       tagBaseDir  = takeDirectory filename,
