@@ -42,6 +42,7 @@ yi = yiDriver
 -- The yi executable uses a default config.
 yiDriver cfg = do
     args <- Dyre.withDyreOptions Dyre.defaultParams getArgs 
+    cfgDir <- Yi.Paths.getConfigDir
     -- we do the arg processing before dyre, so we can extract '--ghc-option=' and '--help' and so on.
     case do_args cfg args of
         Left (Err err code) ->
@@ -55,6 +56,7 @@ yiDriver cfg = do
                             , Dyre.configDir    = Just Yi.Paths.getConfigDir
                             , Dyre.hidePackages = ["mtl"]
                             , Dyre.ghcOpts      = (["-threaded", "-O2"] ++
+                                                   ["-i" ++ cfgDir] ++
 #ifdef PROFILING
                                                    ["-prof", "-auto-all", "-rtsopts", "-osuf=p_o", "-hisuf=p_hi"] ++
 #endif
