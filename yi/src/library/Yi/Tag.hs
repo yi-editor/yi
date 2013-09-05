@@ -19,7 +19,7 @@ module Yi.Tag
 where
 
 {- Standard Library Module Imports -}
-import Prelude (map, words, lines, readFile)
+import Prelude (map, words, lines, readFile, reads)
 import Yi.Prelude
 import Yi.Editor
 import Yi.Dynamic 
@@ -69,10 +69,10 @@ lookupTag tag tagTable = do
 readCTags :: String -> Map Tag (FilePath, Int)
 readCTags =
     fromList . mapMaybe (parseTagLine . words) . lines
-    where parseTagLine [tag, tagfile, lineno] =
+    where parseTagLine (tag:tagfile:lineno:_) =
               -- remove ctag control lines
               if "!_TAG_" `isPrefixOf` tag then Nothing
-              else Just (tag, (tagfile, read lineno))
+              else Just (tag, (tagfile, fst . head . reads $ lineno))
           parseTagLine _ = Nothing
 
 -- | Read in a tag file from the system
