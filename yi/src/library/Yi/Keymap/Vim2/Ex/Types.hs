@@ -8,7 +8,7 @@ import Data.Maybe
 import Yi.Keymap
 
 data ExCommand = ExCommand {
-    cmdComplete :: YiM (Maybe String)
+    cmdComplete :: YiM [String]
   , cmdIsPure :: Bool
   , cmdAction :: Action
   , cmdAcceptsRange :: Bool

@@ -35,16 +35,16 @@ completionBinding commandParsers = VimBindingY prereq action
               commandString <- withEditor $ withBuffer0 elemsB
               case stringToExCommand commandParsers commandString of
                   Just cmd -> do
-                      maybeNewString <- cmdComplete cmd
-                      case maybeNewString of
-                        Just s -> do
+                      possibilities <- cmdComplete cmd
+                      case possibilities of
+                        (s:_) -> do
                             withBuffer $ replaceBufferContent s
                             withEditor $ do
                                 historyPrefixSet s
                                 modifyStateE $ \state -> state {
                                     vsOngoingInsertEvents = s
                                 }
-                        Nothing -> return ()
+                        [] -> return ()
                   Nothing -> return ()
               return Drop
 
