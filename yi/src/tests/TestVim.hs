@@ -8,7 +8,6 @@ import qualified Test.Framework as TF
 
 import Control.Monad (filterM, forM, void, unless)
 
-import Data.Prototype (extractValue)
 import Data.List (sort, isSuffixOf, intercalate)
 
 import System.Directory
@@ -17,6 +16,7 @@ import System.FilePath
 
 import Text.Printf
 
+import Yi (extractValue)
 import Yi.Buffer
 import Yi.Config.Default (defaultVimConfig)
 import Yi.Editor

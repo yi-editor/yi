@@ -242,7 +242,7 @@ library
     Yi.Char.Unicode
 
   build-depends:
-    Cabal >= 1.10 && < 1.18,
+    Cabal >= 1.10 && < 1.20,
     Diff >=0.1 && <0.3,
     array, containers, directory, process, old-locale,
     base >= 4 && < 5,
@@ -257,7 +257,7 @@ library
     dlist >=0.4.1,
     dyre >=0.8.11,
     filepath>=1.1 && <1.4,
-    fingertree >= 0 && <0.1,
+    fingertree >= 0 && <0.2,
     ghc-paths ==0.1.*,
     hashable ==1.2.*,
     hint > 0.3.1,
