@@ -2,10 +2,13 @@ module Yi.Keymap.Vim2.ExMap
     ( defExMap
     ) where
 
-import Prelude (unwords, drop, length)
+import Prelude (unwords, drop, length, reverse)
 import Yi.Prelude
 
+import Data.Char (isSpace)
 import Data.Maybe (fromJust)
+import Data.List.Split (splitWhen)
+import System.FilePath (isPathSeparator)
 
 import Yi.Buffer hiding (Insert)
 import Yi.Editor
@@ -50,7 +53,8 @@ completionBinding commandParsers = VimBindingY prereq action
                     withEditor 
                         . printMsg 
                         . unwords 
-                        . fmap (drop $ length s) $ ss
+                        . fmap (dropToLastWordOf s)
+                        $ ss
           updateCommand :: String -> YiM ()
           updateCommand s = do
               withBuffer $ replaceBufferContent s
@@ -59,6 +63,16 @@ completionBinding commandParsers = VimBindingY prereq action
                   modifyStateE $ \state -> state {
                       vsOngoingInsertEvents = s
                   }
+
+dropToLastWordOf :: String -> String -> String
+dropToLastWordOf s =
+    case reverse . splitWhen isWordSep $ s of
+        [] -> id
+        (w:[]) -> id
+        (w:ws) -> drop . (+1) . length . unwords $ ws
+    where
+        isWordSep :: Char -> Bool
+        isWordSep c = isPathSeparator c || isSpace c
 
 exitEx :: Bool -> EditorM ()
 exitEx success = do
