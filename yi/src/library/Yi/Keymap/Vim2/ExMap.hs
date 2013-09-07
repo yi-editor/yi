@@ -2,7 +2,7 @@ module Yi.Keymap.Vim2.ExMap
     ( defExMap
     ) where
 
-import Prelude ()
+import Prelude (unwords, drop, length)
 import Yi.Prelude
 
 import Data.Maybe (fromJust)
@@ -31,22 +31,34 @@ completionBinding :: [String -> Maybe ExCommand] -> VimBinding
 completionBinding commandParsers = VimBindingY prereq action
     where prereq evs (VimState { vsMode = Ex }) = matchFromBool $ evs == "<Tab>"
           prereq _ _ = NoMatch
+          action :: EventString -> YiM RepeatToken
           action _ = do
-              commandString <- withEditor $ withBuffer0 elemsB
+              commandString <- withEditor . withBuffer0 $ elemsB
               case stringToExCommand commandParsers commandString of
-                  Just cmd -> do
-                      possibilities <- cmdComplete cmd
-                      case possibilities of
-                        (s:_) -> do
-                            withBuffer $ replaceBufferContent s
-                            withEditor $ do
-                                historyPrefixSet s
-                                modifyStateE $ \state -> state {
-                                    vsOngoingInsertEvents = s
-                                }
-                        [] -> return ()
+                  Just cmd -> complete cmd
                   Nothing -> return ()
               return Drop
+          complete :: ExCommand -> YiM ()
+          complete cmd = do
+              possibilities <- cmdComplete cmd
+              case possibilities of
+                [] -> return ()
+                (s:[]) -> updateCommand s
+                ss -> do
+                    let s = commonPrefix ss
+                    updateCommand s
+                    withEditor 
+                        . printMsg 
+                        . unwords 
+                        . fmap (drop $ length s) $ ss
+          updateCommand :: String -> YiM ()
+          updateCommand s = do
+              withBuffer $ replaceBufferContent s
+              withEditor $ do
+                  historyPrefixSet s
+                  modifyStateE $ \state -> state {
+                      vsOngoingInsertEvents = s
+                  }
 
 exitEx :: Bool -> EditorM ()
 exitEx success = do
