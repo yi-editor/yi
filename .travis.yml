@@ -1,15 +1,12 @@
 language: haskell
 before_install:
- - cabal install alex
- - cabal install happy
- - cabal install gtk2hs-buildtools
+ - travis_retry cabal install alex
+ - travis_retry cabal install happy
+ - travis_retry cabal install gtk2hs-buildtools
 install: 
  - cd yi
- - cabal install -fpango --enable-tests -ftesting --only-dependencies
- - cabal configure -fpango --enable-tests -ftesting
- - cabal build
- - cabal test
- - cabal install -fpango
+ - travis_retry cabal install -fpango --enable-tests -ftesting --only-dependencies
+ - cabal install -fpango --enable-tests -ftesting
  - cd -
  - cd yi-contrib
  - cabal install
