@@ -55,7 +55,7 @@ data VimMode = Normal
              | InsertVisual -- ^ after C-o and one of v, V, C-v
              | Visual RegionStyle
              | Ex
-             | Search { searchCommand :: String, previousMode :: VimMode, direction :: Direction }
+             | Search { previousMode :: VimMode, direction :: Direction }
     deriving (Typeable, Eq, Show)
 
 data GotoCharCommand = GotoCharCommand !Char !Direction !RegionStyle
