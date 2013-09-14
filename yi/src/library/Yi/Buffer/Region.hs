@@ -74,14 +74,12 @@ replaceRegionClever region text' = savingExcursionB $ do
     let diffs = getGroupedDiff text text'
     moveTo (regionStart region)
 #if MIN_VERSION_Diff(0,2,0)
-    forM_ diffs $ \d -> do
-        case d of
+    forM_ diffs $ \d -> case d of
             First str -> deleteN $ length str
-            Both str1 str2 -> rightN $ length str1 + length str2
+            Both str _ -> rightN $ length str
             Second str -> insertN str
 #else
-    forM_ diffs $ \(d,str) -> do
-        case d of
+    forM_ diffs $ \(d,str) -> case d of
             F -> deleteN $ length str
             B -> rightN $ length str
             S -> insertN str
