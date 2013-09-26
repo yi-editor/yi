@@ -9,17 +9,17 @@ type Theme = Proto UIStyle
 
 -- | Abstract theme that provides useful defaults.
 defaultTheme :: Theme
-defaultTheme = Proto $ const $ UIStyle
-  { modelineAttributes = error "modeline attributes must be redefined!"
+defaultTheme = Proto $ const UIStyle
+  { modelineAttributes = emptyAttributes { foreground = white, background = grey }
   , modelineFocusStyle = withFg brightwhite
 
-  , tabBarAttributes   = error "tabbar attributes must be redefined!"
-  , tabInFocusStyle    = withFg black `mappend` withBg brightwhite
-  , tabNotFocusedStyle = withFg grey `mappend` withBg white
+  , tabBarAttributes   = emptyAttributes
+  , tabInFocusStyle    = withFg black `mappend` withBg white
+  , tabNotFocusedStyle = mempty
 
-  , baseAttributes     = error "base attributes must be redefined!"
+  , baseAttributes     = emptyAttributes
 
-  , selectedStyle      = withFg black `mappend` withBg cyan
+  , selectedStyle      = withFg white `mappend` withBg purple
   , eofStyle           = withFg blue
   , errorStyle         = withBg red
   , hintStyle          = withFg black `mappend` withBg cyan
@@ -35,7 +35,7 @@ defaultTheme = Proto $ const $ UIStyle
   , typeStyle          = withFg darkgreen
   , dataConstructorStyle
                        = withBd True `mappend` withFg darkgreen
-  , importStyle        = withFg grey
+  , importStyle        = withFg blue
   , builtinStyle       = withFg blue
   , regexStyle         = withFg red
   , variableStyle      = mempty
@@ -43,15 +43,6 @@ defaultTheme = Proto $ const $ UIStyle
   , makeFileRuleHead   = withFg blue
   , makeFileAction     = withFg grey
   , quoteStyle         = withFg grey
-  }
-
-
--- | The default Theme
-defaultLightTheme :: Theme
-defaultLightTheme = defaultTheme `override` \super _ -> super
-  { modelineAttributes = emptyAttributes { foreground = black,    background = darkcyan }
-  , tabBarAttributes   = emptyAttributes { foreground = white,    background = black }
-  , baseAttributes     = emptyAttributes
   }
 
 -- | A Theme inspired by the darkblue colorscheme of Vim.
