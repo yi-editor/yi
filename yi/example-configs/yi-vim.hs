@@ -23,7 +23,7 @@ import Prelude ()
   styles yet - Jim
 -}
 defaultVimUiTheme :: Theme
-defaultVimUiTheme = defaultLightTheme  `override` \super self -> super {
+defaultVimUiTheme = defaultTheme  `override` \super self -> super {
         selectedStyle = modelineFocusStyle self
  }
 

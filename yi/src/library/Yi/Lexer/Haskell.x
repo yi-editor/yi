@@ -184,6 +184,8 @@ tokenToStyle tok = case tok of
   ReservedOp _       -> operatorStyle
   Reserved Import    -> importStyle
   Reserved Qualified -> importStyle
+  Reserved As        -> importStyle
+  Reserved Hiding    -> importStyle
   Reserved _         -> keywordStyle
   Special _          -> defaultStyle
   ConsOperator _     -> operatorStyle
