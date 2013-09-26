@@ -18,7 +18,7 @@ myConfig :: Config
 myConfig = defaultVimConfig
   { defaultKm = myVimKeymap
   , configUI = (configUI defaultVimConfig)
-    { configTheme = defaultLightTheme 
+    { configTheme = defaultTheme
     , configWindowFill = '~'
     }
   , startActions = [makeAction (maxStatusHeightA %= 20 :: EditorM ())]
