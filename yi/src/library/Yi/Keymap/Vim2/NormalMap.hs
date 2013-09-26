@@ -298,8 +298,10 @@ searchBinding = VimBindingE prereq action
           action evs = do
               state <- fmap vsMode getDynamic
               let dir = if evs == "/" then Forward else Backward
-              switchModeE $ Search "" state dir
+              switchModeE $ Search state dir
               isearchInitE dir
+              historyStart
+              historyPrefixSet ""
               return Continue
 
 continueSearching :: (Direction -> Direction) -> EditorM ()

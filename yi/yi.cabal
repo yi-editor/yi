@@ -145,6 +145,7 @@ library
     Yi.Keymap.Vim2.Ex.Commands.Global
     Yi.Keymap.Vim2.Ex.Commands.GotoLine
     Yi.Keymap.Vim2.Ex.Commands.Nohl
+    Yi.Keymap.Vim2.Ex.Commands.Paste
     Yi.Keymap.Vim2.Ex.Commands.Quit
     Yi.Keymap.Vim2.Ex.Commands.Reload
     Yi.Keymap.Vim2.Ex.Commands.Substitute

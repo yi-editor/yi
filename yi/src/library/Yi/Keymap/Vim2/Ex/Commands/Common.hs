@@ -1,6 +1,8 @@
 module Yi.Keymap.Vim2.Ex.Commands.Common
     ( parse
     , parseRange
+    , OptionAction(..)
+    , parseOption
     , filenameComplete
     , forAllBuffers
     , pureExCommand
@@ -11,7 +13,7 @@ import Prelude ()
 import Yi.Prelude
 
 import Data.Either (either)
-import Data.List
+import Data.List (isPrefixOf, drop, length)
 import System.Directory
 import System.FilePath
 import qualified Text.ParserCombinators.Parsec as P
@@ -22,11 +24,33 @@ import Yi.Keymap
 import Yi.Keymap.Vim2.Ex.Types
 import Yi.Misc
 
-parse :: P.GenParser Char () a -> String -> Maybe a
+parse :: P.GenParser Char () ExCommand -> String -> Maybe ExCommand
 parse parser s = either (const Nothing) Just (P.parse parser "" s)
 
 parseRange :: P.GenParser Char () LineRange
 parseRange = return CurrentLineRange
+
+data OptionAction = Set !Bool | Invert | Ask
+
+parseOption :: String -> (OptionAction -> Action) -> String -> Maybe ExCommand
+parseOption name action = parse $ do
+    discard $ P.string "set "
+    nos <- P.many (P.string "no")
+    invs <- P.many (P.string "inv")
+    discard $ P.string name
+    bangs <- P.many (P.string "!")
+    qs <- P.many (P.string "?")
+    let 
+    return $ pureExCommand {
+        cmdShow = "set " ++ concat nos ++ name ++ concat bangs ++ concat qs
+      , cmdAction = action $
+          case (fmap (not . null) [qs, bangs, invs, nos]) of
+              [True, _, _, _] -> Ask
+              [_, True, _, _] -> Invert
+              [_, _, True, _] -> Invert
+              [_, _, _, True] -> Set False
+              _ -> Set True
+      }
 
 removePwd :: FilePath -> YiM FilePath
 removePwd path = do

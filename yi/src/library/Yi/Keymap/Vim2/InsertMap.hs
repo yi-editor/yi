@@ -22,7 +22,8 @@ import Yi.Keymap.Vim2.StateUtils
 import Yi.TextCompletion (completeWordB)
 
 defInsertMap :: [(String, Char)] -> [VimBinding]
-defInsertMap digraphs = specials digraphs ++ [printable]
+defInsertMap digraphs =
+    [rawPrintable] ++ specials digraphs ++ [printable]
 
 specials :: [(String, Char)] -> [VimBinding]
 specials digraphs =
@@ -50,6 +51,22 @@ exitBinding digraphs = VimBindingE prereq action
               withBuffer0 $ do
                   whenM isCurrentLineAllWhiteSpaceB $ moveToSol >> deleteToEol
               return Finish
+
+rawPrintable :: VimBinding
+rawPrintable = VimBindingE prereq action
+    where prereq evs s@(VimState { vsMode = (Insert _)}) =
+              matchFromBool $ vsPaste s && evs `notElem` ["<Esc>", "<C-c>"]
+          prereq _ _ = NoMatch
+          action evs = withBuffer0 $ do
+              case evs of
+                  "<lt>" -> insertB '<'
+                  "<CR>" -> newlineB
+                  "<Tab>" -> insertB '\t'
+                  "<BS>"  -> deleteB Character Backward
+                  "<C-h>" -> deleteB Character Backward
+                  "<Del>" -> deleteB Character Forward
+                  c -> insertN c
+              return Continue
 
 replay :: [(String, Char)] -> [Event] -> EditorM ()
 replay _ [] = return ()
@@ -154,7 +171,6 @@ printableAction evs = do
                         "<BS>"  -> deleteB Character Backward
                         "<C-h>" -> deleteB Character Backward
                         "<Del>" -> deleteB Character Forward
-                        "<C-j>" -> insertB '\n'
                         "<C-w>" -> deleteRegionB =<< regionOfPartNonEmptyB unitViWordOnLine Backward
                         "<lt>" -> insertB '<'
                         evs' -> error $ "Unhandled event " ++ evs' ++ " in insert mode"
