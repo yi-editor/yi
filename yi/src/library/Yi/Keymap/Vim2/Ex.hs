@@ -15,6 +15,7 @@ import qualified Yi.Keymap.Vim2.Ex.Commands.Edit as Edit
 import qualified Yi.Keymap.Vim2.Ex.Commands.Global as Global
 import qualified Yi.Keymap.Vim2.Ex.Commands.GotoLine as GotoLine
 import qualified Yi.Keymap.Vim2.Ex.Commands.Nohl as Nohl
+import qualified Yi.Keymap.Vim2.Ex.Commands.Paste as Paste
 import qualified Yi.Keymap.Vim2.Ex.Commands.Quit as Quit
 import qualified Yi.Keymap.Vim2.Ex.Commands.Reload as Reload
 import qualified Yi.Keymap.Vim2.Ex.Commands.Substitute as Substitute
@@ -29,6 +30,7 @@ defExCommandParsers =
     , Global.parse
     , GotoLine.parse
     , Nohl.parse
+    , Paste.parse
     , Quit.parse
     , Reload.parse
     , Substitute.parse

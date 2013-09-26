@@ -1,0 +1,14 @@
+-- Input
+(1,7)
+    foo
+    bar
+    baz
+-- Output
+(3,3)
+    foo
+    quux
+123
+    bar
+    baz
+-- Events
+a<CR>quux<Esc>:set paste<CR>a<CR>123<Esc>
