@@ -17,27 +17,27 @@ import Yi.JumpList
 ------------------------------------------------------------------------
 -- | A window onto a buffer.
 
-data Window = Window {
-                      isMini    :: !Bool   -- ^ regular or mini window?
-                     ,bufkey    :: !BufferRef -- ^ the buffer this window opens to
-                     ,bufAccessList :: ![BufferRef] -- ^ list of last accessed buffers (former bufKeys). Last accessed one is first element
-                     ,height    :: Int    -- ^ height of the window (in number of screen lines displayed)
-                     ,winRegion    :: Region -- ^ view area.
-                                              -- note that the top point is also available as a buffer mark.
-                     ,wkey      :: !WindowRef -- ^ identifier for the window (for UI sync)
-                     -- This is required for accurate scrolling.
-                     -- Scrolling depends on the actual number of buffer
-                     -- lines displayed. Line wrapping changes that number
-                     -- relative to the height so we can't use height for that
-                     -- purpose.
-                     ,actualLines :: Int-- ^ The actual number of buffer lines displayed. Taking into account line wrapping
-                     ,jumpList :: JumpList
-                     }
-        deriving (Typeable)
+data Window = Window
+    { isMini    :: !Bool -- ^ regular or mini window?
+    , bufkey    :: !BufferRef -- ^ the buffer this window opens to
+    , bufAccessList :: ![BufferRef] -- ^ list of last accessed buffers (former bufKeys).
+                                    -- Last accessed one is first element
+    , height    :: Int -- ^ height of the window (in number of screen lines displayed)
+    , winRegion    :: Region -- ^ view area.
+                             -- note that the top point is also available as a buffer mark.
+    , wkey      :: !WindowRef -- ^ identifier for the window (for UI sync)
+    -- This is required for accurate scrolling.
+    -- Scrolling depends on the actual number of buffer
+    -- lines displayed. Line wrapping changes that number
+    -- relative to the height so we can't use height for that
+    -- purpose.
+    , actualLines :: Int -- ^ The actual number of buffer lines displayed. Taking into account line wrapping
+    , jumpList :: JumpList
+    } deriving (Typeable)
 
 instance Binary Window where
-    put (Window mini bk bl _h _rgn key lns jumpList) =
-        put mini >> put bk >> put bl >> put key >> put lns >> put jumpList
+    put (Window mini bk bl _h _rgn key lns jl) =
+        put mini >> put bk >> put bl >> put key >> put lns >> put jl
     get = Window <$> get <*> get <*> get
                    <*> return 0 <*> return emptyRegion
                    <*> get <*> get <*> get

@@ -155,7 +155,7 @@ getConfig shouldOpenInTabs (cfg, cfgcon) opt =
 -- this after setting preferences passed from the boot loader.
 --
 main :: (Config, ConsoleConfig) -> Maybe Editor -> IO ()
-main (cfg, cfgcon) state = do
+main (cfg, _cfgcon) state = do
 #ifdef FRONTEND_COCOA
        withAutoreleasePool $ do
 #endif

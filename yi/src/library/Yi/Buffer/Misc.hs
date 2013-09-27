@@ -350,9 +350,10 @@ insertingA = insertingAA . attrsA
 pointFollowsWindowA :: Accessor FBuffer (WindowRef -> Bool)
 pointFollowsWindowA = pointFollowsWindowAA . attrsA
 
--- updateTransactionInFlightA :: Accessor FBuffer (WindowRef -> Bool)
+updateTransactionInFlightA :: Accessor FBuffer Bool
 updateTransactionInFlightA = updateTransactionInFlightAA . attrsA
 
+updateTransactionAccumA :: Accessor FBuffer [Update]
 updateTransactionAccumA = updateTransactionAccumAA . attrsA
 
 file :: FBuffer -> (Maybe FilePath)

@@ -383,6 +383,7 @@ readUnitB = readRegionB <=< regionOfB
 halfUnit :: Direction -> TextUnit -> TextUnit
 halfUnit dir (GenUnit enclosing boundary) =
   GenUnit enclosing (\d -> if d == dir then boundary d else return False)
+halfUnit _dir tu = tu
 
 deleteUnitB :: TextUnit -> Direction -> BufferM ()
 deleteUnitB unit dir = deleteRegionB =<< regionOfPartNonEmptyB unit dir

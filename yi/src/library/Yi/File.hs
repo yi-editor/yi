@@ -29,7 +29,6 @@ import qualified Data.Rope as R
 import Yi.Config
 import Yi.Core
 import Yi.Dired
-import Yi.Editor
 import Yi.Regex
 
 -- | If file exists, read contents of file into a new buffer, otherwise

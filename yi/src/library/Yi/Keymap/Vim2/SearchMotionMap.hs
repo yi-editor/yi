@@ -6,7 +6,7 @@ import Prelude ()
 import Yi.Prelude
 
 import Control.Monad (replicateM_)
-import Data.List (drop, lookup)
+import Data.List (drop)
 import Data.Maybe (fromMaybe)
 
 import Yi.Buffer

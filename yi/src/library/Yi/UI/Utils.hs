@@ -11,7 +11,7 @@ import Data.Monoid
 import Yi.Style
 import Data.List (zip, repeat, span, dropWhile, length, zipWith, transpose, scanl, take, intercalate, takeWhile, reverse)
 import Yi.Syntax (Span(..))
-import Data.List.Split (splitEvery)
+import Data.List.Split (chunksOf)
 import Yi.String (padLeft)
 import Control.Monad.State (runState,modify)
 
@@ -93,7 +93,7 @@ arrangeItems items maxWidth maxNumberOfLines = take maxNumberOfLines $ snd choic
 -- | Arrange a list of items in columns over @numberOfLines@ lines.
 arrangeItems' :: [String] -> Int -> Int -> (Int, [String])
 arrangeItems' items maxWidth numberOfLines = (fittedItems,theLines)
-    where columns = splitEvery numberOfLines items
+    where columns = chunksOf numberOfLines items
           columnsWidth = fmap (maximum . fmap length) columns
           totalWidths = scanl (\x y -> 1 + x + y) 0 columnsWidth
           shownItems = scanl (+) 0 (fmap length columns)

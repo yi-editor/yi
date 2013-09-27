@@ -8,8 +8,6 @@ where
 import Data.Char
   ( isUpper
   , isLower
-  , toUpper
-  , toLower
   , chr
   , ord
   )

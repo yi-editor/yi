@@ -1,4 +1,6 @@
-{-# LANGUAGE ScopedTypeVariables, DoRec, Rank2Types #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE RecursiveDo #-}
+{-# LANGUAGE Rank2Types #-}
 
 -- Copyright (c) Tuomo Valkonen 2004.
 -- Copyright (c) Don Stewart 2004-5. http://www.cse.unsw.edu.au/~dons

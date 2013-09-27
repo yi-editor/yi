@@ -74,9 +74,9 @@ prevWordB = moveB unitWord Backward
 gotoCharacterB :: Char -> Direction -> RegionStyle -> Bool -> BufferM ()
 gotoCharacterB c dir style stopAtLineBreaks = do
     start <- pointB
-    let pred = if stopAtLineBreaks then (`elem` [c, '\n']) else (== c)
+    let predicate = if stopAtLineBreaks then (`elem` [c, '\n']) else (== c)
         (move, moveBack) = if dir == Forward then (rightB, leftB) else (leftB, rightB)
-    doUntilB_ (pred <$> readB) move
+    doUntilB_ (predicate <$> readB) move
     b <- readB
     if stopAtLineBreaks && b == '\n'
     then moveTo start
@@ -133,8 +133,8 @@ isCurrentLineEmptyB = savingPointB $ moveToSol >> atEol
 -- | Note: Returns False if line doesn't have any characters besides a newline
 isCurrentLineAllWhiteSpaceB :: BufferM Bool
 isCurrentLineAllWhiteSpaceB = savingPointB $ do
-    empty <- isCurrentLineEmptyB
-    if empty
+    isEmpty <- isCurrentLineEmptyB
+    if isEmpty
     then return False
     else do
         let go = do
