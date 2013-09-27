@@ -129,7 +129,7 @@ config = defaultConfig {
                            configUI = (configUI defaultConfig) 
                              { configFontSize = if isCocoa then Just 12 else Just 10
                                -- , configTheme = darkBlueTheme
-                             , configTheme = defaultLightTheme `override` \superTheme _ -> superTheme
+                             , configTheme = defaultTheme `override` \superTheme _ -> superTheme
                                {
                                  selectedStyle = Endo $ \a -> a { 
                                                                   foreground = white,

@@ -144,7 +144,7 @@ defaultConfig =
            , configAutoHideScrollBar = False
            , configAutoHideTabBar = True
            , configWindowFill = ' '
-           , configTheme = defaultLightTheme
+           , configTheme = defaultTheme
            , configVtyEscDelay = 0
            }
          , defaultKm        = modelessKeymapSet nilKeymap

@@ -255,11 +255,11 @@ renderTabBar e ui xss =
         extraImage      = withAttributes (tabBarAttributes uiStyle) (replicate (xss - fromEnum totalTabWidth) ' ')
 
         totalTabWidth   = Vty.image_width tabImages
-        uiStyle         = configStyle $ configUI $ config $ ui
+        uiStyle         = configStyle $ configUI $ config ui
         tabTitle text   = " " ++ text ++ " "
-        baseAttr b sty  = if b then attributesToAttr (appEndo (tabInFocusStyle uiStyle) sty) Vty.def_attr
-                               else attributesToAttr (appEndo (tabNotFocusedStyle uiStyle) sty) Vty.def_attr `Vty.with_style` Vty.underline
         tabAttr b       = baseAttr b $ tabBarAttributes uiStyle
+        baseAttr True  sty = attributesToAttr (appEndo (tabInFocusStyle uiStyle) sty) Vty.def_attr
+        baseAttr False sty = attributesToAttr (appEndo (tabNotFocusedStyle uiStyle) sty) Vty.def_attr `Vty.with_style` Vty.underline
         tabToVtyImage _tab@(TabDescr text inFocus) = Vty.string (tabAttr inFocus) (tabTitle text)
 
 -- | Determine whether it is necessary to render the tab bar
@@ -428,8 +428,8 @@ getY screenHeight numberOfWindows = screenHeight `quotRem` numberOfWindows
 ------------------------------------------------------------------------
 
 -- | Convert a Yi Attr into a Vty attribute change.
-colorToAttr :: (Vty.Color -> Vty.Attr -> Vty.Attr) -> Vty.Color -> Style.Color -> (Vty.Attr -> Vty.Attr)
-colorToAttr set unknown c =
+colorToAttr :: (Vty.Color -> Vty.Attr -> Vty.Attr) -> Style.Color -> (Vty.Attr -> Vty.Attr)
+colorToAttr set c =
   case c of 
     RGB 0 0 0         -> set Vty.black
     RGB 128 128 128   -> set Vty.bright_black
@@ -448,15 +448,16 @@ colorToAttr set unknown c =
     RGB 165 165 165   -> set Vty.white
     RGB 255 255 255   -> set Vty.bright_white
     Default           -> id
-    _                 -> set unknown -- NB
+    _                 -> error $ "Color unsupported by Vty frontend: " ++ show c
 
 attributesToAttr :: Attributes -> (Vty.Attr -> Vty.Attr)
 attributesToAttr (Attributes fg bg reverse bd _itlc underline') =
     (if reverse then (flip Vty.with_style Vty.reverse_video)  else id) .
     (if bd then (flip Vty.with_style Vty.bold) else id) .
     (if underline' then (flip Vty.with_style Vty.underline) else id) .
-    colorToAttr (flip Vty.with_fore_color) Vty.black fg . 
-    colorToAttr (flip Vty.with_back_color) Vty.white bg
+    colorToAttr (flip Vty.with_fore_color) fg .
+    colorToAttr (flip Vty.with_back_color) bg
+
 
 ---------------------------------
 
