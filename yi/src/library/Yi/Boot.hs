@@ -16,7 +16,7 @@ import Yi.Editor
 import Yi.Keymap
 import Yi.Main
 import qualified Yi.UI.Common as UI
-import qualified Yi.Paths(getConfigDir)
+import qualified Yi.Paths(getConfigDir, getConfigModules)
 
 -- | once the custom yi is compiled this restores the editor state (if requested) then proceeds to
 -- run the editor.
@@ -42,6 +42,8 @@ yi = yiDriver
 -- The yi executable uses a default config.
 yiDriver cfg = do
     args <- Dyre.withDyreOptions Dyre.defaultParams getArgs 
+    cfgDir <- Yi.Paths.getConfigDir
+    modules <- Yi.Paths.getConfigModules
     -- we do the arg processing before dyre, so we can extract '--ghc-option=' and '--help' and so on.
     case do_args cfg args of
         Left (Err err code) ->
@@ -55,6 +57,7 @@ yiDriver cfg = do
                             , Dyre.configDir    = Just Yi.Paths.getConfigDir
                             , Dyre.hidePackages = ["mtl"]
                             , Dyre.ghcOpts      = (["-threaded", "-O2"] ++
+                                                   ["-i" ++ modules] ++
 #ifdef PROFILING
                                                    ["-prof", "-auto-all", "-rtsopts", "-osuf=p_o", "-hisuf=p_hi"] ++
 #endif

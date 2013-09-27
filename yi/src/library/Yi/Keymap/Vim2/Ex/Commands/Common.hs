@@ -59,7 +59,7 @@ removePwd path = do
               then drop (1 + length pwd) path
               else path
 
-filenameComplete :: FilePath -> YiM (Maybe FilePath)
+filenameComplete :: FilePath -> YiM [FilePath]
 filenameComplete "%" = do
     -- current buffer is minibuffer
     -- actual file is in the second buffer in bufferStack
@@ -71,15 +71,15 @@ filenameComplete "%" = do
                             ('/':'/':f') -> '/':f'
                             _ -> currentFileName
 
-    fmap Just $ removePwd sanitizedFileName
+    fmap (:[]) $ removePwd sanitizedFileName
 
 filenameComplete f = do
     files <- matchingFileNames Nothing f
 
     case files of
-        [] -> return Nothing
-        [x] -> fmap Just $ removePwd x 
-        xs -> fmap Just $ removePwd (commonPrefix xs)
+        [] -> return []
+        [x] -> fmap (:[]) $ removePwd x 
+        xs -> sequence $ fmap removePwd xs
 
 forAllBuffers :: MonadEditor m => (BufferRef -> m ()) -> m ()
 forAllBuffers f = mapM_ f =<< readEditor bufferStack
@@ -87,7 +87,7 @@ forAllBuffers f = mapM_ f =<< readEditor bufferStack
 pureExCommand :: ExCommand
 pureExCommand = ExCommand {
     cmdIsPure = True
-  , cmdComplete = return Nothing
+  , cmdComplete = return []
   , cmdAcceptsRange = False
   , cmdAction = undefined
   , cmdShow = undefined

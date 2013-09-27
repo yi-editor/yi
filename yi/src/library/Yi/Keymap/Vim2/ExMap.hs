@@ -2,10 +2,13 @@ module Yi.Keymap.Vim2.ExMap
     ( defExMap
     ) where
 
-import Prelude ()
+import Prelude (unwords, drop, length, reverse)
 import Yi.Prelude
 
+import Data.Char (isSpace)
 import Data.Maybe (fromJust)
+import Data.List.Split (splitWhen)
+import System.FilePath (isPathSeparator)
 
 import Yi.Buffer hiding (Insert)
 import Yi.Editor
@@ -31,22 +34,45 @@ completionBinding :: [String -> Maybe ExCommand] -> VimBinding
 completionBinding commandParsers = VimBindingY prereq action
     where prereq evs (VimState { vsMode = Ex }) = matchFromBool $ evs == "<Tab>"
           prereq _ _ = NoMatch
+          action :: EventString -> YiM RepeatToken
           action _ = do
-              commandString <- withEditor $ withBuffer0 elemsB
+              commandString <- withEditor . withBuffer0 $ elemsB
               case stringToExCommand commandParsers commandString of
-                  Just cmd -> do
-                      maybeNewString <- cmdComplete cmd
-                      case maybeNewString of
-                        Just s -> do
-                            withBuffer $ replaceBufferContent s
-                            withEditor $ do
-                                historyPrefixSet s
-                                modifyStateE $ \state -> state {
-                                    vsOngoingInsertEvents = s
-                                }
-                        Nothing -> return ()
+                  Just cmd -> complete cmd
                   Nothing -> return ()
               return Drop
+          complete :: ExCommand -> YiM ()
+          complete cmd = do
+              possibilities <- cmdComplete cmd
+              case possibilities of
+                [] -> return ()
+                (s:[]) -> updateCommand s
+                ss -> do
+                    let s = commonPrefix ss
+                    updateCommand s
+                    withEditor 
+                        . printMsg 
+                        . unwords 
+                        . fmap (dropToLastWordOf s)
+                        $ ss
+          updateCommand :: String -> YiM ()
+          updateCommand s = do
+              withBuffer $ replaceBufferContent s
+              withEditor $ do
+                  historyPrefixSet s
+                  modifyStateE $ \state -> state {
+                      vsOngoingInsertEvents = s
+                  }
+
+dropToLastWordOf :: String -> String -> String
+dropToLastWordOf s =
+    case reverse . splitWhen isWordSep $ s of
+        [] -> id
+        (w:[]) -> id
+        (w:ws) -> drop . (+1) . length . unwords $ ws
+    where
+        isWordSep :: Char -> Bool
+        isWordSep c = isPathSeparator c || isSpace c
 
 exitEx :: Bool -> EditorM ()
 exitEx success = do
