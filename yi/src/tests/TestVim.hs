@@ -42,7 +42,7 @@ unlines' = intercalate "\n"
 
 loadTestFromDirectory :: FilePath -> IO VimTest
 loadTestFromDirectory path = do
-    [input, output, events] <- mapM (readFile . (path </>)) ["input", "output", "events"]
+    [input, output, events] <- mapM (readFile' . (path </>)) ["input", "output", "events"]
     return $ VimTest (joinPath . drop 1 . splitPath $ path) input output events
 
 isValidTestFile :: String -> Bool
@@ -58,7 +58,7 @@ isValidTestFile text =
 
 loadTestFromFile :: FilePath -> IO VimTest
 loadTestFromFile path = do
-    text <- readFile path
+    text <- readFile' path
     unless (isValidTestFile text) $
         void $ printf "Test %s is invalid\n" path
     let ls = tail $ lines text
@@ -144,3 +144,8 @@ getTests :: IO [TF.Test]
 getTests = do
     vimtests <- discoverTests "src/tests/vimtests"
     return $! fmap mkTestCase . sort $ vimtests
+
+readFile' :: FilePath -> IO String
+readFile' f = do
+    s <- readFile f
+    return $! length s `seq` s
