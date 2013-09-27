@@ -2,6 +2,7 @@
 module Yi.Paths(
    getEvaluatorContextFilename
   ,getConfigFilename
+  ,getConfigModules
   ,getArticleDbFilename
   ,getPersistentStateFilename
   ,getConfigDir
@@ -52,6 +53,8 @@ getEvaluatorContextFilename, getConfigFilename, getArticleDbFilename, getPersist
 
 -- | Get Yi master configuration script.
 getConfigFilename           = getConfigPath "yi.hs"
+
+getConfigModules            = getConfigPath "modules"
 
 -- | Get articles.db database of locations to visit (for Yi.IReader.)
 getArticleDbFilename       = getConfigPath "articles.db"
