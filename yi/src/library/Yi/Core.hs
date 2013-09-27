@@ -1,5 +1,5 @@
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE RecursiveDo #-}
+{-# LANGUAGE DoRec #-}
 {-# LANGUAGE Rank2Types #-}
 
 -- Copyright (c) Tuomo Valkonen 2004.
