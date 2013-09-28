@@ -42,7 +42,6 @@ yi = yiDriver
 -- The yi executable uses a default config.
 yiDriver cfg = do
     args <- Dyre.withDyreOptions Dyre.defaultParams getArgs 
-    cfgDir <- Yi.Paths.getConfigDir
     modules <- Yi.Paths.getConfigModules
     -- we do the arg processing before dyre, so we can extract '--ghc-option=' and '--help' and so on.
     case do_args cfg args of

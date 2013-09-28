@@ -6,7 +6,6 @@ module Yi.Paths(
   ,getArticleDbFilename
   ,getPersistentStateFilename
   ,getConfigDir
-
   ,getConfigPath
   ,getDataPath
 ) where
@@ -33,13 +32,15 @@ appUserDataCond dirQuery = liftIO $
 
 getConfigDir ::(MonadIO m) => m FilePath
 getConfigDir = appUserDataCond XDG.getUserConfigDir
-getDataDir   ::(MonadIO m) => m FilePath
-getDataDir   = appUserDataCond XDG.getUserDataDir
+
+getDataDir ::(MonadIO m) => m FilePath
+getDataDir = appUserDataCond XDG.getUserDataDir
 
 -- | Given a path relative to application data directory,
 --   this function finds a path to a given data file.
 getDataPath :: (MonadIO m) => FilePath -> m FilePath
-getDataPath   fp = getDataDir >>= (return . (</> fp))
+getDataPath fp = getDataDir >>= (return . (</> fp))
+
 -- | Given a path relative to application configuration directory,
 --   this function finds a path to a given configuration file.
 getConfigPath :: (MonadIO m) => FilePath -> m FilePath
@@ -49,18 +50,19 @@ getConfigPath fp = getConfigDir >>= (return . (</> fp))
 --getCachePath = getPathHelper XDG.getUserCacheDirectory
 
 -- Below are all points that are used in Yi code (to keep it clean.)
-getEvaluatorContextFilename, getConfigFilename, getArticleDbFilename, getPersistentStateFilename :: (MonadIO m) => m FilePath
+getEvaluatorContextFilename, getConfigFilename, getConfigModules,
+    getArticleDbFilename, getPersistentStateFilename :: (MonadIO m) => m FilePath
 
 -- | Get Yi master configuration script.
-getConfigFilename           = getConfigPath "yi.hs"
+getConfigFilename = getConfigPath "yi.hs"
 
-getConfigModules            = getConfigPath "modules"
+getConfigModules = getConfigPath "modules"
 
 -- | Get articles.db database of locations to visit (for Yi.IReader.)
-getArticleDbFilename       = getConfigPath "articles.db"
+getArticleDbFilename = getConfigPath "articles.db"
 
 -- | Get path to Yi history that stores state between runs.
-getPersistentStateFilename  = getDataPath   "history"
+getPersistentStateFilename = getDataPath   "history"
 
 -- | Get path to environment file that defines namespace used by Yi
 --   command evaluator.

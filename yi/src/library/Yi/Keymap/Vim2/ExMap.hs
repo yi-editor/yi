@@ -68,8 +68,8 @@ dropToLastWordOf :: String -> String -> String
 dropToLastWordOf s =
     case reverse . splitWhen isWordSep $ s of
         [] -> id
-        (w:[]) -> id
-        (w:ws) -> drop . (+1) . length . unwords $ ws
+        (_w:[]) -> id
+        (_w:ws) -> drop . (+1) . length . unwords $ ws
     where
         isWordSep :: Char -> Bool
         isWordSep c = isPathSeparator c || isSpace c
