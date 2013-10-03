@@ -7,8 +7,7 @@
 
 
 module Shim.ProjectContent
-         ( {- loadProject
-         , -} itemName
+         ( itemName
          , ProjectItem(..)
          , FileKind(..)
          , FolderKind(..)
