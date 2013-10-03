@@ -432,21 +432,6 @@ searchTyClDecl cd@(ClassDecl {}) =
   searchLId (tcdLName cd) `orSearch`
   searchList searchLSig (tcdSigs cd)  `orSearch`
   searchLBinds (tcdMeths cd)
-{-
-searchTyClDecl (TyData _ lctxt lid _ _ constrs mb_derivs) = 
-  searchLContext lctxt `orSearch`
-  searchLId lid `orSearch`
-  searchList searchLConDecl constrs `orSearch`
-  searchMaybe searchLTypes mb_derivs
-searchTyClDecl (TySynonym lid _ ltp) =
-  searchLId lid `orSearch`
-  searchLType ltp
-searchTyClDecl (ClassDecl lctxt lid _ _ lsigs lbinds) =
-  searchLContext lctxt `orSearch`
-  searchLId lid `orSearch`
-  searchList searchLSig lsigs `orSearch`
-  searchLBinds lbinds 
--}
 
 -- ----------------------------------------------------------------------------
 -- ConDecl
