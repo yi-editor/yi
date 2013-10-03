@@ -1,4 +1,16 @@
 
+0.7.0
+-----
+
+ * New vim emulation. Look at yi/example-configs/yi-vim2.hs for a quick start.
+   Read src/tests/vimtests/README.rst if you are interested in contributing more
+   tests for vim emulation.
+ * User config can now import modules from ~/.config/yi/modules. Yes, that
+   gives ability to modularize config and share plugins.
+ * Fixed compilation with Diff >= 0.2
+ * Fixed some colorscheme issues (e.g. 'import' keyword was invisible with
+   some dark terminal schemes)
+
 0.6.7
 -----
 
