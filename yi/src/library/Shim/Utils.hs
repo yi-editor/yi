@@ -38,7 +38,6 @@ import Control.Monad
 import Text.Printf
 import Data.Maybe
 import System.FilePath ( takeDirectory )
--- import qualified Control.OldException as CE
 import System.IO.Unsafe ( unsafePerformIO )
 import Control.Concurrent.MVar
 import Yi.Debug
@@ -170,10 +169,6 @@ whenM cond m = do
 
 unlessM :: (Monad m) => m Bool -> m () -> m ()
 unlessM cond = whenM (liftM not cond)
-
--- excToMaybe :: (NFData a) => a -> Maybe a
--- excToMaybe x = unsafePerformIO $
---   CE.catch (rnf x `seq` return $ Just x) (const $ return $ Nothing)
 
 shorten :: Int -> String -> String
 shorten n s = if length s > n then take (n-4) s ++ "..." else s

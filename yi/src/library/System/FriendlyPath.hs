@@ -16,21 +16,6 @@ import System.Directory hiding (canonicalizePath)
 userToCanonPath :: FilePath -> IO String
 userToCanonPath f = canonicalizePath =<< expandTilda f
 
-{-
-TODO: export or remove
--- | Make a path more user-friendly by replacing the home directory with tilda.
-recoverTilda :: FilePath -> IO String
-recoverTilda path = do
-  home <- getHomeDirectory
-  return $ if home `isPrefixOf` path
-    then "~" ++ drop (length home) path
-    else path
-
--- | Turn a path into its canonicalized, user-friendly version.
-canonicalizePath' :: FilePath -> IO String
-canonicalizePath' f = recoverTilda =<< canonicalizePath f
--}
-
 -- | Turn a user-friendly path into a computer-friendly path by expanding the leading tilda.
 expandTilda :: String -> IO FilePath
 expandTilda ('~':path)
