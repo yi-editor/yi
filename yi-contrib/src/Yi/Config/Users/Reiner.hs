@@ -2,7 +2,7 @@
 module Yi.Config.Users.Reiner (setup, main) where
 
 import Yi.Config.Simple
-import Yi.Prelude hiding ((%=))
+import Yi.Prelude
 import qualified Prelude
 
 import qualified Yi.Mode.Haskell as Haskell
@@ -19,10 +19,10 @@ main = configMain defaultEmacsConfig setup
 setup :: ConfigM ()
 setup = do
   setFrontendPreferences ["pango", "vte", "vty"]
-  fontSize %= Just 9
+  fontSize .= Just 9
 
   globalBindKeys globalBindings
-  evaluator %= publishedActionsEvaluator
+  evaluator .= publishedActionsEvaluator
   publishAction "createDirectory" yiCreateDirectory
 
   addMode Haskell.fastMode

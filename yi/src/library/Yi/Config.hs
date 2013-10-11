@@ -2,8 +2,10 @@
 
 module Yi.Config where
 
+import Prelude ()
+import Yi.Prelude
+
 import Data.Prototype
-import Data.Accessor.Template
 
 import Yi.Buffer
 import Yi.Layout
@@ -82,5 +84,5 @@ configTopLevelKeymap = extractTopKeymap . defaultKm
 
 type UIBoot = Config -> (Event -> IO ()) -> ([Action] -> IO ()) ->  Editor -> IO UI
 
-$(nameDeriveAccessors ''Config (\n -> Just (n ++ "A")))
-$(nameDeriveAccessors ''UIConfig (\n -> Just (n ++ "A")))
+makeLensesWithSuffix "A" ''Config
+makeLensesWithSuffix "A" ''UIConfig

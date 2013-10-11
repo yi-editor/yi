@@ -41,7 +41,7 @@ import Data.List (nub, filter, drop, zip, take, length)
 import Data.Prototype
 import qualified Data.Rope as Rope
 import qualified Data.Map as Map
-import Yi.Prelude
+import Yi.Prelude hiding (views)
 import Yi.Core (startEditor, focusAllSyntax)
 import Yi.Buffer
 import Yi.Config
@@ -229,7 +229,7 @@ doLayout e = do
     cacheRef <- asks tabCache
     tabs <- liftIO $ readRef cacheRef
     heights <- concat <$> mapM (getHeightsInTab e) tabs
-    let e' = (tabsA ^: fmap (mapWindows updateWin)) e
+    let e' = (tabsA %~ fmap (mapWindows updateWin)) e
         updateWin w = case find (\(ref,_,_) -> (wkey w == ref)) heights of
                           Nothing -> w
                           Just (_,h,rgn) -> w { height = h, winRegion = rgn }
@@ -479,7 +479,7 @@ newView buffer font = do
                     }) $ liftYi $ withEditor $ newWindowE False viewFBufRef
     let windowRef = wkey newWindow
     liftYi $ withEditor $ do
-        modA windowsA (PL.insertRight newWindow)
+        (%=) windowsA (PL.insertRight newWindow)
         e <- get
         put $ focusAllSyntax e
     drawArea <- liftIO $ drawingAreaNew
@@ -532,7 +532,7 @@ newView buffer font = do
         (text, allAttrs, debug, tos, rel, point, inserting) <-
           runControl (liftYi $ withEditor $ do
             window <- (findWindowWith windowRef) <$> get
-            modA buffersA (fmap (clearSyntax . clearHighlight))
+            (%=) buffersA (fmap (clearSyntax . clearHighlight))
             let winh = height window
             let tos = max 0 (regionStart (winRegion window))
             let bos = regionEnd (winRegion window)
@@ -542,7 +542,7 @@ newView buffer font = do
                 -- tos       <- getMarkPointB =<< fromMark <$> askMarks
                 rope      <- streamB Forward tos
                 point     <- pointB
-                inserting <- getA insertingA
+                inserting <- use insertingA
 
                 modeNm <- gets (withMode0 modeName)
 
@@ -635,9 +635,9 @@ newView buffer font = do
   where
     clearHighlight fb =
       -- if there were updates, then hide the selection.
-      let h = getVal highlightSelectionA fb
-          us = getVal pendingUpdatesA fb
-      in highlightSelectionA ^= (h && null us) $ fb
+      let h = view highlightSelectionA fb
+          us = view pendingUpdatesA fb
+      in highlightSelectionA .~ (h && null us) $ fb
 
 setBufferMode :: FilePath -> Buffer -> ControlM ()
 setBufferMode f buffer = do
@@ -708,7 +708,7 @@ handleClick view event = do
 
 --  let focusWindow = do
       -- TODO: check that tabIdx is the focus?
---      modA windowsA (fromJust . PL.move winIdx)
+--      (%=) windowsA (fromJust . PL.move winIdx)
 
   liftIO $ case (Gdk.Events.eventClick event, Gdk.Events.eventButton event) of
      (Gdk.Events.SingleClick, Gdk.Events.LeftButton) -> do

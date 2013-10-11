@@ -24,18 +24,18 @@ module Yi.Syntax.Tree (IsTree(..), toksAfter, allToks, tokAtOrBefore, toksInRegi
 -- such as multirec, uniplace, emgm, ...
 
 import Prelude (curry)
+import Yi.Prelude hiding (elements, index, children, left')
 
 import Control.Arrow (first)
 import Data.List (dropWhile, takeWhile, reverse, filter, zip, take, drop, length, splitAt)
 import Data.Maybe
-import Data.Monoid (First(..), Last(..), getFirst, getLast, mempty)
+import Data.Monoid (First(..), Last(..), getFirst, getLast)
 #ifdef TESTING
 import Test.QuickCheck
 #endif
 
 import Yi.Buffer.Basic
 import Yi.Lexer.Alex
-import Yi.Prelude
 import Yi.Region
 
 -- Fundamental types

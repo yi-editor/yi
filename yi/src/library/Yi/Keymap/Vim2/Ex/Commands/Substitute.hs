@@ -3,7 +3,7 @@ module Yi.Keymap.Vim2.Ex.Commands.Substitute
     ) where
 
 import Prelude ()
-import Yi.Prelude
+import Yi.Prelude hiding (from, to)
 
 import qualified Text.ParserCombinators.Parsec as P
 

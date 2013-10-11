@@ -357,7 +357,7 @@ newWindow before ui win b = do
   flip (setIVar _runBuffer) v $ \act -> do
     wCache <- readIORef (windowCache ui)
     uiActionCh ui $ makeAction $ do
-      (modA windowsA) $ fromJust . (PL.move $ fromJust $ L.findIndex ((k ==) . wikey) wCache)
+      ((%=) windowsA) $ fromJust . (PL.move $ fromJust $ L.findIndex ((k ==) . wikey) wCache)
       withGivenBufferAndWindow0 win (bkey b) act
 
   return $ WinInfo
@@ -371,7 +371,7 @@ newWindow before ui win b = do
 
 getSelectedRegions :: BufferM [NSRange]
 getSelectedRegions = do
-  rect <- getA rectangleSelectionA
+  rect <- use rectangleSelectionA
   if (not rect)
     then singleton <$> mkRegionRange <$> getSelectRegionB
     else do

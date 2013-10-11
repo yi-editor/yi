@@ -21,7 +21,7 @@ myConfig = defaultVimConfig
     { configTheme = defaultTheme
     , configWindowFill = '~'
     }
-  , startActions = [makeAction (maxStatusHeightA %= 20 :: EditorM ())]
+  , startActions = [makeAction (maxStatusHeightA .= 20 :: EditorM ())]
   -- , startFrontEnd = Pango.start
   }
 

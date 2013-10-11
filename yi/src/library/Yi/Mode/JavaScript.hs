@@ -81,7 +81,7 @@ hooks :: Mode (Tree TT) -> Mode (Tree TT)
 hooks mode = mode
   {
     -- modeGetAnnotations = tokenBasedAnnots tta
-    modeKeymap = topKeymapA ^: (choice [ctrlCh 'c' ?>> ctrlCh 'l' ?>>! withSyntax modeFollow,
+    modeKeymap = topKeymapA %~ (choice [ctrlCh 'c' ?>> ctrlCh 'l' ?>>! withSyntax modeFollow,
                                         Event KEnter []           ?>>! newlineAndIndentB]
                                 <||)
   , modeFollow = YiA . jsCompile

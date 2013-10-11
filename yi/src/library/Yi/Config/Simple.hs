@@ -8,9 +8,6 @@ module Yi.Config.Simple (
   ConfigM,
   configMain,
   Field,
-  (%=),
-  get,
-  modify,
   -- * Frontend
   setFrontendPreferences,
   setFrontend,
@@ -79,6 +76,11 @@ module Yi.Config.Simple (
 #endif
  ) where
 
+import Prelude ()
+import Yi.Prelude
+
+import Data.Maybe (maybe)
+
 import Yi.Boot
 --import Yi.Buffer.Misc hiding(modifyMode)
 import Yi.Core hiding(modifyMode, (%=))
@@ -99,7 +101,6 @@ import Yi.Scion
 #endif
 
 import Text.Printf(printf)
-import Prelude hiding((.))
 
 import Control.Monad.State hiding (modify, get)
 
@@ -150,21 +151,6 @@ bar = do
 configMain :: Config -> ConfigM () -> IO ()
 configMain c m = yi =<< execStateT (runConfigM m) c
 
--- type Field a (imported
-
--- | Set a field.
-(%=) :: Field a -> a -> ConfigM ()
-(%=) = putA
-
--- | Get a field.
-get :: Field a -> ConfigM a
-get = getA
-
--- | Modify a field.
-modify :: Field a -> (a -> a) -> ConfigM ()
-modify = modA
-
-
 ---------------------------------- Frontend
 -- | Sets the frontend to the first frontend from the list which is installed.
 --
@@ -172,17 +158,17 @@ modify = modA
 setFrontendPreferences :: [String] -> ConfigM ()
 setFrontendPreferences fs =
    case mapMaybe (\f -> lookup f availableFrontends) fs of
-       (f:_) -> startFrontEndA %= f
+       (f:_) -> startFrontEndA .= f
        [] -> return ()
 
 -- | Sets the frontend, if it is available.
 setFrontend :: String -> ConfigM ()
-setFrontend f = maybe (return ()) (startFrontEndA %=) (lookup f availableFrontends)
+setFrontend f = maybe (return ()) (startFrontEndA .=) (lookup f availableFrontends)
 
 ------------------------- Modes, commands, and keybindings
 -- | Adds the given key bindings to the `global keymap'. The bindings will override existing bindings in the case of a clash.
 globalBindKeys :: Keymap -> ConfigM ()
-globalBindKeys a = modify (topKeymapA . defaultKmA) (||> a)
+globalBindKeys a = (defaultKmA . topKeymapA) %= (||> a)
 
 -- | @modeBindKeys mode keys@ adds the keybindings in @keys@ to all modes with the same name as @mode@.
 --
@@ -193,15 +179,15 @@ modeBindKeys mode keys = ensureModeRegistered "modeBindKeys" (modeName mode) $ m
 
 -- | @modeBindKeysByName name keys@ adds the keybindings in @keys@ to all modes with name @name@ (if it is registered). Consider using 'modeBindKeys' instead.
 modeBindKeysByName :: String -> Keymap -> ConfigM ()
-modeBindKeysByName name k = ensureModeRegistered "modeBindKeysByName" name $ modifyModeByName name (modeKeymapA ^: f)
+modeBindKeysByName name k = ensureModeRegistered "modeBindKeysByName" name $ modifyModeByName name (modeKeymapA %~ f)
  where
   f :: (KeymapSet -> KeymapSet) -> (KeymapSet -> KeymapSet)
-  f mkm km = topKeymapA ^: (||> k) $ mkm km
--- (modeKeymapA ^: ((topKeymap ^: (||> k)) .))
+  f mkm km = topKeymapA %~ (||> k) $ mkm km
+-- (modeKeymapA %~ ((topKeymap %~ (||> k)) .))
 
 -- | Register the given mode. It will be preferred over any modes already defined.
 addMode :: Mode syntax -> ConfigM ()
-addMode m = modify modeTableA (AnyMode m :)
+addMode m = modeTableA %= (AnyMode m :)
 
 -- | @modifyMode mode f@ modifies all modes with the same name as @mode@, using the function @f@.
 --
@@ -214,11 +200,12 @@ modifyMode mode f = ensureModeRegistered "modifyMode" (modeName mode) $ modifyMo
 
 -- | @modifyModeByName name f@ modifies the mode with name @name@ using the function @f@. Consider using 'modifyMode' instead.
 modifyModeByName :: String -> (forall syntax. Mode syntax -> Mode syntax) -> ConfigM ()
-modifyModeByName name f = ensureModeRegistered "modifyModeByName" name $ modify modeTableA (fmap (onMode g))
-  where
-      g :: forall syntax. Mode syntax -> Mode syntax
-      g m | modeName m == name = f m
-          | otherwise          = m
+modifyModeByName name f =
+    ensureModeRegistered "modifyModeByName" name $ modeTableA %= (fmap (onMode g))
+        where
+            g :: forall syntax. Mode syntax -> Mode syntax
+            g m | modeName m == name = f m
+                | otherwise          = m
 
 -- helper functions
 warn :: String -> String -> ConfigM ()
@@ -226,7 +213,7 @@ warn caller msg = io $ putStrLn $ printf "Warning: %s: %s" caller msg
 -- the putStrLn shouldn't be necessary, but it doesn't print anything if it's not there...
 
 isModeRegistered :: String -> ConfigM Bool
-isModeRegistered name = (Prelude.any (\(AnyMode mode) -> modeName mode == name)) <$> get modeTableA
+isModeRegistered name = (any (\(AnyMode mode) -> modeName mode == name)) <$> use modeTableA
 
 -- ensure the given mode is registered, and if it is, then run the given action.
 ensureModeRegistered :: String -> String -> ConfigM () -> ConfigM ()
@@ -239,52 +226,52 @@ ensureModeRegistered caller name m = do
 --------------------- Appearance
 -- | 'Just' the font name, or 'Nothing' for default.
 fontName :: Field (Maybe String)
-fontName = configFontNameA . configUIA
+fontName = configUIA . configFontNameA
 
 -- | 'Just' the font size, or 'Nothing' for default.
 fontSize :: Field (Maybe Int)
-fontSize = configFontSizeA . configUIA
+fontSize = configUIA . configFontSizeA
 
 -- | Amount to move the buffer when using the scroll wheel.
 scrollWheelAmount :: Field Int
-scrollWheelAmount = configScrollWheelAmountA . configUIA
+scrollWheelAmount = configUIA . configScrollWheelAmountA
 
 -- | 'Just' the scroll style, or 'Nothing' for default.
 scrollStyle :: Field (Maybe ScrollStyle)
-scrollStyle = configScrollStyleA . configUIA
+scrollStyle = configUIA . configScrollStyleA
 
 -- | See 'CursorStyle' for documentation.
 cursorStyle :: Field CursorStyle
-cursorStyle = configCursorStyleA . configUIA
+cursorStyle = configUIA . configCursorStyleA
 
 data Side = LeftSide | RightSide
 
 -- | Which side to display the scroll bar on.
 scrollBarSide :: Field Side
-scrollBarSide = fromBool . configLeftSideScrollBarA . configUIA
+scrollBarSide = configUIA . configLeftSideScrollBarA . fromBool
   where
-      fromBool :: Accessor Bool Side
-      fromBool = accessor (\b -> if b then LeftSide else RightSide) (\s _ -> case s of { LeftSide -> True; RightSide -> False })
+      fromBool :: Lens' Bool Side
+      fromBool = lens (\b -> if b then LeftSide else RightSide) (\_ s -> case s of { LeftSide -> True; RightSide -> False })
 
 -- | Should the scroll bar autohide?
 autoHideScrollBar :: Field Bool
-autoHideScrollBar = configAutoHideScrollBarA . configUIA
+autoHideScrollBar = configUIA . configAutoHideScrollBarA
 
 -- | Should the tab bar autohide?
 autoHideTabBar :: Field Bool
-autoHideTabBar = configAutoHideTabBarA . configUIA
+autoHideTabBar = configUIA . configAutoHideTabBarA
 
 -- | Should lines be wrapped?
 lineWrap :: Field Bool
-lineWrap = configLineWrapA . configUIA
+lineWrap = configUIA . configLineWrapA
 
 -- | The character with which to fill empty window space. Usually \'~\' for vi-like editors, \' \' for everything else.
 windowFill :: Field Char
-windowFill = configWindowFillA . configUIA
+windowFill = configUIA . configWindowFillA
 
 -- | UI colour theme.
 theme :: Field Theme
-theme = configThemeA . configUIA
+theme = configUIA . configThemeA
 
 ---------- Layout
 -- | List of registered layout managers. When cycling through layouts, this list will be consulted.
@@ -303,7 +290,7 @@ runOnStartup action = runManyOnStartup [action]
 
 -- | List version of 'runOnStartup'.
 runManyOnStartup :: [Action] -> ConfigM ()
-runManyOnStartup actions = modify startActions (++actions)
+runManyOnStartup actions = startActions %= (++ actions)
 
 -- | Run after the startup actions have completed, or on reload (this is run after all actions which have already been registered)
 runAfterStartup :: Action -> ConfigM ()
@@ -311,7 +298,7 @@ runAfterStartup action = runManyAfterStartup [action]
 
 -- | List version of 'runAfterStartup'.
 runManyAfterStartup :: [Action] -> ConfigM ()
-runManyAfterStartup actions = modify initialActions (++actions)
+runManyAfterStartup actions = initialActions %= (++ actions)
 
 ------------------------ Advanced
 {- $advanced

@@ -30,7 +30,7 @@ import Yi.Lexer.Haskell
 import Yi.Syntax.Layout
 import Yi.Syntax.Tree
 import Yi.Syntax
-import Yi.Prelude
+import Yi.Prelude hiding (Context)
 import Prelude ()
 import Data.Tuple (uncurry)
 import Control.Arrow ((&&&))

@@ -2,7 +2,7 @@ module Yi.Keymap.Vim2.NormalMap
     ( defNormalMap
     ) where
 
-import Yi.Prelude
+import Yi.Prelude hiding (re)
 import Prelude ()
 
 import Control.Monad (replicateM_)
@@ -281,7 +281,7 @@ searchWordE wholeWord dir = do
 
     let search re = do
             setRegexE re
-            putA searchDirectionA dir
+            assign searchDirectionA dir
             withCount $ continueSearching (const dir)
 
     if wholeWord
@@ -309,7 +309,7 @@ continueSearching fdir = do
     mbRegex <- getRegexE
     case mbRegex of
         Just regex -> do
-            dir <- fdir <$> getA searchDirectionA
+            dir <- fdir <$> use searchDirectionA
             printMsg $ (if dir == Forward then '/' else '?') : seInput regex
             void $ doVimSearch Nothing [] dir
         Nothing -> printMsg "No previous search pattern"
@@ -334,8 +334,8 @@ repeatGotoCharE mutateDir = do
 
 enableVisualE :: RegionStyle -> EditorM ()
 enableVisualE style = withBuffer0 $ do
-    putA regionStyleA style
-    putA rectangleSelectionA $ Block == style
+    assign regionStyleA style
+    assign rectangleSelectionA $ Block == style
     setVisibleSelection True
     pointB >>= setSelectionMarkPointB
 

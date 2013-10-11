@@ -3,7 +3,7 @@ module Yi.Keymap.Vim2.NormalOperatorPendingMap
   ) where
 
 import Prelude ()
-import Yi.Prelude
+import Yi.Prelude hiding (op, to)
 
 import Data.Char (isDigit)
 import Data.List (isPrefixOf, drop)

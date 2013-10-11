@@ -170,7 +170,8 @@ module Yi.Buffer.Misc
 where
 
 import Prelude (drop)
-import Yi.Prelude
+import Yi.Prelude hiding (reversed, at, act, transform)
+
 import Yi.Region
 import System.FilePath
 import Yi.Buffer.Implementation
@@ -179,7 +180,6 @@ import Yi.Buffer.Undo
 import Yi.Dynamic
 import Yi.Window
 import Control.Monad.RWS.Strict hiding (mapM_, mapM, get, put, forM_, forM)
-import Data.Accessor.Template
 import Data.Binary
 import Data.Default
 import Data.DeriveTH
@@ -256,7 +256,7 @@ data Attributes = Attributes
                 , updateTransactionAccum    :: ![Update]
                 } deriving Typeable
 
-$(nameDeriveAccessors ''Attributes (\n -> Just (n ++ "AA")))
+makeLensesWithSuffix "AA" ''Attributes
 
 instance Binary Attributes where
     put (Attributes n b u bd pc pu selectionStyle_ _proc wm law lst ro ins _pfw
@@ -295,10 +295,8 @@ miniIdentString b = case b ^. identA of
     Right _ -> "MINIFILE:"
     Left bufName -> bufName
 
-identA :: Accessor FBuffer BufferId
-identA = identAA . attrsA
-
-
+identA :: Lens' FBuffer BufferId
+identA = attrsA . identAA
 
 
 -- unfortunately the dynamic stuff can't be read.
@@ -333,72 +331,70 @@ queryAndModifyRawbuf f (FBuffer f1 f5 f3) =
     let (f5', x) = f f5
     in (FBuffer f1 f5' f3, x)
 
-attrsA :: Accessor FBuffer Attributes
-attrsA = accessor attributes (\a e -> case e of FBuffer f1 f2 _ -> FBuffer f1 f2 a)
+attrsA :: Lens' FBuffer Attributes
+attrsA = lens attributes (\(FBuffer f1 f2 _) a -> FBuffer f1 f2 a)
 
 -- | Use in readonly!
-lastActiveWindowA :: Accessor FBuffer Window
-lastActiveWindowA = lastActiveWindowAA . attrsA
+lastActiveWindowA :: Lens' FBuffer Window
+lastActiveWindowA = attrsA . lastActiveWindowAA
 
-lastSyncTimeA :: Accessor FBuffer UTCTime
-lastSyncTimeA = lastSyncTimeAA . attrsA
+lastSyncTimeA :: Lens' FBuffer UTCTime
+lastSyncTimeA = attrsA . lastSyncTimeAA
 
-undosA :: Accessor FBuffer URList
-undosA = undosAA . attrsA
+undosA :: Lens' FBuffer URList
+undosA = attrsA . undosAA
 
-readOnlyA :: Accessor FBuffer Bool
-readOnlyA = readOnlyAA . attrsA
+readOnlyA :: Lens' FBuffer Bool
+readOnlyA = attrsA . readOnlyAA
 
-insertingA :: Accessor FBuffer Bool
-insertingA = insertingAA . attrsA
+insertingA :: Lens' FBuffer Bool
+insertingA = attrsA . insertingAA
 
-pointFollowsWindowA :: Accessor FBuffer (WindowRef -> Bool)
-pointFollowsWindowA = pointFollowsWindowAA . attrsA
+pointFollowsWindowA :: Lens' FBuffer (WindowRef -> Bool)
+pointFollowsWindowA = attrsA . pointFollowsWindowAA
 
-updateTransactionInFlightA :: Accessor FBuffer Bool
-updateTransactionInFlightA = updateTransactionInFlightAA . attrsA
+updateTransactionInFlightA :: Lens' FBuffer Bool
+updateTransactionInFlightA = attrsA . updateTransactionInFlightAA
 
-updateTransactionAccumA :: Accessor FBuffer [Update]
-updateTransactionAccumA = updateTransactionAccumAA . attrsA
+updateTransactionAccumA :: Lens' FBuffer [Update]
+updateTransactionAccumA = attrsA . updateTransactionAccumAA
 
 file :: FBuffer -> (Maybe FilePath)
 file b = case b ^. identA of
     Right f -> Just f
     _ -> Nothing
 
-preferColA :: Accessor FBuffer (Maybe Int)
-preferColA = preferColAA . attrsA
+preferColA :: Lens' FBuffer (Maybe Int)
+preferColA = attrsA . preferColAA
 
 setPrefCol :: Maybe Int -> BufferM ()
-setPrefCol = putA preferColA
+setPrefCol = assign preferColA
 
 getPrefCol :: BufferM (Maybe Int)
-getPrefCol = getA preferColA
+getPrefCol = use preferColA
 
-bufferDynamicA :: Accessor FBuffer DynamicValues
-bufferDynamicA = bufferDynamicAA . attrsA
+bufferDynamicA :: Lens' FBuffer DynamicValues
+bufferDynamicA = attrsA . bufferDynamicAA
 
-pendingUpdatesA :: Accessor FBuffer [UIUpdate]
-pendingUpdatesA = pendingUpdatesAA . attrsA
+pendingUpdatesA :: Lens' FBuffer [UIUpdate]
+pendingUpdatesA = attrsA . pendingUpdatesAA
 
-selectionStyleA :: Accessor FBuffer SelectionStyle
-selectionStyleA = selectionStyleAA . attrsA
+selectionStyleA :: Lens' FBuffer SelectionStyle
+selectionStyleA = attrsA . selectionStyleAA
 
-highlightSelectionA :: Accessor FBuffer Bool
-highlightSelectionA =
-  accessor highlightSelection (\x e -> e { highlightSelection = x })
-  . selectionStyleA
+highlightSelectionA :: Lens' FBuffer Bool
+highlightSelectionA = selectionStyleA .
+  lens highlightSelection (\e x -> e { highlightSelection = x })
 
-rectangleSelectionA :: Accessor FBuffer Bool
-rectangleSelectionA =
-  accessor rectangleSelection (\x e -> e { rectangleSelection = x })
-  . selectionStyleA
+rectangleSelectionA :: Lens' FBuffer Bool
+rectangleSelectionA = selectionStyleA .
+  lens rectangleSelection (\e x -> e { rectangleSelection = x })
 
-keymapProcessA :: Accessor FBuffer KeymapProcess
-keymapProcessA = processAA . attrsA
+keymapProcessA :: Lens' FBuffer KeymapProcess
+keymapProcessA = attrsA . processAA
 
-winMarksA :: Accessor FBuffer (M.Map WindowRef WinMarks)
-winMarksA = winMarksAA . attrsA
+winMarksA :: Lens' FBuffer (M.Map WindowRef WinMarks)
+winMarksA = attrsA . winMarksAA
 
 {- | Currently duplicates some of Vim's indent settings. Allowing a buffer to
  - specify settings that are more dynamic, perhaps via closures, could be
@@ -493,7 +489,7 @@ defaultModeLine prefix = do
     p <- pointB
     s <- sizeB
     curChar <-readB
-    ro <-getA readOnlyA
+    ro <-use readOnlyA
     modeNm <- gets (withMode0 modeName)
     unchanged <- gets isUnchangedBuffer
     let pct = if (pos == 0) || (s == 0)
@@ -540,13 +536,13 @@ queryAndModify f = getsAndModify (queryAndModifyRawbuf f)
 -- | Adds an "overlay" to the buffer
 addOverlayB :: Overlay -> BufferM ()
 addOverlayB ov = do
-  modA pendingUpdatesA (++ [overlayUpdate ov])
+  (%=) pendingUpdatesA (++ [overlayUpdate ov])
   modifyBuffer $ addOverlayBI ov
 
 -- | Remove an existing "overlay"
 delOverlayB :: Overlay -> BufferM ()
 delOverlayB ov = do
-  modA pendingUpdatesA (++ [overlayUpdate ov])
+  (%=) pendingUpdatesA (++ [overlayUpdate ov])
   modifyBuffer $ delOverlayBI ov
 
 delOverlayLayerB :: OvlLayer -> BufferM ()
@@ -561,9 +557,7 @@ runBuffer w b f =
     in (a, b')
 
 getMarks :: Window -> BufferM (Maybe WinMarks)
-getMarks w = do
-    getsA winMarksA (M.lookup $ wkey w)
-
+getMarks w = uses winMarksA (M.lookup $ wkey w)
 
 runBufferFull :: Window -> FBuffer -> BufferM a -> (a, [Update], FBuffer)
 runBufferFull w b f =
@@ -579,13 +573,13 @@ runBufferFull w b f =
                                    selMark = MarkValue 0 Backward, -- sel
                                    fromMark = MarkValue 0 Backward } -- from
                     else do
-                        Just mrks  <- getsA winMarksA (M.lookup $ wkey (b ^. lastActiveWindowA))
+                        Just mrks  <- uses winMarksA (M.lookup $ wkey (b ^. lastActiveWindowA))
                         forM mrks getMarkValueB
                 newMrks <- forM newMarkValues newMarkB
-                modA winMarksA (M.insert (wkey w) newMrks)
-            putA lastActiveWindowA w
+                (%=) winMarksA (M.insert (wkey w) newMrks)
+            assign lastActiveWindowA w
             f
-    in (a, updates, pendingUpdatesA ^: (++ fmap TextUpdate updates) $ b')
+    in (a, updates, pendingUpdatesA %~ (++ fmap TextUpdate updates) $ b')
 
 getMarkValueB :: Mark -> BufferM MarkValue
 getMarkValueB m = fromMaybe (MarkValue 0 Forward) <$> queryBuffer (getMarkValueBI m)
@@ -604,56 +598,56 @@ runBufferDummyWindow b = fst . runBuffer (dummyWindow $ bkey b) b
 
 -- | Mark the current point in the undo list as a saved state.
 markSavedB :: UTCTime -> BufferM ()
-markSavedB t = do modA undosA setSavedFilePointU
-                  putA lastSyncTimeA t
+markSavedB t = do (%=) undosA setSavedFilePointU
+                  assign lastSyncTimeA t
 
 bkey :: FBuffer -> BufferRef
-bkey = getVal (bkey__AA . attrsA)
+bkey = view (attrsA . bkey__AA)
 
 isUnchangedBuffer :: FBuffer -> Bool
-isUnchangedBuffer = isAtSavedFilePointU . getVal undosA
+isUnchangedBuffer = isAtSavedFilePointU . view undosA
 
 startUpdateTransactionB :: BufferM ()
 startUpdateTransactionB = do
-  transactionPresent <- getA updateTransactionInFlightA
+  transactionPresent <- use updateTransactionInFlightA
   if transactionPresent
   then error "Already started update transaction"
   else do
-    modA undosA $ addChangeU InteractivePoint
-    putA updateTransactionInFlightA True
+    (%=) undosA $ addChangeU InteractivePoint
+    assign updateTransactionInFlightA True
 
 commitUpdateTransactionB :: BufferM ()
 commitUpdateTransactionB = do
-  transactionPresent <- getA updateTransactionInFlightA
+  transactionPresent <- use updateTransactionInFlightA
   if not transactionPresent
   then error "Not in update transaction"
   else do
-    putA updateTransactionInFlightA False
-    transacAccum <- getA updateTransactionAccumA
-    putA updateTransactionAccumA []
+    assign updateTransactionInFlightA False
+    transacAccum <- use updateTransactionAccumA
+    assign updateTransactionAccumA []
 
-    modA undosA $ appEndo . mconcat $ fmap (Endo . addChangeU . AtomicChange) transacAccum
-    modA undosA $ addChangeU InteractivePoint
+    (%=) undosA $ appEndo . mconcat $ fmap (Endo . addChangeU . AtomicChange) transacAccum
+    (%=) undosA $ addChangeU InteractivePoint
 
 
 undoRedo :: (forall syntax. Mark -> URList -> BufferImpl syntax -> (BufferImpl syntax, (URList, [Update])) ) -> BufferM ()
 undoRedo f = do
   m <- getInsMark
-  ur <- getA undosA
+  ur <- use undosA
   (ur', updates) <- queryAndModify (f m ur)
-  putA undosA ur'
+  assign undosA ur'
   tell updates
 
 undoB :: BufferM ()
 undoB = do
-    isTransacPresent <- getA updateTransactionInFlightA
+    isTransacPresent <- use updateTransactionInFlightA
     if isTransacPresent
     then error "Can't undo while undo transaction is in progress"
     else undoRedo undoU
 
 redoB :: BufferM ()
 redoB = do
-    isTransacPresent <- getA updateTransactionInFlightA
+    isTransacPresent <- use updateTransactionInFlightA
     if isTransacPresent
     then error "Can't undo while undo transaction is in progress"
     else undoRedo redoU
@@ -763,11 +757,11 @@ moveTo x = do
 ------------------------------------------------------------------------
 
 setInserting :: Bool -> BufferM ()
-setInserting = putA insertingA
+setInserting = assign insertingA
 
 checkRO :: BufferM Bool
 checkRO =  do
-   ro <- getA readOnlyA
+   ro <- use readOnlyA
    when  ro (fail "Read Only Buffer")
    return ro
 
@@ -780,10 +774,10 @@ applyUpdate update = do
         let reversed = reverseUpdateI update
         modifyBuffer (applyUpdateI update)
 
-        isTransacPresent <- getA updateTransactionInFlightA
+        isTransacPresent <- use updateTransactionInFlightA
         if isTransacPresent
-        then modA updateTransactionAccumA $ (reversed:)
-        else modA undosA $ addChangeU $ AtomicChange $ reversed
+        then (%=) updateTransactionAccumA $ (reversed:)
+        else (%=) undosA $ addChangeU $ AtomicChange $ reversed
 
         tell [update]
    -- otherwise, just ignore.
@@ -791,7 +785,7 @@ applyUpdate update = do
 -- | Revert all the pending updates; don't touch the point.
 revertPendingUpdatesB :: BufferM ()
 revertPendingUpdatesB = do
-  updates <- getA pendingUpdatesA
+  updates <- use pendingUpdatesA
   modifyBuffer (flip (foldr (\u bi -> applyUpdateI (reverseUpdateI u) bi)) [u | TextUpdate u <- updates])
 
 -- | Write an element into the buffer at the current point.
@@ -879,7 +873,7 @@ setMode :: Mode syntax -> BufferM ()
 setMode m = do
   modify (setMode0 m)
   -- reset the keymap process so we use the one of the new mode.
-  putA keymapProcessA I.End
+  assign keymapProcessA I.End
   modeOnLoad m
 
 -- | Modify the mode
@@ -887,7 +881,7 @@ modifyMode :: (forall syntax. Mode syntax -> Mode syntax) -> BufferM ()
 modifyMode f = do
   modify (modifyMode0 f)
   -- reset the keymap process so we use the one of the new mode.
-  putA keymapProcessA I.End
+  assign keymapProcessA I.End
 
 onMode :: (forall syntax. Mode syntax -> Mode syntax) -> AnyMode -> AnyMode
 onMode f (AnyMode m) = AnyMode (f m)
@@ -906,7 +900,7 @@ withSyntax0 f wk (FBuffer bm rb _attrs) = f bm (getAst wk rb)
 
 
 withSyntaxB :: (forall syntax. Mode syntax -> syntax -> a) -> BufferM a
-withSyntaxB f = withSyntax0 f <$> askWindow wkey <*> getA id
+withSyntaxB f = withSyntax0 f <$> askWindow wkey <*> use id
 
 
 focusSyntax ::  M.Map WindowRef Region -> FBuffer -> FBuffer
@@ -947,7 +941,7 @@ setNamedMarkHereB name = do
 
 -- | Highlight the selection
 setVisibleSelection :: Bool -> BufferM ()
-setVisibleSelection = putA highlightSelectionA
+setVisibleSelection = assign highlightSelectionA
 
 getInsMark :: BufferM Mark
 getInsMark = insMark <$> askMarks
@@ -1140,10 +1134,10 @@ gotoLnFrom x = do
 -- | Access to a value into the extensible state, keyed by its type.
 --   This allows you to save or retrieve inside a 'BufferM' monad, ie:
 --
--- > putA bufferDynamicValueA updatedvalue
--- > value <- getA bufferDynamicValueA
-bufferDynamicValueA :: YiVariable a => Accessor FBuffer a
-bufferDynamicValueA = dynamicValueA . bufferDynamicA
+-- > assign bufferDynamicValueA updatedvalue
+-- > value <- use bufferDynamicValueA
+bufferDynamicValueA :: YiVariable a => Lens' FBuffer a
+bufferDynamicValueA = bufferDynamicA . dynamicValueA
 
 -- | perform a @BufferM a@, and return to the current point. (by using a mark)
 savingExcursionB :: BufferM a -> BufferM a
@@ -1190,4 +1184,4 @@ withEveryLineB action = savingPointB $ do
     void $ gotoLn l
     action
 
-$(nameDeriveAccessors ''Mode (\n -> Just (n ++ "A")))
+makeLensesWithSuffix "A" ''Mode

@@ -15,7 +15,7 @@ mode = (linearSyntaxMode Compilation.initState Compilation.alexScanToken tokenTo
   {
    modeApplies = modeNeverApplies,
    modeName = "compilation",
-   modeKeymap = topKeymapA ^: ((<||) (spec KEnter ?>>! withSyntax modeFollow)),
+   modeKeymap = topKeymapA %~ ((<||) (spec KEnter ?>>! withSyntax modeFollow)),
    modeFollow = \synTree -> YiA (follow synTree)
   }
     where tokenToStyle _ = commentStyle

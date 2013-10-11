@@ -25,7 +25,7 @@ module Yi.Buffer.Region
 where
 
 import Prelude ()
-import Yi.Prelude
+import Yi.Prelude hiding (transform)
 
 import Data.Algorithm.Diff
 import Data.Char (isSpace)

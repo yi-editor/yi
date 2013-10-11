@@ -17,7 +17,7 @@ config = defaultEmacsConfig
           -- bestHaskellMode :: Mode (Tree (Tok Token))
           bestHaskellMode = -- Shim.minorMode $
                              H.cleverMode { modeKeymap =
-                                    topKeymapA ^: ((ctrlCh 'c' ?>> choice [ctrlCh 'l' ?>>! H.ghciLoadBuffer,
+                                    topKeymapA %~ ((ctrlCh 'c' ?>> choice [ctrlCh 'l' ?>>! H.ghciLoadBuffer,
                                                               ctrl (char 'z') ?>>! H.ghciGet,
                                                               ctrl (char 'h') ?>>! hoogle,
                                                               ctrlCh 'r' ?>>! H.ghciSend ":r",

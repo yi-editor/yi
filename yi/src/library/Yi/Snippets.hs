@@ -137,9 +137,9 @@ runSnippet deleteLast s = do
         let newDepMarks = filter (not . len1) $
                             groupBy belongTogether $
                               sort markInfo
-        modA bufferDynamicValueA ((BufferMarks newMarks) `mappend`)
+        (%=) bufferDynamicValueA ((BufferMarks newMarks) `mappend`)
         unless (null newDepMarks) $ do
-            modA bufferDynamicValueA ((DependentMarks newDepMarks) `mappend`)
+            (%=) bufferDynamicValueA ((DependentMarks newDepMarks) `mappend`)
         moveToNextBufferMark deleteLast
     return a
   where
@@ -159,7 +159,7 @@ findEditedMarks upds = sequence (map findEditedMarks' upds) >>=
     findEditedMarks' :: Update -> BufferM [MarkInfo]
     findEditedMarks' upd = do
         let p = updatePoint upd
-        ms <- return . nub . concat . marks =<< getA bufferDynamicValueA
+        ms <- return . nub . concat . marks =<< use bufferDynamicValueA
         ms <- forM ms $ \m ->do
                 r <- adjMarkRegion m
                 return $ if (updateIsDelete upd && p `nearRegion` r)
@@ -175,7 +175,7 @@ dependentSiblings mark deps =
     Just lst -> filter (not . (mark==)) lst
 
 updateDependents :: MarkInfo -> BufferM ()
-updateDependents m = getA bufferDynamicValueA >>= updateDependents' m . marks
+updateDependents m = use bufferDynamicValueA >>= updateDependents' m . marks
 
 updateDependents' :: MarkInfo -> [[MarkInfo]] -> BufferM ()
 updateDependents' mark deps =
@@ -263,7 +263,7 @@ findOverlappingMarksWith :: (MarkInfo -> BufferM Region) ->
                             ([[MarkInfo]] -> [MarkInfo]) -> Bool -> Region ->
                             MarkInfo -> BufferM [MarkInfo]
 findOverlappingMarksWith fMarkRegion flattenMarks border r m =
-    getA bufferDynamicValueA >>=
+    use bufferDynamicValueA >>=
     return . filter (not . (m==)) . flattenMarks . marks >>=
     filterM (liftM (regionsOverlap border r) . fMarkRegion)
 
@@ -292,14 +292,14 @@ dependentOverlappingMarks border = overlappingMarks border True
 
 nextBufferMark :: Bool -> BufferM (Maybe MarkInfo)
 nextBufferMark deleteLast = do
-    BufferMarks ms <- getA bufferDynamicValueA
+    BufferMarks ms <- use bufferDynamicValueA
     if (null ms)
       then return Nothing
-      else do putA bufferDynamicValueA . BufferMarks . (if deleteLast then (const $ tail ms) else (tail ms ++)) $ [head ms]
+      else do assign bufferDynamicValueA . BufferMarks . (if deleteLast then (const $ tail ms) else (tail ms ++)) $ [head ms]
               return . Just $ head ms
 
 isDependentMarker bMark = do
-    DependentMarks ms <- getA bufferDynamicValueA
+    DependentMarks ms <- use bufferDynamicValueA
     return . elem bMark . concatMap bufferMarkers . concat $ ms
 
 safeDeleteMarkB m = do
