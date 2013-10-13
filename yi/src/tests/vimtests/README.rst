@@ -27,6 +27,11 @@ Directory test format
 
   Directories that contain files "input", "output" and "events" and nothing else are considered directory tests. These three files have the same format as the sections of single file test described above.
 
+Test file naming note
+---------------------
+
+Originally we've used names like "ddP.test" and "ddp.test". It turned out to be really inconvenient on OSX, which uses case-insensitive filesystem by default. We had to rename tests to avoid collisions: "ddP.test" became "dd_capP.test".
+
 Event notation
 --------------
 
