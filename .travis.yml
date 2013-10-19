@@ -1,12 +1,22 @@
-language: haskell
+env:
+ - GHCVER=7.4.2
+ - GHCVER=7.6.3
+
 before_install:
- - travis_retry cabal install alex
- - travis_retry cabal install happy
- - travis_retry cabal install gtk2hs-buildtools
-install: 
+ - sudo add-apt-repository -y ppa:hvr/ghc
+ - sudo apt-get update
+ - sudo apt-get install cabal-install-1.18 ghc-$GHCVER
+ - export PATH=/opt/ghc/$GHCVER/bin:$PATH
+
+install:
+ - cabal-1.18 update
+ - travis_retry cabal-1.18 install -j2 alex happy gtk2hs-buildtools
  - cd yi
- - travis_retry cabal install -fpango --enable-tests -ftesting --only-dependencies
- - cabal install -fpango --enable-tests -ftesting
+ - travis_retry cabal-1.18 install -j2 -fpango --enable-tests -ftesting --only-dependencies
+ - cabal-1.18 install -j2 -fpango --enable-tests -ftesting
  - cd -
  - cd yi-contrib
- - cabal install
+ - cabal-1.18 install
+
+script:
+ - echo "All done."
