@@ -449,7 +449,7 @@ colorToAttr set c =
     RGB 165 165 165   -> set Vty.white
     RGB 255 255 255   -> set Vty.bright_white
     Default           -> id
-    _                 -> error $ "Color unsupported by Vty frontend: " ++ show c
+    RGB r g b         -> set (Vty.rgb_color r g b)
 
 attributesToAttr :: Attributes -> Vty.Attr -> Vty.Attr
 attributesToAttr (Attributes fg bg reverse bd _itlc underline') =
