@@ -1,5 +1,5 @@
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE DoRec #-}
+{-# LANGUAGE RecursiveDo #-}
 {-# LANGUAGE Rank2Types #-}
 
 -- Copyright (c) Tuomo Valkonen 2004.
@@ -117,13 +117,13 @@ startEditor cfg st = do
 
     -- Setting up the 1st window is a bit tricky because most functions assume there exists a "current window"
     newSt <- newMVar $ YiVar editor [] 1 M.empty
-    (ui, runYi) <-
-      do rec let handler (exception :: SomeException) = runYi $ errorEditor (show exception) >> refreshEditor
-                 inF ev    = handle handler $ runYi $ dispatch ev
-                 outF acts = handle handler $ runYi $ interactive acts
-                 runYi f   = runReaderT (runYiM f) yi
-                 yi        = Yi ui inF outF cfg newSt
-             ui <- uiStart cfg inF outF editor   
+    (ui, runYi) <- mdo
+        let handler (exception :: SomeException) = runYi $ errorEditor (show exception) >> refreshEditor
+              inF ev    = handle handler $ runYi $ dispatch ev
+              outF acts = handle handler $ runYi $ interactive acts
+              runYi f   = runReaderT (runYiM f) yi
+              yi        = Yi ui inF outF cfg newSt
+         ui <- uiStart cfg inF outF editor   
          return (ui, runYi)
 
     runYi $ loadPersistentState
