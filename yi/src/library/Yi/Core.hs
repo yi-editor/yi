@@ -119,12 +119,12 @@ startEditor cfg st = do
     newSt <- newMVar $ YiVar editor [] 1 M.empty
     (ui, runYi) <- mdo
         let handler (exception :: SomeException) = runYi $ errorEditor (show exception) >> refreshEditor
-              inF ev    = handle handler $ runYi $ dispatch ev
-              outF acts = handle handler $ runYi $ interactive acts
-              runYi f   = runReaderT (runYiM f) yi
-              yi        = Yi ui inF outF cfg newSt
-         ui <- uiStart cfg inF outF editor   
-         return (ui, runYi)
+            inF ev    = handle handler $ runYi $ dispatch ev
+            outF acts = handle handler $ runYi $ interactive acts
+            runYi f   = runReaderT (runYiM f) yi
+            yi        = Yi ui inF outF cfg newSt
+        ui <- uiStart cfg inF outF editor   
+        return (ui, runYi)
 
     runYi $ loadPersistentState
   
