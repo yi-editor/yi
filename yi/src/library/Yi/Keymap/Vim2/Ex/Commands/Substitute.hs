@@ -16,22 +16,23 @@ import Yi.Search
 parse :: String -> Maybe ExCommand
 parse = Common.parse $ do
     percents <- P.many (P.char '%')
-    discard $ P.try (P.string "substitute/") <|> P.string "s/"
-    from <- P.many (P.noneOf "/")
-    discard $ P.char '/'
-    to <- P.many (P.noneOf "/")
-    discard $ P.char '/'
+    discard $ P.try (P.string "substitute") <|> P.string "s"
+    delimiter <- P.oneOf "!@#$%^&*()[]{}<>/.,~';:?-="
+    from <- P.many (P.noneOf [delimiter])
+    discard $ P.char delimiter
+    to <- P.many (P.noneOf [delimiter])
+    discard $ P.char delimiter
     flagChars <- P.many (P.oneOf "gi")
-    return $! substitute from to
+    return $! substitute from to delimiter
         ('g' `elem` flagChars)
         ('i' `elem` flagChars)
         (not $ null percents)
 
-substitute :: String -> String -> Bool -> Bool -> Bool -> ExCommand
-substitute from to global caseInsensitive allLines = Common.pureExCommand {
+substitute :: String -> String -> Char -> Bool -> Bool -> Bool -> ExCommand
+substitute from to delimiter global caseInsensitive allLines = Common.pureExCommand {
     cmdShow = concat
         [ if allLines then "%" else ""
-        , "substitute/" , from , "/" , to , "/"
+        , "substitute" , delimiter : from , delimiter : to , [delimiter]
         , if caseInsensitive then "i" else ""
         , if global then "g" else ""
         ]
