@@ -1,4 +1,4 @@
-{-# LANGUAGE CPP, ExistentialQuantification, DoRec, TupleSections, NamedFieldPuns, ViewPatterns, ScopedTypeVariables #-}
+{-# LANGUAGE CPP, ExistentialQuantification, TupleSections, NamedFieldPuns, ViewPatterns, ScopedTypeVariables #-}
 {-# OPTIONS_GHC -funbox-strict-fields #-}
 
 -- Copyright (c) 2007, 2008 Jean-Philippe Bernardy
