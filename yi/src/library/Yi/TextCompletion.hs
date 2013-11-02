@@ -11,6 +11,7 @@ module Yi.TextCompletion (
         mkWordComplete,
         resetComplete,
         completeWordB,
+        CompletionScope(..)
 ) where
 
 import Prelude ()
@@ -102,9 +103,11 @@ wordComplete = wordComplete' True
   syntax knowledge to allow completion for example we may complete from
   a Hoogle database.
 -}
-completeWordB :: EditorM ()
+completeWordB :: CompletionScope -> EditorM ()
 completeWordB = veryQuickCompleteWord
 
+data CompletionScope = FromCurrentBuffer | FromAllBuffers
+  deriving (Eq, Show)
 
 {-
   This is a very quick and dirty way to complete the current word.
@@ -114,20 +117,21 @@ completeWordB = veryQuickCompleteWord
 
   It is by no means perfect but it's also not bad, pretty usable.
 -}
-veryQuickCompleteWord :: EditorM ()
-veryQuickCompleteWord =
+veryQuickCompleteWord :: CompletionScope -> EditorM ()
+veryQuickCompleteWord scope =
   do (curWord, curWords) <- withBuffer0 wordsAndCurrentWord
+     allWords <- fmap concat $ withEveryBufferE $ fmap words' elemsB
      let match :: String -> Maybe String
          match x = if (isPrefixOf curWord x) && (x /= curWord) then Just x else Nothing
-
-     preText             <- completeInList curWord match curWords
+         wordsToChooseFrom = if scope == FromCurrentBuffer then curWords else allWords
+     preText             <- completeInList curWord match wordsToChooseFrom
      if curWord == ""
         then printMsg "No word to complete"
         else withBuffer0 $ insertN $ drop (length curWord) preText
 
 wordsAndCurrentWord :: BufferM (String, [String])
 wordsAndCurrentWord =
-  do curText          <- readRegionB =<< regionOfB Document
+  do curText          <- elemsB
      curWord          <- readRegionB =<< regionOfPartB unitWord Backward
      return (curWord, words' curText)
 

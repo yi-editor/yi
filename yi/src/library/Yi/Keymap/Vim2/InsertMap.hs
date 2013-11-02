@@ -19,7 +19,7 @@ import Yi.Keymap.Vim2.EventUtils
 import Yi.Keymap.Vim2.Motion
 import Yi.Keymap.Vim2.Utils
 import Yi.Keymap.Vim2.StateUtils
-import Yi.TextCompletion (completeWordB)
+import Yi.TextCompletion (completeWordB, CompletionScope(..))
 
 defInsertMap :: [(String, Char)] -> [VimBinding]
 defInsertMap digraphs =
@@ -192,7 +192,7 @@ completionBinding = VimBindingE prereq action
           prereq _ _ = NoMatch
           action evs = do
               let _direction = if evs == "<C-n>" then Forward else Backward
-              completeWordB
+              completeWordB FromAllBuffers
               return Continue
 
 cursorBinding :: VimBinding

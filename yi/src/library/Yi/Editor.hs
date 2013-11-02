@@ -318,6 +318,10 @@ withBuffer0 f = do
   w <- getA currentWindowA
   withGivenBufferAndWindow0 w (bufkey w) f
 
+withEveryBufferE :: BufferM a -> EditorM [a]
+withEveryBufferE action =
+    gets bufferStack >>= mapM (flip withGivenBuffer0 action)
+
 currentWindowA :: Accessor Editor Window
 currentWindowA = focusA . windowsA
 
