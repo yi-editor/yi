@@ -17,7 +17,6 @@ module Yi.Mode.Haskell
    ghciInferType,
   ) where
 
-import Data.Binary
 import Data.List (dropWhile, takeWhile, filter, drop, length)
 import Data.Maybe (maybe, listToMaybe, isJust, catMaybes)
 import Prelude (unwords, zipWith)
