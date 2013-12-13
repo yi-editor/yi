@@ -1,5 +1,5 @@
 {-# LANGUAGE DeriveDataTypeable, GeneralizedNewtypeDeriving
-           , Rank2Types, LambdaCase #-}
+           , Rank2Types #-}
 -- Copyright (c) 2008 Jean-Philippe Bernardy
 -- | Haskell-specific modes and commands.
 module Yi.Mode.Haskell
@@ -379,7 +379,8 @@ ghciSend cmd = do
 ghciLoadBuffer :: YiM ()
 ghciLoadBuffer = do
     fwriteE
-    withBuffer (gets file) >>= \case
+    f <- withBuffer (gets file)
+    case f of
       Nothing -> error "Couldn't get buffer filename in ghciLoadBuffer"
       Just filename -> ghciSend $ ":load " ++ filename
 
