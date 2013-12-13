@@ -53,7 +53,7 @@ yiDriver cfg = do
                             { Dyre.projectName  = "yi"
                             , Dyre.realMain     = realMain
                             , Dyre.showError    = showErrorsInConf
-                            , Dyre.configDir    = Just Yi.Paths.getConfigDir
+                            , Dyre.configDir    = Just $ userConfigDir cfgcon
                             , Dyre.hidePackages = ["mtl"]
                             , Dyre.ghcOpts      = (["-threaded", "-O2"] ++
                                                    ["-i" ++ modules] ++
