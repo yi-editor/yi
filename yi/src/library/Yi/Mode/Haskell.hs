@@ -1,4 +1,5 @@
-{-# LANGUAGE DeriveDataTypeable, GeneralizedNewtypeDeriving, Rank2Types, LambdaCase #-}
+{-# LANGUAGE DeriveDataTypeable, GeneralizedNewtypeDeriving
+           , Rank2Types, LambdaCase #-}
 -- Copyright (c) 2008 Jean-Philippe Bernardy
 -- | Haskell-specific modes and commands.
 module Yi.Mode.Haskell
@@ -343,7 +344,7 @@ tokTyp _ = Nothing
 
 
 newtype GhciBuffer = GhciBuffer {_ghciBuffer :: Maybe BufferRef}
-    deriving (Initializable, Typeable, Yi.Core.Binary)
+    deriving (Initializable, Typeable, Binary)
 
 instance YiVariable GhciBuffer
 -- | Start GHCi in a buffer
