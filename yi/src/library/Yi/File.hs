@@ -1,4 +1,4 @@
-module Yi.File 
+module Yi.File
  (
   -- * File-based actions
   editFile,       -- :: YiM BufferRef
@@ -79,12 +79,12 @@ editFile filename = do
       content <- withGivenBuffer b $ elemsB
 
       let header = take 1024 content
-          hmode = case header =~ "\\-\\*\\- *([^ ]*) *\\-\\*\\-" of 
+          hmode = case header =~ "\\-\\*\\- *([^ ]*) *\\-\\*\\-" of
               AllTextSubmatches [_,m] ->m
               _ -> ""
           Just mode = (find (\(AnyMode m)->modeName m == hmode) tbl) <|>
                       (find (\(AnyMode m)->modeApplies m f content) tbl) <|>
-                      Just (AnyMode emptyMode) 
+                      Just (AnyMode emptyMode)
       case mode of
           AnyMode newMode -> withGivenBuffer b $ setMode newMode
 
@@ -143,7 +143,7 @@ fwriteE = fwriteBufferE =<< gets currentBuffer
 
 -- | Write a given buffer to disk if it is associated with a file.
 fwriteBufferE :: BufferRef -> YiM ()
-fwriteBufferE bufferKey = 
+fwriteBufferE bufferKey =
   do nameContents <- withGivenBuffer bufferKey ((,) <$> gets file <*> streamB Forward 0)
      case nameContents of
        (Just f, contents) -> do liftIO $ R.writeFile f contents
@@ -153,15 +153,15 @@ fwriteBufferE bufferKey =
 
 -- | Write current buffer to disk as @f@. The file is also set to @f@
 fwriteToE :: String -> YiM ()
-fwriteToE f = do 
+fwriteToE f = do
     b <- gets currentBuffer
     setFileName b f
     fwriteBufferE b
-    
+
 
 -- | Write all open buffers
 fwriteAllE :: YiM ()
-fwriteAllE = 
+fwriteAllE =
   do allBuffs <- gets bufferSet
      let modifiedBuffers = filter (not . isUnchangedBuffer) allBuffs
      mapM_ fwriteBufferE (fmap bkey modifiedBuffers)

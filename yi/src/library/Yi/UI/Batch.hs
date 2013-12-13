@@ -11,4 +11,4 @@ start _cfg _ch _outCh _ed = do
                     "Are you sure you compiled with support for any real UI?",
                     "(for example, pass -fvty to cabal install)"]
     return dummyUI
-    
+

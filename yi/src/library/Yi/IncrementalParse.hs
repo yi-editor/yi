@@ -14,7 +14,7 @@ type P s a = Parser s a
 type State st token result = (st, Process token result)
 
 scanner :: forall st token result. Parser token result -> Scanner st token -> Scanner (State st token result) result
-scanner parser input = Scanner 
+scanner parser input = Scanner
     {
       scanInit = (scanInit input, mkProcess parser),
       scanLooked = scanLooked input . fst,

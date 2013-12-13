@@ -1,10 +1,10 @@
-{-# LANGUAGE ScopedTypeVariables, FlexibleInstances, MultiParamTypeClasses, UndecidableInstances, TypeSynonymInstances, 
+{-# LANGUAGE ScopedTypeVariables, FlexibleInstances, MultiParamTypeClasses, UndecidableInstances, TypeSynonymInstances,
   TypeOperators, EmptyDataDecls, DeriveDataTypeable, GeneralizedNewtypeDeriving #-}
 
-module Yi.MiniBuffer 
+module Yi.MiniBuffer
  (
   spawnMinibufferE,
-  withMinibufferFree, withMinibuffer, withMinibufferGen, withMinibufferFin, 
+  withMinibufferFree, withMinibuffer, withMinibufferGen, withMinibufferFin,
   noHint, noPossibilities, mkCompleteFn, simpleComplete, infixComplete, infixComplete', anyModeByName, getAllModeNames,
   matchingBufferNames, anyModeByNameM, anyModeName,
 
@@ -41,10 +41,10 @@ spawnMinibufferE prompt kmMod =
        -- First: This way the minibuffer is just below the window that was in focus when
        -- the minibuffer was spawned. This clearly indicates what window is the target of
        -- some actions. Such as searching or the :w (save) command in the Vim keymap.
-       -- Second: The users of the minibuffer expect the window and buffer that was in 
+       -- Second: The users of the minibuffer expect the window and buffer that was in
        -- focus when the minibuffer was spawned to be in focus when the minibuffer is closed
        -- Given that window focus works as follows:
-       --    - The new window is broguht into focus. 
+       --    - The new window is broguht into focus.
        --    - The previous window in focus is to the left of the new window in the window
        --    set list.
        --    - When a window is deleted and is in focus then the window to the left is brought
@@ -60,7 +60,7 @@ spawnMinibufferE prompt kmMod =
 -- a string @s@ is obtained, run @act s@. @completer@ can be used to complete
 -- functions: it returns a list of possible matches.
 withMinibuffer :: String -> (String -> YiM [String]) -> (String -> YiM ()) -> YiM ()
-withMinibuffer prompt getPossibilities act = 
+withMinibuffer prompt getPossibilities act =
   withMinibufferGen "" giveHint prompt completer act
     where giveHint s = catMaybes . fmap (prefixMatch s) <$> getPossibilities s
           completer = simpleComplete getPossibilities
@@ -94,7 +94,7 @@ withMinibufferFree prompt = withMinibufferGen "" noHint prompt return
 -- run @act s@. @completer@ can be used to complete inputs by returning an
 -- incrementally better match, and getHint can give an immediate feedback to the
 -- user on the current input.
-withMinibufferGen :: String -> (String -> YiM [String]) -> 
+withMinibufferGen :: String -> (String -> YiM [String]) ->
                      String -> (String -> YiM String) -> (String -> YiM ()) -> YiM ()
 withMinibufferGen proposal getHint prompt completer act = do
   initialBuffer <- gets currentBuffer
@@ -125,7 +125,7 @@ withMinibufferGen proposal getHint prompt completer act = do
                            oneOf [spec KTab,   ctrl $ char 'i'] >>! completionFunction completer >>! showMatchings,
                            ctrl (char 'g')                     ?>>! closeMinibuffer]
   showMatchingsOf ""
-  withEditor $ do 
+  withEditor $ do
       historyStartGen prompt
       discard $ spawnMinibufferE (prompt ++ " ") (\bindings -> rebindings <|| (bindings >> write showMatchings))
       withBuffer0 $ replaceBufferContent proposal
@@ -133,9 +133,9 @@ withMinibufferGen proposal getHint prompt completer act = do
 
 -- | Open a minibuffer, given a finite number of suggestions.
 withMinibufferFin :: String -> [String] -> (String -> YiM ()) -> YiM ()
-withMinibufferFin prompt possibilities act 
+withMinibufferFin prompt possibilities act
     = withMinibufferGen "" hinter prompt completer (act . best)
-      where 
+      where
         -- The function for returning the hints provided to the user underneath
         -- the input, basically all those that currently match.
         hinter s = return $ match s
@@ -175,7 +175,7 @@ class Promptable a where
     getMinibuffer _ = withMinibufferFree
 
 doPrompt :: forall a. Promptable a => (a -> YiM ()) -> YiM ()
-doPrompt act = getMinibuffer witness (getPrompt witness ++ ":") $ 
+doPrompt act = getMinibuffer witness (getPrompt witness ++ ":") $
                      \string -> act =<< getPromptedValue string
     where witness = error "Promptable argument should not be accessed"
           witness :: a
@@ -185,7 +185,7 @@ instance Promptable String where
     getPrompt _ = "String"
 
 instance Promptable Char where
-    getPromptedValue x = if length x == 0 then error "Please supply a character." 
+    getPromptedValue x = if length x == 0 then error "Please supply a character."
                          else return $ head x
     getPrompt _ = "Char"
 
@@ -250,21 +250,21 @@ instance Promptable AnyMode where
 instance Promptable BufferRef where
     getPrompt _ = "Buffer"
     getPromptedValue = withEditor . getBufferWithNameOrCurrent
-    getMinibuffer _ prompt act = do 
+    getMinibuffer _ prompt act = do
       bufs <- matchingBufferNames ""
       withMinibufferFin prompt bufs act
 
 -- | Returns all the buffer names.
 matchingBufferNames :: String -> YiM [String]
 matchingBufferNames _ = withEditor $ do
-  p <- gets commonNamePrefix 
+  p <- gets commonNamePrefix
   bs <- gets bufferSet
   return $ fmap (shortIdentString p) bs
 
 
 instance (YiAction a x, Promptable r) => YiAction (r -> a) x where
     makeAction f = YiA $ doPrompt (runAction . makeAction . f)
-                   
+
 
 -- | Tag a type with a documentation
 newtype (:::) t doc = Doc {fromDoc :: t} deriving (Eq, Typeable, Num, IsString)
@@ -278,7 +278,7 @@ instance (DocType doc, Promptable t) => Promptable (t ::: doc) where
 
 class DocType t where
     -- | What to prompt the user when asked this type?
-    typeGetPrompt :: t -> String 
+    typeGetPrompt :: t -> String
 
 data LineNumber
 instance DocType LineNumber where
@@ -288,21 +288,21 @@ data ToKill
 instance DocType ToKill where
     typeGetPrompt _ = "kill buffer"
 
-    
+
 data RegexTag deriving Typeable
 instance DocType RegexTag where
     typeGetPrompt _ = "Regex"
-    
+
 data FilePatternTag deriving Typeable
 instance DocType FilePatternTag where
     typeGetPrompt _ = "File pattern"
 
-newtype CommandArguments = CommandArguments [String] 
+newtype CommandArguments = CommandArguments [String]
     deriving Typeable
 
 instance Promptable CommandArguments where
     getPromptedValue = return . CommandArguments . words
     getPrompt _ = "Command arguments"
-    
+
 
 

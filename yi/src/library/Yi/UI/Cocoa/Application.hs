@@ -46,7 +46,7 @@ import Yi.Event
 import Yi.UI.Cocoa.Utils
 
 import Foreign.C
- 
+
 -- Specify Cocoa imports explicitly, to avoid name-clashes.
 -- Since the number of functions recognized by HOC varies
 -- between revisions, this seems like the safest choice.
@@ -139,7 +139,7 @@ ya_doTick slf = do
         slf # setIVar _lastPaste news
         Just runAct <- slf #. _runAction
         runAct (setRegE news)
-  
+
   replicateM_ 4 yield
 
 pushClipboard :: String -> YiApplication () -> IO ()

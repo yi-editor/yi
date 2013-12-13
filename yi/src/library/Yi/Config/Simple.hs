@@ -105,7 +105,7 @@ import Control.Monad.State hiding (modify, get)
 
 -- we do explicit imports because we reuse a lot of the names
 import Yi.Config(Config, UIConfig,
-                 startFrontEndA, configUIA, startActionsA, initialActionsA, defaultKmA, 
+                 startFrontEndA, configUIA, startActionsA, initialActionsA, defaultKmA,
                  configInputPreprocessA, modeTableA, debugModeA,
                  configRegionStyleA, configKillringAccumulateA, bufferUpdateHandlerA,
                  configVtyEscDelayA, configFontNameA, configFontSizeA, configScrollWheelAmountA,
@@ -117,7 +117,7 @@ import Data.Maybe(mapMaybe)
 
 {- $overview
 This module provides a simple configuration API, allowing users to start with an initial
-configuration and imperatively (monadically) modify it. Some common actions (keybindings, 
+configuration and imperatively (monadically) modify it. Some common actions (keybindings,
 selecting modes, choosing the frontend) have been given special commands ('globalBindKeys',
 'setFrontendPreferences', 'addMode', and so on).
 
@@ -170,7 +170,7 @@ modify = modA
 --
 -- Available frontends are a subset of: \"vte\", \"vty\", \"pango\", \"cocoa\", and \"batch\".
 setFrontendPreferences :: [String] -> ConfigM ()
-setFrontendPreferences fs = 
+setFrontendPreferences fs =
    case mapMaybe (\f -> lookup f availableFrontends) fs of
        (f:_) -> startFrontEndA %= f
        [] -> return ()
@@ -193,7 +193,7 @@ modeBindKeys mode keys = ensureModeRegistered "modeBindKeys" (modeName mode) $ m
 
 -- | @modeBindKeysByName name keys@ adds the keybindings in @keys@ to all modes with name @name@ (if it is registered). Consider using 'modeBindKeys' instead.
 modeBindKeysByName :: String -> Keymap -> ConfigM ()
-modeBindKeysByName name k = ensureModeRegistered "modeBindKeysByName" name $ modifyModeByName name (modeKeymapA ^: f) 
+modeBindKeysByName name k = ensureModeRegistered "modeBindKeysByName" name $ modifyModeByName name (modeKeymapA ^: f)
  where
   f :: (KeymapSet -> KeymapSet) -> (KeymapSet -> KeymapSet)
   f mkm km = topKeymapA ^: (||> k) $ mkm km
@@ -203,7 +203,7 @@ modeBindKeysByName name k = ensureModeRegistered "modeBindKeysByName" name $ mod
 addMode :: Mode syntax -> ConfigM ()
 addMode m = modify modeTableA (AnyMode m :)
 
--- | @modifyMode mode f@ modifies all modes with the same name as @mode@, using the function @f@. 
+-- | @modifyMode mode f@ modifies all modes with the same name as @mode@, using the function @f@.
 --
 -- Note that the @mode@ argument is only used by its 'modeName'. In particular, a mode by the given name
 -- must already be registered, or this function will have no effect, and issue a command-line warning.
@@ -234,7 +234,7 @@ ensureModeRegistered caller name m = do
   isRegistered <- isModeRegistered name
   if isRegistered
    then m
-   else warn caller (printf "mode \"%s\" is not registered." name)   
+   else warn caller (printf "mode \"%s\" is not registered." name)
 
 --------------------- Appearance
 -- | 'Just' the font name, or 'Nothing' for default.
@@ -261,10 +261,10 @@ data Side = LeftSide | RightSide
 
 -- | Which side to display the scroll bar on.
 scrollBarSide :: Field Side
-scrollBarSide = fromBool . configLeftSideScrollBarA . configUIA 
+scrollBarSide = fromBool . configLeftSideScrollBarA . configUIA
   where
       fromBool :: Accessor Bool Side
-      fromBool = accessor (\b -> if b then LeftSide else RightSide) (\s _ -> case s of { LeftSide -> True; RightSide -> False }) 
+      fromBool = accessor (\b -> if b then LeftSide else RightSide) (\s _ -> case s of { LeftSide -> True; RightSide -> False })
 
 -- | Should the scroll bar autohide?
 autoHideScrollBar :: Field Bool
@@ -316,7 +316,7 @@ runManyAfterStartup actions = modify initialActions (++actions)
 ------------------------ Advanced
 {- $advanced
 
-These fields are here for completeness -- that is, to expose all the functionality 
+These fields are here for completeness -- that is, to expose all the functionality
 of the "Yi.Config" module. However, most users probably need not use these fields,
 typically because they provide advanced functinality, or because a simpler interface
 for the common case is available above.

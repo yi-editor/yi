@@ -25,10 +25,10 @@ data ProjectItem
       { projItemName :: String
       , itemVersion :: Version
       }
-  | DependenciesItem 
+  | DependenciesItem
       { depItemName   :: String
       }
-  | FolderItem 
+  | FolderItem
       { folderItemName   :: String
       , folderKind :: FolderKind
       }

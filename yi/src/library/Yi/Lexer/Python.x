@@ -1,4 +1,4 @@
--- -*- haskell -*- 
+-- -*- haskell -*-
 --
 --  A poorly-written Python lexer
 --
@@ -50,7 +50,7 @@ $longintegersuffix = [lL]
 
 @importst = import
 
-@reservedid = 
+@reservedid =
     @builtins
   | and
   | as
@@ -94,7 +94,7 @@ $longintegersuffix = [lL]
 
 @assignop = @infarithop? "="
 
-@reservedop = 
+@reservedop =
   @compop | @prefarithop | @assignop
 
 @varid  = $alpha $idchar*

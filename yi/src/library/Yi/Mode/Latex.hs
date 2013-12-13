@@ -36,7 +36,7 @@ latexMode2 :: Mode (Latex.Tree Latex.TT)
 latexMode2 = abstract
   {
     modeName = "latex",
-    modeHL = ExtHL $ 
+    modeHL = ExtHL $
        mkHighlighter (IncrParser.scanner Latex.parse . latexLexer),
     modeGetStrokes = \t point begin end -> Latex.getStrokes point begin end t,
     modeGetAnnotations = tokenBasedAnnots Latex.tokenToAnnot
@@ -47,7 +47,7 @@ latexMode3 :: Mode (Latex.Tree Latex.TT)
 latexMode3 = abstract
   {
     modeName = "latex",
-    modeHL = ExtHL $ 
+    modeHL = ExtHL $
        Driver.mkHighlighter (IncrParser.scanner Latex.parse . latexLexer),
     modeGetStrokes = \t point begin end -> Latex.getStrokes point begin end t,
     modeGetAnnotations = tokenBasedAnnots Latex.tokenToAnnot

@@ -3,7 +3,7 @@
 -- Copyright (C) JP Bernardy 2009
 
 -- | This module defines implementations of syntax-awareness drivers.
- 
+
 module Yi.Syntax.Driver where
 
 import Yi.Prelude
@@ -27,11 +27,11 @@ data Cache state tree tt = Cache {
                                    focused :: !(M.Map WindowRef (tree (Tok tt)))
                                  }
 
-mkHighlighter :: forall state tree tt. (IsTree tree, Show state) => 
-                 (Scanner Point Char -> Scanner state (tree (Tok tt))) -> 
+mkHighlighter :: forall state tree tt. (IsTree tree, Show state) =>
+                 (Scanner Point Char -> Scanner state (tree (Tok tt))) ->
                      Highlighter (Cache state tree tt) (tree (Tok tt))
 mkHighlighter scanner =
-  Yi.Syntax.SynHL 
+  Yi.Syntax.SynHL
         { hlStartState   = Cache M.empty [] emptyResult M.empty
         , hlRun          = updateCache
         , hlGetTree      = \(Cache _ _ _ focused) w -> M.findWithDefault emptyResult w focused
@@ -47,17 +47,17 @@ mkHighlighter scanner =
                   reused = takeWhile ((< dirtyOffset) . scanLooked (scanner newFileScan)) cachedStates
                   resumeState :: state
                   resumeState = if null reused then startState else last reused
-                  
+
                   newCachedStates = reused ++ fmap fst recomputed
                   recomputed = scanRun newScan resumeState
                   newResult :: tree (Tok tt)
                   newResult = if null recomputed then oldResult else snd $ head $ recomputed
-          focus r (Cache path states root _focused) = 
+          focus r (Cache path states root _focused) =
               (Cache path' states root focused)
               where (path', focused) = unzipFM $ zipWithFM (\newpath oldpath -> fromNodeToFinal newpath (oldpath,root)) [] r path
 
 unzipFM :: Ord k => [(k,(u,v))] -> (Map k u, Map k v)
-unzipFM l = (M.fromList mu, M.fromList mv) 
+unzipFM l = (M.fromList mu, M.fromList mv)
     where (mu, mv) = unzip [((k,u),(k,v)) | (k,(u,v)) <- l]
 
 zipWithFM :: Ord k => (u -> v -> w) -> v -> Map k u -> Map k v -> [(k,w)]

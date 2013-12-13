@@ -32,7 +32,7 @@ type Style = Endo Attributes
 data UIStyle = UIStyle
   { modelineAttributes :: Attributes -- ^ ground attributes for the modeline
   , modelineFocusStyle :: Style      -- ^ transformation of modeline in focus
-  
+
   , tabBarAttributes   :: Attributes -- ^ ground attributes for the tabbar
   , tabInFocusStyle    :: Style      -- ^ a tab that currently holds the focus
   , tabNotFocusedStyle :: Style      -- ^ a tab that does not have the current focus
@@ -64,7 +64,7 @@ data UIStyle = UIStyle
   , variableStyle      :: Style      -- ^ any standard variable (identifier)
   , operatorStyle      :: Style      -- ^ infix operators
 
-  , quoteStyle         :: Style      -- ^ Style of a quotation (e.g. in template haskell)    
+  , quoteStyle         :: Style      -- ^ Style of a quotation (e.g. in template haskell)
 
   , makeFileAction     :: Style      -- ^ stuff that's passed to the shell in a Makefile
   , makeFileRuleHead   :: Style      -- ^ makefile rule headers
@@ -97,9 +97,9 @@ defaultStyle = mempty
 
 data Color
     = RGB {-# UNPACK #-} !Word8 {-# UNPACK #-} !Word8 {-# UNPACK #-} !Word8
-    | Default 
+    | Default
     -- ^ The system-default color of the engine used.
-    -- e.g. in Gtk this should pick whatever the user has chosen as default color 
+    -- e.g. in Gtk this should pick whatever the user has chosen as default color
     -- (background or forground depending on usage) for the text.
     deriving (Eq,Ord,Show)
 
@@ -130,7 +130,7 @@ darkblue    = RGB 0 0 139
 blue        = RGB 0 0 255
 purple      = RGB 128 0 128
 magenta     = RGB 255 0 255
-darkcyan    = RGB 0 139 139 
+darkcyan    = RGB 0 139 139
 cyan        = RGB 0 255 255
 white       = RGB 165 165 165
 brightwhite = RGB 255 255 255

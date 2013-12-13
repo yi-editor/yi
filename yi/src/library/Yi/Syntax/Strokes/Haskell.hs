@@ -48,7 +48,7 @@ getStrokeImp point begin _end imp@(PImport m qu na t t')
                      | otherwise = getStrokes' word
 
 -- | Get strokes for expressions and declarations
-getStr :: (TT -> Endo [Stroke]) -> Point -> Point -> Point -> Exp TT 
+getStr :: (TT -> Endo [Stroke]) -> Point -> Point -> Point -> Exp TT
           -> Endo [Stroke]
 getStr tk point begin _end t0 = getStrokes' t0
     where getStrokes' :: Exp TT -> Endo [Stroke]
@@ -81,7 +81,7 @@ getStr tk point begin _end t0 = getStrokes' t0
               = pKW g t <> getStrokes' e <> getStrokes' t'
           getStrokes' cl@(PClass e e' exp)
               = pKW cl e <> getStrokes' e'
-             <> getStrokes' exp 
+             <> getStrokes' exp
           getStrokes' t = foldMap getStrokes' (subtrees t) -- by default deal with subtrees
           getStrokesL = foldMap getStrokes'
           pKW b word | isErrN b = paintAtom errorStyle word
@@ -109,7 +109,7 @@ isErr :: TT -> Bool
 isErr = isErrorTok . tokT
 
 isErrN :: (Foldable v) => (v TT) -> Bool
-isErrN t = (any isErr t) 
+isErrN t = (any isErr t)
 --         || (not $ null $ isError' t)
 
 errStyle :: TT -> Endo [Stroke]
@@ -126,7 +126,7 @@ com r = foldMap tkDConst r
 
 tk' :: (TT -> Bool) -> (TT -> Endo [Stroke]) -> TT -> Endo [Stroke]
 tk' f s t | isErr t = errStyle t
-          | elem (tokT t) (fmap Reserved [As, Qualified, Hiding]) 
+          | elem (tokT t) (fmap Reserved [As, Qualified, Hiding])
             = one $ (fmap (const variableStyle) . tokToSpan) t
           | f t = s t
           | otherwise = one (ts t)

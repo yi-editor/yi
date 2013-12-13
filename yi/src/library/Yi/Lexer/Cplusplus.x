@@ -1,4 +1,4 @@
--- -*- haskell -*- 
+-- -*- haskell -*-
 --  Simple lexer for c/c++ files
 
 {
@@ -39,7 +39,7 @@ $idchar    = [$alpha $digit \']
 $symchar   = [$symbol \:]
 $nl        = [\n\r]
 
-@reservedid = 
+@reservedid =
   asm
   |break
   |case
@@ -136,7 +136,7 @@ $nl        = [\n\r]
   |wchar_t
 
 
-@reservedop = 
+@reservedop =
   "->" | "*" | "+" | "-" | "%" | \\ | "||" | "&&" | "?" | ":"
 
 @varid  = $small $idchar*
@@ -186,7 +186,7 @@ haskell :-
  @varsym                                        { c operatorStyle }
  @consym                                        { c typeStyle }
 
- @decimal 
+ @decimal
   | 0[oO] @octal
   | 0[xX] @hexadecimal                          { c defaultStyle }
 

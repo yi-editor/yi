@@ -4,7 +4,7 @@ module Yi.Mode.Haskell.Dollarify where
 import Prelude (filter, maybe, takeWhile)
 import Data.Maybe (fromMaybe)
 import Data.List (sortBy)
-import Yi.Prelude 
+import Yi.Prelude
 import Yi.Syntax.Paren (Expr, Tree(..))
 import qualified Yi.Syntax.Haskell as H (Tree, Exp(..))
 import Yi.Syntax.Tree (getAllSubTrees, getFirstOffset, getLastOffset,getLastPath)
@@ -163,7 +163,7 @@ findLargestWithinP r = fromMaybe . head <*> safeLast . takeWhile (withinP r)
 
 withinP :: Region -> H.Exp TT -> Bool
 withinP r t = includedRegion ((mkRegion . getFirstOffset <*> getLastOffset) t) r
-    
+
 safeLastP :: [a] -> Maybe a
 safeLastP [] = Nothing
 safeLastP s  = return $ last s

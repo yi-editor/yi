@@ -5,9 +5,9 @@
 -- Copyright (c) 2008 Nicolas Pouillard
 
 -- | Vim keymap for Yi. Emulates vim :set nocompatible
-module Yi.Keymap.Vim (keymapSet, 
-                      viWrite, 
-                      defKeymap, 
+module Yi.Keymap.Vim (keymapSet,
+                      viWrite,
+                      defKeymap,
                       leaveInsRep,
                       leave,
                       ModeMap(..),
@@ -79,7 +79,7 @@ import Yi.Search
 import Yi.Style
 import Yi.TextCompletion
 import Yi.Completion (containsMatch', mkIsPrefixOf, prefixMatch, completeInListCustomShow)
-import Yi.Tag 
+import Yi.Tag
 import Yi.Window (bufkey)
 import Yi.Hoogle (hoogle, hoogleSearch)
 import qualified Codec.Binary.UTF8.String as UTF8
@@ -382,12 +382,12 @@ exSimpleComplete compl s' = simpleComplete compl s >>=
     where s = dropWhile isSpace s'
 
 exInfixComplete' :: Bool -> (String -> YiM [String]) -> String -> YiM ()
-exInfixComplete' caseSensitive compl s' = do 
+exInfixComplete' caseSensitive compl s' = do
     cs <- infixComplete' caseSensitive compl s
     when (not $ null cs)
          (withBuffer $ do
               leftN (length s)
-              deleteToEol 
+              deleteToEol
               insertN cs)
    where s = dropWhile isSpace s'
 
@@ -411,9 +411,9 @@ exFileNameComplete s' = mkCompleteFn (completeInListCustomShow basename)
 
 mkExHistComplete :: (String -> String -> Bool) -> (String -> YiM [String]) -> String -> YiM ()
 mkExHistComplete matchFn compl s =
-    mkWordComplete (return s) compl (withEditor . printMsgs . tail) matchFn >>= 
+    mkWordComplete (return s) compl (withEditor . printMsgs . tail) matchFn >>=
     (withBuffer . (testDeleteB >> ) . insertN)
-  where 
+  where
     testDeleteB = if null s then return () else deleteWordB
     deleteWordB = deleteUnitB unitSep Backward
 
@@ -424,7 +424,7 @@ exHistComplete :: (String -> YiM [String]) -> String -> YiM ()
 exHistComplete = exHistComplete' True
 
 exHistInfixComplete' :: Bool -> (String -> YiM [String]) -> String -> YiM ()
-exHistInfixComplete' caseSensitive = mkExHistComplete match 
+exHistInfixComplete' caseSensitive = mkExHistComplete match
   where match x y = isJust $ containsMatch' caseSensitive x y
 
 exHistInfixComplete :: (String -> YiM [String]) -> String -> YiM ()
@@ -432,7 +432,7 @@ exHistInfixComplete = exHistInfixComplete' True
 
 defKeymap :: Proto ModeMap
 defKeymap = Proto template
-  where 
+  where
     template self = ModeMap { v_top_level = def_top_level
                             , v_ins_char  = def_ins_char
                             , v_opts      = def_opts
@@ -521,7 +521,7 @@ defKeymap = Proto template
      moveKeymap = choice
         [ char '0' ?>> return (Exclusive, viMoveToSol)
         , char '%' ?>> return percentMove
-        , do 
+        , do
           cnt <- count
           let x = fromMaybe 1 cnt
           choice ([c ?>> return (Inclusive, a x) | (c,a) <- moveCmdFM_inclusive ] ++
@@ -686,7 +686,7 @@ defKeymap = Proto template
      continueSearching :: (Direction -> Direction) -> EditorM ()
      continueSearching fdir = do
        m <- getRegexE
-       dir <- fdir <$> getA searchDirectionA 
+       dir <- fdir <$> getA searchDirectionA
        printMsg $ directionElim dir '?' '/' : maybe "" seInput m
        viSearch "" [] dir
 
@@ -1078,7 +1078,7 @@ defKeymap = Proto template
 TODO: use or remove
      upTo :: Alternative f => f a -> Int -> f [a]
      _ `upTo` 0 = empty
-     p `upTo` n = (:) <$> p <*> (p `upTo` pred n <|> pure []) 
+     p `upTo` n = (:) <$> p <*> (p `upTo` pred n <|> pure [])
 -}
      insertSpecialChar :: (Char -> BufferM ()) -> VimMode
      insertSpecialChar insrepB =
@@ -1550,7 +1550,7 @@ viFnewE :: String -> YiM ()
 viFnewE f = discard (editFile $ dropSpace f)
 
 -- | viSearch is a doSearch wrapper that print the search outcome.
--- TODO: consider merging with doSearch 
+-- TODO: consider merging with doSearch
 viSearch :: String -> [SearchOption] -> Direction -> EditorM ()
 viSearch needle searchOptions dir = do
   r <- doSearch (if null needle then Nothing else Just needle) searchOptions dir
@@ -1664,7 +1664,7 @@ mayGetViMarkB :: Char -> BufferM (Maybe Mark)
 mayGetViMarkB '<' = Just . selMark <$> askMarks
 mayGetViMarkB  c  = mayGetMarkB [c]
 
-validMarkIdentifier :: (MonadInteract m w Event) => m Char 
+validMarkIdentifier :: (MonadInteract m w Event) => m Char
 validMarkIdentifier = fmap f $ oneOfchar "<>^'`" <|> charOf id 'a' 'z' <|> fail "Not a valid mark identifier."
   where oneOfchar = choice . map (\c -> event (char c) >> return c)
         f '`' = '\''
@@ -1673,13 +1673,13 @@ validMarkIdentifier = fmap f $ oneOfchar "<>^'`" <|> charOf id 'a' 'z' <|> fail 
 -- --------------------
 -- | Keyword
 kwd_mode :: VimOpts -> VimMode
-kwd_mode opts = some (ctrlCh 'n' ?>> write . viWordComplete $ completeCaseSensitive opts) >> 
-                deprioritize >> 
+kwd_mode opts = some (ctrlCh 'n' ?>> write . viWordComplete $ completeCaseSensitive opts) >>
+                deprioritize >>
                 write resetComplete
 -- 'adjustPriority' is there to lift the ambiguity between "continuing" completion
 -- and resetting it (restarting at the 1st completion).
-  where viWordComplete caseSensitive = 
-          withEditor . withBuffer0 . (savingDeleteWordB Backward >>) . 
+  where viWordComplete caseSensitive =
+          withEditor . withBuffer0 . (savingDeleteWordB Backward >>) .
           savingInsertStringB =<< wordCompleteString' caseSensitive
 
 gotoTag :: VimOpts -> Tag -> YiM ()

@@ -509,7 +509,7 @@ middleB = do
 pointInWindowB :: Point -> BufferM Bool
 pointInWindowB p = nearRegion p <$> winRegionB
 --  do w <- winRegionB;  trace ("pointInWindowB " ++ show w ++ " p = " ++ show p)
-          
+
 -----------------------------
 -- Region-related operations
 

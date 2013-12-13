@@ -64,7 +64,7 @@ import Yi.Editor
 import Yi.Keymap
 import Yi.Config.Simple.Types(customVariable, Field)
 
-{- | 
+{- |
 Looks up the configured value for the hook, and runs it. The argument to 'runHook' will typically be a record accessor. See 'HookType' for the valid hook types.
 -}
 runHook :: (HookType ty, YiConfigVariable var) => (var -> ty) -> ty
@@ -72,7 +72,7 @@ runHook = runHookImpl
 
 {- | The class of \"valid hooks\". This class is exported abstractly, but the instances can be phrased quite simply: the functions (of arbitrarily many arguments, including zero) which run in either the 'EditorM' or 'YiM' monads.
 
-A typical example would be something like 
+A typical example would be something like
 
 @Int -> String -> 'EditorM' String@.
 

@@ -18,7 +18,7 @@ alignRegion str = modifyRegionClever (alignText str) =<< unitWiseRegion Line =<<
           regexSplit regex l = case l =~ regex of
               AllTextSubmatches (_:matches) -> matches
               _ -> error "regexSplit: text does not match"
-          
+
           alignText :: String -> String -> String
           alignText regex text = unlines' ls'
             where ls, ls' :: [String]
@@ -28,7 +28,7 @@ alignRegion str = modifyRegionClever (alignText str) =<< unitWiseRegion Line =<<
                   columnsWidth :: [Int]
                   columnsWidth =  fmap (maximum . fmap length) $ transpose columns
                   columns' = fmap (zipWith padLeft columnsWidth) columns
-                  
+
                   ls' = fmap concat columns'
 
 
@@ -55,7 +55,7 @@ multiSplit (x:xs) l = left : multiSplit (fmap (subtract x) xs) right
 
 onRectangle :: (Int -> Int -> String -> String) -> BufferM ()
 onRectangle f = do
-    (reg, l, r) <- getRectangle 
+    (reg, l, r) <- getRectangle
     modifyRegionB (mapLines (f l r)) reg
 
 openRectangle :: BufferM ()

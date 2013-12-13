@@ -1,4 +1,4 @@
--- -*- haskell -*- 
+-- -*- haskell -*-
 -- Simple lexer for Perl source files.
 -- This started as a copy of the C++ lexer so some bits and pieces don't make sense for Perl.
 -- Maintainer: Corey O'Connor
@@ -41,7 +41,7 @@ $nl        = [\n\r]
       use
     | require
 
-@reservedId = 
+@reservedId =
     if
     | while
     | do
@@ -71,8 +71,8 @@ $nl        = [\n\r]
 @seperator = $whitechar+ | $special
 @interpVarSeperator = [^$idchar] | $nl
 
-@reservedop = 
-  "->" | "*" | "+" | "-" | "%" | \\ | "||" | "&&" | "?" | ":" | "=>" 
+@reservedop =
+  "->" | "*" | "+" | "-" | "%" | \\ | "||" | "&&" | "?" | ":" | "=>"
   | "or" | "xor" | "and" | "ne" | "eq"
   | "=~" | "!~"
 
@@ -85,11 +85,11 @@ $nl        = [\n\r]
     | "$"
     | "%"
 
-@varPackageSpec = $idchar+ "::" 
+@varPackageSpec = $idchar+ "::"
 @varIdentifier  = @varPackageSpec* $idchar+
 
 -- TODO: A lot! There is a whole list of special global variables.
-@specialVarIdentifier = 
+@specialVarIdentifier =
     "_" | ARG
     | "." | INPUT_LINE_NUMBER | NR
     | "?" | CHILD_ERROR
@@ -113,16 +113,16 @@ $cntrl   = [$large \@\[\\\]\^\_]
          | SUB | ESC | FS | GS | RS | US | SP | DEL
 
 -- The charesc set contains more than it really should.
--- It currently tries to be the superset of all characters that are possible 
--- to escape in the various quoting modes. Problem is, the actual set of 
--- Characters that should be escapable in any quoting mode depends on the 
+-- It currently tries to be the superset of all characters that are possible
+-- to escape in the various quoting modes. Problem is, the actual set of
+-- Characters that should be escapable in any quoting mode depends on the
 -- delimiter of the quoting mode and I haven't implemented such fanciness
 -- yet.
 $charesc = [abfnrtv\\\"\'\&\`\/]
 @escape  = \\ ($charesc | @ascii | @decimal | o @octal | x @hexadecimal)
 @gap     = \\ $whitechar+ \\
 
-@nonInterpolatingString  = $graphic # [\'] | " " 
+@nonInterpolatingString  = $graphic # [\'] | " "
 
 @quoteLikeDelimiter = $special | $ascsymbol | \" | \'
 
@@ -136,9 +136,9 @@ $charesc = [abfnrtv\\\"\'\&\`\/]
 
 perlHighlighterRules :-
 
-<0> 
+<0>
 {
-    -- Conditionalize on not being prefixed with a character that could 
+    -- Conditionalize on not being prefixed with a character that could
     -- indicate a regex-style quote.
     [^smqrty]^"#"[^\n]*                            { c commentStyle }
     ^"#"[^\n]*                                     { c commentStyle }
@@ -153,7 +153,7 @@ perlHighlighterRules :-
 
     @reservedop                                    { c operatorStyle }
 
-    @decimal 
+    @decimal
     | 0[oO] @octal
     | 0[xX] @hexadecimal                           { c numberStyle }
 
@@ -162,17 +162,17 @@ perlHighlighterRules :-
 
     -- Chunks that are handled as interpolating strings.
     \"
-    { 
-        m (const $ HlInInterpString False "\"" ) operatorStyle 
+    {
+        m (const $ HlInInterpString False "\"" ) operatorStyle
     }
-    "`" 
+    "`"
     {
         m (const $ HlInInterpString False "`" ) operatorStyle
     }
 
     -- Matching regex quote-like operators are also kinda like interpolating strings.
-    -- In order to prevent a / delimited regex quote from being confused with 
-    -- division this only matches in the case the / is preeceded with the usual 
+    -- In order to prevent a / delimited regex quote from being confused with
+    -- division this only matches in the case the / is preeceded with the usual
     -- context I use it.
     ^($white*)"/"
         { m (const $ HlInInterpString True "/" ) operatorStyle }
@@ -206,19 +206,19 @@ perlHighlighterRules :-
         }
 
     -- In order to handle the various interpolation forms of a heredoc the lexer transitions to a
-    -- state devoted to just collecting the heredoc identifier. 
-    "<<" 
+    -- state devoted to just collecting the heredoc identifier.
+    "<<"
         { \str _ -> (HlStartCollectHeredocIdent, operatorStyle) }
 
     -- Chunks that are handles as non-interpolating strings.
-    \' 
-    { 
-        m (const $  HlInString '\'') operatorStyle 
+    \'
+    {
+        m (const $  HlInString '\'') operatorStyle
     }
 
     "qw" @quoteLikeDelimiter
     {
-        \str _ -> 
+        \str _ ->
             let startChar = head $ drop 2 $ fmap snd str
                 closeChar '(' = ')'
                 closeChar '{' = '}'
@@ -246,7 +246,7 @@ perlHighlighterRules :-
     @escape { c defaultStyle }
     $white+ { c defaultStyle }
 
-    -- Prevent $ at the end of a regex quote from being recognized as a 
+    -- Prevent $ at the end of a regex quote from being recognized as a
     -- variable.
     "$"/
         {
@@ -285,7 +285,7 @@ perlHighlighterRules :-
     .   { c stringStyle }
 }
 
--- The << operator can be followed by 
+-- The << operator can be followed by
 -- Any number of spaces up to a ' or ". In which case the identifier is the sequence of characters
 -- collected until the matching quote. The heredoc is then processed in an interpolating context if
 -- the delimiter was " and a non-interpolating context if the delimiter was '
@@ -295,14 +295,14 @@ perlHighlighterRules :-
 -- processed in an interpolating context.
 <startCollectHeredocIdent>
 {
-    $white 
+    $white
         { c defaultStyle }
     \'
         { m (const $ HlCollectHeredocIdent "" (Just '\'')) operatorStyle }
     \"
         { m (const $ HlCollectHeredocIdent "" (Just '\"')) operatorStyle }
     @heredocId
-        { 
+        {
             \indexedStr _
                 -> ( HlCollectHeredocIdent (fmap snd indexedStr) Nothing
                    , variableStyle
@@ -312,8 +312,8 @@ perlHighlighterRules :-
         {
             m (const $ HlInInterpHeredocNoIdent) stringStyle
         }
-    -- Although any HEREDOC identifier followed immediately by a newline is likely a syntax error we should still recognize them as 
-    -- HEREDOCs. 
+    -- Although any HEREDOC identifier followed immediately by a newline is likely a syntax error we should still recognize them as
+    -- HEREDOCs.
     \n
         {
             m (const $ HlInInterpHeredocNoIdent) stringStyle
@@ -327,9 +327,9 @@ perlHighlighterRules :-
 -- TODO: Nested heredoc declarations
 <collectHeredocIdent>
 {
-    @heredocId 
+    @heredocId
         {
-            \indexedStr (HlCollectHeredocIdent ident delim) 
+            \indexedStr (HlCollectHeredocIdent ident delim)
                 -> ( HlCollectHeredocIdent (ident ++ fmap snd indexedStr) delim
                    , variableStyle
                    )
@@ -345,10 +345,10 @@ perlHighlighterRules :-
                         HlCollectHeredocIdent ident (Just '"')  | c == '"' -> (HlInInterpHeredoc ident, operatorStyle)
                                                                 | otherwise -> (HlCollectHeredocIdent ident (Just '"'), variableStyle)
         }
-    -- Although any HEREDOC identifier followed immediately by a newline is likely a syntax error we should still recognize them as 
-    -- HEREDOCs. 
+    -- Although any HEREDOC identifier followed immediately by a newline is likely a syntax error we should still recognize them as
+    -- HEREDOCs.
     \n
-        { 
+        {
             \indexedStr state
                 ->  let c = head $ fmap snd indexedStr
                     in case state of
@@ -424,7 +424,7 @@ perlHighlighterRules :-
         { m exitVarIfZeroDepth $ const (withFg cyan) }
     @varIdentifier
         { m exitVarIfZeroDepth $ const (withFg darkcyan) }
-    $white 
+    $white
         { m (\(HlInVariable _ s) -> s) defaultStyle }
     .
         { m (\(HlInVariable _ s) -> s) defaultStyle }
@@ -433,8 +433,8 @@ perlHighlighterRules :-
 <perldoc>
 {
     ^ "=cut"
-        { 
-            m fromQuoteState commentStyle 
+        {
+            m fromQuoteState commentStyle
         }
     $white+ { c defaultStyle }
     . { c commentStyle }
@@ -460,7 +460,7 @@ perlHighlighterRules :-
 
 {
 
-data HlState = 
+data HlState =
     HlInCode
     -- Boolean indicating if the interpolated quote is a regex and deliminator of quote.
     | HlInInterpString !Bool !String

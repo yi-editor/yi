@@ -41,7 +41,7 @@ import Yi.Keymap (makeAction, YiM)
 import Yi.UI.Utils
 import Yi.UI.TabBar
 
-data Rendered = 
+data Rendered =
     Rendered { picture :: !Image             -- ^ the picture currently displayed.
              , cursor  :: !(Maybe (Int,Int)) -- ^ cursor point on the above
              }
@@ -58,7 +58,7 @@ data UI = UI {  vty            :: Vty             -- ^ Vty
              }
 
 mkUI :: UI -> Common.UI
-mkUI ui = Common.dummyUI 
+mkUI ui = Common.dummyUI
   {
    Common.main           = main ui,
    Common.end            = end ui,
@@ -71,7 +71,7 @@ mkUI ui = Common.dummyUI
 -- | Initialise the ui
 start :: UIBoot
 start cfg ch outCh editor = do
-  liftIO $ do 
+  liftIO $ do
           oattr <- getTerminalAttributes stdInput
           v <- mkVtyEscDelay $ configVtyEscDelay $ configUI $ cfg
           nattr <- getTerminalAttributes stdInput
@@ -96,14 +96,14 @@ start cfg ch outCh editor = do
 
               -- | Read a key. UIs need to define a method for getting events.
               getKey :: IO Yi.Event.Event
-              getKey = do 
+              getKey = do
                 event <- Vty.next_event v
-                case event of 
+                case event of
                   (EvResize x y) -> do
                       logPutStrLn $ "UI: EvResize: " ++ show (x,y)
                       writeIORef sz (y,x)
                       outCh [makeAction (layoutAction ui :: YiM ())]
-                      -- since any action will force a refresh, return () is probably 
+                      -- since any action will force a refresh, return () is probably
                       -- sufficient instead of "layoutAction ui"
                       getKey
                   _ -> return (fromVtyEvent event)
@@ -146,26 +146,26 @@ fromVtyEvent _ = error "fromVtyEvent: unsupported event encountered."
 
 
 fromVtyKey :: Vty.Key -> Yi.Event.Key
-fromVtyKey (Vty.KEsc     ) = Yi.Event.KEsc      
-fromVtyKey (Vty.KFun x   ) = Yi.Event.KFun x    
-fromVtyKey (Vty.KPrtScr  ) = Yi.Event.KPrtScr   
-fromVtyKey (Vty.KPause   ) = Yi.Event.KPause    
+fromVtyKey (Vty.KEsc     ) = Yi.Event.KEsc
+fromVtyKey (Vty.KFun x   ) = Yi.Event.KFun x
+fromVtyKey (Vty.KPrtScr  ) = Yi.Event.KPrtScr
+fromVtyKey (Vty.KPause   ) = Yi.Event.KPause
 fromVtyKey (Vty.KASCII '\t') = Yi.Event.KTab
-fromVtyKey (Vty.KASCII c ) = Yi.Event.KASCII c  
-fromVtyKey (Vty.KBS      ) = Yi.Event.KBS       
-fromVtyKey (Vty.KIns     ) = Yi.Event.KIns      
-fromVtyKey (Vty.KHome    ) = Yi.Event.KHome     
-fromVtyKey (Vty.KPageUp  ) = Yi.Event.KPageUp   
-fromVtyKey (Vty.KDel     ) = Yi.Event.KDel      
-fromVtyKey (Vty.KEnd     ) = Yi.Event.KEnd      
-fromVtyKey (Vty.KPageDown) = Yi.Event.KPageDown 
-fromVtyKey (Vty.KNP5     ) = Yi.Event.KNP5      
-fromVtyKey (Vty.KUp      ) = Yi.Event.KUp       
-fromVtyKey (Vty.KMenu    ) = Yi.Event.KMenu     
-fromVtyKey (Vty.KLeft    ) = Yi.Event.KLeft     
-fromVtyKey (Vty.KDown    ) = Yi.Event.KDown     
-fromVtyKey (Vty.KRight   ) = Yi.Event.KRight    
-fromVtyKey (Vty.KEnter   ) = Yi.Event.KEnter    
+fromVtyKey (Vty.KASCII c ) = Yi.Event.KASCII c
+fromVtyKey (Vty.KBS      ) = Yi.Event.KBS
+fromVtyKey (Vty.KIns     ) = Yi.Event.KIns
+fromVtyKey (Vty.KHome    ) = Yi.Event.KHome
+fromVtyKey (Vty.KPageUp  ) = Yi.Event.KPageUp
+fromVtyKey (Vty.KDel     ) = Yi.Event.KDel
+fromVtyKey (Vty.KEnd     ) = Yi.Event.KEnd
+fromVtyKey (Vty.KPageDown) = Yi.Event.KPageDown
+fromVtyKey (Vty.KNP5     ) = Yi.Event.KNP5
+fromVtyKey (Vty.KUp      ) = Yi.Event.KUp
+fromVtyKey (Vty.KMenu    ) = Yi.Event.KMenu
+fromVtyKey (Vty.KLeft    ) = Yi.Event.KLeft
+fromVtyKey (Vty.KDown    ) = Yi.Event.KDown
+fromVtyKey (Vty.KRight   ) = Yi.Event.KRight
+fromVtyKey (Vty.KEnter   ) = Yi.Event.KEnter
 fromVtyKey (Vty.KBackTab ) = error "This should be handled in fromVtyEvent"
 fromVtyKey (Vty.KBegin   ) = error "Yi.UI.Vty.fromVtyKey: can't handle KBegin"
 
@@ -228,18 +228,18 @@ refresh ui e = do
       tabBarImages = renderTabBar e ui xss
   logPutStrLn "refreshing screen."
   logPutStrLn $ "startXs: " ++ show startXs
-  Vty.update (vty $ ui) 
+  Vty.update (vty $ ui)
       ( pic_for_image ( vert_cat tabBarImages
                         <->
-                        vert_cat (toList wImages) 
-                        <-> 
+                        vert_cat (toList wImages)
+                        <->
                         vert_cat (fmap formatCmdLine niceCmd)
                       )
       ) { pic_cursor = case cursor (PL._focus renders) of
                         Just (y,x) -> Cursor (toEnum x) (toEnum $ y + PL._focus startXs)
                         -- Add the position of the window to the position of the cursor
                         Nothing -> NoCursor
-                        -- This case can occur if the user resizes the window. 
+                        -- This case can occur if the user resizes the window.
                         -- Not really nice, but upon the next refresh the cursor will show.
         }
 
@@ -290,14 +290,14 @@ renderWindow cfg e width (win,hasFocus) =
     in rendered
 
 -- | Draw a window
--- 
+--
 -- TODO: horizontal scrolling.
 drawWindow :: UIConfig -> Editor -> Bool -> Window -> Int -> Int -> (Rendered, Region, Int)
 drawWindow cfg e focused win w h = (Rendered { picture = pict,cursor = cur}, mkRegion fromMarkPoint toMarkPoint', dispLnCount)
     where
         b = findBufferWith (bufkey win) e
         sty = configStyle cfg
-        
+
         notMini = not (isMini win)
         -- off reserves space for the mode line. The mini window does not have a mode line.
         off = if notMini then 1 else 0
@@ -315,20 +315,20 @@ drawWindow cfg e focused win w h = (Rendered { picture = pict,cursor = cur}, mkR
                             then fst $ runBuffer win b (getMarkPointB fromM)
                             else Point 0
         (text, _)    = runBuffer win b (indexedAnnotatedStreamB fromMarkPoint) -- read chars from the buffer, lazily
-        
-        (attributes, _) = runBuffer win b $ attributesPictureAndSelB sty (currentRegex e) region 
+
+        (attributes, _) = runBuffer win b $ attributesPictureAndSelB sty (currentRegex e) region
         -- TODO: I suspect that this costs quite a lot of CPU in the "dry run" which determines the window size;
         -- In that case, since attributes are also useless there, it might help to replace the call by a dummy value.
         -- This is also approximately valid of the call to "indexedAnnotatedStreamB".
         colors = map (second (($ Vty.def_attr) . attributesToAttr)) attributes
-        bufData = -- trace (unlines (map show text) ++ unlines (map show $ concat strokes)) $ 
+        bufData = -- trace (unlines (map show text) ++ unlines (map show $ concat strokes)) $
                   paintChars Vty.def_attr colors text
         tabWidth = tabSize . fst $ runBuffer win b indentSettingsB
         prompt = if isMini win then miniIdentString b else ""
 
         (rendered,toMarkPoint',cur,dispLnCount) = drawText h' w
                                 fromMarkPoint
-                                point 
+                                point
                                 tabWidth
                                 ([(c,(wsty, (-1))) | c <- prompt] ++ bufData ++ [(' ',(wsty, eofPoint))])
                              -- we always add one character which can be used to position the cursor at the end of file
@@ -337,11 +337,11 @@ drawWindow cfg e focused win w h = (Rendered { picture = pict,cursor = cur}, mkR
         modeLines = map (withAttributes modeStyle . take w . (++ repeat ' ')) $ maybeToList $ modeLine
         modeStyle = (if focused then appEndo (modelineFocusStyle sty) else id) (modelineAttributes sty)
         filler = take w (configWindowFill cfg : repeat ' ')
-    
+
         pict = vert_cat (take h' (rendered ++ repeat (withAttributes eofsty filler)) ++ modeLines)
-  
+
 -- | Renders text in a rectangle.
--- This also returns 
+-- This also returns
 -- * the index of the last character fitting in the rectangle
 -- * the position of the Point in (x,y) coordinates, if in the window,
 -- * the number of display lines for this drawing.
@@ -358,15 +358,15 @@ drawText :: Int    -- ^ The height of the part of the window we are in
 drawText h w topPoint point tabWidth bufData
     | h == 0 || w == 0 = ([], topPoint, Nothing, 0)
     | otherwise        = (rendered_lines, bottomPoint, pntpos, h - (length wrapped - h))
-  where 
+  where
 
   -- the number of lines that taking wrapping into account,
   -- we use this to calculate the number of lines displayed.
   wrapped = concatMap (wrapLine w) $ map (concatMap expandGraphic) $ take h $ lines' $ bufData
   lns0 = take h wrapped
 
-  bottomPoint = case lns0 of 
-                 [] -> topPoint 
+  bottomPoint = case lns0 of
+                 [] -> topPoint
                  _ -> snd $ snd $ last $ last $ lns0
 
   pntpos = listToMaybe [(y,x) | (y,l) <- zip [0..] lns0, (x,(_char,(_attr,p))) <- zip [0..] l, p == point]
@@ -377,7 +377,7 @@ drawText h w topPoint point tabWidth bufData
 
   fillColorLine :: [(Char, (Vty.Attr, Point))] -> Image
   fillColorLine [] = char_fill Vty.def_attr ' ' w 1
-  fillColorLine l = horiz_cat (map colorChar l) 
+  fillColorLine l = horiz_cat (map colorChar l)
                     <|>
                     char_fill a ' ' (w - length l) 1
                     where (_,(a,_x)) = last l
@@ -397,9 +397,9 @@ drawText h w topPoint point tabWidth bufData
   wrapLine :: Int -> [x] -> [[x]]
   wrapLine _ [] = []
   wrapLine n l = let (x,rest) = splitAt n l in x : wrapLine n rest
-                                      
+
   expandGraphic ('\t', p) = replicate tabWidth (' ', p)
-  expandGraphic (c,p) 
+  expandGraphic (c,p)
     | ord c < 32 = [('^',p),(chr (ord c + 64),p)]
     | otherwise = [(c,p)]
 
@@ -430,7 +430,7 @@ getY screenHeight numberOfWindows = screenHeight `quotRem` numberOfWindows
 -- | Convert a Yi Attr into a Vty attribute change.
 colorToAttr :: (Vty.Color -> Vty.Attr -> Vty.Attr) -> Style.Color -> (Vty.Attr -> Vty.Attr)
 colorToAttr set c =
-  case c of 
+  case c of
     RGB 0 0 0         -> set Vty.black
     RGB 128 128 128   -> set Vty.bright_black
     RGB 139 0 0       -> set Vty.red

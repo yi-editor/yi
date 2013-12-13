@@ -20,7 +20,7 @@ indexedAnnotatedStreamB p = do
     text <- indexedStreamB Forward p
     annots <- withSyntaxB modeGetAnnotations
     return $ spliceAnnots text (dropWhile (\s -> spanEnd s < p) (annots p))
-       
+
 applyHeights :: Traversable t => [Int] -> t Window -> t Window
 applyHeights heights ws = fst $ runState (mapM distribute ws) heights
     where distribute win = case isMini win of
@@ -46,7 +46,7 @@ strokePicture [] = []
 strokePicture wholeList@((Span leftMost _ _):_) = helper leftMost wholeList
     where helper :: Point -> [Span (Endo a)] -> [(Point,(a -> a))]
           helper prev [] = [(prev,id)]
-          helper prev ((Span l f r):xs) 
+          helper prev ((Span l f r):xs)
               | prev < l  = (prev, id) : (l,appEndo f) : helper r xs
               | otherwise = (l,appEndo f) : helper r xs
 
@@ -60,7 +60,7 @@ paintStrokes f0 x0 lf@((pf,f):tf) lx@((px,x):tx) =
     EQ -> (pf, f  x ):paintStrokes f  x  tf tx
     GT -> (px, f0 x ):paintStrokes f0 x  lf tx
 
-    
+
 
 paintPicture :: a -> [[Span (Endo a)]] -> [(Point,a)]
 paintPicture a = foldr (paintStrokes id a . strokePicture) []

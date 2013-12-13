@@ -69,7 +69,7 @@ trimTagStack maxHistory = VimTagStack . take maxHistory . tagsStack
 --   We assume each command is a single line.
 --   To add new components, one has to:
 --
---   * add new field in @PersistentState@ structure, 
+--   * add new field in @PersistentState@ structure,
 --   * add write and read parts in @loadPersistentState@/@savePersistentState@,
 --   * add a trimming code in @savePersistentState@ to prevent blowing up
 --     of save file.

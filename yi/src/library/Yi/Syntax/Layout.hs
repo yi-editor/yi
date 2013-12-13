@@ -22,11 +22,11 @@ data IState t = IState [BlockOpen t]  -- current block nesting
                      Bool   -- should we open a compound now ?
                      Int    -- last line number
   deriving Show
-type State t lexState = (IState t, AlexState lexState) 
+type State t lexState = (IState t, AlexState lexState)
 
 
 -- | Transform a scanner into a scanner that also adds opening,
--- closing and "next" tokens to indicate layout.  
+-- closing and "next" tokens to indicate layout.
 
 -- @isSpecial@ predicate indicates a token that starts a compound,
 -- like "where", "do", ...
@@ -39,19 +39,19 @@ type State t lexState = (IState t, AlexState lexState)
 
 
 layoutHandler :: forall t lexState. (Show t, Eq t) => (t -> Bool) -> [(t,t)] ->
-            (Tok t -> Bool) ->                 
+            (Tok t -> Bool) ->
             (t,t,t) -> (Tok t -> Bool) ->
             Scanner (AlexState lexState) (Tok t) -> Scanner (State t lexState) (Tok t)
-layoutHandler isSpecial parens isIgnored (openT, closeT, nextT) isGroupOpen lexSource = Scanner 
+layoutHandler isSpecial parens isIgnored (openT, closeT, nextT) isGroupOpen lexSource = Scanner
   {
    scanLooked = scanLooked lexSource . snd,
    scanEmpty = error "layoutHandler: scanEmpty",
    scanInit = (IState [] True (-1), scanInit lexSource),
-   scanRun  = \st -> let result = parse (fst st) (scanRun lexSource (snd st)) 
-                     in --trace ("toks = " ++ show (fmap snd result)) $ 
+   scanRun  = \st -> let result = parse (fst st) (scanRun lexSource (snd st))
+                     in --trace ("toks = " ++ show (fmap snd result)) $
                         result
   }
-    where dummyAlexState = AlexState 
+    where dummyAlexState = AlexState
               {
                stLexer = error "dummyAlexState: should not be reused for restart!",
                lookedOffset = maxBound, -- setting this to maxBound ensures nobody ever uses it.
@@ -61,7 +61,7 @@ layoutHandler isSpecial parens isIgnored (openT, closeT, nextT) isGroupOpen lexS
           deepestIndent [] = (-1)
           deepestIndent (Indent i:_) = i
           deepestIndent (_:levs) = deepestIndent levs
-                                   
+
           deepestParen _ [] = False
           deepestParen p (Paren t:levs) = p == t || deepestParen p levs
           deepestParen p (_:levs) = deepestParen p levs
@@ -70,7 +70,7 @@ layoutHandler isSpecial parens isIgnored (openT, closeT, nextT) isGroupOpen lexS
 
           parse :: IState t -> [(AlexState lexState, Tok t)] -> [(State t lexState, Tok t)]
           parse iSt@(IState levels doOpen lastLine)
-                toks@((aSt, tok @ Tok {tokPosn = Posn _nextOfs line col}) : tokss) 
+                toks@((aSt, tok @ Tok {tokPosn = Posn _nextOfs line col}) : tokss)
 
             -- ignore this token
             | isIgnored tok
@@ -89,9 +89,9 @@ layoutHandler isSpecial parens isIgnored (openT, closeT, nextT) isGroupOpen lexS
               deepestParen openTok levels
 
               = case levels of
-                      Indent _:levs -> (st',tt closeT) : parse (IState levs False lastLine) toks 
+                      Indent _:levs -> (st',tt closeT) : parse (IState levs False lastLine) toks
                       -- close an indent level inside the paren block
-                      Paren openTok' :levs 
+                      Paren openTok' :levs
                           | openTok == openTok' -> (st', tok) : parse (IState levs False line) tokss
                           | otherwise           ->              parse (IState levs False line) toks
                       -- close one level of nesting.
@@ -102,7 +102,7 @@ layoutHandler isSpecial parens isIgnored (openT, closeT, nextT) isGroupOpen lexS
               = let (_lev:levs) = dropWhile isParen levels
                 in (st', tt closeT) : parse (IState levs doOpen lastLine) toks
                   -- drop all paren levels inside the indent
-           
+
             -- next item
             | line > lastLine &&
               col == deepestIndent levels
@@ -111,20 +111,20 @@ layoutHandler isSpecial parens isIgnored (openT, closeT, nextT) isGroupOpen lexS
 
             -- open a paren block
             | isJust $ findParen fst $ (tokT tok)
-              = (st', tok) : parse (IState (Paren (tokT tok):levels) (isSpecial (tokT tok)) line) tokss 
+              = (st', tok) : parse (IState (Paren (tokT tok):levels) (isSpecial (tokT tok)) line) tokss
               -- important note: the the token can be both special and an opening. This is the case of the
               -- haskell 'let' (which is closed by 'in'). In that case the inner block is that of the indentation.
 
             -- prepare to open a compound
-            | isSpecial (tokT tok) 
+            | isSpecial (tokT tok)
                 = (st', tok) : parse (IState levels True   line) tokss
 
-            | otherwise     
+            | otherwise
                 = (st', tok) : parse (IState levels doOpen line) tokss
                   where st = (iSt, aSt)
                         st' = (iSt, aSt {lookedOffset = max peeked (lookedOffset aSt)})
                         tt t = Tok t 0 (tokPosn tok)
-                        peeked = case tokss of 
+                        peeked = case tokss of
                                    [] -> maxBound
                                    (AlexState {lookedOffset = p},_):_ -> p
                         -- This function checked the position and kind of the
@@ -132,16 +132,16 @@ layoutHandler isSpecial parens isIgnored (openT, closeT, nextT) isGroupOpen lexS
                         -- update the lookedOffset accordingly.
 
           -- finish by closing all the indent states.
-          parse iSt@(IState (Indent _:levs) doOpen posn) [] 
+          parse iSt@(IState (Indent _:levs) doOpen posn) []
               = ((iSt,dummyAlexState), Tok closeT 0 maxPosn) : parse (IState levs doOpen posn) []
-          parse (IState (Paren _:levs) doOpen posn) [] 
+          parse (IState (Paren _:levs) doOpen posn) []
               = parse (IState levs doOpen posn) []
           parse (IState [] _ _) [] = []
-              
+
 
 maxPosn :: Posn
-maxPosn = Posn (-1) (-1) 0 
--- HACK! here we have collusion between using (-1) here and the parsing of 
+maxPosn = Posn (-1) (-1) 0
+-- HACK! here we have collusion between using (-1) here and the parsing of
 -- OnlineTrees, which relies on the position of the last token to stop
 -- the parsing.
 

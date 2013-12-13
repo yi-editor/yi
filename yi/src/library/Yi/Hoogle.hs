@@ -43,7 +43,7 @@ hoogleFunModule a = map ((head &&& (!! 1)) . words) . gv  <$> hoogleRaw a ""
 -- | Call out to 'hoogleFunModule', and overwrite the word at point with
 -- the first returned function.
 hoogle :: YiM String
-hoogle = do 
+hoogle = do
     (wordRegion,word) <- withBuffer $ do wordRegion <- regionOfB unitWord
                                          word <- readRegionB wordRegion
                                          return (wordRegion, word)
@@ -58,7 +58,7 @@ hoogleSearch = do
   word <- withBuffer $ do wordRegion <- regionOfB unitWord
                           readRegionB wordRegion
   results <- io $ hoogleRaw word ""
-  
+
   -- The quotes help legibility between closely-packed results
   withEditor $ printMsgs $ map show results
 

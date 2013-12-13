@@ -53,7 +53,7 @@ autoIndentB indentBehave = do
   --     The indent of the given string plus two
   --     The offset of the last open bracket if any in the line.
   indentsOfString :: String -> BufferM [Int]
-  indentsOfString input = 
+  indentsOfString input =
     do indent       <- indentOfB input
        bracketHints <- lastOpenBracketHint input
        indentSettings <- indentSettingsB
@@ -76,12 +76,12 @@ autoIndentB indentBehave = do
   the second argument, in particular we commonly wish to have the
   last opening bracket of the previous line as well as its indent.
 -}
-autoIndentHelperB :: BufferM [ Int ] 
+autoIndentHelperB :: BufferM [ Int ]
                   -- ^ Action to fetch hints from previous lines
                  -> (String -> BufferM [ Int ])
                  -- ^ Action to calculate hints from previous line
                  -> IndentBehaviour
-                 -- ^ Sets the indent behaviour, 
+                 -- ^ Sets the indent behaviour,
                  -- see 'Yi.Buffer.IndentBehaviour' for a description
                  -> BufferM ()
 autoIndentHelperB getUpwards getPrevious indentBehave =
@@ -94,7 +94,7 @@ autoIndentHelperB getUpwards getPrevious indentBehave =
 -- | Cycles through the indentation hints. It does this without
 -- requiring to set/get any state. We just look at the current
 -- indentation of the current line and moving to the largest
--- indent that is 
+-- indent that is
 cycleIndentsB :: IndentBehaviour -> [Int] -> BufferM ()
 cycleIndentsB _ [] = return ()
 cycleIndentsB indentBehave indents =
@@ -112,7 +112,7 @@ cycleIndentsB indentBehave indents =
       IncreaseOnly  -> chooseIncreaseOnly
       DecreaseOnly  -> chooseDecreaseOnly
 
-  
+
 
   -- Choose the indentation hint which is one more than the current
   -- indentation hint unless the current is the largest or larger than
@@ -162,8 +162,8 @@ cycleIndentsB indentBehave indents =
   the outer scope.
 -}
 fetchPreviousIndentsB :: BufferM [Int]
-fetchPreviousIndentsB = 
-     -- Move up one line, 
+fetchPreviousIndentsB =
+     -- Move up one line,
   do moveOffset <- lineMoveRel (-1)
      line       <- readLnB
      indent     <- indentOfB line
@@ -194,7 +194,7 @@ autoIndentWithKeywordsB :: [ String ]   -- ^ Keywords to act as hints
                         -> IndentBehaviour
                         -> BufferM ()
 autoIndentWithKeywordsB firstKeywords secondKeywords =
-  autoIndentHelperB fetchPreviousIndentsB getPreviousLineHints 
+  autoIndentHelperB fetchPreviousIndentsB getPreviousLineHints
   where
   getPreviousLineHints :: String -> BufferM [ Int ]
   getPreviousLineHints input =
@@ -253,7 +253,7 @@ lastOpenBracketHint input =
     | isClosing c           = getOpen (i + 1) rest
       -- If it is just a normal character forget about it and move on.
     | otherwise             = getOpen i rest
-            
+
   isOpening :: Char -> Bool
   isOpening '(' = True
   isOpening '[' = True
@@ -359,7 +359,7 @@ indentOfB = spacingOfB . takeWhile isSpace
     white space and the indentation settings.
 -}
 spacingOfB :: String -> BufferM Int
-spacingOfB text = 
+spacingOfB text =
   do indentSettings <- indentSettingsB
      let spacingOfChar :: Char -> Int
          spacingOfChar '\t' = tabSize indentSettings
@@ -400,7 +400,7 @@ newlineAndIndentB = newlineB >> indentAsPreviousB
 -- | Set the padding of the string to newCount, filling in tabs if
 -- expandTabs is set in the buffers IndentSettings
 rePadString :: IndentSettings -> Int -> String -> String
-rePadString indentSettings newCount input 
+rePadString indentSettings newCount input
     | newCount <= 0 = rest
     | expandTabs indentSettings = replicate newCount ' ' ++ rest
     | otherwise = tabs ++ spaces ++ rest
@@ -412,7 +412,7 @@ rePadString indentSettings newCount input
 -- | shifts right (or left if num is negative) num times, filling in tabs if
 -- expandTabs is set in the buffers IndentSettings
 indentString :: IndentSettings -> Int -> String -> String
-indentString indentSettings numOfShifts input = rePadString indentSettings newCount input 
+indentString indentSettings numOfShifts input = rePadString indentSettings newCount input
     where (indents,_) = span isSpace input
           countSpace '\t' = tabSize indentSettings
           countSpace _ = 1 -- we'll assume nothing but tabs and spaces

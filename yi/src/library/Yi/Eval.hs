@@ -45,7 +45,7 @@ execEditorAction = runHook execEditorActionImpl
 getAllNamesInScope :: YiM [String]
 getAllNamesInScope = runHook getAllNamesInScopeImpl
 
-{- | Config variable for customising the behaviour of 'execEditorAction' and 'getAllNamesInScope'. 
+{- | Config variable for customising the behaviour of 'execEditorAction' and 'getAllNamesInScope'.
 
 Set this variable using 'evaluator'. See 'ghciEvaluator' and 'finiteListEvaluator' for two implementation.
 -}
@@ -67,7 +67,7 @@ newtype NamesCache = NamesCache [String] deriving (Typeable, Binary)
 instance Initializable NamesCache where
     initial = NamesCache []
 instance YiVariable NamesCache
- 
+
 {- | Evaluator implemented by calling GHCi. This evaluator can run arbitrary expressions in the class 'YiAction'.
 
 The following two imports are always present:
@@ -75,7 +75,7 @@ The following two imports are always present:
 > import Yi
 > import qualified Yi.Keymap as Yi.Keymap
 
-Also, if the file 
+Also, if the file
 
 > $HOME/.config/yi/local/Env.hs
 
@@ -89,7 +89,7 @@ ghciEvaluator = Evaluator{..} where
        haveUserContext <- io $ doesFileExist contextFile
        res <- io $ LHI.runInterpreter $ do
            LHI.set [LHI.searchPath LHI.:= []]
-           LHI.set [LHI.languageExtensions LHI.:= [LHI.OverloadedStrings, 
+           LHI.set [LHI.languageExtensions LHI.:= [LHI.OverloadedStrings,
                                                    LHI.NoImplicitPrelude -- use Yi prelude instead.
                                                   ]]
            when haveUserContext $ do
@@ -103,7 +103,7 @@ ghciEvaluator = Evaluator{..} where
            Right action -> runAction action
 
     getAllNamesInScopeImpl :: YiM [String]
-    getAllNamesInScopeImpl = do 
+    getAllNamesInScopeImpl = do
        NamesCache cache <- withEditor $ getA dynA
        result <-if null cache then do
             res <-io $ LHI.runInterpreter $ do
@@ -115,7 +115,7 @@ ghciEvaluator = Evaluator{..} where
           else return $ sort cache
        withEditor $ putA dynA (NamesCache result)
        return result
-  
+
 
     flattenExports :: [LHI.ModuleElem] -> [String]
     flattenExports = concatMap flattenExport
@@ -153,7 +153,7 @@ publishAction s a = modA publishedActions (M.insert s (makeAction a))
 publishedActionsEvaluator :: Evaluator
 publishedActionsEvaluator = Evaluator{..} where
     getAllNamesInScopeImpl = (M.keys . (^. publishedActions)) <$> askCfg
-    execEditorActionImpl s = 
+    execEditorActionImpl s =
         ((M.lookup s . (^. publishedActions)) <$> askCfg) >>=
         maybe (return ()) runAction
 

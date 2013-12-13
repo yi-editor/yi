@@ -50,9 +50,9 @@ completionBinding commandParsers = VimBindingY prereq action
                 ss -> do
                     let s = commonPrefix ss
                     updateCommand s
-                    withEditor 
-                        . printMsg 
-                        . unwords 
+                    withEditor
+                        . printMsg
+                        . unwords
                         . fmap (dropToLastWordOf s)
                         $ ss
           updateCommand :: String -> YiM ()

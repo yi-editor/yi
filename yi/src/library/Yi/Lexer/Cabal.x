@@ -1,4 +1,4 @@
--- -*- haskell -*- 
+-- -*- haskell -*-
 --
 -- Lexical syntax for Cabal files
 --
@@ -10,7 +10,7 @@
 {
 {-# OPTIONS -w  #-}
 module Yi.Lexer.Cabal
-  ( initState, alexScanToken ) 
+  ( initState, alexScanToken )
 where
 import Yi.Lexer.Alex
 import Yi.Style
@@ -50,7 +50,7 @@ $idchar    = [$alpha $digit \']
 $symchar   = [$symbol \:]
 $nl        = [\n\r]
 
-@reservedid = 
+@reservedid =
    GPL
   |LGPL
   |BSD3
@@ -167,7 +167,7 @@ main :-
  @varsym                                        { c operatorStyle }
  @consym                                        { c defaultStyle  }
 
- @decimal 
+ @decimal
   | 0[oO] @octal
   | 0[xX] @hexadecimal                          { c defaultStyle }
 

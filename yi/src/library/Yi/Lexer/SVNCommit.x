@@ -39,7 +39,7 @@ svnCommitMessage :-
 }
 
 {
-data HlState = 
+data HlState =
     HlCommitMessage
     | HlCommitSummary
     deriving (Show)

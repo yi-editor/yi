@@ -3,7 +3,7 @@
 -- | Basic types useful everywhere we play with buffers.
 module Yi.Buffer.Basic where
 import Prelude (reverse)
-import Data.Binary    
+import Data.Binary
 import Yi.Prelude
 import qualified Data.Rope as R
 import Data.DeriveTH

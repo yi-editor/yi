@@ -22,7 +22,7 @@ where
 import Prelude (map, words, lines, readFile, reads)
 import Yi.Prelude
 import Yi.Editor
-import Yi.Dynamic 
+import Yi.Dynamic
 
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.UTF8 as BS8
@@ -111,17 +111,17 @@ resetTags = setDynamic $ Tags Nothing
 
 -- | Get the currently registered tag table
 getTags :: EditorM (Maybe TagTable)
-getTags = do 
+getTags = do
   Tags t <- getDynamic
   return t
 
 setTagsFileList :: String -> EditorM ()
-setTagsFileList fps = do 
-  resetTags 
+setTagsFileList fps = do
+  resetTags
   setDynamic $ TagsFileList (splitOn "," fps)
 
 getTagsFileList :: EditorM [FilePath]
-getTagsFileList = do 
+getTagsFileList = do
   TagsFileList fps <- getDynamic
   return fps
 
@@ -129,7 +129,7 @@ getTagsFileList = do
 $(derives [makeBinary] [''Tags, ''TagTable, ''TagsFileList])
 
 -- For GHC 7.0 with template-haskell 2.5 (at least on my computer - coconnor) the Binary instance
--- needs to be defined before the YiVariable instance. 
+-- needs to be defined before the YiVariable instance.
 --
 -- GHC 7.1 does not appear to have this issue.
 instance YiVariable Tags

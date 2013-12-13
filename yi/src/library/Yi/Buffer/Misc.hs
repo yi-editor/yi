@@ -230,9 +230,9 @@ type BufferId = Either String FilePath
 -- TODO:
 -- data BufferIdent
 --     = MemBuffer String -- ^ Buffer ident
---     | FileBuffer FilePath 
+--     | FileBuffer FilePath
 
-data Attributes = Attributes 
+data Attributes = Attributes
                 { ident :: !BufferId
                 , bkey__   :: !BufferRef            -- ^ immutable unique key
                 , undos  :: !URList               -- ^ undo/redo list
@@ -259,7 +259,7 @@ instance Binary Attributes where
           put n >> put b >> put u >> put bd
           put pc >> put pu >> put selectionStyle_ >> put wm
           put law >> put lst >> put ro >> put ins >> put isTransacPresent >> put transacAccum
-    get = Attributes <$> get <*> get <*> get <*> 
+    get = Attributes <$> get <*> get <*> get <*>
           get <*> get <*> get <*> get <*> pure I.End <*> get <*> get <*> get <*> get <*>
               get <*> pure (const False) <*> get <*> get
 
@@ -271,7 +271,7 @@ data FBuffer = forall syntax.
         FBuffer { bmode  :: !(Mode syntax)
                 , rawbuf :: !(BufferImpl syntax)
                 , attributes :: !Attributes
-               } 
+               }
         deriving Typeable
 
 
@@ -300,7 +300,7 @@ identA = identAA . attrsA
 instance Binary FBuffer where
     put (FBuffer binmode r attributes_) =
       let strippedRaw :: BufferImpl ()
-          strippedRaw = (setSyntaxBI (modeHL emptyMode) r) 
+          strippedRaw = (setSyntaxBI (modeHL emptyMode) r)
       in do
           put (modeName binmode)
           put strippedRaw
@@ -324,7 +324,7 @@ modifyRawbuf f (FBuffer f1 f2 f3) = (FBuffer f1 (f f2) f3)
 
 queryAndModifyRawbuf :: (forall syntax. BufferImpl syntax -> (BufferImpl syntax,x)) ->
                      FBuffer -> (FBuffer, x)
-queryAndModifyRawbuf f (FBuffer f1 f5 f3) = 
+queryAndModifyRawbuf f (FBuffer f1 f5 f3) =
     let (f5', x) = f f5
     in (FBuffer f1 f5' f3, x)
 
@@ -380,12 +380,12 @@ selectionStyleA :: Accessor FBuffer SelectionStyle
 selectionStyleA = selectionStyleAA . attrsA
 
 highlightSelectionA :: Accessor FBuffer Bool
-highlightSelectionA = 
+highlightSelectionA =
   accessor highlightSelection (\x e -> e { highlightSelection = x })
   . selectionStyleA
 
 rectangleSelectionA :: Accessor FBuffer Bool
-rectangleSelectionA = 
+rectangleSelectionA =
   accessor rectangleSelection (\x e -> e { rectangleSelection = x })
   . selectionStyleA
 
@@ -401,7 +401,7 @@ winMarksA = winMarksAA . attrsA
  -}
 data IndentSettings = IndentSettings { expandTabs :: Bool -- ^ Insert spaces instead of tabs as possible
                                      , tabSize    :: Int  -- ^ Size of a Tab
-                                     , shiftWidth :: Int  -- ^ Indent by so many columns 
+                                     , shiftWidth :: Int  -- ^ Indent by so many columns
                                      }
                       deriving (Eq, Show, Typeable)
 
@@ -520,7 +520,7 @@ padString n c s = replicate k c ++ s
 getPercent :: Point -> Point -> String
 getPercent a b = padString 3 ' ' (show p) ++ "%"
     where p = ceiling (aa / bb * 100.0 :: Double) :: Int
-          aa = fromIntegral a :: Double 
+          aa = fromIntegral a :: Double
           bb = fromIntegral b :: Double
 
 queryBuffer :: (forall syntax. BufferImpl syntax -> x) -> BufferM x
@@ -551,17 +551,17 @@ delOverlayLayerB l = do
 -- | Execute a @BufferM@ value on a given buffer and window.  The new state of
 -- the buffer is returned alongside the result of the computation.
 runBuffer :: Window -> FBuffer -> BufferM a -> (a, FBuffer)
-runBuffer w b f = 
-    let (a, _, b') = runBufferFull w b f 
+runBuffer w b f =
+    let (a, _, b') = runBufferFull w b f
     in (a, b')
 
 getMarks :: Window -> BufferM (Maybe WinMarks)
 getMarks w = do
-    getsA winMarksA (M.lookup $ wkey w) 
- 
+    getsA winMarksA (M.lookup $ wkey w)
+
 
 runBufferFull :: Window -> FBuffer -> BufferM a -> (a, [Update], FBuffer)
-runBufferFull w b f = 
+runBufferFull w b f =
     let (a, b', updates) = runRWS (fromBufferM f') w b
         f' = do
             ms <- getMarks w
@@ -593,7 +593,7 @@ deleteMarkB m = modifyBuffer $ deleteMarkValueBI m
 
 -- | Execute a @BufferM@ value on a given buffer, using a dummy window.  The new state of
 -- the buffer is discarded.
-runBufferDummyWindow :: FBuffer -> BufferM a -> a 
+runBufferDummyWindow :: FBuffer -> BufferM a -> a
 runBufferDummyWindow b = fst . runBuffer (dummyWindow $ bkey b) b
 
 
@@ -669,7 +669,7 @@ modeNeverApplies = const2 False
 
 emptyMode :: Mode syntax
 emptyMode = Mode
-  { 
+  {
    modeName = "empty",
    modeApplies = modeNeverApplies,
    modeHL = ExtHL noHighlighter,
@@ -678,7 +678,7 @@ emptyMode = Mode
    modeIndent = \_ _ -> return (),
    modeAdjustBlock = \_ _ -> return (),
    modeFollow = const emptyAction,
-   modeIndentSettings = IndentSettings 
+   modeIndentSettings = IndentSettings
    { expandTabs = True
    , tabSize = 8
    , shiftWidth = 4
@@ -693,7 +693,7 @@ emptyMode = Mode
 
 -- | Create buffer named @nm@ with contents @s@
 newB :: BufferRef -> BufferId -> Rope -> FBuffer
-newB unique nm s = 
+newB unique nm s =
  FBuffer { bmode  = emptyMode
          , rawbuf = newBI s
          , attributes =
@@ -701,7 +701,7 @@ newB unique nm s =
             , bkey__ = unique
             , undos  = emptyU
             , preferCol = Nothing
-            , bufferDynamic = initial 
+            , bufferDynamic = initial
             , pendingUpdates = []
             , selectionStyle = SelectionStyle False False
             , process = I.End
@@ -840,7 +840,7 @@ deleteNAt dir n pos = do
 
 -- | Return the current line number
 curLn :: BufferM Int
-curLn = do 
+curLn = do
     p <- pointB
     queryBuffer (lineAt p)
 
@@ -874,7 +874,7 @@ setMode :: Mode syntax -> BufferM ()
 setMode m = do
   modify (setMode0 m)
   -- reset the keymap process so we use the one of the new mode.
-  putA keymapProcessA I.End 
+  putA keymapProcessA I.End
   modeOnLoad m
 
 -- | Modify the mode
@@ -882,20 +882,20 @@ modifyMode :: (forall syntax. Mode syntax -> Mode syntax) -> BufferM ()
 modifyMode f = do
   modify (modifyMode0 f)
   -- reset the keymap process so we use the one of the new mode.
-  putA keymapProcessA I.End 
+  putA keymapProcessA I.End
 
 onMode :: (forall syntax. Mode syntax -> Mode syntax) -> AnyMode -> AnyMode
 onMode f (AnyMode m) = AnyMode (f m)
 
 withMode0 :: (forall syntax. Mode syntax -> a) -> FBuffer -> a
-withMode0 f FBuffer {bmode = m} = f m 
+withMode0 f FBuffer {bmode = m} = f m
 
 
 withModeB :: (forall syntax. Mode syntax -> BufferM a) -> BufferM a
 withModeB f = do
     act <- gets (withMode0 f)
     act
-           
+
 withSyntax0 :: (forall syntax. Mode syntax -> syntax -> a) -> WindowRef -> FBuffer -> a
 withSyntax0 f wk (FBuffer bm rb _attrs) = f bm (getAst wk rb)
 
@@ -955,8 +955,8 @@ askMarks = do
 getMarkB :: Maybe String -> BufferM Mark
 getMarkB m = do
   p <- pointB
-  queryAndModify (getMarkDefaultPosBI m p) 
-  
+  queryAndModify (getMarkDefaultPosBI m p)
+
 mayGetMarkB :: String -> BufferM (Maybe Mark)
 mayGetMarkB m = queryBuffer (getMarkBI m)
 

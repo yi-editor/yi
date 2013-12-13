@@ -524,14 +524,14 @@ diredMarkWithChar c mv = bypassReadOnly $ do
 diredRefreshMark :: BufferM ()
 diredRefreshMark = do b <- pointB
                       dState <- getA bufferDynamicValueA
-                      let posDict = diredFilePoints dState 
+                      let posDict = diredFilePoints dState
                           markMap = diredMarks dState
                           draw (pos, _, fn) = case M.lookup fn markMap of
-                                                Just mark -> do 
+                                                Just mark -> do
                                                   moveTo pos >> moveToSol >> insertN [mark] >> deleteN 1
                                                   e <- pointB
                                                   addOverlayB $ mkOverlay UserLayer (mkRegion (e - 1) e) (styleOfMark mark)
-                                                Nothing -> do 
+                                                Nothing -> do
                                                   -- for deleted marks
                                                   moveTo pos >> moveToSol >> insertN [' '] >> deleteN 1
                       Yi.Core.mapM_ draw posDict
@@ -540,11 +540,11 @@ diredRefreshMark = do b <- pointB
       styleOfMark '*' = const (withFg green)
       styleOfMark 'D' = const (withFg red)
       styleOfMark  _  = defaultStyle
-      
+
 
 diredUnmark :: BufferM ()
-diredUnmark = bypassReadOnly $ do 
-                maybefile <- fileFromPoint 
+diredUnmark = bypassReadOnly $ do
+                maybefile <- fileFromPoint
                 case maybefile of
                   Just (fn, _de) -> do modA bufferDynamicValueA (\ds -> ds {diredMarks = M.delete fn $ diredMarks ds})
                                        filenameColOf lineUp
@@ -621,7 +621,7 @@ askRenameFiles dir fs =
 
 -- | copy selected files in a given directory to the target location given
 -- by user input
--- 
+--
 -- askCopyFiles follow the same logic as askRenameFiles,
 -- except dir and file are done by different DiredOP
 askCopyFiles :: FilePath -> [(FilePath, DiredEntry)] -> YiM ()
@@ -688,7 +688,7 @@ diredLoad :: YiM ()
 diredLoad = do
     dir <- currentDir
     maybefile <- withBuffer fileFromPoint
-    case maybefile of 
+    case maybefile of
       Just (fn, de) -> do let sel = dir </> fn
                           case de of
                             (DiredFile _dfi) -> do

@@ -1,4 +1,4 @@
-module Yi.Keymap.Vim2.Ex.Commands.Edit 
+module Yi.Keymap.Vim2.Ex.Commands.Edit
     ( parse
     ) where
 

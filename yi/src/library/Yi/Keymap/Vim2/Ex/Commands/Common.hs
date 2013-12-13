@@ -40,7 +40,7 @@ parseOption name action = parse $ do
     discard $ P.string name
     bangs <- P.many (P.string "!")
     qs <- P.many (P.string "?")
-    let 
+    let
     return $ pureExCommand {
         cmdShow = "set " ++ concat nos ++ name ++ concat bangs ++ concat qs
       , cmdAction = action $
@@ -78,7 +78,7 @@ filenameComplete f = do
 
     case files of
         [] -> return []
-        [x] -> fmap (:[]) $ removePwd x 
+        [x] -> fmap (:[]) $ removePwd x
         xs -> sequence $ fmap removePwd xs
 
 forAllBuffers :: MonadEditor m => (BufferRef -> m ()) -> m ()

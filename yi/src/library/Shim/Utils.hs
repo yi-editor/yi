@@ -31,7 +31,7 @@ module Shim.Utils
   , shorten
   , uncurry3
   ) where
-  
+
 import System.IO
 import System.Process
 import Control.Monad
@@ -51,7 +51,7 @@ processGetContents cmd args = do
   return s
 
 recurseDir :: (Monad m) => (FilePath -> m (Maybe a)) -> FilePath -> m (Maybe a)
-recurseDir f d 
+recurseDir f d
   | d == "" = return Nothing
   | d `elem` ["/", "."] || takeDirectory d == d = f d
   | otherwise = do res <- f d
@@ -72,7 +72,7 @@ safeHead a l = case l of
 
 splitBy :: (a -> Bool) -> [a] -> [[a]]
 splitBy p xs = case break p xs of
-                 (l,tok:r) -> let (x:xx) = splitBy p r 
+                 (l,tok:r) -> let (x:xx) = splitBy p r
                              in [l] ++ (tok : x) : xx
                  (l, []) -> [l]
 
@@ -104,7 +104,7 @@ dropSuffix suf = reverse . dropPrefix (reverse suf) . reverse
 commonPrefix :: [String] -> String
 commonPrefix [] = ""
 commonPrefix (x:xs) = foldr (\a b -> map fst . takeWhile (uncurry (==))
-                                       $ zip a b) x xs 
+                                       $ zip a b) x xs
 
 netEncode :: String -> String
 netEncode s =
@@ -154,13 +154,13 @@ setLogAction ::  (FilePath -> String -> IO ()) -> IO ()
 setLogAction = modifyMVar_ logAction . const . return
 
 setLogfile :: FilePath -> IO ()
-setLogfile = modifyMVar_ logfile . const . return 
+setLogfile = modifyMVar_ logfile . const . return
 
 getLogfile :: IO FilePath
 getLogfile = readMVar logfile
 
 logS :: String -> IO ()
-logS = logPutStrLn 
+logS = logPutStrLn
 
 whenM :: (Monad m) => m Bool -> m () -> m ()
 whenM cond m = do
@@ -177,6 +177,6 @@ shorten n s = if length s > n then take (n-4) s ++ "..." else s
 --test1 = tester (unSplit sep) (splitElem sep)
 --  where sep = ','
 --test2 = tester hexDecode hexEncode
-  
+
 uncurry3 :: (a -> b -> c -> d) -> (a, b, c) -> d
 uncurry3 fn (a, b, c) = fn a b c

@@ -1,6 +1,6 @@
 {-# LANGUAGE ScopedTypeVariables, FlexibleInstances, TypeFamilies, CPP, NoMonomorphismRestriction #-}
 {-# OPTIONS_GHC -fno-warn-incomplete-patterns #-} -- uniplate patterns
-module Yi.Syntax.OnlineTree (Tree(..), manyToks, 
+module Yi.Syntax.OnlineTree (Tree(..), manyToks,
                              tokAtOrBefore) where
 import Prelude ()
 
@@ -10,12 +10,12 @@ import Data.Foldable
 import Data.Monoid (mempty)
 
 #ifdef TESTING
-import Test.QuickCheck 
+import Test.QuickCheck
 import Parser.Incremental
 #endif
 
 import Yi.Buffer.Basic
-import Yi.Prelude 
+import Yi.Prelude
 import Yi.IncrementalParse
 import Yi.Lexer.Alex
 import Yi.Syntax.Tree
@@ -32,7 +32,7 @@ data MaybeOneMore f x = None | OneMore x (f x)
 data Tree a = Bin (Tree a) (Tree a)
             | Leaf a
             | Tip
-              deriving Show    
+              deriving Show
 
 instance IsTree Tree where
     emptyNode = Tip
@@ -44,7 +44,7 @@ instance Traversable Tree where
     traverse f (Leaf a) = Leaf <$> f a
     traverse _ Tip = pure Tip
 
-instance Foldable Tree where 
+instance Foldable Tree where
     foldMap _ Tip = mempty
     foldMap f (Leaf a) = f a
     foldMap f (Bin l r) = foldMap f l <> foldMap f r
@@ -60,7 +60,7 @@ manyToks' :: Int -> P a (Tree a)
 manyToks' n = Look (pure Tip) (\_ -> Bin <$> subTree n <*> manyToks' (n * 2))
 
 subTree :: Int -> P a (Tree a)
-subTree n = Look (pure Tip) (\_ -> 
+subTree n = Look (pure Tip) (\_ ->
    case n of
        0 -> pure Tip
        1 -> Leaf <$> symbol (const True)

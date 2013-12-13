@@ -258,7 +258,7 @@ end = _YiApplication # sharedApplication >>= terminate_ nil
 
 syncWindows :: Editor -> UI -> [(Window, Bool)] -> [WinInfo] -> IO [WinInfo]
 syncWindows e ui = sync
-  where 
+  where
     sync ws [] = mapM (insert Nothing) ws
     sync [] cs = mapM_ remove cs >> return []
     sync (w:ws) (c:cs)
@@ -328,7 +328,7 @@ newWindow before ui win b = do
    else do
     v # setHorizontallyResizable True
     v # setVerticallyResizable True
-    
+
     when (not $ configLineWrap $ uiConfig ui) $ do
       tc <- v # textContainer
       NSSize _ h <- tc # containerSize
@@ -360,7 +360,7 @@ newWindow before ui win b = do
       (modA windowsA) $ fromJust . (PL.move $ fromJust $ L.findIndex ((k ==) . wikey) wCache)
       withGivenBufferAndWindow0 win (bkey b) act
 
-  return $ WinInfo 
+  return $ WinInfo
     { wikey    = k
     , window   = win
     , textview = v
@@ -381,7 +381,7 @@ getSelectedRegions = do
         (lineRegions (fromIntegral x1) (fromIntegral x2)) (regionStart reg) ls
   where
     lineRegions :: Size -> Size -> Point -> Size -> (Point, Maybe Region)
-    lineRegions x1 x2 p l 
+    lineRegions x1 x2 p l
       | l <= x1   = (p +~ succ l, Nothing)
       | l <= x2   = (p +~ succ l, Just $ mkRegion (p+~x1) (p +~ l))
       | otherwise = (p +~ succ l, Just $ mkRegion (p+~x1) (p +~ x2))
@@ -391,7 +391,7 @@ refresh :: UI -> Editor -> IO ()
 refresh ui e = withAutoreleasePool $ logNSException "refresh" $ do
     _YiApplication # sharedApplication >>=
       pushClipboard (snd $ runEditor (uiFullConfig ui) getRegE e) . toYiApplication
-  
+
     (uiCmdLine ui) # setStringValue (toNSString $ L.intercalate "\n" $ statusLine e)
 
     cache <- readRef $ windowCache ui

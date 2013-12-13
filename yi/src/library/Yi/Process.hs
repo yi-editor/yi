@@ -61,7 +61,7 @@ popen file args minput =
 -- directly with the argument.
 runProgCommand :: String -> [String] -> IO (String,String,ExitCode)
 runProgCommand prog args = do loc <- findExecutable prog
-                              case loc of 
+                              case loc of
                                   Nothing -> return ("","",ExitFailure 1)
                                   Just fp -> popen fp args Nothing
 
@@ -135,8 +135,8 @@ readAvailable :: Handle -> IO String
 readAvailable handle = (fmap concat) $ repeatUntilM $ read_chunk handle
 
 -- Read a chunk from a handle, bool indicates if there is potentially more data available
-read_chunk :: Handle -> IO (Bool,String)  
-read_chunk handle = do 
+read_chunk :: Handle -> IO (Bool,String)
+read_chunk handle = do
     let bufferSize = 1024
     allocaBytes bufferSize $ \buffer -> do
                  bytesRead <- hGetBufNonBlocking handle buffer bufferSize

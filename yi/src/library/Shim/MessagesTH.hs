@@ -19,10 +19,10 @@ data Message argumentsType responseType =
 data Response a = Error String
                 | Response a
 
-instance Functor Response where 
+instance Functor Response where
     fmap f (Response a) = Response (f a)
     fmap f (Error msg)  = Error msg
- 
+
 data PackedMsg where Pack :: (ConvSexp res, ConvSexp args) => Message args res -> PackedMsg
 
 
@@ -34,7 +34,7 @@ msgList = unsafePerformIO $ newIORef []
 
 mkMsg fun = do
     VarI _ ty _ _ <- reify fun
-    let adapt = case arity ty of 
+    let adapt = case arity ty of
                   0 -> noArgs
                   1 -> singleton
                   2 -> uncurry
@@ -52,9 +52,9 @@ mkMsg fun = do
   decName = mkName$ nameBase fun ++ "Msg"
   noArgs   name = [|\ () -> $(varE name) |]
   singleton name= [|\ (Singleton x) -> $(varE name) x |]
-  uncurry  name = [|\(x, y) -> $(varE name) x y|] 
-  uncurry3 name = [|\(x,y,z) -> $(varE name) x y z|] 
-  uncurry4 name = [|\(x,y,z,w) -> $(varE name) x y z w|] 
+  uncurry  name = [|\(x, y) -> $(varE name) x y|]
+  uncurry3 name = [|\(x,y,z) -> $(varE name) x y z|]
+  uncurry4 name = [|\(x,y,z,w) -> $(varE name) x y z w|]
 
 mkMessageList = do
   msgs <- runIO $ readIORef msgList
@@ -62,7 +62,7 @@ mkMessageList = do
   [d| messages = $(listE entries) |]
 
 camelCaseToLisp :: String -> String
-camelCaseToLisp = map toLower . concat . intersperse "-" . splitBy isUpper 
+camelCaseToLisp = map toLower . concat . intersperse "-" . splitBy isUpper
 
 -- arity ty | trace (show ty) False = undefined
 arity (AppT ArrowT arg) = 1 + arity arg

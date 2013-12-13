@@ -55,7 +55,7 @@ import Graphics.UI.Gtk as Gtk
        (Color(..), PangoRectangle(..), Rectangle(..), selectionDataSetText,
         targetString, clipboardSetWithData, clipboardRequestText,
         selectionPrimary, clipboardGetForDisplay, widgetGetDisplay,
-        onMotionNotify, drawRectangle, drawLine, 
+        onMotionNotify, drawRectangle, drawLine,
         layoutIndexToPos, layoutGetCursorPos, drawLayout,
         widgetGetDrawWindow, layoutSetAttributes, widgetGrabFocus,
         scrolledWindowSetPolicy, scrolledWindowAddWithViewport,

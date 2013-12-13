@@ -1,11 +1,11 @@
 {-# LANGUAGE DeriveDataTypeable, GeneralizedNewtypeDeriving, Rank2Types #-}
 -- Copyright (c) 2008 Jean-Philippe Bernardy
 -- | Haskell-specific modes and commands.
-module Yi.Mode.Haskell 
+module Yi.Mode.Haskell
   (
    -- * Modes
    haskellAbstract,
-   cleverMode, 
+   cleverMode,
    preciseMode,
    literateMode,
    fastMode,
@@ -41,13 +41,13 @@ import Yi.Modes (anyExtension, extensionOrContentsMatch)
 import Yi.MiniBuffer
 
 haskellAbstract :: Mode (tree TT)
-haskellAbstract = emptyMode 
+haskellAbstract = emptyMode
   {
      modeApplies = extensionOrContentsMatch extensions shebangPattern,
      modeName = "haskell",
      modeToggleCommentSelection = toggleCommentSelectionB "-- " "--"
   }
-     {-    
+     {-
      Some of these are a little questionably haskell
      related. For example ".x" is an alex lexer specification
      I dare say that there are other file types that use ".x"
@@ -109,8 +109,8 @@ preciseMode = haskellAbstract
  }
 
 
-haskellLexer :: Scanner Point Char -> Scanner (Alex.AlexState Haskell.HlState) (Tok Token) 
-haskellLexer = Alex.lexScanner Haskell.alexScanToken Haskell.initState 
+haskellLexer :: Scanner Point Char -> Scanner (Alex.AlexState Haskell.HlState) (Tok Token)
+haskellLexer = Alex.lexScanner Haskell.alexScanToken Haskell.initState
 
 literateHaskellLexer :: Scanner Point Char -> Scanner (Alex.AlexState LiterateHaskell.HlState) (Tok Token)
 literateHaskellLexer = Alex.lexScanner LiterateHaskell.alexScanToken LiterateHaskell.initState
@@ -122,7 +122,7 @@ adjustBlock e len = do
   let t = Paren.getIndentingSubtree e p l
   case t of
     Nothing -> return ()
-    Just it -> 
+    Just it ->
            savingExcursionB $ do
                    let (_startOfs, height) = Paren.getSubtreeSpan it
                    col <- curCol
@@ -133,7 +133,7 @@ adjustBlock e len = do
                                -- which should not be changed.
                                when (indent > col) $
                                 if len >= 0
-                                 then do insertN (replicate len ' ') 
+                                 then do insertN (replicate len ' ')
                                          leftN len
                                  else do
                                     deleteN (negate len)
@@ -154,9 +154,9 @@ cleverAutoIndentHaskellB e behaviour = do
   let onThisLine ofs = ofs >= solPnt && ofs <= eolPnt
       firstTokNotOnLine = listToMaybe .
                               filter (not . onThisLine . posnOfs . tokPosn) .
-                              filter (not . isErrorTok . tokT) . concatMap allToks 
+                              filter (not . isErrorTok . tokT) . concatMap allToks
   let stopsOf :: [Paren.Tree TT] -> [Int]
-      stopsOf (g@(Paren.Paren open ctnt close):ts') 
+      stopsOf (g@(Paren.Paren open ctnt close):ts')
           | isErrorTok (tokT close) || getLastOffset g >= solPnt
               = [groupIndent open ctnt]  -- stop here: we want to be "inside" that group.
           | otherwise = stopsOf ts' -- this group is closed before this line; just skip it.
@@ -169,8 +169,8 @@ cleverAutoIndentHaskellB e behaviour = do
       stopsOf (t@(Paren.Block _):ts) = shiftBlock + maybe 0 (posnCol . tokPosn) (getFirstElement t) : stopsOf ts
       stopsOf (_:ts) = stopsOf ts
       stopsOf [] = []
-      firstTokOnLine = fmap tokT $ listToMaybe $ 
-          dropWhile ((solPnt >) . tokBegin) $ 
+      firstTokOnLine = fmap tokT $ listToMaybe $
+          dropWhile ((solPnt >) . tokBegin) $
           takeWhile ((eolPnt >) . tokBegin) $ -- for laziness.
           filter (not . isErrorTok . tokT) $ allToks e
       shiftBlock = case firstTokOnLine of
@@ -219,7 +219,7 @@ cleverAutoIndentHaskellC e behaviour = do
         -- maybe we are putting a new 1st statement in the block here.
       stopsOf (l@(Hask.PLet _ (Hask.Block _) _):ts') = [colOf' l | lineStartsWith (Reserved Haskell.In)] ++ stopsOf ts'
                                                        -- offer to align with let only if this is an "in"
-      stopsOf (t@(Hask.Block _):ts') = [shiftBlock + colOf' t] ++ stopsOf ts' 
+      stopsOf (t@(Hask.Block _):ts') = [shiftBlock + colOf' t] ++ stopsOf ts'
                                        -- offer add another statement in the block
       stopsOf ((Hask.PGuard' (PAtom pipe  _) _ _):ts') = [tokCol pipe | lineStartsWith (ReservedOp Haskell.Pipe)] ++ stopsOf ts'
                                                                  -- offer to align against another guard
@@ -228,7 +228,7 @@ cleverAutoIndentHaskellC e behaviour = do
       stopsOf ((Hask.RHS (Hask.PAtom{}) (exp)):ts')
           = [(case firstTokOnLine of
               Just (Operator op) -> opLength op (colOf' exp) -- Usually operators are aligned against the '=' sign
-              -- case of an operator should check so that value always is at least 1 
+              -- case of an operator should check so that value always is at least 1
               _ -> colOf' exp) | lineIsExpression ] ++ stopsOf ts'
                    -- offer to continue the RHS if this looks like an expression.
       stopsOf [] = [0] -- maybe it's new declaration in the module
@@ -300,7 +300,7 @@ cleverPrettify :: [TT] -> BufferM ()
 cleverPrettify toks = do
   pnt <- pointB
   let groups = groupBy' coalesce toks
-      isCommentGroup g = (tokTyp $ tokT $ head $ g) `elem` fmap Just [Haskell.Line] 
+      isCommentGroup g = (tokTyp $ tokT $ head $ g) `elem` fmap Just [Haskell.Line]
       thisCommentGroup = listToMaybe $ dropWhile ((pnt >) . tokEnd . last) $ filter isCommentGroup $ groups
                          -- FIXME: laziness
   case thisCommentGroup of
@@ -308,8 +308,8 @@ cleverPrettify toks = do
     Just g -> do let region = mkRegion (tokBegin . head $ g) (tokEnd . last $ g)
                  text <- unwords . fmap (drop 2) <$> mapM tokText g
                  modifyRegionClever (const $ unlines' $ fmap ("-- " ++) $ fillText 80 $ text) region
-                 
-tokTyp :: Token -> Maybe Haskell.CommentType 
+
+tokTyp :: Token -> Maybe Haskell.CommentType
 tokTyp (Comment t) = Just t
 tokTyp _ = Nothing
 
@@ -349,7 +349,7 @@ newtype GhciBuffer = GhciBuffer {_ghciBuffer :: Maybe BufferRef}
 instance YiVariable GhciBuffer
 -- | Start GHCi in a buffer
 ghci :: YiM BufferRef
-ghci = do 
+ghci = do
     b <- Interactive.interactive "ghci" []
     withEditor $ setDynamic $ GhciBuffer $ Just b
     return b
@@ -363,18 +363,18 @@ ghciGet = withOtherWindow $ do
         Nothing -> ghci
         Just b -> do
             stillExists <- withEditor $ isJust <$> findBuffer b
-            if stillExists 
+            if stillExists
                 then do withEditor $ switchToBufferE b
                         return b
                 else ghci
-    
+
 -- | Send a command to GHCi
 ghciSend :: String -> YiM ()
 ghciSend cmd = do
     b <- ghciGet
     withGivenBuffer b botB
     sendToProcess b (cmd ++ "\n")
-    
+
 -- | Load current buffer in GHCi
 ghciLoadBuffer :: YiM ()
 ghciLoadBuffer = do
@@ -388,7 +388,7 @@ ghciLoadBuffer = do
 ghciInferType :: YiM ()
 ghciInferType = do
     nm <- withBuffer $ readUnitB unitWord
-    when (not $ null nm) $ 
+    when (not $ null nm) $
         withMinibufferGen nm noHint "Insert type of which identifier?" return ghciInferTypeOf
 
 ghciInferTypeOf :: String -> YiM ()

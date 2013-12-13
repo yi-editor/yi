@@ -87,7 +87,7 @@ data WinInfo = WinInfo
     { coreWinKey      :: WindowRef
     , coreWin         :: IORef Window
     , shownTos        :: IORef Point
-    , lButtonPressed  :: IORef Bool 
+    , lButtonPressed  :: IORef Bool
     , insertingMode   :: IORef Bool
     , inFocus         :: IORef Bool
     , winLayoutInfo   :: MVar WinLayoutInfo
@@ -154,9 +154,9 @@ startNoMsg cfg ch outCh ed = do
   win   <- windowNew
   ico   <- loadIcon "yi+lambda-fat-32.png"
   vb    <- vBoxNew False 1    -- Top-level vbox
-    
+
   im <- imMulticontextNew
-  imContextSetUsePreedit im False  -- handler for preedit string not implemented  
+  imContextSetUsePreedit im False  -- handler for preedit string not implemented
   im `on` imContextCommit $ mapM_ (\k -> ch $ Event (KASCII k) [])  -- Yi.Buffer.Misc.insertN for atomic input?
 
   set win [ windowDefaultWidth  := 700
@@ -167,7 +167,7 @@ startNoMsg cfg ch outCh ed = do
           ]
   win `on` deleteEvent $ io $ mainQuit >> return True
   win `on` keyPressEvent $ handleKeypress ch im
-  
+
   paned <- hPanedNew
   tabs <- simpleNotebookNew
   panedAdd2 paned (baseWidget tabs)
@@ -396,8 +396,8 @@ newWindow e ui w = do
     v `on` motionNotifyEvent  $ handleMove          ui win
     discard $ v `onExpose` render ui win
     -- also redraw when the window receives/loses focus
-    (uiWindow ui) `on` focusInEvent $ io (widgetQueueDraw v) >> return False 
-    (uiWindow ui) `on` focusOutEvent $ io (widgetQueueDraw v) >> return False 
+    (uiWindow ui) `on` focusInEvent $ io (widgetQueueDraw v) >> return False
+    (uiWindow ui) `on` focusOutEvent $ io (widgetQueueDraw v) >> return False
     -- todo: consider adding an 'isDirty' flag to WinLayoutInfo,
     -- so that we don't have to recompute the Attributes when focus changes.
     return win
@@ -464,13 +464,13 @@ render ui w _event = withMVar (winLayoutInfo w) $ \WinLayoutInfo{winLayout=layou
   bufferFocused <- readIORef (inFocus w)
   uiFocused <- Gtk.windowHasToplevelFocus (uiWindow ui)
   let focused = bufferFocused && uiFocused
-      wideCursor = 
+      wideCursor =
        case configCursorStyle (uiConfig ui) of
          AlwaysFat -> True
          NeverFat -> False
          FatWhenFocused -> focused
          FatWhenFocusedAndInserting -> focused && im
- 
+
 
   (PangoRectangle (succ -> curX) curY curW curH, _) <- layoutGetCursorPos layout (rel cur)
   -- tell the input method
@@ -479,7 +479,7 @@ render ui w _event = withMVar (winLayoutInfo w) $ \WinLayoutInfo{winLayout=layou
   gcSetValues gc (newGCValues { Gtk.foreground = mkCol True $ Yi.Style.foreground $ baseAttributes $ configStyle $ uiConfig ui,
                                 Gtk.lineWidth = if wideCursor then 2 else 1 })
   -- tell the renderer
-  if im 
+  if im
   then -- if we are inserting, we just want a line
     drawLine drawWindow gc (round curX, round curY) (round $ curX + curW, round $ curY + curH)
   else do -- if we aren't inserting, we want a rectangle around the current character
@@ -528,7 +528,7 @@ Note [PangoLayout width]
 ~~~~~~~~~~~~~~~~~~~~~~~~
 
 We start rendering the PangoLayout one pixel from the left of the rendering area, which means a few +/-1 offsets in Pango rendering and point lookup code.
-The reason for this is to support the "wide cursor", which is 2 pixels wide. If we started rendering the PangoLayout 
+The reason for this is to support the "wide cursor", which is 2 pixels wide. If we started rendering the PangoLayout
 directly from the left of the rendering area instead of at a 1-pixel offset, then the "wide cursor" would only be half-displayed
 when the cursor is at the beginning of the line, and would then be a "thin cursor".
 
@@ -610,7 +610,7 @@ handleKeypress ch im = do
       key  = case char of
         Just c  -> Just $ KASCII c
         Nothing -> M.lookup (keyName gtkKey) keyTable
-  
+
   case (ifIM, key) of
     (True, _   ) -> return ()
     (_, Nothing) -> logPutStrLn $ "Event not translatable: " ++ show key
@@ -637,7 +637,7 @@ keyTable = M.fromList
     ,("ISO_Left_Tab", KTab)
     ]
 
--- | Map Yi modifiers to GTK 
+-- | Map Yi modifiers to GTK
 modTable :: M.Map Modifier EventM.Modifier
 modTable = M.fromList
     [ (MShift, EventM.Shift  )
@@ -659,10 +659,10 @@ handleButtonClick ui ref = do
   io $ do
     w <- getWinInfo ui ref
     point <- pointToOffset (x, y) w
-    
+
     let focusWindow = focusWindowE ref
         runAction = uiActionCh ui . makeAction
-    
+
     runAction focusWindow
     case (click, button) of
       (SingleClick, LeftButton) ->  do
@@ -676,7 +676,7 @@ handleButtonClick ui ref = do
             moveTo point
             setVisibleSelection False
       _ -> return ()
-    
+
     return True
 
 handleButtonRelease :: UI -> WinInfo -> EventM EButton Bool
@@ -719,7 +719,7 @@ handleConfigure ui = do
   -- why does this cause a hang without postGUIAsync?
   io $ postGUIAsync $ uiActionCh ui (makeAction (return () :: EditorM()))
   return False -- allow event to be propagated
-  
+
 handleMove :: UI -> WinInfo -> EventM EMotion Bool
 handleMove ui w = eventCoordinates >>= (io . selectArea ui w) >>
                   return True
@@ -743,7 +743,7 @@ selectArea ui w (x,y) = do
           setVisibleSelection True
           readRegionB =<< getSelectRegionB
         setRegE txt
-  
+
   uiActionCh ui (makeAction editorAction)
   -- drawWindowGetPointer (textview w) -- be ready for next message.
 
@@ -769,10 +769,10 @@ setSelectionClipboard ui _w cb = do
         io $ writeIORef selection txt
   uiActionCh ui $ makeAction yiAction
   txt <- readIORef selection
-  
+
   if (not . null) txt
     then clipboardSetText cb txt
-    else return () 
+    else return ()
 
 
 

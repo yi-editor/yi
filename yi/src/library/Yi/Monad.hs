@@ -1,8 +1,8 @@
 module Yi.Monad (
-                 Ref(..), 
-                 gets, 
-                 getsA, 
-                 getsAndModify, 
+                 Ref(..),
+                 gets,
+                 getsA,
+                 getsAndModify,
                  maybeM,
                  modifiesRef,
                  modifiesThenReadsRef,
@@ -31,7 +31,7 @@ class Ref ref where
     readRef :: (MonadIO m) => ref a -> m a
     writeRef :: (MonadIO m) => ref a -> a -> m ()
     modifyRef :: (MonadIO m) => ref a -> (a -> a) -> m ()
-    
+
 
 instance Ref IORef where
     readRef r = liftIO $ readIORef r
@@ -69,17 +69,17 @@ with f g = do
     liftIO $ g (f yi)
 
 whenM :: Monad m => m Bool -> m () -> m ()
-whenM mtest ma = mtest >>= flip when ma  
+whenM mtest ma = mtest >>= flip when ma
 
 maybeM :: Monad m => (x -> m ()) -> Maybe x -> m ()
 maybeM _ Nothing = return ()
-maybeM f (Just x) = f x 
+maybeM f (Just x) = f x
 
 -- | Rerun the monad until the boolean result is false, collecting list of results.
 repeatUntilM :: Monad m => m (Bool,a) -> m [a]
 repeatUntilM m = do
   (proceed,x) <- m
-  case proceed of 
+  case proceed of
     False -> return [x]
     True -> do xs <- repeatUntilM m
                return (x:xs)

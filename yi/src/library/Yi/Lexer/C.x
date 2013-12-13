@@ -1,4 +1,4 @@
--- -*- haskell -*- 
+-- -*- haskell -*-
 --  Simple lexer for c
 
 {
@@ -40,7 +40,7 @@ $idchar    = [$alpha $digit \']
 $symchar   = [$symbol \:]
 $nl        = [\n\r]
 
-@reservedid = 
+@reservedid =
     auto
   | break
   | case
@@ -85,12 +85,12 @@ $nl        = [\n\r]
   | "#include"
 
 -- From this list, but only the C ones: http://en.wikipedia.org/wiki/Operators_in_C_and_C%2B%2B
-@reservedop = 
+@reservedop =
   "+"  | "++"  | "+=" | "-"   | "--" | "-=" | "*"      | "*=" | "/"  | "/=" | "%"  | "%=" |
   "<"  | "<="  | ">"  | ">="  | "!=" | "==" |
   "!"  | "&&"  | "||" |
   "<<" | "<<=" | ">>" | ">>=" | "~"  | "&"  | "&="     | "|"  | "|=" | "^"  | "^=" |
-  "="  | "->"  | "."  | ","   | "?"  | ":"  | "sizeof" 
+  "="  | "->"  | "."  | ","   | "?"  | ":"  | "sizeof"
 
 @varid  = $small $idchar*
 @conid  = $large $idchar*
@@ -141,7 +141,7 @@ c :-
  @varsym                                        { c operatorStyle }
  @consym                                        { c typeStyle }
 
- @decimal 
+ @decimal
   | 0[oO] @octal
   | 0[xX] @hexadecimal                          { c defaultStyle }
 

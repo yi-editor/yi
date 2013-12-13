@@ -180,7 +180,7 @@ atBoundary (GenUnit _ atBound) dir = atBound dir
 
 enclosingUnit :: TextUnit -> TextUnit
 enclosingUnit (GenUnit enclosing _) = enclosing
-enclosingUnit _ = Document 
+enclosingUnit _ = Document
 
 atBoundaryB :: TextUnit -> Direction -> BufferM Bool
 atBoundaryB Document d = atBoundary Document d
@@ -203,7 +203,7 @@ leftBoundaryUnit u = GenUnit Document $ (\_dir -> atBoundaryB u Backward)
 
 -- | @genAtBoundaryB u d s@ returns whether the point is at a given boundary @(d,s)@ .
 -- Boundary @(d,s)@ , taking Word as example, means:
---      Word 
+--      Word
 --     ^^  ^^
 --     12  34
 -- 1: (Backward,OutsideBound)
@@ -280,17 +280,17 @@ genMoveB Document _                     Forward = moveTo =<< sizeB
 genMoveB Document _ Backward = moveTo 0 -- impossible to go outside beginning of doc.
 genMoveB Character _ Forward  = rightB
 genMoveB Character _ Backward = leftB
-genMoveB VLine     _ Forward  = 
+genMoveB VLine     _ Forward  =
   do ofs <- lineMoveRel 1
      when (ofs < 1) (maybeMoveB Line Forward)
 genMoveB VLine _ Backward = lineUp
-genMoveB unit (boundDir, boundSide) moveDir = 
+genMoveB unit (boundDir, boundSide) moveDir =
   doUntilB_ (genAtBoundaryB unit boundDir boundSide) (moveB Character moveDir)
-    
+
 -- | Generic maybe move operation.
 -- As genMoveB, but don't move if we are at boundary already.
 genMaybeMoveB :: TextUnit -> (Direction, BoundarySide) -> Direction -> BufferM ()
-genMaybeMoveB Document boundSpec moveDir = genMoveB Document boundSpec moveDir 
+genMaybeMoveB Document boundSpec moveDir = genMoveB Document boundSpec moveDir
    -- optimized case for Document
 genMaybeMoveB Line (Backward, InsideBound) Backward = moveTo =<< solPointB
    -- optimized case for begin of Line
@@ -347,9 +347,9 @@ regionOfB unit = regionWithTwoMovesB (maybeMoveB unit Backward) (maybeMoveB unit
 
 -- An alternate definition would be the following, but it can return two units if the current point is between them.
 -- eg.  "word1 ^ word2" would return both words.
--- regionOfB unit = mkRegion                                                                                  
+-- regionOfB unit = mkRegion
 --                  <$> pointAfter (maybeMoveB unit Backward)
---                  <*> destinationOfMoveB (maybeMoveB unit Forward)                                                                
+--                  <*> destinationOfMoveB (maybeMoveB unit Forward)
 -- | Non empty region of the whole textunit where the current point is.
 regionOfNonEmptyB :: TextUnit -> BufferM Region
 regionOfNonEmptyB unit = savingPointB $

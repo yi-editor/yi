@@ -8,5 +8,5 @@ import GHC (Session)
 #endif
 
 class Monad m => SessionMonad m where
-  getSession :: m Session 
+  getSession :: m Session
 

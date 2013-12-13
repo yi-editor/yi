@@ -123,11 +123,11 @@ startEditor cfg st = do
             outF acts = handle handler $ runYi $ interactive acts
             runYi f   = runReaderT (runYiM f) yi
             yi        = Yi ui inF outF cfg newSt
-        ui <- uiStart cfg inF outF editor   
+        ui <- uiStart cfg inF outF editor
         return (ui, runYi)
 
     runYi $ loadPersistentState
-  
+
     runYi $ do if isNothing st
                     then postActions $ startActions cfg -- process options if booting for the first time
                     else withEditor $ modA buffersA (fmap (recoverMode (modeTable cfg))) -- otherwise: recover the mode of buffers
@@ -171,16 +171,16 @@ dispatch ev =
                    _     -> p0
              (actions, p') = processOneEvent p ev
              state = computeState p'
-             ambiguous = case state of 
+             ambiguous = case state of
                  Ambiguous _ -> True
                  _ -> False
          putA keymapProcessA (if ambiguous then freshP else p')
-         let actions0 = case state of 
+         let actions0 = case state of
                           Dead -> [makeAction $ do
                                          evs <- getA pendingEventsA
                                          printMsg ("Unrecognized input: " ++ showEvs (evs ++ [ev]))]
                           _ -> actions
-             actions1 = if ambiguous 
+             actions1 = if ambiguous
                           then [makeAction $ printMsg "Keymap was in an ambiguous state! Resetting it."]
                           else []
          return (actions0 ++ actions1,p')
@@ -213,13 +213,13 @@ quitEditor = do
 checkFileChanges :: Editor -> IO Editor
 checkFileChanges e0 = do
         now <- getCurrentTime
-        -- Find out if any file was modified "behind our back" by other processes.            
-        newBuffers <- forM (buffers e0) $ \b -> 
-          let nothing = return (b, Nothing) 
+        -- Find out if any file was modified "behind our back" by other processes.
+        newBuffers <- forM (buffers e0) $ \b ->
+          let nothing = return (b, Nothing)
           in if bkey b `elem` visibleBuffers
           then do
             case b ^.identA of
-               Right fname -> do 
+               Right fname -> do
                   fe <- doesFileExist fname
                   if not fe then nothing else do
                   modTime <- fileModTime fname
@@ -230,7 +230,7 @@ checkFileChanges e0 = do
                        else do return (b, Just msg2)
                      else nothing
                _ -> nothing
-          else nothing  
+          else nothing
         -- show appropriate update message if applicable
         return $ case getFirst (foldMap (First . snd) newBuffers) of
                Just msg -> (statusLinesA ^: DelayList.insert msg) e0 {buffers = fmap fst newBuffers}
@@ -275,8 +275,8 @@ refreshEditor = onYiVar $ \yi var -> do
                 -- Scroll windows to show current points as appropriate
                 -- Do another layout pass if there was any scrolling;
                 (if or relayout then UI.layout (yiUi yi) else return) e4
-        
-        e7 <- return (yiEditor var) >>= 
+
+        e7 <- return (yiEditor var) >>=
              (if (configCheckExternalChangesObsessively cfg) then checkFileChanges else return) >>=
              pureM clearAllSyntaxAndHideSelection >>=
              -- Adjust window sizes according to UI info
@@ -296,7 +296,7 @@ refreshEditor = onYiVar $ \yi var -> do
     clearFollow = pointFollowsWindowA ^= const False
     -- | Is this process stale? (associated with a deleted buffer)
     staleProcess bs p = not (bufRef p `M.member` bs)
-    
+
 
 -- | Suspend the program
 suspendEditor :: YiM ()
@@ -370,14 +370,14 @@ terminateSubprocesses shouldTerminate _yi var = do
 -- | Start a subprocess with the given command and arguments.
 startSubprocess :: FilePath -> [String] -> (Either SomeException ExitCode -> YiM x) -> YiM BufferRef
 startSubprocess cmd args onExit = onYiVar $ \yi var -> do
-        let (e', bufref) = runEditor 
-                              (yiConfig yi) 
+        let (e', bufref) = runEditor
+                              (yiConfig yi)
                               (printMsg ("Launched process: " ++ cmd) >> newBufferE (Left bufferName) (R.fromString ""))
                               (yiEditor var)
             procid = yiSubprocessIdSupply var + 1
         procinfo <- createSubprocess cmd args bufref
         startSubprocessWatchers procid procinfo yi onExit
-        return (var {yiEditor = e', 
+        return (var {yiEditor = e',
                      yiSubprocessIdSupply = procid,
                      yiSubprocesses = M.insert procid procinfo (yiSubprocesses var)
                     }, bufref)
@@ -417,18 +417,18 @@ sendToProcess bufref s = do
     io $ hPutStr (hIn subProcessInfo) s
 
 pipeToBuffer :: Handle -> (String -> IO ()) -> IO ()
-pipeToBuffer h append = 
-  do _ <- ignoringException $ forever $ (do _ <- hWaitForInput h (-1) 
-                                            r <- readAvailable h 
+pipeToBuffer h append =
+  do _ <- ignoringException $ forever $ (do _ <- hWaitForInput h (-1)
+                                            r <- readAvailable h
                                             _ <- append r
                                             return ())
      return ()
-                        
+
 
 
 waitForExit :: ProcessHandle -> IO (Either SomeException ExitCode)
-waitForExit ph = 
-    handle (\e -> return (Left (e :: SomeException))) $ do 
+waitForExit ph =
+    handle (\e -> return (Left (e :: SomeException))) $ do
       mec <- getProcessExitCode ph
       case mec of
           Nothing -> threadDelay (500*1000) >> waitForExit ph

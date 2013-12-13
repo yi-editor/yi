@@ -9,14 +9,14 @@ module Yi.Lexer.Alex (
                        -- * Other things closely associated with the lexer
                        AlexState(..),
                        unfoldLexer, lexScanner,
-                       alexCollectChar, 
+                       alexCollectChar,
 
                        -- * Lexer actions
                        actionConst, actionAndModify, actionStringAndModify, actionStringConst,
 
                        -- * Data produced by the scanner
-                       Tok(..), tokBegin, tokEnd, tokFromT, tokRegion, 
-                       Posn(..), startPosn, moveStr, 
+                       Tok(..), tokBegin, tokEnd, tokFromT, tokRegion,
+                       Posn(..), startPosn, moveStr,
                        ASI,
                        (+~), (~-), Size(..),
                        Stroke,
@@ -150,10 +150,10 @@ lexScanner l st0 src = Scanner
                   --stStart = posnOfs . stPosn,
                   scanLooked = lookedOffset,
                   scanInit = AlexState st0 0 startPosn,
-                  scanRun = \st -> 
+                  scanRun = \st ->
                      case posnOfs $ stPosn st of
                          0 -> unfoldLexer l (st, ('\n', scanRun src 0))
-                         ofs -> case scanRun src (ofs - 1) of 
+                         ofs -> case scanRun src (ofs - 1) of
                              -- FIXME: if this is a non-ascii char the ofs. will be wrong.
                              -- However, since the only thing that matters (for now) is 'is the previous char a new line', we don't really care.
                              -- (this is to support ^,$ in regexes)

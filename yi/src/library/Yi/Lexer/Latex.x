@@ -1,4 +1,4 @@
--- -*- haskell -*- 
+-- -*- haskell -*-
 --
 -- Simple syntax highlighting for Latex source files
 --
@@ -37,7 +37,7 @@ haskell :-
 
 {
 
-data Token = Comment | Text | Special !Char | Command !String | Begin !String | End !String | NewCommand  
+data Token = Comment | Text | Special !Char | Command !String | Begin !String | End !String | NewCommand
   deriving (Eq, Show, Ord)
 
 type HlState = Int

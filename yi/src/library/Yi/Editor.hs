@@ -43,7 +43,7 @@ type Statuses = DelayList.DelayList Status
 
 -- | The Editor state
 data Editor = Editor {
-        bufferStack   :: ![BufferRef]               -- ^ Stack of all the buffers. 
+        bufferStack   :: ![BufferRef]               -- ^ Stack of all the buffers.
                                                     -- Invariant: never empty
                                                     -- Invariant: first buffer is the current one.
        ,buffers       :: !(M.Map BufferRef FBuffer)
@@ -96,8 +96,8 @@ class (Monad m, MonadState Editor m) => MonadEditor m
           withEditor :: EditorM a -> m a
           withEditor f = do
               cfg <- askCfg
-              getsAndModify (runEditor cfg f) 
-    
+              getsAndModify (runEditor cfg f)
+
 liftEditor :: MonadEditor m => EditorM a -> m a
 liftEditor = withEditor
 
@@ -183,7 +183,7 @@ insertBuffer b = modify $
                         -- do not interfere.
                         e {bufferStack = nub (bufferStack e ++ [bkey b]),
                            buffers = M.insert (bkey b) b (buffers e)}
-                       
+
 
 -- Prevent possible space leaks in the editor structure
 forceFold1 :: (Foldable t) => t a -> t a
@@ -198,13 +198,13 @@ deleteBuffer k = do
   -- If the buffer has an associated close action execute that now. Unless the buffer is the last
   -- buffer in the editor. In which case it cannot be closed and, I think, the close action should
   -- not be applied.
-  -- 
+  --
   -- The close actions seem dangerous, but I know of no other simple way to resolve issues related
   -- to what buffer receives actions after the minibuffer closes.
-  pure length <*> gets bufferStack 
+  pure length <*> gets bufferStack
     >>= \l -> case l of
         1 -> return ()
-        _ -> pure (M.lookup k) <*> gets onCloseActions 
+        _ -> pure (M.lookup k) <*> gets onCloseActions
                 >>= \m_action -> case m_action of
                     Nothing -> return ()
                     Just action -> action
@@ -250,7 +250,7 @@ findBuffer k = gets (M.lookup k . buffers)
 
 -- | Find buffer with this key
 findBufferWith :: BufferRef -> Editor -> FBuffer
-findBufferWith k e = 
+findBufferWith k e =
     case M.lookup k (buffers e) of
         Just b  -> b
         Nothing -> error "Editor.findBufferWith: no buffer has this key"
@@ -278,7 +278,7 @@ openAllBuffersE = do bs <- gets bufferSet
 
 -- | Rotate the buffer stack by the given amount.
 shiftBuffer :: Int -> EditorM ()
-shiftBuffer shift = do 
+shiftBuffer shift = do
     modA bufferStackA rotate
     fixCurrentWindow
   where rotate l = take len $ drop (shift `mod` len) $ cycle l
@@ -299,12 +299,12 @@ withGivenBufferAndWindow0 w k f = do
   (us, v) <- getsAndModify $ (\e ->
                             let b = findBufferWith k e
                                 (v, us, b') = runBufferFull w b f
-                                
+
                             in (e {buffers = mapAdjust' (const b') k (buffers e),
                                    killring = (if accum && all updateIsDelete us
-                                               then foldl (.) id 
+                                               then foldl (.) id
                                                     (reverse [krPut dir (R.toString s) | Delete _ dir s <- us])
-                                               else id) 
+                                               else id)
                                               (killring e)
                                   }, (us, v)))
   updHandler <- return . bufferUpdateHandler =<< ask
@@ -342,7 +342,7 @@ printMsgs s = printStatus (s, defaultStyle)
 printStatus :: Status -> EditorM ()
 printStatus = setTmpStatus 1
 
--- | Set the "background" status line 
+-- | Set the "background" status line
 setStatus :: Status -> EditorM ()
 setStatus = setTmpStatus maxBound
 
@@ -420,8 +420,8 @@ newBufferE f s = do
     switchToBufferE b
     return b
 
--- | Creates an in-memory buffer with a unique name. 
--- 
+-- | Creates an in-memory buffer with a unique name.
+--
 -- A hint for the buffer naming scheme can be specified in the dynamic variable TempBufferNameHint
 -- The new buffer always has a buffer ID that did not exist before newTempBufferE.
 -- TODO: this probably a lot more complicated than it should be: why not count from zero every time?
@@ -430,13 +430,13 @@ newTempBufferE = do
     hint :: TempBufferNameHint <- getDynamic
     e <- gets id
     -- increment the index of the hint until no buffer is found with that name
-    let find_next in_name = 
+    let find_next in_name =
             case findBufferWithName (show in_name) e of
                 (_b : _) -> find_next $ inc in_name
                 []      -> in_name
         inc in_name = TempBufferNameHint (tmp_name_base in_name) (tmp_name_index in_name  + 1)
         next_tmp_name = find_next hint
-        
+
     b <- newBufferE (Left $ show next_tmp_name)
                     (R.fromString "")
     setDynamic $ inc next_tmp_name
@@ -470,7 +470,7 @@ newWindowE mini bk = newZeroSizeWindow mini bk . WindowRef <$> newRef
 switchToBufferE :: BufferRef -> EditorM ()
 switchToBufferE bk = do
     modA (focusA . windowsA) (\w ->
-           w { bufkey = bk, 
+           w { bufkey = bk,
                bufAccessList = forceFold1 $ ((bufkey w):) . filter (bk/=) $ bufAccessList w })
 
 -- | Attach the specified buffer to some other window than the current one
@@ -496,7 +496,7 @@ getBufferWithNameOrCurrent nm = if null nm then gets currentBuffer else getBuffe
 -- | Close current buffer and window, unless it's the last one.
 closeBufferAndWindowE :: EditorM ()
 closeBufferAndWindowE = do
-  -- Fetch the current buffer *before* closing the window. 
+  -- Fetch the current buffer *before* closing the window.
   -- Required for the onCloseBufferE actions to work as expected by the minibuffer.
   -- The tryCloseE, since it uses tabsA, will have the current buffer "fixed" to the buffer of the
   -- window that is brought into focus. If the current buffer is accessed after the tryCloseE then
@@ -534,16 +534,16 @@ moveWinPrevE :: EditorM ()
 moveWinPrevE = modA windowsA (swapFocus PL.previous)
 
 -- | A "fake" accessor that fixes the current buffer after a change of the current
--- window. 
+-- window.
 -- Enforces invariant that top of buffer stack is the buffer of the current window.
 fixCurrentBufferA_ :: Accessor Editor Editor
-fixCurrentBufferA_ = fromSetGet (\new _old -> let 
+fixCurrentBufferA_ = fromSetGet (\new _old -> let
     ws = windows new
     b = findBufferWith (bufkey $ PL._focus ws) new
     newBufferStack = nub (bkey b : bufferStack new)
     -- make sure we do not hold to old versions by seqing the length.
     in length newBufferStack `seq` new { bufferStack = newBufferStack  } ) id
-    
+
 
 -- | Counterpart of fixCurrentBufferA_: fix the current window to point to the
 -- right buffer.
@@ -572,12 +572,12 @@ focusWindowE :: WindowRef -> EditorM ()
 focusWindowE k = do
     -- Find the tab index and window index
     ts <- getA tabsA
-    let check (False, i) win = if wkey win == k 
+    let check (False, i) win = if wkey win == k
                                     then (True, i)
                                     else (False, i + 1)
         check r@(True, _) _win = r
 
-        searchWindowSet (False, tabIndex, _) ws = 
+        searchWindowSet (False, tabIndex, _) ws =
             case foldl check (False, 0) (ws ^. tabWindowsA) of
                 (True, winIndex) -> (True, tabIndex, winIndex)
                 (False, _)       -> (False, tabIndex + 1, 0)
@@ -670,7 +670,7 @@ deleteTabE = modA tabsA $ maybe failure id . deleteTab
                            True ->  PL.deleteLeft tabs
                            False -> PL.deleteRight tabs
 
--- | Close the current window. If there is only one tab open and the tab 
+-- | Close the current window. If there is only one tab open and the tab
 -- contains only one window then do nothing.
 tryCloseE :: EditorM ()
 tryCloseE = do
@@ -692,7 +692,7 @@ closeOtherE = modA windowsA PL.deleteOthers
 shiftOtherWindow :: MonadEditor m => m ()
 shiftOtherWindow = liftEditor $ do
   len <- getsA windowsA PL.length
-  if (len == 1) 
+  if (len == 1)
     then splitE
     else nextWinE
 
@@ -713,7 +713,7 @@ acceptedInputs = do
     let l = I.accepted 3 $ I.mkAutomaton $ extractTopKeymap $ keymap $ defaultKm cfg
     return $ fmap (intercalate " ") l
 
--- | Defines an action to be executed when the current buffer is closed. 
+-- | Defines an action to be executed when the current buffer is closed.
 --
 -- Used by the minibuffer to assure the focus is restored to the buffer that spawned the minibuffer.
 --
@@ -725,12 +725,12 @@ acceptedInputs = do
 onCloseBufferE :: BufferRef -> EditorM () -> EditorM ()
 onCloseBufferE b a = do
     modA onCloseActionsA $ M.insertWith' (\_ old_a -> old_a >> a) b a
-    
+
 -- put the template haskell at the end, to avoid 'variable not found' compile errors
 $(derive makeBinary ''TempBufferNameHint)
 
 -- For GHC 7.0 with template-haskell 2.5 (at least on my computer - coconnor) the Binary instance
--- needs to be defined before the YiVariable instance. 
+-- needs to be defined before the YiVariable instance.
 --
 -- GHC 7.1 does not appear to have this issue.
 instance Initializable TempBufferNameHint where

@@ -28,21 +28,21 @@ import Data.DeriveTH
 import Yi.Prelude
 import Prelude ()
 
--- | The region data type. 
+-- | The region data type.
 --The region is semi open: it includes the start but not the end bound. This allows simpler region-manipulation algorithms.
 -- Invariant : regionStart r <= regionEnd r
 data Region = Region {regionDirection :: !Direction,
-                      regionStart, regionEnd :: !Point} 
+                      regionStart, regionEnd :: !Point}
                  deriving (Typeable)
 
 $(derive makeBinary ''Region)
 
 instance Show Region where
-    show r = show (regionStart r) ++ 
+    show r = show (regionStart r) ++
              (case regionDirection r of
-               Forward -> " -> " 
-               Backward -> " <- " 
-             ) ++ 
+               Forward -> " -> "
+               Backward -> " <- "
+             ) ++
              show (regionEnd r)
 
 regionFirst :: Region -> Point
@@ -87,7 +87,7 @@ mkSizeRegion x s = mkRegion x (x +~ s)
 
 -- | The empty region
 emptyRegion :: Region
-emptyRegion = Region Forward 0 0 
+emptyRegion = Region Forward 0 0
 
 -- | True if the given point is inside the given region.
 inRegion :: Point -> Region -> Bool

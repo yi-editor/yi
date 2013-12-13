@@ -1,4 +1,4 @@
--- -*- haskell -*- 
+-- -*- haskell -*-
 --
 -- Lexical syntax for compilation messages
 --
@@ -19,13 +19,13 @@ $filechar = ~[\: $white]
 @number    = $digit+
 
 tokens :-
- @file":" @number ":" @number ":" .*\n  { \str st -> 
+ @file":" @number ":" @number ":" .*\n  { \str st ->
      let Just (_before, arr, _after) = matchOnceText re $ map snd str
          re :: Regex
          re = makeRegex "^(.+):([0-9]+):([0-9]+):(.*)$"
      in (st, Report (fst $ arr!1) (read $ fst $ arr!2) (read $ fst $ arr!3) (fst $ arr!4)) }
  -- without a column number
- @file":" @number ":" .*\n  { \str st -> 
+ @file":" @number ":" .*\n  { \str st ->
      let Just (_before, arr, _after) = matchOnceText re $ map snd str
          re :: Regex
          re = makeRegex "^(.+):([0-9]+):(.*)$"
@@ -36,7 +36,7 @@ tokens :-
 {
 
 type HlState = ()
-data Token 
+data Token
   = Report String Int Int String
   | Text String
     deriving Show
