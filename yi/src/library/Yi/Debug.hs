@@ -23,7 +23,7 @@ dbgHandle = unsafePerformIO $ newIORef Nothing
 {-# NOINLINE dbgHandle #-}
 
 -- | Set the file to which debugging output should be written. Though this
--- is called /init/Debug. 
+-- is called /init/Debug.
 -- Debugging output is not created by default (i.e., if this function
 -- is never called.)
 -- The target file can not be changed, nor debugging disabled.
@@ -34,9 +34,9 @@ initDebug f = do
     Nothing -> do openFile f WriteMode >>= writeIORef dbgHandle . Just
                   logPutStrLn "Logging initialized."
     Just _ -> do logPutStrLn "Attempt to re-initialize the logging system."
-                     
-              
-               
+
+
+
 
 -- | Outputs the given string before returning the second argument.
 trace :: String -> a -> a

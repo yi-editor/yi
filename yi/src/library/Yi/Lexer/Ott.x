@@ -70,7 +70,7 @@ main :-
     .                                              { c defaultStyle }
 }
 
-<nestcomm> {                                                
+<nestcomm> {
   ">>"                                          { m (subtract 1) commentStyle }
   "<<"                                          { m (+1) commentStyle }
   $white+                                       ; -- whitespace

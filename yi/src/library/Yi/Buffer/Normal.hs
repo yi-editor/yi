@@ -11,7 +11,7 @@
 
 module Yi.Buffer.Normal (TextUnit(Character, Line, VLine, Document, GenUnit),
                          outsideUnit,
-                         leftBoundaryUnit,                         
+                         leftBoundaryUnit,
                          unitWord,
                          unitViWord,
                          unitViWORD,
@@ -26,7 +26,7 @@ module Yi.Buffer.Normal (TextUnit(Character, Line, VLine, Document, GenUnit),
                          -- we'd like to move more units to the GenUnit format.
                          moveB, maybeMoveB,
                          transformB, transposeB,
-                         regionOfB, regionOfNonEmptyB, regionOfPartB, 
+                         regionOfB, regionOfNonEmptyB, regionOfPartB,
                          regionOfPartNonEmptyB, regionOfPartNonEmptyAtB,
                          readPrevUnitB, readUnitB,
                          untilB, doUntilB_, untilB_, whileB, doIfCharB,

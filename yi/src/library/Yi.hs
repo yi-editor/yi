@@ -45,7 +45,7 @@ import Yi.Style
 import Yi.Style.Library
 import Yi.Misc
 import Yi.Mode.Haskell (ghciGet, ghciLoadBuffer)
-import Yi.Mode.IReader (ireaderMode, ireadMode) 
+import Yi.Mode.IReader (ireaderMode, ireadMode)
 #ifdef SCION
 import Yi.Scion
 #endif

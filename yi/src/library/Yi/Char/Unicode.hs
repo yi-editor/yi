@@ -4,7 +4,7 @@ import Data.List (isPrefixOf)
 import Control.Applicative
 
 greek :: [(String, String)]
-greek = [(name, unicode) | (_,name,unicode) <- greekData] ++ 
+greek = [(name, unicode) | (_,name,unicode) <- greekData] ++
         [ ([leading,shorthand],unicode)
         | (Just shorthand,_,unicode) <- greekData
         , leading                    <- ['\'', 'g'] ]

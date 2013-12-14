@@ -107,10 +107,10 @@ instance MonadEditor YiM where
       r <- asks yiVar
       cfg <- asks yiConfig
       liftIO $ unsafeWithEditor cfg r f
- 
+
 -----------------------
 -- Keymap basics
- 
+
 -- | @write a@ returns a keymap that just outputs the action @a@.
 write :: (I.MonadInteract m Action ev, YiAction a x, Show x) => a -> m ()
 write x = I.write (makeAction x)
@@ -187,7 +187,7 @@ instance I.PEq Event where
 data KeymapSet = KeymapSet
     { topKeymap :: Keymap         -- ^ Content of the top-level loop.
     , startInsertKeymap :: Keymap -- ^ Startup when entering insert mode
-    , insertKeymap :: Keymap      -- ^ For insertion-only modes 
+    , insertKeymap :: Keymap      -- ^ For insertion-only modes
     , startTopKeymap :: Keymap    -- ^ Startup bit, to execute only once at the beginning.
     }
 

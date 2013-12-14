@@ -11,7 +11,7 @@ import Yi.Editor (Editor(..)
                  ,commonNamePrefix
                  ,findBufferWith, tabsA)
 
--- | A TabDescr describes the properties of a UI tab independent of the particular GUI in use. 
+-- | A TabDescr describes the properties of a UI tab independent of the particular GUI in use.
 data TabDescr = TabDescr
     { tabText :: String
     , tabInFocus :: Bool
@@ -20,7 +20,7 @@ data TabDescr = TabDescr
 type TabBarDescr = PL.PointedList TabDescr
 
 tabBarDescr :: Editor -> TabBarDescr
-tabBarDescr editor = 
+tabBarDescr editor =
     let prefix = commonNamePrefix editor
         hintForTab tab = tabAbbrevTitle $ shortIdentString prefix $ findBufferWith (bufkey $ PL._focus (tab ^. tabWindowsA)) editor
         tabDescr (tab,True) = TabDescr (hintForTab tab) True

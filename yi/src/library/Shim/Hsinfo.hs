@@ -28,7 +28,7 @@ import qualified Data.Map as M
 import qualified GHC
 
 #if __GLASGOW_HASKELL__ >= 610
-import GHC hiding ( load, getSession, getModuleGraph, getSessionDynFlags, 
+import GHC hiding ( load, getSession, getModuleGraph, getSessionDynFlags,
                     findModule, getRdrNamesInScope, compileExpr, exprType,
                     getPrintUnqual, setSessionDynFlags )
 #else
@@ -42,7 +42,7 @@ import Packages ( pkgIdMap, exposed, exposedModules )
 import Id
 import Name
 #if __GLASGOW_HASKELL__ >= 610
-import HscTypes hiding ( getSession ) 
+import HscTypes hiding ( getSession )
 #else
 import HscTypes
 #endif
@@ -52,13 +52,13 @@ import StringBuffer ( stringToStringBuffer, StringBuffer )
 import HeaderInfo ( getOptions )
 import DriverPhases ( Phase(..), startPhase )
 import Yi.Debug (logPutStrLn)
-import Distribution.Text 
+import Distribution.Text
 import Distribution.Simple ( pkgName )
 import Distribution.Compiler ( CompilerFlavor (..) )
 import Distribution.Simple.GHC
 import Distribution.Simple.Configure
 import Distribution.Verbosity
-import Distribution.PackageDescription 
+import Distribution.PackageDescription
   ( buildDepends, PackageDescription, BuildInfo,
     library, executables, hsSourceDirs, extensions, includeDirs, extraLibs,
     libBuildInfo, buildInfo, options, hcOptions, modulePath, allBuildInfo,
@@ -107,7 +107,7 @@ getCabalOpts sourcefile = do
       logInfo $ show (allBuildInfo pkg)
       logInfo $ show bi
       logInfo $ show exe
-              
+
       let pref = buildDir lbi
 
       return $ case exe of
@@ -222,7 +222,7 @@ load sourcefile store source = do
               let cm = do {c <- cm0; return (h, c)}
               storeFileInfo sourcefile cres cm id_data
 
-load' :: FilePath -> Maybe String -> SHM (SuccessFlag,Session) 
+load' :: FilePath -> Maybe String -> SHM (SuccessFlag,Session)
 load' sourcefile source = do
   source' <- addTime source
   ses <- getSessionFor sourcefile
@@ -303,7 +303,7 @@ storeFileInfo sourcefile compile_res cm id_data = do
 getIdData :: Session -> IO IdData
 getIdData ses = do
   things <- GhcCompat.getNamesInScope ses >>= mapM (GhcCompat.lookupName ses)
-  return [(s $ nameOccName $ idName ident, s $ idType ident) 
+  return [(s $ nameOccName $ idName ident, s $ idType ident)
               | Just(AnId ident) <- things]
       where s x = showSDocUnqual $ ppr x
 
@@ -348,7 +348,7 @@ findTypeOfName ses n = do
  where showForUser doc = do
          unqual <- io $ GhcCompat.getPrintUnqual ses
          return $ showSDocForUser unqual doc
- 
+
 evaluate :: Session -> String -> SHM String
 evaluate ses n = do
   maybe_hvalue <- io $ GhcCompat.compileExpr ses ("show (" ++ n ++ ")")

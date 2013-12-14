@@ -1,7 +1,7 @@
 {-# LANGUAGE CPP #-}
 -- Copyright (c) Jean-Philippe Bernardy 2006,2007,2008.
 
-module Yi.Config.Default (defaultConfig, availableFrontends, 
+module Yi.Config.Default (defaultConfig, availableFrontends,
                           defaultEmacsConfig, defaultVimConfig, defaultCuaConfig,
                           toVimStyleConfig, toVim2StyleConfig, toEmacsStyleConfig, toCuaStyleConfig) where
 
@@ -81,8 +81,8 @@ availableFrontends =
 -- Failing to conform to this rule exposes the code to instant deletion.
 
 defaultPublishedActions :: HM.HashMap String Action
-defaultPublishedActions = HM.fromList $ 
-    [ 
+defaultPublishedActions = HM.fromList $
+    [
       ("atBoundaryB"            , box atBoundaryB)
     , ("cabalBuildE"            , box cabalBuildE)
     , ("cabalConfigureE"        , box cabalConfigureE)
@@ -101,7 +101,7 @@ defaultPublishedActions = HM.fromList $
     , ("makeBuild"              , box makeBuild)
     , ("moveB"                  , box moveB)
     , ("numberOfB"              , box numberOfB)
-    , ("pointB"                 , box pointB) 
+    , ("pointB"                 , box pointB)
     , ("regionOfB"              , box regionOfB)
     , ("regionOfPartB"          , box regionOfPartB)
     , ("regionOfPartNonEmptyB"  , box regionOfPartNonEmptyB)
@@ -122,18 +122,18 @@ defaultPublishedActions = HM.fromList $
 #endif
     ]
 
-  where 
+  where
     box :: (Show x, YiAction a x) => a -> Action
     box = makeAction
 
 
 defaultConfig :: Config
-defaultConfig = 
-  publishedActions ^= defaultPublishedActions $ 
+defaultConfig =
+  publishedActions ^= defaultPublishedActions $
   Config { startFrontEnd    = case availableFrontends of
              [] -> error "panic: no frontend compiled in! (configure with -fvty or another frontend.)"
              ((_,f):_) -> f
-         , configUI         =  UIConfig 
+         , configUI         =  UIConfig
            { configFontSize = Nothing
            , configFontName = Nothing
            , configScrollWheelAmount = 4
@@ -191,7 +191,7 @@ defaultVimConfig = toVimStyleConfig defaultConfig
 defaultCuaConfig = toCuaStyleConfig defaultConfig
 
 toEmacsStyleConfig, toVimStyleConfig, toVim2StyleConfig, toCuaStyleConfig :: Config -> Config
-toEmacsStyleConfig cfg 
+toEmacsStyleConfig cfg
     = cfg {
             configUI = (configUI cfg) { configVtyEscDelay = 1000 , configScrollStyle = Just SnapToCenter},
             defaultKm = Emacs.keymap,
@@ -221,7 +221,7 @@ toCuaStyleConfig cfg = cfg {defaultKm = Cua.keymap}
 
 -- | Open an emacs-like scratch buffer if no file is open.
 openScratchBuffer :: YiM ()
-openScratchBuffer = withEditor $ do 
+openScratchBuffer = withEditor $ do
       noFileBufOpen <- null . rights . fmap (getVal identA) . M.elems <$> getA buffersA
       when noFileBufOpen $ do
            discard $ newBufferE (Left "scratch") $ R.fromString $ unlines
@@ -237,7 +237,7 @@ nilKeymap = choice [
              char 'q' ?>>! quitEditor,
              char 'r' ?>>! reload,
              char 'h' ?>>! configHelp
-            ] 
+            ]
             <|| (anyEvent >>! errorEditor "Keymap not defined, 'q' to quit, 'h' for help.")
     where configHelp = newBufferE (Left "configuration help") $ R.fromString $ unlines $
                          ["This instance of Yi is not configured.",

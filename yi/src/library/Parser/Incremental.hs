@@ -8,7 +8,7 @@
 
 -- Optimize profile info (no more Ints)
 
-module Parser.Incremental (Process, 
+module Parser.Incremental (Process,
                            recoverWith, symbol, eof, lookNext, testNext, run,
                            mkProcess, profile, pushSyms, pushEof, evalL, evalR, feedZ,
                            Parser(Look, Enter, Yuck), countWidth, fullLog, LogEntry(..),
@@ -44,7 +44,7 @@ data Parser s a where
     Disj :: Parser s a -> Parser s a -> Parser s a
     Yuck :: Parser s a -> Parser s a
     Enter :: String -> Parser s a -> Parser s a
-    
+
 
 -- | Parser process
 data Steps s a where
@@ -67,7 +67,7 @@ data Profile = PSusp | PFail | PRes Int | !Int :> Profile
 mapSucc :: Profile -> Profile
 mapSucc PSusp = PSusp
 mapSucc PFail = PFail
-mapSucc (PRes x) = PRes (succ x) 
+mapSucc (PRes x) = PRes (succ x)
 mapSucc (x :> xs) = succ x :> mapSucc xs
 
 -- Map lookahead to maximum dislike difference we accept. When looking much further,
@@ -75,7 +75,7 @@ mapSucc (x :> xs) = succ x :> mapSucc xs
 -- its argument increases, so that we can discard things with dislikes using only
 -- finite lookahead.
 dislikeThreshold :: Int -> Int
-dislikeThreshold n 
+dislikeThreshold n
     | n < 5 = 0
     | otherwise = -1 -- we looked 5 tokens ahead, and still have no clue who is the best. Pick at random.
 
@@ -214,8 +214,8 @@ toP (Pure x)   = Val x
 toP Empt = \_fut -> Fail
 toP (Disj a b)  = \fut -> iBest (toP a fut) (toP b fut)
 toP (Bind p a2q) = \fut -> (toQ p) (\(_,a) -> (toP (a2q a)) fut) ()
-toP (Yuck p) = Dislike . toP p 
-toP (Enter err p) = Log err . toP p 
+toP (Yuck p) = Dislike . toP p
+toP (Enter err p) = Log err . toP p
 toP (Shif p) = Sh' . toP p
 
 -- | Intelligent, caching best.
@@ -305,14 +305,14 @@ run :: Process s a -> [s] -> (a, [String])
 run p input = evalR $ pushEof $ pushSyms input $ p
 
 testNext :: (Maybe s -> Bool) -> Parser s ()
-testNext f = Look (if f Nothing then ok else empty) (\s -> 
+testNext f = Look (if f Nothing then ok else empty) (\s ->
    if (f $ Just s) then ok else empty)
     where ok = pure ()
 
 lookNext :: Parser s (Maybe s)
 lookNext = Look (pure Nothing) (\s -> pure (Just s))
 
-        
+
 
 -- | Parse the same thing as the argument, but will be used only as
 -- backup. ie, it will be used only if disjuncted with a failing
@@ -332,7 +332,7 @@ recoverWith = Enter "recoverWith" . Yuck
 -- and the stack produced (output)
 data RPolish input output where
   RPush :: a -> RPolish (a :< rest) output -> RPolish rest output
-  RApp :: RPolish (b :< rest) output -> RPolish ((a -> b) :< a :< rest) output 
+  RApp :: RPolish (b :< rest) output -> RPolish ((a -> b) :< a :< rest) output
   RStop :: RPolish rest rest
 
 -- Evaluate the output of an RP automaton, given an input stack

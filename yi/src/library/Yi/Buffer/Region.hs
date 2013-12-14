@@ -3,7 +3,7 @@
 
 -- | This module defines buffer operation on regions
 
-module Yi.Buffer.Region 
+module Yi.Buffer.Region
   (
    module Yi.Region
   , swapRegionsB
@@ -91,7 +91,7 @@ mapRegionB r f = do
   replaceRegionB r (fmap f text)
 
 -- | Swap the content of two Regions
-swapRegionsB :: Region -> Region -> BufferM ()  
+swapRegionsB :: Region -> Region -> BufferM ()
 swapRegionsB r r'
     | regionStart r > regionStart r' = swapRegionsB r' r
     | otherwise = do w0 <- readRegionB r
@@ -112,7 +112,7 @@ modifyRegionB :: (String -> String)
               -> BufferM ()
 modifyRegionB = replToMod replaceRegionB
 
-    
+
 -- | As 'modifyRegionB', but do a minimal edition instead of deleting the whole
 -- region and inserting it back.
 modifyRegionClever :: (String -> String) -> Region -> BufferM ()

@@ -9,7 +9,7 @@ import Yi.Lexer.Latex
 import Yi.Style
 import Yi.Syntax.Tree
 import Yi.Syntax
-import Yi.Prelude 
+import Yi.Prelude
 import Prelude ()
 import Data.Monoid (Endo(..), mappend, mempty)
 import Data.List (zip)
@@ -56,13 +56,13 @@ instance IsTree Tree where
 
 parse :: P TT (Tree TT)
 parse = pExpr True <* eof
-    where 
+    where
       -- | Create a special character symbol
       newT c = tokFromT (Special c)
-      -- errT = (\next -> case next of 
+      -- errT = (\next -> case next of
       --     Nothing -> newT '!'
       --     Just (Tok {tokPosn = posn}) -> Tok { tokT = Special '!', tokPosn = posn-1, tokSize = 1 -- FIXME: size should be 1 char, not one byte!
-      --                      }) <$> lookNext 
+      --                      }) <$> lookNext
       errT = pure (newT '!')
       -- | parse a special symbol
       sym' p = symbol (p . tokT)
@@ -80,8 +80,8 @@ parse = pExpr True <* eof
       pBlock = sym' isBegin >>= \beg@Tok {tokT = Begin env} -> Paren <$> pure beg <*> pExpr True <*> pleaseSym (End env)
 
       pTree :: Bool -> P TT (Tree TT)
-      pTree outsideMath = 
-          (if outsideMath then pBlock <|> (Paren <$> sym (Special '$') <*> pExpr False <*> pleaseSym (Special '$')) 
+      pTree outsideMath =
+          (if outsideMath then pBlock <|> (Paren <$> sym (Special '$') <*> pExpr False <*> pleaseSym (Special '$'))
                            else empty)
           <|> foldr1 (<|>) [(Paren <$> sym l <*> pExpr outsideMath <*> pleaseSym r) | (l,r) <- parens]
           <|> (Atom <$> sym' isNoise)
@@ -96,11 +96,11 @@ getStrokes point _begin _end t0 = appEndo result []
           getStrokes' (Paren l g r)
               -- we have special treatment for (Begin, End) because these blocks are typically very large.
               -- we don't force the "end" part to prevent parsing the whole file.
-              | isBegin (tokT l) = if (posnOfs $ tokPosn $ l) /= point 
+              | isBegin (tokT l) = if (posnOfs $ tokPosn $ l) /= point
                   then normalPaint
                   else case (tokT l, tokT r) of
                          (Begin b, End e) | b == e -> hintPaint
-                         _ -> errPaint 
+                         _ -> errPaint
               | isErrorTok (tokT r) = errPaint
               -- left paren wasn't matched: paint it in red.
               -- note that testing this on the "Paren" node actually forces the parsing of the
@@ -112,12 +112,12 @@ getStrokes point _begin _end t0 = appEndo result []
                     hintPaint = ts (modStroke hintStyle) l <> getStrokes' g <> tsEnd (modStroke hintStyle) l r
                     errPaint = ts (modStroke errorStyle) l <> getStrokes' g
 
-          tsEnd _ (Tok{tokT = Begin b}) t@(Tok{tokT = End e}) 
+          tsEnd _ (Tok{tokT = Begin b}) t@(Tok{tokT = End e})
               | b /= e = ts (modStroke errorStyle) t
           tsEnd f _ t = ts f t
           getStrokesL :: Expr TT -> Endo [Stroke]
           getStrokesL = foldMap getStrokes'
-          ts f t 
+          ts f t
               | isErrorTok (tokT t) = mempty
               | otherwise = Endo (f (tokenToStroke t) :)
           result = getStrokes' t0

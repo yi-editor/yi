@@ -1,7 +1,7 @@
 {-# LANGUAGE DeriveDataTypeable #-}
 
 module Yi.Mode.Shim where
-    
+
 import Control.Monad.State
 import Data.Char
 import Data.List
@@ -18,8 +18,8 @@ import Yi.Prelude
 import qualified Shim.Hsinfo as Hsinfo
 
 jumpToSrcLoc :: SrcLoc -> YiM ()
-jumpToSrcLoc locn = 
-    if isGoodSrcLoc locn 
+jumpToSrcLoc locn =
+    if isGoodSrcLoc locn
        then jumpToE (unpackFS $ srcLocFile locn) (srcLocLine locn) (srcLocCol locn)
        else msgEditor $ show (ppr locn defaultUserStyle)
 
@@ -75,7 +75,7 @@ minorMode :: Mode syntax -> Mode syntax
 minorMode m = m
    {
     modeName = modeName m ++ "+shim",
-    modeKeymap = modeKeymap m . ((<||) 
+    modeKeymap = modeKeymap m . ((<||)
       (((ctrl $ char 'c') ?>> choice
         [ctrl (char 't') ?>>! typeAtPos,
          char '!' ?>> char 't' ?>>! annotType,

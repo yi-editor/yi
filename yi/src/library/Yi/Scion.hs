@@ -78,7 +78,7 @@ thingsAtPoint pt fn = do
       let bnds = typecheckedSource mod
       let tyclds = thingsAroundPoint pt $ concat $ hs_tyclds grp
       let ValBindsOut valds _ = hs_valds grp
-  
+
       return $ showData TypeChecker 2 bnds)
 
 handleError :: SourceError -> ScionM [String]
@@ -102,7 +102,7 @@ thingAtPoint (line,col) fname tcm = do
           case typeOf (x,xs) of
             Just t ->
                 return $ O.showSDocForUser unqual
-                  (prettyResult x O.<+> O.dcolon O.<+> 
+                  (prettyResult x O.<+> O.dcolon O.<+>
                     pprTypeForUser True t)
             _ -> return $ O.showSDocDebug (O.ppr x O.$$ O.ppr xs )
 
@@ -110,7 +110,7 @@ runScionWithLocation :: Show a => ((Int, Int) -> String -> ScionM a) -> YiM a
 runScionWithLocation f = do
   (pt, fn) <- withEditor $ withBuffer0 $ do
           ln  <- curLn
-          col <- curCol 
+          col <- curCol
           Just fn  <- gets file
           return ((ln, col), fn)
   io $ runScion $ do

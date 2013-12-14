@@ -116,11 +116,11 @@ ytv_performDragOperation dragInfo slf = do
   pb <- dragInfo # draggingPasteboard
 
   ty <- slf # ytv_acceptableDragTypes >>= flip availableTypeFromArray pb
-  
+
   when (ty /= nil) $ do
     str <-
       if ty == nsFilenamesPboardType
-        then unlines' <$> 
+        then unlines' <$>
           (pb # propertyListForType ty >>= (haskellList.castObject) >>= mapM (haskellString.castObject))
         else pb # stringForType ty >>= haskellString
 
@@ -142,7 +142,7 @@ ytv_performDragOperation dragInfo slf = do
       if regionStart rSel < fromIntegral pIns
         then insertN str >> deleteRegionB rSel
         else deleteRegionB rSel >> insertN str
-  
+
   return (ty /= nil)
 
 -- | Compute the character index of the specified mouse position
@@ -159,7 +159,7 @@ charAtMouse p slf = do
   index <- layout # glyphIndexForPointInTextContainerFractionOfDistanceThroughGlyph mouse container pf
   fract <- peek pf
   free pf
-  return $ if (fract > 0.5) then index + 1 else index  
+  return $ if (fract > 0.5) then index + 1 else index
 
 -- | Compute the currently visible text range in the view
 visibleRange :: YiTextView () -> IO NSRange
@@ -177,7 +177,7 @@ $(exportClass "YiScrollView" "ysv_" [
     InstanceVariable "leftScroller" [t| Bool |] [| False |]
   , InstanceMethod 'tile -- '
   ])
-  
+
 ysv_tile :: YiScrollView () -> IO ()
 ysv_tile slf = do
   super slf # tile

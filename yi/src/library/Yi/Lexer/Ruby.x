@@ -1,4 +1,4 @@
--- -*- haskell -*- 
+-- -*- haskell -*-
 --
 --  A Ruby lexer
 --
@@ -70,7 +70,7 @@ $longintegersuffix = [lL]
   | require
   | require_relative
 
-@reservedid = 
+@reservedid =
     @builtinVars
   | abort
   | and
@@ -132,7 +132,7 @@ $longintegersuffix = [lL]
 
 @assignop = @infarithop? "="
 
-@reservedop = 
+@reservedop =
   @compop | @prefarithop | @assignop
 
 @varid  = $alpha $idchar*

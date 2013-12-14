@@ -18,7 +18,7 @@ import {-# source #-} Yi.UI.Common
 import qualified Yi.Interact as I
 
 data UIConfig = UIConfig {
-   configVtyEscDelay :: Int,       
+   configVtyEscDelay :: Int,
    configFontName :: Maybe String,  -- ^ Font name, for the UI that support it.
    configFontSize :: Maybe Int,     -- ^ Font size, for the UI that support it.
    configScrollStyle ::Maybe ScrollStyle,
@@ -64,7 +64,7 @@ data Config = Config {startFrontEnd :: UIBoot,
                       configRegionStyle :: RegionStyle,
                       -- ^ Set to 'Exclusive' for an emacs-like behaviour.
                       configKillringAccumulate :: Bool,
-                      -- ^ Set to 'True' for an emacs-like behaviour, where 
+                      -- ^ Set to 'True' for an emacs-like behaviour, where
                       -- all deleted text is accumulated in a killring.
                       configCheckExternalChangesObsessively :: Bool,
                       bufferUpdateHandler :: [([Update] -> BufferM ())],

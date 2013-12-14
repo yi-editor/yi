@@ -8,7 +8,7 @@ module Yi.KillRing (Killring
                    ,krPut
                    ,krSet, krGet
                    ,krEmpty
-                   ) 
+                   )
     where
 
 import Data.Binary
@@ -44,7 +44,7 @@ krEndCmd kr@Killring {krKilled = killed} = kr {krKilled = False, krAccumulate = 
 krPut :: Direction -> String -> Killring -> Killring
 krPut dir s kr@Killring {krContents = r@(x:xs), krAccumulate=acc}
     = kr {krKilled = True,
-          krContents = if acc then (case dir of 
+          krContents = if acc then (case dir of
                                       Forward  -> x++s
                                       Backward -> s++x):xs
                               else push s r}
@@ -53,7 +53,7 @@ krPut _ _ _ = error "killring invariant violated"
 -- | Push a string in the killring.
 push :: String -> [String] -> [String]
 push s [] = [s]
-push s r@(h:t) = s : if length h <= 1 then t else take maxDepth r 
+push s r@(h:t) = s : if length h <= 1 then t else take maxDepth r
 -- Don't save very small cutted text portions.
 
 -- | Set the top of the killring. Never accumulate the previous content.

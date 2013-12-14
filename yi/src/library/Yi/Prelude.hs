@@ -1,6 +1,6 @@
 {-# LANGUAGE MultiParamTypeClasses, FunctionalDependencies #-}
 
-module Yi.Prelude 
+module Yi.Prelude
     (
 (<>),
 (++), -- consider scrapping this and replacing it by the above
@@ -54,8 +54,8 @@ mapAlter',
 mapFromFoldable,
 module Control.Applicative,
 module Control.Category,
-module Data.Accessor, 
-module Data.Accessor.Monad.MTL.State, putA, getA, modA, 
+module Data.Accessor,
+module Data.Accessor.Monad.MTL.State, putA, getA, modA,
 module Data.Bool,
 module Data.Foldable,
 module Data.Function,
@@ -99,7 +99,7 @@ import Data.Rope (Rope)
 import Control.Category
 import Control.Monad.Reader
 import Control.Applicative hiding((<$))
-import Data.Traversable 
+import Data.Traversable
 import Data.Typeable
 import Data.Monoid (Monoid, mappend)
 import qualified Data.Set as Set
@@ -110,7 +110,7 @@ import Data.Accessor ((<.), accessor, getVal, setVal, Accessor,(^.),(^:),(^=))
 import qualified Data.Accessor.Monad.MTL.State as Accessor.MTL
 import Data.Accessor.Monad.MTL.State ((%:), (%=))
 import qualified Data.List.PointedList as PL
-    
+
 type Endom a = a -> a
 
 
@@ -164,7 +164,7 @@ mapAdjust' f = Map.alter f' where
 -- | As Map.alter, but the newly inserted element is forced with the map.
 mapAlter' :: Ord k => (Maybe a -> Maybe a) -> k -> Map.Map k a -> Map.Map k a
 mapAlter' f = Map.alter f' where
-    f' arg = case f arg of 
+    f' arg = case f arg of
         Nothing -> Nothing
         Just x -> x `seq` Just x
     -- This works because Map is structure-strict, and alter needs to force f' to compute
@@ -257,7 +257,7 @@ modA = Accessor.MTL.modify
 -------------------- Initializable typeclass
 -- | The default value. If a function tries to get a copy of the state, but the state
 --   hasn't yet been created, 'initial' will be called to supply *some* value. The value
---   of initial will probably be something like Nothing,  \[\], \"\", or 'Data.Sequence.empty' - compare 
+--   of initial will probably be something like Nothing,  \[\], \"\", or 'Data.Sequence.empty' - compare
 --   the 'mempty' of "Data.Monoid".
 class Initializable a where
     initial :: a

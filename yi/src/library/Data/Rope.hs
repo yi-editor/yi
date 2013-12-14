@@ -9,54 +9,54 @@
 -- are actually in number of characters.
 
 -- This is currently based on utf8-string, but a couple of other packages might be
--- better: text, compact-string. 
+-- better: text, compact-string.
 
 -- At the moment none of them has a lazy
 -- implementation, which forces us to always export plain Strings.
 -- (Utf8-string does not have a proper newtype)
- 
+
 module Data.Rope (
    Rope,
- 
+
    -- * Conversions to Rope
    fromString,
- 
+
    -- * Conversions from Rope
    toString, toReverseString,
- 
+
    -- * List-like functions
    null, empty, take, drop,  length, reverse, countNewLines,
 
    split, splitAt, splitAtLine,
 
    append, concat,
- 
+
    -- * IO
    readFile, writeFile,
 
    -- * Low level functions
    splitAtChunkBefore
   ) where
- 
+
 import Prelude hiding (null, head, tail, length, take, drop, splitAt, head, tail, foldl, reverse, readFile, writeFile, concat)
 import qualified Data.List as L
- 
+
 import qualified Data.ByteString.UTF8 as B
 import qualified Data.ByteString as B (append, concat)
-import qualified Data.ByteString as Byte 
+import qualified Data.ByteString as Byte
 import Data.ByteString (ByteString)
 import qualified Data.ByteString.Lazy as LB (toChunks, fromChunks, null, readFile, split)
-import qualified Data.ByteString.Lazy.UTF8 as LB 
- 
+import qualified Data.ByteString.Lazy.UTF8 as LB
+
 import qualified Data.FingerTree as T
 import Data.FingerTree hiding (null, empty, reverse, split)
- 
+
 import Data.Binary
 import Data.Char (ord)
 import Data.Monoid
 
 import System.IO.Cautious (writeFileL)
- 
+
 defaultChunkSize :: Int
 defaultChunkSize = 128 -- in chars! (chunkSize requires this to be <= 256)
 
@@ -73,18 +73,18 @@ data Size = Indices {charIndex :: {-# UNPACK #-} !Int, lineIndex :: {-# UNPACK #
 instance Monoid Size where
     mempty = Indices 0 0
     mappend (Indices c1 l1) (Indices c2 l2) = Indices (c1+c2) (l1+l2)
- 
+
 newtype Rope = Rope { fromRope :: FingerTree Size Chunk }
    deriving (Eq, Show)
- 
+
 (-|) :: Chunk -> FingerTree Size Chunk -> FingerTree Size Chunk
 b -| t | chunkSize b == 0 = t
        | otherwise        = b <| t
- 
+
 (|-) :: FingerTree Size Chunk -> Chunk -> FingerTree Size Chunk
 t |- b | chunkSize b == 0 = t
        | otherwise        = t |> b
- 
+
 -- Newlines are preserved by UTF8 encoding and decoding
 newline :: Word8
 newline = fromIntegral (ord '\n')
@@ -92,7 +92,7 @@ newline = fromIntegral (ord '\n')
 instance Measured Size Chunk where
    measure (Chunk l s) = Indices (fromIntegral l)  -- note that this is the length in characters, not bytes.
                                  (Byte.count newline s)
- 
+
 -- | The 'Foldable' instance of 'FingerTree' only defines 'foldMap', so the 'foldr' needed for 'toList' is inefficient,
 -- and can cause stack overflows. So, we roll our own (somewhat inefficient) version of 'toList' to avoid this.
 toList :: Measured v a => FingerTree v a -> [a]
@@ -105,13 +105,13 @@ toLazyByteString = LB.fromChunks . fmap fromChunk . toList . fromRope
 
 reverse :: Rope -> Rope
 reverse = Rope . fmap' (mkChunk . B.fromString . L.reverse . B.toString . fromChunk) . T.reverse . fromRope
- 
+
 toReverseString :: Rope -> String
 toReverseString = L.concat . map (L.reverse . B.toString . fromChunk) . toList . T.reverse . fromRope
-  
+
 toString :: Rope -> String
 toString = LB.toString . toLazyByteString
- 
+
 fromLazyByteString :: LB.ByteString -> Rope
 fromLazyByteString = Rope . toTree T.empty
    where
@@ -120,21 +120,21 @@ fromLazyByteString = Rope . toTree T.empty
                                     chunk = mkChunk $ B.concat $ LB.toChunks $ h
                                 in acc `seq` chunk `seq` toTree (acc |> chunk) t
 
- 
+
 fromString :: String -> Rope
 fromString = Rope . toTree T.empty
    where
      toTree acc [] = acc
-     toTree acc b  = let (h,t) = L.splitAt defaultChunkSize b 
+     toTree acc b  = let (h,t) = L.splitAt defaultChunkSize b
                          chunk = mkChunk $ B.fromString h
                      in acc `seq` chunk `seq` toTree (acc |> chunk) t
- 
+
 null :: Rope -> Bool
 null (Rope a) = T.null a
- 
+
 empty :: Rope
 empty = Rope T.empty
- 
+
 -- | Get the length of the string. (This information cached, so O(1) amortized runtime.)
 length :: Rope -> Int
 length = charIndex . measure . fromRope
@@ -156,11 +156,11 @@ append (Rope a) (Rope b) = Rope $
 
 concat :: [Rope] -> Rope
 concat = L.foldl1' append
- 
+
 take, drop :: Int -> Rope -> Rope
 take n = fst . splitAt n
 drop n = snd . splitAt n
- 
+
 -- | Split the string at the specified position.
 splitAt :: Int -> Rope -> (Rope, Rope)
 splitAt n (Rope t) =
@@ -188,7 +188,7 @@ splitAtLine' :: Int -> Rope -> (Rope, Rope)
 splitAtLine' n (Rope t) =
    case T.viewl c of
      ch@(Chunk _ x) :< r ->
-       let (lx, rx) = cutExcess excess x 
+       let (lx, rx) = cutExcess excess x
            excess = lineIndex (measure l) + lineIndex (measure ch) - n - 1
        in (Rope $ l |- mkChunk lx, Rope $ mkChunk rx -| r)
      _ -> (Rope l, Rope c)
@@ -204,7 +204,7 @@ cutExcess i s = let idx = gt i $ L.reverse $ Byte.elemIndices newline s
     where gt _ []     = Byte.length s
           gt 0 (x:_ ) = x
           gt n (_:xs) = gt (n-1) xs
-          
+
 
 instance Binary Rope where
      put = put . toString

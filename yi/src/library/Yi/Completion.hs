@@ -1,7 +1,7 @@
 -- Copyright (C) 2008 JP Bernardy
 
 
-module Yi.Completion 
+module Yi.Completion
   ( completeInList, completeInList'
   , completeInListCustomShow
   , commonPrefix
@@ -23,7 +23,7 @@ import Data.Char (toLower)
 -- General completion
 
 mkIsPrefixOf :: Bool -> String -> String -> Bool
-mkIsPrefixOf caseSensitive = if caseSensitive 
+mkIsPrefixOf caseSensitive = if caseSensitive
                              then isPrefixOf
                              else isPrefixOfIC
   where isPrefixOfIC x y = map toLower x `isPrefixOf` map toLower y
@@ -50,7 +50,7 @@ containsMatch' caseSensitive pattern str = fmap (const str) $ find (pattern `tst
   where tstPrefix = mkIsPrefixOf caseSensitive
 
 containsMatch :: String -> String -> Maybe String
-containsMatch = containsMatch' True 
+containsMatch = containsMatch' True
 
 containsMatchCaseInsensitive :: String -> String -> Maybe String
 containsMatchCaseInsensitive = containsMatch' False

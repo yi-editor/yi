@@ -36,7 +36,7 @@ projectTreeNew post store = do
   renderer1 <- MView.cellRendererPixbufNew
   renderer2 <- MView.cellRendererTextNew
 
-  MView.cellLayoutPackStart col1 renderer1 True 
+  MView.cellLayoutPackStart col1 renderer1 True
   MView.cellLayoutPackStart col2 renderer2 True
 
   icoProject          <- loadIcon "project.png"
@@ -73,7 +73,7 @@ projectTreeNew post store = do
 
   MView.treeViewAppendColumn projectTree col1
   MView.treeViewAppendColumn projectTree col2
-  
+
   onRowActivated projectTree $ \path _col -> do
     item <- MView.treeStoreGetValue store path
     case item of

@@ -6,7 +6,7 @@
 
 -- | This module defines a common interface for syntax-awareness.
 
-module Yi.Syntax 
+module Yi.Syntax
   ( Highlighter  ( .. )
   , Cache
   , Scanner (..)
@@ -14,7 +14,7 @@ module Yi.Syntax
   , noHighlighter, mkHighlighter, skipScanner, emptyFileScan
   , Point(..), Size(..), Length, Stroke
   , Span(..)
-  ) 
+  )
 where
 
 import qualified  Data.Map as M
@@ -43,7 +43,7 @@ instance Functor Span where fmap = fmapDefault
 
 -- FIXME: this is actually completetly abstrcted from sytnax HL, so the names are silly.
 
-data Highlighter cache syntax = 
+data Highlighter cache syntax =
   SynHL { hlStartState :: cache -- ^ The start state for the highlighter.
         , hlRun :: Scanner Point Char -> Point -> cache -> cache
         , hlGetTree :: cache -> WindowRef -> syntax
@@ -51,15 +51,15 @@ data Highlighter cache syntax =
         -- ^ focus at a given point, and return the coresponding node. (hint -- the root can always be returned, at the cost of performance.)
         }
 
-data ExtHL syntax = forall cache. ExtHL (Highlighter cache syntax) 
+data ExtHL syntax = forall cache. ExtHL (Highlighter cache syntax)
 
 data Scanner st a = Scanner {
                              scanInit :: st, -- ^ Initial state
-                             scanLooked :: st -> Point, 
+                             scanLooked :: st -> Point,
                              -- ^ How far did the scanner look to produce this intermediate state?
                              -- The state can be reused as long as nothing changes before that point.
                              scanEmpty :: a,      --  hack :/
-                             scanRun  :: st -> [(st,a)]  
+                             scanRun  :: st -> [(st,a)]
                              -- ^ Running function returns a list of results and intermediate states.
                              -- Note: the state is the state /before/ producing the result in the second component.
                             }
@@ -82,11 +82,11 @@ emptyFileScan = Scanner { scanInit = 0, scanRun = const [], scanLooked = id, sca
 -- | This takes as input a scanner that returns the "full" result at
 -- each element in the list; perhaps in a different form for the
 -- purpose of incremental-lazy eval.
-mkHighlighter :: forall state result. Show state => 
-                 (Scanner Point Char -> Scanner state result) -> 
+mkHighlighter :: forall state result. Show state =>
+                 (Scanner Point Char -> Scanner state result) ->
                      Highlighter (Cache state result) result
 mkHighlighter scanner =
-  Yi.Syntax.SynHL 
+  Yi.Syntax.SynHL
         { hlStartState   = Cache [] emptyResult
         , hlRun          = updateCache
         , hlGetTree      = \(Cache _ result) _windowRef -> result
@@ -102,14 +102,14 @@ mkHighlighter scanner =
                   reused = takeWhile ((< dirtyOffset) . scanLooked (scanner newFileScan)) cachedStates
                   resumeState :: state
                   resumeState = if null reused then startState else last reused
-                  
+
                   newCachedStates = reused ++ fmap fst recomputed
                   recomputed = scanRun newScan resumeState
                   newResult :: result
                   newResult = if null recomputed then oldResult else snd $ head $ recomputed
 
 noHighlighter :: Highlighter () syntax
-noHighlighter = SynHL {hlStartState = (), 
+noHighlighter = SynHL {hlStartState = (),
                        hlRun = \_ _ a -> a,
                        hlFocus = \_ c -> c,
                        hlGetTree = \ _ -> error "noHighlighter: tried to use syntax"

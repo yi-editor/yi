@@ -1,4 +1,4 @@
--- -*- haskell -*- 
+-- -*- haskell -*-
 --
 --  Simple syntax highlighting for srmc source.
 --  Also to be used for pepa source files since pepa
@@ -98,7 +98,7 @@ haskell :-
  @reservedop                                    { c operatorStyle }
  @varsym                                        { c operatorStyle }
 
- @decimal 
+ @decimal
   | @double
   | 0[oO] @octal
   | 0[xX] @hexadecimal                          { c numberStyle }
@@ -115,7 +115,7 @@ haskell :-
 type HlState = Int
 type Token = StyleName
 
-{- 
+{-
   See Haskell.x which uses this to say whether we are in a
   comment (perhaps a nested comment) or not.
 -}

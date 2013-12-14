@@ -5,7 +5,7 @@
 module Yi.Keymap.Emacs.KillRing where
 
 import Prelude ()
-import Yi.Prelude 
+import Yi.Prelude
 import Yi.Keymap
 import Yi.Buffer
 import Yi.Editor
@@ -53,7 +53,7 @@ killRingSaveE = do (r, text) <- withBuffer0 $ do
 
 -- TODO: Handle argument, verify last command was a yank
 yankPopE :: EditorM ()
-yankPopE = do 
+yankPopE = do
   kr <- getA killringA
   withBuffer0 (deleteRegionB =<< getRawestSelectRegionB)
   putA killringA $ let ring = krContents kr

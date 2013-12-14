@@ -59,11 +59,11 @@ module Yi.Buffer.Undo (
 
 import Data.Binary
 import Data.DeriveTH
-import Yi.Buffer.Implementation            
+import Yi.Buffer.Implementation
 
 data Change = SavedFilePoint
             | InteractivePoint
-            | AtomicChange !Update 
+            | AtomicChange !Update
 -- !!! It's very important that the updates are forced, otherwise
 -- !!! we'll keep a full copy of the buffer state for each update
 -- !!! (thunk) put in the URList.
@@ -122,7 +122,7 @@ remIP xs = xs
 -- | Insert an initial interactive point, if there is none
 addIP xs@(InteractivePoint:_) = xs
 addIP xs = InteractivePoint:xs
-    
+
 -- | Repeatedly undo actions, storing away the inverse operations in the
 --   redo list.
 undoUntilInteractive :: Mark -> [Update] -> URList -> BufferImpl syntax -> (BufferImpl syntax, (URList, [Update]))
@@ -132,7 +132,7 @@ undoUntilInteractive pointMark xs ur@(URList cs rs) b = case cs of
       (InteractivePoint:_) -> (b, (ur, xs))
       (SavedFilePoint:cs') ->
         undoUntilInteractive pointMark xs (URList cs' (SavedFilePoint:rs)) b
-      (AtomicChange u:cs') -> 
+      (AtomicChange u:cs') ->
         let ur' = (URList cs' (AtomicChange (reverseUpdateI u):rs))
             b' = (applyUpdateWithMoveI u b)
             (b'', (ur'', xs'')) = undoUntilInteractive pointMark xs ur' b'
@@ -150,7 +150,7 @@ undoUntilInteractive pointMark xs ur@(URList cs rs) b = case cs of
 --   operate in a redo fashion instead of undo.
 asRedo :: (URList -> t -> (t, (URList, [Update]))) -> URList -> t -> (t, (URList, [Update]))
 asRedo f ur x = let (y,(ur',rs)) = f (swapUndoRedo ur) x in (y,(swapUndoRedo ur',rs))
-  where 
+  where
     swapUndoRedo :: URList -> URList
     swapUndoRedo (URList us rs) = URList rs us
 

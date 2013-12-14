@@ -26,10 +26,10 @@ realMain configs = do
     main configs editor
 
 -- | If the custom yi compile produces errors or warnings then the messages are presented as a
--- separate activity in the editor. 
+-- separate activity in the editor.
 --
 -- The use of a separate activity prevents any other initial actions from immediately masking the
--- output. 
+-- output.
 showErrorsInConf :: (Config, ConsoleConfig) -> String -> (Config, ConsoleConfig)
 showErrorsInConf (conf, confcon) errs
     = (conf { initialActions = (makeAction $ splitE >> newBufferE (Left "*errors*") (R.fromString errs)) : initialActions conf }
@@ -41,14 +41,14 @@ yi = yiDriver
 -- | Used by both the yi executable and the custom yi that is built from the user's configuration.
 -- The yi executable uses a default config.
 yiDriver cfg = do
-    args <- Dyre.withDyreOptions Dyre.defaultParams getArgs 
+    args <- Dyre.withDyreOptions Dyre.defaultParams getArgs
     modules <- Yi.Paths.getConfigModules
     -- we do the arg processing before dyre, so we can extract '--ghc-option=' and '--help' and so on.
     case do_args cfg args of
         Left (Err err code) ->
           do putStrLn err
              exitWith code
-        Right (finalCfg, cfgcon) -> 
+        Right (finalCfg, cfgcon) ->
             let yiParams = Dyre.defaultParams
                             { Dyre.projectName  = "yi"
                             , Dyre.realMain     = realMain

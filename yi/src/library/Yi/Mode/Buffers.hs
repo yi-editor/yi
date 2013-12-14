@@ -10,7 +10,7 @@ import Data.List ( intercalate )
 import System.FilePath ( takeFileName )
 
 
-listBuffers :: YiM  () 
+listBuffers :: YiM  ()
 listBuffers = do
      withEditor $  do
        bs <- getBufferStack
@@ -27,11 +27,11 @@ switch =    do
 
 
 bufferKeymap :: Keymap -> Keymap
-bufferKeymap = do 
+bufferKeymap = do
     (choice [
              char 'p'                         ?>>! lineUp,
              oneOf [char 'n', char ' ']       >>! lineDown,
              oneOf [ spec KEnter, char 'f' ]  >>! (switch >> ( withBuffer $ putA readOnlyA False)),
-             char 'v'                        ?>>! switch >> ( withBuffer $ putA readOnlyA True)  ] 
+             char 'v'                        ?>>! switch >> ( withBuffer $ putA readOnlyA True)  ]
      <||)
 

@@ -13,7 +13,7 @@ module Data.ByteRope (
   -- * Conversions from ByteRope
   toString, toReverseString,
   toLazyByteString, toReverseLazyByteString,
-  toByteString, 
+  toByteString,
 
   -- List-like functions
   null, empty, take, drop, append, splitAt, count, length,

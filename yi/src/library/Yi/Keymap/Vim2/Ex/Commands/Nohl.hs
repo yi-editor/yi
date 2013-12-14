@@ -1,5 +1,5 @@
 module Yi.Keymap.Vim2.Ex.Commands.Nohl
-    ( parse 
+    ( parse
     ) where
 
 import Prelude ()

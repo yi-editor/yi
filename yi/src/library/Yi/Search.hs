@@ -126,7 +126,7 @@ continueSearch (c_re, dir) = do
   mp <- savingPointB $ do
     moveB Character dir  -- start immed. after cursor
     rs <- regexB dir c_re
-    moveB Document (reverseDir dir) -- wrap around 
+    moveB Document (reverseDir dir) -- wrap around
     ls <- regexB dir c_re
     return $ listToMaybe $ fmap Right rs ++ fmap Left ls
   maybe (return ()) (moveTo . regionStart . either id id) mp
@@ -196,7 +196,7 @@ searchAndRepUnit re str g unit = searchAndRepRegion re str g =<< (withBuffer0 $ 
 -- Incremental search
 
 
-newtype Isearch = Isearch [(String, Region, Direction)] 
+newtype Isearch = Isearch [(String, Region, Direction)]
   deriving (Typeable, Binary)
 -- This contains: (string currently searched, position where we
 -- searched it, direction, overlay for highlighting searched text)
@@ -213,7 +213,7 @@ isearchInitE :: Direction -> EditorM ()
 isearchInitE dir = do
   historyStartGen iSearch
   p <- withBuffer0 pointB
-  resetRegexE 
+  resetRegexE
   setDynamic (Isearch [("",mkRegion p p,dir)])
   printMsg "I-search: "
 
@@ -269,7 +269,7 @@ isearchFunE fun = do
                [] -> do withBuffer0 $ moveTo prevPoint -- go back to where we were
                         setDynamic $ Isearch ((current,p0,direction):s)
                         printMsg $ "Failing I-search: " ++ current
-                 
+
 isearchDelE :: EditorM ()
 isearchDelE = do
   Isearch s <- getDynamic
@@ -300,7 +300,7 @@ isearchNext0 newDir = do
   if null current
     then isearchHistory 1
     else isearchNext newDir
-     
+
 
 isearchNext :: Direction -> EditorM ()
 isearchNext direction = do
@@ -309,16 +309,16 @@ isearchNext direction = do
   mp <- withBuffer0 $ do
     regexB direction (makeISearch current)
   case mp of
-    [] -> do 
-                  endPoint <- withBuffer0 $ do 
+    [] -> do
+                  endPoint <- withBuffer0 $ do
                           moveTo (regionEnd p0) -- revert to offset we were before.
-                          sizeB   
+                          sizeB
                   printMsg $ "isearch: end of document reached"
                   let wrappedOfs = case direction of
                                      Forward -> mkRegion 0 0
                                      Backward -> mkRegion endPoint endPoint
                   setDynamic $ Isearch ((current,wrappedOfs,direction):rest) -- prepare to wrap around.
-    (p:_) -> do   
+    (p:_) -> do
                   withBuffer0 $ do
                     moveTo (regionEnd p)
                   printMsg $ "I-search: " ++ current
@@ -350,8 +350,8 @@ isearchEnd accept = do
   let (_,p0,_) = last s
   historyFinishGen iSearch (return lastSearched)
   putA searchDirectionA dir
-  if accept 
-     then do withBuffer0 $ setSelectionMarkPointB $ regionStart p0 
+  if accept
+     then do withBuffer0 $ setSelectionMarkPointB $ regionStart p0
              printMsg "Quit"
      else do resetRegexE
              withBuffer0 $ moveTo $ regionStart p0
@@ -374,7 +374,7 @@ qrNext win b what = do
 -- | Replace all the remaining occurrences.
 qrReplaceAll :: Window -> BufferRef -> SearchExp -> String -> EditorM ()
 qrReplaceAll win b what replacement = do
-     n <- withGivenBufferAndWindow0 win b $ do 
+     n <- withGivenBufferAndWindow0 win b $ do
          exchangePointAndMarkB -- so we replace the current occurence too
          searchAndRepRegion0 what replacement True =<< regionOfPartB Document Forward
      printMsg $ "Replaced " ++ show n  ++ " occurrences"
@@ -385,7 +385,7 @@ qrFinish :: EditorM ()
 qrFinish = do
   putA currentRegexA Nothing
   closeBufferAndWindowE  -- the minibuffer.
-  
+
 {-
   We replace the currently selected match and then move to the next
   match.
@@ -397,10 +397,10 @@ qrReplaceOne win b reg replacement =
 
 {- This may actually be a bit more general it replaces the current
    selection with the given replacement string in the given
-   window and buffer. 
+   window and buffer.
 -}
 qrReplaceCurrent :: Window -> BufferRef -> String -> EditorM ()
-qrReplaceCurrent win b replacement = 
+qrReplaceCurrent win b replacement =
   withGivenBufferAndWindow0 win b $ do
    flip replaceRegionB replacement =<< getRawestSelectRegionB
 

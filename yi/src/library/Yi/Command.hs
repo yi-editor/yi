@@ -17,7 +17,7 @@ import Yi.Core
 import Yi.MiniBuffer
 import qualified Yi.Mode.Compilation as Compilation
 import Yi.Process
-import Yi.UI.Common 
+import Yi.UI.Common
 import qualified Yi.Mode.Interactive as Interactive
 import qualified Data.Rope as R
 

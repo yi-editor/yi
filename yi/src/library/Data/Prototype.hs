@@ -29,14 +29,14 @@ extractValue (Proto o) = fix o
 --
 -- Example:
 --
--- > o2 = o1 `override` \super self -> super 
+-- > o2 = o1 `override` \super self -> super
 -- >    {
 -- >    f1 = f1 super + 10,
 -- >    f3 = f3 super + 1
 -- >    }
 
 override :: Proto a -> (a -> a -> a) -> Proto a
-override (Proto base) extension = Proto (\self -> let super = base self 
+override (Proto base) extension = Proto (\self -> let super = base self
                                                   in extension super self)
 
 -- | Field access

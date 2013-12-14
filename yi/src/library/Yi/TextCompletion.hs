@@ -29,7 +29,7 @@ import Yi.Core
 -- we're trying to complete.
 
 
-newtype Completion = Completion 
+newtype Completion = Completion
 --       Point    -- beginning of the thing we try to complete
       [String] -- the list of all possible things we can complete to.
                -- (this seems very inefficient; but we use lazyness to our advantage)
@@ -46,7 +46,7 @@ resetComplete :: EditorM ()
 resetComplete = setDynamic (Completion [])
 
 -- | Try to complete the current word with occurences found elsewhere in the
--- editor. Further calls try other options. 
+-- editor. Further calls try other options.
 mkWordComplete :: YiM String -> (String -> YiM [String]) -> ([String] -> YiM () ) -> (String -> String -> Bool) -> YiM String
 mkWordComplete extractFn sourceFn msgFn predMatch = do
   Completion complList <- withEditor getDynamic
@@ -60,23 +60,23 @@ mkWordComplete extractFn sourceFn msgFn predMatch = do
       ws <- sourceFn w
       withEditor $ setDynamic (Completion $ (nubSet $ filter (matches w) ws) ++ [w])
       -- We put 'w' back at the end so we go back to it after seeing
-      -- all possibilities. 
+      -- all possibilities.
       mkWordComplete extractFn sourceFn msgFn predMatch -- to pick the 1st possibility.
 
   where matches x y = x `predMatch` y && x/=y
 
 wordCompleteString' :: Bool -> YiM String
-wordCompleteString' caseSensitive = mkWordComplete 
-                                      (withEditor $ withBuffer0 $ do readRegionB =<< regionOfPartB unitWord Backward) 
-                                      (\_ -> withEditor wordsForCompletion) 
-                                      (\_ -> return ()) 
+wordCompleteString' caseSensitive = mkWordComplete
+                                      (withEditor $ withBuffer0 $ do readRegionB =<< regionOfPartB unitWord Backward)
+                                      (\_ -> withEditor wordsForCompletion)
+                                      (\_ -> return ())
                                       (mkIsPrefixOf caseSensitive)
 
 wordCompleteString :: YiM String
 wordCompleteString = wordCompleteString' True
 
 wordComplete' :: Bool -> YiM ()
-wordComplete' caseSensitive = do 
+wordComplete' caseSensitive = do
   x <- wordCompleteString' caseSensitive
   withEditor $ withBuffer0 $ flip replaceRegionB x =<< regionOfPartB unitWord Backward
 
@@ -153,7 +153,7 @@ words' = filter (not . isNothing . charClass . head) . groupBy ((==) `on` charCl
 
 charClass :: Char -> Maybe Int
 charClass c = findIndex (generalCategory c `elem`)
-                [[UppercaseLetter, LowercaseLetter, TitlecaseLetter, ModifierLetter, OtherLetter, 
+                [[UppercaseLetter, LowercaseLetter, TitlecaseLetter, ModifierLetter, OtherLetter,
                   ConnectorPunctuation,
                   NonSpacingMark, SpacingCombiningMark, EnclosingMark, DecimalNumber, LetterNumber, OtherNumber],
                  [MathSymbol, CurrencySymbol, ModifierSymbol, OtherSymbol]

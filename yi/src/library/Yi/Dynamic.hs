@@ -1,13 +1,13 @@
 {-# LANGUAGE ScopedTypeVariables, MagicHash, ExistentialQuantification, GeneralizedNewtypeDeriving, DeriveDataTypeable #-}
 -- Copyright (c) Jean-Philippe Bernardy 2005-2007.
 
-module Yi.Dynamic 
+module Yi.Dynamic
  (
   -- * Nonserializable (\"config\") dynamics
   YiConfigVariable,
   ConfigVariables, configVariableA,
   -- * Serializable dynamics
-  YiVariable, 
+  YiVariable,
   DynamicValues, dynamicValueA,
  )
   where
@@ -49,7 +49,7 @@ configVariableA :: forall a. YiConfigVariable a => Accessor ConfigVariables a
 configVariableA = accessor getCV setCV
   where
       setCV v (CV m) = CV (M.insert (cTypeOf (undefined :: a)) (D.toDyn v) m)
-      getCV (CV m) = 
+      getCV (CV m) =
          case M.lookup (cTypeOf (undefined :: a)) m of
              Nothing -> initial
              Just x -> fromJust $ D.fromDynamic x
@@ -71,7 +71,7 @@ at least some justification for the impurity.
 -}
 
 {-
-Currently, we don't export 'Dynamic' as there are no users of it in Yi. It is 
+Currently, we don't export 'Dynamic' as there are no users of it in Yi. It is
 hard to see where a 'Dynamic' would be preferable to a 'DynamicValues'.
 -}
 
@@ -91,8 +91,8 @@ toDyn a = D (unsafePerformIO (newIORef $! Dynamic a))
 fromDynamic :: forall a. YiVariable a => Dynamic -> Maybe a
 fromDynamic (D r) = unsafePerformIO (readIORef r >>= f) where
    f (Dynamic b) = return $ cast b
-   f (Serial tr bs) = 
-      if cTypeOf (undefined :: a) == tr 
+   f (Serial tr bs) =
+      if cTypeOf (undefined :: a) == tr
       then do
           let b = decode bs
           writeIORef r (Dynamic b)
@@ -101,7 +101,7 @@ fromDynamic (D r) = unsafePerformIO (readIORef r >>= f) where
 
 -- | Converts a dynamic to a serializable value
 toSerialRep :: Dynamic -> (ConcreteTypeRep, ByteString)
-toSerialRep (D r) = 
+toSerialRep (D r) =
   case unsafePerformIO (readIORef r) of
       Dynamic a -> (cTypeOf a, encode a)
       Serial ctr bs -> (ctr, bs)

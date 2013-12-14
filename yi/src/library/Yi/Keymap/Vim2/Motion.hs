@@ -1,7 +1,7 @@
 module Yi.Keymap.Vim2.Motion
     ( Move(..)
     , CountedMove(..)
-    , stringToMove 
+    , stringToMove
     , regionOfMoveB
     , changeMoveStyle
     ) where

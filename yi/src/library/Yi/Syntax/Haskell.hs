@@ -1,6 +1,6 @@
 {-# LANGUAGE FlexibleInstances, TypeFamilies
   , TemplateHaskell, DeriveDataTypeable #-}
-{-# OPTIONS_GHC -fno-warn-missing-signatures -fno-warn-incomplete-patterns -fno-warn-name-shadowing #-} 
+{-# OPTIONS_GHC -fno-warn-missing-signatures -fno-warn-incomplete-patterns -fno-warn-name-shadowing #-}
 -- we have lots of parsers which don't want signatures; and we have uniplate patterns
 
 -- Copyright (c) Anders Karlsson 2009
@@ -81,7 +81,7 @@ data Exp t
                                  , name          :: (PAtom t)
                                  , exports       :: (Exp t)
                                  , whereKeyword  :: (Exp t)
-                                    }    
+                                    }
     | PImport { importKeyword :: (PAtom t)
                          , qual          :: (Exp t)
                          , name'         :: (PAtom t)
@@ -89,7 +89,7 @@ data Exp t
                          , specification :: (Exp t)
                          }
 
-    | TS t [Exp t] -- ^ Type signature 
+    | TS t [Exp t] -- ^ Type signature
     | PType { typeKeyword :: (PAtom t)
             , typeCons    :: (Exp t)
             , equal       :: (PAtom t)
@@ -371,7 +371,7 @@ pImports = Expr <$> many (pImport
                  <* pTestTok pEol
                  <* optional (some $ exact [nextLine, Special ';']))
         where pEol = [(Special ';'), nextLine, endBlock]
- 
+
 -- | Parse one import
 pImport :: Parser TT (PImport TT)
 pImport = PImport  <$> pAtom [Reserved Import]
@@ -500,7 +500,7 @@ pClass = PClass <$> pAtom [Reserved Class, Reserved Instance]
                 <*> (TC . Expr <$>  pTypeExpr')
                 <*> please (pWhere pTopDecl)
                 -- use topDecl since we have associated types and such.
-                      
+
 
 -- | Parse some guards and a where clause
 pGuard :: Token -> Parser TT (Exp TT)
@@ -559,7 +559,7 @@ pBlockOf p  = Block <$> pBlockOf' (pBlocks p) -- see HACK above
 
 
 pBlock :: Parser TT (Exp TT) -> Parser TT (Exp TT)
-pBlock p = pBlockOf' (Block <$> pBlocks' p) 
+pBlock p = pBlockOf' (Block <$> pBlocks' p)
        <|> pEBrace (p `sepBy1` exact [Special ';'] <|> pure [])
        <|> (Yuck $ Enter "block expected" $ pEmptyBL)
 
@@ -571,7 +571,7 @@ pBlockOf' p = exact [startBlock] *> p <* exact [endBlock] -- see HACK above
 
 -- | Parse something that can contain a data, type declaration or a class
 pTopDecl :: Parser TT (Exp TT)
-pTopDecl =    pFunDecl 
+pTopDecl =    pFunDecl
           <|> pType
           <|> pData
           <|> pClass
@@ -581,8 +581,8 @@ pTopDecl =    pFunDecl
 -- | A "normal" expression, where none of the following symbols are acceptable.
 pExpr' = pExpr recognizedSometimes
 
-recognizedSometimes = [ReservedOp DoubleDot, 
-                       Special ',', 
+recognizedSometimes = [ReservedOp DoubleDot,
+                       Special ',',
                        ReservedOp Pipe,
                        ReservedOp Equal,
                        ReservedOp LeftArrow,
@@ -598,7 +598,7 @@ pExpr at = Expr <$> pExprOrPattern True at
 
 -- | Parse an expression, as a concatenation of elements.
 pExprOrPattern :: Bool -> [Token] -> Parser TT [Exp TT]
-pExprOrPattern isExpresssion at = pure [] 
+pExprOrPattern isExpresssion at = pure []
        <|> ((:) <$> pElem isExpresssion at          <*> pExprOrPattern True at)
        <|> ((:) <$> (TS <$> exact [ReservedOp DoubleColon] <*> pTypeExpr') <*> pure [])
      -- TODO: not really correct: in (x :: X , y :: Z), all after the first :: will be a "type".
@@ -622,11 +622,11 @@ pElem isExpresssion at
   -- TODO: support type expressions
 
 pTypeExpr at = many (pTypeElem at)
-pTypeExpr' = pTypeExpr (recognizedSometimes \\ [ReservedOp RightArrow, 
+pTypeExpr' = pTypeExpr (recognizedSometimes \\ [ReservedOp RightArrow,
                                                 ReservedOp DoubleRightArrow])
 
 pTypeElem :: [Token] -> Parser TT (Exp TT)
-pTypeElem at 
+pTypeElem at
     = pCParen (pTypeExpr (recognizedSometimes \\ [ReservedOp RightArrow,
                                                   ReservedOp DoubleRightArrow,
                                                   Special ','])) pEmpty -- might be a tuple, so accept commas as noise
@@ -651,7 +651,7 @@ isNotNoise r = recognizedSymbols ++ r
 
 -- | These symbols are always properly recognized, and therefore they
 -- should never be accepted as "noise" inside expressions.
-recognizedSymbols = 
+recognizedSymbols =
     [ (Reserved Let)
     , (Reserved In)
     , (Reserved Do)
@@ -694,7 +694,7 @@ pEBrace p = Paren  <$> pCAtom [Special '{'] pEmpty
         <*> p <*> (recoverAtom <|> pCAtom [Special '}'] pComments)
 
 -- | Create a special error token. (e.g. fill in where there is no correct token to parse)
--- Note that the position of the token has to be correct for correct computation of 
+-- Note that the position of the token has to be correct for correct computation of
 -- node spans.
 errTok = mkTok <$> curPos
    where curPos = tB <$> lookNext

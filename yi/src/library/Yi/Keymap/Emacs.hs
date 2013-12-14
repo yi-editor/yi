@@ -65,7 +65,7 @@ defKeymap = Proto template
   where
     template self = ModeMap { eKeymap = emacsKeymap
                             , completionCaseSensitive = False }
-      where 
+      where
         emacsKeymap :: Keymap
         emacsKeymap = selfInsertKeymap Nothing isDigit <|> completionKm (completionCaseSensitive self) <|>
              do univArg <- readUniversalArg
@@ -97,14 +97,14 @@ deleteB' :: BufferM ()
 deleteB' = adjBlock (-1) >> deleteN 1
 
 emacsKeys :: Maybe Int -> Keymap
-emacsKeys univArg = 
+emacsKeys univArg =
   choice [ -- First all the special key bindings
            spec KTab            ?>>! (adjIndent IncreaseCycle)
          , (shift $ spec KTab)  ?>>! (adjIndent DecreaseCycle)
          , spec KEnter          ?>>! (repeatingArg $ insertB '\n')
          , spec KDel            ?>>! (repeatingArg (blockKillring >> deleteB'))
          , spec KBS             ?>>! (repeatingArg (blockKillring >>
-                                                    adjBlock (-1) >> 
+                                                    adjBlock (-1) >>
                                                     bdeleteB))
          , spec KHome           ?>>! (repeatingArg moveToSol)
          , spec KEnd            ?>>! (repeatingArg moveToEol)
@@ -136,8 +136,8 @@ emacsKeys univArg =
          , ctrlCh 'd'           ?>>! (repeatingArg (blockKillring >> deleteB'))
          , ctrlCh 'e'           ?>>! (repeatingArg (maybeMoveB Line Forward))
          , ctrlCh 'f'           ?>>! (repeatingArg rightB)
-         , ctrlCh 'g'           ?>>! (setVisibleSelection False)               
-         , ctrlCh 'h'           ?>> char 'b' ?>>! acceptedInputs               
+         , ctrlCh 'g'           ?>>! (setVisibleSelection False)
+         , ctrlCh 'h'           ?>> char 'b' ?>>! acceptedInputs
          , ctrlCh 'i'           ?>>! (adjIndent IncreaseOnly)
          , ctrlCh 'j'           ?>>! newlineAndIndentB
          , ctrlCh 'k'           ?>>! killLineE univArg
@@ -175,7 +175,7 @@ emacsKeys univArg =
          , ctrlCh 'x' ?>>      ctrlX
 
          , ctrlCh 'c' ?>>      ctrlC
-          
+
          -- All The key-bindings of the form M-c where 'c' is some character.
          , metaCh ' '           ?>>! justOneSep
          , metaCh 'v'           ?>>! scrollUpE univArg
@@ -206,12 +206,12 @@ emacsKeys univArg =
 
          -- Other meta key-bindings
          , meta (spec KBS)      ?>>! (repeatingArg bkillWordB)
-         , metaCh 'g' ?>> 
+         , metaCh 'g' ?>>
              optMod meta (char 'g') >>! (gotoLn . fromDoc :: Int ::: LineNumber -> BufferM Int)
          ]
   where
   -- inserting the empty string prevents the deletion from appearing in the killring
-  -- which is a good thing when we are deleting individuals characters. See 
+  -- which is a good thing when we are deleting individuals characters. See
   -- http://code.google.com/p/yi-editor/issues/detail?id=212
   blockKillring = insertN ""
 
@@ -257,11 +257,11 @@ emacsKeys univArg =
                  , ctrlCh 'q'    ?>>! (withBuffer0 $ modA readOnlyA not)
                  , ctrlCh 's'    ?>>! fwriteE
                  , ctrlCh 'w'    ?>>! promptFile "Write file:" fwriteToE
-                 , ctrlCh 'x'    ?>>! (exchangePointAndMarkB >> 
+                 , ctrlCh 'x'    ?>>! (exchangePointAndMarkB >>
                                        putA highlightSelectionA True)
                  , char 'b'      ?>>! switchBufferE
                  , char 'd'      ?>>! dired
-                 , char 'e' ?>> 
+                 , char 'e' ?>>
                    char 'e'      ?>>! evalRegionE
                  , char 'o'      ?>>! nextWinE
                  , char 'k'      ?>>! killBufferE
@@ -270,4 +270,4 @@ emacsKeys univArg =
                  , char 'v'      ?>>! (repeatingArg shrinkWinE)
                  , optMod ctrl (char 't') >> tabFunctions
                  ]
-  
+

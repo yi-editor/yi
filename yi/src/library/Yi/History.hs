@@ -14,7 +14,7 @@ import Data.Accessor.Container
 import Yi.Dynamic
 import Yi.Editor
 import qualified Data.Map as M
-import Yi.Prelude 
+import Yi.Prelude
 import Prelude ()
 type Histories = M.Map String History
 
@@ -79,18 +79,18 @@ historyFind cont len cur delta pref =
     deltaLarger = delta + signum delta
 
 historyMove :: String -> Int -> EditorM ()
-historyMove ident delta = (withBuffer0 . replaceBufferContent) =<< historyMoveGen ident delta (withBuffer0 elemsB) 
+historyMove ident delta = (withBuffer0 . replaceBufferContent) =<< historyMoveGen ident delta (withBuffer0 elemsB)
 
 historyMoveGen :: String -> Int -> EditorM String -> EditorM String
 historyMoveGen ident delta getCurValue = do
-  (History cur cont pref) <- getA (dynKeyA ident . dynA) 
-  
+  (History cur cont pref) <- getA (dynKeyA ident . dynA)
+
   curValue <- getCurValue
   let len = length cont
       next = historyFind cont len cur delta pref
       nextValue = cont !! next
   case (next < 0, next >= len) of
-    (True, _) -> do printMsg $ "end of " ++ ident ++ " history, no next item." 
+    (True, _) -> do printMsg $ "end of " ++ ident ++ " history, no next item."
                     return curValue
     (_, True) -> do printMsg $ "beginning of " ++ ident ++ " history, no previous item."
                     return curValue

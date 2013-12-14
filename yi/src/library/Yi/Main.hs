@@ -8,7 +8,7 @@
 
 module Yi.Main (
                 -- * Static main
-                main, 
+                main,
                 -- * Command line processing
                 do_args,
                 ConsoleConfig(..),
@@ -47,15 +47,15 @@ instance Error Err where
 
 -- | Configuration information which can be set in the command-line, but not
 -- in the user's configuration file.
-data ConsoleConfig = 
+data ConsoleConfig =
   ConsoleConfig {
      ghcOptions :: [String],
      selfCheck :: Bool
   }
 
 defaultConsoleConfig :: ConsoleConfig
-defaultConsoleConfig = 
-  ConsoleConfig { 
+defaultConsoleConfig =
+  ConsoleConfig {
                   ghcOptions = [],
                   selfCheck = False
                 }

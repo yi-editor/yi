@@ -82,9 +82,9 @@ newSession mode mb_top_dir = do
 {-# NOINLINE haveNewSessionBug #-}
 haveNewSessionBug = unsafePerformIO (newMVar False)
 
-#elif __GLASGOW_HASKELL__ == 608 
+#elif __GLASGOW_HASKELL__ == 608
 -- Hack to get parseStaticFlags called only once
-initGhc = unsafePerformIO$ parseStaticFlags [] 
+initGhc = unsafePerformIO$ parseStaticFlags []
 
 newSession :: Maybe FilePath -> IO Session
 newSession fp = initGhc `seq` GHC.newSession fp
@@ -102,7 +102,7 @@ getRealSession = do
   warns  <- getWarnings
   ref1 <- liftIO $ newIORef hscEnv
   ref2 <- liftIO $ newIORef warns
-  return $ Session ref1 ref2 
+  return $ Session ref1 ref2
 
 #endif
 
@@ -145,6 +145,6 @@ checkModule session modname _ = do
   let res = find ((modname ==) . moduleName . ms_mod) graph
   case res of
     Just modsum -> fmap Just $ reflectGhc (typecheckModule =<< parseModule modsum) session
-    Nothing -> return Nothing 
+    Nothing -> return Nothing
 #endif
 

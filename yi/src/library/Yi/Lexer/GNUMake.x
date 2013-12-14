@@ -1,12 +1,12 @@
--- -*- haskell -*- 
--- Lexer for Makefiles with consideration of GNU extensions 
+-- -*- haskell -*-
+-- Lexer for Makefiles with consideration of GNU extensions
 -- This is based off the syntax as described in the GNU Make manual:
 -- http://www.gnu.org/software/make/manual/make.html
 -- Maintainer: Corey O'Connor
 {
 {-# OPTIONS -w  #-}
 module Yi.Lexer.GNUMake
-  ( initState, alexScanToken ) 
+  ( initState, alexScanToken )
 where
 import Yi.Lexer.Alex
 import Yi.Style
@@ -16,7 +16,7 @@ import Yi.Style
 import qualified Yi.Style as Style
 }
 
-@varAssignOp = 
+@varAssignOp =
       "="
     | "?="
     | "+="
@@ -28,17 +28,17 @@ import qualified Yi.Style as Style
 -- http://www.gnu.org/software/make/manual/make.html#Using-Variables
 -- However when I try to feed GNU makefile containing such weird variable names GNU make fails.
 -- Though the specification does leave limiting the scope of valid variable names that as an open
--- option for "the future" 
+-- option for "the future"
 $varChar = $printable # [\: \# \= \ \{ \} \( \)]
 
-@directives = 
-    include 
+@directives =
+    include
     | if
     | export
     | unexport
     | define
 
-@specialVars = 
+@specialVars =
       MAKEFILE_LIST
     | ".DEFAULT_GOAL"
     | MAKE_RESTARTS
@@ -65,7 +65,7 @@ make :-
         { c Style.defaultStyle }
 
     -- The "include" directive can occur in two forms:
-    --  One preceeded by a "-" 
+    --  One preceeded by a "-"
     --  Another not preceeded by a "-"
     \-?"include"
         { m (const IncludeDirective) Style.importStyle }
@@ -82,7 +82,7 @@ make :-
     -- 2 & 3: Parentheses or brackets could indicate a variable expansion or function call.
     "${"
         { m (const $ ComplexExpansion '}' TopLevel) Style.operatorStyle }
-    "$(" 
+    "$("
         { m (const $ ComplexExpansion ')' TopLevel) Style.operatorStyle }
 
     \#
@@ -99,7 +99,7 @@ make :-
     $space+
         { c Style.defaultStyle }
     \#
-        { m (const $ InComment) Style.commentStyle } 
+        { m (const $ InComment) Style.commentStyle }
     \n
         { m (const $ TopLevel)  Style.defaultStyle }
 
@@ -117,7 +117,7 @@ make :-
 <complexExpansion>
 {
     $white+ { c Style.defaultStyle }
-    
+
     -- Variable expansion is supported in a variable expansion. Unlike in a rule commmand the
     -- sequence $$ means the variable named $$.
     "$$"
@@ -126,7 +126,7 @@ make :-
         { c Style.variableStyle }
     "${"
         { m (\this -> ComplexExpansion '}' this) Style.operatorStyle }
-    "$(" 
+    "$("
         { m (\this -> ComplexExpansion ')' this) Style.operatorStyle }
 
     ./
@@ -141,16 +141,16 @@ make :-
         {
             m (\(ComplexExpansion _ prevState) -> prevState) Style.operatorStyle
         }
-    . 
+    .
         { c Style.variableStyle }
 }
 
 -- After all the lines joined by a '\' character are appended together the text only undergoes
--- variable expansion before being passed to the shell. 
+-- variable expansion before being passed to the shell.
 -- This means that a '#' character only indicates a comment *only* if the shell interpretting the
 -- expanded text would consider it a comment. Wack huh?
 -- See 3.1
-<ruleCommand> 
+<ruleCommand>
 {
     -- If the \n is preceeded by a \ then the next line is part of this command even if there is no
     -- \t at the start.
@@ -158,7 +158,7 @@ make :-
         { c Style.makeFileAction }
     \n
         { m (const $ TopLevel) Style.defaultStyle }
-    
+
     -- Variable expansion is supported in a rule command.
     "$$"
         { c Style.makeFileAction }
@@ -166,7 +166,7 @@ make :-
         { c Style.variableStyle }
     "${"
         { m (const $ ComplexExpansion '}' RuleCommand) Style.operatorStyle }
-    "$(" 
+    "$("
         { m (const $ ComplexExpansion ')' RuleCommand) Style.operatorStyle }
 
     .
@@ -186,8 +186,8 @@ make :-
 }
 
 {
-data HlState = 
-      TopLevel 
+data HlState =
+      TopLevel
     | InComment
     | IncludeDirective
     | ComplexExpansion Char HlState

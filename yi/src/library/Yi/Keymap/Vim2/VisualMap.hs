@@ -73,7 +73,7 @@ setMarkBinding = VimBindingE prereq action
           prereq _ _ = NoMatch
           action ('m':c:[]) = do
               withBuffer0 $ setNamedMarkHereB [c]
-              return Continue 
+              return Continue
           action _ = error "Can't happen"
 
 changeVisualStyleBinding :: VimBinding

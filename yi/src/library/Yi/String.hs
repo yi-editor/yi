@@ -28,7 +28,7 @@ capitalize (c:cs) = toUpper c : map toLower cs
 
 capitalizeFirst :: String -> String
 capitalizeFirst [] = []
-capitalizeFirst (c:cs) 
+capitalizeFirst (c:cs)
     | isAlphaNum c = toUpper c : map toLower cs
     | otherwise = c : capitalizeFirst cs
 
@@ -54,7 +54,7 @@ isBlank = all isSpace
 fillText :: Int -> String -> [String]
 fillText margin = map (unwords . reverse) . fill 0 [] . words
    where fill _ acc [] = [acc]
-         fill n acc (w:ws) 
+         fill n acc (w:ws)
            | n + length w >= margin = acc : fill (length w) [w] ws
            | otherwise = fill (n + 1 + length w) (w:acc) ws
 
@@ -81,5 +81,5 @@ onLines transform = unlines' . transform . lines'
 padLeft, padRight :: Int -> String -> String
 padLeft n [] = replicate n ' '
 padLeft n (x:xs) = x : padLeft (n-1) xs
-          
+
 padRight n = reverse . padLeft n . reverse

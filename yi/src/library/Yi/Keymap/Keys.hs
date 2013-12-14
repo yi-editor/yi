@@ -3,7 +3,7 @@
 
 -- | Combinators for building keymaps.
 
-module Yi.Keymap.Keys 
+module Yi.Keymap.Keys
     (
      module Yi.Event,
      module Yi.Interact,
@@ -27,7 +27,7 @@ import Data.List (sort, nub)
 printableChar :: (MonadInteract m w Event) => m Char
 printableChar = do
   Event (KASCII c) [] <- anyEvent
-  when (not $ isPrint c) $ 
+  when (not $ isPrint c) $
        fail "unprintable character"
   return c
 
@@ -38,11 +38,11 @@ textChar = do
     Event (KASCII c) [] <- anyEvent
     return c
 
-pString :: (MonadInteract m w Event) => String -> m [Event] 
+pString :: (MonadInteract m w Event) => String -> m [Event]
 pString = events . map char
 
 charOf :: (MonadInteract m w Event) => (Event -> Event) -> Char -> Char -> m Char
-charOf modifier l h = 
+charOf modifier l h =
     do Event (KASCII c) _ <- eventBetween (modifier $ char l) (modifier $ char h)
        return c
 

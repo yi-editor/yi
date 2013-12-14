@@ -1,4 +1,4 @@
--- -*- haskell -*- 
+-- -*- haskell -*-
 --  Simple lexer for objective-c
 
 {
@@ -40,7 +40,7 @@ $idchar    = [$alpha $digit \']
 $symchar   = [$symbol \:]
 $nl        = [\n\r]
 
-@reservedid = 
+@reservedid =
     auto
   | break
   | case
@@ -108,7 +108,7 @@ $nl        = [\n\r]
   | NO
 
 -- From this list, but only the C ones: http://en.wikipedia.org/wiki/Operators_in_C_and_C%2B%2B
-@reservedop = 
+@reservedop =
   "+"  | "++"  | "+=" | "-"   | "--" | "-=" | "*"      | "*=" | "/"  | "/=" | "%"  | "%=" |
   "<"  | "<="  | ">"  | ">="  | "!=" | "==" |
   "!"  | "&&"  | "||" |
@@ -162,7 +162,7 @@ haskell :-
  @varsym                                        { c operatorStyle }
  @consym                                        { c typeStyle }
 
- @decimal 
+ @decimal
   | 0[oO] @octal
   | 0[xX] @hexadecimal                          { c defaultStyle }
 

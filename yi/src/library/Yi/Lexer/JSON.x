@@ -1,4 +1,4 @@
--- -*- haskell -*- 
+-- -*- haskell -*-
 --
 -- Lexical syntax for JSON
 --

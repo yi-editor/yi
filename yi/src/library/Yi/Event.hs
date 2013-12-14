@@ -1,4 +1,4 @@
-module Yi.Event 
+module Yi.Event
     (
      Event(..), prettyEvent,
      Key(..), Modifier(..),
@@ -37,7 +37,7 @@ prettyEvent (Event k mods) =
         prettyKey (KASCII c) = [c]
         prettyKey key = tail $ show key
         prettyModifier m = [ show m !! 1]
-      
+
 
 
 -- | Map an Event to a Char. This is used in the emacs keymap for Ctrl-Q and vim keymap 'insertSpecialChar'

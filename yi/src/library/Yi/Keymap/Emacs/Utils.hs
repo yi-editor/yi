@@ -92,7 +92,7 @@ isFileBuffer :: (Functor m, MonadIO m) => FBuffer -> m Bool
 isFileBuffer b = case b ^. identA of
                    Left _ -> return False
                    Right fn -> not <$> liftIO (doesDirectoryExist fn)
-                     
+
 --------------------------------------------------
 -- Takes in a list of buffers which have been identified
 -- as modified since their last save.
@@ -110,9 +110,9 @@ askIndividualSave hasQuit allBuffers@(firstBuffer : others) =
   bufferName  = identString firstBuffer
 
   askKeymap = choice ([ char 'n' ?>>! noAction
-                      , char 'y' ?>>! yesAction 
-                      , char '!' ?>>! allAction 
-                      , oneOf [char 'c', ctrl $ char 'g'] >>! closeBufferAndWindowE 
+                      , char 'y' ?>>! yesAction
+                      , char '!' ?>>! allAction
+                      , oneOf [char 'c', ctrl $ char 'g'] >>! closeBufferAndWindowE
                         -- cancel
                       ] ++ [char 'q' ?>>! quitEditor | hasQuit])
   yesAction = do fwriteBufferE (bkey firstBuffer)
@@ -125,7 +125,7 @@ askIndividualSave hasQuit allBuffers@(firstBuffer : others) =
   allAction = do mapM_ fwriteBufferE $ fmap bkey allBuffers
                  withEditor closeBufferAndWindowE
                  askIndividualSave hasQuit []
-  
+
   continue = askIndividualSave hasQuit others
 
 ---------------------------
@@ -144,7 +144,7 @@ modifiedQuitEditor =
   modifiedMessage = "Modified buffers exist really quit? (y/n)"
 
   askKeymap = choice [ char 'n' ?>>! noAction
-                     , char 'y' ?>>! quitEditor 
+                     , char 'y' ?>>! quitEditor
                      ]
 
   noAction        = closeBufferAndWindowE
@@ -168,12 +168,12 @@ searchKeymap = selfSearchKeymap <|> choice
                ]
 
 isearchKeymap :: Direction -> Keymap
-isearchKeymap dir = 
+isearchKeymap dir =
   do write $ isearchInitE dir
      discard $ many searchKeymap
      choice [ ctrl (char 'g') ?>>! isearchCancelE
             , oneOf [ctrl (char 'm'), spec KEnter] >>! isearchFinishE
-            ] 
+            ]
        <|| write isearchFinishE
 
 ----------------------------
@@ -225,7 +225,7 @@ argToInt a = case a of
 digit :: (Event -> Event) -> KeymapM Char
 digit f = charOf f '0' '9'
 
--- TODO: replace tt by digit meta 
+-- TODO: replace tt by digit meta
 tt :: KeymapM Char
 tt = do
   Event (KASCII c) _ <- foldr1 (<|>) $ fmap (event . metaCh ) ['0'..'9']
@@ -236,7 +236,7 @@ tt = do
 -- read: http://www.gnu.org/software/emacs/manual/html_node/Arguments.html
 -- and: http://www.gnu.org/software/emacs/elisp-manual/html_node/elisp_318.html
 readUniversalArg :: KeymapM (Maybe Int)
-readUniversalArg = 
+readUniversalArg =
            Just <$> ((ctrlCh 'u' ?>> (read <$> some (digit id) <|> pure 4))
            <|> (read <$> (some tt)))
            <|> pure Nothing
@@ -285,8 +285,8 @@ killBufferE (Doc b) = do
                            , ctrlCh 'g' ?>>! closeBufferAndWindowE
                            ]
         delBuf = deleteBuffer b
-    withEditor $ 
-       if ch then (spawnMinibufferE (identString buf ++ " changed, close anyway? (y/n)") (const askKeymap)) >> return () 
+    withEditor $
+       if ch then (spawnMinibufferE (identString buf ++ " changed, close anyway? (y/n)") (const askKeymap)) >> return ()
              else delBuf
 
 

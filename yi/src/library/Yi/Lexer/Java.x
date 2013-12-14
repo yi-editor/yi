@@ -1,4 +1,4 @@
--- -*- haskell -*- 
+-- -*- haskell -*-
 --  Simple lexer for c
 
 {
@@ -107,12 +107,12 @@ $nl        = [\n\r]
   | Double
   | Long
 
-@reservedop = 
+@reservedop =
   "+"  | "++"  | "+=" | "-"   | "--" | "-=" | "*"      | "*=" | "/"  | "/=" | "%"  | "%=" |
   "<"  | "<="  | ">"  | ">="  | "!=" | "==" |
   "!"  | "&&"  | "||" |
   "<<" | "<<=" | ">>" | ">>=" | "~"  | "&"  | "&="     | "|"  | "|=" | "^"  | "^=" |
-  "="  | "->"  | "."  | ","   | "?"  | ":" 
+  "="  | "->"  | "."  | ","   | "?"  | ":"
 
 @varid  = $small $idchar*
 @conid  = $large $idchar*
@@ -160,7 +160,7 @@ java :-
  @varsym                                        { c operatorStyle }
  @consym                                        { c typeStyle }
 
- @decimal 
+ @decimal
   | 0[oO] @octal
   | 0[xX] @hexadecimal                          { c defaultStyle }
 

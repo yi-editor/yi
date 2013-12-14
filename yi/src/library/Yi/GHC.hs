@@ -28,8 +28,8 @@ newShim = do
 
     r <- asks yiVar
     cfg <- asks yiConfig
-    let logMsg msgSeverity msgSrcSpan style msg = 
-           unsafeWithEditor cfg r $ do                             
+    let logMsg msgSeverity msgSrcSpan style msg =
+           unsafeWithEditor cfg r $ do
              let note = CompileNote msgSeverity msgSrcSpan style msg
              modA notesA (Just . maybe (PL.singleton note) (PL.insertRight note))
              printMsg ('\n':show ((mkLocMessage msgSrcSpan msg) style))
@@ -101,7 +101,7 @@ instance Initializable ShimNotes where
 
 
 notesA :: Accessor Editor T
-notesA =  (accessor fromShimNotes (\x (ShimNotes _) -> ShimNotes x)) 
-          . dynamicValueA . dynamicA 
+notesA =  (accessor fromShimNotes (\x (ShimNotes _) -> ShimNotes x))
+          . dynamicValueA . dynamicA
 
 

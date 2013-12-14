@@ -29,7 +29,7 @@ input (prefix), but produce conflicting output?
 * if the output is the same (as by the PEq class), then the processes (prefixes) are "merged"
 * if a Write is more prioritized than the other, the one with low priority will be discarded
 * otherwise, the output will be delayed until one of the branches can be discarded.
-* if there is no way to disambiguate, then no output will be generated anymore. 
+* if there is no way to disambiguate, then no output will be generated anymore.
   This situation can be detected by using 'possibleActions' however.
 -}
 
@@ -216,7 +216,7 @@ instance Monoid (InteractState event w) where
     -- ambiguity remains
     mappend (Ambiguous a) (Ambiguous b) = Ambiguous (a ++ b)
     mempty = Ambiguous []
-    
+
 
 -- | find all the writes that are accessible.
 findWrites :: Int -> P event w -> InteractState event w
@@ -226,7 +226,7 @@ findWrites p (Prior dp c) = findWrites (p+dp) c
 findWrites _ Fail = Dead
 findWrites _ End = Dead
 findWrites _ (Get _ _ _) = Waiting
-findWrites p (Chain a b) = case computeState a of 
+findWrites p (Chain a b) = case computeState a of
     Dead -> Dead
     Ambiguous _ -> Dead -- If ambiguity, don't try to do anything clever for now; die.
     Running w c -> findWrites p (Chain c (pushEvent b w)) -- pull as much as possible from the left automaton
@@ -244,8 +244,8 @@ computeState a = case findWrites 0 a of
                               [((_,w,c):_)] -> Running w c
                               _ -> Ambiguous $ map head bests
     s -> s
-                           
-                           
+
+
 
 pullWrites :: PEq w => P event w -> ([w], P event w)
 pullWrites a = case computeState a of
