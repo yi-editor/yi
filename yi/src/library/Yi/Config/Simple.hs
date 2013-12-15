@@ -128,7 +128,7 @@ import qualified Yi.Mode.Haskell as Haskell
 -- note: don't import "Yi", or else there will be name clashes
 
 main = 'configMain' 'defaultEmacsConfig' $ do
-  'setFrontendPreferences' ["pango", "vte", "vty"]
+  'setFrontendPreferences' ["pango", "vty"]
   'fontSize' '%=' 'Just' 10
   'modeBindKeys' Haskell.cleverMode ('metaCh' \'q\' '?>>!' 'reload')
   'globalBindKeys' ('metaCh' \'r\' '?>>!' 'reload')@
@@ -168,7 +168,7 @@ modify = modA
 ---------------------------------- Frontend
 -- | Sets the frontend to the first frontend from the list which is installed.
 --
--- Available frontends are a subset of: \"vte\", \"vty\", \"pango\", \"cocoa\", and \"batch\".
+-- Available frontends are a subset of: \"vty\", \"pango\", \"cocoa\", and \"batch\".
 setFrontendPreferences :: [String] -> ConfigM ()
 setFrontendPreferences fs =
    case mapMaybe (\f -> lookup f availableFrontends) fs of
