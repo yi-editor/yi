@@ -16,7 +16,7 @@ import Yi.Editor
 import Yi.Keymap
 import Yi.Main
 import qualified Yi.UI.Common as UI
-import qualified Yi.Paths(getConfigDir, getConfigModules)
+import Yi.Paths (getCustomConfigPath)
 
 -- | once the custom yi is compiled this restores the editor state (if requested) then proceeds to
 -- run the editor.
@@ -42,13 +42,13 @@ yi = yiDriver
 -- The yi executable uses a default config.
 yiDriver cfg = do
     args <- Dyre.withDyreOptions Dyre.defaultParams getArgs 
-    modules <- Yi.Paths.getConfigModules
     -- we do the arg processing before dyre, so we can extract '--ghc-option=' and '--help' and so on.
     case do_args cfg args of
         Left (Err err code) ->
           do putStrLn err
              exitWith code
-        Right (finalCfg, cfgcon) -> 
+        Right (finalCfg, cfgcon) -> do
+            modules <- getCustomConfigPath (userConfigDir cfgcon) "modules"
             let yiParams = Dyre.defaultParams
                             { Dyre.projectName  = "yi"
                             , Dyre.realMain     = realMain
@@ -63,7 +63,7 @@ yiDriver cfg = do
                                                    ghcOptions cfgcon)
                             , Dyre.includeCurrentDirectory = False
                             }
-            in Dyre.wrapMain yiParams (finalCfg, cfgcon)
+            Dyre.wrapMain yiParams (finalCfg, cfgcon)
 
 -- | "reloads" the configuration
 --
@@ -75,4 +75,3 @@ reload = do
     editor <- withEditor get
     withUI (\ui -> UI.end ui False)
     liftIO $ relaunchWithBinaryState (Just editor) Nothing
-
