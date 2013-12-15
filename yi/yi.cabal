@@ -270,7 +270,7 @@ library
     regex-base ==0.93.*,
     regex-tdfa == 1.1.*,
     split >= 0.1 && < 0.3,
-    template-haskell >= 2.4 && < 2.9,
+    template-haskell >= 2.4,
     time >= 1.1 && < 1.5,
     utf8-string >= 0.3.1,
     uniplate,
