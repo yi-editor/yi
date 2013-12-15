@@ -1,19 +1,20 @@
 {-# LANGUAGE NoMonomorphismRestriction #-}
-module Yi.Paths(
-   getEvaluatorContextFilename
-  ,getConfigFilename
-  ,getConfigModules
-  ,getArticleDbFilename
-  ,getPersistentStateFilename
-  ,getConfigDir
-  ,getConfigPath
-  ,getDataPath
-) where
+module Yi.Paths ( getEvaluatorContextFilename
+                , getConfigFilename
+                , getConfigModules
+                , getArticleDbFilename
+                , getPersistentStateFilename
+                , getConfigDir
+                , getConfigPath
+                , getCustomConfigPath
+                , getDataPath
+                ) where
 
 import System.Directory(getAppUserDataDirectory, -- TODO: phase out in favour of xdg-dir
                         doesDirectoryExist,
                         createDirectoryIfMissing)
 import System.FilePath((</>))
+import Control.Monad (liftM)
 import Control.Monad.Trans(liftIO, MonadIO)
 import qualified System.Environment.XDG.BaseDir as XDG
 
@@ -43,8 +44,13 @@ getDataPath fp = getDataDir >>= (return . (</> fp))
 
 -- | Given a path relative to application configuration directory,
 --   this function finds a path to a given configuration file.
-getConfigPath :: (MonadIO m) => FilePath -> m FilePath
-getConfigPath fp = getConfigDir >>= (return . (</> fp))
+getConfigPath :: MonadIO m => FilePath -> m FilePath
+getConfigPath = getCustomConfigPath getConfigDir
+
+-- | Given an action that retrieves config path, and a path relative to it,
+-- this function joins the two together to create a config file path.
+getCustomConfigPath :: MonadIO m => m FilePath -> FilePath -> m FilePath
+getCustomConfigPath cd fp = (</> fp) `liftM` cd
 
 -- Note: Dyre also uses XDG cache dir - that would be:
 --getCachePath = getPathHelper XDG.getUserCacheDirectory
@@ -62,9 +68,8 @@ getConfigModules = getConfigPath "modules"
 getArticleDbFilename = getConfigPath "articles.db"
 
 -- | Get path to Yi history that stores state between runs.
-getPersistentStateFilename = getDataPath   "history"
+getPersistentStateFilename = getDataPath "history"
 
 -- | Get path to environment file that defines namespace used by Yi
 --   command evaluator.
 getEvaluatorContextFilename = getConfigPath $ "local" </> "Env.hs"
-
