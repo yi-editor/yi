@@ -70,7 +70,8 @@ completeInListCustomShow showFunction s match possibilities
     | prefix /= s = return prefix
     | isSingleton filtered = printMsg "Sole completion" >> return s
     | prefix `elem` filtered = printMsg ("Complete, but not unique: " ++ show filtered) >> return s
-    | otherwise = printMsgs (map showFunction filtered) >> return s
+    | otherwise = printMsgs (map showFunction filtered)
+                  >> return (bestMatch filtered s)
     where
       prefix   = commonPrefix filtered
       filtered = filterMatches match possibilities
@@ -80,9 +81,25 @@ completeInList' s match l
     | null filtered = printMsg "No match" >> return s
     | isSingleton filtered && s == (head filtered) = printMsg "Sole completion" >> return s
     | isSingleton filtered                         = return $ head filtered
-    | otherwise = printMsgs filtered >> return s
+    | otherwise = printMsgs filtered >> return (bestMatch filtered s)
     where
     filtered = filterMatches match l
+
+-- | This function attempts to provide a better tab completion result in
+-- cases where more than one file matches our prefix. Consider directory with
+-- following files: @["Main.hs", "Main.hi", "Main.o", "Test.py", "Foo.hs"]@.
+--
+-- After inserting @Mai@ into the minibuffer and attempting to complete, the
+-- possible matches will be filtered in 'completeInList'' to
+-- @["Main.hs", "Main.hi", "Main.o"]@ however because of multiple matches,
+-- the buffer will not be updated to say @Main.@ but will instead stay at @Mai@.
+--
+-- This is extremely tedious when trying to complete filenames in directories
+-- with many files so here we try to catch common prefixes of filtered files and
+-- if the result is longer than what we have, we use it instead.
+bestMatch :: [String] -> String -> String
+bestMatch fs s = let p = commonPrefix fs
+                 in if length p > length s then p else s
 
 filterMatches :: Eq a => (b -> Maybe a) -> [b] -> [a]
 filterMatches match = nub . catMaybes . fmap match
@@ -91,4 +108,3 @@ filterMatches match = nub . catMaybes . fmap match
 isSingleton :: [a] -> Bool
 isSingleton [_] = True
 isSingleton _   = False
-

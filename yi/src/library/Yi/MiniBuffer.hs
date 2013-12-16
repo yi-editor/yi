@@ -303,6 +303,3 @@ newtype CommandArguments = CommandArguments [String]
 instance Promptable CommandArguments where
     getPromptedValue = return . CommandArguments . words
     getPrompt _ = "Command arguments"
-
-
-
