@@ -76,7 +76,7 @@ replaceUpTo srch rep as =
 --   somepath//someotherpath is equivalent to /someotherpath
 --   somepath/~/someotherpath is equivalent to ~/someotherpath
 replaceShorthands :: FilePath -> FilePath
-replaceShorthands = replaceUpTo "/~" "~" . replaceUpTo "//" "/"
+replaceShorthands = replaceUpTo "/~" "~/" . replaceUpTo "//" "/"
 
 -- | Splits path into parts by path separator
 splitPath :: FilePath -> [String]
