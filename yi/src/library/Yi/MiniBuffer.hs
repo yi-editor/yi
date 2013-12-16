@@ -24,6 +24,7 @@ import Yi.History
 import Yi.Completion (infixMatch, prefixMatch, containsMatch', completeInList, completeInList')
 import Yi.Style (defaultStyle)
 import qualified Data.Rope as R
+import System.CanonicalizePath (replaceShorthands)
 
 -- | Open a minibuffer window with the given prompt and keymap
 -- The third argument is an action to perform after the minibuffer
@@ -105,17 +106,21 @@ withMinibufferGen proposal getHint prompt completer act = do
       closeMinibuffer = closeBufferAndWindowE >>
                         modA windowsA (fromJust . PL.find initialWindow)
       showMatchings = showMatchingsOf =<< withBuffer elemsB
-      showMatchingsOf userInput = withEditor . printStatus =<< fmap withDefaultStyle (getHint userInput)
+      showMatchingsOf userInput =
+        withEditor . printStatus =<< fmap withDefaultStyle (getHint userInput)
       withDefaultStyle msg = (msg, defaultStyle)
+
       innerAction = do
-        lineString <- withEditor $ do historyFinishGen prompt (withBuffer0 elemsB)
-                                      lineString <- withBuffer0 elemsB
-                                      closeMinibuffer
-                                      switchToBufferE initialBuffer
-                                      -- The above ensures that the action is performed on the buffer
-                                      -- that originated the minibuffer.
-                                      return lineString
+        lineString <- withEditor $ do
+          historyFinishGen prompt (withBuffer0 elemsB)
+          lineString <- withBuffer0 elemsB
+          closeMinibuffer
+          switchToBufferE initialBuffer
+          -- The above ensures that the action is performed on the buffer
+          -- that originated the minibuffer.
+          return lineString
         act lineString
+
       up   = historyMove prompt 1
       down = historyMove prompt (-1)
 
@@ -128,7 +133,7 @@ withMinibufferGen proposal getHint prompt completer act = do
   withEditor $ do
       historyStartGen prompt
       discard $ spawnMinibufferE (prompt ++ " ") (\bindings -> rebindings <|| (bindings >> write showMatchings))
-      withBuffer0 $ replaceBufferContent proposal
+      withBuffer0 $ replaceBufferContent (replaceShorthands proposal)
 
 
 -- | Open a minibuffer, given a finite number of suggestions.
@@ -303,6 +308,3 @@ newtype CommandArguments = CommandArguments [String]
 instance Promptable CommandArguments where
     getPromptedValue = return . CommandArguments . words
     getPrompt _ = "Command arguments"
-
-
-
