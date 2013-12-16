@@ -42,6 +42,7 @@ import Yi.Window
 import qualified Yi.UI.Common as Common
 import Yi.UI.Pango.Layouts
 import Yi.UI.Pango.Utils
+import Yi.UI.Pango.Control (keyTable)
 import Yi.UI.TabBar
 import Yi.UI.Utils
 
@@ -616,26 +617,6 @@ handleKeypress ch im = do
     (_, Nothing) -> logPutStrLn $ "Event not translatable: " ++ show key
     (_, Just k ) -> io $ ch $ Event k mods
   return True
-
--- | Map GTK long names to Keys
-keyTable :: M.Map String Key
-keyTable = M.fromList
-    [("Down",       KDown)
-    ,("Up",         KUp)
-    ,("Left",       KLeft)
-    ,("Right",      KRight)
-    ,("Home",       KHome)
-    ,("End",        KEnd)
-    ,("BackSpace",  KBS)
-    ,("Delete",     KDel)
-    ,("Page_Up",    KPageUp)
-    ,("Page_Down",  KPageDown)
-    ,("Insert",     KIns)
-    ,("Escape",     KEsc)
-    ,("Return",     KEnter)
-    ,("Tab",        KTab)
-    ,("ISO_Left_Tab", KTab)
-    ]
 
 -- | Map Yi modifiers to GTK
 modTable :: M.Map Modifier EventM.Modifier

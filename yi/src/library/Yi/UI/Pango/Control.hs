@@ -29,6 +29,7 @@ module Yi.UI.Pango.Control (
 ,   withBuffer
 ,   setText
 ,   getText
+,   keyTable
 ) where
 
 import Prelude (map)
