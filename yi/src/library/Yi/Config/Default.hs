@@ -42,9 +42,6 @@ import qualified Yi.Mode.Latex as Latex
 import qualified Yi.Interact as I
 import qualified Data.Rope as R
 
-#ifdef FRONTEND_VTE
-import qualified Yi.UI.Vte
-#endif
 #ifdef FRONTEND_VTY
 import qualified Yi.UI.Vty
 #endif
@@ -58,9 +55,6 @@ import qualified Yi.UI.Batch
 
 availableFrontends :: [(String, UIBoot)]
 availableFrontends =
-#ifdef FRONTEND_VTE
-   ("vte", Yi.UI.Vte.start) :
-#endif
 #ifdef FRONTEND_VTY
    ("vty", Yi.UI.Vty.start) :
 #endif

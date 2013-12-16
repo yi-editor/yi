@@ -33,7 +33,7 @@ You can specify frontends to compile, also:
 
     $ cabal install yi -fvty -fpango
 
-Options are `-fvty`, `-fvte`, `-fpango`, and `-fcocoa`. Some are likely broken.
+Options are `-fvty`, `-fpango`, and `-fcocoa`. Some are likely broken.
 
 You can also install the `yi-contrib` package, which contains some extra contributed things (like user configs):
 

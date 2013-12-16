@@ -33,10 +33,6 @@ flag pango
   Default: False
   Description: "Build with Pango frontend"
 
-flag vte
-  Default: False
-  Description: "Build with Vte frontend"
-
 flag vty
   Default: True
   Description: "Build with Vty frontend"
@@ -333,17 +329,6 @@ library
       glib ==0.12.*,
       pango ==0.12.*
     cpp-options: -DFRONTEND_PANGO
-
-  if flag(vte)
-    exposed-modules:
-      Yi.UI.Vte
-    build-depends:
-      gtk ==0.12.*,
-      glib ==0.12.*,
-      pango ==0.12.*,
-      vte ==0.12.*,
-      executable-path
-    cpp-options: -DFRONTEND_VTE
 
   if flag(vty)
     exposed-modules:
