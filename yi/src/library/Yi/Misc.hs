@@ -125,14 +125,19 @@ adjIndent ib = withSyntaxB' (\m s -> modeIndent m s ib)
 
 
 
--- | Generic emacs style prompt file action. Takes a @prompt and a continuation @act
---   and prompts the user with file hints
+-- | Generic emacs style prompt file action. Takes a @prompt@ and a continuation
+-- @act@ and prompts the user with file hints.
 promptFile :: String -> (String -> YiM ()) -> YiM ()
-promptFile prompt act = do maybePath <- withBuffer $ gets file
-                           startPath <- addTrailingPathSeparator <$> (liftIO $ canonicalizePath =<< getFolder maybePath)
-                           -- TODO: Just call withMinibuffer
-                           withMinibufferGen startPath (findFileHint startPath) prompt (completeFile startPath)
-                             (act . replaceShorthands)
+promptFile prompt act = do
+  maybePath <- withBuffer $ gets file
+  startPath <- addTrailingPathSeparator
+               <$> (liftIO $ canonicalizePath =<< getFolder maybePath)
+  -- TODO: Just call withMinibuffer
+  withMinibufferGen startPath (hintAndComplete startPath) prompt
+    (completeFile startPath) (act . replaceShorthands)
+  where
+    hintAndComplete p x = showCanon x >> findFileHint p x
+    showCanon = withBuffer . replaceBufferContent . replaceShorthands
 
 matchFile :: String -> String -> Maybe String
 matchFile path proposedCompletion =
