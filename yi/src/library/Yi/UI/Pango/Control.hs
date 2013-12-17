@@ -1,15 +1,14 @@
-{-# LANGUAGE RecordWildCards, ScopedTypeVariables, MultiParamTypeClasses, DeriveDataTypeable,
-    StandaloneDeriving, GeneralizedNewtypeDeriving #-}
-{-# OPTIONS_GHC -w #-} -- this module isn't finished, and there's heaps of warnings.
------------------------------------------------------------------------------
---
+{-# LANGUAGE RecordWildCards, ScopedTypeVariables, MultiParamTypeClasses
+           , DeriveDataTypeable, StandaloneDeriving
+           , GeneralizedNewtypeDeriving #-}
+
+-- this module isn't finished, and there's heaps of warnings.
+{-# OPTIONS_GHC -w #-}
+
+-- |
 -- Module      :  Yi.UI.Pango.Control
 -- Copyright   :  2007-2009 Jean-Philippe Bernardy, Hamish Mackenzie
 -- License     :  GPL
---
--- |
---
------------------------------------------------------------------------------
 
 module Yi.UI.Pango.Control (
     Control(..)
@@ -29,10 +28,13 @@ module Yi.UI.Pango.Control (
 ,   withBuffer
 ,   setText
 ,   getText
+,   keyTable
 ) where
 
 import Prelude (map)
 
+import Control.Exception (catch)
+import Control.Monad (void)
 import Data.Maybe (maybe, fromJust)
 import Data.IORef
 import Data.List (nub, filter, drop, zip, take, length)
@@ -70,16 +72,18 @@ import Graphics.UI.Gtk as Gtk
         StateType(..), EventMask(..), AttrOp(..), Weight(..),
         PangoAttribute(..), Underline(..), FontStyle(..))
 import Graphics.UI.Gtk.Gdk.GC as Gtk
-	(newGCValues, gcSetValues, gcNew, foreground)
+  (newGCValues, gcSetValues, gcNew, foreground)
 import qualified Graphics.UI.Gtk as Gtk
 import qualified Graphics.UI.Gtk.Gdk.Events as Gdk.Events
 import System.Glib.GError
 import Control.Monad.Reader (liftIO, ask, asks, MonadReader(..))
 import Control.Monad.State (liftM, ap, get, put, modify)
 import Control.Monad.Writer (MonadIO(..))
-import Control.Concurrent (newMVar, modifyMVar, MVar, newEmptyMVar, putMVar, readMVar, isEmptyMVar)
+import Control.Concurrent (newMVar, modifyMVar, MVar, newEmptyMVar, putMVar,
+                           readMVar, isEmptyMVar)
 import Data.Typeable
-import qualified Data.List.PointedList as  PL (insertRight, withFocus, PointedList(..), singleton)
+import qualified Data.List.PointedList as PL (insertRight, withFocus,
+                                              PointedList(..), singleton)
 import Yi.Regex
 import System.FilePath
 import qualified Yi.UI.Common as Common
@@ -105,7 +109,8 @@ instance Show TabInfo where
 
 --type ControlM = YiM
 newtype ControlM a = ControlM { runControl'' :: ReaderT Control IO a }
-    deriving (Monad, MonadIO, MonadReader Control, Typeable, Functor, Applicative)
+    deriving (Monad, MonadIO, MonadReader Control, Typeable,
+              Functor, Applicative)
 
 -- Helper functions to avoid issues with mismatching monad libraries
 controlIO :: IO a -> ControlM a
@@ -161,15 +166,17 @@ runAction action = do
 mkUI :: IO () -> MVar Control -> Common.UI
 mkUI main yiMVar = Common.dummyUI
     { Common.main          = main
-    , Common.end           = \_ -> runControl' end yiMVar >> return ()
-    , Common.suspend       = runControl' suspend yiMVar >> return ()
-    , Common.refresh       = \e -> runControl' (refresh e) yiMVar >> return ()
-    , Common.layout        = \e -> liftM (maybe e id) $ runControl' (doLayout e) yiMVar
-    , Common.reloadProject = \f -> runControl' (reloadProject f) yiMVar >> return ()
+    , Common.end           = \_ -> void $ runControl' end yiMVar
+    , Common.suspend       = void $ runControl' suspend yiMVar
+    , Common.refresh       = \e -> void $ runControl' (refresh e) yiMVar
+    , Common.layout        = \e -> liftM (maybe e id) $
+                                   runControl' (doLayout e) yiMVar
+    , Common.reloadProject = \f -> void $ runControl' (reloadProject f) yiMVar
     }
 
 start :: ControlM () -> UIBoot
-start main cfg ch outCh ed = catchGError (startNoMsg main cfg ch outCh ed) (\(GError _dom _code msg) -> fail msg)
+start main cfg ch outCh ed =
+  catch (startNoMsg main cfg ch outCh ed) (\(GError _dom _code msg) -> fail msg)
 
 makeControl :: MVar Control -> YiM ()
 makeControl controlMVar = do
@@ -211,7 +218,8 @@ refresh e = do
         do
             -- sig <- readIORef (renderer w)
             -- signalDisconnect sig
-            -- writeRef (renderer w) =<< (textview w `onExpose` render e ui b (wkey (coreWin w)))
+            -- writeRef (renderer w)
+            -- =<< (textview w `onExpose` render e ui b (wkey (coreWin w)))
             liftIO $ widgetQueueDraw (drawArea v)
 
 doLayout :: Editor -> ControlM Editor
@@ -251,16 +259,19 @@ shownRegion e v b = do
    (tos, _, bos) <- updatePango e v b (layout v)
    return $ mkRegion tos bos
 
-updatePango :: Editor -> View -> FBuffer -> PangoLayout -> ControlM (Point, Point, Point)
+updatePango :: Editor -> View -> FBuffer -> PangoLayout
+            -> ControlM (Point, Point, Point)
 updatePango e v b layout = do
   (width', height') <- liftIO $ widgetGetSize $ drawArea v
 
   font <- liftIO $ layoutGetFontDescription layout
 
   --oldFont <- layoutGetFontDescription layout
-  --oldFontStr <- maybe (return Nothing) (fmap Just . fontDescriptionToString) oldFont
+  --oldFontStr <- maybe (return Nothing)
+  --              (fmap Just . fontDescriptionToString) oldFont
   --newFontStr <- Just <$> fontDescriptionToString font
-  --when (oldFontStr /= newFontStr) (layoutSetFontDescription layout (Just font))
+  --when (oldFontStr /= newFontStr)
+  --  (layoutSetFontDescription layout (Just font))
 
   let win                 = findWindowWith (windowRef v) e
       [width'', height''] = map fromIntegral [width', height']
@@ -268,9 +279,9 @@ updatePango e v b layout = do
       winh                = max 1 $ floor (height'' / lineHeight)
 
       (tos, point, text)  = askBuffer win b $ do
-                              from     <- getMarkPointB =<< fromMark <$> askMarks
-                              rope     <- streamB Forward from
-                              p        <- pointB
+                              from <- getMarkPointB =<< fromMark <$> askMarks
+                              rope <- streamB Forward from
+                              p    <- pointB
                               let content = fst $ Rope.splitAtLine winh rope
                               -- allow BOS offset to be just after the last line
                               let addNL = if Rope.countNewLines content == winh
@@ -281,15 +292,19 @@ updatePango e v b layout = do
   config   <- liftYi $ askCfg
   if configLineWrap $ configUI config
     then do oldWidth <- liftIO $ layoutGetWidth layout
-            when (oldWidth /= Just width'') $ liftIO $ layoutSetWidth layout $ Just width''
-    else do (Rectangle px _py pwidth _pheight, _) <- liftIO $ layoutGetPixelExtents layout
-            liftIO $ widgetSetSizeRequest (drawArea v) (px+pwidth) (-1)
+            when (oldWidth /= Just width'') $
+              liftIO $ layoutSetWidth layout $ Just width''
+    else do
+    (Rectangle px _py pwidth _pheight, _) <- liftIO $
+                                             layoutGetPixelExtents layout
+    liftIO $ widgetSetSizeRequest (drawArea v) (px+pwidth) (-1)
 
   -- optimize for cursor movement
   oldText <- liftIO $ layoutGetText layout
   when (oldText /= text) $ liftIO $ layoutSetText layout text
 
-  (_, bosOffset, _) <- liftIO $ layoutXYToIndex layout width'' (fromIntegral winh * lineHeight - 1)
+  (_, bosOffset, _) <- liftIO $ layoutXYToIndex layout width''
+                       (fromIntegral winh * lineHeight - 1)
   return (tos, point, tos + fromIntegral bosOffset + 1)
 
 updateCache :: Editor -> ControlM ()
@@ -335,15 +350,18 @@ askBuffer w b f = fst $ runBuffer w b f
 
 setWindowFocus :: Editor -> TabInfo -> View -> ControlM ()
 setWindowFocus e t v = do
-  let bufferName = shortIdentString (commonNamePrefix e) $ findBufferWith (viewFBufRef v) e
+  let bufferName = shortIdentString (commonNamePrefix e) $
+                   findBufferWith (viewFBufRef v) e
       window = findWindowWith (windowRef v) e
-      ml = askBuffer window (findBufferWith (viewFBufRef v) e) $ getModeLine (commonNamePrefix e)
+      ml = askBuffer window (findBufferWith (viewFBufRef v) e) $
+           getModeLine (commonNamePrefix e)
 
 -- TODO
 --  update (textview w) widgetIsFocus True
 --  update (modeline w) labelText ml
 --  update (uiWindow ui) windowTitle $ bufferName ++ " - Yi"
---  update (uiNotebook ui) (notebookChildTabLabel (page t)) (tabAbbrevTitle bufferName)
+--  update (uiNotebook ui) (notebookChildTabLabel (page t))
+--    (tabAbbrevTitle bufferName)
   return ()
 
 removeTab :: TabInfo -> ControlM ()
@@ -455,14 +473,18 @@ newView buffer font = do
     control  <- ask
     config   <- liftYi $ askCfg
     let viewFBufRef = fBufRef buffer
-    newWindow   <- fmap (\w -> w{height=50, winRegion = mkRegion (Point 0) (Point 2000)}) $ liftYi $ withEditor $ newWindowE False viewFBufRef
+    newWindow <-
+      fmap (\w -> w { height=50
+                    , winRegion = mkRegion (Point 0) (Point 2000)
+                    }) $ liftYi $ withEditor $ newWindowE False viewFBufRef
     let windowRef = wkey newWindow
     liftYi $ withEditor $ do
         modA windowsA (PL.insertRight newWindow)
         e <- get
         put $ focusAllSyntax e
     drawArea <- liftIO $ drawingAreaNew
-    liftIO $ widgetModifyBg drawArea StateNormal $ mkCol False $ Yi.Style.background $ baseAttributes $ configStyle $ configUI config
+    liftIO . widgetModifyBg drawArea StateNormal . mkCol False
+      . Yi.Style.background . baseAttributes . configStyle $ configUI config
     context  <- liftIO $ widgetCreatePangoContext drawArea
     layout   <- liftIO $ layoutEmpty context
     liftIO $ layoutSetFontDescription layout (Just font)
@@ -475,7 +497,8 @@ newView buffer font = do
         scrolledWindowAddWithViewport scrollWin drawArea
         scrolledWindowSetPolicy scrollWin PolicyAutomatic PolicyNever
 
-    initialTos <- liftYi $ withEditor $ withGivenBufferAndWindow0 newWindow viewFBufRef $
+    initialTos <-
+      liftYi . withEditor . withGivenBufferAndWindow0 newWindow viewFBufRef $
         getMarkPointB =<< fromMark <$> askMarks
     shownTos <- liftIO $ newIORef initialTos
     winMotionSignal <- liftIO $ newIORef Nothing
@@ -506,7 +529,8 @@ newView buffer font = do
         runControl (handleScroll view event) control
 
     liftIO $ drawArea `Gtk.onExpose` \event -> do
-        (text, allAttrs, debug, tos, rel, point, inserting) <- runControl (liftYi $ withEditor $ do
+        (text, allAttrs, debug, tos, rel, point, inserting) <-
+          runControl (liftYi $ withEditor $ do
             window <- (findWindowWith windowRef) <$> get
             modA buffersA (fmap (clearSyntax . clearHighlight))
             let winh = height window
@@ -532,24 +556,37 @@ newView buffer font = do
                               then id
                               else (++"\n")
                     sty = extractValue $ configTheme (configUI config)
-                            -- attributesPictureAndSelB sty (currentRegex e) (mkRegion tos bos)
-    --                        return (from, p, addNL $ Rope.toString content, picture)
+                          -- attributesPictureAndSelB sty (currentRegex e)
+                          --   (mkRegion tos bos)
+                          -- return (from, p, addNL $ Rope.toString content,
+                          --         picture)
                 let text = addNL $ Rope.toString content
 
-                picture <- attributesPictureAndSelB sty Nothing (mkRegion tos bos)
+                picture <- attributesPictureAndSelB sty Nothing
+                           (mkRegion tos bos)
 
                 -- add color attributes.
-                let strokes = [(start',s,end') | ((start', s), end') <- zip picture (drop 1 (map fst picture) ++ [bos]),
-                              s /= emptyAttributes]
+                let picZip = zip picture $ drop 1 (fst <$> picture) ++ [bos]
+                    strokes = [ (start',s,end') | ((start', s), end') <- picZip
+                                                , s /= emptyAttributes ]
+
+                    rel p = fromIntegral (p - tos)
                     allAttrs = concat $ do
-                        (p1, Attributes fg bg _rv bd itlc udrl, p2) <- strokes
-                        return $ [ AttrForeground (rel p1) (rel p2) (mkCol True fg)
-                                 , AttrBackground (rel p1) (rel p2) (mkCol False bg)
-                                 , AttrStyle      (rel p1) (rel p2) (if itlc then StyleItalic     else StyleNormal)
-                                 , AttrUnderline  (rel p1) (rel p2) (if udrl then UnderlineSingle else UnderlineNone)
-                                 , AttrWeight     (rel p1) (rel p2) (if bd   then WeightBold      else WeightNormal)
-                                 ]
-                return (text, allAttrs, (picture, strokes, modeNm, window, tos, bos, winh), tos, rel, point, inserting)) control
+                      (p1, Attributes fg bg _rv bd itlc udrl, p2) <- strokes
+                      let atr x = x (rel p1) (rel p2)
+                          if' p x y = if p then x else y
+                      return [ atr AttrForeground $ mkCol True fg
+                             , atr AttrBackground $ mkCol False bg
+                             , atr AttrStyle $ if' itlc StyleItalic StyleNormal
+                             , atr AttrUnderline $
+                                 if' udrl UnderlineSingle UnderlineNone
+                             , atr AttrWeight $ if' bd WeightBold WeightNormal
+                             ]
+
+
+                return (text, allAttrs, (picture, strokes, modeNm,
+                                         window, tos, bos, winh),
+                        tos, rel, point, inserting)) control
 
         -- putStrLn $ "Setting Layout Attributes " ++ show debug
         layoutSetAttributes layout allAttrs
@@ -562,13 +599,22 @@ newView buffer font = do
         liftIO $ writeRef shownTos tos
 
         -- paint the cursor
-        (PangoRectangle curx cury curw curh, _) <- layoutGetCursorPos layout (rel point)
-        PangoRectangle chx chy chw chh          <- layoutIndexToPos layout (rel point)
+        (PangoRectangle curx cury curw curh, _) <-
+          layoutGetCursorPos layout (rel point)
+        PangoRectangle chx chy chw chh          <-
+          layoutIndexToPos layout (rel point)
 
-        gcSetValues gc (newGCValues { Gtk.foreground = mkCol True $ Yi.Style.foreground $ baseAttributes $ configStyle $ configUI config })
+        gcSetValues gc
+          (newGCValues { Gtk.foreground = mkCol True . Yi.Style.foreground
+                                          . baseAttributes . configStyle $
+                                          configUI config })
         if inserting
-            then do drawLine dw gc (round curx, round cury) (round $ curx + curw, round $ cury + curh)
-            else do drawRectangle dw gc False (round chx) (round chy) (if chw > 0 then round chw else 8) (round chh)
+          then do
+          drawLine dw gc (round curx, round cury)
+            (round $ curx + curw, round $ cury + curh)
+          else do
+          drawRectangle dw gc False (round chx) (round chy)
+            (if chw > 0 then round chw else 8) (round chh)
 
         return True
 
@@ -629,7 +675,8 @@ setText b text = withBuffer b $ do
     replaceRegionClever r text
 
 getText :: Buffer -> Iter -> Iter -> ControlM String
-getText b Iter{point = p1} Iter{point = p2} = withBuffer b $ readRegionB $ mkRegion p1 p2
+getText b Iter{point = p1} Iter{point = p2} =
+  withBuffer b . readRegionB $ mkRegion p1 p2
 
 mkCol :: Bool -- ^ is foreground?
       -> Yi.Style.Color -> Gtk.Color
@@ -649,7 +696,8 @@ handleClick view event = do
                                    Gdk.Events.eventClick event)
 
   -- retrieve the clicked offset.
-  (_,layoutIndex,_) <- io $ layoutXYToIndex (layout view) (Gdk.Events.eventX event) (Gdk.Events.eventY event)
+  (_,layoutIndex,_) <- io $ layoutXYToIndex (layout view)
+                       (Gdk.Events.eventX event) (Gdk.Events.eventY event)
   tos <- readRef (shownTos view)
   let p1 = tos + fromIntegral layoutIndex
 
@@ -668,11 +716,13 @@ handleClick view event = do
             runControl (handleMove view p1 event) control
         writeRef (winMotionSignal view) $ Just cid
 
-     _ -> do maybe (return ()) signalDisconnect =<< readRef (winMotionSignal view)
-             writeRef (winMotionSignal view) Nothing
+     _ -> do
+       maybe (return ()) signalDisconnect =<< readRef (winMotionSignal view)
+       writeRef (winMotionSignal view) Nothing
 
   case (Gdk.Events.eventClick event, Gdk.Events.eventButton event) of
-    (Gdk.Events.SingleClick, Gdk.Events.LeftButton) -> runAction . makeAction $ do
+    (Gdk.Events.SingleClick, Gdk.Events.LeftButton) ->
+      runAction . makeAction $ do
         -- b <- gets $ (bkey . findBufferWith (viewFBufRef view))
         -- focusWindow
         window <- (findWindowWith winRef) <$> get
@@ -710,10 +760,13 @@ handleScroll view event = do
 
 handleMove :: View -> Point -> Gdk.Events.Event -> ControlM Bool
 handleMove view p0 event = do
-  logPutStrLn $ "Motion: " ++ show (Gdk.Events.eventX event, Gdk.Events.eventY event)
+  logPutStrLn $ "Motion: " ++ show (Gdk.Events.eventX event,
+                                    Gdk.Events.eventY event)
 
   -- retrieve the clicked offset.
-  (_,layoutIndex,_) <- liftIO $ layoutXYToIndex (layout view) (Gdk.Events.eventX event) (Gdk.Events.eventY event)
+  (_,layoutIndex,_) <-
+    liftIO $ layoutXYToIndex (layout view)
+    (Gdk.Events.eventX event) (Gdk.Events.eventY event)
   tos <- readRef (shownTos view)
   let p1 = tos + fromIntegral layoutIndex
 
@@ -760,8 +813,12 @@ processEvent ch ev = do
   return True
 
 gtkToYiEvent :: Gdk.Events.Event -> Maybe Event
-gtkToYiEvent (Gdk.Events.Key {Gdk.Events.eventKeyName = key, Gdk.Events.eventModifier = evModifier, Gdk.Events.eventKeyChar = char})
-    = fmap (\k -> Event k $ (nub $ (if isShift then filter (/= MShift) else id) $ concatMap modif evModifier)) key'
+gtkToYiEvent (Gdk.Events.Key {Gdk.Events.eventKeyName = key
+                             , Gdk.Events.eventModifier = evModifier
+                             , Gdk.Events.eventKeyChar = char})
+    = fmap (\k -> Event k $ (nub $ (if isShift
+                                    then filter (/= MShift)
+                                    else id) $ concatMap modif evModifier)) key'
       where (key',isShift) =
                 case char of
                   Just c -> (Just $ KASCII c, True)

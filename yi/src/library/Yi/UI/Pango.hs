@@ -1,10 +1,15 @@
-{-# LANGUAGE CPP, ExistentialQuantification, TupleSections, NamedFieldPuns, ViewPatterns, ScopedTypeVariables #-}
+{-# LANGUAGE CPP, ExistentialQuantification, TupleSections, NamedFieldPuns
+           , ViewPatterns, ScopedTypeVariables #-}
 {-# OPTIONS_GHC -funbox-strict-fields #-}
 
--- Copyright (c) 2007, 2008 Jean-Philippe Bernardy
-
--- | This module defines a user interface implemented using gtk2hs and
+-- |
+-- Module      :  Yi.UI.Pango
+-- Copyright   :  (c) 2007, 2008 Jean-Philippe Bernardy
+-- License     :  GPL
+--
+-- This module defines a user interface implemented using gtk2hs and
 -- pango for direct text rendering.
+
 module Yi.UI.Pango (start) where
 
 import Prelude (filter)
@@ -20,7 +25,8 @@ import Data.Maybe
 import qualified Data.Map as M
 import qualified Data.Rope as Rope
 
-import Graphics.UI.Gtk hiding (Region, Window, Action, Point, Style, Modifier, on)
+import Graphics.UI.Gtk hiding (Region, Window, Action , Point,
+                               Style, Modifier, on)
 import Graphics.UI.Gtk.Gdk.GC hiding (foreground)
 import qualified Graphics.UI.Gtk.Gdk.EventM as EventM
 import qualified Graphics.UI.Gtk as Gtk
@@ -42,6 +48,7 @@ import Yi.Window
 import qualified Yi.UI.Common as Common
 import Yi.UI.Pango.Layouts
 import Yi.UI.Pango.Utils
+import Yi.UI.Pango.Control (keyTable)
 import Yi.UI.TabBar
 import Yi.UI.Utils
 
@@ -127,14 +134,18 @@ updateFont :: UIConfig -> IORef FontDescription -> IORef TabCache -> Statusbar
                   -> FontDescription -> IO ()
 updateFont cfg fontRef tc status font = do
     maybe (return ()) (fontDescriptionSetFamily font) (configFontName cfg)
-    maybe (return ()) (fontDescriptionSetSize font . fromIntegral) (configFontSize cfg)
+    maybe (return ()) (fontDescriptionSetSize font . fromIntegral)
+      (configFontSize cfg)
+
     writeIORef fontRef font
     widgetModifyFont status (Just font)
     tcs <- readIORef tc
     forM_ tcs $ \tabinfo -> do
       wcs <- readIORef (windowCache tabinfo)
       forM_ wcs $ \wininfo -> do
-        withMVar (winLayoutInfo wininfo) $ \WinLayoutInfo{winLayout} -> layoutSetFontDescription winLayout (Just font)
+        withMVar (winLayoutInfo wininfo) $ \WinLayoutInfo{winLayout} ->
+          layoutSetFontDescription winLayout (Just font)
+
         -- This will cause the textview to redraw
         widgetModifyFont (textview wininfo) (Just font)
         widgetModifyFont (modeline wininfo) (Just font)
@@ -144,7 +155,9 @@ askBuffer w b f = fst $ runBuffer w b f
 
 -- | Initialise the ui
 start :: UIBoot
-start cfg ch outCh ed = catchGError (startNoMsg cfg ch outCh ed) (\(GError _dom _code msg) -> fail msg)
+start cfg ch outCh ed =
+  catch (startNoMsg cfg ch outCh ed)
+  (\(GError _dom _code msg) -> fail msg)
 
 startNoMsg :: UIBoot
 startNoMsg cfg ch outCh ed = do
@@ -157,7 +170,9 @@ startNoMsg cfg ch outCh ed = do
 
   im <- imMulticontextNew
   imContextSetUsePreedit im False  -- handler for preedit string not implemented
-  im `on` imContextCommit $ mapM_ (\k -> ch $ Event (KASCII k) [])  -- Yi.Buffer.Misc.insertN for atomic input?
+
+  -- Yi.Buffer.Misc.insertN for atomic input?
+  im `on` imContextCommit $ mapM_ (\k -> ch $ Event (KASCII k) [])
 
   set win [ windowDefaultWidth  := 700
           , windowDefaultHeight := 900
@@ -192,7 +207,8 @@ startNoMsg cfg ch outCh ed = do
 #endif
   watchFont $ updateFont (configUI cfg) fontRef tc status
 
-  -- use our magic threads thingy (http://haskell.org/gtk2hs/archives/2005/07/24/writing-multi-threaded-guis/)
+  -- use our magic threads thingy
+  -- http://haskell.org/gtk2hs/archives/2005/07/24/writing-multi-threaded-guis/
   discard $ timeoutAddFull (yield >> return True) priorityDefaultIdle 50
 
   widgetShowAll win
@@ -233,7 +249,8 @@ updateCache ui e = do
        writeRef (tabCache ui) cache'
 
        -- update the GUI
-       simpleNotebookSet (uiNotebook ui) =<< forM cache' (\t -> (tabWidget t,) <$> readIORef (abbrevTitle t))
+       simpleNotebookSet (uiNotebook ui)
+         =<< forM cache' (\t -> (tabWidget t,) <$> readIORef (abbrevTitle t))
 
 
 -- | Modify GUI and given 'TabInfo' to reflect information in 'Tab'.
@@ -252,10 +269,12 @@ updateTabInfo e ui tab tabInfo = do
     let lookupWin w = wCacheNew M.! w
 
     -- set layout
-    layoutDisplaySet (layoutDisplay tabInfo) . fmap (winWidget . lookupWin) . tabLayout $ tab
+    layoutDisplaySet (layoutDisplay tabInfo)
+      . fmap (winWidget . lookupWin) . tabLayout $ tab
 
     -- set minibox
-    miniwindowDisplaySet (miniwindowPage tabInfo) . fmap (winWidget . lookupWin . wkey) . tabMiniWindows $ tab
+    miniwindowDisplaySet (miniwindowPage tabInfo)
+      . fmap (winWidget . lookupWin . wkey) . tabMiniWindows $ tab
 
     -- set focus
     setWindowFocus e ui tabInfo . lookupWin . wkey . tabFocus $ tab
@@ -264,13 +283,16 @@ updateWindow :: Editor -> UI -> Window -> WinInfo -> IO ()
 updateWindow e _ui win wInfo = do
     writeIORef (inFocus wInfo) False -- see also 'setWindowFocus'
     writeIORef (coreWin wInfo) win
-    writeIORef (insertingMode wInfo) (askBuffer win (findBufferWith (bufkey win) e) $ getA insertingA)
+    writeIORef (insertingMode wInfo)
+      (askBuffer win (findBufferWith (bufkey win) e) $ getA insertingA)
 
 setWindowFocus :: Editor -> UI -> TabInfo -> WinInfo -> IO ()
 setWindowFocus e ui t w = do
   win <- readIORef (coreWin w)
-  let bufferName = shortIdentString (commonNamePrefix e) $ findBufferWith (bufkey win) e
-      ml = askBuffer win (findBufferWith (bufkey win) e) $ getModeLine (commonNamePrefix e)
+  let bufferName = shortIdentString (commonNamePrefix e) $
+                   findBufferWith (bufkey win) e
+      ml = askBuffer win (findBufferWith (bufkey win) e) $
+           getModeLine (commonNamePrefix e)
       im = uiInput ui
 
   writeIORef (inFocus w) True -- see also 'updateWindow'
@@ -304,7 +326,9 @@ newTab e ui tab = do
   updateTabInfo e ui tab t
   return t
 
--- | Make a minimal new tab, without any windows. This is just for bootstrapping the UI; 'newTab' should normally be called instead.
+-- | Make a minimal new tab, without any windows.
+-- This is just for bootstrapping the UI; 'newTab' should normally
+-- be called instead.
 mkDummyTab :: (Action -> IO ()) -> Tab -> IO TabInfo
 mkDummyTab actionCh tab = do
     ws <- newIORef M.empty
@@ -330,12 +354,15 @@ newWindow e ui w = do
     ml <- labelNew Nothing
     widgetModifyFont ml (Just f)
     set ml [ miscXalign := 0.01 ] -- so the text is left-justified.
-    widgetSetSizeRequest ml 0 (-1) -- allow the modeline to be covered up, horizontally
+
+    -- allow the modeline to be covered up, horizontally
+    widgetSetSizeRequest ml 0 (-1)
 
     v <- drawingAreaNew
     widgetModifyFont v (Just f)
     widgetAddEvents v [Button1MotionMask]
-    widgetModifyBg v StateNormal $ mkCol False $ Yi.Style.background $ baseAttributes $ configStyle $ uiConfig ui
+    widgetModifyBg v StateNormal . mkCol False . Yi.Style.background
+      . baseAttributes . configStyle $ uiConfig ui
 
     sw <- scrolledWindowNew Nothing Nothing
     scrolledWindowAddWithViewport sw v
@@ -360,10 +387,12 @@ newWindow e ui w = do
                boxChildPacking ml := PackNatural]
       return (castToBox vb)
 
-    tosRef    <- newIORef (askBuffer w b (getMarkPointB =<< fromMark <$> askMarks))
+    tosRef    <- newIORef (askBuffer w b (getMarkPointB
+                                          =<< fromMark <$> askMarks))
     context   <- widgetCreatePangoContext v
     layout    <- layoutEmpty context
-    layoutRef <- newMVar (WinLayoutInfo layout 0 0 0 0 (findBufferWith (bufkey w) e) Nothing)
+    layoutRef <- newMVar (WinLayoutInfo layout 0 0 0 0
+                          (findBufferWith (bufkey w) e) Nothing)
     language  <- contextGetLanguage context
     metrics   <- contextGetMetrics context f language
     ifLButton <- newIORef False
@@ -372,7 +401,9 @@ newWindow e ui w = do
     winRef    <- newIORef w
 
     layoutSetFontDescription layout (Just f)
-    layoutSetText layout "" -- stops layoutGetText crashing (as of gtk2hs 0.10.1)
+
+    -- stops layoutGetText crashing (as of gtk2hs 0.10.1)
+    layoutSetText layout ""
 
     let ref = wkey w
         win = WinInfo { coreWinKey = ref
@@ -392,7 +423,10 @@ newWindow e ui w = do
     v `on` buttonPressEvent   $ handleButtonClick   ui ref
     v `on` buttonReleaseEvent $ handleButtonRelease ui win
     v `on` scrollEvent        $ handleScroll        ui win
-    v `on` configureEvent     $ handleConfigure     ui  -- todo: allocate event rather than configure?
+
+    -- todo: allocate event rather than configure?
+    v `on` configureEvent     $ handleConfigure     ui
+
     v `on` motionNotifyEvent  $ handleMove          ui win
     discard $ v `onExpose` render ui win
     -- also redraw when the window receives/loses focus
@@ -407,7 +441,8 @@ refresh ui e = do
     postGUIAsync $ do
        contextId <- statusbarGetContextId (uiStatusbar ui) "global"
        statusbarPop  (uiStatusbar ui) contextId
-       discard $ statusbarPush (uiStatusbar ui) contextId $ intercalate "  " $ statusLine e
+       discard $ statusbarPush (uiStatusbar ui) contextId $ intercalate "  " $
+         statusLine e
 
     updateCache ui e -- The cursor may have changed since doLayout
     cache <- readRef $ tabCache ui
@@ -417,76 +452,95 @@ refresh ui e = do
             updateWinInfoForRendering e ui w
             widgetQueueDraw (textview w)
 
-{- | Record all the information we need for rendering.
-
-This information is kept in an MVar so that the PangoLayout and tos/bos/buffer are in sync.
--}
-
+-- | Record all the information we need for rendering.
+--
+-- This information is kept in an MVar so that the PangoLayout and
+-- tos/bos/buffer are in sync.
 updateWinInfoForRendering :: Editor -> UI -> WinInfo -> IO ()
 updateWinInfoForRendering e _ui w = modifyMVar_ (winLayoutInfo w) $ \wli -> do
   win <- readIORef (coreWin w)
   return $! wli{buffer=findBufferWith (bufkey win) e,regex=currentRegex e}
 
--- | Tell the 'PangoLayout' what colours to draw, and draw the 'PangoLayout' and the cursor onto the screen
+-- | Tell the 'PangoLayout' what colours to draw, and draw the 'PangoLayout'
+-- and the cursor onto the screen
 render :: UI -> WinInfo -> t -> IO Bool
-render ui w _event = withMVar (winLayoutInfo w) $ \WinLayoutInfo{winLayout=layout,tos,bos,cur,buffer=b,regex} -> do
-  -- read the information
-  win <- readIORef (coreWin w)
+render ui w _event =
+  withMVar (winLayoutInfo w) $
+  \WinLayoutInfo{winLayout=layout,tos,bos,cur,buffer=b,regex} -> do
+    -- read the information
+    win <- readIORef (coreWin w)
 
-  -- add color attributes.
-  let picture = askBuffer win b $ attributesPictureAndSelB sty regex (mkRegion tos bos)
-      sty = extractValue $ configTheme (uiConfig ui)
-      strokes = [(start',s,end') | ((start', s), end') <- zip picture (drop 1 (fmap fst picture) ++ [bos]),
-                  s /= emptyAttributes]
-      rel p = fromIntegral (p - tos)
-      allAttrs = concat $ do
-        (p1, Attributes fg bg _rv bd itlc udrl, p2) <- strokes
-        return $ [ AttrForeground (rel p1) (rel p2) (mkCol True fg)
-                 , AttrBackground (rel p1) (rel p2) (mkCol False bg)
-                 , AttrStyle      (rel p1) (rel p2) (if itlc then StyleItalic     else StyleNormal)
-                 , AttrUnderline  (rel p1) (rel p2) (if udrl then UnderlineSingle else UnderlineNone)
-                 , AttrWeight     (rel p1) (rel p2) (if bd   then WeightBold      else WeightNormal)
+    -- add color attributes.
+    let picture = askBuffer win b $ attributesPictureAndSelB sty regex
+                  (mkRegion tos bos)
+        sty = extractValue $ configTheme (uiConfig ui)
+
+        picZip = zip picture $ drop 1 (fst <$> picture) ++ [bos]
+        strokes = [ (start',s,end') | ((start', s), end') <- picZip
+                                    , s /= emptyAttributes ]
+
+        rel p = fromIntegral (p - tos)
+        allAttrs = concat $ do
+          (p1, Attributes fg bg _rv bd itlc udrl, p2) <- strokes
+          let atr x = x (rel p1) (rel p2)
+              if' p x y = if p then x else y
+          return [ atr AttrForeground $ mkCol True fg
+                 , atr AttrBackground $ mkCol False bg
+                 , atr AttrStyle $ if' itlc StyleItalic StyleNormal
+                 , atr AttrUnderline $ if' udrl UnderlineSingle UnderlineNone
+                 , atr AttrWeight $ if' bd WeightBold WeightNormal
                  ]
 
-  layoutSetAttributes layout allAttrs
+    layoutSetAttributes layout allAttrs
 
-  drawWindow <- widgetGetDrawWindow $ textview w
-  gc <- gcNew drawWindow
+    drawWindow <- widgetGetDrawWindow $ textview w
+    gc <- gcNew drawWindow
 
-  -- see Note [PangoLayout width]
-  -- draw the layout
-  drawLayout drawWindow gc 1 0 layout
+    -- see Note [PangoLayout width]
+    -- draw the layout
+    drawLayout drawWindow gc 1 0 layout
 
-  -- calculate the cursor position
-  im <- readIORef (insertingMode w)
+    -- calculate the cursor position
+    im <- readIORef (insertingMode w)
 
-  -- check focus, and decide whether we want a wide cursor
-  bufferFocused <- readIORef (inFocus w)
-  uiFocused <- Gtk.windowHasToplevelFocus (uiWindow ui)
-  let focused = bufferFocused && uiFocused
-      wideCursor =
-       case configCursorStyle (uiConfig ui) of
-         AlwaysFat -> True
-         NeverFat -> False
-         FatWhenFocused -> focused
-         FatWhenFocusedAndInserting -> focused && im
+    -- check focus, and decide whether we want a wide cursor
+    bufferFocused <- readIORef (inFocus w)
+    uiFocused <- Gtk.windowHasToplevelFocus (uiWindow ui)
+    let focused = bufferFocused && uiFocused
+        wideCursor =
+         case configCursorStyle (uiConfig ui) of
+           AlwaysFat -> True
+           NeverFat -> False
+           FatWhenFocused -> focused
+           FatWhenFocusedAndInserting -> focused && im
 
 
-  (PangoRectangle (succ -> curX) curY curW curH, _) <- layoutGetCursorPos layout (rel cur)
-  -- tell the input method
-  imContextSetCursorLocation (uiInput ui) (Rectangle (round curX) (round curY) (round curW) (round curH))
-  -- paint the cursor
-  gcSetValues gc (newGCValues { Gtk.foreground = mkCol True $ Yi.Style.foreground $ baseAttributes $ configStyle $ uiConfig ui,
-                                Gtk.lineWidth = if wideCursor then 2 else 1 })
-  -- tell the renderer
-  if im
-  then -- if we are inserting, we just want a line
-    drawLine drawWindow gc (round curX, round curY) (round $ curX + curW, round $ curY + curH)
-  else do -- if we aren't inserting, we want a rectangle around the current character
-    PangoRectangle (succ -> chx) chy chw chh <- layoutIndexToPos layout (rel cur)
-    drawRectangle drawWindow gc False (round chx) (round chy) (if chw > 0 then round chw else 8) (round chh)
+    (PangoRectangle (succ -> curX) curY curW curH, _) <-
+      layoutGetCursorPos layout (rel cur)
+    -- tell the input method
+    imContextSetCursorLocation (uiInput ui) $
+      Rectangle (round curX) (round curY) (round curW) (round curH)
+    -- paint the cursor
+    gcSetValues gc
+      (newGCValues { Gtk.foreground = mkCol True . Yi.Style.foreground
+                                      . baseAttributes . configStyle $
+                                      uiConfig ui
+                   , Gtk.lineWidth = if wideCursor then 2 else 1 })
 
-  return True
+    -- tell the renderer
+    if im
+      then  -- if we are inserting, we just want a line
+      drawLine drawWindow gc (round curX, round curY)
+      (round $ curX + curW, round $ curY + curH)
+
+      -- we aren't inserting, we want a rectangle around the current character
+      else do
+      PangoRectangle (succ -> chx) chy chw chh <- layoutIndexToPos
+                                                  layout (rel cur)
+      drawRectangle drawWindow gc False (round chx) (round chy)
+        (if chw > 0 then round chw else 8) (round chh)
+
+    return True
 
 doLayout :: UI -> Editor -> IO Editor
 doLayout ui e = do
@@ -503,7 +557,8 @@ doLayout ui e = do
     let forceWin x w = height w `seq` winRegion w `seq` x
     return $ (foldl . tabFoldl) forceWin e' (e' ^. tabsA)
 
-getHeightsInTab :: UI -> FontDescription -> Editor -> TabInfo -> IO (M.Map WindowRef (Int,Region))
+getHeightsInTab :: UI -> FontDescription -> Editor
+                -> TabInfo -> IO (M.Map WindowRef (Int,Region))
 getHeightsInTab ui f e tab = do
   wCache <- readIORef (windowCache tab)
   forM wCache $ \wi -> do
@@ -521,19 +576,25 @@ shownRegion ui f w b = modifyMVar (winLayoutInfo w) $ \wli -> do
    (tos, cur, bos, bufEnd) <- updatePango ui f w b (winLayout wli)
    return (wli{tos,cur=clampTo tos bos cur,bos,bufEnd}, mkRegion tos bos)
  where clampTo lo hi x = max lo (min hi x)
--- during scrolling, cur might not lie between tos and bos, so we clamp it to avoid Pango errors
+-- during scrolling, cur might not lie between tos and bos,
+-- so we clamp it to avoid Pango errors
 
 {-
 Note [PangoLayout width]
 ~~~~~~~~~~~~~~~~~~~~~~~~
 
-We start rendering the PangoLayout one pixel from the left of the rendering area, which means a few +/-1 offsets in Pango rendering and point lookup code.
-The reason for this is to support the "wide cursor", which is 2 pixels wide. If we started rendering the PangoLayout
-directly from the left of the rendering area instead of at a 1-pixel offset, then the "wide cursor" would only be half-displayed
-when the cursor is at the beginning of the line, and would then be a "thin cursor".
+We start rendering the PangoLayout one pixel from the left of the
+rendering area, which means a few +/-1 offsets in Pango rendering and
+point lookup code. The reason for this is to support the "wide
+cursor", which is 2 pixels wide. If we started rendering the
+PangoLayout directly from the left of the rendering area instead of at
+a 1-pixel offset, then the "wide cursor" would only be half-displayed
+when the cursor is at the beginning of the line, and would then be a
+"thin cursor".
 
-An alternative would be to special-case the wide cursor rendering at the beginning of the line, and draw it one pixel to
-the right of where it "should" be. I haven't tried this out to see how it looks.
+An alternative would be to special-case the wide cursor rendering at
+the beginning of the line, and draw it one pixel to the right of where
+it "should" be. I haven't tried this out to see how it looks.
 
 Reiner
 -}
@@ -541,13 +602,15 @@ Reiner
 -- we update the regex and the buffer to avoid holding on to potential garbage.
 -- These will be overwritten with correct values soon, in
 -- updateWinInfoForRendering.
-updatePango :: UI -> FontDescription -> WinInfo -> FBuffer -> PangoLayout -> IO (Point, Point, Point, Point)
+updatePango :: UI -> FontDescription -> WinInfo -> FBuffer
+            -> PangoLayout -> IO (Point, Point, Point, Point)
 updatePango ui font w b layout = do
   (width_', height') <- widgetGetSize $ textview w
   let width' = max 0 (width_' - 1) -- see Note [PangoLayout width]
 
   oldFont <- layoutGetFontDescription layout
-  oldFontStr <- maybe (return Nothing) (fmap Just . fontDescriptionToString) oldFont
+  oldFontStr <- maybe (return Nothing)
+                (fmap Just . fontDescriptionToString) oldFont
   newFontStr <- Just <$> fontDescriptionToString font
   when (oldFontStr /= newFontStr) (layoutSetFontDescription layout (Just font))
 
@@ -557,29 +620,32 @@ updatePango ui font w b layout = do
       lineHeight          = ascent metrics + descent metrics
       winh                = max 1 $ floor (height'' / lineHeight)
 
-      (tos, size, point, text)  = askBuffer win b $ do
-                              from     <- getMarkPointB =<< fromMark <$> askMarks
-                              rope     <- streamB Forward from
-                              p        <- pointB
-                              bufEnd     <- sizeB
-                              let content = fst $ Rope.splitAtLine winh rope
-                              -- allow BOS offset to be just after the last line
-                              let addNL = if Rope.countNewLines content == winh
-                                              then id
-                                              else (++"\n")
-                              return (from, bufEnd, p, addNL $ Rope.toString content)
+      (tos, size, point, text) = askBuffer win b $ do
+        from     <- getMarkPointB =<< fromMark <$> askMarks
+        rope     <- streamB Forward from
+        p        <- pointB
+        bufEnd     <- sizeB
+        let content = fst $ Rope.splitAtLine winh rope
+        -- allow BOS offset to be just after the last line
+        let addNL = if Rope.countNewLines content == winh
+                        then id
+                        else (++"\n")
+        return (from, bufEnd, p, addNL $ Rope.toString content)
 
   if configLineWrap $ uiConfig ui
     then do oldWidth <- layoutGetWidth layout
-            when (oldWidth /= Just width'') (layoutSetWidth layout $ Just width'')
-    else do (Rectangle px _py pwidth _pheight, _) <- layoutGetPixelExtents layout
-            widgetSetSizeRequest (textview w) (px+pwidth) (-1)
+            when (oldWidth /= Just width'')
+              (layoutSetWidth layout $ Just width'')
+    else do
+    (Rectangle px _py pwidth _pheight, _) <- layoutGetPixelExtents layout
+    widgetSetSizeRequest (textview w) (px+pwidth) (-1)
 
   -- optimize for cursor movement
   oldText <- layoutGetText layout
   when (oldText /= text) (layoutSetText layout text)
 
-  (_, bosOffset, _) <- layoutXYToIndex layout width'' (fromIntegral winh * lineHeight - 1)
+  (_, bosOffset, _) <- layoutXYToIndex layout width''
+                       (fromIntegral winh * lineHeight - 1)
   return (tos, point, tos + fromIntegral bosOffset + 1, size)
 
 reloadProject :: IO ()
@@ -616,26 +682,6 @@ handleKeypress ch im = do
     (_, Nothing) -> logPutStrLn $ "Event not translatable: " ++ show key
     (_, Just k ) -> io $ ch $ Event k mods
   return True
-
--- | Map GTK long names to Keys
-keyTable :: M.Map String Key
-keyTable = M.fromList
-    [("Down",       KDown)
-    ,("Up",         KUp)
-    ,("Left",       KLeft)
-    ,("Right",      KRight)
-    ,("Home",       KHome)
-    ,("End",        KEnd)
-    ,("BackSpace",  KBS)
-    ,("Delete",     KDel)
-    ,("Page_Up",    KPageUp)
-    ,("Page_Down",  KPageDown)
-    ,("Insert",     KIns)
-    ,("Escape",     KEsc)
-    ,("Return",     KEnter)
-    ,("Tab",        KTab)
-    ,("ISO_Left_Tab", KTab)
-    ]
 
 -- | Map Yi modifiers to GTK
 modTable :: M.Map Modifier EventM.Modifier
@@ -725,14 +771,19 @@ handleMove ui w = eventCoordinates >>= (io . selectArea ui w) >>
                   return True
 
 handleDividerMove :: (Action -> IO ()) -> DividerRef -> DividerPosition -> IO ()
-handleDividerMove actionCh ref pos = actionCh (makeAction (setDividerPosE ref pos))
+handleDividerMove actionCh ref pos =
+  actionCh (makeAction (setDividerPosE ref pos))
 
 -- | Convert point coordinates to offset in Yi window
 pointToOffset :: (Double, Double) -> WinInfo -> IO Point
-pointToOffset (x,y) w = withMVar (winLayoutInfo w) $ \WinLayoutInfo{winLayout,tos,bufEnd} -> do
-  im <- readIORef (insertingMode w)
-  (_, charOffsetX, extra) <- layoutXYToIndex winLayout (max 0 (x-1)) y -- see Note [PangoLayout width]
-  return $ min bufEnd (tos + fromIntegral (charOffsetX + if im then extra else 0))
+pointToOffset (x,y) w =
+  withMVar (winLayoutInfo w) $ \WinLayoutInfo{winLayout,tos,bufEnd} -> do
+    im <- readIORef (insertingMode w)
+
+    -- see Note [PangoLayout width]
+    (_, charOffsetX, extra) <- layoutXYToIndex winLayout (max 0 (x-1)) y
+    return $ min bufEnd (tos + fromIntegral
+                         (charOffsetX + if im then extra else 0))
 
 selectArea :: UI -> WinInfo -> (Double, Double) -> IO ()
 selectArea ui w (x,y) = do
@@ -765,7 +816,8 @@ setSelectionClipboard ui _w cb = do
   -- Why uiActionCh doesn't allow returning values?
   selection <- newIORef ""
   let yiAction = do
-        txt <- withEditor $ withBuffer0 $ readRegionB =<< getSelectRegionB :: YiM String
+        txt <- withEditor $ withBuffer0 $
+               readRegionB =<< getSelectRegionB :: YiM String
         io $ writeIORef selection txt
   uiActionCh ui $ makeAction yiAction
   txt <- readIORef selection
