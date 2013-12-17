@@ -30,6 +30,7 @@ module Yi.UI.Pango.Control (
 
 import Prelude (map)
 
+import Control.Exception (catch)
 import Data.Maybe (maybe, fromJust)
 import Data.IORef
 import Data.List (nub, filter, drop, zip, take, length)
@@ -166,7 +167,7 @@ mkUI main yiMVar = Common.dummyUI
     }
 
 start :: ControlM () -> UIBoot
-start main cfg ch outCh ed = catchGError (startNoMsg main cfg ch outCh ed) (\(GError _dom _code msg) -> fail msg)
+start main cfg ch outCh ed = catch (startNoMsg main cfg ch outCh ed) (\(GError _dom _code msg) -> fail msg)
 
 makeControl :: MVar Control -> YiM ()
 makeControl controlMVar = do

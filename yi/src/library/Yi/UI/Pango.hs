@@ -156,7 +156,7 @@ askBuffer w b f = fst $ runBuffer w b f
 -- | Initialise the ui
 start :: UIBoot
 start cfg ch outCh ed =
-  catchGError (startNoMsg cfg ch outCh ed)
+  catch (startNoMsg cfg ch outCh ed)
   (\(GError _dom _code msg) -> fail msg)
 
 startNoMsg :: UIBoot
