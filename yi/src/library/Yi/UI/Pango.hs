@@ -2,10 +2,14 @@
            , ViewPatterns, ScopedTypeVariables #-}
 {-# OPTIONS_GHC -funbox-strict-fields #-}
 
--- Copyright (c) 2007, 2008 Jean-Philippe Bernardy
-
--- | This module defines a user interface implemented using gtk2hs and
+-- |
+-- Module      :  Yi.UI.Pango
+-- Copyright   :  (c) 2007, 2008 Jean-Philippe Bernardy
+-- License     :  GPL
+--
+-- This module defines a user interface implemented using gtk2hs and
 -- pango for direct text rendering.
+
 module Yi.UI.Pango (start) where
 
 import Prelude (filter)
