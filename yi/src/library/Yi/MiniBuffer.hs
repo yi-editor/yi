@@ -129,7 +129,7 @@ withMinibufferGen proposal getHint prompt completer act = do
                            oneOf [spec KDown,  meta $ char 'n'] >>! down,
                            oneOf [spec KTab,   ctrl $ char 'i'] >>! completionFunction completer >>! showMatchings,
                            ctrl (char 'g')                     ?>>! closeMinibuffer]
-  showMatchingsOf ""
+
   withEditor $ do
       historyStartGen prompt
       discard $ spawnMinibufferE (prompt ++ " ") (\bindings -> rebindings <|| (bindings >> write showMatchings))
