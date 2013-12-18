@@ -10,7 +10,7 @@ main = yi $ defaultVimConfig {
     defaultKm = myVimKeymap
 
     -- install update handler for dependent snippet regions
-    bufferUpdateHandler = [updateUpdatedMarks] 
+  , bufferUpdateHandler = [updateUpdatedMarks] 
 }
 
 deleteSnippets = False
