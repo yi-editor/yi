@@ -25,7 +25,7 @@ gv = filter f
 -- | Query Hoogle, with given search and options. This errors out on no
 -- results or if the hoogle command is not on path.
 hoogleRaw :: String -> String -> IO [String]
-hoogleRaw srch opts = do (out,_err,status) <- runProgCommand "hoogle" [opts, srch]
+hoogleRaw srch opts = do (status,out,_err) <- runProgCommand "hoogle" [opts, srch]
                          when (status == ExitFailure 1) $
                              fail "Error running hoogle command.  Is hoogle on path?"
                          let results = lines out

@@ -42,7 +42,7 @@ shellCommandE = do
 -- | shell-command with a known argument
 shellCommandV :: String -> YiM ()
 shellCommandV cmd = do
-      (cmdOut,cmdErr,exitCode) <- liftIO $ runShellCommand cmd
+      (exitCode,cmdOut,cmdErr) <- liftIO $ runShellCommand cmd
       case exitCode of
         ExitSuccess -> withEditor $ newBufferE (Left "Shell Command Output") (R.fromString cmdOut) >> return ()
         -- FIXME: here we get a string and convert it back to utf8; this indicates a possible bug.

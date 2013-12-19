@@ -1,6 +1,6 @@
 {-# LANGUAGE CPP, ScopedTypeVariables #-}
 -- Copyright (c) 2005 Don Stewart - http://www.cse.unsw.edu.au/~dons
-module Yi.Process (popen, runProgCommand, runShellCommand, shellFileName,
+module Yi.Process (runProgCommand, runShellCommand, shellFileName,
                    createSubprocess, readAvailable, SubprocessInfo(..), SubprocessId) where
 
 import System.Exit (ExitCode(ExitFailure))
@@ -24,46 +24,11 @@ import Yi.Buffer (BufferRef)
 import System.Posix.IO
 #endif
 
-
--- | A Posix.popen compatibility mapping.
--- Based on PosixCompat, originally written by Derek Elkins for lambdabot
--- TODO: this will probably be called readProcess in the new process package (2.0)
-popen :: FilePath -> [String] -> Maybe String -> IO (String,String,ExitCode)
-popen file args minput =
-    Control.Exception.handle handler $ do
-
-    (inp,out,err,pid) <- runInteractiveProcess file args Nothing Nothing
-    hSetBuffering out LineBuffering
-    hSetBuffering err LineBuffering
-    case minput of
-        Just input -> hPutStr inp input >> hClose inp -- important!
-        Nothing    -> return ()
-
-    -- Now, grab the input
-    output <- hGetContents out
-    errput <- hGetContents err
-
-    -- SimonM sez:
-    --  ... avoids blocking the main thread, but ensures that all the
-    --  data gets pulled as it becomes available. you have to force the
-    --  output strings before waiting for the process to terminate.
-    --
-    discard $ forkIO (Control.Exception.evaluate (length output) >> return ())
-    discard $ forkIO (Control.Exception.evaluate (length errput) >> return ())
-
-    -- And now we wait. We must wait after we read, unsurprisingly.
-    exitCode <- waitForProcess pid -- blocks without -threaded, you're warned.
-
-    return (output,errput,exitCode)
-  where handler (e :: Control.Exception.SomeException) = return ([], show e, error (show e))
-
--- | Run a command. This looks up a program name in \$PATH, but then calls it
--- directly with the argument.
-runProgCommand :: String -> [String] -> IO (String,String,ExitCode)
+runProgCommand :: String -> [String] -> IO (ExitCode,String,String)
 runProgCommand prog args = do loc <- findExecutable prog
                               case loc of
-                                  Nothing -> return ("","",ExitFailure 1)
-                                  Just fp -> popen fp args Nothing
+                                  Nothing -> return (ExitFailure 1,"","")
+                                  Just fp -> readProcessWithExitCode fp args ""
 
 ------------------------------------------------------------------------
 -- | Run a command using the system shell, returning stdout, stderr and exit code
@@ -74,10 +39,10 @@ shellFileName = orException (getEnv "SHELL") (return "/bin/sh")
 shellCommandSwitch :: String
 shellCommandSwitch = "-c"
 
-runShellCommand :: String -> IO (String,String,ExitCode)
+runShellCommand :: String -> IO (ExitCode,String,String)
 runShellCommand cmd = do
       sh <- shellFileName
-      popen sh [shellCommandSwitch, cmd] Nothing
+      readProcessWithExitCode sh [shellCommandSwitch, cmd] ""
 
 
 --------------------------------------------------------------------------------
