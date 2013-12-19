@@ -753,12 +753,13 @@ diredUpDir = do
 
 diredCreateDir :: YiM ()
 diredCreateDir = do
-    withMinibufferGen "" noHint "Create Dir:" return $ \nm -> do
-    dir <- currentDir
-    let newdir = dir </> nm
-    msgEditor $ "Creating "++newdir++"..."
-    io $ createDirectoryIfMissing True newdir
-    diredRefresh
+    withMinibufferGen "" noHint "Create Dir:"
+      return (const $ return ()) $ \nm -> do
+        dir <- currentDir
+        let newdir = dir </> nm
+        msgEditor $ "Creating "++newdir++"..."
+        io $ createDirectoryIfMissing True newdir
+        diredRefresh
 
 
 -- | Elementary operations for dired file operations
@@ -807,4 +808,3 @@ instance Initializable DiredOpState where
 $(derive makeBinary ''DiredOpState)
 
 instance YiVariable DiredOpState
-

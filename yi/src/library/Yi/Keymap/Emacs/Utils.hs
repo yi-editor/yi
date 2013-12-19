@@ -325,9 +325,10 @@ promptTag = do
   let hinter =  return . take 10 . maybe fail hintTags tagTable
   -- Completions are super-cheap. Go wild
   let completer =  return . maybe id completeTag tagTable
-  withMinibufferGen "" hinter ("Find tag: (default " ++ defaultTag ++ ")") completer  $
-                 -- if the string is "" use the defaultTag
-                 gotoTag . maybeList defaultTag
+  withMinibufferGen "" hinter ("Find tag: (default " ++ defaultTag ++ ")")
+    completer (const $ return ()) $
+      -- if the string is "" use the defaultTag
+      gotoTag . maybeList defaultTag
 
 -- | Opens the file that contains @tag@. Uses the global tag table and prompts
 -- the user to open one if it does not exist

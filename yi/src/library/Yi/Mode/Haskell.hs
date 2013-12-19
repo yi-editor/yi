@@ -389,7 +389,8 @@ ghciInferType :: YiM ()
 ghciInferType = do
     nm <- withBuffer $ readUnitB unitWord
     when (not $ null nm) $
-        withMinibufferGen nm noHint "Insert type of which identifier?" return ghciInferTypeOf
+        withMinibufferGen nm noHint "Insert type of which identifier?"
+        return (const $ return ()) ghciInferTypeOf
 
 ghciInferTypeOf :: String -> YiM ()
 ghciInferTypeOf nm = do

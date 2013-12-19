@@ -133,10 +133,9 @@ promptFile prompt act = do
   startPath <- addTrailingPathSeparator
                <$> (liftIO $ canonicalizePath =<< getFolder maybePath)
   -- TODO: Just call withMinibuffer
-  withMinibufferGen startPath (hintAndComplete startPath) prompt
-    (completeFile startPath) (act . replaceShorthands)
+  withMinibufferGen startPath (findFileHint startPath) prompt
+    (completeFile startPath) showCanon (act . replaceShorthands)
   where
-    hintAndComplete p x = showCanon x >> findFileHint p x
     showCanon = withBuffer . replaceBufferContent . replaceShorthands
 
 matchFile :: String -> String -> Maybe String

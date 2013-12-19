@@ -62,7 +62,7 @@ spawnMinibufferE prompt kmMod =
 -- functions: it returns a list of possible matches.
 withMinibuffer :: String -> (String -> YiM [String]) -> (String -> YiM ()) -> YiM ()
 withMinibuffer prompt getPossibilities act =
-  withMinibufferGen "" giveHint prompt completer act
+  withMinibufferGen "" giveHint prompt completer (const $ return ()) act
     where giveHint s = catMaybes . fmap (prefixMatch s) <$> getPossibilities s
           completer = simpleComplete getPossibilities
 
@@ -88,16 +88,23 @@ noPossibilities :: String -> YiM [ String ]
 noPossibilities _s = return []
 
 withMinibufferFree :: String -> (String -> YiM ()) -> YiM ()
-withMinibufferFree prompt = withMinibufferGen "" noHint prompt return
+withMinibufferFree prompt = withMinibufferGen "" noHint prompt
+                            return (const $ return ())
 
--- | @withMinibufferGen proposal getHint prompt completer act@: open a minibuffer
--- with @prompt@, and initial content @proposal@. Once a string @s@ is obtained,
--- run @act s@. @completer@ can be used to complete inputs by returning an
--- incrementally better match, and getHint can give an immediate feedback to the
--- user on the current input.
-withMinibufferGen :: String -> (String -> YiM [String]) ->
-                     String -> (String -> YiM String) -> (String -> YiM ()) -> YiM ()
-withMinibufferGen proposal getHint prompt completer act = do
+-- | @withMinibufferGen proposal getHint prompt completer onTyping act@:
+-- open a minibuffer with @prompt@, and initial content @proposal@. Once
+-- a string @s@ is obtained, run @act s@. @completer@ can be used to
+-- complete inputs by returning an incrementally better match, and
+-- getHint can give an immediate feedback to the user on the current
+-- input.
+--
+-- @on Typing@ is an extra action which will fire with every user
+-- key-press and receives minibuffer contents. Use something like
+-- @const $ return ()@ if you don't need this.
+withMinibufferGen :: String -> (String -> YiM [String]) -> String
+                  -> (String -> YiM String) -> (String -> YiM ())
+                  -> (String -> YiM ()) -> YiM ()
+withMinibufferGen proposal getHint prompt completer onTyping act = do
   initialBuffer <- gets currentBuffer
   initialWindow <- getA currentWindowA
   let innerAction :: YiM ()
@@ -109,6 +116,8 @@ withMinibufferGen proposal getHint prompt completer act = do
       showMatchingsOf userInput =
         withEditor . printStatus =<< fmap withDefaultStyle (getHint userInput)
       withDefaultStyle msg = (msg, defaultStyle)
+      -- typing = withEditor . onTyping =<< withBuffer elemsB
+      typing = onTyping =<< withBuffer elemsB
 
       innerAction = do
         lineString <- withEditor $ do
@@ -124,22 +133,27 @@ withMinibufferGen proposal getHint prompt completer act = do
       up   = historyMove prompt 1
       down = historyMove prompt (-1)
 
-      rebindings = choice [oneOf [spec KEnter, ctrl $ char 'm'] >>! innerAction,
-                           oneOf [spec KUp,    meta $ char 'p'] >>! up,
-                           oneOf [spec KDown,  meta $ char 'n'] >>! down,
-                           oneOf [spec KTab,   ctrl $ char 'i'] >>! completionFunction completer >>! showMatchings,
-                           ctrl (char 'g')                     ?>>! closeMinibuffer]
+      rebindings =
+        choice [oneOf [spec KEnter, ctrl $ char 'm'] >>! innerAction,
+                oneOf [spec KUp,    meta $ char 'p'] >>! up,
+                oneOf [spec KDown,  meta $ char 'n'] >>! down,
+                oneOf [spec KTab,   ctrl $ char 'i']
+                  >>! completionFunction completer >>! showMatchings,
+                ctrl (char 'g')                     ?>>! closeMinibuffer]
 
+  showMatchingsOf ""
   withEditor $ do
       historyStartGen prompt
-      discard $ spawnMinibufferE (prompt ++ " ") (\bindings -> rebindings <|| (bindings >> write showMatchings))
+      discard $ spawnMinibufferE (prompt ++ " ")
+        (\bindings -> rebindings <|| (bindings >> write showMatchings
+                                      >> write typing))
       withBuffer0 $ replaceBufferContent (replaceShorthands proposal)
-
 
 -- | Open a minibuffer, given a finite number of suggestions.
 withMinibufferFin :: String -> [String] -> (String -> YiM ()) -> YiM ()
 withMinibufferFin prompt possibilities act
-    = withMinibufferGen "" hinter prompt completer (act . best)
+    = withMinibufferGen "" hinter prompt completer
+      (const $ return ()) (act . best)
       where
         -- The function for returning the hints provided to the user underneath
         -- the input, basically all those that currently match.
