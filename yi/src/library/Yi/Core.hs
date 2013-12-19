@@ -71,7 +71,7 @@ import System.Exit
 import System.FilePath
 import System.IO (Handle, hWaitForInput, hPutStr)
 import System.PosixCompat.Files
-import System.Process (terminateProcess, getProcessExitCode, ProcessHandle)
+import System.Process (terminateProcess, getProcessExitCode, ProcessHandle, readProcessWithExitCode)
 
 import Yi.Buffer
 import Yi.Config
@@ -81,7 +81,7 @@ import Yi.Keymap
 import Yi.Keymap.Keys
 import Yi.KillRing (krEndCmd)
 import Yi.Prelude
-import Yi.Process (popen, createSubprocess, readAvailable, SubprocessId, SubprocessInfo(..))
+import Yi.Process (createSubprocess, readAvailable, SubprocessId, SubprocessInfo(..))
 import Yi.String
 import Yi.Style (errorStyle, strongHintStyle)
 import qualified Yi.UI.Common as UI
@@ -313,7 +313,7 @@ suspendEditor = withUI UI.suspend
 runProcessWithInput :: String -> String -> YiM String
 runProcessWithInput cmd inp = do
     let (f:args) = splitOn " " cmd
-    (out,_err,_) <- liftIO $ popen f args (Just inp)
+    (_,out,_err) <- liftIO $ readProcessWithExitCode f args inp
     return (chomp "\n" out)
 
 
