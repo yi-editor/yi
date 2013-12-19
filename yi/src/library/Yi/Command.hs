@@ -19,7 +19,6 @@ import qualified Yi.Mode.Compilation as Compilation
 import Yi.Process
 import Yi.UI.Common
 import qualified Yi.Mode.Interactive as Interactive
-import qualified Data.Rope as R
 
 ---------------------------
 -- | Changing the buffer name quite useful if you have
@@ -44,7 +43,7 @@ shellCommandV :: String -> YiM ()
 shellCommandV cmd = do
       (exitCode,cmdOut,cmdErr) <- liftIO $ runShellCommand cmd
       case exitCode of
-        ExitSuccess -> withEditor $ newBufferE (Left "Shell Command Output") (R.fromString cmdOut) >> return ()
+        ExitSuccess -> msgEditor cmdOut
         -- FIXME: here we get a string and convert it back to utf8; this indicates a possible bug.
         ExitFailure _ -> msgEditor cmdErr
 
