@@ -43,7 +43,9 @@ shellCommandV :: String -> YiM ()
 shellCommandV cmd = do
       (exitCode,cmdOut,cmdErr) <- liftIO $ runShellCommand cmd
       case exitCode of
-        ExitSuccess -> msgEditor cmdOut
+        ExitSuccess -> msgEditor $ case cmdOut of
+          "" -> "(Shell command with no output)"
+          xs -> if last xs == '\n' then init xs else xs -- drop trailing newline
         -- FIXME: here we get a string and convert it back to utf8; this indicates a possible bug.
         ExitFailure _ -> msgEditor cmdErr
 
