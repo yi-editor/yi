@@ -24,8 +24,8 @@ A way to achieve this is using hooks, as follows:
 > instance YiConfigVariable FilePrompter
 >
 > -- specify the default FilePrompter
-> instance Initializable FilePrompter where
->    initial = filePrompter1
+> instance Default FilePrompter where
+>    def = filePrompter1
 >
 > -- replace the old promptForFile function with a shim
 > promptForFile :: Maybe FilePath -> YiM FilePath

@@ -7,6 +7,7 @@ module Yi.Mode.JavaScript (javaScriptMode, hooks) where
 import Control.Monad.Writer.Lazy (execWriter)
 import Data.List (nub)
 import Data.Maybe (isJust)
+import Data.Default
 import Prelude (map)
 import System.FilePath.Posix (takeBaseName)
 import Yi.Buffer.Basic (BufferRef, Direction(..), fromString)
@@ -87,7 +88,7 @@ hooks mode = mode
   }
 
 newtype JSBuffer = JSBuffer (Maybe BufferRef)
-    deriving (Initializable, Typeable, Binary)
+    deriving (Default, Typeable, Binary)
 
 instance YiVariable JSBuffer
 

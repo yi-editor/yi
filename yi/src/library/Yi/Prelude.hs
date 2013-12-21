@@ -16,7 +16,6 @@ Eq(..),
 Fractional(..),
 Functor(..),
 IO,
-Initializable(..),
 Integer,
 Integral(..),
 Bounded(..),
@@ -91,6 +90,7 @@ import Text.Show
 import Data.Bool
 import Data.Binary
 import Data.Foldable
+import Data.Default
 import Data.Function hiding ((.), id)
 import qualified Data.HashMap.Strict as HashMap
 import Data.Hashable(Hashable)
@@ -254,24 +254,13 @@ getA = Accessor.MTL.get
 modA :: CMSC.MonadState r m => Accessor.T r a -> (a -> a) -> m ()
 modA = Accessor.MTL.modify
 
--------------------- Initializable typeclass
--- | The default value. If a function tries to get a copy of the state, but the state
---   hasn't yet been created, 'initial' will be called to supply *some* value. The value
---   of initial will probably be something like Nothing,  \[\], \"\", or 'Data.Sequence.empty' - compare
---   the 'mempty' of "Data.Monoid".
-class Initializable a where
-    initial :: a
-
-instance Initializable (Maybe a) where
-    initial = Nothing
-
 -- | Write nothing. Use with 'dummyGet'
 dummyPut :: a -> Put
 dummyPut _ = return ()
 
--- | Read nothing, and return 'initial'. Use with 'dummyPut'.
-dummyGet :: Initializable a => Get a
-dummyGet = return initial
+-- | Read nothing, and return 'def'. Use with 'dummyPut'.
+dummyGet :: Default a => Get a
+dummyGet = return def
 
 ----------------- Orphan 'Binary' instances
 instance (Eq k, Hashable k, Binary k, Binary v) => Binary (HashMap.HashMap k v) where

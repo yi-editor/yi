@@ -47,6 +47,7 @@ import Data.Accessor.Basic
 import Yi.Prelude
 import Data.Typeable
 import Data.Maybe
+import Data.Default
 import Data.List(length, splitAt)
 import qualified Control.Monad.State.Strict as Monad
 
@@ -121,9 +122,9 @@ instance Show a => Show (Layout a) where
   show (Stack o s) = show o ++ " stack " ++ show s
   show p@(Pair{}) = show (orientation p) ++ " " ++ show (pairFst p, pairSnd p)
 
--- | The initial layout consists of a single window
-instance Initializable a => Initializable (Layout a) where
-  initial = SingleWindow initial
+-- | The def layout consists of a single window
+instance Default a => Default (Layout a) where
+  def = SingleWindow def
 
 -- | Orientations for 'Stack' and 'Pair'
 data Orientation
@@ -177,8 +178,8 @@ instance LayoutManager (AnyLayoutManager) where
   previousVariant (AnyLayoutManager l) = AnyLayoutManager (previousVariant l)
 
 -- | The default layout is 'tallLayout'
-instance Initializable AnyLayoutManager where
-  initial = hPairNStack 1
+instance Default AnyLayoutManager where
+  def = hPairNStack 1
 
 -- | True if the internal layout managers have the same type (but are not necessarily equal).
 layoutManagerSameType :: AnyLayoutManager -> AnyLayoutManager -> Bool

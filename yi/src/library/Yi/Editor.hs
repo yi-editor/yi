@@ -17,6 +17,7 @@ import Data.Either (rights)
 import Data.List (nub, delete, (\\), (!!), intercalate, take, drop, cycle)
 import Data.Maybe
 import Data.Typeable
+import Data.Default
 import Prelude (map, filter, length, reverse)
 import System.FilePath (splitPath)
 import Yi.Buffer
@@ -114,7 +115,7 @@ emptyEditor = Editor {
        ,refSupply    = 3
        ,currentRegex = Nothing
        ,searchDirection = Forward
-       ,dynamic      = initial
+       ,dynamic      = def
        ,statusLines  = DelayList.insert (maxBound, ([""], defaultStyle)) []
        ,killring     = krEmpty
        ,pendingEvents = []
@@ -680,7 +681,7 @@ tryCloseE = do
         then return ()
         else if nwins == 1
                 -- Could the Maybe response from deleteLeft be used instead of the
-                -- initial 'if'?
+                -- def 'if'?
                 then modA tabsA (fromJust . PL.deleteLeft)
                 else modA windowsA (fromJust . PL.deleteLeft)
 
@@ -733,8 +734,8 @@ $(derive makeBinary ''TempBufferNameHint)
 -- needs to be defined before the YiVariable instance.
 --
 -- GHC 7.1 does not appear to have this issue.
-instance Initializable TempBufferNameHint where
-    initial = TempBufferNameHint "tmp" 0
+instance Default TempBufferNameHint where
+    def = TempBufferNameHint "tmp" 0
 
 instance YiVariable TempBufferNameHint
 

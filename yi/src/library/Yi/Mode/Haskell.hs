@@ -20,6 +20,7 @@ module Yi.Mode.Haskell
 
 import Data.List (dropWhile, takeWhile, filter, drop, length)
 import Data.Maybe (maybe, listToMaybe, isJust, catMaybes)
+import Data.Default
 import Prelude (unwords, zipWith)
 import Yi.Core
 import Yi.File
@@ -344,7 +345,7 @@ tokTyp _ = Nothing
 
 
 newtype GhciBuffer = GhciBuffer {_ghciBuffer :: Maybe BufferRef}
-    deriving (Initializable, Typeable, Binary)
+    deriving (Default, Typeable, Binary)
 
 instance YiVariable GhciBuffer
 -- | Start GHCi in a buffer

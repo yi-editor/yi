@@ -14,6 +14,7 @@ import Control.Exception
 import Data.Binary (decode, encodeFile)
 import Data.Sequence as S
 import Data.Typeable ()
+import Data.Default
 import qualified Data.ByteString.Char8 as B (pack, unpack, readFile, ByteString)
 import qualified Data.ByteString.Lazy.Char8 as BL (fromChunks)
 
@@ -29,14 +30,14 @@ type Article = B.ByteString
 newtype ArticleDB = ADB { unADB :: Seq Article }
   deriving (Typeable, Binary)
 
-instance Initializable ArticleDB where
-    initial = ADB S.empty
+instance Default ArticleDB where
+    def = ADB S.empty
 instance YiVariable ArticleDB
 
 -- | Take an 'ArticleDB', and return the first 'Article' and an ArticleDB - *without* that article.
 split :: ArticleDB -> (Article, ArticleDB)
 split (ADB adb) = case viewl adb of
-               EmptyL -> (B.pack "", initial)
+               EmptyL -> (B.pack "", def)
                (a :< b) -> (a, ADB b)
 
 -- | Get the first article in the list. We use the list to express relative priority;
@@ -74,10 +75,10 @@ readDB = io $ (getArticleDbFilename >>= r) `catch` returnDefault
                 -- We read in with strict bytestrings to guarantee the file is closed,
                 -- and then we convert it to the lazy bytestring data.binary expects.
                 -- This is inefficient, but alas...
-                returnDefault (_ :: SomeException) = return initial
+                returnDefault (_ :: SomeException) = return def
 
 -- | Returns the database as it exists on the disk, and the current Yi buffer contents.
---   Note that the Initializable typeclass gives us an empty Seq. So first we try the buffer
+--   Note that the Default typeclass gives us an empty Seq. So first we try the buffer
 --   state in the hope we can avoid a very expensive read from disk, and if we find nothing
 --   (that is, if we get an empty Seq), only then do we call 'readDB'.
 oldDbNewArticle :: YiM (ArticleDB, Article)
@@ -131,6 +132,6 @@ saveAndNextArticle n = do (oldb,newa) <- oldDbNewArticle
 -- We don't want to use 'updateSetLast' since that will erase an article.
 saveAsNewArticle :: YiM ()
 saveAsNewArticle = do oldb <- readDB -- make sure we read from disk - we aren't in iread-mode!
-                      (_,newa) <- oldDbNewArticle -- we ignore the fst - the Initializable is 'empty'
+                      (_,newa) <- oldDbNewArticle -- we ignore the fst - the Default is 'empty'
                       let newdb = insertArticle oldb newa
                       writeDB newdb

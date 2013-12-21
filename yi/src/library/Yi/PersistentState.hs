@@ -15,6 +15,7 @@ import Prelude hiding ((.))
 import Data.Binary
 import Data.DeriveTH
 import Data.Accessor.Template(nameDeriveAccessors)
+import Data.Default
 import System.Directory(doesFileExist)
 import qualified Data.Map as M
 
@@ -44,8 +45,8 @@ $(derive makeBinary ''PersistentState)
 newtype MaxHistoryEntries = MaxHistoryEntries { unMaxHistoryEntries :: Int }
   deriving(Typeable, Binary)
 
-instance Initializable MaxHistoryEntries where
-  initial = MaxHistoryEntries 1000
+instance Default MaxHistoryEntries where
+  def = MaxHistoryEntries 1000
 
 instance YiConfigVariable MaxHistoryEntries
 

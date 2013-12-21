@@ -54,6 +54,7 @@ import Yi.Regex
 import Yi.Window
 import Data.Char
 import Data.Maybe
+import Data.Default
 import Data.Either
 import Data.List (span, takeWhile, take, length)
 import Yi.Core
@@ -204,8 +205,8 @@ newtype Isearch = Isearch [(String, Region, Direction)]
 -- Note that this info cannot be embedded in the Keymap state: the state
 -- modification can depend on the state of the editor.
 
-instance Initializable Isearch where
-    initial = (Isearch [])
+instance Default Isearch where
+    def = (Isearch [])
 
 instance YiVariable Isearch
 

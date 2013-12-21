@@ -36,14 +36,15 @@ import Data.List.Split (splitOn)
 import qualified Data.Trie as Trie
 import Data.Binary
 import Data.DeriveTH
+import Data.Default
 
 newtype Tags  = Tags (Maybe TagTable) deriving Typeable
-instance Initializable Tags where
-    initial = Tags Nothing
+instance Default Tags where
+    def = Tags Nothing
 
 newtype TagsFileList  = TagsFileList [FilePath] deriving Typeable
-instance Initializable TagsFileList where
-    initial = TagsFileList ["tags"]
+instance Default TagsFileList where
+    def = TagsFileList ["tags"]
 
 type Tag = String
 

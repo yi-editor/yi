@@ -7,6 +7,7 @@ module Yi.Config.Default (defaultConfig, availableFrontends,
 
 import Control.Monad (forever)
 import Data.Either (rights)
+import Data.Default
 import Paths_yi
 import Prelude ()
 import System.Directory
@@ -176,7 +177,7 @@ defaultConfig =
          , configInputPreprocess = I.idAutomaton
          , bufferUpdateHandler = []
          , layoutManagers = [hPairNStack 1, vPairNStack 1, tall, wide]
-         , configVars = initial
+         , configVars = def
          }
 
 defaultEmacsConfig, defaultVimConfig, defaultCuaConfig :: Config

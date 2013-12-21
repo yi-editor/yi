@@ -22,6 +22,7 @@ import Data.Binary
 import Data.DeriveTH
 import qualified Data.HashMap.Strict as HM
 import qualified Data.Rope as R
+import Data.Default
 
 import Yi.Buffer hiding (Insert)
 import Yi.Dynamic
@@ -83,13 +84,13 @@ $(derive makeBinary ''Register)
 
 $(derive makeBinary ''GotoCharCommand)
 
-instance Initializable VimMode where
-    initial = Normal
+instance Default VimMode where
+    def = Normal
 
 $(derive makeBinary ''VimMode)
 
-instance Initializable VimState where
-    initial = VimState Normal Nothing [] [] HM.empty '\0' Nothing [] False [] Nothing [] [] False
+instance Default VimState where
+    def = VimState Normal Nothing [] [] HM.empty '\0' Nothing [] False [] Nothing [] [] False
 
 $(derive makeBinary ''VimState)
 

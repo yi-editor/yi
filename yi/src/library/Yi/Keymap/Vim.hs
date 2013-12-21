@@ -51,6 +51,7 @@ import Data.Maybe (fromMaybe, isJust)
 import Data.Either (either)
 import Data.Prototype
 import Data.Accessor.Template
+import Data.Default
 import Numeric (showHex, showOct)
 import Shim.Utils (splitBy, uncurry3)
 import System.IO (readFile)
@@ -143,8 +144,8 @@ instance Data.Binary.Binary ViCmd where
     put = dummyPut
     get = dummyGet
 
-instance Initializable ViCmd where
-  initial = NoOp
+instance Default ViCmd where
+  def = NoOp
 instance YiVariable ViCmd
 
 data ViInsertion = ViIns { viActFirst  :: Maybe (EditorM ()) -- ^ The action performed first
@@ -156,7 +157,7 @@ data ViInsertion = ViIns { viActFirst  :: Maybe (EditorM ()) -- ^ The action per
   deriving (Typeable)
 
 newtype MViInsertion = MVI { unMVI :: Maybe ViInsertion }
-  deriving(Typeable, Initializable)
+  deriving(Typeable, Default)
 
 instance Data.Binary.Binary MViInsertion where
     put = dummyPut
@@ -224,10 +225,10 @@ emptyViIns :: Point -> ViInsertion
 emptyViIns p = ViIns Nothing (return ()) p p (return ())
 
 getViIns :: BufferM ViInsertion
-getViIns = maybe def return =<< getA currentViInsertionA
-  where def = do ins <- emptyViIns <$> pointB
-                 putA currentViInsertionA $ Just ins
-                 return ins
+getViIns = maybe defins return =<< getA currentViInsertionA
+  where defins = do ins <- emptyViIns <$> pointB
+                    putA currentViInsertionA $ Just ins
+                    return ins
 
 viInsText :: ViInsertion -> BufferM String
 viInsText ins = readRegionB $ mkRegion (viBeginPos ins) (viEndPos ins)

@@ -95,8 +95,8 @@ type T = (Maybe (PL.PointedList CompileNote))
 newtype ShimNotes = ShimNotes { fromShimNotes :: T }
     deriving Typeable
 
-instance Initializable ShimNotes where
-    initial = ShimNotes Nothing
+instance Default ShimNotes where
+    def = ShimNotes Nothing
 
 
 

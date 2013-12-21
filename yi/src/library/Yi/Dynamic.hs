@@ -21,6 +21,7 @@ import Data.Monoid
 import Data.ConcreteTypeRep
 import Data.Binary
 import Data.Typeable(cast)
+import Data.Default
 import Data.ByteString.Lazy(ByteString)
 import Data.IORef
 import System.IO.Unsafe(unsafePerformIO)
@@ -30,17 +31,17 @@ import qualified Data.Dynamic as D
 -- | Class of values that can go in a 'ConfigDynamic' or a 'ConfigDynamicValues'.
 -- These will typically go in a 'Config'. As the 'Config' has no mutable state,
 -- there is no need to serialize these values: if needed, they will be set in the
--- user's configuration file. The 'Initializable' constraint ensures that, even if
+-- user's configuration file. The 'Default' constraint ensures that, even if
 -- the user hasn't customised this config variable, a value is stil available.
-class (Initializable a, Typeable a) => YiConfigVariable a
+class (Default a, Typeable a) => YiConfigVariable a
 
--- | An \"extensible record\" of 'YiConfigVariable's. Can be constructed and accessed with 'initial' and 'configVariableA'.
+-- | An \"extensible record\" of 'YiConfigVariable's. Can be constructed and accessed with 'def' and 'configVariableA'.
 --
 -- This type can be thought of as a record containing /all/ 'YiConfigVariable's in existence.
 newtype ConfigVariables = CV (M.HashMap ConcreteTypeRep D.Dynamic)
   deriving(Monoid)
 
-instance Initializable ConfigVariables where initial = mempty
+instance Default ConfigVariables where def = mempty
 
 -- | Accessor for any 'YiConfigVariable'. Neither reader nor writer can fail:
 -- if the user's config file hasn't set a value for a 'YiConfigVariable',
@@ -51,12 +52,12 @@ configVariableA = accessor getCV setCV
       setCV v (CV m) = CV (M.insert (cTypeOf (undefined :: a)) (D.toDyn v) m)
       getCV (CV m) =
          case M.lookup (cTypeOf (undefined :: a)) m of
-             Nothing -> initial
+             Nothing -> def
              Just x -> fromJust $ D.fromDynamic x
 
 -- | Class of values that can go in a 'Dynamic' or a 'DynamicValues'. These are
 -- typically for storing custom state in a 'FBuffer' or an 'Editor'.
-class (Initializable a, Binary a, Typeable a) => YiVariable a
+class (Default a, Binary a, Typeable a) => YiVariable a
 
 --------------------------- Serializable dynamics
 {-
@@ -75,7 +76,7 @@ Currently, we don't export 'Dynamic' as there are no users of it in Yi. It is
 hard to see where a 'Dynamic' would be preferable to a 'DynamicValues'.
 -}
 
--- | Serializable, initializable dynamically-typed values.
+-- | Serializable, defizable dynamically-typed values.
 newtype Dynamic = D (IORef DynamicHelper)
   deriving(Typeable)
 
@@ -119,7 +120,7 @@ instance Binary Dynamic where
 newtype DynamicValues = DV (M.HashMap ConcreteTypeRep Dynamic)
   deriving(Typeable, Monoid)
 
--- | Accessor for a dynamic component. If the component is not found, the value 'initial' is used.
+-- | Accessor for a dynamic component. If the component is not found, the value 'def' is used.
 dynamicValueA :: forall a. YiVariable a => Accessor DynamicValues a
 dynamicValueA = accessor getDynamicValue setDynamicValue
     where
@@ -128,14 +129,14 @@ dynamicValueA = accessor getDynamicValue setDynamicValue
 
       getDynamicValue :: DynamicValues -> a
       getDynamicValue (DV dv) = case M.lookup (cTypeOf (undefined::a)) dv of
-                                   Nothing -> initial
+                                   Nothing -> def
                                    Just x -> fromJust $ fromDynamic x
 
 instance Binary DynamicValues where
     put (DV dv) = put dv
     get = DV <$> get
 
-instance Initializable DynamicValues where  initial = mempty
+instance Default DynamicValues where def = mempty
 
 
 {-

@@ -35,6 +35,7 @@ import Data.List hiding (find, maximum, concat)
 import Data.Maybe
 import Data.Char (toLower)
 import Data.DeriveTH
+import Data.Default
 import qualified Data.Map as M
 import qualified Data.Rope as R
 import Data.Time
@@ -87,14 +88,14 @@ data DiredState = DiredState
 
 $(derive makeBinary ''DiredState)
 
-instance Initializable DiredState where
-    initial = DiredState { diredPath        = ""
-                         , diredMarks      = M.empty
-                         , diredEntries    = M.empty
-                         , diredFilePoints = []
-                         , diredNameCol    = 0
-                         , diredCurrFile   = ""
-                         }
+instance Default DiredState where
+    def = DiredState { diredPath        = ""
+                     , diredMarks      = M.empty
+                     , diredEntries    = M.empty
+                     , diredFilePoints = []
+                     , diredNameCol    = 0
+                     , diredCurrFile   = ""
+                     }
 
 instance YiVariable DiredState
 
@@ -111,7 +112,7 @@ filenameColOf :: BufferM () -> BufferM ()
 filenameColOf f = getA bufferDynamicValueA >>= setPrefCol . Just . diredNameCol >> f
 
 resetDiredOpState :: YiM ()
-resetDiredOpState = withBuffer $ modA bufferDynamicValueA (\_ds -> initial :: DiredOpState)
+resetDiredOpState = withBuffer $ modA bufferDynamicValueA (\_ds -> def :: DiredOpState)
 
 incDiredOpSucCnt :: YiM ()
 incDiredOpSucCnt = withBuffer $ modA bufferDynamicValueA (\ds -> ds { diredOpSucCnt = (diredOpSucCnt ds) + 1 })
@@ -802,8 +803,8 @@ data DiredOpState = DiredOpState
     }
     deriving (Show, Eq, Typeable)
 
-instance Initializable DiredOpState where
-    initial = DiredOpState {diredOpSucCnt = 0, diredOpForAll = False}
+instance Default DiredOpState where
+    def = DiredOpState {diredOpSucCnt = 0, diredOpForAll = False}
 
 $(derive makeBinary ''DiredOpState)
 

@@ -19,6 +19,7 @@ import Yi.Completion
 import Data.Char
 import Data.List (filter, drop, isPrefixOf, reverse, findIndex, length, groupBy)
 import Data.Maybe
+import Data.Default
 
 import Yi.Core
 
@@ -36,8 +37,8 @@ newtype Completion = Completion
     deriving (Typeable, Binary)
 
 -- TODO: put this in keymap state instead
-instance Initializable Completion where
-    initial = Completion []
+instance Default Completion where
+    def = Completion []
 
 instance YiVariable Completion
 

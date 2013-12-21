@@ -21,7 +21,7 @@ type Field a = Accessor Config a
 For instance, take the following hypothetical 'YiConfigVariable':
 
 @newtype UserName = UserName { unUserName :: String }
-  deriving(Typeable, Binary, Initializable)
+  deriving(Typeable, Binary, Default)
 instance YiConfigVariable UserName
 
 $(nameDeriveAccessors ''UserName (\n -> Just (n ++ \"A\")))

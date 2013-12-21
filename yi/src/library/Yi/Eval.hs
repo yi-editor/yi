@@ -21,6 +21,7 @@ import Data.Accessor.Template
 import Data.Array
 import Data.List
 import Data.Monoid
+import Data.Default
 import Prelude hiding (error, (.))
 import qualified Language.Haskell.Interpreter as LHI
 import System.Directory(doesFileExist)
@@ -59,13 +60,13 @@ data Evaluator = Evaluator {
 evaluator :: Field Evaluator
 evaluator = customVariable
 
-instance Initializable Evaluator where initial = ghciEvaluator
+instance Default Evaluator where def = ghciEvaluator
 instance YiConfigVariable Evaluator
 
 ------------------------- Evaluator based on GHCi
 newtype NamesCache = NamesCache [String] deriving (Typeable, Binary)
-instance Initializable NamesCache where
-    initial = NamesCache []
+instance Default NamesCache where
+    def = NamesCache []
 instance YiVariable NamesCache
 
 {- | Evaluator implemented by calling GHCi. This evaluator can run arbitrary expressions in the class 'YiAction'.
@@ -129,7 +130,7 @@ ghciEvaluator = Evaluator{..} where
 newtype PublishedActions = PublishedActions { publishedActions_ :: M.HashMap String Action }
   deriving(Typeable, Monoid)
 $(nameDeriveAccessors ''PublishedActions (\n -> (Just $ n ++ "A")))
-instance Initializable PublishedActions where initial = mempty
+instance Default PublishedActions where def = mempty
 instance YiConfigVariable PublishedActions
 
 -- | Accessor for the published actions. Consider using 'publishAction'.
