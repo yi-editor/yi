@@ -128,7 +128,7 @@ openRoutine preOpenAction bufRef = do
     withEditor $ do
         replicateM_ 2 closeBufferAndWindowE
         preOpenAction
-    discard $ editFile chosenFile
+    void $ editFile chosenFile
 
 insertChar :: Keymap
 insertChar = textChar >>= write . insertB

@@ -121,7 +121,7 @@ indentBlockRegionB count reg = do
                             deleteN 1 >> go (n - 1)
                 go (abs count * shiftWidth indentSettings)
             moveTo start
-            discard $ lineMoveRel i
+            void $ lineMoveRel i
     moveTo start
 
 pasteInclusiveB :: Rope -> RegionStyle -> BufferM ()

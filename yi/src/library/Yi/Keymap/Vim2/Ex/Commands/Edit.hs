@@ -17,8 +17,8 @@ import qualified Yi.Keymap.Vim2.Ex.Commands.Common as Common
 parse :: String -> Maybe ExCommand
 parse = Common.parse $ do
     tab <- P.many (P.string "tab")
-    discard $ P.try ( P.string "edit") <|> P.string "e"
-    discard $ P.many1 P.space
+    void $ P.try ( P.string "edit") <|> P.string "e"
+    void $ P.many1 P.space
     filename <- P.many1 P.anyChar
     return $! edit (not (null tab)) filename
 
@@ -27,7 +27,7 @@ edit tab f = Common.impureExCommand {
     cmdShow = showEdit tab f
   , cmdAction = YiA $ do
         when tab $ withEditor newTabE
-        discard . editFile $ f
+        void . editFile $ f
   , cmdComplete = (fmap . fmap) (showEdit tab) (Common.filenameComplete f)
   }
 

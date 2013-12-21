@@ -76,7 +76,7 @@ replay digraphs (e1:es1) = do
         evs1 = eventToString e1
         bindingMatch1 = selectBinding evs1 state (defInsertMap digraphs)
     case bindingMatch1 of
-        WholeMatch (VimBindingE _ action) -> discard (action evs1) >> recurse es1
+        WholeMatch (VimBindingE _ action) -> void (action evs1) >> recurse es1
         PartialMatch -> do
             case es1 of
                 [] -> return ()
@@ -84,7 +84,7 @@ replay digraphs (e1:es1) = do
                     let evs2 = evs1 ++ eventToString e2
                         bindingMatch2 = selectBinding evs2 state (defInsertMap digraphs)
                     case bindingMatch2 of
-                        WholeMatch (VimBindingE _ action) -> discard (action evs2) >> recurse es2
+                        WholeMatch (VimBindingE _ action) -> void (action evs2) >> recurse es2
                         _ -> recurse es2
         _ -> recurse es1
 

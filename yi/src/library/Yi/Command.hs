@@ -106,7 +106,7 @@ searchSources = grepFind (Doc "*.hs")
 -- | Perform a find+grep operation
 grepFind :: String ::: FilePatternTag -> String ::: RegexTag -> YiM ()
 grepFind (Doc filePattern) (Doc searchedRegex) = withOtherWindow $ do
-    discard $ startSubprocess "find" [".",
+    void $ startSubprocess "find" [".",
                                       "-name", "_darcs", "-prune", "-o",
                                       "-name", filePattern, "-exec", "grep", "-Hnie", searchedRegex, "{}", ";"] (const $ return ())
     withBuffer $ setMode Compilation.mode

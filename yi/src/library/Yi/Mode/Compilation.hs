@@ -25,9 +25,9 @@ mode = (linearSyntaxMode Compilation.initState Compilation.alexScanToken tokenTo
                  Just (t@Tok {tokT = Compilation.Report filename line col _message}) -> do
                      withBuffer $ moveTo $ posnOfs $ tokPosn $ t
                      shiftOtherWindow
-                     discard $ editFile filename
+                     void $ editFile filename
                      withBuffer $ do
-                         discard $ gotoLn line
+                         void $ gotoLn line
                          rightN col
                  _ -> return ()
 

@@ -44,7 +44,7 @@ exBinding = VimBindingE prereq action
     where prereq ":" (VimState { vsMode = (Visual _) }) = WholeMatch ()
           prereq _ _ = NoMatch
           action _ = do
-              discard $ spawnMinibufferE ":'<,'>" id
+              void $ spawnMinibufferE ":'<,'>" id
               switchModeE Ex
               return Finish
 
@@ -155,7 +155,7 @@ shiftDBinding = VimBindingE prereq action
                       startCol <- curCol
                       forM_ (reverse [0 .. length lengths - 1]) $ \l -> do
                           moveTo start
-                          discard $ lineMoveRel l
+                          void $ lineMoveRel l
                           whenM (fmap (== startCol) curCol) deleteToEol
                       leftOnEol
                   _ ->  do
@@ -163,7 +163,7 @@ shiftDBinding = VimBindingE prereq action
                       reg'' <- withBuffer0 $ mkRegionOfStyleB (regionStart reg')
                                                               (regionEnd reg' -~ Size 1)
                                                               Exclusive
-                      discard $ operatorApplyToRegionE opDelete 1 $ StyledRegion LineWise reg''
+                      void $ operatorApplyToRegionE opDelete 1 $ StyledRegion LineWise reg''
               resetCountE
               switchModeE Normal
               return Finish

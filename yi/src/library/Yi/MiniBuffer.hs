@@ -144,7 +144,7 @@ withMinibufferGen proposal getHint prompt completer onTyping act = do
   showMatchingsOf ""
   withEditor $ do
       historyStartGen prompt
-      discard $ spawnMinibufferE (prompt ++ " ")
+      void $ spawnMinibufferE (prompt ++ " ")
         (\bindings -> rebindings <|| (bindings >> write showMatchings
                                       >> write typing))
       withBuffer0 $ replaceBufferContent (replaceShorthands proposal)

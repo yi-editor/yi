@@ -34,10 +34,10 @@ data OptionAction = Set !Bool | Invert | Ask
 
 parseOption :: String -> (OptionAction -> Action) -> String -> Maybe ExCommand
 parseOption name action = parse $ do
-    discard $ P.string "set "
+    void $ P.string "set "
     nos <- P.many (P.string "no")
     invs <- P.many (P.string "inv")
-    discard $ P.string name
+    void $ P.string name
     bangs <- P.many (P.string "!")
     qs <- P.many (P.string "?")
     let

@@ -163,7 +163,7 @@ publishedActionsEvaluator = Evaluator{..} where
 
 jumpToE :: String -> Int -> Int -> YiM ()
 jumpToE filename line column = do
-  discard $ editFile filename
+  void $ editFile filename
   withBuffer $ do _ <- gotoLn line
                   moveXorEol column
 

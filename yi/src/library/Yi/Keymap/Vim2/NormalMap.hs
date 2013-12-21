@@ -98,7 +98,7 @@ finishingBingings = fmap (mkStringBindingE Normal Finish)
 
     , ("D",
         do region <- withBuffer0 $ regionWithTwoMovesB (return ()) moveToEol
-           discard $ operatorApplyToRegionE opDelete 1 $ StyledRegion Exclusive region
+           void $ operatorApplyToRegionE opDelete 1 $ StyledRegion Exclusive region
         , id)
 
     -- Pasting
@@ -118,7 +118,7 @@ finishingBingings = fmap (mkStringBindingE Normal Finish)
             (StyledRegion s r) <- case stringToMove "j" of
                 WholeMatch m -> regionOfMoveB $ CountedMove (Just count) m
                 _ -> error "can't happen"
-            discard $ lineMoveRel $ count - 1
+            void $ lineMoveRel $ count - 1
             moveToEol
             joinLinesB =<< convertRegionToStyleB r s
        , resetCount)
@@ -198,12 +198,12 @@ nonrepeatableBindings = fmap (mkBindingE Normal Drop)
     -- Changing
     , (char 'C',
         do region <- withBuffer0 $ regionWithTwoMovesB (return ()) moveToEol
-           discard $ operatorApplyToRegionE opDelete 1 $ StyledRegion Exclusive region
+           void $ operatorApplyToRegionE opDelete 1 $ StyledRegion Exclusive region
         , switchMode $ Insert 'C')
     , (char 's', cutCharE Forward =<< getCountE, switchMode $ Insert 's')
     , (char 'S',
         do region <- withBuffer0 $ regionWithTwoMovesB firstNonSpaceB moveToEol
-           discard $ operatorApplyToRegionE opDelete 1 $ StyledRegion Exclusive region
+           void $ operatorApplyToRegionE opDelete 1 $ StyledRegion Exclusive region
         , switchMode $ Insert 'S')
 
     -- Replacing
@@ -212,7 +212,7 @@ nonrepeatableBindings = fmap (mkBindingE Normal Drop)
     -- Yanking
     , (char 'Y',
         do region <- withBuffer0 $ regionWithTwoMovesB (return ()) moveToEol
-           discard $ operatorApplyToRegionE opYank 1 $ StyledRegion Exclusive region
+           void $ operatorApplyToRegionE opYank 1 $ StyledRegion Exclusive region
         , id)
 
     -- Search
@@ -228,7 +228,7 @@ nonrepeatableBindings = fmap (mkBindingE Normal Drop)
 
     -- Transition to ex
     , (char ':', do
-        discard (spawnMinibufferE ":" id)
+        void (spawnMinibufferE ":" id)
         historyStart
         historyPrefixSet ""
       , switchMode Ex)
@@ -311,7 +311,7 @@ continueSearching fdir = do
         Just regex -> do
             dir <- fdir <$> getA searchDirectionA
             printMsg $ (if dir == Forward then '/' else '?') : seInput regex
-            discard $ doVimSearch Nothing [] dir
+            void $ doVimSearch Nothing [] dir
         Nothing -> printMsg "No previous search pattern"
 
 repeatGotoCharE :: (Direction -> Direction) -> EditorM ()

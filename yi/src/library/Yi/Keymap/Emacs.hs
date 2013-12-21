@@ -79,7 +79,7 @@ selfInsertKeymap univArg condition = do
   write (adjBlock n >> replicateM_ n (insertB c))
 
 completionKm :: Bool -> Keymap
-completionKm caseSensitive = do discard $ some ((meta (char '/') ?>>! wordComplete' caseSensitive))
+completionKm caseSensitive = do void $ some ((meta (char '/') ?>>! wordComplete' caseSensitive))
                                 deprioritize
                                 write resetComplete
            -- 'adjustPriority' is there to lift the ambiguity between "continuing" completion

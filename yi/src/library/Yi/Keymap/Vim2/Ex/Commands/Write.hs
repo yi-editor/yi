@@ -17,13 +17,13 @@ import qualified Yi.Keymap.Vim2.Ex.Commands.Common as Common
 parse :: String -> Maybe ExCommand
 parse = Common.parse $ P.choice [parseWrite, parseWriteAs]
     where parseWrite = do
-            discard $ P.try ( P.string "write") <|> P.string "w"
+            void $ P.try ( P.string "write") <|> P.string "w"
             alls <- P.many (P.try ( P.string "all") <|> P.string "a")
             return $! writeCmd $ not (null alls)
 
           parseWriteAs = do
-            discard $ P.try ( P.string "write") <|> P.string "w"
-            discard $ P.many1 P.space
+            void $ P.try ( P.string "write") <|> P.string "w"
+            void $ P.many1 P.space
             filename <- P.many1 P.anyChar
             return $! writeAsCmd filename
 

@@ -32,7 +32,7 @@ SemiNum(..),
 String,
 Typeable,
 commonPrefix,
-discard,
+void,
 dummyPut,
 dummyGet,
 every,
@@ -137,8 +137,6 @@ class SemiNum absolute relative | absolute -> relative where
 singleton :: a -> [a]
 singleton x = [x]
 
-discard :: Functor f => f a -> f ()
-discard = fmap (const ())
 
 -- 'list' is the canonical list destructor as 'either' or 'maybe'.
 list :: b -> (a -> [a] -> b) -> [a] -> b

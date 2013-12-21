@@ -1083,7 +1083,7 @@ maybeCharWithVerticalOffset :: Int -> BufferM (Maybe Char)
 maybeCharWithVerticalOffset offset = savingPointB $ do
     l0 <- curLn
     c0 <- curCol
-    discard $ lineMoveRel offset
+    void $ lineMoveRel offset
     l1 <- curLn
     c1 <- curCol
     curChar <- readB
@@ -1183,7 +1183,7 @@ withEveryLineB :: BufferM () -> BufferM ()
 withEveryLineB action = savingPointB $ do
   lineCount <- lineCountB
   forM_ [1 .. lineCount] $ \l -> do
-    discard $ gotoLn l
+    void $ gotoLn l
     action
 
 $(nameDeriveAccessors ''Mode (\n -> Just (n ++ "A")))
