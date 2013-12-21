@@ -11,7 +11,6 @@ Double,
 Binary,
 Char,
 Either(..),
-Endom,
 Eq(..),
 Fractional(..),
 Functor(..),
@@ -35,7 +34,6 @@ commonPrefix,
 void,
 dummyPut,
 dummyGet,
-every,
 findPL,
 focusA,
 fromIntegral,
@@ -110,9 +108,6 @@ import Data.Accessor ((<.), accessor, getVal, setVal, Accessor,(^.),(^:),(^=))
 import qualified Data.Accessor.Monad.MTL.State as Accessor.MTL
 import Data.Accessor.Monad.MTL.State ((%:), (%=))
 import qualified Data.List.PointedList as PL
-
-type Endom a = a -> a
-
 
 (<>) :: Monoid a => a -> a -> a
 (<>) = mappend
@@ -197,17 +192,6 @@ chain q (e1 : es@(e2 : _))
 ----------------------
 -- Accessors support
 
--- | Lift an accessor to a traversable structure. (This can be seen as a
--- generalization of fmap)
-every :: Traversable t => Accessor whole part -> Accessor (t whole) (t part)
-every a = accessor (fmap (getVal a)) (\parts wholes -> zipWithT (setVal a) parts wholes)
-
--- | zipWith, generalized to Traversable structures.
-zipWithT :: Traversable t => (a -> b -> c) -> t a -> t b -> t c
-zipWithT f ta tb = result
-  where step []     _ = Yi.Debug.error "zipT: non matching structures!"
-        step (b:bs) a = (bs,f a b)
-        ([], result) = mapAccumL step (toList tb) ta
 
 -- | Return the longest common prefix of a set of lists.
 --
