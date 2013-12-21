@@ -119,8 +119,8 @@ start cfg ch outCh editor = do
                                    (readIORef editorRef >>= refresh ui >> renderLoop))
                         (const $ return ())
 
-          discard $ forkIO inputLoop
-          discard $ forkIO renderLoop
+          void $ forkIO inputLoop
+          void $ forkIO renderLoop
 
           return (mkUI ui)
 
@@ -134,8 +134,8 @@ end :: UI -> Bool -> IO ()
 end ui reallyQuit = do
   Vty.shutdown (vty ui)
   setTerminalAttributes stdInput (oAttrs ui) Immediately
-  discard $ tryPutMVar (uiEndInputLoop ui) ()
-  discard $ tryPutMVar (uiEndRenderLoop ui) ()
+  void $ tryPutMVar (uiEndInputLoop ui) ()
+  void $ tryPutMVar (uiEndRenderLoop ui) ()
   when reallyQuit $ throwTo (uiThread ui) ExitSuccess
   return ()
 
@@ -209,7 +209,7 @@ layoutAction ui = do
 requestRefresh :: UI -> Editor -> IO ()
 requestRefresh ui e = do
   writeIORef (uiEditor ui) e
-  discard $ tryPutMVar (uiDirty ui) ()
+  void $ tryPutMVar (uiDirty ui) ()
 
 -- | Redraw the entire terminal from the UI.
 refresh :: UI -> Editor -> IO ()

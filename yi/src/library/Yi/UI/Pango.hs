@@ -162,7 +162,7 @@ start cfg ch outCh ed =
 startNoMsg :: UIBoot
 startNoMsg cfg ch outCh ed = do
   logPutStrLn "startNoMsg"
-  discard unsafeInitGUIForThreadedRTS
+  void unsafeInitGUIForThreadedRTS
 
   win   <- windowNew
   ico   <- loadIcon "yi+lambda-fat-32.png"
@@ -209,7 +209,7 @@ startNoMsg cfg ch outCh ed = do
 
   -- use our magic threads thingy
   -- http://haskell.org/gtk2hs/archives/2005/07/24/writing-multi-threaded-guis/
-  discard $ timeoutAddFull (yield >> return True) priorityDefaultIdle 50
+  void $ timeoutAddFull (yield >> return True) priorityDefaultIdle 50
 
   widgetShowAll win
 
@@ -428,7 +428,7 @@ newWindow e ui w = do
     v `on` configureEvent     $ handleConfigure     ui
 
     v `on` motionNotifyEvent  $ handleMove          ui win
-    discard $ v `onExpose` render ui win
+    void $ v `onExpose` render ui win
     -- also redraw when the window receives/loses focus
     (uiWindow ui) `on` focusInEvent $ io (widgetQueueDraw v) >> return False
     (uiWindow ui) `on` focusOutEvent $ io (widgetQueueDraw v) >> return False
@@ -441,7 +441,7 @@ refresh ui e = do
     postGUIAsync $ do
        contextId <- statusbarGetContextId (uiStatusbar ui) "global"
        statusbarPop  (uiStatusbar ui) contextId
-       discard $ statusbarPush (uiStatusbar ui) contextId $ intercalate "  " $
+       void $ statusbarPush (uiStatusbar ui) contextId $ intercalate "  " $
          statusLine e
 
     updateCache ui e -- The cursor may have changed since doLayout
@@ -695,7 +695,7 @@ modTable = M.fromList
 
 -- | Same as Gtk.on, but discards the ConnectId
 on :: object -> Signal object callback -> callback -> IO ()
-on widget signal handler = discard $ Gtk.on widget signal handler
+on widget signal handler = void $ Gtk.on widget signal handler
 
 handleButtonClick :: UI -> WindowRef -> EventM EButton Bool
 handleButtonClick ui ref = do

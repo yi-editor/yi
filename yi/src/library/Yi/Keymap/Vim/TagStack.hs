@@ -9,18 +9,18 @@ module Yi.Keymap.Vim.TagStack(VimTagStack(..),
 where
 
 import Yi.Buffer.Basic(Point)
-import Yi.Prelude(Initializable(..))
 import Yi.Dynamic
 import Yi.Editor
 
+import Data.Default
 import Data.Binary
 import Data.Typeable
 
 newtype VimTagStack = VimTagStack { tagsStack :: [(FilePath, Point)] }
     deriving (Typeable, Binary)
 
-instance Initializable VimTagStack where
-    initial = VimTagStack []
+instance Default VimTagStack where
+    def = VimTagStack []
 
 instance YiVariable VimTagStack
 

@@ -11,6 +11,7 @@ import Data.Char (isSpace)
 import Data.Binary
 import Data.Maybe (isJust)
 import Data.List (isInfixOf)
+import Data.Default
 import Yi.Core
 import qualified Yi.Mode.Interactive as Interactive
 import Yi.Modes (TokenBasedMode, linearSyntaxMode, anyExtension)
@@ -45,7 +46,7 @@ abellaModeEmacs :: TokenBasedMode Abella.Token
 abellaModeEmacs = abellaModeGen (\ch -> [ctrlCh 'c', ctrlCh ch])
 
 newtype AbellaBuffer = AbellaBuffer {_abellaBuffer :: Maybe BufferRef}
-    deriving (Initializable, Typeable, Binary)
+    deriving (Default, Typeable, Binary)
 instance YiVariable AbellaBuffer
 
 getProofPointMark :: BufferM Mark

@@ -14,6 +14,7 @@ import Data.DeriveTH
 import Data.List hiding (foldl', find, elem, concat, concatMap)
 import Data.Char (isSpace)
 import Data.Maybe (fromJust, isJust)
+import Data.Default
 
 import Yi.Buffer
 import Yi.Dynamic
@@ -41,11 +42,11 @@ newtype BufferMarks = BufferMarks { bufferMarks :: [MarkInfo] }
 newtype DependentMarks = DependentMarks { marks :: [[MarkInfo]] }
   deriving (Eq, Show, Monoid, Typeable, Binary)
 
-instance Initializable BufferMarks where
-  initial = BufferMarks []
+instance Default BufferMarks where
+  def = BufferMarks []
 
-instance Initializable DependentMarks where
-  initial = DependentMarks []
+instance Default DependentMarks where
+  def = DependentMarks []
 
 instance YiVariable BufferMarks
 instance YiVariable DependentMarks

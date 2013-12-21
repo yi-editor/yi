@@ -92,7 +92,7 @@ regionForOperatorLineB n style = normalizeRegion =<< StyledRegion style <$> savi
         p0 <- pointB
         return $! mkRegion p0 current
     else do
-        discard $ lineMoveRel (n-2)
+        void $ lineMoveRel (n-2)
         moveToEol
         rightB
         firstNonSpaceB

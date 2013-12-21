@@ -22,6 +22,7 @@ import qualified Prelude
 import Yi.Prelude
 import qualified Data.Binary as Binary
 import Data.Accessor.Basic
+import Data.Default
 import qualified Data.List.PointedList as PL
 
 import Yi.Buffer.Basic(WindowRef)
@@ -101,7 +102,7 @@ buildLayout ws m l = pureLayout m l . fmap wkey . Prelude.filter (not . isMini) 
 
 -- | Make a tab from multiple windows
 makeTab :: TabRef -> PL.PointedList Window -> Tab
-makeTab key ws = Tab key ws (buildLayout ws initial initial) initial
+makeTab key ws = Tab key ws (buildLayout ws def def) def
 
 -- | Make a tab from one window
 makeTab1 :: TabRef -> Window -> Tab

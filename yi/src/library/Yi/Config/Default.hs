@@ -7,6 +7,7 @@ module Yi.Config.Default (defaultConfig, availableFrontends,
 
 import Control.Monad (forever)
 import Data.Either (rights)
+import Data.Default
 import Paths_yi
 import Prelude ()
 import System.Directory
@@ -176,7 +177,7 @@ defaultConfig =
          , configInputPreprocess = I.idAutomaton
          , bufferUpdateHandler = []
          , layoutManagers = [hPairNStack 1, vPairNStack 1, tall, wide]
-         , configVars = initial
+         , configVars = def
          }
 
 defaultEmacsConfig, defaultVimConfig, defaultCuaConfig :: Config
@@ -198,7 +199,7 @@ toEmacsStyleConfig cfg
 -- Useful for emacs lovers ;)
 escToMeta :: I.P Event Event
 escToMeta = mkAutomaton $ forever $ (anyEvent >>= I.write) ||> do
-    discard $ event (spec KEsc)
+    void $ event (spec KEsc)
     c <- printableChar
     I.write (Event (KASCII c) [MMeta])
 
@@ -218,7 +219,7 @@ openScratchBuffer :: YiM ()
 openScratchBuffer = withEditor $ do
       noFileBufOpen <- null . rights . fmap (getVal identA) . M.elems <$> getA buffersA
       when noFileBufOpen $ do
-           discard $ newBufferE (Left "scratch") $ R.fromString $ unlines
+           void $ newBufferE (Left "scratch") $ R.fromString $ unlines
                    ["This buffer is for notes you don't want to save.", --, and for haskell evaluation" -- maybe someday?
                     "If you want to create a file, open that file,",
                     "then enter the text in that file's own buffer."]
@@ -243,7 +244,7 @@ nilKeymap = choice [
             let exampleCfg = dataDir </> "example-configs" </> kmName
             cfgFile <- getConfigFilename -- automatically creates directory, if missing
             cfgExists <- io $ doesFileExist cfgFile
-            discard $ editFile cfgFile -- load config file
+            void $ editFile cfgFile -- load config file
             -- locally override the keymap to the user choice
             withBuffer $ modifyMode (\m -> m { modeKeymap = const km })
             when (not cfgExists) $ do
@@ -259,7 +260,7 @@ nilKeymap = choice [
 --            cfgExists <- io $ doesFileExist cfgFile
 --            -- io $ print cfgExists
 --            io $ createDirectoryIfMissing True cfgDir -- so that the file can be saved.
---            discard $ editFile cfgFile -- load config file
+--            void $ editFile cfgFile -- load config file
 --            -- locally override the keymap to the user choice
 --            withBuffer $ modifyMode (\m -> m {modeKeymap = const km})
 --            when (not cfgExists) $ do

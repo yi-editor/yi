@@ -14,7 +14,7 @@ import qualified Yi.Keymap.Vim2.Ex.Commands.Common as Common
 
 parse :: String -> Maybe ExCommand
 parse = Common.parse $ do
-    discard $ P.try ( P.string "delete") <|> P.string "d"
+    void $ P.try ( P.string "delete") <|> P.string "d"
     return $ Common.pureExCommand {
         cmdShow = "delete"
       , cmdAction = BufferA $ do

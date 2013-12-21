@@ -20,7 +20,7 @@ import qualified Yi.Keymap.Vim2.Ex.Commands.Common as Common
 parse :: String -> Maybe ExCommand
 parse = Common.parse $ do
     ws <- P.many (P.char 'w')
-    discard $ P.try ( P.string "quit") <|> P.string "q"
+    void $ P.try ( P.string "quit") <|> P.string "q"
     as <- P.many (P.try ( P.string "all") <|> P.string "a")
     bangs <- P.many (P.char '!')
     return $! quit (not $ null ws) (not $ null bangs) (not $ null as)

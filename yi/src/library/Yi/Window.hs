@@ -10,6 +10,7 @@ module Yi.Window where
 import qualified Prelude
 import Yi.Prelude
 import Data.Binary
+import Data.Default
 import Yi.Buffer.Basic (BufferRef, WindowRef)
 import Yi.Region (Region,emptyRegion)
 import Yi.JumpList
@@ -63,5 +64,5 @@ pointInWindow point win = tospnt win <= point && point <= bospnt win
 
 -- | Return a "fake" window onto a buffer.
 dummyWindow :: BufferRef -> Window
-dummyWindow b = Window False b [] 0 emptyRegion initial 0 Nothing
+dummyWindow b = Window False b [] 0 emptyRegion def 0 Nothing
 

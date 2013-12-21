@@ -82,16 +82,16 @@ instance Functor ((,,) a b) where
 -- Linewise motions which treat no count as being the same as a count of 1.
 linewiseMotions :: [(String, Bool, Maybe Int -> BufferM ())]
 linewiseMotions = fmap withDefaultCount
-    [ ("j", False, discard . lineMoveRel)
-    , ("k", False, discard . lineMoveRel . negate)
-    , ("<Down>", False, discard . lineMoveRel)
-    , ("<Up>", False, discard . lineMoveRel . negate)
-    , ("-", False, const firstNonSpaceB <=< discard . lineMoveRel . negate)
-    , ("+", False, const firstNonSpaceB <=< discard . lineMoveRel)
+    [ ("j", False, void . lineMoveRel)
+    , ("k", False, void . lineMoveRel . negate)
+    , ("<Down>", False, void . lineMoveRel)
+    , ("<Up>", False, void . lineMoveRel . negate)
+    , ("-", False, const firstNonSpaceB <=< void . lineMoveRel . negate)
+    , ("+", False, const firstNonSpaceB <=< void . lineMoveRel)
     , ("_", False, \n -> do
-                when (n > 1) $ discard $ lineMoveRel (n - 1)
+                when (n > 1) $ void $ lineMoveRel (n - 1)
                 firstNonSpaceB)
-    , ("gg", True, discard . gotoLn) -- TODO: save column
+    , ("gg", True, void . gotoLn) -- TODO: save column
     , ("<C-b>", False, scrollScreensB . negate)
     , ("<PageUp>", False, scrollScreensB . negate)
     , ("<C-f>", False, scrollScreensB)
@@ -134,15 +134,15 @@ inclusiveMotions = fmap (\(key, action) -> (key, False, action . fromMaybe 1))
 
     -- Intraline stuff
     , ("g$", \n -> do
-                when (n > 1) $ discard $ lineMoveRel (n - 1)
+                when (n > 1) $ void $ lineMoveRel (n - 1)
                 moveToEol)
     , ("<End>", const $ moveToEol >> leftOnEol)
     , ("$", \n -> do
-                when (n > 1) $ discard $ lineMoveRel (n - 1)
+                when (n > 1) $ void $ lineMoveRel (n - 1)
                 moveToEol
                 leftOnEol)
     , ("g_", \n -> do
-                when (n > 1) $ discard $ lineMoveRel (n - 1)
+                when (n > 1) $ void $ lineMoveRel (n - 1)
                 lastNonSpaceB)
     ]
     ++

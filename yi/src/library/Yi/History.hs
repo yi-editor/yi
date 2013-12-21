@@ -10,6 +10,7 @@ import Yi.Buffer
 import Data.Binary
 import Data.DeriveTH
 import Data.List
+import Data.Default
 import Data.Accessor.Container
 import Yi.Dynamic
 import Yi.Editor
@@ -18,22 +19,20 @@ import Yi.Prelude
 import Prelude ()
 type Histories = M.Map String History
 
-instance (Typeable k, Typeable v) => Initializable (M.Map k v) where
-    initial = M.empty
 
 data History = History {_historyCurrent :: Int,
                         _historyContents :: [String],
                         _historyPrefix :: String}
 
     deriving (Show, Typeable)
-instance Initializable History where
-    initial = (History (-1) [] "")
+instance Default History where
+    def = (History (-1) [] "")
 $(derive makeBinary ''History)
 
 instance YiVariable (M.Map String History)
 
-dynKeyA :: (Initializable v, Ord k) => k -> Accessor (M.Map k v) v
-dynKeyA = mapDefault initial
+dynKeyA :: (Default v, Ord k) => k -> Accessor (M.Map k v) v
+dynKeyA = mapDefault def
 
 miniBuffer :: String
 miniBuffer = "minibuffer"

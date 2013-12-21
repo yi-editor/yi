@@ -51,6 +51,7 @@ import Data.Maybe (fromMaybe, isJust)
 import Data.Either (either)
 import Data.Prototype
 import Data.Accessor.Template
+import Data.Default
 import Numeric (showHex, showOct)
 import Shim.Utils (splitBy, uncurry3)
 import System.IO (readFile)
@@ -143,8 +144,8 @@ instance Data.Binary.Binary ViCmd where
     put = dummyPut
     get = dummyGet
 
-instance Initializable ViCmd where
-  initial = NoOp
+instance Default ViCmd where
+  def = NoOp
 instance YiVariable ViCmd
 
 data ViInsertion = ViIns { viActFirst  :: Maybe (EditorM ()) -- ^ The action performed first
@@ -156,7 +157,7 @@ data ViInsertion = ViIns { viActFirst  :: Maybe (EditorM ()) -- ^ The action per
   deriving (Typeable)
 
 newtype MViInsertion = MVI { unMVI :: Maybe ViInsertion }
-  deriving(Typeable, Initializable)
+  deriving(Typeable, Default)
 
 instance Data.Binary.Binary MViInsertion where
     put = dummyPut
@@ -224,10 +225,10 @@ emptyViIns :: Point -> ViInsertion
 emptyViIns p = ViIns Nothing (return ()) p p (return ())
 
 getViIns :: BufferM ViInsertion
-getViIns = maybe def return =<< getA currentViInsertionA
-  where def = do ins <- emptyViIns <$> pointB
-                 putA currentViInsertionA $ Just ins
-                 return ins
+getViIns = maybe defins return =<< getA currentViInsertionA
+  where defins = do ins <- emptyViIns <$> pointB
+                    putA currentViInsertionA $ Just ins
+                    return ins
 
 viInsText :: ViInsertion -> BufferM String
 viInsText ins = readRegionB $ mkRegion (viBeginPos ins) (viEndPos ins)
@@ -477,7 +478,7 @@ defKeymap = Proto template
      core_vis_mode selStyle = do
        write $ do withBuffer0' $ putA regionStyleA selStyle
                   setStatus ([msg selStyle], defaultStyle)
-       discard $ many (vis_move <|>
+       void $ many (vis_move <|>
              select_any_unit (withBuffer0' . (\r -> resetSelectStyle >> extendSelectRegionB r >> leftB)))
        visual2other selStyle
        where msg LineWise  = "-- VISUAL LINE --"
@@ -529,7 +530,7 @@ defKeymap = Proto template
                   [c ?>> return (Exclusive, a x) | (c,a) <- moveCmdFM_exclusive ] ++
                   [events evs >> return (Exclusive, a x) | (evs,a) <- moveCmdS_exclusive ] ++
                   [c ?>> return (LineWise, a x) | (c,a) <- moveUpDownCmdFM] ++
-                  [do discard $ event c; c' <- textChar; return (r, a c' x) | (c,r,a) <- move2CmdFM] ++
+                  [do void $ event c; c' <- textChar; return (r, a c' x) | (c,r,a) <- move2CmdFM] ++
                   [char 'G' ?>> return (LineWise, ArbMove $ setMarkHere '\'' >> maybe (botB >> firstNonSpaceB) gotoFNS cnt)
                   ,pString "gg" >> return (LineWise, ArbMove $ setMarkHere '\'' >> gotoFNS (fromMaybe 0 cnt))
                   ,char '\'' ?>> do c <- validMarkIdentifier
@@ -1203,7 +1204,7 @@ exMode self prompt = do
           <|| standardMovementBindings
           <|| (insertChar >>! setHistoryPrefix)
       actionAndHistoryPrefix act = do
-        discard $ withBuffer0 $ act
+        void $ withBuffer0 $ act
         setHistoryPrefix
       setHistoryPrefix = do
         ls <- withEditor . withBuffer0 $ elemsB
@@ -1281,7 +1282,7 @@ exMode self prompt = do
 
   historyStart
   historyPrefixSet ""
-  discard $ spawnMinibufferE prompt $ const ex_process
+  void $ spawnMinibufferE prompt $ const ex_process
   return ()
 
 -- | eval an ex command to an YiM (), also appends to the ex history
@@ -1426,8 +1427,8 @@ exEval self cmd =
       fn "edit"       = revertE
       fn ('e':' ':f)  = viFnewE f
       fn ('e':'d':'i':'t':' ':f) = viFnewE f
-      fn ('s':'a':'v':'e':'a':'s':' ':f)     = let f' = dropSpace f in discard $ viSafeWriteTo f' >> editFile f'
-      fn ('s':'a':'v':'e':'a':'s':'!':' ':f) = let f' = dropSpace f in discard $ viWriteTo f' >> editFile f'
+      fn ('s':'a':'v':'e':'a':'s':' ':f)     = let f' = dropSpace f in void $ viSafeWriteTo f' >> editFile f'
+      fn ('s':'a':'v':'e':'a':'s':'!':' ':f) = let f' = dropSpace f in void $ viWriteTo f' >> editFile f'
       fn ('r':' ':f)  = withBuffer' . insertN =<< io (readFile $ dropSpace f)
       fn ('r':'e':'a':'d':' ':f) = withBuffer' . insertN =<< io (readFile $ dropSpace f)
       fn ('s':'e':'t':' ':'f':'t':'=':ft)  = do (AnyMode m) <- anyModeByName (dropSpace ft) ; withBuffer $ setMode m
@@ -1497,7 +1498,7 @@ exEval self cmd =
 
       fn "tabe"       = withEditor $ do
           newTabE
-          discard newTempBufferE
+          void newTempBufferE
           return ()
       fn "tabedit"    = fn "tabe"
       fn "tabnew"     = fn "tabe"
@@ -1547,7 +1548,7 @@ viWriteModified = do unchanged <- withBuffer' $ gets isUnchangedBuffer
                      unless unchanged viWrite
 
 viFnewE :: String -> YiM ()
-viFnewE f = discard (editFile $ dropSpace f)
+viFnewE f = void (editFile $ dropSpace f)
 
 -- | viSearch is a doSearch wrapper that print the search outcome.
 -- TODO: consider merging with doSearch
@@ -1588,7 +1589,7 @@ leave = oneOf [spec KEsc, ctrlCh 'c'] >> adjustPriority (-1) >> write clrStatus
 
 leaveInsRep :: VimMode
 leaveInsRep = do
-    discard $ oneOf [spec KEsc, ctrlCh '[', ctrlCh 'c']
+    void $ oneOf [spec KEsc, ctrlCh '[', ctrlCh 'c']
     adjustPriority (-1)
     write $ commitLastInsertionE >> withBuffer0 (setMarkHere '^')
     startTopKeymap keymapSet
@@ -1598,7 +1599,7 @@ leaveInsRep = do
 ins_mode :: ModeMap -> VimMode
 ins_mode self = do
     startInsertKeymap keymapSet
-    discard $ many (v_ins_char self <|> kwd_mode (v_opts self))
+    void $ many (v_ins_char self <|> kwd_mode (v_opts self))
     leaveInsRep
     write $ moveXorSol 1
 
@@ -1691,7 +1692,7 @@ gotoTag opts tag =
         when (enableTagStack opts)
              viTagStackPushPos
         viFnewE filename
-        discard $ withBuffer' $ gotoLn line
+        void $ withBuffer' $ gotoLn line
         return ()
 
 -- | Call continuation @act@ with the TagTable. Uses the global table

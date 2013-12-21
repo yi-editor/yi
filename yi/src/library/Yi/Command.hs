@@ -20,6 +20,7 @@ import Yi.Process
 import Yi.UI.Common
 import qualified Yi.Mode.Interactive as Interactive
 import qualified Data.Rope as R
+import Data.Default
 
 ---------------------------
 -- | Changing the buffer name quite useful if you have
@@ -52,7 +53,7 @@ shellCommandV cmd = do
 -- Cabal-related commands
 -- TODO: rename to "BuildBuffer" or something.
 newtype CabalBuffer = CabalBuffer {cabalBuffer :: Maybe BufferRef}
-    deriving (Initializable, Typeable, Binary)
+    deriving (Default, Typeable, Binary)
 
 instance YiVariable CabalBuffer
 
@@ -105,7 +106,7 @@ searchSources = grepFind (Doc "*.hs")
 -- | Perform a find+grep operation
 grepFind :: String ::: FilePatternTag -> String ::: RegexTag -> YiM ()
 grepFind (Doc filePattern) (Doc searchedRegex) = withOtherWindow $ do
-    discard $ startSubprocess "find" [".",
+    void $ startSubprocess "find" [".",
                                       "-name", "_darcs", "-prune", "-o",
                                       "-name", filePattern, "-exec", "grep", "-Hnie", searchedRegex, "{}", ";"] (const $ return ())
     withBuffer $ setMode Compilation.mode

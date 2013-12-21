@@ -11,12 +11,10 @@ Double,
 Binary,
 Char,
 Either(..),
-Endom,
 Eq(..),
 Fractional(..),
 Functor(..),
 IO,
-Initializable(..),
 Integer,
 Integral(..),
 Bounded(..),
@@ -33,10 +31,9 @@ SemiNum(..),
 String,
 Typeable,
 commonPrefix,
-discard,
+void,
 dummyPut,
 dummyGet,
-every,
 findPL,
 focusA,
 fromIntegral,
@@ -91,6 +88,7 @@ import Text.Show
 import Data.Bool
 import Data.Binary
 import Data.Foldable
+import Data.Default
 import Data.Function hiding ((.), id)
 import qualified Data.HashMap.Strict as HashMap
 import Data.Hashable(Hashable)
@@ -110,9 +108,6 @@ import Data.Accessor ((<.), accessor, getVal, setVal, Accessor,(^.),(^:),(^=))
 import qualified Data.Accessor.Monad.MTL.State as Accessor.MTL
 import Data.Accessor.Monad.MTL.State ((%:), (%=))
 import qualified Data.List.PointedList as PL
-
-type Endom a = a -> a
-
 
 (<>) :: Monoid a => a -> a -> a
 (<>) = mappend
@@ -137,8 +132,6 @@ class SemiNum absolute relative | absolute -> relative where
 singleton :: a -> [a]
 singleton x = [x]
 
-discard :: Functor f => f a -> f ()
-discard = fmap (const ())
 
 -- 'list' is the canonical list destructor as 'either' or 'maybe'.
 list :: b -> (a -> [a] -> b) -> [a] -> b
@@ -199,17 +192,6 @@ chain q (e1 : es@(e2 : _))
 ----------------------
 -- Accessors support
 
--- | Lift an accessor to a traversable structure. (This can be seen as a
--- generalization of fmap)
-every :: Traversable t => Accessor whole part -> Accessor (t whole) (t part)
-every a = accessor (fmap (getVal a)) (\parts wholes -> zipWithT (setVal a) parts wholes)
-
--- | zipWith, generalized to Traversable structures.
-zipWithT :: Traversable t => (a -> b -> c) -> t a -> t b -> t c
-zipWithT f ta tb = result
-  where step []     _ = Yi.Debug.error "zipT: non matching structures!"
-        step (b:bs) a = (bs,f a b)
-        ([], result) = mapAccumL step (toList tb) ta
 
 -- | Return the longest common prefix of a set of lists.
 --
@@ -254,24 +236,13 @@ getA = Accessor.MTL.get
 modA :: CMSC.MonadState r m => Accessor.T r a -> (a -> a) -> m ()
 modA = Accessor.MTL.modify
 
--------------------- Initializable typeclass
--- | The default value. If a function tries to get a copy of the state, but the state
---   hasn't yet been created, 'initial' will be called to supply *some* value. The value
---   of initial will probably be something like Nothing,  \[\], \"\", or 'Data.Sequence.empty' - compare
---   the 'mempty' of "Data.Monoid".
-class Initializable a where
-    initial :: a
-
-instance Initializable (Maybe a) where
-    initial = Nothing
-
 -- | Write nothing. Use with 'dummyGet'
 dummyPut :: a -> Put
 dummyPut _ = return ()
 
--- | Read nothing, and return 'initial'. Use with 'dummyPut'.
-dummyGet :: Initializable a => Get a
-dummyGet = return initial
+-- | Read nothing, and return 'def'. Use with 'dummyPut'.
+dummyGet :: Default a => Get a
+dummyGet = return def
 
 ----------------- Orphan 'Binary' instances
 instance (Eq k, Hashable k, Binary k, Binary v) => Binary (HashMap.HashMap k v) where

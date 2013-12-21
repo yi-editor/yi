@@ -49,6 +49,7 @@ import Yi.Prelude
 
 import Data.Binary
 import Data.DeriveTH
+import Data.Default
 import Data.List (sort)
 
 import Yi.Buffer.Basic
@@ -68,8 +69,8 @@ data RegionStyle = LineWise
 $(derive makeBinary ''RegionStyle)
 
 -- TODO: put in the buffer state proper.
-instance Initializable RegionStyle where
-  initial = Inclusive
+instance Default RegionStyle where
+  def = Inclusive
 
 instance YiVariable RegionStyle
 

@@ -170,7 +170,7 @@ searchKeymap = selfSearchKeymap <|> choice
 isearchKeymap :: Direction -> Keymap
 isearchKeymap dir =
   do write $ isearchInitE dir
-     discard $ many searchKeymap
+     void $ many searchKeymap
      choice [ ctrl (char 'g') ?>>! isearchCancelE
             , oneOf [ctrl (char 'm'), spec KEnter] >>! isearchFinishE
             ]
@@ -192,7 +192,7 @@ queryReplaceE = do
         Right re = makeSearchOptsM [] replaceWhat
     withEditor $ do
        setRegexE re
-       discard $ spawnMinibufferE
+       void $ spawnMinibufferE
             ("Replacing " ++ replaceWhat ++ " with " ++ replaceWith ++ " (y,n,q,!):")
             (const replaceKm)
        qrNext win b re
@@ -202,7 +202,7 @@ executeExtendedCommandE = withMinibuffer "M-x" (const getAllNamesInScope) execEd
 
 evalRegionE :: YiM ()
 evalRegionE = do
-  discard $ withBuffer (getSelectRegionB >>= readRegionB) >>= return -- FIXME: do something sensible.
+  void $ withBuffer (getSelectRegionB >>= readRegionB) >>= return -- FIXME: do something sensible.
   return ()
 
 -- * Code for various commands
@@ -247,14 +247,14 @@ readUniversalArg =
 findFile :: YiM ()
 findFile = promptFile "find file:" $ \filename -> do
                 msgEditor $ "loading " ++ filename
-                discard $ editFile filename
+                void $ editFile filename
 
 -- | Open a file in a new tab using the minibuffer.
 findFileNewTab :: YiM ()
 findFileNewTab = promptFile "find file (new tab): " $ \filename -> do
                       withEditor newTabE
                       msgEditor $ "loading " ++ filename
-                      discard $ editFile filename
+                      void $ editFile filename
 
 
 scrollDownE :: UnivArgument -> BufferM ()
@@ -338,8 +338,8 @@ gotoTag tag =
         case lookupTag tag tagTable of
           Nothing -> fail $ "No tags containing " ++ tag
           Just (filename, line) -> do
-            discard $ editFile filename
-            discard $ withBuffer $ gotoLn line
+            void $ editFile filename
+            void $ withBuffer $ gotoLn line
             return ()
 
 -- | Call continuation @act@ with the TagTable. Uses the global table

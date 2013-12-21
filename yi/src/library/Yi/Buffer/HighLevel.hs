@@ -395,7 +395,7 @@ scrollByB f n = do h <- askWindow height
 -- | Same as scrollB, but also moves the cursor
 vimScrollB :: Int -> BufferM ()
 vimScrollB n = do scrollB n
-                  discard $ lineMoveRel n
+                  void $ lineMoveRel n
 
 -- | Same as scrollByB, but also moves the cursor
 vimScrollByB :: (Int -> Int) -> Int -> BufferM ()
@@ -430,7 +430,7 @@ scrollB n = do
   MarkSet fr _ _ <- askMarks
   savingPointB $ do
     moveTo =<< getMarkPointB fr
-    discard $ gotoLnFrom n
+    void $ gotoLnFrom n
     setMarkPointB fr =<< pointB
   w <- askWindow wkey
   modA pointFollowsWindowA (\old w' -> if w == w' then True else old w')
@@ -555,7 +555,7 @@ deleteBlankLinesB =
      when isThisBlank $ do
        p <- pointB
        -- go up to the 1st blank line in the group
-       discard $ whileB (isBlank <$> getNextLineB Backward) lineUp
+       void $ whileB (isBlank <$> getNextLineB Backward) lineUp
        q <- pointB
        -- delete the whole blank region.
        deleteRegionB $ mkRegion p q
@@ -727,7 +727,7 @@ shapeOfBlockRegionB reg = savingPointB $ do
     (l1, c1) <- getLineAndColOfPoint $ regionEnd reg
     let (left, top, bottom, right) = (min c0 c1, min l0 l1, max l0 l1, max c0 c1)
     lengths <- forM [top .. bottom] $ \l -> do
-        discard $ gotoLn l
+        void $ gotoLn l
         moveToColB left
         currentLeft <- curCol
         if currentLeft /= left
@@ -749,7 +749,7 @@ leftEdgesOfRegionB Block reg = savingPointB $ do
     (l1, _) <- getLineAndColOfPoint $ regionEnd reg
     moveTo $ regionStart reg
     fmap catMaybes $ forM [0 .. abs (l0 - l1)] $ \i -> savingPointB $ do
-        discard $ lineMoveRel i
+        void $ lineMoveRel i
         p <- pointB
         eol <- atEol
         if not eol
@@ -770,7 +770,7 @@ rightEdgesOfRegionB LineWise reg = savingPointB $ do
                        if edge > lastEol
                        then return $ reverse acc
                        else do
-                           discard $ lineMoveRel 1
+                           void $ lineMoveRel 1
                            go (edge:acc) =<< pointB
     go [] (regionStart reg)
 rightEdgesOfRegionB _ reg = savingPointB $ do
@@ -788,7 +788,7 @@ splitBlockRegionToContiguousSubRegionsB reg = savingPointB $ do
         p1 <- pointB
         let subRegion = mkRegion p0 p1
         moveTo p0
-        discard $ lineMoveRel 1
+        void $ lineMoveRel 1
         return subRegion
 
 deleteRegionWithStyleB :: Region -> RegionStyle -> BufferM Point
@@ -816,7 +816,7 @@ readRegionRopeWithStyleB reg Block = savingPointB $ do
         else do
             p <- pointB
             r <- readRegionB' $ mkRegion p (p +~ Size l)
-            discard $ lineMoveRel 1
+            void $ lineMoveRel 1
             return r
     return $ R.concat $ intersperse (R.fromString "\n") chunks
 readRegionRopeWithStyleB reg style = readRegionB' =<< convertRegionToStyleB reg style
@@ -832,7 +832,7 @@ insertRopeWithStyleB rope Block = savingPointB $ do
                 moveToEol
                 newlineB
                 insertN $ replicate col ' '
-            else discard $ lineMoveRel 1
+            else void $ lineMoveRel 1
     sequence_ $ intersperse advanceLine $ fmap (savingPointB . insertN') ls
 insertRopeWithStyleB rope LineWise = do
     moveToSol
@@ -878,7 +878,7 @@ movePercentageFileB i = do
                  | x < 0.0 -> 0.0 -- Impossible?
                  | otherwise -> x
     lineCount <- lineCountB
-    discard $ gotoLn $ floor (fromIntegral lineCount * f)
+    void $ gotoLn $ floor (fromIntegral lineCount * f)
     firstNonSpaceB
 
 findMatchingPairB :: BufferM ()

@@ -18,9 +18,9 @@ import qualified Yi.Keymap.Vim2.Ex.Commands.Substitute as Substitute
 
 parse :: String -> Maybe ExCommand
 parse = Common.parse $ do
-    discard $ P.try (P.string "global/") <|> P.string "g/"
+    void $ P.try (P.string "global/") <|> P.string "g/"
     predicate <- P.many (P.noneOf "/")
-    discard $ P.char '/'
+    void $ P.char '/'
     cmdString <- P.many P.anyChar
     cmd <- case stringToExCommand allowedCmds cmdString of
             Just c -> return c
@@ -37,8 +37,8 @@ global p c = Common.pureExCommand {
             ln <- withBuffer0 $ gotoLn l >> readLnB
             when (p `isInfixOf` ln) $
                 case cmdAction c of
-                    BufferA action -> withBuffer0 $ discard action
-                    EditorA action -> discard action
+                    BufferA action -> withBuffer0 $ void action
+                    EditorA action -> void action
                     _ -> error "Impure command as an argument to global."
         withBuffer0 $ do
             getMarkPointB mark >>= moveTo

@@ -35,6 +35,7 @@ import Data.List hiding (find, maximum, concat)
 import Data.Maybe
 import Data.Char (toLower)
 import Data.DeriveTH
+import Data.Default
 import qualified Data.Map as M
 import qualified Data.Rope as R
 import Data.Time
@@ -87,14 +88,14 @@ data DiredState = DiredState
 
 $(derive makeBinary ''DiredState)
 
-instance Initializable DiredState where
-    initial = DiredState { diredPath        = ""
-                         , diredMarks      = M.empty
-                         , diredEntries    = M.empty
-                         , diredFilePoints = []
-                         , diredNameCol    = 0
-                         , diredCurrFile   = ""
-                         }
+instance Default DiredState where
+    def = DiredState { diredPath        = ""
+                     , diredMarks      = M.empty
+                     , diredEntries    = M.empty
+                     , diredFilePoints = []
+                     , diredNameCol    = 0
+                     , diredCurrFile   = ""
+                     }
 
 instance YiVariable DiredState
 
@@ -111,7 +112,7 @@ filenameColOf :: BufferM () -> BufferM ()
 filenameColOf f = getA bufferDynamicValueA >>= setPrefCol . Just . diredNameCol >> f
 
 resetDiredOpState :: YiM ()
-resetDiredOpState = withBuffer $ modA bufferDynamicValueA (\_ds -> initial :: DiredOpState)
+resetDiredOpState = withBuffer $ modA bufferDynamicValueA (\_ds -> def :: DiredOpState)
 
 incDiredOpSucCnt :: YiM ()
 incDiredOpSucCnt = withBuffer $ modA bufferDynamicValueA (\ds -> ds { diredOpSucCnt = (diredOpSucCnt ds) + 1 })
@@ -207,7 +208,7 @@ procDiredOp counting ((DOFeedback f):ops) = do
 procDiredOp counting r@((DOChoice prompt op):ops) = do
   st <- getDiredOpState
   if diredOpForAll st then proceedYes
-                      else discard $ withEditor $ spawnMinibufferE msg (const askKeymap)
+                      else void $ withEditor $ spawnMinibufferE msg (const askKeymap)
     where msg = concat [prompt, " (y/n/!/q/h)"]
           askKeymap = choice ([ char 'n' ?>>! noAction
                               , char 'y' ?>>! yesAction
@@ -313,7 +314,7 @@ dired = do
     msgEditor "Dired..."
     maybepath <- withBuffer $ gets file
     dir <- io $ getFolder maybepath
-    discard $ editFile dir
+    void $ editFile dir
 
 diredDir :: FilePath -> YiM ()
 diredDir dir = diredDirBuffer dir >> return ()
@@ -693,7 +694,7 @@ diredLoad = do
                           case de of
                             (DiredFile _dfi) -> do
                                     exists <- io $ doesFileExist sel
-                                    if exists then discard $ editFile sel
+                                    if exists then void $ editFile sel
                                               else msgEditor $ sel ++ " no longer exists"
                             (DiredDir _dfi)  -> do
                                     exists <- io $ doesDirectoryExist sel
@@ -704,7 +705,7 @@ diredLoad = do
                                     existsFile <- io $ doesFileExist target
                                     existsDir <- io $ doesDirectoryExist target
                                     msgEditor $ "Following link:"++target
-                                    if existsFile then discard $ editFile target else
+                                    if existsFile then void $ editFile target else
                                         if existsDir then diredDir target else
                                             msgEditor $ target ++ " does not exist"
                             (DiredSocket _dfi) -> do
@@ -802,8 +803,8 @@ data DiredOpState = DiredOpState
     }
     deriving (Show, Eq, Typeable)
 
-instance Initializable DiredOpState where
-    initial = DiredOpState {diredOpSucCnt = 0, diredOpForAll = False}
+instance Default DiredOpState where
+    def = DiredOpState {diredOpSucCnt = 0, diredOpForAll = False}
 
 $(derive makeBinary ''DiredOpState)
 

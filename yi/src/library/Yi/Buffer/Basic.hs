@@ -8,6 +8,7 @@ import Yi.Prelude
 import qualified Data.Rope as R
 import Data.DeriveTH
 import Data.Ix
+import Data.Default
 
 -- | Direction of movement inside a buffer
 data Direction = Backward
@@ -70,5 +71,5 @@ fromString = R.fromString
 newtype WindowRef = WindowRef { unWindowRef :: Int }
   deriving(Eq, Ord, Enum, Show, Typeable, Binary)
 
-instance Initializable WindowRef where initial = WindowRef (-1)
+instance Default WindowRef where def = WindowRef (-1)
 

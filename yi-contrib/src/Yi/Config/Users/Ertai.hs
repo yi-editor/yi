@@ -38,6 +38,7 @@ myModetable = [
                AnyMode . haskellModeHooks . removeAnnots $ Haskell.fastMode
               ]
 
+type Endom a = a -> a
 
 haskellModeHooks :: (Foldable f) => Endom (Mode (f Haskell.TT))
 haskellModeHooks mode =

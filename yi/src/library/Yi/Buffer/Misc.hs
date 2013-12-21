@@ -170,6 +170,7 @@ import Yi.Window
 import Control.Monad.RWS.Strict hiding (mapM_, mapM, get, put, forM_, forM)
 import Data.Accessor.Template
 import Data.Binary
+import Data.Default
 import Data.DeriveTH
 import qualified Data.Rope as R
 import Data.List (scanl, takeWhile, zip, length)
@@ -567,7 +568,7 @@ runBufferFull w b f =
             ms <- getMarks w
             when (isNothing ms) $ do
                 -- this window has no marks for this buffer yet; have to create them.
-                newMarkValues <- if wkey (b ^. lastActiveWindowA) == initial
+                newMarkValues <- if wkey (b ^. lastActiveWindowA) == def
                     then return
                         -- no previous window, create some marks from scratch.
                          MarkSet { insMark = MarkValue 0 Forward,
@@ -701,7 +702,7 @@ newB unique nm s =
             , bkey__ = unique
             , undos  = emptyU
             , preferCol = Nothing
-            , bufferDynamic = initial
+            , bufferDynamic = def
             , pendingUpdates = []
             , selectionStyle = SelectionStyle False False
             , process = I.End
@@ -1082,7 +1083,7 @@ maybeCharWithVerticalOffset :: Int -> BufferM (Maybe Char)
 maybeCharWithVerticalOffset offset = savingPointB $ do
     l0 <- curLn
     c0 <- curCol
-    discard $ lineMoveRel offset
+    void $ lineMoveRel offset
     l1 <- curLn
     c1 <- curCol
     curChar <- readB
@@ -1182,7 +1183,7 @@ withEveryLineB :: BufferM () -> BufferM ()
 withEveryLineB action = savingPointB $ do
   lineCount <- lineCountB
   forM_ [1 .. lineCount] $ \l -> do
-    discard $ gotoLn l
+    void $ gotoLn l
     action
 
 $(nameDeriveAccessors ''Mode (\n -> Just (n ++ "A")))
