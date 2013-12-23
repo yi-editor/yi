@@ -19,7 +19,7 @@ import qualified Data.ByteString.Char8 as B (pack, unpack, readFile, ByteString)
 import qualified Data.ByteString.Lazy.Char8 as BL (fromChunks)
 
 import Yi.Buffer.HighLevel (replaceBufferContent, topB)
-import Yi.Buffer.Misc (bufferDynamicValueA, BufferM)
+import Yi.Buffer.Misc (bufferDynamicValueA, BufferM, elemsB)
 import Yi.Buffer.Normal (regionOfB, TextUnit(Document))
 import Yi.Buffer.Region (readRegionB)
 import Yi.Dynamic
@@ -83,15 +83,11 @@ readDB = io $ (getArticleDbFilename >>= r) `catch` returnDefault
 --   (that is, if we get an empty Seq), only then do we call 'readDB'.
 oldDbNewArticle :: YiM (ArticleDB, Article)
 oldDbNewArticle = do saveddb <- withBuffer $ getA bufferDynamicValueA
-                     newarticle <-fmap B.pack $ withBuffer getBufferContents
+                     newarticle <-fmap B.pack $ withBuffer elemsB
                      if not $ S.null (unADB saveddb)
                       then return (saveddb, newarticle)
                       else do olddb <- readDB
                               return (olddb, newarticle)
-
--- TODO: move to somewhere more sensible. Buffer.Misc?
-getBufferContents :: BufferM String
-getBufferContents = readRegionB =<< regionOfB Document
 
 -- | Given an 'ArticleDB', dump the scheduled article into the buffer (replacing previous contents).
 setDisplayedArticle :: ArticleDB -> YiM ()
