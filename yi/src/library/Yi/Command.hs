@@ -4,6 +4,7 @@
 module Yi.Command where
 
 {- Standard Library Module Imports -}
+import Control.Monad (void)
 import Data.Binary
 import System.Exit
   ( ExitCode( ExitSuccess,ExitFailure ) )
@@ -12,7 +13,7 @@ import Control.Monad.Trans (MonadIO (..))
 {- External Library Module Imports -}
 {- Local (yi) module imports -}
 
-import Prelude ()
+import Prelude (length, filter)
 import Yi.Core
 import Yi.MiniBuffer
 import qualified Yi.Mode.Compilation as Compilation
@@ -45,8 +46,16 @@ shellCommandV :: String -> YiM ()
 shellCommandV cmd = do
       (exitCode,cmdOut,cmdErr) <- liftIO $ runShellCommand cmd
       case exitCode of
-        ExitSuccess -> withEditor $ newBufferE (Left "Shell Command Output") (R.fromString cmdOut) >> return ()
-        -- FIXME: here we get a string and convert it back to utf8; this indicates a possible bug.
+        ExitSuccess -> if length (filter (== '\n') cmdOut) > 1
+                       then withEditor . void $ -- see GitHub issue #477
+                              newBufferE (Left "Shell Command Output")
+                                         (R.fromString cmdOut)
+                       else msgEditor $ case cmdOut of
+                         "" -> "(Shell command with no output)"
+                         -- Drop trailing newline from output
+                         xs -> if last xs == '\n' then init xs else xs
+        -- FIXME: here we get a string and convert it back to utf8;
+        -- this indicates a possible bug.
         ExitFailure _ -> msgEditor cmdErr
 
 ----------------------------
