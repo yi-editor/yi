@@ -1,4 +1,9 @@
-{-# LANGUAGE FlexibleInstances, TypeFamilies, TemplateHaskell #-}
+{-# LANGUAGE
+  FlexibleInstances,
+  TypeFamilies,
+  TemplateHaskell,
+  DeriveFoldable,
+  DeriveFunctor #-}
 -- Copyright (c) JP Bernardy 2008
 -- | Parser for haskell that takes in account only parenthesis and layout
 module Yi.Syntax.Paren where
@@ -13,10 +18,8 @@ import Yi.Syntax
 import Yi.Prelude
 import Prelude ()
 import Data.Monoid (Endo(..), appEndo, mappend)
-import Data.DeriveTH
 import Data.Maybe
 import Data.List (filter, takeWhile)
-import qualified Data.Foldable
 
 indentScanner :: Scanner (AlexState lexState) (TT)
               -> Scanner (Yi.Syntax.Layout.State Token lexState) (TT)
@@ -46,9 +49,8 @@ data Tree t
     | Atom t
     | Error t
     | Expr [Tree t]
-      deriving Show
+      deriving (Show, Foldable, Functor)
 
-$(derive makeFoldable ''Tree)
 instance IsTree Tree where
     emptyNode = Expr []
     uniplate (Paren l g r) = (g,\g' -> Paren l g' r)
@@ -81,8 +83,6 @@ getSubtreeSpan tree = (posnOfs $ first, lastLine - firstLine)
           [firstLine, lastLine] = fmap posnLine bounds
           assertJust (Just x) = x
           assertJust _ = error "assertJust: Just expected"
-
--- $(derive makeFunctor ''Tree)
 
 -- dropWhile' f = foldMap (\x -> if f x then mempty else Endo (x :))
 --

@@ -1,11 +1,13 @@
-{-# LANGUAGE FlexibleInstances, TemplateHaskell, DeriveDataTypeable #-}
+{-# LANGUAGE
+  FlexibleInstances,
+  TemplateHaskell,
+  DeriveDataTypeable,
+  DeriveFoldable #-}
 -- (C) Copyright 2009 Deniz Dogan
 
 module Yi.Syntax.JavaScript where
 
-import Data.DeriveTH
 import Data.Data (Data)
-import qualified Data.Foldable
 import Data.Monoid (Endo(..), mempty)
 import Prelude (maybe)
 import Yi.Buffer.Basic (Point(..))
@@ -48,25 +50,25 @@ data Statement t = FunDecl t t (Parameters t) (Block t)
                  | With t (ParExpr t) (Block t)
                  | Comm t
                  | Expr (Expr t) (Semicolon t)
-                   deriving (Show, Data, Typeable)
+                   deriving (Show, Data, Typeable, Foldable)
 
 data Parameters t = Parameters t (BList t) t
                   | ParErr t
-                    deriving (Show, Data, Typeable)
+                    deriving (Show, Data, Typeable, Foldable)
 
 data ParExpr t = ParExpr t (BList (Expr t)) t
                | ParExprErr t
-                 deriving (Show, Data, Typeable)
+                 deriving (Show, Data, Typeable, Foldable)
 
 data ForContent t = ForNormal t (Expr t) t (Expr t)
                   | ForIn t (Expr t)
                   | ForErr t
-                    deriving (Show, Data, Typeable)
+                    deriving (Show, Data, Typeable, Foldable)
 
 data Block t = Block t (BList (Statement t)) t
              | BlockOne (Statement t)
              | BlockErr t
-               deriving (Show, Data, Typeable)
+               deriving (Show, Data, Typeable, Foldable)
 
 -- | Represents either a variable name or a variable name assigned to an
 --   expression.  @AssBeg@ is a variable name /maybe/ followed by an assignment.
@@ -75,7 +77,7 @@ data Block t = Block t (BList (Statement t)) t
 data VarDecAss t = AssBeg t (Maybe (VarDecAss t))
                  | AssRst t (Expr t)
                  | AssErr t
-                   deriving (Show, Data, Typeable)
+                   deriving (Show, Data, Typeable, Foldable)
 
 data Expr t = ExprObj t (BList (KeyValue t)) t
             | ExprPrefix t (Expr t)
@@ -90,26 +92,17 @@ data Expr t = ExprObj t (BList (KeyValue t)) t
             | ExprArr t (Maybe (Array t)) t (Maybe (Expr t))
             | PostExpr t
             | ExprErr t
-              deriving (Show, Data, Typeable)
+              deriving (Show, Data, Typeable, Foldable)
 
 data Array t = ArrCont (Expr t) (Maybe (Array t))
              | ArrRest t (Array t) (Maybe (Array t))
              | ArrErr t
-               deriving (Show, Data, Typeable)
+               deriving (Show, Data, Typeable, Foldable)
 
 data KeyValue t = KeyValue t t (Expr t)
                 | KeyValueErr t
-                  deriving (Show, Data, Typeable)
+                  deriving (Show, Data, Typeable, Foldable)
 
-$(derive makeFoldable ''Statement)
-$(derive makeFoldable ''Parameters)
-$(derive makeFoldable ''ParExpr)
-$(derive makeFoldable ''ForContent)
-$(derive makeFoldable ''Block)
-$(derive makeFoldable ''VarDecAss)
-$(derive makeFoldable ''Expr)
-$(derive makeFoldable ''Array)
-$(derive makeFoldable ''KeyValue)
 
 instance IsTree Statement where
     subtrees (FunDecl _ _ _ x) = fromBlock x
