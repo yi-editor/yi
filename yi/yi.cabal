@@ -12,7 +12,7 @@ maintainer:     yi-devel@googlegroups.com
 homepage:       http://haskell.org/haskellwiki/Yi
 bug-reports:    http://code.google.com/p/yi-editor/issues/list
 Cabal-Version:  >= 1.10
-tested-with:    GHC==7.4.2, GHC==7.6.1
+tested-with:    GHC==7.6.3
 build-type:     Simple
 data-files:
   art/*.png
@@ -343,14 +343,14 @@ library
     cpp-options: -DSCION
     exposed-modules: Yi.Scion
     build-depends: scion == 0.1.*,
-      ghc >= 7,
+      ghc >= 7.6,
       ghc-syb-utils
 
   if flag (ghcAPI)
     cpp-options: -DGHC_API
 
     build-depends:
-      ghc >= 7,
+      ghc >= 7.6,
       ghc-paths ==0.1.*,
       old-time >= 1.1.0.0,
       rosezipper >= 0.1 && < 0.3,
@@ -415,7 +415,7 @@ executable yi
 
   if flag(dochack)
     buildable: False
-  
+
   if flag(profiling)
     cpp-options: -DPROFILING
 
@@ -443,4 +443,3 @@ Test-Suite test-suite
     filepath,
     directory,
     yi
-

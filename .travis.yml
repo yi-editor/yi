@@ -3,7 +3,6 @@ matrix:
     - env: GHCVER=head
 
 env:
- - GHCVER=7.4.2
  - GHCVER=7.6.3
  - GHCVER=head
 
