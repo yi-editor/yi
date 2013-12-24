@@ -4,7 +4,6 @@
 module Yi.Command where
 
 {- Standard Library Module Imports -}
-import Control.Monad (void)
 import Data.Binary
 import System.Exit
   ( ExitCode( ExitSuccess,ExitFailure ) )

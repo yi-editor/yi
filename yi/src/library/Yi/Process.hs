@@ -9,9 +9,6 @@ import System.IO
 import System.Process
 import System.Environment ( getEnv )
 
-import Control.Concurrent       (forkIO)
-import qualified Control.Exception (evaluate, handle, SomeException)
-
 import Foreign.Marshal.Alloc(allocaBytes)
 import Foreign.C.String
 
@@ -108,5 +105,3 @@ read_chunk handle = do
                  s <- peekCStringLen (buffer,bytesRead)
                  let mightHaveMore = (bytesRead == bufferSize)
                  return (mightHaveMore, s)
-
-

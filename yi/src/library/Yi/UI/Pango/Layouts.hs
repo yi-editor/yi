@@ -28,7 +28,6 @@ module Yi.UI.Pango.Layouts (
  ) where
 
 
-import Control.Monad(void)
 import qualified Data.List.PointedList as PL
 import Data.Maybe
 import qualified Prelude
