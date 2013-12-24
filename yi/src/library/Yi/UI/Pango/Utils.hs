@@ -6,6 +6,8 @@
 
 module Yi.UI.Pango.Utils where
 
+import Control.Exception (catch, throw)
+
 import Paths_yi
 import System.FilePath
 import Graphics.UI.Gtk
@@ -14,7 +16,10 @@ import System.Glib.GError
 loadIcon :: FilePath -> IO Pixbuf
 loadIcon fpath = do
   iconfile <- getDataFileName $ "art" </> fpath
-  icoProject <- catchGError (pixbufNewFromFile iconfile)
-                            (\(GError dom code msg) -> throwGError $ GError dom code $
-                             msg ++ " -- use the yi_datadir environment variable to specify an alternate location")
+  icoProject <-
+    catch (pixbufNewFromFile iconfile)
+    (\(GError dom code msg) ->
+      throw $ GError dom code $
+        msg ++ " -- use the yi_datadir environment variable to"
+            ++ " specify an alternate location")
   pixbufAddAlpha icoProject (Just (0,255,0))
