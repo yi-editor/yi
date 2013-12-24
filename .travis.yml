@@ -3,6 +3,8 @@ matrix:
     - env: GHCVER=head
 
 env:
+ - GHCVER=7.6.1
+ - GHCVER=7.6.2
  - GHCVER=7.6.3
  - GHCVER=head
 
@@ -15,12 +17,11 @@ before_install:
 install:
  - cabal-1.18 update
  - travis_retry cabal-1.18 install -j2 alex happy gtk2hs-buildtools
+
+script:
  - cd yi
  - travis_retry cabal-1.18 install -j2 -fpango --enable-tests -ftesting --only-dependencies
  - cabal-1.18 install -j2 -fpango --enable-tests -ftesting
  - cd -
  - cd yi-contrib
  - cabal-1.18 install
-
-script:
- - echo "All done."
