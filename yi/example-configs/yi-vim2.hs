@@ -37,6 +37,10 @@ myKeymapSet = V2.mkKeymapSet $ V2.defVimConfig `override` \super this ->
 myBindings :: (String -> EditorM ()) -> [V2.VimBinding]
 myBindings eval =
     let nmap x y = V2.mkStringBindingE V2.Normal V2.Drop (x, y, id)
+        imap x y = V2.VimBindingE (\evs state -> case V2.vsMode state of
+                                    V2.Insert _ -> evs `V2.matchesString` x
+                                    _ -> V2.NoMatch)
+                                  (\_evs -> y >> return V2.Continue)
     in [
          -- Tab traversal
          nmap "<C-h>" previousTabE
@@ -52,6 +56,9 @@ myBindings eval =
        , nmap "<F3>" (withBuffer0 deleteTrailingSpaceB)
        , nmap "<F4>" (withBuffer0 moveToSol)
        , nmap "<F1>" (withBuffer0 readCurrentWordB >>= printMsg)
+
+       , imap "<Home>" (withBuffer0 moveToSol)
+       , imap "<End>" (withBuffer0 moveToEol)
        ]
 
 myModes = [
