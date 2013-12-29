@@ -239,21 +239,21 @@ type BufferId = Either String FilePath
 
 data Attributes = Attributes
                 { ident :: !BufferId
-                , bkey__   :: !BufferRef            -- ^ immutable unique key
+                , bkey__   :: !BufferRef          -- ^ immutable unique key
                 , undos  :: !URList               -- ^ undo/redo list
                 , bufferDynamic :: !DynamicValues -- ^ dynamic components
                 , preferCol :: !(Maybe Int)       -- ^ prefered column to arrive at when we do a lineDown / lineUp
-                , pendingUpdates :: ![UIUpdate]    -- ^ updates that haven't been synched in the UI yet
+                , pendingUpdates :: ![UIUpdate]   -- ^ updates that haven't been synched in the UI yet
                 , selectionStyle :: !SelectionStyle
                 , process :: !KeymapProcess
                 , winMarks :: !(M.Map WindowRef WinMarks)
                 , lastActiveWindow :: !Window
-                , lastSyncTime :: !UTCTime -- ^ time of the last synchronization with disk
-                , readOnly :: !Bool                -- ^ read-only flag
-                , inserting :: !Bool -- ^ the keymap is ready for insertion into this buffer
-                , pointFollowsWindow :: !(WindowRef -> Bool)
+                , lastSyncTime :: !UTCTime        -- ^ time of the last synchronization with disk
+                , readOnly :: !Bool               -- ^ read-only flag
+                , inserting                 :: !Bool               -- ^ the keymap is ready for insertion into this buffer
+                , pointFollowsWindow        :: !(WindowRef -> Bool)
                 , updateTransactionInFlight :: !Bool
-                , updateTransactionAccum :: ![Update]
+                , updateTransactionAccum    :: ![Update]
                 } deriving Typeable
 
 $(nameDeriveAccessors ''Attributes (\n -> Just (n ++ "AA")))
