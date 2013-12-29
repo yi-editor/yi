@@ -1,4 +1,15 @@
-{-# LANGUAGE TemplateHaskell, CPP, GeneralizedNewtypeDeriving, DeriveDataTypeable, StandaloneDeriving, ExistentialQuantification, Rank2Types, TypeSynonymInstances #-}
+{-# LANGUAGE
+  TemplateHaskell,
+  CPP,
+  GeneralizedNewtypeDeriving,
+  DeriveDataTypeable,
+  DeriveTraversable,
+  DeriveFoldable,
+  DeriveFunctor,
+  StandaloneDeriving,
+  ExistentialQuantification,
+  Rank2Types,
+  TypeSynonymInstances #-}
 
 -- Copyright (C) 2004, 2007 Don Stewart - http://www.cse.unsw.edu.au/~dons
 -- Copyright (C) 2007, 2008 JP Bernardy
@@ -207,14 +218,7 @@ import Data.Char(ord)
 
 type WinMarks = MarkSet Mark
 
-data MarkSet a = MarkSet { fromMark, insMark, selMark :: !a }
-
-instance Traversable MarkSet where
-    traverse f (MarkSet a b c) = MarkSet <$> f a <*> f b <*> f c
-instance Foldable MarkSet where
-    foldMap = foldMapDefault
-instance Functor MarkSet where
-    fmap = fmapDefault
+data MarkSet a = MarkSet { fromMark, insMark, selMark :: !a } deriving (Traversable, Foldable, Functor)
 
 $(derive makeBinary ''MarkSet)
 

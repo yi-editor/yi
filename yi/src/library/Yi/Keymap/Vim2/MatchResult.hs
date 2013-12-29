@@ -1,3 +1,4 @@
+{-# LANGUAGE DeriveFunctor #-}
 module Yi.Keymap.Vim2.MatchResult where
 
 import Yi.Prelude
@@ -8,6 +9,7 @@ import Data.List (isPrefixOf)
 data MatchResult a = NoMatch
                    | PartialMatch
                    | WholeMatch a
+                   deriving Functor
 
 -- like Data.List.lookup, but with MatchResult instead of Maybe
 lookupBestMatch :: String -> [(String, a)] -> MatchResult a
@@ -18,11 +20,6 @@ matchesString :: String -> String -> MatchResult ()
 matchesString got expected | expected == got = WholeMatch ()
                            | got `isPrefixOf` expected = PartialMatch
                            | otherwise = NoMatch
-
-instance Functor MatchResult where
-    fmap f (WholeMatch x) = WholeMatch (f x)
-    fmap _ NoMatch = NoMatch
-    fmap _ PartialMatch = PartialMatch
 
 instance Applicative MatchResult where
     pure = WholeMatch

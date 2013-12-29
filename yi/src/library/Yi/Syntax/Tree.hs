@@ -1,4 +1,10 @@
-{-# LANGUAGE CPP, TypeFamilies, NoMonomorphismRestriction, FlexibleInstances, ScopedTypeVariables #-}
+{-# LANGUAGE
+  CPP,
+  TypeFamilies,
+  NoMonomorphismRestriction,
+  DeriveFoldable,
+  FlexibleInstances,
+  ScopedTypeVariables #-}
 {-# OPTIONS_GHC -fno-warn-unused-binds -fno-warn-incomplete-patterns #-} -- the CPP seems to confuse GHC; we have uniplate patterns
 {- Copyright JP Bernardy 2008 -}
 
@@ -267,12 +273,7 @@ nodeRegion :: IsTree tree => Node (tree (Tok a)) -> Region
 nodeRegion n = subtreeRegion t
     where Just t = walkDown n
 
-data Test a = Empty | Leaf a | Bin (Test a) (Test a) deriving (Show, Eq)
-
-instance Foldable Test where
-    foldMap _ Empty = mempty
-    foldMap f (Leaf x) = f x
-    foldMap f (Bin _ r) = foldMap f r <> foldMap f r
+data Test a = Empty | Leaf a | Bin (Test a) (Test a) deriving (Show, Eq, Foldable)
 
 instance IsTree Test where
     uniplate (Bin l r) = ([l,r],\[l',r'] -> Bin l' r')

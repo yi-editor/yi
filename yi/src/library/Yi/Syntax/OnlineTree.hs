@@ -1,4 +1,12 @@
-{-# LANGUAGE ScopedTypeVariables, FlexibleInstances, TypeFamilies, CPP, NoMonomorphismRestriction #-}
+{-# LANGUAGE
+  ScopedTypeVariables,
+  FlexibleInstances,
+  DeriveFunctor,
+  DeriveFoldable,
+  DeriveTraversable,
+  TypeFamilies,
+  CPP,
+  NoMonomorphismRestriction #-}
 {-# OPTIONS_GHC -fno-warn-incomplete-patterns #-} -- uniplate patterns
 module Yi.Syntax.OnlineTree (Tree(..), manyToks,
                              tokAtOrBefore) where
@@ -32,26 +40,12 @@ data MaybeOneMore f x = None | OneMore x (f x)
 data Tree a = Bin (Tree a) (Tree a)
             | Leaf a
             | Tip
-              deriving Show
+              deriving (Show, Functor, Foldable, Traversable)
 
 instance IsTree Tree where
     emptyNode = Tip
     uniplate (Bin l r) = ([l,r],\[l',r'] -> Bin l' r')
     uniplate t = ([],\_->t)
-
-instance Traversable Tree where
-    traverse f (Bin l r) = Bin <$> traverse f l <*> traverse f r
-    traverse f (Leaf a) = Leaf <$> f a
-    traverse _ Tip = pure Tip
-
-instance Foldable Tree where
-    foldMap _ Tip = mempty
-    foldMap f (Leaf a) = f a
-    foldMap f (Bin l r) = foldMap f l <> foldMap f r
-    -- foldMap = foldMapDefault
-
-instance Functor Tree where
-    fmap = fmapDefault
 
 manyToks :: P (Tok t) (Tree (Tok t))
 manyToks = manyToks' 1
