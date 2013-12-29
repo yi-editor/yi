@@ -22,15 +22,11 @@ module Shim.GhcCompat
   , getNamesInScope
   ) where
 
-#if __GLASGOW_HASKELL__ >= 610
 import GHC hiding ( load, getModuleGraph, getSessionDynFlags, getRdrNamesInScope,
                     findModule, exprType, getPrintUnqual, compileExpr, setSessionDynFlags,
                     setTargets, setContext, load, getModuleInfo, lookupName, getContext,
                     modInfoLookupName, parseDynamicFlags, workingDirectoryChanged,
                     getNamesInScope)
-#else
-import GHC hiding ( load, newSession, parseDynamicFlags )
-#endif
 
 import qualified GHC as GHC
 import StaticFlags
@@ -38,11 +34,7 @@ import Panic
 import HscTypes
 
 -- FIX: we should check for Cabal version instead
-#if __GLASGOW_HASKELL__ >= 610
 import qualified Distribution.PackageDescription.Parse as DP
-#else
-import qualified Distribution.PackageDescription as DP
-#endif
 
 import Distribution.Verbosity
 import Control.Concurrent.MVar ( tryTakeMVar, modifyMVar_, newMVar,
@@ -52,45 +44,6 @@ import System.IO.Unsafe ( unsafePerformIO )
 import Data.IORef
 
 
-#if __GLASGOW_HASKELL__ == 606
-{- needed to work around a bug in ghc 6.6: newSession hangs when
-   called for the second time because 6.6 release has:
-   interruptTargetThread = unsafePerformIO newEmptyMVar
-   ...
-   putMVar interruptTargetThread [main_thread]
-   ghc > 6.6 has:
-   interruptTargetThread = unsafePerformIO (newMVar [])
-   ...
-   modifyMVar_ interruptTargetThread (return . (main_thread :))
--}
-newSession :: GhcMode -> Maybe FilePath -> IO Session
-newSession mode mb_top_dir = do
-  old <- tryTakeMVar interruptTargetThread
-  case old of
-    Nothing -> -- =6.6, first newSession and empty MVar
-      do modifyMVar_ haveNewSessionBug (const $ return True)
-         GHC.newSession mode mb_top_dir
-    Just tids -> -- both ghc versions, nonempty MVar
-      do bug <- readMVar haveNewSessionBug
-         if bug
-          then do ses <- GHC.newSession mode mb_top_dir
-                  modifyMVar_ interruptTargetThread (return . (++tids))
-                  return ses
-          else do putMVar interruptTargetThread tids
-                  GHC.newSession mode mb_top_dir
-
-{-# NOINLINE haveNewSessionBug #-}
-haveNewSessionBug = unsafePerformIO (newMVar False)
-
-#elif __GLASGOW_HASKELL__ == 608
--- Hack to get parseStaticFlags called only once
-initGhc = unsafePerformIO$ parseStaticFlags []
-
-newSession :: Maybe FilePath -> IO Session
-newSession fp = initGhc `seq` GHC.newSession fp
-
--- >= 6.10
-#else
 
 newSession :: Maybe FilePath -> IO Session
 newSession fp = runGhc fp getRealSession
@@ -104,16 +57,9 @@ getRealSession = do
   ref2 <- liftIO $ newIORef warns
   return $ Session ref1 ref2
 
-#endif
 
 readPackageDescription = DP.readPackageDescription silent
 
-#if __GLASGOW_HASKELL__ < 610
-type TypecheckedModule = CheckedModule
-parseDynamicFlags ses a b = GHC.parseDynamicFlags a b
-#endif
-
-#if __GLASGOW_HASKELL__ >= 610
 getModuleGraph session = reflectGhc GHC.getModuleGraph session
 getSessionDynFlags session = reflectGhc GHC.getSessionDynFlags session
 setSessionDynFlags session f = reflectGhc (GHC.setSessionDynFlags f) session
@@ -146,5 +92,4 @@ checkModule session modname _ = do
   case res of
     Just modsum -> fmap Just $ reflectGhc (typecheckModule =<< parseModule modsum) session
     Nothing -> return Nothing
-#endif
 
