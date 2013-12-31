@@ -254,14 +254,11 @@ library
     dyre >=0.8.11,
     filepath>=1.1 && <1.4,
     fingertree >= 0 && <0.2,
-    ghc-paths ==0.1.*,
     hashable ==1.2.*,
     hint > 0.3.1,
     mtl >= 0.1.0.1,
     parsec >= 3.0,
     pointedlist >= 0.5,
-    pureMD5 >= 0.2.3,
-    random,
     regex-base ==0.93.*,
     regex-tdfa == 1.1.*,
     split >= 0.1 && < 0.3,
@@ -351,7 +348,8 @@ library
       ghc-paths ==0.1.*,
       old-time >= 1.1.0.0,
       rosezipper >= 0.1 && < 0.3,
-      pureMD5 >= 0.2.3
+      pureMD5 >= 0.2.3,
+      ghc-paths ==0.1.*
 
     exposed-modules: Yi.Mode.Shim
     other-modules:
