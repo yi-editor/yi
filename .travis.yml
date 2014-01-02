@@ -12,7 +12,7 @@ env:
 
 before_install:
  - case "$HPVER" in
-    "") ;;
+    "") touch cabal.config ;;
 
     "2013.2.0.0")
       export GHCVER=7.6.3 ;
@@ -25,10 +25,13 @@ before_install:
     *)
       export GHCVER=unknown ;
       echo "unknown/invalid Haskell Platform requested" ;
+      touch cabal.config;
       exit 1 ;;
 
    esac
 
+ - cp cabal.config yi
+ - cp cabal.config yi-contrib
  - sudo add-apt-repository -y ppa:hvr/ghc
  - sudo apt-get update
  - sudo apt-get install cabal-install-1.18 ghc-$GHCVER

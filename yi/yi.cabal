@@ -254,7 +254,7 @@ library
     dyre >=0.8.11,
     filepath>=1.1 && <1.4,
     fingertree >= 0 && <0.2,
-    hashable ==1.2.*,
+    hashable >=1.1.2.5,
     hint > 0.3.1,
     mtl >= 0.1.0.1,
     parsec >= 3.0,
