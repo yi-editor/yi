@@ -13,7 +13,8 @@ module Yi.Completion
 where
 
 import Prelude ()
-import Yi.Prelude hiding (elem, find)
+import Yi.Prelude hiding (elem, find, filtered)
+
 import Yi.Editor
 import Data.List
 import Data.Maybe

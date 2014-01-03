@@ -42,18 +42,18 @@ selfInsertKeymap = do
 
 setMark :: Bool -> BufferM ()
 setMark b = do
-  isSet <- getA highlightSelectionA
-  putA rectangleSelectionA b
+  isSet <- use highlightSelectionA
+  assign rectangleSelectionA b
   when (not isSet) $ do
-       putA highlightSelectionA True
+       assign highlightSelectionA True
        pointB >>= setSelectionMarkPointB
 
 unsetMark :: BufferM ()
-unsetMark = putA highlightSelectionA False
+unsetMark = assign highlightSelectionA False
 
 replaceSel :: String -> BufferM ()
 replaceSel s = do
-  hasSel <- getA highlightSelectionA
+  hasSel <- use highlightSelectionA
   if hasSel
     then getSelectRegionB >>= flip replaceRegionB s
     else do
@@ -62,7 +62,7 @@ replaceSel s = do
 
 deleteSel :: BufferM () -> YiM ()
 deleteSel act = do
-  haveSelection <- withBuffer $ getA highlightSelectionA
+  haveSelection <- withBuffer $ use highlightSelectionA
   if haveSelection
     then withEditor del
     else withBuffer (adjBlock (-1) >> act)
@@ -70,20 +70,20 @@ deleteSel act = do
 cut, del, copy, paste :: EditorM ()
 cut = copy >> del
 del = do
-  asRect <- withBuffer0 $ getA rectangleSelectionA
+  asRect <- withBuffer0 $ use rectangleSelectionA
   if asRect
     then killRectangle
     else withBuffer0 $ deleteRegionB =<< getSelectRegionB
 copy = do
   (setRegE =<<) $ withBuffer0 $ do
-    asRect <- getA rectangleSelectionA
+    asRect <- use rectangleSelectionA
     if not asRect
       then readRegionB =<< getSelectRegionB
       else do
         (reg, l, r) <- getRectangle
         unlines' <$> fmap (take (r-l) . drop l) <$> lines' <$> readRegionB reg
 paste = do
-  asRect <- withBuffer0 (getA rectangleSelectionA)
+  asRect <- withBuffer0 (use rectangleSelectionA)
   if asRect
     then yankRectangle
     else withBuffer0 . replaceSel =<< getRegE

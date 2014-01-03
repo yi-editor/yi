@@ -8,7 +8,7 @@ module Yi.Keymap.Vim2.TextObject
   ) where
 
 import Prelude ()
-import Yi.Prelude
+import Yi.Prelude hiding (to)
 
 import Control.Monad (replicateM_)
 

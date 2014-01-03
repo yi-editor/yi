@@ -46,14 +46,18 @@ instance Default ConfigVariables where def = mempty
 -- | Accessor for any 'YiConfigVariable'. Neither reader nor writer can fail:
 -- if the user's config file hasn't set a value for a 'YiConfigVariable',
 -- then the default value is used.
-configVariableA :: forall a. YiConfigVariable a => Accessor ConfigVariables a
-configVariableA = accessor getCV setCV
-  where
-      setCV v (CV m) = CV (M.insert (cTypeOf (undefined :: a)) (D.toDyn v) m)
-      getCV (CV m) =
-         case M.lookup (cTypeOf (undefined :: a)) m of
-             Nothing -> def
-             Just x -> fromJust $ D.fromDynamic x
+configVariableA :: forall a f. (YiConfigVariable a, Functor f) =>
+    (a -> f a) -> ConfigVariables -> f ConfigVariables
+configVariableA vf (CV m) = (\x -> CV (M.insert (cTypeOf (undefined :: a)) (D.toDyn x) m)) <$> vf v
+    where v = case M.lookup (cTypeOf (undefined :: a)) m of
+                Nothing -> def
+                Just x -> fromJust $ D.fromDynamic x
+  -- where
+  --     setCV v (CV m) = CV (M.insert (cTypeOf (undefined :: a)) (D.toDyn v) m)
+  --     getCV (CV m) =
+  --        case M.lookup (cTypeOf (undefined :: a)) m of
+  --            Nothing -> def
+  --            Just x -> fromJust $ D.fromDynamic x
 
 -- | Class of values that can go in a 'Dynamic' or a 'DynamicValues'. These are
 -- typically for storing custom state in a 'FBuffer' or an 'Editor'.
@@ -121,8 +125,9 @@ newtype DynamicValues = DV (M.HashMap ConcreteTypeRep Dynamic)
   deriving(Typeable, Monoid)
 
 -- | Accessor for a dynamic component. If the component is not found, the value 'def' is used.
-dynamicValueA :: forall a. YiVariable a => Accessor DynamicValues a
-dynamicValueA = accessor getDynamicValue setDynamicValue
+dynamicValueA :: forall a f. (YiVariable a, Functor f) =>
+    (a -> f a) -> DynamicValues -> f DynamicValues
+dynamicValueA vf dvs = (\v -> setDynamicValue v dvs) <$> vf (getDynamicValue dvs)
     where
       setDynamicValue :: a -> DynamicValues -> DynamicValues
       setDynamicValue v (DV dv) = DV (M.insert (cTypeOf (undefined :: a)) (toDyn v) dv)

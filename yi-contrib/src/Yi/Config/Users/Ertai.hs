@@ -51,7 +51,7 @@ haskellModeHooks mode =
         -- modeGetStrokes = \_ _ _ _ -> [],
         modeName = "my " ++ modeName mode,
         -- example of Mode-local rebinding
-        modeKeymap = topKeymapA ^:
+        modeKeymap = topKeymapA %~
             ((char '\\' ?>> choice [char 'l' ?>>! Haskell.ghciLoadBuffer,
                                     char 'z' ?>>! Haskell.ghciGet,
                                     char 'h' ?>>! hoogle,
@@ -72,7 +72,7 @@ main = do args <- getArgs
 config :: Config
 config = defaultVimConfig { modeTable = fmap (onMode prefIndent) (myModetable ++ modeTable defaultVimConfig)
                           , defaultKm = Vim.mkKeymap extendedVimKeymap
-                          , startActions = startActions defaultVimConfig ++ [makeAction (maxStatusHeightA %= 10 :: EditorM ())]
+                          , startActions = startActions defaultVimConfig ++ [makeAction (maxStatusHeightA .= 10 :: EditorM ())]
                           }
 
 -- Set soft tabs of 4 spaces in width.

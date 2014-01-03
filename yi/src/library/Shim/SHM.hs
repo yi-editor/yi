@@ -3,11 +3,7 @@ module Shim.SHM where
 
 import Data.Typeable
 
-#if __GLASGOW_HASKELL__ >= 610
 import GHC hiding ( load )
-#else
-import GHC hiding ( load, newSession )
-#endif
 
 import qualified GHC
 import HscTypes

@@ -12,7 +12,7 @@ module Yi.Keymap.Vim2.Operator
     ) where
 
 import Prelude ()
-import Yi.Prelude
+import Yi.Prelude hiding (op)
 
 import Data.Char (toLower, toUpper)
 import Data.List (isSuffixOf)

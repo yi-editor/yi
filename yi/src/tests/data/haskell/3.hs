@@ -2,8 +2,8 @@
 -- (Not possible since the windowset type disallows it -- should it be relaxed?)
 closeWindow :: YiM ()
 closeWindow = do
-    winCount <- withEditor $ getsA windowsA PL.length
-    tabCount <- withEditor $ getsA tabsA PL.length
+    winCount <- withEditor $ uses windowsA PL.length
+    tabCount <- withEditor $ uses tabsA PL.length
     when (winCount == 1 && tabCount == 1) quitEditor
     withEditor $ tryCloseE
 

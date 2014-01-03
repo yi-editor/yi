@@ -14,7 +14,6 @@ where
 import Prelude hiding ((.))
 import Data.Binary
 import Data.DeriveTH
-import Data.Accessor.Template(nameDeriveAccessors)
 import Data.Default
 import System.Directory(doesFileExist)
 import qualified Data.Map as M
@@ -50,10 +49,10 @@ instance Default MaxHistoryEntries where
 
 instance YiConfigVariable MaxHistoryEntries
 
-$(nameDeriveAccessors ''MaxHistoryEntries (\n -> Just (n ++ "A")))
+makeLensesWithSuffix "A" ''MaxHistoryEntries
 
 maxHistoryEntries :: Field Int
-maxHistoryEntries = unMaxHistoryEntriesA . customVariable
+maxHistoryEntries = customVariable . unMaxHistoryEntriesA
 
 -- | Trims per-command histories to contain at most N completions each.
 trimHistories :: Int -> Histories -> Histories
@@ -75,18 +74,20 @@ trimTagStack maxHistory = VimTagStack . take maxHistory . tagsStack
 --   * add a trimming code in @savePersistentState@ to prevent blowing up
 --     of save file.
 savePersistentState :: YiM ()
-savePersistentState = do MaxHistoryEntries histLimit <- withEditor $ askConfigVariableA
-                         pStateFilename      <- getPersistentStateFilename
-                         (hist :: Histories) <- withEditor $ getA dynA
-                         tagStack            <- withEditor $ getTagStack
-                         kr                  <- withEditor $ getA killringA
-                         curRe               <- withEditor $ getRegexE
-                         let pState = PersistentState { histories     = trimHistories histLimit hist
-                                                      , vimTagStack   = trimTagStack  histLimit tagStack
-                                                      , aKillring     = kr    -- trimmed during normal operation
-                                                      , aCurrentRegex = curRe -- just a single value -> no need to trim
-                                                      }
-                         io $ encodeFile pStateFilename $ pState
+savePersistentState = do
+    MaxHistoryEntries histLimit <- withEditor $ askConfigVariableA
+    pStateFilename      <- getPersistentStateFilename
+    (hist :: Histories) <- withEditor $ use dynA
+    tagStack            <- withEditor $ getTagStack
+    kr                  <- withEditor $ use killringA
+    curRe               <- withEditor $ getRegexE
+    let pState = PersistentState {
+                   histories     = trimHistories histLimit hist
+                 , vimTagStack   = trimTagStack  histLimit tagStack
+                 , aKillring     = kr    -- trimmed during normal operation
+                 , aCurrentRegex = curRe -- just a single value -> no need to trim
+                 }
+    io $ encodeFile pStateFilename $ pState
 
 -- | Reads and decodes a persistent state in both strict, and exception robust
 --   way.
@@ -102,11 +103,12 @@ readPersistentState = do pStateFilename <- getPersistentStateFilename
 
 -- | Loads a persistent state, and sets Yi state variables accordingly.
 loadPersistentState :: YiM ()
-loadPersistentState = do maybePState <- readPersistentState
-                         case maybePState of
-                           Nothing     -> return ()
-                           Just pState -> do withEditor $ putA dynA                   $ histories     pState
-                                             withEditor $ setTagStack                 $ vimTagStack   pState
-                                             withEditor $ putA killringA              $ aKillring     pState
-                                             withEditor $ maybe (return ()) setRegexE $ aCurrentRegex pState
+loadPersistentState = do
+    maybePState <- readPersistentState
+    case maybePState of
+      Nothing     -> return ()
+      Just pState -> do withEditor $ assign dynA                 $ histories     pState
+                        withEditor $ setTagStack                 $ vimTagStack   pState
+                        withEditor $ assign killringA            $ aKillring     pState
+                        withEditor $ maybe (return ()) setRegexE $ aCurrentRegex pState
 

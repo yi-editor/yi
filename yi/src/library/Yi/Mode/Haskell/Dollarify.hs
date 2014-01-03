@@ -4,7 +4,7 @@ module Yi.Mode.Haskell.Dollarify where
 import Prelude (filter, maybe, takeWhile)
 import Data.Maybe (fromMaybe)
 import Data.List (sortBy)
-import Yi.Prelude
+import Yi.Prelude hiding (within)
 import Yi.Syntax.Paren (Expr, Tree(..))
 import qualified Yi.Syntax.Haskell as H (Tree, Exp(..))
 import Yi.Syntax.Tree (getAllSubTrees, getFirstOffset, getLastOffset,getLastPath)

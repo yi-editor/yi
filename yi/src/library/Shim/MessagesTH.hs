@@ -1,4 +1,6 @@
-{-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE
+  TemplateHaskell,
+  DeriveFunctor #-}
 module Shim.MessagesTH where
 
 import Data.Char
@@ -18,10 +20,8 @@ data Message argumentsType responseType =
 
 data Response a = Error String
                 | Response a
+                deriving Functor
 
-instance Functor Response where
-    fmap f (Response a) = Response (f a)
-    fmap f (Error msg)  = Error msg
 
 data PackedMsg where Pack :: (ConvSexp res, ConvSexp args) => Message args res -> PackedMsg
 

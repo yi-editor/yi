@@ -8,8 +8,9 @@
 
 module Yi.UI.Vty (start) where
 
-import Yi.Prelude hiding ((<|>))
+import Yi.Prelude hiding ((<|>), wrapped, set)
 import Prelude (map, take, zip, repeat, length, break, splitAt)
+
 import Control.Arrow
 import Control.Concurrent
 import Control.Exception
@@ -197,14 +198,14 @@ layout ui e = do
         return $! win { winRegion = newWinRegion, actualLines = newActualLines }
 
   ws'' <- mapM (apply . discardOldRegion) ws'
-  return $ windowsA ^= ws'' $ e
+  return $ windowsA .~ ws'' $ e
   -- return $ windowsA ^= forcePL ws'' $ e
 
 -- Do Vty layout inside the Yi event loop
 layoutAction :: (MonadEditor m, MonadIO m) => UI -> m ()
 layoutAction ui = do
     withEditor . put =<< io . layout ui =<< withEditor get
-    withEditor $ mapM_ (flip withWindowE snapInsB) =<< getA windowsA
+    withEditor $ mapM_ (flip withWindowE snapInsB) =<< use windowsA
 
 requestRefresh :: UI -> Editor -> IO ()
 requestRefresh ui e = do

@@ -39,8 +39,12 @@ import Control.Monad.Trans (MonadIO (..))
 {- Local (yi) module imports -}
 
 import Prelude ()
-import Yi.Core
+import Yi.Prelude hiding (act)
 
+import Data.Maybe (isNothing)
+import System.CanonicalizePath (canonicalizePath, replaceShorthands)
+
+import Yi.Core
 import Yi.MiniBuffer
     ( withMinibufferGen
     , mkCompleteFn
@@ -48,8 +52,6 @@ import Yi.MiniBuffer
 import Yi.Completion
     ( completeInList'
     )
-import System.CanonicalizePath (canonicalizePath, replaceShorthands)
-import Data.Maybe (isNothing)
 
 -- | Given a possible starting path (which if not given defaults to
 --   the current directory) and a fragment of a path we find all

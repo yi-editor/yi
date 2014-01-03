@@ -1,4 +1,10 @@
-{-# LANGUAGE CPP, TypeFamilies, NoMonomorphismRestriction, FlexibleInstances, ScopedTypeVariables #-}
+{-# LANGUAGE
+  CPP,
+  TypeFamilies,
+  NoMonomorphismRestriction,
+  DeriveFoldable,
+  FlexibleInstances,
+  ScopedTypeVariables #-}
 {-# OPTIONS_GHC -fno-warn-unused-binds -fno-warn-incomplete-patterns #-} -- the CPP seems to confuse GHC; we have uniplate patterns
 {- Copyright JP Bernardy 2008 -}
 
@@ -18,18 +24,18 @@ module Yi.Syntax.Tree (IsTree(..), toksAfter, allToks, tokAtOrBefore, toksInRegi
 -- such as multirec, uniplace, emgm, ...
 
 import Prelude (curry)
+import Yi.Prelude hiding (elements, index, children, left')
 
 import Control.Arrow (first)
 import Data.List (dropWhile, takeWhile, reverse, filter, zip, take, drop, length, splitAt)
 import Data.Maybe
-import Data.Monoid (First(..), Last(..), getFirst, getLast, mempty)
+import Data.Monoid (First(..), Last(..), getFirst, getLast)
 #ifdef TESTING
 import Test.QuickCheck
 #endif
 
 import Yi.Buffer.Basic
 import Yi.Lexer.Alex
-import Yi.Prelude
 import Yi.Region
 
 -- Fundamental types
@@ -267,12 +273,7 @@ nodeRegion :: IsTree tree => Node (tree (Tok a)) -> Region
 nodeRegion n = subtreeRegion t
     where Just t = walkDown n
 
-data Test a = Empty | Leaf a | Bin (Test a) (Test a) deriving (Show, Eq)
-
-instance Foldable Test where
-    foldMap _ Empty = mempty
-    foldMap f (Leaf x) = f x
-    foldMap f (Bin _ r) = foldMap f r <> foldMap f r
+data Test a = Empty | Leaf a | Bin (Test a) (Test a) deriving (Show, Eq, Foldable)
 
 instance IsTree Test where
     uniplate (Bin l r) = ([l,r],\[l',r'] -> Bin l' r')

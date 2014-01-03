@@ -45,17 +45,18 @@ module Yi.Buffer.Implementation
 )
 where
 
-import Control.Monad
+import Prelude (dropWhile, map, filter)
+import Yi.Prelude hiding (from, re)
+
 import Data.Array
 import Data.Binary
 import Data.DeriveTH
 import Data.List (groupBy, zip, takeWhile)
 import Data.Maybe
 import Data.Monoid
-import Data.Typeable
-import Prelude (dropWhile, map, filter)
+import Data.Typeable ()
+
 import Yi.Buffer.Basic
-import Yi.Prelude
 import Yi.Regex
 import Yi.Region
 import Yi.Style

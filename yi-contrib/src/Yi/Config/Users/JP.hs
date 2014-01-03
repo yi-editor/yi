@@ -65,7 +65,7 @@ haskellModeHooks mode =
                         -- modeGetStrokes = \_ _ _ _ -> [],
                         modeName = "my " ++ modeName mode,
                         -- example of Mode-local rebinding
-                        modeKeymap = topKeymapA ^: ((ctrlCh 'c' ?>> choice [ctrlCh 'l' ?>>! ghciLoadBuffer,
+                        modeKeymap = topKeymapA %~ ((ctrlCh 'c' ?>> choice [ctrlCh 'l' ?>>! ghciLoadBuffer,
                                                               ctrl (char 'z') ?>>! ghciGet,
                                                               ctrl (char 'h') ?>>! hoogle,
                                                               ctrlCh 'r' ?>>! ghciSend ":r",

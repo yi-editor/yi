@@ -1,4 +1,8 @@
-{-# LANGUAGE FlexibleInstances, TypeFamilies #-}
+{-# LANGUAGE
+  FlexibleInstances,
+  DeriveFunctor,
+  DeriveFoldable,
+  TypeFamilies #-}
 {-# OPTIONS_GHC -fno-warn-incomplete-patterns #-} -- uniplate patterns
 -- Copyright (c) JP Bernardy 2008
 module Yi.Syntax.Latex where
@@ -34,18 +38,7 @@ data Tree t
     | Atom t
     | Error t
     | Expr (Expr t)
-      deriving Show
-
-
-
---instance Functor Tree where
---  fmap = fmapDefault
-
-instance Foldable Tree where
-    foldMap f (Atom t) = f t
-    foldMap f (Error t ) = f t
-    foldMap f (Paren l g r) = f l <> foldMap f g <> f r
-    foldMap f (Expr g) = foldMap (foldMap f) g
+      deriving (Show, Functor, Foldable)
 
 
 instance IsTree Tree where

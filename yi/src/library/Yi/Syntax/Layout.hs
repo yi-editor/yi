@@ -3,10 +3,11 @@
 -- code might be left outside of the blocks
 module Yi.Syntax.Layout (layoutHandler, State) where
 
+import Prelude ()
+import Yi.Prelude hiding (levels)
+
 import Yi.Syntax
 import Yi.Lexer.Alex
-import Yi.Prelude
-import Prelude ()
 import Data.Maybe (isJust)
 import Data.List (dropWhile)
 

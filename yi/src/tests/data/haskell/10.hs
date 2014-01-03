@@ -2,8 +2,6 @@ module Yi.Prelude
     (
 module Control.Applicative,
 module Control.Category,
-module Data.Accessor, 
-module Data.Accessor.Monad.FD.State,
 module Data.Bool,
 module Data.Foldable,
 module Data.Function,

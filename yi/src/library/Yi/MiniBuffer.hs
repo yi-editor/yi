@@ -14,6 +14,8 @@ module Yi.MiniBuffer
  ) where
 
 import Prelude (filter, length, words)
+import Yi.Prelude hiding (act)
+
 import Data.List (isInfixOf)
 import qualified Data.List.PointedList.Circular as PL
 import Data.Maybe
@@ -54,7 +56,7 @@ spawnMinibufferE prompt kmMod =
        -- If the minibuffer is moved then when the minibuffer is deleted the window brought
        -- into focus may not be the window that spawned the minibuffer.
        w <- newWindowE True b
-       modA windowsA (PL.insertRight w)
+       (%=) windowsA (PL.insertRight w)
        return b
 
 -- | @withMinibuffer prompt completer act@: open a minibuffer with @prompt@. Once
@@ -106,12 +108,12 @@ withMinibufferGen :: String -> (String -> YiM [String]) -> String
                   -> (String -> YiM ()) -> YiM ()
 withMinibufferGen proposal getHint prompt completer onTyping act = do
   initialBuffer <- gets currentBuffer
-  initialWindow <- getA currentWindowA
+  initialWindow <- use currentWindowA
   let innerAction :: YiM ()
       -- ^ Read contents of current buffer (which should be the minibuffer), and
       -- apply it to the desired action
       closeMinibuffer = closeBufferAndWindowE >>
-                        modA windowsA (fromJust . PL.find initialWindow)
+                        (%=) windowsA (fromJust . PL.find initialWindow)
       showMatchings = showMatchingsOf =<< withBuffer elemsB
       showMatchingsOf userInput =
         withEditor . printStatus =<< fmap withDefaultStyle (getHint userInput)

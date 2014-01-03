@@ -1,4 +1,5 @@
 {-# LANGUAGE DeriveDataTypeable #-}
+{-# LANGUAGE Rank2Types #-}
 
 module Yi.Tab
  (
@@ -21,7 +22,6 @@ module Yi.Tab
 import qualified Prelude
 import Yi.Prelude
 import qualified Data.Binary as Binary
-import Data.Accessor.Basic
 import Data.Default
 import qualified Data.List.PointedList as PL
 
@@ -48,22 +48,24 @@ tabMiniWindows :: Tab -> [Window]
 tabMiniWindows = Prelude.filter isMini . toList . tabWindows
 
 -- | Accessor for the windows. If the windows (but not the focus) have changed when setting, then a relayout will be triggered to preserve the internal invariant.
-tabWindowsA :: Accessor Tab (PL.PointedList Window)
-tabWindowsA = fromSetGet setter getter
+tabWindowsA :: Functor f =>
+    ((PL.PointedList Window) -> f (PL.PointedList Window)) -> (Tab -> f Tab)
+tabWindowsA f s = (\a -> setter a s) <$> f (getter s)
   where
     setter ws t = relayoutIf (toList ws /= toList (tabWindows t)) (t { tabWindows = ws})
     getter = tabWindows
 
 -- | Accessor for the layout manager. When setting, will trigger a relayout if the layout manager has changed.
-tabLayoutManagerA :: Accessor Tab AnyLayoutManager
-tabLayoutManagerA = fromSetGet setter getter
+tabLayoutManagerA :: Functor f =>
+    (AnyLayoutManager -> f AnyLayoutManager) -> (Tab -> f Tab)
+tabLayoutManagerA f s = (\a -> setter a s) <$> f (getter s)
   where
     setter lm t = relayoutIf (lm /= tabLayoutManager t) (t { tabLayoutManager = lm })
     getter = tabLayoutManager
 
 -- | Gets / sets the position of the divider with the given reference. The caller must ensure that the DividerRef is valid, otherwise an error will (might!) occur.
-tabDividerPositionA :: DividerRef -> Accessor Tab DividerPosition
-tabDividerPositionA ref = dividerPositionA ref . fromSetGet (\l t -> t { tabLayout = l}) tabLayout
+tabDividerPositionA :: DividerRef -> Lens' Tab DividerPosition
+tabDividerPositionA ref = (lens tabLayout (\t l -> t { tabLayout = l})) . (dividerPositionA ref)
 
 relayoutIf :: Bool -> Tab -> Tab
 relayoutIf False t = t
@@ -86,7 +88,7 @@ instance Show Tab where
 
 -- | A specialised version of "fmap".
 mapWindows :: (Window -> Window) -> Tab -> Tab
-mapWindows f = modify tabWindowsA (fmap f)
+mapWindows f = over tabWindowsA (fmap f)
 
 -- | Forces all windows in the tab
 forceTab :: Tab -> Tab

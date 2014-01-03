@@ -123,8 +123,8 @@ defaultPublishedActions = HM.fromList $
 
 
 defaultConfig :: Config
-defaultConfig =
-  publishedActions ^= defaultPublishedActions $
+defaultConfig = 
+  publishedActions .~ defaultPublishedActions $
   Config { startFrontEnd    = case availableFrontends of
              [] -> error "panic: no frontend compiled in! (configure with -fvty or another frontend.)"
              ((_,f):_) -> f
@@ -217,7 +217,7 @@ toCuaStyleConfig cfg = cfg {defaultKm = Cua.keymap}
 -- | Open an emacs-like scratch buffer if no file is open.
 openScratchBuffer :: YiM ()
 openScratchBuffer = withEditor $ do
-      noFileBufOpen <- null . rights . fmap (getVal identA) . M.elems <$> getA buffersA
+      noFileBufOpen <- null . rights . fmap (view identA) . M.elems <$> use buffersA
       when noFileBufOpen $ do
            void $ newBufferE (Left "scratch") $ R.fromString $ unlines
                    ["This buffer is for notes you don't want to save.", --, and for haskell evaluation" -- maybe someday?

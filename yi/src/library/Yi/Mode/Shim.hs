@@ -26,8 +26,8 @@ jumpToSrcLoc locn =
 jumpToNextNote :: YiM ()
 jumpToNextNote = do
   note <- withEditor $ do
-    modA notesA (fmap PL.next)
-    getsA notesA (fmap PL.focus)
+    (%=) notesA (fmap PL.next)
+    uses notesA (fmap PL.focus)
   case note of
     Nothing -> msgEditor "No note!"
     Just n -> jumpToSrcLoc $ srcSpanStart $ srcSpan $ n

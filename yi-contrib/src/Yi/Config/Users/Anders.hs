@@ -34,7 +34,7 @@ main = yi $ config
 haskellModeHooks mode =
    mode { modeName = "my " ++ modeName mode
         , modeKeymap =
-            topKeymapA ^: ((ctrlCh 'c' ?>> 
+            topKeymapA %~ ((ctrlCh 'c' ?>> 
                             choice [ ctrlCh 'l' ?>>! H.ghciLoadBuffer
                                    , ctrl (char 'z') ?>>! H.ghciGet
                                    , ctrl (char 'h') ?>>! hoogle

@@ -1,4 +1,5 @@
 {-# LANGUAGE DeriveDataTypeable, ExistentialQuantification, DeriveFunctor, TupleSections, ViewPatterns #-}
+{-# LANGUAGE Rank2Types #-}
 {-# OPTIONS_GHC -funbox-strict-fields #-} -- we might as well unbox our Ints.
 
 -- | This module defines the layout manager interface (see 'LayoutManager'). To desgin a new layout manager, just make an instance of this class.
@@ -42,9 +43,9 @@ module Yi.Layout
   )
  where
 
-import Prelude()
-import Data.Accessor.Basic
-import Yi.Prelude
+import Prelude ()
+import Yi.Prelude hiding (set')
+
 import Data.Typeable
 import Data.Maybe
 import Data.Default
@@ -99,8 +100,8 @@ data Layout a
   deriving(Typeable, Eq, Functor)
 
 -- | Accessor for the 'DividerPosition' with given reference
-dividerPositionA :: DividerRef -> Accessor (Layout a) DividerPosition
-dividerPositionA ref = fromSetGet setter getter where
+dividerPositionA :: DividerRef -> Lens' (Layout a) DividerPosition
+dividerPositionA ref = lens getter (flip setter) where
   setter pos = set'
     where
       set' s@(SingleWindow _) = s
