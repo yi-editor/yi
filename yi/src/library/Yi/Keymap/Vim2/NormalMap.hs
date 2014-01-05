@@ -198,7 +198,7 @@ nonrepeatableBindings = fmap (mkBindingE Normal Drop)
     -- Changing
     , (char 'C',
         do region <- withBuffer0 $ regionWithTwoMovesB (return ()) moveToEol
-           void $ operatorApplyToRegionE opDelete 1 $ StyledRegion Exclusive region
+           void $ operatorApplyToRegionE opChange 1 $ StyledRegion Exclusive region
         , switchMode $ Insert 'C')
     , (char 's', cutCharE Forward =<< getCountE, switchMode $ Insert 's')
     , (char 'S',
