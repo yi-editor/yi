@@ -23,7 +23,10 @@ parse = Common.parse $ do
     -- TODO If bufIdent is a number the spaces should be optional.
     -- TODO If no bufIdent is given and the buffer is modified and 'hidden'
     --      is not set, should this operation be a noop?
-    void $ P.try ( P.string "buffer") <|> P.try ( P.string "b")
+    void $ P.try ( P.string "buffer") <|>
+           P.try ( P.string "buf")    <|>
+           P.try ( P.string "bu")     <|>
+           P.try ( P.string "b")
     bufIdent <- P.many1 P.space *> P.many P.anyChar
     return $ Common.pureExCommand {
         cmdShow = "buffer"
