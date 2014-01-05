@@ -4,12 +4,14 @@ module Yi.Keymap.Vim2.Ex.Commands.Buffers
     ) where
 
 import Prelude ()
-import Data.List 
 import Yi.Prelude
 
+import Data.List 
+import qualified Data.Map as M
 import qualified Text.ParserCombinators.Parsec as P
 
 import Yi.Editor
+import Yi.Buffer.Basic
 import Yi.Buffer.Misc
 import Yi.Keymap
 import Yi.Keymap.Vim2.Ex.Types
@@ -28,17 +30,22 @@ parse = Common.parse $ do
 
 
 
--- printBuffers :: EditorM ()
+printBuffers :: EditorM ()
 printBuffers = do 
-    bufs <- getBufferStack
-    -- printMsgs $ fmap show  bufs
-    -- printMsg . intercalate "\n" $ fmap (show . view identA) bufs
-    -- TODO shorten this string perhaps.
-    -- TODO Add more information: buffer number, modified status, line number.
-    -- TODO Do we already have a buffer type window, similar to dired?
-    let bufIdents = fmap (show . view identA) bufs
-    if length bufIdents > 1
+    -- TODO Don't keep recreating new buffers. Use a pre-existing one.
+    --      See the cabal buffer used in Command.hs for an example.
+    -- TODO Add some simple keymaps to the buffer, like <CR> to open the buffer?
+    bufs <- gets buffers 
+    let bufLines = M.elems $ M.mapWithKey bufLine bufs
+    if length bufLines > 1
       then withEditor . void $
              newBufferE (Left "Buffer list")
-                        (R.fromString $ intercalate "\n" bufIdents)
-      else printMsgs bufIdents 
+                        (R.fromString $ intercalate "\n" bufLines)
+      else printMsgs bufLines 
+  where
+    -- TODO shorten this name string perhaps.
+    -- TODO Add more information: modified status, line number.
+    bufLine (BufferRef bufNum) buf =
+        intercalate "\t" [ show bufNum
+                         , show . view identA $ buf
+                         ]
