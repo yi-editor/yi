@@ -88,7 +88,11 @@ jumpBindings :: [VimBinding]
 jumpBindings = fmap (mkBindingE Normal Drop)
     [ (ctrlCh 'o', jumpBackE, id)
     , (spec KTab, jumpForwardE, id)
+    , (ctrlCh '^', controlCarrot, resetCount)
+    , (ctrlCh '6', controlCarrot, resetCount)
     ]
+  where
+    controlCarrot = alternateBufferE . (+ (-1)) =<< getCountE
 
 finishingBingings :: [VimBinding]
 finishingBingings = fmap (mkStringBindingE Normal Finish)

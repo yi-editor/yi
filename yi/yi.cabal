@@ -135,6 +135,8 @@ library
     Yi.Keymap.Vim2.EventUtils
     Yi.Keymap.Vim2.Ex
     Yi.Keymap.Vim2.Ex.Commands.Common
+    Yi.Keymap.Vim2.Ex.Commands.Buffer
+    Yi.Keymap.Vim2.Ex.Commands.Buffers
     Yi.Keymap.Vim2.Ex.Commands.BufferDelete
     Yi.Keymap.Vim2.Ex.Commands.Delete
     Yi.Keymap.Vim2.Ex.Commands.Edit
