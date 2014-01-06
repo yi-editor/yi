@@ -33,32 +33,30 @@ infixr :<
 
 -- | Parser specification
 data Parser s a where
-    Pure :: a -> Parser s a
-    Appl :: Parser s (b -> a) -> Parser s b -> Parser s a
+    Pure  :: a                               -> Parser s a
+    Appl  :: Parser s (b -> a) -> Parser s b -> Parser s a
 
-    Bind :: Parser s a -> (a -> Parser s b) -> Parser s b
+    Bind  :: Parser s a -> (a -> Parser s b) -> Parser s b
 
-    Look :: Parser s a -> (s -> Parser s a) -> Parser s a
-    Shif :: Parser s a -> Parser s a
-    Empt :: Parser s a
-    Disj :: Parser s a -> Parser s a -> Parser s a
-    Yuck :: Parser s a -> Parser s a
-    Enter :: String -> Parser s a -> Parser s a
-
+    Look  :: Parser s a -> (s -> Parser s a) -> Parser s a
+    Shif  :: Parser s a                      -> Parser s a
+    Empt  ::                                    Parser s a
+    Disj  :: Parser s a -> Parser s a        -> Parser s a
+    Yuck  :: Parser s a                      -> Parser s a
+    Enter :: String -> Parser s a            -> Parser s a
 
 -- | Parser process
 data Steps s a where
-    Val   :: a -> Steps s r                      -> Steps s (a :< r)
-    App   :: Steps s ((b -> a) :< (b :< r))      -> Steps s (a :< r)
-    Done  ::                               Steps s ()
-    Shift ::           Steps s a        -> Steps s a
-    Sh'   ::             Steps s a        -> Steps s a
-    Sus   :: Steps s a -> (s -> Steps s a) -> Steps s a
-    Best  :: Ordering -> Profile -> Steps s a -> Steps s a -> Steps s a
-    Dislike :: Steps s a -> Steps s a
-    Log :: String -> Steps s a -> Steps s a
-    Fail :: Steps s a
-
+    Val     :: a -> Steps s r                                -> Steps s (a :< r)
+    App     :: Steps s ((b -> a) :< (b :< r))                -> Steps s (a :< r)
+    Done    ::                                                  Steps s ()
+    Shift   :: Steps s a                                     -> Steps s a
+    Sh'     :: Steps s a                                     -> Steps s a
+    Sus     :: Steps s a -> (s -> Steps s a)                 -> Steps s a
+    Best    :: Ordering -> Profile -> Steps s a -> Steps s a -> Steps s a
+    Dislike :: Steps s a                                     -> Steps s a
+    Log     :: String -> Steps s a                           -> Steps s a
+    Fail    ::                                                  Steps s a
 
 -- profile !! s = number of Dislikes found to do s Shifts
 data Profile = PSusp | PFail | PRes Int | !Int :> Profile
