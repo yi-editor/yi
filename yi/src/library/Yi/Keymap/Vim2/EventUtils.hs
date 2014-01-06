@@ -11,12 +11,12 @@ import Yi.Prelude
 import Prelude ()
 
 import Data.Char (toUpper, isDigit)
-import Data.List (break)
+import Data.List (break,drop)
 import qualified Data.Map as M
 import Data.Tuple (swap)
 
 import Yi.Event
-import Yi.Keymap.Keys (char, ctrlCh, spec)
+import Yi.Keymap.Keys (char, spec, ctrl, meta)
 import Yi.Keymap.Vim2.Common
 
 specMap :: M.Map EventString Key
@@ -27,44 +27,60 @@ invSpecMap = M.fromList $ fmap swap specList
 
 specList :: [(String, Key)]
 specList =
-    [ ("<Esc>", KEsc)
-    , ("<CR>", KEnter)
-    , ("<BS>", KBS)
-    , ("<Tab>", KTab)
-    , ("<Down>", KDown)
-    , ("<Up>", KUp)
-    , ("<Left>", KLeft)
-    , ("<Right>", KRight)
-    , ("<PageUp>", KPageUp)
-    , ("<PageDown>", KPageDown)
-    , ("<Home>", KHome)
-    , ("<End>", KEnd)
-    , ("<Ins>", KIns)
-    , ("<Del>", KDel)
+    [ ("Esc", KEsc)
+    , ("CR", KEnter)
+    , ("BS", KBS)
+    , ("Tab", KTab)
+    , ("Down", KDown)
+    , ("Up", KUp)
+    , ("Left", KLeft)
+    , ("Right", KRight)
+    , ("PageUp", KPageUp)
+    , ("PageDown", KPageDown)
+    , ("Home", KHome)
+    , ("End", KEnd)
+    , ("Ins", KIns)
+    , ("Del", KDel)
     ]
 
 stringToEvent :: String -> Event
-stringToEvent ('<':'C':'-':c:'>':[]) = ctrlCh c
+stringToEvent "<" = error "Invalid event string \"<\""
+stringToEvent s@('<':'C':'-':_) = stringToEvent' 3 s ctrl
+stringToEvent s@('<':'M':'-':_) = stringToEvent' 3 s meta
+stringToEvent s@('<':'a':'-':_) = stringToEvent' 3 s meta
 stringToEvent "<lt>" = char '<'
 stringToEvent [c] = char c
 stringToEvent ('<':'F':d:'>':[]) | isDigit d = spec (KFun $ read [d])
 stringToEvent ('<':'F':'1':d:'>':[]) | isDigit d = spec (KFun $ 10 + read [d])
-stringToEvent s =
-    case M.lookup s specMap of
-        Just k -> spec k
-        Nothing -> error $ "Couldn't convert string <" ++ s ++ "> to event"
+stringToEvent s@('<':_) = stringToEvent' 1 s id
+stringToEvent s = error ("Invalid event string " ++ show s)
+
+stringToEvent' :: Int -> String -> (Event -> Event) -> Event
+stringToEvent' toDrop inputString modifier =
+    let analyzedString = drop toDrop inputString
+    in  case analyzedString of
+            [c,'>'] -> modifier (char c)
+            _ -> if last analyzedString /= '>'
+                     then error ("Invalid event string " ++ show inputString)
+                     else case M.lookup (init analyzedString) specMap of
+                              Just k -> modifier (Event k [])
+                              Nothing -> error $ "Couldn't convert string " ++ show inputString ++ " to event"
 
 eventToString :: Event -> String
 eventToString (Event (KASCII '<') []) = "<lt>"
 eventToString (Event (KASCII c) []) = [c]
 eventToString (Event (KASCII c) [MCtrl]) = ['<', 'C', '-', c, '>']
+eventToString (Event (KASCII c) [MMeta]) = ['<', 'M', '-', c, '>']
 eventToString (Event (KASCII c) [MShift]) = [toUpper c]
 eventToString (Event (KFun x) []) = "<F" ++ show x ++ ">"
-eventToString e@(Event k []) =
+eventToString e@(Event k mods) =
     case M.lookup k invSpecMap of
-        Just s -> s
+        Just s -> case mods of
+                      [] -> '<' : s ++ ">"
+                      [MCtrl] -> '<' : 'C' : '-' : s ++ ">"
+                      [MMeta] -> '<' : 'M' : '-' : s ++ ">"
+                      _ -> error $ "Couldn't convert event <" ++ show e ++ "> to string, because of unknown modifiers"
         Nothing -> error $ "Couldn't convert event <" ++ show e ++ "> to string"
-eventToString e = error $ "Couldn't convert event <" ++ show e ++ "> to string"
 
 parseEvents :: String -> [Event]
 parseEvents = fst . foldl' go ([], [])
