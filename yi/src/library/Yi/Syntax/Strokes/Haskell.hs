@@ -2,17 +2,17 @@
 
 module Yi.Syntax.Strokes.Haskell (getStrokes, tokenToAnnot) where
 
-import Prelude ()
-import Data.Maybe
+import Prelude hiding (error,any,exp)
 import Yi.Lexer.Alex
 import Yi.Lexer.Haskell
 import Yi.Style
 import Yi.Syntax
-import Yi.Prelude
-import Prelude ()
-import Data.Monoid (Endo(..), appEndo, mappend)
+import Data.Monoid
+import Data.Foldable hiding (elem)
+import Data.Traversable
 import Yi.Syntax.Haskell
 import Yi.Syntax.Tree (subtrees)
+import Yi.Debug
 
 -- TODO: (optimization) make sure we take in account the begin, so we don't return useless strokes
 getStrokes :: Point -> Point -> Point -> Tree TT -> [Stroke]

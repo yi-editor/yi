@@ -3,11 +3,9 @@
 -- | Colors and friends.
 module Yi.Style where
 
-import Data.Word                (Word8)
+import Data.Word (Word8)
 import Data.Char (chr, ord)
 import Data.Monoid
-import Yi.Prelude
-import Prelude ()
 
 -- | Visual text attributes to be applied during layout.
 data Attributes = Attributes

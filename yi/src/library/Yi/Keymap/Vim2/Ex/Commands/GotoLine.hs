@@ -2,9 +2,6 @@ module Yi.Keymap.Vim2.Ex.Commands.GotoLine
     ( parse
     ) where
 
-import Prelude ()
-import Yi.Prelude
-
 import Data.Char (isDigit)
 
 import Yi.Buffer

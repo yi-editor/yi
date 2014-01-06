@@ -43,13 +43,12 @@ module Yi.Layout
   )
  where
 
-import Prelude ()
-import Yi.Prelude hiding (set')
-
+import Control.Applicative
+import Control.Lens hiding (set')
 import Data.Typeable
 import Data.Maybe
 import Data.Default
-import Data.List(length, splitAt)
+import Data.List (mapAccumL, foldl')
 import qualified Control.Monad.State.Strict as Monad
 
 -------------------------------- Some design notes ----------------------

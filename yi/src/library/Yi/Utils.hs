@@ -1,114 +1,19 @@
 {-# LANGUAGE MultiParamTypeClasses, FunctionalDependencies #-}
-{-# LANGUAGE ScopedTypeVariables #-}
+-- Unique code from Yi.Prelude
 
-module Yi.Prelude
-    (
-(<>),
-(++), -- consider scrapping this and replacing it by the above
-(=<<),
-(<=<),
-($!),
-Double,
-Binary,
-Char,
-Either(..),
-Eq(..),
-Fractional(..),
-Functor(..),
-IO,
-Integer,
-Integral(..),
-Bounded(..),
-Enum(..),
-Maybe(..),
-Monad(..),
-Num(..),
-Ord(..),
-Read(..),
-Real(..),
-RealFrac(..),
-ReaderT(..),
-SemiNum(..),
-String,
-Typeable,
-commonPrefix,
-void,
-dummyPut,
-dummyGet,
-findPL,
-fromIntegral,
-fst,
-fst3,
-groupBy',
-list,
-head,
-init,
-io,
-last,
-lookup,
-mapAdjust',
-mapAlter',
-mapFromFoldable,
-module Control.Applicative,
-module Control.Lens,
-makeLensesWithSuffix,
-module Data.Bool,
-module Data.Foldable,
-module Data.Function,
-module Data.Int,
-module Data.Rope,
-module Data.Traversable,
-module Text.Show,
-module Yi.Debug,
-module Yi.Monad,
-nubSet,
-null,
-print,
-putStrLn,
-replicate,
-read,
-seq,
-singleton,
-snd,
-snd3,
-swapFocus,
-tail,
-trd3,
-undefined,
-unlines,
-when,
-writeFile -- because Data.Derive uses it.
-    ) where
+module Yi.Utils where
 
-import Prelude hiding (any, all)
-import Yi.Debug
-import Yi.Monad
-import Text.Show
-import Data.Bool
 import Data.Binary
-import Data.Foldable
+import Data.Foldable hiding (all,any)
 import Data.Default
-import Data.Function
 import qualified Data.HashMap.Strict as HashMap
 import Data.Hashable(Hashable)
-import Data.Int
-import Data.Rope (Rope)
-import Control.Lens hiding (
-      (-~), (+~) -- already used by SemiNum
-    , moveTo     -- collision with Buffer.Misc.moveTo
-    , Action     --           with Yi.Keymap
-    )
 import Control.Monad.Reader
-import Control.Applicative hiding((<$))
-import Data.Traversable
-import Data.Typeable
-import Data.Monoid (Monoid, mappend)
+import Control.Applicative
+import Control.Lens hiding (cons)
 import qualified Data.Set as Set
 import qualified Data.Map as Map
 import qualified Data.List.PointedList as PL
-
-(<>) :: Monoid a => a -> a -> a
-(<>) = mappend
 
 io :: MonadIO m => IO a -> m a
 io = liftIO
@@ -150,17 +55,6 @@ mapAdjust' f = Map.alter f' where
     f' (Just x) = let x' = f x in x' `seq` Just x'
     -- This works because Map is structure-strict, and alter needs to force f' to compute
     -- the structure.
-
-
--- | As Map.alter, but the newly inserted element is forced with the map.
-mapAlter' :: Ord k => (Maybe a -> Maybe a) -> k -> Map.Map k a -> Map.Map k a
-mapAlter' f = Map.alter f' where
-    f' arg = case f arg of
-        Nothing -> Nothing
-        Just x -> x `seq` Just x
-    -- This works because Map is structure-strict, and alter needs to force f' to compute
-    -- the structure.
-
 
 -- | Generalisation of 'Map.fromList' to arbitrary foldables.
 mapFromFoldable :: (Foldable t, Ord k) => t (k, a) -> Map.Map k a
@@ -232,4 +126,4 @@ instance (Eq k, Hashable k, Binary k, Binary v) => Binary (HashMap.HashMap k v) 
     get = HashMap.fromList <$> get
 
 makeLensesWithSuffix s =
-  makeLensesWith (defaultRules & lensField .~ Just . (++s)) 
+  makeLensesWith (defaultRules & lensField .~ Just . (++s))

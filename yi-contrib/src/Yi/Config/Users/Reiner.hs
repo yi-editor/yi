@@ -1,13 +1,13 @@
 {-# LANGUAGE NoMonomorphismRestriction, NamedFieldPuns, DoAndIfThenElse #-}
 module Yi.Config.Users.Reiner (setup, main) where
 
+import Control.Lens
 import Yi.Config.Simple
-import Yi.Prelude
-import qualified Prelude
-
 import qualified Yi.Mode.Haskell as Haskell
 import Yi.Mode.Latex(latexMode3)
 import Yi.Command(buildRun)
+import Yi.Utils
+import Yi.Monad
 
 import System.Directory
 import System.FilePath

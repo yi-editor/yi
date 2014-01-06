@@ -8,19 +8,21 @@
 
 module Yi.UI.Vty (start) where
 
-import Yi.Prelude hiding ((<|>), wrapped, set)
-import Prelude (map, take, zip, repeat, length, break, splitAt)
-
+import Prelude hiding (error,mapM,foldr1,concatMap,mapM_,reverse)
+import Control.Applicative hiding ((<|>))
 import Control.Arrow
+import Control.Monad hiding (mapM,mapM_)
 import Control.Concurrent
 import Control.Exception
-import Control.Monad (forever)
 import Control.Monad.State (runState, get, put)
 import Control.Monad.Trans (liftIO, MonadIO)
+import Control.Lens hiding (wrapped,set)
 import Data.Char (ord,chr)
 import Data.IORef
 import Data.List (partition, sort, nub)
 import qualified Data.List.PointedList.Circular as PL
+import Data.Foldable
+import Data.Traversable
 import Data.Maybe
 import Data.Monoid
 import System.Exit
@@ -38,7 +40,9 @@ import Yi.Style as Style
 import Graphics.Vty as Vty hiding (refresh, Default)
 import qualified Graphics.Vty as Vty
 import Yi.Keymap (makeAction, YiM)
-
+import Yi.Debug
+import Yi.Utils
+import Yi.Monad
 import Yi.UI.Utils
 import Yi.UI.TabBar
 

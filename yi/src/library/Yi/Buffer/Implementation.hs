@@ -45,23 +45,23 @@ module Yi.Buffer.Implementation
 )
 where
 
-import Prelude (dropWhile, map, filter)
-import Yi.Prelude hiding (from, re)
-
+import Control.Applicative
 import Data.Array
 import Data.Binary
 import Data.DeriveTH
-import Data.List (groupBy, zip, takeWhile)
+import Data.List (groupBy)
 import Data.Maybe
 import Data.Monoid
-import Data.Typeable ()
-
+import Data.Typeable
+import Data.Function
 import Yi.Buffer.Basic
 import Yi.Regex
 import Yi.Region
 import Yi.Style
 import Yi.Syntax
+import Yi.Utils
 import qualified Data.Rope as F
+import Data.Rope (Rope)
 import qualified Data.Map as M
 import qualified Data.Set as Set
 

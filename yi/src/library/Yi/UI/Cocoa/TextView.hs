@@ -20,8 +20,8 @@ module Yi.UI.Cocoa.TextView
   , visibleRange
   )where
 
-import Prelude ()
-import Yi.Prelude
+
+
 import Yi.String
 import Yi.Buffer hiding (runBuffer)
 import Yi.UI.Cocoa.Utils

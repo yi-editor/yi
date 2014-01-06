@@ -169,9 +169,7 @@ module Yi.Buffer.Misc
   )
 where
 
-import Prelude (drop)
-import Yi.Prelude hiding (reversed, at, act, transform)
-
+import Prelude hiding (foldr, mapM, notElem)
 import Yi.Region
 import System.FilePath
 import Yi.Buffer.Implementation
@@ -180,16 +178,24 @@ import Yi.Buffer.Undo
 import Yi.Dynamic
 import Yi.Window
 import Control.Monad.RWS.Strict hiding (mapM_, mapM, get, put, forM_, forM)
+import Control.Applicative
+import Control.Lens hiding (moveTo, (+~), Action, reversed, at, act)
 import Data.Binary
 import Data.Default
 import Data.DeriveTH
+import Data.Foldable
+import Data.Traversable
+import Data.Typeable
+import Data.Function hiding ((.), id)
+import Data.Rope (Rope)
 import qualified Data.Rope as R
-import Data.List (scanl, takeWhile, zip, length)
 import qualified Data.Map as M
 import Data.Maybe
 import {-# source #-} Yi.Keymap
 import Yi.Interact as I
 import Yi.Buffer.Basic
+import Yi.Monad
+import Yi.Utils
 import Data.Time
 import Numeric(showHex)
 import Data.Char(ord)

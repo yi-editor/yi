@@ -2,7 +2,7 @@ module Yi.Mode.Interactive where
 
 import Control.Concurrent (threadDelay)
 import Data.List (elemIndex)
-import Prelude ()
+import Control.Lens
 import Yi.Modes
 import Yi.Core
 import Yi.History
@@ -10,6 +10,8 @@ import Yi.Lexer.Alex (Tok)
 import Yi.Lexer.Compilation (Token)
 import qualified Yi.Mode.Compilation as Compilation
 import qualified Yi.Syntax.OnlineTree as OnlineTree
+import Yi.Monad
+import Yi.Utils
 
 mode :: Mode (OnlineTree.Tree (Tok Token))
 mode = Compilation.mode

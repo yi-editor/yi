@@ -21,7 +21,8 @@ module Yi.Syntax.Haskell ( PModule
                          , indentScanner
                          ) where
 
-import Prelude ()
+import Control.Applicative
+import Data.Foldable hiding (elem, notElem)
 import Data.Maybe
 import Data.List ((\\))
 import Yi.IncrementalParse
@@ -30,9 +31,6 @@ import Yi.Lexer.Haskell
 import Yi.Syntax.Layout
 import Yi.Syntax.Tree
 import Yi.Syntax
-import Yi.Prelude hiding (Context)
-import Prelude ()
-import Data.Tuple (uncurry)
 import Control.Arrow ((&&&))
 
 indentScanner :: Scanner (AlexState lexState) (TT)

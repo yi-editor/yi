@@ -30,17 +30,15 @@ module Yi.FuzzyOpen
     ( fuzzyOpen
     ) where
 
-import Prelude ()
 import Yi
 import Yi.MiniBuffer
 import Yi.Completion
 
-import Control.Monad (replicateM, replicateM_)
+import Control.Monad (replicateM, replicateM_,forM,void)
 import Control.Monad.Trans (liftIO)
 import System.Directory (doesDirectoryExist, getDirectoryContents)
-import System.FilePath (FilePath, (</>))
-import Data.List (filter, map, intersperse, drop)
-import Data.Maybe (isJust)
+import System.FilePath ((</>))
+import Data.List (intersperse)
 
 fuzzyOpen :: YiM ()
 fuzzyOpen = do

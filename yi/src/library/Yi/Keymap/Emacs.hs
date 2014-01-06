@@ -11,7 +11,9 @@ module Yi.Keymap.Emacs (keymap,
                         mkKeymap,
                         defKeymap,
                         ModeMap(..)) where
-import Prelude ()
+
+import Control.Applicative
+import Control.Lens
 import Data.Prototype
 import Yi.Command (shellCommandE)
 import Yi.Core

@@ -9,15 +9,14 @@ module Yi.Modes (TokenBasedMode, fundamentalMode,
                  gitCommitMode, rubyMode
                 ) where
 
-import Prelude ()
-import Data.List ( isPrefixOf, map, filter )
+import Control.Applicative
+import Data.List (isPrefixOf)
 import Data.Maybe
 import System.FilePath
 import Text.Regex.TDFA ((=~))
 
 import Yi.Buffer
 import Yi.Lexer.Alex (Tok(..), tokToSpan)
-import Yi.Prelude
 import Yi.Style
 import Yi.Syntax
 import Yi.Syntax.Tree

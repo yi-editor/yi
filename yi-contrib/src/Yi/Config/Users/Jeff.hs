@@ -3,8 +3,8 @@
      MultiParamTypeClasses, TypeSynonymInstances #-}
 module Yi.Config.Users.Jeff (myConfig) where
 
-import Yi.Prelude
-import Prelude ()
+import Control.Applicative
+import Control.Lens
 
 import Yi
 

@@ -26,16 +26,16 @@ module Yi.Dired
   , diredDirBuffer
   ) where
 
-import Prelude (realToFrac)
-
 import qualified Codec.Binary.UTF8.String as UTF8
 import Control.Monad.Reader hiding (mapM)
+import Control.Lens hiding (moveTo,act,op,pre)
 import Data.Binary
 import Data.List hiding (find, maximum, concat)
-import Data.Maybe
 import Data.Char (toLower)
 import Data.DeriveTH
 import Data.Default
+import Data.Typeable
+import Data.Foldable (find)
 import qualified Data.Map as M
 import qualified Data.Rope as R
 import Data.Time
@@ -50,11 +50,13 @@ import System.PosixCompat.User
 import Control.Exc
 import Text.Printf
 
-import Yi.Core hiding (sequence, forM, notElem)
+import Yi.Core
 import {-# source #-} Yi.File (editFile)
 import Yi.MiniBuffer (spawnMinibufferE, withMinibufferGen, noHint, withMinibuffer)
 import Yi.Misc (getFolder, promptFile)
 import Yi.Style
+import Yi.Utils
+import Yi.Monad
 
 data DiredFileInfo = DiredFileInfo {  permString :: String
                                     , numLinks :: Integer
@@ -535,7 +537,7 @@ diredRefreshMark = do b <- pointB
                                                 Nothing -> do
                                                   -- for deleted marks
                                                   moveTo pos >> moveToSol >> insertN [' '] >> deleteN 1
-                      Yi.Core.mapM_ draw posDict
+                      mapM_ draw posDict
                       moveTo b
     where
       styleOfMark '*' = const (withFg green)

@@ -10,7 +10,6 @@
 {-# OPTIONS_GHC -fno-warn-incomplete-patterns #-} -- uniplate patterns
 module Yi.Syntax.OnlineTree (Tree(..), manyToks,
                              tokAtOrBefore) where
-import Prelude ()
 
 import Control.Applicative
 import Data.Traversable
@@ -22,7 +21,6 @@ import Parser.Incremental
 #endif
 
 import Yi.Buffer.Basic
-import Yi.Prelude
 import Yi.IncrementalParse
 import Yi.Lexer.Alex
 import Yi.Syntax.Tree

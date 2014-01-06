@@ -3,10 +3,9 @@ module Yi.Keymap.Vim2.Ex.Commands.Buffer
     ( parse
     ) where
 
-import Prelude ()
-import Yi.Prelude
+import Control.Applicative
+import Control.Monad
 
-import Data.Maybe 
 import qualified Text.ParserCombinators.Parsec as P
 
 import Yi.Editor

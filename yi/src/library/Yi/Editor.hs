@@ -8,15 +8,19 @@
 
 module Yi.Editor where
 
+import Prelude hiding (foldl,concatMap,foldr,all)
 import Control.Monad.RWS hiding (get, put, mapM, forM_)
+import Control.Applicative
+import Control.Monad
+import Control.Lens hiding (moveTo)
 import Data.Binary
 import Data.DeriveTH
 import Data.Either (rights)
-import Data.List (nub, delete, (\\), (!!), intercalate, take, drop, cycle)
+import Data.List (nub, delete, (\\), intercalate)
 import Data.Maybe
 import Data.Typeable
 import Data.Default
-import Prelude (map, filter, length, reverse)
+import Data.Foldable hiding (forM_)
 import System.FilePath (splitPath)
 import Yi.Buffer
 import Yi.Config
@@ -26,10 +30,12 @@ import Yi.Interact as I
 import Yi.JumpList
 import Yi.KillRing
 import Yi.Layout
-import Yi.Prelude
 import Yi.Style (StyleName, defaultStyle)
 import Yi.Tab
 import Yi.Window
+import Yi.Monad
+import Yi.Utils
+import Data.Rope (Rope)
 import qualified Data.Rope as R
 import qualified Data.DelayList as DelayList
 import qualified Data.List.PointedList as PL (atEnd, moveTo)

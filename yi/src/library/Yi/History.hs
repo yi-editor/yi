@@ -7,18 +7,17 @@
 
 module Yi.History where
 
-import Prelude ()
-import Yi.Prelude 
-
+import Control.Lens
 import Data.Binary
 import Data.DeriveTH
 import Data.List
 import Data.Default
+import Data.Typeable
 import qualified Data.Map as M
-
 import Yi.Buffer
 import Yi.Dynamic
 import Yi.Editor
+
 type Histories = M.Map String History
 
 

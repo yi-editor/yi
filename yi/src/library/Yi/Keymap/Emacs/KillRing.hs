@@ -4,14 +4,12 @@
 
 module Yi.Keymap.Emacs.KillRing where
 
-import Prelude ()
-import Yi.Prelude
+import Control.Monad (replicateM_)
+import Control.Lens
 import Yi.Keymap
 import Yi.Buffer
 import Yi.Editor
-import Control.Monad ( replicateM_ )
 import Yi.KillRing
-
 
 -- * Killring actions
 

@@ -8,9 +8,6 @@ module Yi.JumpList
     , jumpForward
     ) where
 
-import Prelude ()
-import Yi.Prelude
-
 import Yi.Buffer.Basic
 
 import Data.Binary

@@ -6,13 +6,14 @@
 
 module Yi.Verifier.JavaScript where
 
-import Control.Monad.Writer.Lazy (Writer, mapM_, MonadWriter, tell)
-import Data.List (map, dropWhile, drop, filter, length, intersperse)
+import Control.Monad.Writer.Lazy (Writer, MonadWriter, tell)
+import Control.Monad
+import Data.List (intersperse)
+import Data.Foldable (toList)
+import Data.Function (on)
 import qualified Data.DList as D
-import Prelude ()
 import Yi.Lexer.Alex (Posn, Tok, tokT, tokPosn)
 import Yi.Lexer.JavaScript (Token(..), TT)
-import Yi.Prelude hiding (mapM_)
 import Yi.Syntax.JavaScript hiding (res)
 
 

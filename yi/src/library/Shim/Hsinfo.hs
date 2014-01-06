@@ -330,7 +330,7 @@ getModuleExports sourcefile0 modname pref = do
   let currentmod = "AHJEXLJLLKJIUOHGJ"
       sourcefile = (dropFileName sourcefile0) </> currentmod ++ ".hs"
       minSrc = unlines ["module "++currentmod++" where",
-                        "import Prelude ()",
+                        "",
                         "import "++modname]
   load sourcefile False (Just minSrc)
   modl <- io $ GhcCompat.findModule ses (GHC.mkModuleName modname) Nothing

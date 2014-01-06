@@ -7,11 +7,8 @@ module Yi.Keymap.Vim2.EventUtils
   , splitCountedCommand
   ) where
 
-import Yi.Prelude
-import Prelude ()
-
 import Data.Char (toUpper, isDigit)
-import Data.List (break,drop)
+import Data.List (foldl')
 import qualified Data.Map as M
 import Data.Tuple (swap)
 

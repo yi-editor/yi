@@ -19,11 +19,14 @@ module Yi.Tab
   makeTab1,
  )  where
 
-import qualified Prelude
-import Yi.Prelude
+import Prelude hiding (foldr, foldl)
+import Control.Lens
 import qualified Data.Binary as Binary
 import Data.Default
+import Data.Typeable
+import Data.Foldable
 import qualified Data.List.PointedList as PL
+import Control.Applicative
 
 import Yi.Buffer.Basic(WindowRef)
 import Yi.Layout

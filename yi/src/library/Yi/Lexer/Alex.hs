@@ -25,13 +25,14 @@ module Yi.Lexer.Alex (
                       ) where
 
 import Yi.Syntax hiding (mkHighlighter)
-import Yi.Prelude
-import Prelude ()
+
 import Yi.Region
 import Data.Ord (comparing)
 import Data.Ix
 import Data.Word (Word8)
 import Data.Char (ord)
+import Data.List (foldl')
+import Yi.Utils
 
 type IndexedStr = [(Point, Char)]
 type AlexInput = (Char, IndexedStr)

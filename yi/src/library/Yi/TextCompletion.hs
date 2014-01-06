@@ -14,14 +14,19 @@ module Yi.TextCompletion (
         CompletionScope(..)
 ) where
 
-import Prelude ()
 import Yi.Completion
+import Control.Applicative
+import Control.Monad
 import Data.Char
-import Data.List (filter, drop, isPrefixOf, reverse, findIndex, length, groupBy)
+import Data.List (isPrefixOf, findIndex, groupBy)
 import Data.Maybe
 import Data.Default
+import Data.Function (on)
+import Data.Typeable
+import Data.Binary
 
 import Yi.Core
+import Yi.Utils
 
 -- ---------------------------------------------------------------------
 -- | Word completion

@@ -3,8 +3,7 @@ module Yi.Keymap.Vim2.Ex.Eval
     , exEvalY
     ) where
 
-import Prelude ()
-import Yi.Prelude
+import Control.Monad
 
 import Yi.Editor
 import Yi.Keymap

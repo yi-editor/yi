@@ -2,10 +2,10 @@ module Yi.Keymap.Vim2.Ex.Commands.Global
     ( parse
     ) where
 
-import Prelude ()
-import Yi.Prelude
+import Control.Applicative
+import Control.Monad
 
-import Data.List (reverse, isInfixOf)
+import Data.List (isInfixOf)
 import qualified Text.ParserCombinators.Parsec as P
 
 import Yi.Buffer

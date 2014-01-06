@@ -18,10 +18,14 @@ module Yi.Mode.Haskell
    ghciInferType,
   ) where
 
-import Data.List (dropWhile, takeWhile, filter, drop, length)
-import Data.Maybe (maybe, listToMaybe, isJust, catMaybes)
+import Prelude hiding (and,error,elem,notElem,all,concatMap,exp)
+import Data.Maybe (listToMaybe, isJust, catMaybes)
 import Data.Default
-import Prelude (unwords, zipWith)
+import Data.Foldable
+import Data.Typeable
+import Data.Binary
+import Control.Applicative
+import Control.Monad hiding (forM_)
 import Yi.Core
 import Yi.File
 import Yi.Lexer.Alex (Tok(..),Posn(..),tokBegin,tokEnd,tokRegion)
@@ -40,6 +44,9 @@ import Yi.Lexer.Haskell as Haskell
 import qualified Yi.Mode.Interactive as Interactive
 import Yi.Modes (anyExtension, extensionOrContentsMatch)
 import Yi.MiniBuffer
+import Yi.Debug
+import Yi.Monad
+import Yi.Utils
 
 haskellAbstract :: Mode (tree TT)
 haskellAbstract = emptyMode

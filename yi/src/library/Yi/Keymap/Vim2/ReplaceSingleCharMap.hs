@@ -2,10 +2,7 @@ module Yi.Keymap.Vim2.ReplaceSingleCharMap
     ( defReplaceSingleMap
     ) where
 
-import Yi.Prelude
-import Prelude ()
-
-import Control.Monad (replicateM_)
+import Control.Monad
 
 import Data.Maybe (fromMaybe)
 
@@ -15,6 +12,7 @@ import Yi.Keymap.Keys
 import Yi.Keymap.Vim2.Common
 import Yi.Keymap.Vim2.StateUtils
 import Yi.Keymap.Vim2.Utils
+import Yi.Utils
 
 defReplaceSingleMap :: [VimBinding]
 defReplaceSingleMap = [escBinding, actualReplaceBinding]

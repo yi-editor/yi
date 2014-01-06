@@ -2,13 +2,8 @@ module Yi.Keymap.Vim2.InsertMap
   ( defInsertMap
   ) where
 
-import Yi.Prelude
-import Prelude ()
-
-import Control.Monad (replicateM_)
+import Control.Monad
 import Data.Char (isDigit)
-import Data.List (break, drop, dropWhile)
-import Data.Maybe (maybe)
 
 import Yi.Buffer hiding (Insert)
 import Yi.Editor
@@ -20,6 +15,7 @@ import Yi.Keymap.Vim2.Motion
 import Yi.Keymap.Vim2.Utils
 import Yi.Keymap.Vim2.StateUtils
 import Yi.TextCompletion (completeWordB, CompletionScope(..))
+import Yi.Monad
 
 defInsertMap :: [(String, Char)] -> [VimBinding]
 defInsertMap digraphs =

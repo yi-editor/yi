@@ -59,10 +59,10 @@ module Yi.Interact
 import Control.Arrow (first)
 import Control.Monad.State hiding ( get, mapM )
 import Data.Monoid
-import Yi.Prelude
-import Prelude ()
-import Data.Maybe
-import Data.List (filter, map, groupBy)
+import Control.Applicative
+import Data.List (groupBy)
+import Data.Function (on)
+import Yi.Utils
 ------------------------------------------------
 -- Classes
 

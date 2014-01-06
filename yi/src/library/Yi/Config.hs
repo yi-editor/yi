@@ -2,9 +2,6 @@
 
 module Yi.Config where
 
-import Prelude ()
-import Yi.Prelude
-
 import Data.Prototype
 
 import Yi.Buffer
@@ -18,6 +15,7 @@ import Yi.Style
 import Yi.Style.Library
 import {-# source #-} Yi.UI.Common
 import qualified Yi.Interact as I
+import Yi.Utils
 
 data UIConfig = UIConfig {
    configVtyEscDelay :: Int,

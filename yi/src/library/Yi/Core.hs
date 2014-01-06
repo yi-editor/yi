@@ -15,7 +15,6 @@ module Yi.Core
     -- * Keymap
   , module Yi.Keymap
 
-  , module Yi.Prelude
   , module Yi.Editor
   , module Yi.Buffer
   , module Yi.Keymap.Keys
@@ -47,16 +46,17 @@ module Yi.Core
   )
 where
 
-import Prelude (realToFrac)
-import Yi.Prelude hiding (acts, act, re, to, from, op, pre)
-
+import Prelude hiding (elem,or,mapM_)
 import Control.Concurrent
-import Control.Monad (forever)
+import Control.Monad hiding (mapM_,forM_,forM)
 import Control.Monad.Error ()
-import Control.Monad.Reader (ask)
-import Control.Monad.Trans
+import Control.Monad.Reader hiding (mapM_,forM_,forM)
 import Control.Exception
 import Control.Exc
+import Control.Applicative
+import Control.Lens hiding (Action,act,acts)
+import Data.Foldable
+import Data.Traversable
 import qualified Data.DelayList as DelayList
 import Data.List (intercalate, partition)
 import Data.List.Split (splitOn)
@@ -69,7 +69,6 @@ import Data.Time.Clock.POSIX
 import qualified Data.Rope as R
 import System.Directory (doesFileExist)
 import System.Exit
-import System.FilePath
 import System.IO (Handle, hWaitForInput, hPutStr)
 import System.PosixCompat.Files
 import System.Process (terminateProcess, getProcessExitCode, ProcessHandle, readProcessWithExitCode)
@@ -81,9 +80,12 @@ import Yi.Editor
 import Yi.Keymap
 import Yi.Keymap.Keys
 import Yi.KillRing (krEndCmd)
+import Yi.Utils
 import Yi.Process (createSubprocess, readAvailable, SubprocessId, SubprocessInfo(..))
 import Yi.String
 import Yi.Style (errorStyle, strongHintStyle)
+import Yi.Monad
+import Yi.Debug
 import qualified Yi.UI.Common as UI
 import Yi.Window (dummyWindow, bufkey, wkey, winRegion)
 import {-# source #-} Yi.PersistentState(loadPersistentState, savePersistentState)

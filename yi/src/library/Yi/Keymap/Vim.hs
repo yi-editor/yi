@@ -41,19 +41,16 @@ module Yi.Keymap.Vim (keymapSet,
                       exEval
                       ) where
 
-import Prelude (maybe, length, filter, map, drop, break, uncurry, reads)
-import Yi.Prelude hiding (op, act)
-
 import qualified Data.Binary
+import Data.Typeable
 import Data.Char
-import Data.List (nub, take, words, dropWhile, takeWhile, intersperse, reverse, isSuffixOf)
+import Data.List (nub, intersperse, isSuffixOf)
 import Data.Maybe (fromMaybe, isJust)
-import Data.Either (either)
 import Data.Prototype
+import Data.Foldable (find)
 import Data.Default
 import Numeric (showHex, showOct)
 import Shim.Utils (splitBy, uncurry3)
-import System.IO (readFile)
 #ifdef mingw32_HOST_OS
 import System.PosixCompat.Files (fileExist)
 #else
@@ -62,6 +59,8 @@ import System.Posix (fileExist)
 import System.FilePath (takeFileName)
 import System.Directory (getCurrentDirectory, setCurrentDirectory)
 
+import Control.Lens hiding (moveTo, Action, (-~), (+~), op, act)
+import Control.Applicative
 import Control.Monad.State hiding (mapM_, mapM, sequence)
 import Control.Arrow hiding (left, right)
 
@@ -85,7 +84,7 @@ import Yi.Hoogle (hoogle, hoogleSearch)
 import qualified Codec.Binary.UTF8.String as UTF8
 import Yi.Keymap.Readline
 import Yi.Keymap.Vim.TagStack
-
+import Yi.Utils
 
 --
 -- What's missing?

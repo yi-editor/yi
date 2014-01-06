@@ -1,7 +1,8 @@
 -- Copyright (c) Jean-Philippe Bernardy 2008
 module Yi.Mode.Compilation where
 
-import Prelude ()
+import Control.Monad
+import Control.Lens hiding (moveTo)
 import Yi.Core
 import Yi.File (editFile)
 import Yi.Lexer.Alex (Tok(..), Posn(..))

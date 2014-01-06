@@ -7,10 +7,7 @@ module Yi.Keymap.Vim2.TextObject
   , stringToTextObject
   ) where
 
-import Prelude ()
-import Yi.Prelude hiding (to)
-
-import Control.Monad (replicateM_)
+import Control.Monad
 
 import Yi.Buffer
 import Yi.Keymap.Vim2.StyledRegion

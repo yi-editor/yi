@@ -4,11 +4,15 @@
 
 module Yi.Mode.JavaScript (javaScriptMode, hooks) where
 
+import Control.Applicative
 import Control.Monad.Writer.Lazy (execWriter)
+import Control.Lens
 import Data.List (nub)
 import Data.Maybe (isJust)
 import Data.Default
-import Prelude (map)
+import Data.Foldable (toList)
+import Data.Typeable
+import Data.Binary
 import System.FilePath.Posix (takeBaseName)
 import Yi.Buffer.Basic (BufferRef, Direction(..), fromString)
 import Yi.Buffer.Indent (indentSettingsB, indentOfB, cycleIndentsB, newlineAndIndentB)
@@ -28,11 +32,11 @@ import Yi.Keymap.Keys (ctrlCh, (?>>), (?>>!), (<||))
 import Yi.Lexer.Alex (AlexState, Tok, lexScanner)
 import Yi.Lexer.JavaScript (alexScanToken, TT, initState, HlState, Token)
 import Yi.Modes (anyExtension)
-import Yi.Prelude hiding (list)
 import Yi.Syntax (ExtHL(..), mkHighlighter, Scanner, Point)
 import Yi.Syntax.JavaScript (Tree, parse, getStrokes)
 import Yi.Syntax.Tree (getLastPath)
 import Yi.Verifier.JavaScript (verify)
+import Yi.Monad
 import qualified Data.DList as D
 
 javaScriptAbstract :: Mode syntax

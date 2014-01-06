@@ -4,14 +4,16 @@
 {-# OPTIONS_GHC -fno-warn-missing-signatures -fno-warn-incomplete-patterns -fno-warn-name-shadowing #-}
 module Yi.Snippets where
 
-import Prelude ()
-import Yi.Prelude
-
 import Control.Arrow
-import Control.Monad.RWS hiding (mapM, mapM_, forM, forM_, sequence, get, put)
+import Control.Applicative
+import Control.Monad
+import Control.Monad.RWS hiding (mapM, mapM_, sequence, get, put)
+import Control.Lens hiding (Action, moveTo)
 import Data.Binary
+import Data.Typeable
+import Data.Foldable (find)
 import Data.DeriveTH
-import Data.List hiding (foldl', find, elem, concat, concatMap)
+import Data.List hiding (find, elem, concat, concatMap)
 import Data.Char (isSpace)
 import Data.Maybe (fromJust, isJust)
 import Data.Default

@@ -11,10 +11,7 @@ module Yi.Keymap.Vim2
     , impureEval
     ) where
 
-import Prelude ()
-import Yi.Prelude
-
-import Data.List (map, filter)
+import Control.Applicative
 import Data.Prototype
 
 import Yi.Buffer hiding (Insert)

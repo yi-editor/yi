@@ -2,10 +2,11 @@ module Yi.Keymap.Vim2.Ex.Commands.Quit
     ( parse
     ) where
 
-import Prelude ()
-import Yi.Prelude
+import Control.Applicative
+import Control.Monad
+import Control.Lens
 
-import Data.Either (either)
+import Data.Foldable (find)
 
 import qualified Text.ParserCombinators.Parsec as P
 
@@ -16,6 +17,7 @@ import Yi.File
 import Yi.Keymap
 import Yi.Keymap.Vim2.Ex.Types
 import qualified Yi.Keymap.Vim2.Ex.Commands.Common as Common
+import Yi.Monad
 
 parse :: String -> Maybe ExCommand
 parse = Common.parse $ do

@@ -2,10 +2,9 @@ module Yi.Keymap.Vim2.NormalMap
     ( defNormalMap
     ) where
 
-import Yi.Prelude hiding (re)
-import Prelude ()
-
-import Control.Monad (replicateM_)
+import Control.Monad
+import Control.Applicative
+import Control.Lens hiding (moveTo, re)
 
 import Data.Char
 import Data.List (group)
@@ -29,6 +28,7 @@ import Yi.MiniBuffer
 import Yi.Misc
 import Yi.Regex (seInput, makeSearchOptsM)
 import Yi.Search (getRegexE, isearchInitE, setRegexE, makeSimpleSearch)
+import Yi.Monad
 
 mkDigitBinding :: Char -> VimBinding
 mkDigitBinding c = mkBindingE Normal Continue (char c, return (), mutate)

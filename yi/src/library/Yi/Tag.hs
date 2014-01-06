@@ -18,9 +18,6 @@ module Yi.Tag
   )
 where
 
-{- Standard Library Module Imports -}
-import Prelude (map, words, lines, readFile, reads)
-import Yi.Prelude
 import Yi.Editor
 import Yi.Dynamic
 
@@ -28,7 +25,7 @@ import qualified Data.ByteString as BS
 import qualified Data.ByteString.UTF8 as BS8
 import Data.Maybe (mapMaybe)
 import Data.List (isPrefixOf)
-import System.FilePath (takeFileName, takeDirectory, FilePath, (</>))
+import System.FilePath (takeFileName, takeDirectory, (</>))
 import System.FriendlyPath
 import Data.Map (Map, fromList, lookup, keys)
 import Data.List.Split (splitOn)
@@ -37,6 +34,7 @@ import qualified Data.Trie as Trie
 import Data.Binary
 import Data.DeriveTH
 import Data.Default
+import Data.Typeable
 
 newtype Tags  = Tags (Maybe TagTable) deriving Typeable
 instance Default Tags where

@@ -24,17 +24,18 @@ module Yi.Buffer.Region
   )
 where
 
-import Prelude ()
-import Yi.Prelude hiding (transform)
-
+import Control.Applicative
+import Control.Monad
 import Data.Algorithm.Diff
 import Data.Char (isSpace)
-import Data.List (filter, length, sort, dropWhile)
+import Data.List (sort)
+import Data.Rope (Rope)
 
 import Yi.Buffer.Misc
 import Yi.Region
 import Yi.String (lines')
 import Yi.Window (winRegion)
+import Yi.Utils
 
 winRegionB :: BufferM Region
 winRegionB = askWindow winRegion

@@ -15,7 +15,7 @@ import Yi.UI.Cocoa.TextStorage
 import Yi.UI.Cocoa.TextView
 import Yi.UI.Cocoa.Utils
 
-import Yi.Prelude hiding (init)
+ hiding (init)
 import Yi.Buffer
 import Yi.Editor
 import Yi.Keymap

@@ -10,7 +10,10 @@ module Yi.Keymap.Cua (
     , del
     ) where
 
-import Prelude (length, take, drop)
+import Control.Applicative
+import Control.Monad
+import Control.Lens hiding (act)
+
 import Yi.Core
 import Yi.File
 import Yi.Keymap.Emacs.Utils

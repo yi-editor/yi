@@ -23,13 +23,12 @@ module Yi.Syntax.Tree (IsTree(..), toksAfter, allToks, tokAtOrBefore, toksInRegi
 -- Some of this might be replaced by a generic package
 -- such as multirec, uniplace, emgm, ...
 
-import Prelude (curry)
-import Yi.Prelude hiding (elements, index, children, left')
-
+import Prelude hiding (concatMap, error)
+import Control.Applicative
 import Control.Arrow (first)
-import Data.List (dropWhile, takeWhile, reverse, filter, zip, take, drop, length, splitAt)
 import Data.Maybe
 import Data.Monoid (First(..), Last(..), getFirst, getLast)
+import Data.Foldable
 #ifdef TESTING
 import Test.QuickCheck
 #endif
@@ -37,6 +36,7 @@ import Test.QuickCheck
 import Yi.Buffer.Basic
 import Yi.Lexer.Alex
 import Yi.Region
+import Yi.Debug
 
 -- Fundamental types
 type Path = [Int]

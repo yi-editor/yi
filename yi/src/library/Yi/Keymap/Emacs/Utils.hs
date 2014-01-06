@@ -38,10 +38,11 @@ module Yi.Keymap.Emacs.Utils
 where
 
 {- Standard Library Module Imports -}
-
-import Prelude (take)
+import Control.Applicative
+import Control.Monad
+import Control.Lens hiding (re,act)
+import Data.Foldable (toList)
 import Data.List ((\\))
-import Data.Maybe (maybe)
 import System.FriendlyPath ()
 import System.FilePath (takeDirectory, takeFileName, (</>))
 import System.Directory
@@ -50,8 +51,6 @@ import System.Directory
 import Control.Monad.Trans (MonadIO (..))
 {- External Library Module Imports -}
 {- Local (yi) module imports -}
-
-import Control.Monad (filterM, replicateM_)
 import Yi.Command (cabalConfigureE, cabalBuildE, reloadProjectE)
 import Yi.Core
 import Yi.Eval
@@ -62,6 +61,8 @@ import Yi.Regex
 import Yi.Tag
 import Yi.Search
 import Yi.Window
+import Yi.Utils
+import Yi.Monad
 {- End of Module Imports -}
 
 type UnivArgument = Maybe Int

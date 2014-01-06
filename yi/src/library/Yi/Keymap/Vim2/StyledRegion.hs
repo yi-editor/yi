@@ -5,10 +5,9 @@ module Yi.Keymap.Vim2.StyledRegion
     , transformCharactersInLineN
     ) where
 
-import Prelude ()
-import Yi.Prelude
-
+import Control.Monad
 import Yi.Buffer
+import Yi.Utils
 
 data StyledRegion = StyledRegion !RegionStyle !Region
 

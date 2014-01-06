@@ -33,8 +33,8 @@ module Yi.UI.Cocoa.Application
   , pushClipboard
   ) where
 
-import Prelude ()
-import Yi.Prelude
+
+
 
 import Control.Concurrent
 import Control.Monad

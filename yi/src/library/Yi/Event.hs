@@ -10,9 +10,6 @@ module Yi.Event
 import Data.Bits
 import Data.Char (chr,ord)
 import Data.Monoid
-import Data.List ( (!!) )
-import Yi.Prelude
-import Prelude ()
 
 data Modifier = MShift | MCtrl | MMeta | MSuper | MHyper
                 deriving (Show,Eq,Ord)

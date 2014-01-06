@@ -2,9 +2,6 @@ module Yi.Keymap.Vim2.Ex.Commands.Nohl
     ( parse
     ) where
 
-import Prelude ()
-import Yi.Prelude
-
 import Yi.Keymap
 import Yi.Keymap.Vim2.Ex.Types
 import Yi.Keymap.Vim2.Ex.Commands.Common (pureExCommand)

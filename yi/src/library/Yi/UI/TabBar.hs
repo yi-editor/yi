@@ -1,9 +1,6 @@
 module Yi.UI.TabBar where
 
-import Prelude ()
-import Yi.Prelude
-
-import Data.List (take)
+import Control.Lens
 import qualified Data.List.PointedList.Circular as PL
 import System.FilePath
 

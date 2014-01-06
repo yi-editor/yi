@@ -16,9 +16,9 @@ module Yi.UI.Cocoa.TextStorage
   , visibleRangeChanged
   ) where
 
-import Prelude ()
+
 import Yi.Editor (currentRegex, emptyEditor, Editor)
-import Yi.Prelude
+
 import Yi.Buffer
 import Yi.Style
 import Yi.UI.Cocoa.Utils
