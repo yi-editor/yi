@@ -5,9 +5,6 @@ module Yi.Config.Users.Corey (config) where
     - The insert mode of the Vim keymap has been extended with a few additions
       I find useful.
  -}
-import Yi.Prelude
-import Prelude ()
-
 import Yi
 import Yi.Keymap.Vim
 import Yi.Buffer.Indent (indentAsPreviousB)
@@ -17,8 +14,9 @@ import Yi.Misc (adjBlock)
 -- import qualified Yi.UI.Vty
 
 import Yi.Style.Library (darkBlueTheme)
-import Data.List (isPrefixOf, reverse, replicate)
+import Data.List (isPrefixOf)
 import Control.Monad (replicateM_)
+import Control.Applicative
 
 -- Set soft tabs of 4 spaces in width.
 prefIndent :: Mode s -> Mode s

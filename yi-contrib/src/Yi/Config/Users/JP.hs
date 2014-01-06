@@ -10,16 +10,16 @@ import Yi.Keymap.Emacs (mkKeymap, defKeymap, ModeMap(..))
 -- If configured with ghcAPI, Shim Mode can be enabled:
 -- import qualified Yi.Mode.Shim as Shim
 
-import Data.List (drop, length)
+import Control.Applicative
+import Control.Lens
+import Data.Traversable (sequenceA)
+import Data.Foldable (Foldable,find)
 import Data.Monoid
-import Prelude ()
 import Yi.Char.Unicode
 import Yi.Hoogle
-import Yi.Keymap.Keys
 import Yi.Lexer.Alex (tokToSpan, Tok)
 import Yi.Lexer.Haskell as Hask
 import Yi.Mode.Haskell as Haskell
-import Yi.Prelude
 import Yi.String
 import Yi.Syntax
 import Yi.Syntax.Tree

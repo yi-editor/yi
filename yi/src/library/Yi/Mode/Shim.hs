@@ -8,13 +8,13 @@ import Data.List
 import qualified Data.List.PointedList.Circular as PL
 import FastString
 import Outputable hiding (char)
-import Prelude ()
+
 import Shim.Hsinfo as Hsinfo
 import SrcLoc
 import Yi
 import Yi.Buffer
 import Yi.GHC
-import Yi.Prelude
+
 import qualified Shim.Hsinfo as Hsinfo
 
 jumpToSrcLoc :: SrcLoc -> YiM ()

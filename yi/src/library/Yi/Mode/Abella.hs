@@ -5,13 +5,16 @@ module Yi.Mode.Abella
   , abellaEval, abellaEvalFromProofPoint, abellaUndo, abellaGet, abellaSend)
 where
 
-import Prelude ()
-import Control.Monad (replicateM_, join)
+import Control.Applicative
+import Control.Monad
+import Control.Lens hiding (moveTo)
 import Data.Char (isSpace)
 import Data.Binary
 import Data.Maybe (isJust)
 import Data.List (isInfixOf)
 import Data.Default
+import Data.Typeable
+import Data.Traversable (sequenceA)
 import Yi.Core
 import qualified Yi.Mode.Interactive as Interactive
 import Yi.Modes (TokenBasedMode, linearSyntaxMode, anyExtension)

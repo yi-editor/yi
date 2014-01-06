@@ -12,10 +12,9 @@ import System.Environment ( getEnv )
 import Foreign.Marshal.Alloc(allocaBytes)
 import Foreign.C.String
 
-import Prelude(length)
 import Control.Exc(orException)
-import Yi.Prelude
 import Yi.Buffer (BufferRef)
+import Yi.Monad
 
 #ifndef mingw32_HOST_OS
 import System.Posix.IO

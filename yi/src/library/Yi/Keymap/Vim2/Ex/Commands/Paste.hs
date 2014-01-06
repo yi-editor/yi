@@ -2,8 +2,7 @@ module Yi.Keymap.Vim2.Ex.Commands.Paste
     ( parse
     ) where
 
-import Prelude ()
-import Yi.Prelude
+import Control.Applicative
 
 import Yi.Editor
 import Yi.Keymap

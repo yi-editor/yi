@@ -2,10 +2,9 @@
 -- | emacs-style rectangle manipulation functions.
 module Yi.Rectangle where
 
-import Yi.Prelude
-import Prelude (subtract)
-import Data.List (splitAt, unzip)
-import Data.List (sort, length, zipWith, transpose)
+import Control.Applicative
+import Control.Monad
+import Data.List (sort, transpose)
 
 import Yi.Buffer
 import Yi.Editor

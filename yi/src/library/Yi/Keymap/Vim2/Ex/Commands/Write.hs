@@ -2,10 +2,8 @@ module Yi.Keymap.Vim2.Ex.Commands.Write
     ( parse
     ) where
 
-import Prelude ()
-import Yi.Prelude
-
-import System.FilePath
+import Control.Applicative
+import Control.Monad
 
 import qualified Text.ParserCombinators.Parsec as P
 

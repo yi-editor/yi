@@ -9,13 +9,9 @@ module Yi.Keymap.Vim2.Ex.Commands.Common
     , impureExCommand
     ) where
 
-import Prelude ()
-import Yi.Prelude
-
-import Data.Either (either)
-import Data.List (isPrefixOf, drop, length)
+import Control.Monad
+import Data.List (isPrefixOf)
 import System.Directory
-import System.FilePath
 import qualified Text.ParserCombinators.Parsec as P
 
 import Yi.Buffer
@@ -23,6 +19,8 @@ import Yi.Editor
 import Yi.Keymap
 import Yi.Keymap.Vim2.Ex.Types
 import Yi.Misc
+import Yi.Utils
+import Yi.Monad
 
 parse :: P.GenParser Char () ExCommand -> String -> Maybe ExCommand
 parse parser s = either (const Nothing) Just (P.parse parser "" s)

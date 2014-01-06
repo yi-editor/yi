@@ -5,20 +5,21 @@ module Yi.Config.Default (defaultConfig, availableFrontends,
                           defaultEmacsConfig, defaultVimConfig, defaultCuaConfig,
                           toVimStyleConfig, toVim2StyleConfig, toEmacsStyleConfig, toCuaStyleConfig) where
 
-import Control.Monad (forever)
+import Control.Applicative
+import Control.Monad
+import Control.Lens hiding (Action)
 import Data.Either (rights)
 import Data.Default
 import Paths_yi
-import Prelude ()
 import System.Directory
 import System.FilePath
-import System.IO (readFile)
 import Yi.Command (cabalBuildE, cabalConfigureE, grepFind, makeBuild, reloadProjectE, searchSources, shell)
 import {-# source #-} Yi.Boot
 import Yi.Config
 import Yi.Config.Misc
 import Yi.Paths(getConfigFilename)
 import Yi.Core
+import Yi.Utils
 import Yi.Eval(publishedActions)
 import Yi.File
 import Yi.IReader (saveAsNewArticle)

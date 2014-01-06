@@ -1,9 +1,9 @@
 {-# LANGUAGE Rank2Types #-}
 module Yi.Mode.Latex (latexMode3, latexMode2, fastMode) where
 
-import Prelude ()
+
 import Yi.Buffer
-import Yi.Prelude
+
 import Yi.Syntax
 import Yi.Syntax.Tree
 import qualified Yi.IncrementalParse as IncrParser

@@ -17,21 +17,28 @@ module Yi.Eval (
         consoleKeymap,
 ) where
 
+import Prelude hiding (error)
+import Control.Applicative
+import Control.Monad
+import Control.Lens hiding (Action)
 import Data.Array
 import Data.List
 import Data.Monoid
+import Data.Typeable
+import Data.Binary
 import Data.Default
-import Prelude hiding (error, (.))
 import qualified Language.Haskell.Interpreter as LHI
 import System.Directory(doesFileExist)
 import qualified Data.HashMap.Strict as M
 
 import Yi.Config.Simple.Types
-import Yi.Core  hiding (concatMap)
+import Yi.Core
 import Yi.File
 import Yi.Hooks
 import Yi.Regex
 import qualified Yi.Paths(getEvaluatorContextFilename)
+import Yi.Utils
+import Yi.Debug
 
 -- | Runs the action, as written by the user.
 --

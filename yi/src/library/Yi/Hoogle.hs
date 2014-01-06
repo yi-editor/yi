@@ -2,14 +2,15 @@
 -- into a form useful for completion or insertion.
 module Yi.Hoogle where
 
-import Prelude ()
+import Control.Applicative
 import Control.Arrow ((&&&))
 import Data.Char (isUpper)
-import Data.List (isInfixOf, nub, filter, lines, words, map, (!!))
+import Data.List (isInfixOf, nub)
 import System.Exit (ExitCode(ExitFailure))
 
 import Yi.Core
 import Yi.Process (runProgCommand)
+import Yi.Utils
 
 -- | Remove anything starting with uppercase letter. These denote either module names or types.
 caseSensitize :: [String] -> [String]

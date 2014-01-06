@@ -2,11 +2,10 @@ module Yi.Keymap.Vim2.NormalOperatorPendingMap
   ( defNormalOperatorPendingMap
   ) where
 
-import Prelude ()
-import Yi.Prelude hiding (op, to)
-
+import Control.Monad
+import Control.Applicative
 import Data.Char (isDigit)
-import Data.List (isPrefixOf, drop)
+import Data.List (isPrefixOf)
 import Data.Maybe (fromMaybe, fromJust)
 
 import Yi.Buffer hiding (Insert)

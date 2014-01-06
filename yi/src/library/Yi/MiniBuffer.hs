@@ -13,18 +13,22 @@ module Yi.MiniBuffer
   CommandArguments(..)
  ) where
 
-import Prelude (filter, length, words)
-import Yi.Prelude hiding (act)
-
+import Control.Applicative
+import Control.Monad
+import Control.Lens hiding (act)
 import Data.List (isInfixOf)
 import qualified Data.List.PointedList.Circular as PL
 import Data.Maybe
 import Data.String (IsString)
+import Data.Typeable
+import Data.Foldable (find)
 import Yi.Config
 import Yi.Core
 import Yi.History
 import Yi.Completion (infixMatch, prefixMatch, containsMatch', completeInList, completeInList')
 import Yi.Style (defaultStyle)
+import Yi.Utils
+import Yi.Monad
 import qualified Data.Rope as R
 import System.CanonicalizePath (replaceShorthands)
 

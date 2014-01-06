@@ -2,8 +2,8 @@ module Yi.Keymap.Vim2.Ex.Commands.Reload
     ( parse
     ) where
 
-import Prelude ()
-import Yi.Prelude
+
+
 
 import {-# source #-} Yi.Boot (reload)
 import Yi.Keymap

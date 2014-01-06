@@ -2,11 +2,12 @@ module Yi.Keymap.Vim2.VisualMap
   ( defVisualMap
   ) where
 
-import Yi.Prelude hiding (op)
-import Prelude ()
+import Control.Applicative
+import Control.Monad
+import Control.Lens hiding (moveTo,(-~),op)
 
 import Data.Char (ord)
-import Data.List (drop, group, length, reverse)
+import Data.List (group)
 import Data.Maybe (fromJust)
 
 import Yi.Buffer hiding (Insert)
@@ -17,6 +18,8 @@ import Yi.Keymap.Vim2.StateUtils
 import Yi.Keymap.Vim2.StyledRegion
 import Yi.Keymap.Vim2.Utils
 import Yi.MiniBuffer
+import Yi.Utils
+import Yi.Monad
 
 defVisualMap :: [VimOperator] -> [VimBinding]
 defVisualMap operators =

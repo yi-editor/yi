@@ -208,7 +208,6 @@ library
     Yi.Monad
     Yi.Paths
     Yi.PersistentState
-    Yi.Prelude
     Yi.Process
     Yi.Rectangle
     Yi.Regex
@@ -232,6 +231,7 @@ library
     Yi.Tab
     Yi.Tag
     Yi.TextCompletion,
+    Yi.Utils
     Yi.UI.Common
     Yi.UI.Batch
     Yi.UI.Utils

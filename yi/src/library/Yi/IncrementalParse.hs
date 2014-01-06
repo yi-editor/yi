@@ -5,8 +5,6 @@ module Yi.IncrementalParse (recoverWith, symbol, eof, lookNext, testNext,
                             State, P, Parser(..), AlexState (..), scanner) where
 import Parser.Incremental hiding (run)
 import Yi.Lexer.Alex (AlexState (..))
-import Yi.Prelude
-import Prelude ()
 import Yi.Syntax
 
 type P s a = Parser s a

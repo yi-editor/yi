@@ -4,9 +4,6 @@ module Yi.Keymap.Vim2.Eval
 
 -- This module doesn't contains actual eval, see Yi.Keymap.Vim2.vimEval comment
 
-import Yi.Prelude
-import Prelude ()
-
 import Yi.Editor
 import Yi.Keymap.Vim2.Common
 import Yi.Keymap.Vim2.StateUtils

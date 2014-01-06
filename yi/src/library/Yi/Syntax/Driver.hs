@@ -6,10 +6,6 @@
 
 module Yi.Syntax.Driver where
 
-import Yi.Prelude
-import Prelude ()
-
-import Data.List (takeWhile, unzip)
 import qualified  Data.Map as M
 import Data.Map (Map)
 

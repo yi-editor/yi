@@ -30,9 +30,9 @@ module Yi.Buffer.TextUnit
     , deleteUnitB
     ) where
 
-import Prelude (length, subtract)
-import Yi.Prelude
-
+import Control.Applicative
+import Control.Monad
+import Data.Typeable
 import Data.Char
 
 import Yi.Buffer.Basic

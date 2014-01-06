@@ -12,10 +12,11 @@ module Yi.Keymap.Vim2.Utils
   , indentBlockRegionB
   ) where
 
-import Yi.Prelude
-import Prelude ()
+import Control.Applicative
+import Control.Monad
 
-import Data.List (group, zip)
+import Data.List (group)
+import Data.Rope (Rope)
 import qualified Data.Rope as R
 
 import Yi.Buffer hiding (Insert)
@@ -26,6 +27,7 @@ import Yi.Keymap.Vim2.Common
 import Yi.Keymap.Vim2.Motion
 import Yi.Keymap.Vim2.StateUtils
 import Yi.Keymap.Vim2.EventUtils
+import Yi.Monad
 
 -- 'mkBindingE' and 'mkBindingY' are helper functions for bindings
 -- where VimState mutation is not dependent on action performed

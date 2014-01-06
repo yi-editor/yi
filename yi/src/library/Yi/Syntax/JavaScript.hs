@@ -7,11 +7,12 @@
 
 module Yi.Syntax.JavaScript where
 
-import Prelude (maybe)
-import Yi.Prelude hiding (error, Const, op)
-
+import Prelude hiding (elem,error,any,exp)
+import Control.Applicative hiding (Const)
 import Data.Data (Data)
-import Data.Monoid (Endo(..), mempty)
+import Data.Monoid
+import Data.Foldable
+import Data.Typeable
 import Yi.Buffer.Basic (Point(..))
 import Yi.IncrementalParse (P, eof, symbol, recoverWith)
 import Yi.Lexer.Alex (Stroke, Tok(..), tokToSpan, tokFromT)
@@ -20,7 +21,7 @@ import Yi.Lexer.JavaScript ( TT, Token(..), Reserved(..), Operator(..)
                            , postfixOperators )
 import Yi.Style (errorStyle, StyleName)
 import Yi.Syntax.Tree (IsTree(..), sepBy1, sepBy)
-
+import Yi.Debug hiding (error)
 
 -- * Data types, classes and instances
 

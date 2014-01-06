@@ -15,14 +15,12 @@ module Yi.Keymap.Vim2.Common
     , module Yi.Keymap.Vim2.MatchResult
     ) where
 
-import Yi.Prelude
-import Prelude ()
-
 import Data.Binary
 import Data.DeriveTH
 import qualified Data.HashMap.Strict as HM
 import qualified Data.Rope as R
 import Data.Default
+import Data.Typeable
 
 import Yi.Buffer hiding (Insert)
 import Yi.Dynamic

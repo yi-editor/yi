@@ -11,11 +11,10 @@ module Yi.Keymap.Vim2.Operator
     , lastCharForOperator
     ) where
 
-import Prelude ()
-import Yi.Prelude hiding (op)
-
+import Control.Monad
 import Data.Char (toLower, toUpper)
 import Data.List (isSuffixOf)
+import Data.Foldable (find)
 
 import Yi.Buffer hiding (Insert)
 import Yi.Editor

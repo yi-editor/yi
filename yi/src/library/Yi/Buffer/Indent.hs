@@ -7,15 +7,14 @@
 
 module Yi.Buffer.Indent where
 
+import Control.Applicative
 import Yi.Buffer.Basic
 import Yi.Buffer.Misc
 import Yi.Buffer.HighLevel
-import Yi.Prelude
 import Yi.Buffer.Normal
 import Yi.Buffer.Region
-import Prelude ()
 import Data.Char
-import Data.List (span, length, sort, nub, break, reverse, filter, takeWhile, dropWhile)
+import Data.List (sort, nub)
 import Yi.String
 
 {- |

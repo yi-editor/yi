@@ -6,14 +6,12 @@
 -- \"incremental reading\", see <http://en.wikipedia.org/wiki/Incremental_reading>.
 module Yi.IReader where
 
-import Prelude ()
-import Yi.Prelude hiding (empty)
-
-import Control.Monad.State (join)
+import Control.Lens
 import Control.Exception
-import Data.Binary (decode, encodeFile)
+import Control.Monad
+import Data.Binary
 import Data.Sequence as S
-import Data.Typeable ()
+import Data.Typeable
 import Data.Default
 import qualified Data.ByteString.Char8 as B (pack, unpack, readFile, ByteString)
 import qualified Data.ByteString.Lazy.Char8 as BL (fromChunks)
@@ -23,6 +21,7 @@ import Yi.Buffer.Misc (bufferDynamicValueA, elemsB)
 import Yi.Dynamic
 import Yi.Keymap (withBuffer, YiM)
 import Yi.Paths (getArticleDbFilename)
+import Yi.Utils
 
 type Article = B.ByteString
 newtype ArticleDB = ADB { unADB :: Seq Article }

@@ -11,7 +11,7 @@ module Yi.PersistentState(loadPersistentState,
                           maxHistoryEntries)
 where
 
-import Prelude hiding ((.))
+import Data.Typeable
 import Data.Binary
 import Data.DeriveTH
 import Data.Default
@@ -19,8 +19,8 @@ import System.Directory(doesFileExist)
 import qualified Data.Map as M
 
 import Control.Exc(ignoringException)
+import Control.Lens
 
-import Yi.Prelude
 import Yi.Dynamic
 import Yi.Config.Simple.Types(customVariable, Field)
 import Yi.History
@@ -31,7 +31,7 @@ import Yi.KillRing(Killring(..))
 import Yi.Search(getRegexE, setRegexE)
 import Yi.Regex(SearchExp(..))
 import Yi.Paths(getPersistentStateFilename)
-
+import Yi.Utils
 
 data PersistentState = PersistentState { histories     :: !Histories
                                        , vimTagStack   :: !VimTagStack

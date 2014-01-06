@@ -27,12 +27,12 @@ module Yi.UI.Pango.Layouts (
   update,
  ) where
 
-
+import Prelude hiding (mapM)
+import Control.Monad hiding (mapM, forM)
+import Control.Applicative
 import qualified Data.List.PointedList as PL
-import Data.Maybe
-import qualified Prelude
-import Prelude(length, zipWith)
-import Yi.Prelude hiding (set)
+import Data.Traversable
+import Data.Foldable (toList)
 import Yi.Layout(Orientation(..), RelativeSize, DividerPosition, Layout(..), DividerRef)
 import System.Glib.Types
 import Graphics.UI.Gtk as Gtk hiding(Orientation, Layout)

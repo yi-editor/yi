@@ -1,16 +1,18 @@
 {-# LANGUAGE PatternGuards #-}
 module Yi.Mode.Haskell.Dollarify where
 
-import Prelude (filter, maybe, takeWhile)
+import Control.Applicative
+import Control.Monad
 import Data.Maybe (fromMaybe)
 import Data.List (sortBy)
-import Yi.Prelude hiding (within)
+import Data.Function (on)
 import Yi.Syntax.Paren (Expr, Tree(..))
 import qualified Yi.Syntax.Haskell as H (Tree, Exp(..))
 import Yi.Syntax.Tree (getAllSubTrees, getFirstOffset, getLastOffset,getLastPath)
 import Yi.Lexer.Alex (posnOfs, Tok(..))
 import Yi.Lexer.Haskell (isComment, TT, Token(..))
 import Yi.Buffer hiding (Block)
+import Yi.Debug
 
 dollarify :: Tree TT -> BufferM ()
 dollarify t = maybe (return ()) dollarifyWithin . selectedTree [t] =<< getSelectRegionB

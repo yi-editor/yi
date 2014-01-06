@@ -31,17 +31,19 @@ module Yi.UI.Pango.Control (
 ,   keyTable
 ) where
 
-import Prelude (map)
-
+import Prelude hiding (concatMap, concat, foldl, elem, mapM_)
 import Control.Exception (catch)
-import Control.Monad (void)
+import Control.Monad        hiding (mapM_, forM_)
+import Control.Monad.Reader hiding (mapM_, forM_)
+import Control.Applicative
+import Control.Lens hiding (moveTo, views, Action)
+import Data.Foldable
 import Data.Maybe (maybe, fromJust)
 import Data.IORef
 import Data.List (nub, filter, drop, zip, take, length)
 import Data.Prototype
 import qualified Data.Rope as Rope
 import qualified Data.Map as Map
-import Yi.Prelude hiding (views)
 import Yi.Core (startEditor, focusAllSyntax)
 import Yi.Buffer
 import Yi.Config
@@ -53,6 +55,8 @@ import Yi.Keymap hiding(withBuffer)
 import Yi.Monad
 import Yi.Style
 import Yi.UI.Utils
+import Yi.Utils
+import Yi.Debug
 import Graphics.UI.Gtk as Gtk
        (Color(..), PangoRectangle(..), Rectangle(..), selectionDataSetText,
         targetString, clipboardSetWithData, clipboardRequestText,

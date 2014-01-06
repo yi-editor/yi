@@ -2,11 +2,7 @@ module Yi.Keymap.Vim2.SearchMotionMap
     ( defSearchMotionMap
     ) where
 
-import Prelude ()
-import Yi.Prelude
-
-import Control.Monad (replicateM_)
-import Data.List (drop)
+import Control.Monad
 import Data.Maybe (fromMaybe)
 
 import Yi.Buffer

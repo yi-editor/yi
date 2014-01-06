@@ -2,8 +2,7 @@ module Yi.Keymap.Vim2.Ex.Commands.Yi
     ( parse
     ) where
 
-import Prelude ()
-import Yi.Prelude
+import Control.Monad
 
 import qualified Text.ParserCombinators.Parsec as P
 

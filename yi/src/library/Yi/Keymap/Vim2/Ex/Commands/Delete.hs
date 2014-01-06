@@ -2,9 +2,8 @@ module Yi.Keymap.Vim2.Ex.Commands.Delete
     ( parse
     ) where
 
-import Prelude ()
-import Yi.Prelude
-
+import Control.Monad
+import Control.Applicative
 import qualified Text.ParserCombinators.Parsec as P
 
 import Yi.Buffer hiding (Delete)

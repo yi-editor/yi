@@ -3,8 +3,7 @@ module Yi.Keymap.Vim2.Digraph
     , defDigraphs
     ) where
 
-import Prelude ()
-import Yi.Prelude
+import Control.Applicative
 
 charFromDigraph :: [(String, Char)] -> Char -> Char -> Maybe Char
 charFromDigraph digraphTable c1 c2 =

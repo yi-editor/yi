@@ -1,6 +1,7 @@
 module Yi.Config.Users.Anders (config) where
 
-import Yi hiding (Block, (.))
+import Control.Lens
+import Yi hiding (Block)
 import qualified Yi.Mode.Haskell as H
 import Yi.Hoogle (hoogle)
 import Yi.String (mapLines)

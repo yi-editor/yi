@@ -12,20 +12,19 @@ module Yi.Dynamic
  )
   where
 
-import Prelude ()
-import Yi.Prelude
-
+import Control.Applicative
+import Data.Typeable
 import Data.Maybe(fromJust)
 import Data.HashMap.Strict as M
 import Data.Monoid
 import Data.ConcreteTypeRep
 import Data.Binary
-import Data.Typeable(cast)
 import Data.Default
 import Data.ByteString.Lazy(ByteString)
 import Data.IORef
 import System.IO.Unsafe(unsafePerformIO)
 import qualified Data.Dynamic as D
+import Yi.Utils()
 
 --------------------------------- Nonserializable dynamics
 -- | Class of values that can go in a 'ConfigDynamic' or a 'ConfigDynamicValues'.

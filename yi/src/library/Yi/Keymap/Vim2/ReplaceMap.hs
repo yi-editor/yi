@@ -2,10 +2,7 @@ module Yi.Keymap.Vim2.ReplaceMap
     ( defReplaceMap
     ) where
 
-import Yi.Prelude
-import Prelude ()
-
-import Control.Monad (replicateM_)
+import Control.Monad
 
 import Yi.Buffer
 import Yi.Editor

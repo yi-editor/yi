@@ -7,17 +7,16 @@
 -- Copyright (c) JP Bernardy 2008
 module Yi.Syntax.Latex where
 
+import Control.Applicative
 import Yi.IncrementalParse
 import Yi.Lexer.Alex
 import Yi.Lexer.Latex
 import Yi.Style
 import Yi.Syntax.Tree
 import Yi.Syntax
-import Yi.Prelude
-import Prelude ()
-import Data.Monoid (Endo(..), mappend, mempty)
-import Data.List (zip)
-
+import Data.Monoid
+import Data.Traversable
+import Data.Foldable (Foldable, foldMap)
 
 isNoise :: Token -> Bool
 isNoise Text = True

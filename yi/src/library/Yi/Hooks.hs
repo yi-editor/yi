@@ -56,9 +56,8 @@ module Yi.Hooks(
  )
   where
 
-import Prelude()
+import Control.Lens
 import Yi.Config
-import Yi.Prelude
 import Yi.Dynamic
 import Yi.Editor
 import Yi.Keymap

@@ -23,8 +23,7 @@ module Yi.Keymap.Vim2.StateUtils
     , saveInsertEventStringE
     ) where
 
-import Prelude ()
-import Yi.Prelude hiding (rmap)
+import Control.Monad
 
 import qualified Data.HashMap.Strict as HM
 import Data.Maybe (fromMaybe)

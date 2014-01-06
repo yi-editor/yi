@@ -5,11 +5,11 @@
 module Yi.Config.Simple.Types
  where
 
-import Prelude()
-import Yi.Prelude
+import Control.Monad.State hiding (modify, get)
+import Control.Applicative
+import Control.Lens
 import Yi.Config
 import Yi.Dynamic
-import Control.Monad.State hiding (modify, get)
 
 -- | The configuration monad. Run it with 'configMain'.
 newtype ConfigM a = ConfigM {

@@ -1,9 +1,7 @@
 {-# LANGUAGE DeriveFunctor #-}
 module Yi.Keymap.Vim2.MatchResult where
 
-import Yi.Prelude
-import Prelude ()
-
+import Control.Applicative
 import Data.List (isPrefixOf)
 
 data MatchResult a = NoMatch

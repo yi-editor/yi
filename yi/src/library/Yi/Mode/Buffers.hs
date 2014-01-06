@@ -5,10 +5,10 @@ module Yi.Mode.Buffers (
          listBuffers
 ) where
 
-import Yi.Core
+import Control.Lens
 import Data.List ( intercalate )
 import System.FilePath ( takeFileName )
-
+import Yi.Core
 
 listBuffers :: YiM  ()
 listBuffers = do

@@ -76,14 +76,8 @@ module Yi.Config.Simple (
 #endif
  ) where
 
-import Prelude ()
-import Yi.Prelude
-
-import Data.Maybe (maybe)
-
 import Yi.Boot
---import Yi.Buffer.Misc hiding(modifyMode)
-import Yi.Core hiding(modifyMode, (%=))
+import Yi.Core hiding(modifyMode)
 import Yi.Config.Default
 import Yi.Config.Misc
 import Yi.Config.Simple.Types
@@ -99,9 +93,12 @@ import Yi.Mode.Haskell
 #ifdef SCION
 import Yi.Scion
 #endif
+import Yi.Utils
 
 import Text.Printf(printf)
 
+import Control.Lens hiding (Action)
+import Control.Applicative
 import Control.Monad.State hiding (modify, get)
 
 -- we do explicit imports because we reuse a lot of the names

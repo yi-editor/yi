@@ -44,12 +44,11 @@ module Yi.Buffer.Normal (TextUnit(Character, Line, VLine, Document, GenUnit),
                          , regionStyleA
                          ) where
 
-import Prelude(length, subtract)
-import Yi.Prelude
-
+import Control.Lens hiding (moveTo)
 import Data.Binary
 import Data.DeriveTH
 import Data.Default
+import Data.Typeable
 import Data.List (sort)
 
 import Yi.Buffer.Basic

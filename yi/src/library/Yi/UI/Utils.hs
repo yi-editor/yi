@@ -2,18 +2,23 @@
 -- | Utilities shared by various UIs
 module Yi.UI.Utils where
 
+import Prelude hiding (mapM)
 import Yi.Buffer
-import Yi.Prelude
-import Prelude (Ordering(..))
 import Yi.Window
 import Control.Arrow (second)
+import Control.Applicative
+import Control.Lens
+import Data.Function (on)
 import Data.Monoid
+import Data.Traversable (Traversable, mapM)
+import Data.Foldable (maximumBy)
 import Yi.Style
-import Data.List (zip, repeat, span, dropWhile, length, zipWith, transpose, scanl, take, intercalate, takeWhile, reverse)
+import Data.List (transpose, intercalate)
 import Yi.Syntax (Span(..))
 import Data.List.Split (chunksOf)
 import Yi.String (padLeft)
 import Control.Monad.State (runState,modify)
+import Control.Monad.State.Class (gets)
 
 indexedAnnotatedStreamB :: Point -> BufferM [(Point, Char)]
 indexedAnnotatedStreamB p = do

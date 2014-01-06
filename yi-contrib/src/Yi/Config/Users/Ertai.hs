@@ -7,13 +7,13 @@ import qualified Yi.Mode.Haskell as Haskell
 import qualified Yi.Syntax.Haskell as Haskell
 import qualified Yi.Lexer.Haskell as Haskell
 import qualified Yi.Syntax.Strokes.Haskell as Haskell
-import Yi.Prelude
-import Prelude (map)
-import System.Environment
-import Data.List (isPrefixOf, reverse, length)
+import Data.List (isPrefixOf)
 import Data.Maybe
+import Data.Foldable (Foldable)
 import Yi.Char.Unicode (greek, symbols)
 import Control.Monad (replicateM_)
+import Control.Applicative
+import Control.Lens
 import Yi.Keymap.Keys (char,(?>>!),(>>!))
 import Yi.Lexer.Alex (Tok)
 import qualified Yi.Syntax.Tree as Tree

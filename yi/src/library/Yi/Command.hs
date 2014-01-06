@@ -12,7 +12,9 @@ import Control.Monad.Trans (MonadIO (..))
 {- External Library Module Imports -}
 {- Local (yi) module imports -}
 
-import Prelude (length, filter)
+import Control.Applicative
+import Control.Monad
+import Control.Lens
 import Yi.Core
 import Yi.MiniBuffer
 import qualified Yi.Mode.Compilation as Compilation
@@ -21,6 +23,9 @@ import Yi.UI.Common
 import qualified Yi.Mode.Interactive as Interactive
 import qualified Data.Rope as R
 import Data.Default
+import Data.Typeable
+import Yi.Utils
+import Yi.Monad
 
 ---------------------------
 -- | Changing the buffer name quite useful if you have

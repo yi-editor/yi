@@ -3,10 +3,7 @@ module Yi.Keymap.Vim2.Search
     , continueVimSearch
     ) where
 
-import Prelude ()
-import Yi.Prelude
-
-import Data.Maybe (maybe, listToMaybe)
+import Data.Maybe (listToMaybe)
 
 import Yi.Buffer
 import Yi.Editor

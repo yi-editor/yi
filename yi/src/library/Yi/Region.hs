@@ -22,11 +22,10 @@ module Yi.Region
   )
 where
 import Yi.Buffer.Basic
+import Yi.Utils
 import Data.Typeable
 import Data.Binary
 import Data.DeriveTH
-import Yi.Prelude
-import Prelude ()
 
 -- | The region data type.
 --The region is semi open: it includes the start but not the end bound. This allows simpler region-manipulation algorithms.

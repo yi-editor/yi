@@ -15,13 +15,10 @@ module Yi.Main (
                 Err(..),
                ) where
 
-import Prelude ()
-
 import Control.Monad.Error
 import Data.Char
-import Data.List (intercalate, length)
+import Data.List (intercalate)
 import Distribution.Text (display)
-import System.FilePath (FilePath)
 import System.Console.GetOpt
 import System.Exit
 #include "ghcconfig.h"
@@ -29,6 +26,7 @@ import System.Exit
 import Yi.Config
 import Yi.Config.Default
 import Yi.Core
+import Yi.Debug
 import Yi.File
 import Yi.Paths (getConfigDir)
 import Paths_yi

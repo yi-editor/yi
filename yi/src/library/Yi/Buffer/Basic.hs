@@ -2,13 +2,13 @@
 -- Copyright 2008 JP Bernardy
 -- | Basic types useful everywhere we play with buffers.
 module Yi.Buffer.Basic where
-import Prelude (reverse)
 import Data.Binary
-import Yi.Prelude
+import Data.Typeable
 import qualified Data.Rope as R
 import Data.DeriveTH
 import Data.Ix
 import Data.Default
+import Yi.Utils
 
 -- | Direction of movement inside a buffer
 data Direction = Backward
@@ -64,7 +64,7 @@ instance SemiNum Point Size where
     Point p -~ Size s = Point (p - s)
     Point p ~- Point q = Size (abs (p - q))
 
-fromString :: String -> Rope
+fromString :: String -> R.Rope
 fromString = R.fromString
 
 -- | Window references

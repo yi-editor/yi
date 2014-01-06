@@ -2,18 +2,17 @@
 -- Copyright (C) 2008 JP Bernardy
 module Yi.Buffer.HighLevel where
 
-import Prelude (FilePath)
-import Yi.Prelude hiding (re, transform)
-
 import Control.Monad.RWS.Strict (ask)
 import Control.Monad.State hiding (forM, forM_, sequence_)
+import Control.Applicative
+import Control.Monad
+import Control.Lens hiding (moveTo, (-~), (+~), re, transform)
 
 import Data.Char
-import Data.List (isPrefixOf, sort, lines, drop, filter, length,
-                  takeWhile, dropWhile, reverse, map, intersperse, zip)
+import Data.List (isPrefixOf, sort, intersperse)
 import Data.Maybe (fromMaybe, listToMaybe, catMaybes)
-import Data.Ord
 import qualified Data.Rope as R
+import Data.Rope (Rope)
 import Data.Time (UTCTime)
 import Data.Tuple (swap)
 
@@ -24,6 +23,7 @@ import Yi.Buffer.Region
 import Yi.String
 import Yi.Window
 import Yi.Config.Misc (ScrollStyle(SingleLine))
+import Yi.Utils
 
 -- ---------------------------------------------------------------------
 -- Movement operations

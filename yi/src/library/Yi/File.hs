@@ -15,11 +15,11 @@ module Yi.File
   setFileName,
  ) where
 
-import Prelude (filter, take)
-
+import Control.Applicative
 import Control.Monad.Reader (asks)
-import Data.Maybe
+import Control.Lens
 import Data.Time
+import Data.Foldable (find)
 import Control.Monad.Trans
 import System.Directory
 import System.FilePath
@@ -30,6 +30,8 @@ import Yi.Config
 import Yi.Core
 import Yi.Dired
 import Yi.Regex
+import Yi.Utils
+import Yi.Monad
 
 -- | If file exists, read contents of file into a new buffer, otherwise
 -- creating a new empty buffer. Replace the current window with a new

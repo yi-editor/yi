@@ -1,5 +1,6 @@
 module Yi.Config.Users.Gwern (config) where
 
+import Control.Lens
 import Yi
 import Yi.Hoogle (hoogle)
 import Yi.Keymap.Emacs (defKeymap, eKeymap, mkKeymap)

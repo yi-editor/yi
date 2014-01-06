@@ -4,7 +4,7 @@
 
 module Yi.Scion where
 
-import Yi.Prelude
+
 import Yi.Core (msgEditor)
 import Prelude (lines)
 

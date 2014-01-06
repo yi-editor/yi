@@ -40,13 +40,12 @@ module Yi.Keymap.Vim2.Motion
 -- same, which is more logical.  However, this causes a small incompatibility
 -- between Vi and Vim.
 
-import Prelude ()
-import Yi.Prelude
+import Prelude hiding (repeat)
 
-import Control.Monad (replicateM_)
+import Control.Applicative
+import Control.Monad
 
 import Data.Maybe (fromMaybe)
-import Data.Tuple (uncurry)
 
 import Yi.Buffer
 import Yi.Keymap.Vim2.Common

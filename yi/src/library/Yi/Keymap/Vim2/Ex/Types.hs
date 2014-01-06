@@ -1,8 +1,5 @@
 module Yi.Keymap.Vim2.Ex.Types where
 
-import Prelude ()
-import Yi.Prelude
-
 import Data.Maybe
 
 import Yi.Keymap

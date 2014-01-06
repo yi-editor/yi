@@ -11,13 +11,13 @@ import Data.Maybe
 import ErrUtils
 import GHC
 import Outputable
-import Prelude ()
+
 import Shim.Hsinfo
 import Shim.SHM hiding (io)
 import Yi.Dynamic
 import Yi.Editor
 import Yi.Keymap
-import Yi.Prelude hiding ((<>))
+ hiding ((<>))
 import qualified Data.List.PointedList.Circular as PL
 import qualified Data.Map as M
 import qualified Yi.Editor as Editor

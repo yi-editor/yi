@@ -49,19 +49,19 @@ module Yi.Search (
         qrFinish,
                  ) where
 
-import Prelude ()
-import Yi.Prelude hiding (re, from, to)
-
+import Control.Applicative
+import Control.Monad
+import Control.Lens hiding (moveTo, re, from, to)
 import Data.Char
 import Data.Maybe
 import Data.Default
-import Data.Either
-import Data.List (span, takeWhile, take, length)
-
+import Data.Typeable
+import Data.Binary
 import Yi.Regex
 import Yi.Window
 import Yi.Core
 import Yi.History
+import Yi.Utils
 
 -- ---------------------------------------------------------------------
 -- Searching and substitutions with regular expressions

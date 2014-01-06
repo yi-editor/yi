@@ -12,16 +12,20 @@
 
 module Yi.UI.Pango (start) where
 
-import Prelude (filter)
-
+import Prelude hiding (error, elem, mapM_, foldl, concat, mapM)
 import Control.Exception (catch, SomeException)
 import Control.Concurrent
+import Control.Monad hiding (forM_, mapM_, forM, mapM)
+import Control.Applicative
+import Control.Lens hiding (moveTo, set, Action, from)
 import Data.Prototype
 import Data.IORef
-import Data.List (drop, intercalate, zip)
+import Data.List (intercalate)
 import qualified Data.List.PointedList as PL (moveTo)
 import qualified Data.List.PointedList.Circular as PL
 import Data.Maybe
+import Data.Foldable
+import Data.Traversable
 import qualified Data.Map as M
 import qualified Data.Rope as Rope
 
@@ -33,8 +37,6 @@ import qualified Graphics.UI.Gtk as Gtk
 import qualified Graphics.UI.Gtk.Gdk.GC as Gtk
 import System.Glib.GError
 
-import Yi.Prelude hiding (on, set)
-
 import Yi.Buffer
 import Yi.Config
 import Yi.Editor
@@ -44,6 +46,9 @@ import Yi.Layout(DividerPosition, DividerRef)
 import Yi.Style
 import Yi.Tab
 import Yi.Window
+import Yi.Utils
+import Yi.Monad
+import Yi.Debug
 
 import qualified Yi.UI.Common as Common
 import Yi.UI.Pango.Layouts
