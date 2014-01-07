@@ -1,5 +1,5 @@
 {-# LANGUAGE ScopedTypeVariables, FlexibleInstances, MultiParamTypeClasses,
-             UndecidableInstances, TypeOperators #-}
+             UndecidableInstances, TypeOperators, LambdaCase #-}
 
 {- |
 Module      :  Yi.UI.Pango
@@ -310,12 +310,28 @@ killBufferE (Doc b) = do
 
 
 -- | If on separators (space, tab, unicode seps), reduce multiple
---   separators to just a single separator.
+-- separators to just a single separator. If we aren't looking at a separator,
+-- insert a single space. This kind of behaves as emacs ‘just-one-space’
+-- function with the argument of ‘1’ but it prefers to use the separator we're
+-- looking at instead of assuming a space.
 justOneSep :: BufferM ()
-justOneSep = doIfCharB isAnySep $ do
-  genMaybeMoveB unitSepThisLine (Backward,InsideBound) Backward
-  moveB Character Forward
-  doIfCharB isAnySep $ deleteB unitSepThisLine Forward
+justOneSep = readB >>= \c -> do
+  pointB >>= \case
+    Point 0 -> if isAnySep c then deleteSeparators else insertB ' '
+    Point x ->
+      if isAnySep c
+      then deleteSeparators
+      else readAtB (Point $ x - 1) >>= \d -> do
+        -- We weren't looking at separator but there might be one behind us
+        if isAnySep d
+          then moveB Character Backward >> deleteSeparators
+          else insertB ' ' -- no separators, insert a space just like emacs does
+  where
+    deleteSeparators = do
+      genMaybeMoveB unitSepThisLine (Backward, InsideBound) Backward
+      moveB Character Forward
+      doIfCharB isAnySep $ deleteB unitSepThisLine Forward
+
 
 
 -- | Join this line to previous (or next N if universal)
