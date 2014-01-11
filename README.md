@@ -60,7 +60,7 @@ To get the git version,
 
 ## Generating documentation
 
-Due to [a cabal bug][cabal656], documentation won't be generated when running 'cabal install yi'. Use the following workaround:
+Due to [a cabal bug][cabalbug], documentation won't be generated when running 'cabal install yi'. Use the following workaround:
 
     $ cabal install -fdochack yi
 
@@ -117,5 +117,5 @@ If you're interested in optimizing Yi, [this thread][profiling-discussion] may b
 [yi-devel]: http://groups.google.com/group/yi-devel
 [dyre]: http://hackage.haskell.org/package/dyre
 [userconfigs]: https://github.com/yi-editor/yi/tree/master/yi-contrib/src/Yi/Config/Users
-[cabal656]: http://hackage.haskell.org/trac/hackage/ticket/656
+[cabalbug]: https://github.com/haskell/cabal/issues/649
 [profiling-discussion]: https://groups.google.com/forum/?fromgroups=#!topic/yi-devel/2dUXKJMSFsM
