@@ -4,7 +4,9 @@ module Yi.Keymap.Vim2.Ex.Commands.Buffer
     ) where
 
 import Control.Applicative
+import Control.Lens
 import Control.Monad
+import Control.Monad.State
 
 import qualified Text.ParserCombinators.Parsec as P
 
@@ -15,22 +17,29 @@ import Yi.Keymap
 import Yi.Keymap.Vim2.Ex.Types
 import qualified Yi.Keymap.Vim2.Ex.Commands.Common as Common
 
+
 parse :: String -> Maybe ExCommand
-parse = Common.parse $ do
-    -- TODO bufIdent and the spaces should be optional, in which
-    --      case the command becomes a noop just like for the empty string.
-    -- TODO If bufIdent is a number the spaces should be optional.
-    -- TODO If no bufIdent is given and the buffer is modified and 'hidden'
-    --      is not set, should this operation be a noop?
+parse = Common.parseWithBang nameParser $ \ _ bang -> do
+    bufIdent <- P.option "" $ P.try ( P.many1 P.digit ) <|>
+                              P.many1 P.space *> P.many P.anyChar
+    return $ Common.pureExCommand {
+        cmdShow = "buffer"
+      , cmdAction = EditorA $ do
+            unchanged <- withBuffer0 $ gets isUnchangedBuffer
+            if bang || unchanged
+                then
+                    switchToBuffer bufIdent
+                else
+                    Common.errorNoWrite
+      }
+
+
+nameParser :: P.GenParser Char () ()
+nameParser = do
     void $ P.try ( P.string "buffer") <|>
            P.try ( P.string "buf")    <|>
            P.try ( P.string "bu")     <|>
            P.try ( P.string "b")
-    bufIdent <- P.many1 P.space *> P.many P.anyChar
-    return $ Common.pureExCommand {
-        cmdShow = "buffer"
-      , cmdAction = EditorA $ switchToBuffer bufIdent 
-      }
 
 
 switchToBuffer :: String -> EditorM ()
