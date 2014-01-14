@@ -24,7 +24,7 @@ myKeymapSet = V2.mkKeymapSet $ V2.defVimConfig `override` \super this ->
     let eval = V2.pureEval this
     in super {
           -- Here we can add custom bindings.
-          -- See Yi.Keymap.Vim2.Common for datatypes and 
+          -- See Yi.Keymap.Vim2.Common for datatypes and
           -- Yi.Keymap.Vim2.Utils for useful functions like mkStringBindingE
 
           -- In case of conflict, that is if there exist multiple bindings
