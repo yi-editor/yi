@@ -1,5 +1,8 @@
 module Main where
 
+import Control.Applicative ((<|>))
+import Control.Lens.Getter (use)
+
 import Yi
 import Yi.Keymap
 import Yi.Keymap.Vim
@@ -24,7 +27,7 @@ myVimKeymap =
 
 myExCmds = exCmds [ ("sd", const $ withEditor showDepMarks, Nothing) ]
 
-showDepMarks = withBuffer0 (getA bufferDynamicValueA >>=
+showDepMarks = withBuffer0 (use bufferDynamicValueA >>=
                             mapM markRegion . concat . marks) >>=
                printMsg . show
 

@@ -1,9 +1,5 @@
 import Yi
 
--- Preamble
-import Yi.Prelude
-import Prelude ()
-
 -- Import the desired keymap "template":
 import Yi.Keymap.Emacs (keymap)
 import Yi.Keymap.Cua (keymap)

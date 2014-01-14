@@ -1,4 +1,3 @@
-import Prelude ()
 import Yi
 import Yi.Keymap.Vim
 import qualified Yi.Keymap.Vim2 as V2

@@ -1,9 +1,5 @@
 import Yi
 
--- Preamble
-import Yi.Prelude
-import Prelude ()
-
 -- Import the desired UI as needed.
 -- Some are not complied in, so we import none here.
 
