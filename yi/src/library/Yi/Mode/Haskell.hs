@@ -390,7 +390,7 @@ ghciLoadBuffer = do
     f <- withBuffer (gets file)
     case f of
       Nothing -> error "Couldn't get buffer filename in ghciLoadBuffer"
-      Just filename -> ghciSend $ ":load " ++ filename
+      Just filename -> ghciSend $ ":load " ++ show filename
 
 -- Tells ghci to infer the type of the identifier at point. Doesn't check for errors (yet)
 ghciInferType :: YiM ()
