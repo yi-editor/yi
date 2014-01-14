@@ -1,5 +1,4 @@
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE CPP #-}
 
 -- | Utilities for working with new Control.Exception
 module Control.Exc (ignoringException, printingException, orException)
