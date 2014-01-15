@@ -640,7 +640,7 @@ pTypeElem at
        (sym $ flip elem $ isNoiseErr at) <*> errTok <*> pEmpty)
   <|> (PAtom <$> sym (flip notElem (isNotNoise at)) <*> pEmpty)
 
--- | List of things that allways should be parsed as errors
+-- | List of things that always should be parsed as errors
 isNoiseErr :: [Token] -> [Token]
 isNoiseErr r = recoverableSymbols ++ r
 
