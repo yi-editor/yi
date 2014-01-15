@@ -95,7 +95,7 @@ abellaAbort = do abellaSend "abort."
 -- | Start Abella in a buffer
 abella :: CommandArguments -> YiM BufferRef
 abella (CommandArguments args) = do
-    b <- Interactive.interactive "abella" args
+    b <- Interactive.spawnProcess "abella" args
     withEditor . setDynamic . AbellaBuffer $ Just b
     return b
 
