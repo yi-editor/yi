@@ -423,9 +423,13 @@ pAtype = pAtype'
      <|> pErr
 
 pAtype' :: Parser TT (Exp TT)
-pAtype' = pQvarid
+pAtype' = pTypeCons
       <|> pParen (many $ pExprElem [])
       <|> pBrack (many $ pExprElem [])
+
+pTypeCons :: Parser TT (Exp TT)
+pTypeCons = Bin <$> pAtom [ConsIdent]
+            <*> please (pMany $ pAtom [VarIdent, ConsIdent])
 
 pContext :: Parser TT (Exp TT)
 pContext = Context <$> pOpt pForAll
@@ -700,4 +704,3 @@ errTok = mkTok <$> curPos
          tB Nothing = maxBound
          tB (Just x) = tokBegin x
          mkTok p = Tok (Special '!') 0 (startPosn {posnOfs = p})
-
