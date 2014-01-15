@@ -41,6 +41,7 @@ import qualified Yi.IncrementalParse as IncrParser
 import qualified Yi.Lexer.Alex as Alex
 import qualified Yi.Lexer.LiterateHaskell as LiterateHaskell
 import Yi.Lexer.Haskell as Haskell
+import qualified Yi.Mode.GHCi as GHCi
 import qualified Yi.Mode.Interactive as Interactive
 import Yi.Modes (anyExtension, extensionOrContentsMatch)
 import Yi.MiniBuffer
@@ -358,7 +359,7 @@ instance YiVariable GhciBuffer
 -- | Start GHCi in a buffer
 ghci :: YiM BufferRef
 ghci = do
-    b <- Interactive.interactive "ghci" []
+    b <- GHCi.spawnProcess "ghci" []
     withEditor $ setDynamic $ GhciBuffer $ Just b
     return b
 

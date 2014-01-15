@@ -109,7 +109,7 @@ cabalBuildE = cabalRun "build" (const $ return ())
 shell :: YiM BufferRef
 shell = do
     sh <- io shellFileName
-    Interactive.interactive sh ["-i"]
+    Interactive.spawnProcess sh ["-i"]
     -- use the -i option for interactive mode (assuming bash)
 
 -- | Search the source files in the project.

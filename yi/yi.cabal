@@ -198,6 +198,7 @@ library
     Yi.Mode.Abella
     Yi.Mode.Buffers
     Yi.Mode.Compilation
+    Yi.Mode.GHCi
     Yi.Mode.Haskell
     Yi.Mode.Haskell.Dollarify
     Yi.Mode.IReader
