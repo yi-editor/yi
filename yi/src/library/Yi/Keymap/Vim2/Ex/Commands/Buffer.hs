@@ -4,7 +4,6 @@ module Yi.Keymap.Vim2.Ex.Commands.Buffer
     ) where
 
 import Control.Applicative
-import Control.Lens
 import Control.Monad
 import Control.Monad.State
 
@@ -47,7 +46,7 @@ switchToBuffer :: String -> EditorM ()
 switchToBuffer s = do
     case P.parse bufferRef "" s of
         Right ref -> switchByRef ref
-        Left e    -> switchByName s
+        Left _e   -> switchByName s
   where
     bufferRef = BufferRef . read <$> P.many1 P.digit
 
