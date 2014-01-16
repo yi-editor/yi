@@ -20,8 +20,9 @@ import qualified Yi.Keymap.Vim2.Ex.Commands.Common as Common
 
 parse :: String -> Maybe ExCommand
 parse = Common.parseWithBang nameParser $ \ _ bang -> do
-    bufIdent <- P.option "" $ P.try ( P.many1 P.digit ) <|>
-                              P.many1 P.space *> P.many P.anyChar
+    bufIdent <- P.try ( P.many1 P.digit ) <|>
+                P.many1 P.space *> P.many P.anyChar <|>
+                P.eof *> return ""
     return $ Common.pureExCommand {
         cmdShow = "buffer"
       , cmdAction = EditorA $ do

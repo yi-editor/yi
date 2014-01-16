@@ -26,7 +26,8 @@ import qualified Yi.Keymap.Vim2.Ex.Commands.Yi as Yi
 
 defExCommandParsers :: [String -> Maybe ExCommand]
 defExCommandParsers =
-    [ Buffers.parse
+    [ Buffer.parse
+    , Buffers.parse
     , BufferDelete.parse
     , Delete.parse
     , Edit.parse
@@ -39,7 +40,4 @@ defExCommandParsers =
     , Substitute.parse
     , Write.parse
     , Yi.parse
-    -- This parser must be below all other parsers which begin with a 'b'
-    -- to prevent this parser from accepting it.
-    , Buffer.parse
     ]
