@@ -58,18 +58,6 @@ To get the git version,
 
 (There may be more repositories in the future, as yi is split more.)
 
-## Generating documentation
-
-Due to [a cabal bug][cabalbug], documentation won't be generated when running 'cabal install yi'. Use the following workaround:
-
-    $ cabal install -fdochack yi
-
-This command will install the yi library with documentation, but not the yi executable. To install the executable, simply run
-
-    $ cabal install yi
-
-after the documentation has been generated.
-
 ## Reporting Bugs
 
 Please report issues on [GitHub][issueslist].
@@ -132,7 +120,6 @@ on Yi, it's very recommended that you read these
 [yi-devel]: http://groups.google.com/group/yi-devel
 [dyre]: http://hackage.haskell.org/package/dyre
 [userconfigs]: https://github.com/yi-editor/yi/tree/master/yi-contrib/src/Yi/Config/Users
-[cabalbug]: https://github.com/haskell/cabal/issues/649
 [profiling-discussion]: https://groups.google.com/forum/?fromgroups=#!topic/yi-devel/2dUXKJMSFsM
 [small-yi]: http://publications.lib.chalmers.se/records/fulltext/local_72549.pdf
 [lazy-parsing]: http://publications.lib.chalmers.se/records/fulltext/local_94979.pdf
