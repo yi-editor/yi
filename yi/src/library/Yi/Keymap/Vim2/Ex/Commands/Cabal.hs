@@ -16,7 +16,8 @@ import Yi.MiniBuffer
 parse :: String -> Maybe ExCommand
 parse = Common.parse $ do
     void $ P.try ( P.string "cabal build") <|> P.try ( P.string "cabal")
+    args <- P.many (P.many1 P.space *> P.many1 P.anyChar)
     return $ Common.impureExCommand {
         cmdShow = "cabal build"
-      , cmdAction = YiA $ cabalBuildE $ CommandArguments []
+      , cmdAction = YiA $ cabalBuildE $ CommandArguments args
       }
