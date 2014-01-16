@@ -56,14 +56,6 @@ flag profiling
     Runtime binary will be compiled with profiling and RTS
     options enabled.
 
-flag hacking
-  Default: False
-  Description:
-     Hacking mode:
-        * Create HackerMain.hs by copying your ~/.config/yi/yi.hs
-        * Skip library compilation
-        * You can run yi in-place with dist/build/yi/yi
-
 flag testing
   Description: bake-in the self-checks
 
@@ -77,9 +69,6 @@ flag dochack
 library
   hs-source-dirs: src/library
   default-language: Haskell2010
-
-  if flag(hacking)
-    buildable: False
 
   if flag(profiling)
     CPP-options: -DPROFILING
@@ -281,9 +270,6 @@ library
   if flag(profiling)
     cpp-options: -DPROFILING
 
-  if flag(hacking)
-    ghc-prof-options: -prof -auto-all
-
   default-extensions: NondecreasingIndentation
 
   if !os(windows)
@@ -394,7 +380,7 @@ executable parserTest
   hs-source-dirs: src/parsertest
   default-language: Haskell2010
 
-  if !flag(hacking) || flag(dochack)
+  if flag(dochack)
     buildable: False
 
   main-is: ParserTest/ParserTest.hs
