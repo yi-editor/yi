@@ -1,6 +1,6 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 
-module TestVim (getTests) where
+module TestVim (getTestGroup) where
 
 import Test.HUnit
 import Test.Framework.Providers.HUnit
@@ -140,10 +140,10 @@ initialEditor input = fst $ runEditor' action emptyEditor
 runEditor' :: EditorM a -> Editor -> (Editor, a)
 runEditor' = runEditor defaultVimConfig
 
-getTests :: IO [TF.Test]
-getTests = do
+getTestGroup :: IO TF.Test
+getTestGroup = do
     vimtests <- discoverTests "src/tests/vimtests"
-    return $! fmap mkTestCase . sort $ vimtests
+    return $! TF.testGroup "Vim2 Keymap tests" $! fmap mkTestCase . sort $ vimtests
 
 readFile' :: FilePath -> IO String
 readFile' f = do
