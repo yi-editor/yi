@@ -1,4 +1,4 @@
-module TestExParser (getTests) where
+module Vim2.TestExCommandParsers (tests) where
 
 import Control.Applicative
 import Data.Maybe
@@ -163,10 +163,11 @@ expectedParserSelected expectedCommandParser =
 -- the expected parser is selected for string.
 --
 -- The actions of the ex commands are not tested here.
-getTests :: TestTree
-getTests = testGroup "Vim2 keymap ex command parsers" [
-               testGroup "Expected parser parses" $
-                   map expectedParserParses commandParsers
-               , testGroup "Expected parser selected" $
-                   map expectedParserSelected commandParsers
-               ]
+tests :: TestTree
+tests =
+    testGroup "Vim2 keymap ex command parsers"
+        [ testGroup "Expected parser parses" $
+              map expectedParserParses commandParsers
+        , testGroup "Expected parser selected" $
+              map expectedParserSelected commandParsers
+        ]

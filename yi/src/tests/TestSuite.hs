@@ -2,15 +2,15 @@ module Main where
 
 import Test.Tasty (defaultMain, testGroup)
 
-import qualified TestVim
-import qualified TestExParser
-import qualified TestVim2PureEditorManipulations
+import qualified Vim2.TestPureBufferManipulations as Vim2Buffer
+import qualified Vim2.TestPureEditorManipulations as Vim2Editor
+import qualified Vim2.TestExCommandParsers as Vim2ExCommand
 
 main :: IO ()
 main = do
-    tests  <- TestVim.getTests
+    tests  <- Vim2Buffer.getTests
     defaultMain $ testGroup "Tests" [ 
         tests
-      , TestExParser.getTests
-      , TestVim2PureEditorManipulations.getTests
+      , Vim2Editor.tests
+      , Vim2ExCommand.tests
       ]

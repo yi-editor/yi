@@ -1,6 +1,6 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 
-module TestVim (getTests) where
+module Vim2.TestPureBufferManipulations (getTests) where
 
 import Test.Tasty.HUnit
 import Test.Tasty (TestTree, testGroup)
