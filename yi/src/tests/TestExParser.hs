@@ -1,11 +1,11 @@
-module TestExParser (getTestGroup) where
+module TestExParser (getTests) where
 
 import Control.Applicative
 import Data.Maybe
 
 import Test.QuickCheck
-import Test.Framework.Providers.QuickCheck2
-import qualified Test.Framework as TF
+import Test.Tasty.QuickCheck
+import Test.Tasty (TestTree, testGroup)
 
 import Yi.Keymap.Vim2.Ex
 import qualified Yi.Keymap.Vim2.Ex.Commands.Buffer as Buffer
@@ -130,15 +130,14 @@ commandString cp = do
     return $ concat [name, bang, args]
 
 
-expectedParserParses :: CommandParser -> TF.Test
+expectedParserParses :: CommandParser -> TestTree
 expectedParserParses commandParser =
     testProperty (cpDescription commandParser ++ " parses expected input") $
         forAll (commandString commandParser)
                (isJust . cpParser commandParser)
 
 
-expectedParserSelected :: CommandParser
-         -> TF.Test
+expectedParserSelected :: CommandParser -> TestTree
 expectedParserSelected expectedCommandParser =
     testProperty testName $
         forAll (commandString expectedCommandParser) $ \s ->
@@ -164,10 +163,10 @@ expectedParserSelected expectedCommandParser =
 -- the expected parser is selected for string.
 --
 -- The actions of the ex commands are not tested here.
-getTestGroup :: TF.Test
-getTestGroup = TF.testGroup "Vim2 Keymap Ex command parsers" [
-                   TF.testGroup "Expected parser parses" $
-                       map expectedParserParses commandParsers
-                 , TF.testGroup "Expected parser selected" $
-                       map expectedParserSelected commandParsers
-                 ]
+getTests :: TestTree
+getTests = testGroup "Vim2 keymap ex command parsers" [
+               testGroup "Expected parser parses" $
+                   map expectedParserParses commandParsers
+               , testGroup "Expected parser selected" $
+                   map expectedParserSelected commandParsers
+               ]

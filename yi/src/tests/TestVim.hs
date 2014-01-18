@@ -1,17 +1,15 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 
-module TestVim (getTestGroup) where
+module TestVim (getTests) where
 
-import Test.HUnit
-import Test.Framework.Providers.HUnit
-import qualified Test.Framework as TF
+import Test.Tasty.HUnit
+import Test.Tasty (TestTree, testGroup)
 
 import Control.Monad (filterM, forM, void, unless)
 
 import Data.List (sort, isSuffixOf, intercalate)
 
 import System.Directory
-import System.Environment
 import System.FilePath
 
 import Text.Printf
@@ -108,7 +106,7 @@ discoverTests topdir = do
     testsFromFiles <- mapM loadTestFromFile testFiles
     return $ testsFromDirs ++ testsFromFiles
 
-mkTestCase :: VimTest -> TF.Test
+mkTestCase :: VimTest -> TestTree
 mkTestCase t = testCase (vtName t) $ assertEqual errorMsg actualOut (vtOutput t)
     where outputMatches = vtOutput t == actualOut
           actualOut = extractBufferString . fst $
@@ -140,10 +138,10 @@ initialEditor input = fst $ runEditor' action emptyEditor
 runEditor' :: EditorM a -> Editor -> (Editor, a)
 runEditor' = runEditor defaultVimConfig
 
-getTestGroup :: IO TF.Test
-getTestGroup = do
+getTests :: IO TestTree
+getTests = do
     vimtests <- discoverTests "src/tests/vimtests"
-    return $! TF.testGroup "Vim2 Keymap tests" $! fmap mkTestCase . sort $ vimtests
+    return $ testGroup "Vim2 keymap tests" $ fmap mkTestCase . sort $ vimtests
 
 readFile' :: FilePath -> IO String
 readFile' f = do

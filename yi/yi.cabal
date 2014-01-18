@@ -435,9 +435,9 @@ Test-Suite test-suite
   main-is: TestSuite.hs
   build-depends:
     base,
-    test-framework,
-    test-framework-hunit,
-    test-framework-quickcheck2,
+    tasty,
+    tasty-hunit,
+    tasty-quickcheck,
     HUnit,
     QuickCheck,
     filepath,
