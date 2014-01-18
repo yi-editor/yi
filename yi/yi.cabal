@@ -437,6 +437,7 @@ Test-Suite test-suite
     base,
     test-framework,
     test-framework-hunit,
+    test-framework-quickcheck2,
     HUnit,
     QuickCheck,
     filepath,

@@ -3,9 +3,10 @@ module TestExParser (getTestGroup) where
 import Control.Applicative
 import Data.Maybe
 
-import Test.HUnit
-import Test.Framework.Providers.HUnit
+import Test.QuickCheck
+import Test.Framework.Providers.QuickCheck2
 import qualified Test.Framework as TF
+
 import Yi.Keymap.Vim2.Ex
 import qualified Yi.Keymap.Vim2.Ex.Commands.Buffer as Buffer
 -- import qualified Yi.Keymap.Vim2.Ex.Commands.Buffers as Buffers
@@ -41,77 +42,120 @@ import qualified Yi.Keymap.Vim2.Ex.Commands.Delete as Delete
 --     , "writeall"
 --     ]
 
-type CommandDescription = String
+data CommandParser = CommandParser
+    { cpDescription :: String
+    , cpParser      :: (String -> Maybe ExCommand)
+    , cpNames       :: [String]
+    , cpAcceptsBang :: Bool
+    , cpArgs        :: Gen String
+    }
 
+addingSpace :: Gen String -> Gen String
+addingSpace = fmap (" " ++)
 
--- TODO Generate these strings with QuickCheck of SmallCheck.
-stringToCommands :: [([String], (String -> Maybe ExCommand), CommandDescription)]
-stringToCommands =
-    [ ([ "buffer", "buf", "b"
-       , "buffer ", "buf ", "b "
-       , "buffer bob", "buf bob", "b bob"
-       , "buffer 8", "buf 8", "b 8"
-       , "buffer8", "buf8", "b8"
-       , "buffer!", "buf!", "b!"
-       , "buffer bob!", "buf bob!", "b bob!"
-       , "buffer! 8", "buf! 8", "b! 8"
-       , "buffer!8", "buf!8", "b!8"
-       ], Buffer.parse, "Buffer.parse")
+numberString :: Gen String
+numberString = (\(NonNegative n) -> show n) <$> (arbitrary :: Gen (NonNegative Int))
 
-    , (["bdelete", "bdel", "bd"], BufferDelete.parse, "BufferDelete.parse")
-    , (["delete", "del", "d"], Delete.parse, "Delete.parse")
+-- | QuickCheck Generator of buffer identifiers.
+--
+-- A buffer identifier is either an empty string, a "%" character, a "#"
+-- character, a string containing only numbers (optionally preceeded by 
+-- a space), or a string containing any chars preceeded by a space. E.g.,
+-- 
+--   ["", "%", "#", " myBufferName", " 45", "45"]
+--
+-- TODO Don't select "", "%", "#" half of the time.
+bufferIdentifier :: Gen String
+bufferIdentifier =
+    oneof [ addingSpace arbitrary
+          , addingSpace numberString
+          , numberString
+--          , pure "%"
+--          , pure "#"
+          , pure ""
+          ]
+
+registerName :: Gen String
+registerName =
+    (:[]) <$> oneof [ elements ['0'..'9']
+                    , elements ['a'..'z']
+                    , elements ['A'..'Z']
+                    , elements ['"', '-', '=', '*', '+', '~', '_', '/']
+                    -- TODO Should the read-only registers be included here?
+                    -- , element [':', '.', '%', '#']
+                    ]
+
+count :: Gen String
+count = numberString
+
+commandParsers :: [CommandParser]
+commandParsers =
+    [ CommandParser
+          "Buffer.parse"
+          Buffer.parse
+          ["buffer", "buf", "bu", "b"]
+          True
+          bufferIdentifier
+
+    , CommandParser
+          "BufferDelete.parse"
+          BufferDelete.parse
+          ["bdelete", "bdel", "bd"]
+          True
+          bufferIdentifier
+
+    , CommandParser
+          "Delete.parse"
+          Delete.parse
+          ["delete", "del", "de", "d"]
+          -- XXX TODO support these weird abbreviations too?
+          -- :dl, :dell, :delel, :deletl, :deletel
+          -- :dp, :dep, :delp, :delep, :deletp, :deletep
+          True
+          (oneof [ pure ""
+                 , addingSpace registerName
+                 , addingSpace count
+                 , (++) <$> addingSpace registerName <*> addingSpace count
+                 ])
     ]
 
--- | Checks that the expected 'ExCommand' parser parses the command string.
---
--- This check is performed in isolation of all other 'ExCommand' parsers, so it
--- doesn't check that an unexpected parser won't also parse the command and
--- be selected in preference.
-expectedParsersParse :: [String]
-           -> (String -> Maybe ExCommand)
-           -> CommandDescription
-           -> TF.Test
-expectedParsersParse ss commandParser descr =
-    TF.testGroup descr $
-        map (expectedParserParses commandParser) ss
+
+commandString :: CommandParser -> Gen String
+commandString cp = do
+    name <- elements $ cpNames cp
+    bang <- if (cpAcceptsBang cp)
+                then elements ["!", ""]
+                else pure ""
+    args <- (cpArgs cp)
+    return $ concat [name, bang, args]
+
+
+expectedParserParses :: CommandParser -> TF.Test
+expectedParserParses commandParser =
+    testProperty (cpDescription commandParser ++ " parses expected input") $
+        forAll (commandString commandParser)
+               (isJust . cpParser commandParser)
+
+
+expectedParserSelected :: CommandParser
+         -> TF.Test
+expectedParserSelected expectedCommandParser =
+    testProperty testName $
+        forAll (commandString expectedCommandParser) $ \s ->
+            let expectedName = expectedCommandName s
+                actualName   = actualCommandName s
+            in printTestCase (errorMessage s actualName)
+                             (expectedName == actualName)
   where
-    expectedParserParses :: (String -> Maybe ExCommand)
-                         -> String
-                         -> TF.Test
-    expectedParserParses commandParser s =
-        testCase ("Parses \"" ++ s ++ "\"") $
-            assertJust "" (stringToExCommand [commandParser] s)
+    expectedCommandName = commandNameFor [cpParser expectedCommandParser]
+    actualCommandName   = commandNameFor defExCommandParsers
+    commandNameFor parsers s =
+        cmdShow <$> stringToExCommand parsers s
+    errorMessage s actualName =
+        "Parsed " ++ show s ++ " to " ++ show actualName ++ " command"
+    testName =
+       cpDescription expectedCommandParser ++ " selected for expected input"
 
-
--- | Checks that the expected 'ExCommand' will be selected from all default 'ExCommand's.
---
--- Silently fails if no ExCommand parses the string on the assumption that
--- 'checkExpectedParserParses' will report the error.
-expectedParsersSelected :: [String]
-                -> (String -> Maybe ExCommand)
-                -> CommandDescription
-                -> TF.Test
-expectedParsersSelected ss commandParser descr =
-    TF.testGroup descr $
-        map (expectedParserSelected commandParser) ss
-  where
-    expectedParserSelected :: (String -> Maybe ExCommand)
-                           -> String
-                           -> TF.Test
-    expectedParserSelected expectedCommandParser s =
-        let expectedName = expectedCommandName
-            actualName   = actualCommandName
-        in
-            testCase ("Selected for \"" ++ s ++ "\"") $
-                assertEqual "" expectedName actualName
-      where
-        expectedCommandName = commandNameFor [expectedCommandParser]
-        actualCommandName   = commandNameFor defExCommandParsers
-        commandNameFor parsers =
-            cmdShow <$> stringToExCommand parsers s
-
-
-assertJust msg a = assertBool msg (isJust a)
 
 
 -- | Tests for the Ex command parsers in the Vim2 Keymap.
@@ -123,9 +167,7 @@ assertJust msg a = assertBool msg (isJust a)
 getTestGroup :: TF.Test
 getTestGroup = TF.testGroup "Vim2 Keymap Ex command parsers" [
                    TF.testGroup "Expected parser parses" $
-                       map (uncurry3 expectedParsersParse) stringToCommands
+                       map expectedParserParses commandParsers
                  , TF.testGroup "Expected parser selected" $
-                       map (uncurry3 expectedParsersSelected) stringToCommands
+                       map expectedParserSelected commandParsers
                  ]
-  where
-    uncurry3 f (a,b,c) = f a b c
