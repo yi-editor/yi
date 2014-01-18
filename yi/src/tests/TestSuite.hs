@@ -4,6 +4,7 @@ import Test.Tasty (defaultMain, testGroup)
 
 import qualified TestVim
 import qualified TestExParser
+import qualified TestVim2PureEditorManipulations
 
 main :: IO ()
 main = do
@@ -11,4 +12,5 @@ main = do
     defaultMain $ testGroup "Tests" [ 
         tests
       , TestExParser.getTests
+      , TestVim2PureEditorManipulations.getTests
       ]
