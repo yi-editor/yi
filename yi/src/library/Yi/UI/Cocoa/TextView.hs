@@ -1,4 +1,3 @@
-{-# ANN module "HLint: ignore Use camelCase" #-}
 {-# LANGUAGE TemplateHaskell, EmptyDataDecls, MultiParamTypeClasses,
              TypeSynonymInstances, FlexibleInstances, DeriveDataTypeable #-}
 --
@@ -52,6 +51,8 @@ import qualified AppKit.NSScrollView (contentView)
 
 import Foreign
 import Foreign.C
+
+{-# ANN module "HLint: ignore Use camelCase" #-}
 
 -- TODO: The correct way of doing this would be to add the
 --       protocol constraints on the performDragOperation

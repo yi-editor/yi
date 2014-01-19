@@ -1,4 +1,3 @@
-{-# ANN module "HLint: ignore Use camelCase" #-}
 {-# LANGUAGE TemplateHaskell, EmptyDataDecls, MultiParamTypeClasses,
              FlexibleInstances, TypeSynonymInstances,
              DeriveDataTypeable, Rank2Types #-}
@@ -61,6 +60,8 @@ import AppKit (
   _NSParagraphStyle,defaultParagraphStyle,ibeamCursor,_NSTextStorage,
   editedRangeChangeInLength,nsTextStorageEditedAttributes,
   nsTextStorageEditedCharacters,userFixedPitchFontOfSize)
+
+{-# ANN module "HLint: ignore Use camelCase" #-}
 
 -- Unfortunately, my version of hoc does not handle typedefs correctly,
 -- and thus misses every selector that uses the "unichar" type, even

@@ -66,6 +66,8 @@ import AppKit (
 
 foreign import ccall "RtsAPI.h shutdownHaskellAndExit" shutdownHaskellAndExit :: CInt -> IO ()
 
+{-# ANN module "HLint: ignore Use camelCase" #-}
+
 -- The selector is used since NSEvent#type treats the c enum
 -- in a type-safe way, but Cocoa receives values which are not
 -- defined in the c enum, which results in a pattern mismatch...
