@@ -1,6 +1,7 @@
 module Vim2.TestExCommandParsers (tests) where
 
 import Control.Applicative
+import Data.List (intercalate)
 import Data.Maybe
 
 import Test.QuickCheck
@@ -70,11 +71,13 @@ bufferIdentifier =
     oneof [ addingSpace arbitrary
           , addingSpace numberString
           , numberString
---          , pure "%"
---          , pure "#"
+          , oneof [pure "%", pure " %"]
+          , oneof [pure "#", pure " #"]
           , pure ""
           ]
 
+-- | QuickCheck generator of strings suitable for use as register names in Vim
+-- ex command lines. Does not include a preceding @"@.
 registerName :: Gen String
 registerName =
     (:[]) <$> oneof [ elements ['0'..'9']
@@ -85,6 +88,8 @@ registerName =
                     -- , element [':', '.', '%', '#']
                     ]
 
+-- | QuickCheck generator of strings suitable for use as counts in Vim ex
+-- command lines
 count :: Gen String
 count = numberString
 
@@ -102,7 +107,7 @@ commandParsers =
           BufferDelete.parse
           ["bdelete", "bdel", "bd"]
           True
-          bufferIdentifier
+          (intercalate " " <$> listOf bufferIdentifier)
 
     , CommandParser
           "Delete.parse"
