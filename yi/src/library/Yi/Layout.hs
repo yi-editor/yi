@@ -44,6 +44,7 @@ module Yi.Layout
  where
 
 import Control.Applicative
+import Control.Arrow (first)
 import Control.Lens hiding (set')
 import Data.Typeable
 import Data.Maybe
@@ -106,7 +107,7 @@ dividerPositionA ref = lens getter (flip setter) where
       set' s@(SingleWindow _) = s
       set' p@Pair{} | divRef p == ref = p{ divPos = pos }
                     | otherwise       = p{ pairFst = set' (pairFst p), pairSnd = set' (pairSnd p) }
-      set' s@Stack{} = s{ wins = fmap (\(l, r) -> (set' l, r)) (wins s) }
+      set' s@Stack{} = s{ wins = fmap (first set') (wins s) }
 
   getter = fromMaybe invalidRef . get'
 
@@ -316,7 +317,7 @@ class Transposable r where transpose :: r -> r
 instance Transposable Orientation where { transpose Horizontal = Vertical; transpose Vertical = Horizontal }
 instance Transposable (Layout a) where
     transpose (SingleWindow a) = SingleWindow a
-    transpose (Stack o ws) = Stack (transpose o) (fmap (\(l,r) -> (transpose l,r)) ws)
+    transpose (Stack o ws) = Stack (transpose o) (fmap (first transpose) ws)
     transpose (Pair o p r a b) = Pair (transpose o) p r (transpose a) (transpose b)
 
 -- | Same as 'lm', but with all 'Orientation's 'transpose'd. See 'slidyWide' for an example of its use.

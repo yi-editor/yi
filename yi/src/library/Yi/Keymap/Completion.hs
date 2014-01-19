@@ -10,6 +10,7 @@ module Yi.Keymap.Completion (
         stepTree, obvious, mergeTrees, listToTree, complete)
    where
 
+import Control.Arrow (first)
 import Data.List
 
 -- inside a completion tree, the a's must be unique on each level
@@ -35,7 +36,7 @@ stepTree (CT completions) letter = Just $ obvious $ CT $ filter
                                    ((letter==).fst) completions
 
 obvious :: CompletionTree a -> ([a],CompletionTree a)
-obvious (CT [(letter,moretrees)]) = (\(x,y)->(letter:x,y)) $
+obvious (CT [(letter,moretrees)]) = first ((:) letter) $
                                              obvious moretrees
 obvious remainingchoice           = ([],remainingchoice)
 
@@ -53,7 +54,7 @@ mergeTrees' trees = CT $
 complete :: Eq a => CompletionTree a -> [a] -> ([a],CompletionTree a)
 complete tree    [] = ([],tree)
 complete (CT []) _  = ([],CT [])
-complete (CT level) (a:ta) = (\(x,y)->(a:x,y)) $
+complete (CT level) (a:ta) = first ((:) a) $
     case match of
        Just m -> complete (snd m) ta
        Nothing -> ([],CT [])

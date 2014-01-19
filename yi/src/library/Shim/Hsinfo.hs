@@ -16,6 +16,7 @@ import qualified Shim.GhcCompat as GhcCompat
 
 import Control.Applicative
 import Control.Monad.State
+import Control.Arrow ((***))
 import Data.List ( isPrefixOf, find, nubBy, sort, (\\) )
 import Data.Maybe
 import System.Directory
@@ -348,11 +349,8 @@ getModuleExports sourcefile0 modname pref = do
                        (\n -> (,) n `fmap` GhcCompat.lookupName ses n)
       return
         $ filterPrefix pref
-        $ map (\(n,t) ->
-                 (showSDocForUser unqual . ppr $ n,
-                  maybe ""
-                    (showSDocForUser unqual . pprTyThingInContext False)
-                    t))
+        $ map ((showSDocForUser unqual . ppr) ***
+               maybe "" (showSDocForUser unqual . pprTyThingInContext False))
               things
 
 findDefinition :: FilePath -> Int -> Int -> Maybe String -> SHM SrcLoc
