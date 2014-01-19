@@ -210,7 +210,7 @@ instance Promptable String where
     getPrompt _ = "String"
 
 instance Promptable Char where
-    getPromptedValue x = if length x == 0 then error "Please supply a character."
+    getPromptedValue x = if null x then error "Please supply a character."
                          else return $ head x
     getPrompt _ = "Char"
 

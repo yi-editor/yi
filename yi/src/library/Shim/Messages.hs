@@ -108,11 +108,11 @@ encodeNotes l =
        encodeSeverity SevFatal   = S ":sev-fatal"
        encodeSrcSpan s dir =
          maybe (Se nil)
-               (\(f,l1,c1,l2,c2) -> if l1==l2 && c1==c2  -- hack to deal with empty
+               (\(f,l1,c1,l2,c2) -> (Se (if l1==l2 && c1==c2  -- hack to deal with empty
                                                          -- spans(emacs gets confused),
                                                          -- due to parsing errors
-                                    then Se (S ":span",f,l1,c1,l2,c2+1)
-                                    else Se (S ":span",f,l1,c1,l2,c2))
+                                    then (S ":span",f,l1,c1,l2,c2+1)
+                                    else (S ":span",f,l1,c1,l2,c2))))
                $ excToMaybe $
          let loc1 = srcSpanStart $ srcSpan s
              loc2 = srcSpanEnd $ srcSpan s

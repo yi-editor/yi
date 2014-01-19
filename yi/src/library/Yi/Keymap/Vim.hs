@@ -1329,7 +1329,7 @@ exEval self cmd =
       needsAWindowB = do
         isWorthless <- gets (either (const True) (const False) . (^. identA))
         canClose <- gets isUnchangedBuffer
-        if isWorthless || canClose then return False else return True
+        return $ not (isWorthless || canClose)
 
       {- quitWindow implements the commands in vim equivalent to :q!
        - Closes the current window regardless of whether the window is on a modified

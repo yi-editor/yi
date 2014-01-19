@@ -195,12 +195,10 @@ procDiredOp counting r@(DOConfirm prompt eops enops:ops) =
                              -- TODO: show an error msg
 procDiredOp counting (DOCheck check eops enops:ops) = do
   res <- io check
-  if res then procDiredOp counting (eops ++ ops)
-         else procDiredOp counting (enops ++ ops)
+  procDiredOp counting (if res then eops ++ ops else enops ++ ops)
 procDiredOp counting (DOCkOverwrite fp op:ops) = do
   exists <- io $ fileExist fp
-  if exists then procDiredOp counting (newOp:ops)
-            else procDiredOp counting (op:ops)
+  procDiredOp counting (if exists then newOp:ops else op:ops)
       where newOp = DOChoice (concat ["Overwrite ", fp, " ?"]) op
 procDiredOp counting (DOInput prompt opGen:ops) =
   promptFile prompt act
@@ -719,20 +717,24 @@ diredLoad = do
                                             msgEditor $ target ++ " does not exist"
                             (DiredSocket _dfi) -> do
                                     exists <- io $ doesFileExist sel
-                                    if exists then msgEditor ("Can't open Socket " ++ sel)
-                                              else msgEditor $ sel ++ " no longer exists"
+                                    msgEditor (if exists
+                                        then "Can't open Socket " ++ sel
+                                        else sel ++ " no longer exists")
                             (DiredBlockDevice _dfi) -> do
                                     exists <- io $ doesFileExist sel
-                                    if exists then msgEditor ("Can't open Block Device " ++ sel)
-                                              else msgEditor $ sel ++ " no longer exists"
+                                    msgEditor (if exists
+                                        then "Can't open Block Device " ++ sel
+                                        else sel ++ " no longer exists")
                             (DiredCharacterDevice _dfi) -> do
                                     exists <- io $ doesFileExist sel
-                                    if exists then msgEditor ("Can't open Character Device " ++ sel)
-                                              else msgEditor $ sel ++ " no longer exists"
+                                    msgEditor (if exists
+                                        then "Can't open Character Device " ++ sel
+                                        else sel ++ " no longer exists")
                             (DiredNamedPipe _dfi) -> do
                                     exists <- io $ doesFileExist sel
-                                    if exists then msgEditor ("Can't open Pipe " ++ sel)
-                                              else msgEditor $ sel ++ " no longer exists"
+                                    msgEditor (if exists 
+                                        then "Can't open Pipe " ++ sel
+                                        else sel ++ " no longer exists")
                             DiredNoInfo -> msgEditor $ "No File Info for:"++sel
       Nothing        -> noFileAtThisLine
 

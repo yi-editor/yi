@@ -361,7 +361,7 @@ simpleNotebookSet sn ts = do
     -- update the tabs, if they have changed
     when (fmap fst curTsList /= fmap fst tsList) $ do
       forM_ curTsList $ const (notebookRemovePage nb (-1))
-      forM_ tsList $ \(w,s) -> notebookAppendPage nb w s
+      forM_ tsList $ uncurry (notebookAppendPage nb)
 
     -- now update the titles if they have changed
     forM_ tsList $ \(w,s) -> update nb (notebookChildTabLabel w) s

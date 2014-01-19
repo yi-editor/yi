@@ -1088,9 +1088,9 @@ maybeCharWithVerticalOffset offset = savingPointB $ do
     l1 <- curLn
     c1 <- curCol
     curChar <- readB
-    if c0 == c1 && l0 + offset == l1 && curChar `notElem` "\n\0"
-    then return $ Just curChar
-    else return Nothing
+    return (if c0 == c1 && l0 + offset == l1 && curChar `notElem` "\n\0"
+      then Just curChar
+      else Nothing)
 
 -- | Delete @n@ characters forward from the current point
 deleteN :: Int -> BufferM ()

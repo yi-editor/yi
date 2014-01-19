@@ -751,9 +751,7 @@ leftEdgesOfRegionB Block reg = savingPointB $ do
         void $ lineMoveRel i
         p <- pointB
         eol <- atEol
-        if not eol
-        then return $ Just p
-        else return Nothing
+        return (if not eol then Just p else Nothing)
 leftEdgesOfRegionB _ r = return [regionStart r]
 
 rightEdgesOfRegionB :: RegionStyle -> Region -> BufferM [Point]

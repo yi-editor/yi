@@ -138,7 +138,7 @@ getConfig shouldOpenInTabs (cfg, cfgcon) opt =
                          x : xs -> return (cfg { startActions = x:makeAction (gotoLn (read l)):xs }, cfgcon)
                          []     -> fail "The `-l' option must come after a file argument"
 
-      File filename -> if shouldOpenInTabs && (length (startActions cfg) > 0) then
+      File filename -> if shouldOpenInTabs && not (null (startActions cfg)) then
                          prependActions [YiA (editFile filename), EditorA newTabE]
                        else
                          prependAction (editFile filename)

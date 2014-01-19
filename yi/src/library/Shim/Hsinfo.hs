@@ -304,7 +304,7 @@ findIdPrefix sourcefile pref = do
     Nothing -> do
       load sourcefile True Nothing
       l1 <- M.lookup sourcefile `fmap` getCompBuffer
-      maybe (return []) (return . filterPrefix pref . snd3) l1
+      (return . maybe [] (filterPrefix pref . snd3)) l1
 
 
 findTypeOfName :: Session -> String -> SHM String
