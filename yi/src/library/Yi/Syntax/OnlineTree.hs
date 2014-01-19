@@ -42,7 +42,7 @@ data Tree a = Bin (Tree a) (Tree a)
 instance IsTree Tree where
     emptyNode = Tip
     uniplate (Bin l r) = ([l,r],\[l',r'] -> Bin l' r')
-    uniplate t = ([],\_->t)
+    uniplate t = ([],const t)
 
 manyToks :: P (Tok t) (Tree (Tok t))
 manyToks = manyToks' 1

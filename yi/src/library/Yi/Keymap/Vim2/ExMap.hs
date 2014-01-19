@@ -6,6 +6,7 @@ import Data.Char (isSpace)
 import Data.Maybe (fromJust)
 import Data.List.Split (splitWhen)
 import System.FilePath (isPathSeparator)
+import Control.Monad (when)
 
 import Yi.Buffer hiding (Insert)
 import Yi.Editor
@@ -74,7 +75,7 @@ dropToLastWordOf s =
 
 exitEx :: Bool -> EditorM ()
 exitEx success = do
-    if success then historyFinish else return ()
+    when success historyFinish
     resetCountE
     switchModeE Normal
     closeBufferAndWindowE
@@ -136,7 +137,7 @@ printable = VimBindingE prereq editAction
 historyBinding :: VimBinding
 historyBinding = VimBindingE prereq action
     where prereq evs (VimState { vsMode = Ex }) =
-              matchFromBool $ evs `elem` (fmap fst binds)
+              matchFromBool $ evs `elem` fmap fst binds
           prereq _ _ = NoMatch
           action evs = do
               fromJust $ lookup evs binds

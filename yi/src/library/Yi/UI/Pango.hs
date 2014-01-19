@@ -221,7 +221,7 @@ startNoMsg cfg ch outCh ed = do
   let ui = UI win tabs status tc actionCh (configUI cfg) fontRef im
 
   -- Keep the current tab focus up to date
-  let move n pl = maybe pl id (PL.moveTo n pl)
+  let move n pl = fromMaybe pl (PL.moveTo n pl)
       runAction = uiActionCh ui . makeAction
   -- why does this cause a hang without postGUIAsync?
   simpleNotebookOnSwitchPage (uiNotebook ui) $ \n -> postGUIAsync $
@@ -263,7 +263,7 @@ updateTabInfo :: Editor -> UI -> Tab -> TabInfo -> IO ()
 updateTabInfo e ui tab tabInfo = do
     -- update the window cache
     wCacheOld <- readIORef (windowCache tabInfo)
-    wCacheNew <- mapFromFoldable <$> (forM (tab ^. tabWindowsA) $ \w ->
+    wCacheNew <- mapFromFoldable <$> forM (tab ^. tabWindowsA) (\w ->
       case M.lookup (wkey w) wCacheOld of
         Just wInfo -> updateWindow e ui w wInfo >> return (wkey w, wInfo)
         Nothing -> (wkey w,) <$> newWindow e ui w)
@@ -434,8 +434,8 @@ newWindow e ui w = do
     v `on` motionNotifyEvent  $ handleMove          ui win
     void $ v `onExpose` render ui win
     -- also redraw when the window receives/loses focus
-    (uiWindow ui) `on` focusInEvent $ io (widgetQueueDraw v) >> return False
-    (uiWindow ui) `on` focusOutEvent $ io (widgetQueueDraw v) >> return False
+    uiWindow ui `on` focusInEvent $ io (widgetQueueDraw v) >> return False
+    uiWindow ui `on` focusOutEvent $ io (widgetQueueDraw v) >> return False
     -- todo: consider adding an 'isDirty' flag to WinLayoutInfo,
     -- so that we don't have to recompute the Attributes when focus changes.
     return win
@@ -751,16 +751,14 @@ handleScroll ui w = do
   io $ do
     ifPressed <- readIORef $ lButtonPressed w
     -- query new coordinates
-    let editorAction = do
+    let editorAction =
           withBuffer0 $ scrollB $ case scrollDirection of
             ScrollUp   -> negate configAmount
             ScrollDown -> configAmount
             _          -> 0 -- Left/right scrolling not supported
         configAmount = configScrollWheelAmount $ uiConfig ui
     uiActionCh ui (makeAction editorAction)
-    if ifPressed
-     then selectArea ui w xy
-     else return ()
+    when ifPressed $ selectArea ui w xy
   return True
 
 handleConfigure :: UI -> EventM EConfigure Bool
@@ -826,9 +824,7 @@ setSelectionClipboard ui _w cb = do
   uiActionCh ui $ makeAction yiAction
   txt <- readIORef selection
 
-  if (not . null) txt
-    then clipboardSetText cb txt
-    else return ()
+  unless (null txt) $ clipboardSetText cb txt
 
 
 

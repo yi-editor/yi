@@ -169,8 +169,7 @@ ya_sendEvent event self = logNSException "sendEvent" $ do
   if t == fromCEnum nsKeyDown
     then self #. _eventChannel >>= handleKeyEvent event
     else if t == fromCEnum nsFlagsChanged
-      then do
-        logPutStrLn $ "Flags changed"
+      then logPutStrLn "Flags changed"
       else super self # sendEvent event
 
 handleKeyEvent :: forall t. NSEvent t -> Maybe (Yi.Event.Event -> IO ()) -> IO ()

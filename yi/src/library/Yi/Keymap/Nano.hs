@@ -11,8 +11,9 @@ import Data.Char            ( chr, isAlphaNum, toLower )
 import Control.Arrow
 
 import Control.Exception    ( ioErrors, try, evaluate )
-import Control.Monad ( when )
+import Control.Monad ( when, unless )
 import Control.Monad.Trans ( lift )
+{-# ANN module "HLint: ignore Use String" #-}
 
 -- | Top level function. A function of this type is used by the editor
 -- main loop to interpret actions. The second argument to @execLexer@ is
@@ -70,19 +71,19 @@ cmdCharFM =
     ,('\^E',        write moveToEol)
     ,('\^F',        write rightB)
     ,('\^H',        write $ leftB >> deleteN 1)
-    ,('\^K',        write $ killLineE)
+    ,('\^K',        write killLineE)
     ,('\^L',        write refreshEditor)
     ,('\^M',        write $ insertN '\n')
     ,('\^N',        write (execB Move VLine Forward))
     ,('\^P',        write (execB Move VLine Backward))
     ,('\^U',        write undoB)
     ,('\^V',        write downScreenB)
-    ,('\^X',        do write $ do b <- isUnchangedB ; if b then quitEditor else return ()
+    ,('\^X',        do write $ do b <- isUnchangedB; when b quitEditor
                        switch2WriteMode) -- TODO: separate this
     ,('\^Y',        write upScreenB)
     ,('\^Z',        write suspendEditor)
-    ,('\0',         write $ do moveWhileE (isAlphaNum)      GoRight
-                               moveWhileE (not . isAlphaNum)  GoRight )
+    ,('\0',         write $ do moveWhileE isAlphaNum         GoRight
+                               moveWhileE (not . isAlphaNum) GoRight )
     ,(keyBackspace, write $ leftB >> deleteN 1)
     ,(keyDown,      write (execB Move VLine Backward))
     ,(keyLeft,      write leftB)
@@ -196,13 +197,12 @@ search_km p = choice [srch_g, srch_y, srch_v, srch_t, srch_c, srch_r, performSea
 echoMode :: String -> (String -> Interact Char a) -> Interact Char a
 echoMode prompt exitProcess = do
   write (logPutStrLn "echoMode")
-  result <- lineEdit []
-  return result
+  lineEdit []
     where lineEdit s =
               do write $ msgEditor (prompt ++ s)
-                 (exitProcess s +++
+                 exitProcess s +++
                   (anyChar deleteChars >> lineEdit (take (length s - 1) s)) +++
-                  (do c <- anyChar ('\n' : map chr [32 .. 126]); lineEdit (s++[c])))
+                  (do c <- anyChar ('\n' : map chr [32 .. 126]); lineEdit (s++[c]))
 
 -- | Actions that mess with the echo (or command) buffer. Notice how
 -- these actions take a @String@ as an argument, and the second
@@ -211,10 +211,11 @@ echoMode prompt exitProcess = do
 echoCharFM :: [(Char, String -> Action, String)]
 echoCharFM =
     [('\^O',
-      \f -> if f == []
-            then return ()
-            else catchJustE ioErrors (do fwriteToE f ; msgEditor "Wrote current file.")
-                                     (msgEditor . show)
+      \f -> unless (null f) $
+        catchJustE ioErrors
+          (do fwriteToE f
+              msgEditor "Wrote current file.")
+          (msgEditor . show)
      ,"File Name to Write: ")
 
     ,('\^_',

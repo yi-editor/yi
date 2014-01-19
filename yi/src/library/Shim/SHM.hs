@@ -68,7 +68,7 @@ lookupSession cabalfile = do m <- gets sessionMap
 addSession :: FilePath -> Session -> SHM ()
 addSession cabalfile ses =
   modify (\s ->
-            s{sessionMap=(M.insert cabalfile ses (sessionMap s))})
+            s{sessionMap=M.insert cabalfile ses (sessionMap s)})
 
 shmHandle :: (CE.Exception -> SHM a) -> SHM a -> SHM a
 shmHandle h m = StateT $ \s ->
@@ -84,15 +84,15 @@ getCompBuffer = gets compBuffer
 addCompBuffer :: FilePath -> IdData -> CompilationResult -> Maybe (Hash,TypecheckedModule) -> SHM ()
 addCompBuffer sourcefile id_data compilation_result checked_mod =
   modify (\s ->
-            s{compBuffer=(M.insert sourcefile (compilation_result,id_data,checked_mod)
-                                   (compBuffer s))})
+            s{compBuffer=M.insert sourcefile (compilation_result,id_data,checked_mod)
+                                  (compBuffer s)})
 
 io :: IO a -> SHM a
 io = lift
 
 runSHM :: Session -> FilePath -> (Severity -> SrcSpan -> PprStyle -> Message -> IO ()) -> SHM a -> IO a
 runSHM ses ghc compLogAction m = fmap fst $ runStateT m
-                             $ ShimState {tempSession=ses,
+                               ShimState {tempSession=ses,
                                           sessionMap=M.empty,
                                           compBuffer=M.empty,
                                           compLogAction=compLogAction}

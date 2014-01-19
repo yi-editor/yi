@@ -18,7 +18,7 @@ import Control.Monad (liftM)
 import Control.Monad.Trans(liftIO, MonadIO)
 import qualified System.Environment.XDG.BaseDir as XDG
 
-appUserDataCond ::(MonadIO m) => ([Char] -> IO FilePath) -> m FilePath
+appUserDataCond ::(MonadIO m) => (String -> IO FilePath) -> m FilePath
 appUserDataCond dirQuery = liftIO $
   do oldDir <- getAppUserDataDirectory "yi"
      newDir <- dirQuery "yi"
@@ -40,7 +40,7 @@ getDataDir = appUserDataCond XDG.getUserDataDir
 -- | Given a path relative to application data directory,
 --   this function finds a path to a given data file.
 getDataPath :: (MonadIO m) => FilePath -> m FilePath
-getDataPath fp = getDataDir >>= (return . (</> fp))
+getDataPath fp = liftM (</> fp) getDataDir
 
 -- | Given a path relative to application configuration directory,
 --   this function finds a path to a given configuration file.

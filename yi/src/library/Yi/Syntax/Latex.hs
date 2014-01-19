@@ -43,7 +43,7 @@ data Tree t
 instance IsTree Tree where
     uniplate (Paren l g r) = ([g], \[g'] -> Paren l g' r)
     uniplate (Expr g) = (g, Expr)
-    uniplate t = ([],\_ -> t)
+    uniplate t = ([],const t)
     emptyNode = Expr []
 
 parse :: P TT (Tree TT)
@@ -75,7 +75,7 @@ parse = pExpr True <* eof
       pTree outsideMath =
           (if outsideMath then pBlock <|> (Paren <$> sym (Special '$') <*> pExpr False <*> pleaseSym (Special '$'))
                            else empty)
-          <|> foldr1 (<|>) [(Paren <$> sym l <*> pExpr outsideMath <*> pleaseSym r) | (l,r) <- parens]
+          <|> foldr1 (<|>) [Paren <$> sym l <*> pExpr outsideMath <*> pleaseSym r | (l,r) <- parens]
           <|> (Atom <$> sym' isNoise)
           <|> (Error <$> recoverWith (sym' (not . ((||) <$> isNoise <*> (`elem` openParens)))))
 
@@ -88,7 +88,7 @@ getStrokes point _begin _end t0 = appEndo result []
           getStrokes' (Paren l g r)
               -- we have special treatment for (Begin, End) because these blocks are typically very large.
               -- we don't force the "end" part to prevent parsing the whole file.
-              | isBegin (tokT l) = if (posnOfs $ tokPosn $ l) /= point
+              | isBegin (tokT l) = if posnOfs (tokPosn l) /= point
                   then normalPaint
                   else case (tokT l, tokT r) of
                          (Begin b, End e) | b == e -> hintPaint
@@ -97,8 +97,7 @@ getStrokes point _begin _end t0 = appEndo result []
               -- left paren wasn't matched: paint it in red.
               -- note that testing this on the "Paren" node actually forces the parsing of the
               -- right paren, undermining online behaviour.
-              | (posnOfs $ tokPosn $ l) == point || (posnOfs $ tokPosn $ r) == point - 1
-               = hintPaint
+              | posnOfs (tokPosn l) == point || posnOfs (tokPosn r) == point - 1 = hintPaint
               | otherwise = normalPaint
               where normalPaint = ts id l <> getStrokes' g <> tsEnd id l r
                     hintPaint = ts (modStroke hintStyle) l <> getStrokes' g <> tsEnd (modStroke hintStyle) l r
@@ -134,6 +133,7 @@ tokenToStyle t =
     End _ -> keywordStyle
     NewCommand -> keywordStyle
 
+{-# ANN isSpecial "HLint: ignore Use String" #-}
 isSpecial :: [Char] -> Token -> Bool
 isSpecial cs (Special c) = c `elem` cs
 isSpecial _  _ = False

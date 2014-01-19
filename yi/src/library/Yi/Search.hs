@@ -194,7 +194,7 @@ searchAndRepRegion s str globally region = do
 -- | Search and replace in the region defined by the given unit.
 -- The rest is as in 'searchAndRepRegion'.
 searchAndRepUnit :: String -> String -> Bool -> TextUnit -> EditorM Bool
-searchAndRepUnit re str g unit = searchAndRepRegion re str g =<< (withBuffer0 $ regionOfB unit)
+searchAndRepUnit re str g unit = searchAndRepRegion re str g =<< withBuffer0 (regionOfB unit)
 
 --------------------------
 -- Incremental search
@@ -209,7 +209,7 @@ newtype Isearch = Isearch [(String, Region, Direction)]
 -- modification can depend on the state of the editor.
 
 instance Default Isearch where
-    def = (Isearch [])
+    def = Isearch []
 
 instance YiVariable Isearch
 
@@ -224,7 +224,7 @@ isearchInitE dir = do
 isearchIsEmpty :: EditorM Bool
 isearchIsEmpty = do
   Isearch s <- getDynamic
-  return $ not $ null $ fst3 $ head $ s
+  return $ not $ null $ fst3 $ head s
 
 isearchAddE :: String -> EditorM ()
 isearchAddE increment = isearchFunE (++ increment)
@@ -279,10 +279,10 @@ isearchDelE = do
   Isearch s <- getDynamic
   case s of
     (_:(text,p,dir):rest) -> do
-      withBuffer0 $ do
+      withBuffer0 $
         moveTo $ regionEnd p
       setDynamic $ Isearch ((text,p,dir):rest)
-      setRegexE $ makeISearch $ text
+      setRegexE $ makeISearch text
       printMsg $ "I-search: " ++ text
     _ -> return () -- if the searched string is empty, don't try to remove chars from it.
 
@@ -310,20 +310,20 @@ isearchNext :: Direction -> EditorM ()
 isearchNext direction = do
   Isearch ((current,p0,_dir):rest) <- getDynamic
   withBuffer0 $ moveTo (regionStart p0 + startOfs)
-  mp <- withBuffer0 $ do
+  mp <- withBuffer0 $
     regexB direction (makeISearch current)
   case mp of
     [] -> do
                   endPoint <- withBuffer0 $ do
                           moveTo (regionEnd p0) -- revert to offset we were before.
                           sizeB
-                  printMsg $ "isearch: end of document reached"
+                  printMsg "isearch: end of document reached"
                   let wrappedOfs = case direction of
                                      Forward -> mkRegion 0 0
                                      Backward -> mkRegion endPoint endPoint
                   setDynamic $ Isearch ((current,wrappedOfs,direction):rest) -- prepare to wrap around.
     (p:_) -> do
-                  withBuffer0 $ do
+                  withBuffer0 $
                     moveTo (regionEnd p)
                   printMsg $ "I-search: " ++ current
                   setDynamic $ Isearch ((current,p,direction):rest)
@@ -334,7 +334,7 @@ isearchNext direction = do
 isearchWordE :: EditorM ()
 isearchWordE = do
   text <- withBuffer0 (pointB >>= nelemsB 32) -- add maximum 32 chars at a time.
-  let (prefix, rest) = span (not . isAlpha) text
+  let (prefix, rest) = break isAlpha text
       word = takeWhile isAlpha rest
   isearchAddE (prefix ++ word)
 
@@ -405,6 +405,6 @@ qrReplaceOne win b reg replacement =
 -}
 qrReplaceCurrent :: Window -> BufferRef -> String -> EditorM ()
 qrReplaceCurrent win b replacement =
-  withGivenBufferAndWindow0 win b $ do
+  withGivenBufferAndWindow0 win b $
    flip replaceRegionB replacement =<< getRawestSelectRegionB
 

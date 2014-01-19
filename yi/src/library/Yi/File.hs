@@ -45,7 +45,7 @@ editFile :: FilePath -> YiM BufferRef
 editFile filename = do
     f <- io $ userToCanonPath filename
 
-    dupBufs <- filter ((maybe False (equalFilePath f)) . file) <$> gets bufferSet
+    dupBufs <- filter (maybe False (equalFilePath f) . file) <$> gets bufferSet
 
     dirExists  <- io $ doesDirectoryExist f
     fileExists <- io $ doesFileExist f
@@ -78,14 +78,14 @@ editFile filename = do
     setupMode :: FilePath -> BufferRef -> YiM BufferRef
     setupMode f b = do
       tbl <- asks (modeTable . yiConfig)
-      content <- withGivenBuffer b $ elemsB
+      content <- withGivenBuffer b elemsB
 
       let header = take 1024 content
           hmode = case header =~ "\\-\\*\\- *([^ ]*) *\\-\\*\\-" of
               AllTextSubmatches [_,m] ->m
               _ -> ""
-          Just mode = (find (\(AnyMode m)->modeName m == hmode) tbl) <|>
-                      (find (\(AnyMode m)->modeApplies m f content) tbl) <|>
+          Just mode = find (\(AnyMode m) -> modeName m == hmode) tbl <|>
+                      find (\(AnyMode m) -> modeApplies m f content) tbl <|>
                       Just (AnyMode emptyMode)
       case mode of
           AnyMode newMode -> withGivenBuffer b $ setMode newMode

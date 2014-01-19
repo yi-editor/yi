@@ -41,7 +41,7 @@ changeBufferNameE =
 ----------------------------
 -- | shell-command with argument prompt
 shellCommandE :: YiM ()
-shellCommandE = do
+shellCommandE =
     withMinibufferFree "Shell command:" shellCommandV
 
 ----------------------------

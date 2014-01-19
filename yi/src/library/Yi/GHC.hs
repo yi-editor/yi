@@ -1,4 +1,4 @@
-{-# LANGUAGE GeneralizedNewtypeDeriving, DeriveDataTypeable, StandaloneDeriving #-}
+{-# LANGUAGE DeriveDataTypeable #-}
 module Yi.GHC where
 
 import Control.Concurrent
@@ -24,7 +24,7 @@ import qualified Yi.Editor as Editor
 
 newShim :: YiM (MVar ShimState)
 newShim = do
-    session <- io $ ghcInit
+    session <- io ghcInit
 
     r <- asks yiVar
     cfg <- asks yiConfig
@@ -32,7 +32,7 @@ newShim = do
            unsafeWithEditor cfg r $ do
              let note = CompileNote msgSeverity msgSrcSpan style msg
              (%=) notesA (Just . maybe (PL.singleton note) (PL.insertRight note))
-             printMsg ('\n':show ((mkLocMessage msgSrcSpan msg) style))
+             printMsg ('\n':show (mkLocMessage msgSrcSpan msg style))
 
 
     io $ newMVar ShimState
@@ -87,8 +87,7 @@ data CompileNote = CompileNote {severity :: Severity,
 
 
 instance Show CompileNote where
-    show n = show $
-               (hang (ppr (srcSpan n) <> colon) 4  (message n)) (pprStyle n)
+    show n = show $ hang (ppr (srcSpan n) <> colon) 4 (message n) (pprStyle n)
 
 
 type T = (Maybe (PL.PointedList CompileNote))
@@ -101,7 +100,7 @@ instance Default ShimNotes where
 
 
 notesA :: Accessor Editor T
-notesA =  (accessor fromShimNotes (\x (ShimNotes _) -> ShimNotes x))
+notesA =  accessor fromShimNotes (\x (ShimNotes _) -> ShimNotes x)
           . dynamicValueA . dynamicA
 
 

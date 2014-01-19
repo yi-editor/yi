@@ -1,5 +1,3 @@
-{-# LANGUAGE DeriveDataTypeable #-}
-
 -- Handles indentation in the keymaps. Includes:
 --  * (TODO) Auto-indentation to the previous lines indentation
 --  * Tab-expansion
@@ -42,8 +40,7 @@ indentSettingsB = withModeB $ return . modeIndentSettings
   specialise 'autoIndentHelperB' on their own.
 -}
 autoIndentB :: IndentBehaviour -> BufferM ()
-autoIndentB indentBehave = do
-  autoIndentHelperB fetchPreviousIndentsB indentsOfString indentBehave
+autoIndentB = autoIndentHelperB fetchPreviousIndentsB indentsOfString
   where
   -- Returns the indentation hints considering the given
   -- string as the line above the current one.
@@ -87,7 +84,7 @@ autoIndentHelperB getUpwards getPrevious indentBehave =
   do upwardHints   <- savingExcursionB getUpwards
      previousLine  <- getNextLineB Backward
      previousHints <- getPrevious previousLine
-     let allHints = (upwardHints ++ previousHints)
+     let allHints = upwardHints ++ previousHints
      cycleIndentsB indentBehave allHints
 
 -- | Cycles through the indentation hints. It does this without
@@ -99,7 +96,7 @@ cycleIndentsB _ [] = return ()
 cycleIndentsB indentBehave indents =
     do currentLine   <- readLnB
        currentIndent <- indentOfB currentLine
-       indentToB $ chooseIndent currentIndent (sort $ nub $ indents)
+       indentToB $ chooseIndent currentIndent (sort $ nub indents)
   where
   -- Is the function to choose the indent from the given current
   -- indent to the given list of indentation hints.
@@ -123,7 +120,7 @@ cycleIndentsB indentBehave indents =
     -- we will go to the first of below which will be the smallest
     -- indentation hint, if above is not null then we are moving to
     -- the indentation hint which is one above the current.
-    head $ (above ++ below)
+    head (above ++ below)
     where
     (below, above) = span (<= currentIndent) hints
 
@@ -140,7 +137,7 @@ cycleIndentsB indentBehave indents =
     -- go to the largest indentation, if below is not null
     -- we go to the largest indentation which is *not* higher
     -- than the current one.
-    last $ (above ++ below)
+    last (above ++ below)
     where
     (below, above) = span (< currentIndent) hints
 
@@ -288,7 +285,7 @@ keywordHints keywords =
                                           getHints (i + spaceSize) rest
     -- If there are no white space characters check if we are looking
     -- at a keyword and if so add it as a hint
-    | any (== initNonWhite) keywords = (i :) <$> whiteRestHints
+    | initNonWhite `elem` keywords = (i :) <$> whiteRestHints
     -- Finally we just continue with the tail.
     | otherwise                      = whiteRestHints
     where
@@ -324,8 +321,8 @@ keywordAfterHints keywords =
                                        getHints (i + indent) nonWhite
     -- If there is a keyword at the current position and
     -- the keyword isn't the last thing on the line.
-    | any (== key) keywords
-      && (not $ null afterwhite)  =  do indent    <- spacingOfB white
+    | key `elem` keywords
+      && not (null afterwhite)    =  do indent    <- spacingOfB white
                                         let hint  =  i + length key + indent
                                         tailHints <- getHints hint afterwhite
                                         return $ hint : tailHints
@@ -421,7 +418,7 @@ indentString indentSettings numOfShifts input = rePadString indentSettings newCo
 shiftIndentOfRegion :: Int -> Region -> BufferM ()
 shiftIndentOfRegion shiftCount region = do
     indentSettings <- indentSettingsB
-    modifyRegionB (mapLines $ (indentString indentSettings shiftCount `unless` null)) region
+    modifyRegionB (mapLines (indentString indentSettings shiftCount `unless` null)) region
     moveTo $ regionStart region
     firstNonSpaceB
   where (f `unless` c) x = if c x then x else f x

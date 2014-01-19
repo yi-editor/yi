@@ -46,6 +46,7 @@ import Control.Monad
 import Control.Lens hiding (re,act)
 import Data.Foldable (toList)
 import Data.List ((\\))
+import Data.Maybe (fromMaybe)
 import System.FriendlyPath ()
 import System.FilePath (takeDirectory, takeFileName, (</>))
 import System.Directory
@@ -105,7 +106,7 @@ askIndividualSave :: Bool -> [FBuffer] -> YiM ()
 askIndividualSave True []  = modifiedQuitEditor
 askIndividualSave False [] = return ()
 askIndividualSave hasQuit allBuffers@(firstBuffer : others) =
-  withEditor (spawnMinibufferE saveMessage (const askKeymap)) >> return ()
+  void (withEditor (spawnMinibufferE saveMessage (const askKeymap)))
   where
   saveMessage = concat [ "do you want to save the buffer: "
                        , bufferName
@@ -144,8 +145,7 @@ modifiedQuitEditor =
   do modifiedBuffers <- getModifiedBuffers
      if null modifiedBuffers
         then quitEditor
-        else withEditor $ spawnMinibufferE modifiedMessage (const askKeymap)
-                          >> return ()
+        else withEditor $ void (spawnMinibufferE modifiedMessage (const askKeymap))
   where
   modifiedMessage = "Modified buffers exist really quit? (y/n)"
 
@@ -185,25 +185,24 @@ isearchKeymap dir =
 ----------------------------
 -- query-replace
 queryReplaceE :: YiM ()
-queryReplaceE = do
-    withMinibufferFree "Replace:" $ \replaceWhat -> do
+queryReplaceE = withMinibufferFree "Replace:" $ \replaceWhat ->
     withMinibufferFree "With:" $ \replaceWith -> do
-    b <- gets currentBuffer
-    win <- use currentWindowA
-    let replaceKm = choice [char 'n' ?>>! qrNext win b re,
-                            char '!' ?>>! qrReplaceAll win b re replaceWith,
-                            oneOf [char 'y', char ' ']
-                            >>! qrReplaceOne win b re replaceWith,
-                            oneOf [char 'q', ctrl (char 'g')] >>! qrFinish
-                           ]
-        Right re = makeSearchOptsM [] replaceWhat
-    withEditor $ do
-       setRegexE re
-       void $ spawnMinibufferE
-            ("Replacing " ++ replaceWhat ++ " with "
-             ++ replaceWith ++ " (y,n,q,!):")
-            (const replaceKm)
-       qrNext win b re
+        b <- gets currentBuffer
+        win <- use currentWindowA
+        let replaceKm = choice [char 'n' ?>>! qrNext win b re,
+                                char '!' ?>>! qrReplaceAll win b re replaceWith,
+                                oneOf [char 'y', char ' ']
+                                >>! qrReplaceOne win b re replaceWith,
+                                oneOf [char 'q', ctrl (char 'g')] >>! qrFinish
+                               ]
+            Right re = makeSearchOptsM [] replaceWhat
+        withEditor $ do
+           setRegexE re
+           void $ spawnMinibufferE
+                ("Replacing " ++ replaceWhat ++ " with "
+                 ++ replaceWith ++ " (y,n,q,!):")
+                (const replaceKm)
+           qrNext win b re
 
 executeExtendedCommandE :: YiM ()
 executeExtendedCommandE
@@ -212,7 +211,7 @@ executeExtendedCommandE
 evalRegionE :: YiM ()
 evalRegionE = do
   -- FIXME: do something sensible.
-  void $ withBuffer (getSelectRegionB >>= readRegionB) >>= return
+  void $ withBuffer (getSelectRegionB >>= readRegionB)
   return ()
 
 -- * Code for various commands
@@ -227,9 +226,7 @@ insertNextC a = do c <- anyEvent
 
 -- | Convert the universal argument to a number of repetitions
 argToInt :: UnivArgument -> Int
-argToInt a = case a of
-    Nothing -> 1
-    Just x -> x
+argToInt = fromMaybe 1
 
 
 digit :: (Event -> Event) -> KeymapM Char
@@ -246,10 +243,7 @@ tt = do
 -- read: http://www.gnu.org/software/emacs/manual/html_node/Arguments.html
 -- and: http://www.gnu.org/software/emacs/elisp-manual/html_node/elisp_318.html
 readUniversalArg :: KeymapM (Maybe Int)
-readUniversalArg =
-           Just <$> ((ctrlCh 'u' ?>> (read <$> some (digit id) <|> pure 4))
-           <|> (read <$> (some tt)))
-           <|> pure Nothing
+readUniversalArg = optional ((ctrlCh 'u' ?>> (read <$> some (digit id) <|> pure 4)) <|> (read <$> some tt))
 
 
 -- | Open a file using the minibuffer. We have to set up some stuff to allow hints
@@ -302,10 +296,7 @@ killBufferE (Doc b) = do
         delBuf = deleteBuffer b
     withEditor $
        if ch
-       then spawnMinibufferE
-            (identString buf ++ " changed, close anyway? (y/n)")
-            (const askKeymap)
-            >> return ()
+       then void (spawnMinibufferE (identString buf ++ " changed, close anyway? (y/n)") (const askKeymap))
        else delBuf
 
 
@@ -315,13 +306,13 @@ killBufferE (Doc b) = do
 -- function with the argument of ‘1’ but it prefers to use the separator we're
 -- looking at instead of assuming a space.
 justOneSep :: BufferM ()
-justOneSep = readB >>= \c -> do
-  pointB >>= \case
+justOneSep = readB >>= \c ->
+  pointB >>= \point -> case point of
     Point 0 -> if isAnySep c then deleteSeparators else insertB ' '
     Point x ->
       if isAnySep c
       then deleteSeparators
-      else readAtB (Point $ x - 1) >>= \d -> do
+      else readAtB (Point $ x - 1) >>= \d ->
         -- We weren't looking at separator but there might be one behind us
         if isAnySep d
           then moveB Character Backward >> deleteSeparators
@@ -339,7 +330,7 @@ joinLinesE :: UnivArgument -> BufferM ()
 joinLinesE a = do case a of
                      Nothing -> return ()
                      Just _n -> moveB VLine Forward
-                  moveToSol >> transformB (\_ -> " ") Character Backward
+                  moveToSol >> transformB (const " ") Character Backward
                     >> justOneSep
 
 -- | Shortcut to use a default list when a blank list is given.
@@ -388,7 +379,7 @@ visitTagTable act = do
     case posTagTable of
       Just tagTable -> act tagTable
       Nothing ->
-          promptFile ("Visit tags table: (default tags)") $ \path -> do
+          promptFile "Visit tags table: (default tags)" $ \path -> do
                        -- default emacs behavior, append tags
                        let filename = maybeList "tags" $ takeFileName path
                        tagTable <- io $ importTagTable $

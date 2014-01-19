@@ -19,7 +19,7 @@ userToCanonPath f = canonicalizePath =<< expandTilda f
 -- | Turn a user-friendly path into a computer-friendly path by expanding the leading tilda.
 expandTilda :: String -> IO FilePath
 expandTilda ('~':path)
-  | (null path) || (head path == pathSeparator) = (++ path) <$> getHomeDirectory
+  | null path || (head path == pathSeparator) = (++ path) <$> getHomeDirectory
   -- Home directory of another user, e.g. ~root/
   | otherwise = let username = takeWhile (/= pathSeparator) path
                     dirname = drop (length username) path

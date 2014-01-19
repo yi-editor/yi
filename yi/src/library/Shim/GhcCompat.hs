@@ -1,4 +1,4 @@
-{-# OPTIONS_GHC -cpp #-}
+{-# LANGUAGE CPP #-}
 module Shim.GhcCompat
   ( load
   , getModuleGraph
@@ -28,7 +28,7 @@ import GHC hiding ( load, getModuleGraph, getSessionDynFlags, getRdrNamesInScope
                     modInfoLookupName, parseDynamicFlags, workingDirectoryChanged,
                     getNamesInScope)
 
-import qualified GHC as GHC
+import qualified GHC
 import StaticFlags
 import Panic
 import HscTypes
@@ -60,16 +60,16 @@ getRealSession = do
 
 readPackageDescription = DP.readPackageDescription silent
 
-getModuleGraph session = reflectGhc GHC.getModuleGraph session
-getSessionDynFlags session = reflectGhc GHC.getSessionDynFlags session
+getModuleGraph = reflectGhc GHC.getModuleGraph
+getSessionDynFlags = reflectGhc GHC.getSessionDynFlags
 setSessionDynFlags session f = reflectGhc (GHC.setSessionDynFlags f) session
 findModule session a b = reflectGhc (GHC.findModule a b) session
-getRdrNamesInScope session = reflectGhc GHC.getRdrNamesInScope session
+getRdrNamesInScope = reflectGhc GHC.getRdrNamesInScope
 
 -- FIX: we should catch the exception
 exprType session e = fmap Just $ reflectGhc (GHC.exprType e) session
 
-getPrintUnqual session = reflectGhc GHC.getPrintUnqual session
+getPrintUnqual = reflectGhc GHC.getPrintUnqual
 
 -- FIX: we should catch the exception
 compileExpr session e = fmap Just $ reflectGhc (GHC.compileExpr e) session
@@ -81,9 +81,9 @@ getModuleInfo session a = reflectGhc (GHC.getModuleInfo a) session
 lookupName session a = reflectGhc (GHC.lookupName a) session
 modInfoLookupName session a b = reflectGhc (GHC.modInfoLookupName a b) session
 parseDynamicFlags session a b = fmap (\(a,b,_) -> (a,b)) $ reflectGhc (GHC.parseDynamicFlags a (map noLoc b)) session
-getContext session = reflectGhc GHC.getContext session
-workingDirectoryChanged session = reflectGhc GHC.workingDirectoryChanged session
-getNamesInScope session = reflectGhc GHC.getNamesInScope session
+getContext = reflectGhc GHC.getContext
+workingDirectoryChanged = reflectGhc GHC.workingDirectoryChanged
+getNamesInScope = reflectGhc GHC.getNamesInScope
 
 checkModule :: Session -> ModuleName -> Bool -> IO (Maybe TypecheckedModule)
 checkModule session modname _ = do

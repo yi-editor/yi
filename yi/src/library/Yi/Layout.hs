@@ -241,7 +241,7 @@ newtype SlidyWide = SlidyWide (Transposed SlidyTall)
 
 -- | Transposed version of 'slidyTall'
 slidyWide :: AnyLayoutManager
-slidyWide = AnyLayoutManager (SlidyWide (Transposed (SlidyTall)))
+slidyWide = AnyLayoutManager (SlidyWide (Transposed SlidyTall))
 
 instance LayoutManager SlidyWide where
     pureLayout (SlidyWide w) = pureLayout w

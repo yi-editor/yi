@@ -108,7 +108,7 @@ jsCompile tree = do
 -- | Returns the JS verifier buffer, creating it if necessary.
 getJSBuffer :: YiM BufferRef
 getJSBuffer = withOtherWindow $ do
-  JSBuffer mb <- withEditor $ getDynamic
+  JSBuffer mb <- withEditor getDynamic
   case mb of
     Nothing -> mkJSBuffer
     Just b  -> do stillExists <- withEditor $ isJust <$> findBuffer b

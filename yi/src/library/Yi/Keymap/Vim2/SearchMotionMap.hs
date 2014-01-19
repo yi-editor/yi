@@ -43,8 +43,7 @@ enterBinding = VimBindingE prereq action
 editBinding :: VimBinding
 editBinding = VimBindingE prereq action
     where prereq evs (VimState { vsMode = Search {}} ) = matchFromBool $
-            evs `elem` (fmap fst binds)
-            || (null (drop 1 evs))
+            evs `elem` fmap fst binds || null (drop 1 evs)
           prereq _ _ = NoMatch
           action evs = do
               fromMaybe (isearchAddE evs) (lookup evs binds)

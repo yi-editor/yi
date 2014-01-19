@@ -92,8 +92,7 @@ changeVisualStyleBinding = VimBindingE prereq action
                                  _ -> error "Can't happen because of prereq, this just prevents warning"
                   newMode = Visual newStyle
               if newMode == currentMode
-              then do
-                  vbeAction escBinding "<Esc>"
+              then vbeAction escBinding "<Esc>"
               else do
                   modifyStateE $ \s -> s { vsMode = newMode }
                   withBuffer0 $ do
@@ -173,8 +172,7 @@ shiftDBinding = VimBindingE prereq action
 
 mkOperatorBinding :: VimOperator -> VimBinding
 mkOperatorBinding op = VimBindingE prereq action
-    where prereq evs (VimState { vsMode = (Visual _) }) =
-              evs `matchesString` (operatorName op)
+    where prereq evs (VimState { vsMode = (Visual _) }) = evs `matchesString` operatorName op
           prereq _ _ = NoMatch
           action _ = do
               (Visual style) <- vsMode <$> getDynamic

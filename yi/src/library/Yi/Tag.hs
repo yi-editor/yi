@@ -63,7 +63,7 @@ data TagTable = TagTable { tagFileName :: FilePath
 lookupTag :: Tag -> TagTable -> Maybe (FilePath, Int)
 lookupTag tag tagTable = do
   (file, line) <- Data.Map.lookup tag $ tagFileMap tagTable
-  return $ (tagBaseDir tagTable </> file, line)
+  return (tagBaseDir tagTable </> file, line)
 
 -- | Super simple parsing CTag format 1 parsing algorithm
 -- TODO: support search patterns in addition to lineno
@@ -82,11 +82,11 @@ importTagTable filename = do
   friendlyName <-  expandTilda filename
   tagStr <- fmap BS8.toString $ BS.readFile friendlyName
   let ctags = readCTags tagStr
-  return $ TagTable { tagFileName = takeFileName filename,
-                      tagBaseDir  = takeDirectory filename,
-                      tagFileMap  = ctags,
-                      tagTrie     = Trie.fromList $ keys ctags
-                    }
+  return TagTable { tagFileName = takeFileName filename,
+                    tagBaseDir  = takeDirectory filename,
+                    tagFileMap  = ctags,
+                    tagTrie     = Trie.fromList $ keys ctags
+                  }
 
 -- | Gives all the possible expanded tags that could match a given @prefix@
 hintTags :: TagTable -> String -> [String]
@@ -94,7 +94,7 @@ hintTags tags prefix = map (prefix ++) $ Trie.possibleSuffixes prefix $ tagTrie 
 
 -- | Extends the string to the longest certain length
 completeTag :: TagTable -> String -> String
-completeTag tags prefix = prefix ++ (Trie.certainSuffix prefix $ tagTrie tags)
+completeTag tags prefix = prefix ++ Trie.certainSuffix prefix (tagTrie tags)
 
 
 -- ---------------------------------------------------------------------

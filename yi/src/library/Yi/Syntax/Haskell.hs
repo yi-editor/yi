@@ -1,8 +1,6 @@
 {-# LANGUAGE
   FlexibleInstances,
   TypeFamilies,
-  TemplateHaskell,
-  DeriveDataTypeable,
   DeriveFoldable #-}
 {-# OPTIONS_GHC -fno-warn-missing-signatures -fno-warn-incomplete-patterns -fno-warn-name-shadowing #-}
 -- we have lots of parsers which don't want signatures; and we have uniplate patterns
@@ -33,14 +31,14 @@ import Yi.Syntax.Tree
 import Yi.Syntax
 import Control.Arrow ((&&&))
 
-indentScanner :: Scanner (AlexState lexState) (TT)
-              -> Scanner (Yi.Syntax.Layout.State Token lexState) (TT)
+indentScanner :: Scanner (AlexState lexState) TT
+              -> Scanner (Yi.Syntax.Layout.State Token lexState) TT
 indentScanner = layoutHandler startsLayout [(Special '(', Special ')'),
                                             (Reserved Let, Reserved In),
                                             (Special '[', Special ']'),
                                             (Special '{', Special '}')]
                          ignoredToken
-                         ((Special '<'), (Special '>'), (Special '.'))
+                         (Special '<', Special '>', Special '.')
                          isBrace
 
 -- HACK: We insert the Special '<', '>', '.',
@@ -54,7 +52,7 @@ isBrace (Tok br _ _) = Special '{' == br
 
 -- | Theese are the tokens ignored by the layout handler.
 ignoredToken :: TT -> Bool
-ignoredToken (Tok t _ (Posn _ _ _)) = isComment t || t == CppDirective
+ignoredToken (Tok t _ (Posn{})) = isComment t || t == CppDirective
 
 type Tree = PModule
 type PAtom = Exp
@@ -68,44 +66,44 @@ type PImport = Exp
 -- | Exp can be expression or declaration
 data Exp t
     = PModule { comments :: [t]
-              , progMod  :: (Maybe (PModule t))
+              , progMod  :: Maybe (PModule t)
               }
-    | ProgMod { modDecl :: (PModuleDecl t)
-              , body    :: (PModule t)  -- ^ The module declaration part
+    | ProgMod { modDecl :: PModuleDecl t
+              , body    :: PModule t  -- ^ The module declaration part
               }
     | Body { imports :: Exp t -- [PImport t]
-           , content :: (Block t)
-           , extraContent :: (Block t) -- ^ The body of the module
+           , content :: Block t
+           , extraContent :: Block t -- ^ The body of the module
            }
-    | PModuleDecl { moduleKeyword :: (PAtom t)
-                                 , name          :: (PAtom t)
-                                 , exports       :: (Exp t)
-                                 , whereKeyword  :: (Exp t)
+    | PModuleDecl { moduleKeyword :: PAtom t
+                                 , name          :: PAtom t
+                                 , exports       :: Exp t
+                                 , whereKeyword  :: Exp t
                                     }
-    | PImport { importKeyword :: (PAtom t)
-                         , qual          :: (Exp t)
-                         , name'         :: (PAtom t)
-                         , as            :: (Exp t)
-                         , specification :: (Exp t)
+    | PImport { importKeyword :: PAtom t
+                         , qual          :: Exp t
+                         , name'         :: PAtom t
+                         , as            :: Exp t
+                         , specification :: Exp t
                          }
 
     | TS t [Exp t] -- ^ Type signature
-    | PType { typeKeyword :: (PAtom t)
-            , typeCons    :: (Exp t)
-            , equal       :: (PAtom t)
-            , btype       :: (Exp t)
+    | PType { typeKeyword :: PAtom t
+            , typeCons    :: Exp t
+            , equal       :: PAtom t
+            , btype       :: Exp t
             } -- ^ Type declaration
-    | PData { dataKeyword :: (PAtom t)
-            , dtypeCons   :: (Exp t)
-            , dEqual      :: (Exp t)
-            , dataRhs     :: (Exp t)
+    | PData { dataKeyword :: PAtom t
+            , dtypeCons   :: Exp t
+            , dEqual      :: Exp t
+            , dataRhs     :: Exp t
             }  -- ^ Data declaration
-    | PData' { dEqual    :: (PAtom t)
-             , dataCons  :: (Exp t) -- ^ Data declaration RHS
+    | PData' { dEqual     :: PAtom t
+             , dataCons   :: Exp t -- ^ Data declaration RHS
              }
-    | PClass { cKeyword :: (PAtom t) -- Can be class or instance
-             , cHead        :: (Exp t)
-             , cwhere       :: (Exp t) -- ^ Class declaration
+    | PClass { cKeyword   :: PAtom t -- Can be class or instance
+             , cHead      :: Exp t
+             , cwhere     :: Exp t -- ^ Class declaration
              }
       -- declaration
       -- declarations and parts of them follow
@@ -165,7 +163,7 @@ instance IsTree Exp where
        (DC e) -> ([e],\[e] -> DC e)
        PModuleDecl a b c d -> ([a,b,c,d],\[a,b,c,d] -> PModuleDecl a b c d)
        PImport a b c d e -> ([a,b,c,d,e],\[a,b,c,d,e] -> PImport a b c d e)
-       t              -> ([],\_->t)
+       t              -> ([],const t)
 
 -- | The parser
 parse :: P TT (Tree TT)
@@ -190,7 +188,7 @@ pModBody = (exact [startBlock] *>
        <|> (exact [nextLine] *> pBody)
        <|> Body <$> pure emptyNode <*> pEmptyBL <*> pEmptyBL
     where pBod  = Block <$> pBlocks pTopDecl
-          elems = [(Special ';'), nextLine, startBlock]
+          elems = [Special ';', nextLine, startBlock]
 
 -- | @pEmptyBL@ A parser returning an empty block
 pEmptyBL :: Parser TT (Exp TT)
@@ -211,11 +209,11 @@ noImports = notNext [Reserved Import] *> pure emptyNode
 -- Helper functions for parsing follows
 -- | Parse Variables
 pVarId :: Parser TT (Exp TT)
-pVarId = pAtom [VarIdent, (Reserved Other), (Reserved As)]
+pVarId = pAtom [VarIdent, Reserved Other, Reserved As]
 
 -- | Parse VarIdent and ConsIdent
 pQvarid :: Parser TT (Exp TT)
-pQvarid = pAtom [VarIdent, ConsIdent, (Reserved Other), (Reserved As)]
+pQvarid = pAtom [VarIdent, ConsIdent, Reserved Other, Reserved As]
 
 -- | Parse an operator using please
 pQvarsym :: Parser TT (Exp TT)
@@ -369,7 +367,7 @@ pImports :: Parser TT (Exp TT) -- [PImport TT]
 pImports = Expr <$> many (pImport
                  <* pTestTok pEol
                  <* optional (some $ exact [nextLine, Special ';']))
-        where pEol = [(Special ';'), nextLine, endBlock]
+        where pEol = [Special ';', nextLine, endBlock]
 
 -- | Parse one import
 pImport :: Parser TT (PImport TT)
@@ -386,7 +384,7 @@ pImport = PImport  <$> pAtom [Reserved Import]
               pExp'    = Bin
                      <$> (PAtom <$> sym
                           (uncurry (||) . (&&&)
-                           (flip elem [VarIdent, ConsIdent])
+                           (`elem` [VarIdent, ConsIdent])
                            isOperator) <*> pComments
                           <|>  pQvarsym)
                      <*> pOpt pImpS
@@ -519,7 +517,7 @@ pFunRHS :: Token -> Parser TT (Exp TT)
 pFunRHS equalSign = Bin <$> (pGuard equalSign <|> pEq equalSign) <*> pOpt (pWhere pFunDecl)
 
 pWhere :: Parser TT (Exp TT) -> Parser TT (Exp TT)
-pWhere p = PWhere <$> pAtom [Reserved Where] <*> please (pBlock p) <*> (pMany pErr)
+pWhere p = PWhere <$> pAtom [Reserved Where] <*> please (pBlock p) <*> pMany pErr
 -- After a where there might "misaligned" code that do not "belong" to anything.
 -- Here we swallow it as errors.
 
@@ -532,8 +530,8 @@ pDecl acceptType acceptEqu = Expr <$> ((Yuck $ Enter "missing end of type or equ
                  -- if a comma is found, then the rest must be a type declaration.
              <|> (if acceptType then pTypeEnding else empty)
              <|> (if acceptEqu  then pEquEnding else empty))
-    where pTypeEnding = ((:) <$> (TS <$> exact [ReservedOp DoubleColon] <*> pTypeExpr') <*> pure [])
-          pEquEnding = ((:) <$> pFunRHS (ReservedOp Equal) <*> pure [])
+    where pTypeEnding = (:) <$> (TS <$> exact [ReservedOp DoubleColon] <*> pTypeExpr') <*> pure []
+          pEquEnding =  (:) <$> pFunRHS (ReservedOp Equal) <*> pure []
 
 pFunDecl = pDecl True True
 pTypeDecl = pDecl True False
@@ -564,7 +562,7 @@ pBlockOf p  = Block <$> pBlockOf' (pBlocks p) -- see HACK above
 pBlock :: Parser TT (Exp TT) -> Parser TT (Exp TT)
 pBlock p = pBlockOf' (Block <$> pBlocks' p)
        <|> pEBrace (p `sepBy1` exact [Special ';'] <|> pure [])
-       <|> (Yuck $ Enter "block expected" $ pEmptyBL)
+       <|> (Yuck $ Enter "block expected" pEmptyBL)
 
 -- | Parse something surrounded by (Special '<') and (Special '>')
 pBlockOf' :: Parser TT a -> Parser TT a
@@ -620,8 +618,8 @@ pElem isExpresssion at
   <|> (Yuck $ Enter "incorrectly placed block" $ pBlockOf (pExpr recognizedSometimes)) -- no error token, but the previous keyword will be one. (of, where, ...)
   <|> (PError <$> recoverWith
        (sym $ flip elem $ isNoiseErr at) <*> errTok <*> pEmpty)
-  <|> (PAtom <$> sym (flip notElem (isNotNoise at)) <*> pEmpty)
-  <|> if isExpresssion then (pLet <|> pDo <|> pOf <|> pLambda) else empty
+  <|> (PAtom <$> sym (`notElem` isNotNoise at) <*> pEmpty)
+  <|> if isExpresssion then pLet <|> pDo <|> pOf <|> pLambda else empty
   -- TODO: support type expressions
 
 pTypeExpr at = many (pTypeElem at)
@@ -638,7 +636,7 @@ pTypeElem at
   <|> (Yuck $ Enter "incorrectly placed block" $ pBlockOf (pExpr recognizedSometimes))
   <|> (PError <$> recoverWith
        (sym $ flip elem $ isNoiseErr at) <*> errTok <*> pEmpty)
-  <|> (PAtom <$> sym (flip notElem (isNotNoise at)) <*> pEmpty)
+  <|> (PAtom <$> sym (`notElem` isNotNoise at) <*> pEmpty)
 
 -- | List of things that always should be parsed as errors
 isNoiseErr :: [Token] -> [Token]
@@ -655,19 +653,19 @@ isNotNoise r = recognizedSymbols ++ r
 -- | These symbols are always properly recognized, and therefore they
 -- should never be accepted as "noise" inside expressions.
 recognizedSymbols =
-    [ (Reserved Let)
-    , (Reserved In)
-    , (Reserved Do)
-    , (Reserved Of)
-    , (Reserved Class)
-    , (Reserved Instance)
-    , (Reserved Deriving)
-    , (Reserved Module)
-    , (Reserved Import)
-    , (Reserved Type)
-    , (Reserved Data)
-    , (Reserved NewType)
-    , (Reserved Where)] ++ fmap Special "()[]{}<>."
+    [ Reserved Let
+    , Reserved In
+    , Reserved Do
+    , Reserved Of
+    , Reserved Class
+    , Reserved Instance
+    , Reserved Deriving
+    , Reserved Module
+    , Reserved Import
+    , Reserved Type
+    , Reserved Data
+    , Reserved NewType
+    , Reserved Where] ++ fmap Special "()[]{}<>."
 
 -- | Parse parenthesis, brackets and braces containing
 -- an expression followed by possible comments

@@ -106,9 +106,10 @@ first f (a, c) = (f a, c)
 alexGetByte :: AlexInput -> Maybe (Word8, AlexInput)
 alexGetByte = fmap (first (fromIntegral . ord)) . alexGetChar
 
+{-# ANN alexCollectChar "HLint: ignore Use String" #-}
 alexCollectChar :: AlexInput -> [Char]
 alexCollectChar (_, []) = []
-alexCollectChar (_, (_,c):rest) = c : (alexCollectChar (c,rest))
+alexCollectChar (_, (_,c):rest) = c : alexCollectChar (c,rest)
 
 alexInputPrevChar :: AlexInput -> Char
 alexInputPrevChar (prevChar,_) = prevChar

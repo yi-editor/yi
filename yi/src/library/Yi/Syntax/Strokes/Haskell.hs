@@ -24,7 +24,7 @@ getStrokeMod :: Point -> Point -> Point -> PModuleDecl TT -> Endo [Stroke]
 getStrokeMod point begin _end tm@(PModuleDecl m na e w)
     = pKW tm m <> getStr tkImport point begin _end na
    <> getStrokes' e <> getStrokes' w
-        where getStrokes' r = getStr tkDConst point begin _end r
+        where getStrokes' = getStr tkDConst point begin _end
               pKW b word | isErrN b = paintAtom errorStyle word
                          | otherwise = getStrokes' word
 
@@ -33,14 +33,14 @@ getStrokeImp ::  Point -> Point -> Point -> PImport TT -> Endo [Stroke]
 getStrokeImp point begin _end imp@(PImport m qu na t t')
     = pKW imp m <> paintQu qu
    <> getStr tkImport point begin _end na <> paintAs t  <> paintHi t'
-    where getStrokes' r = getStr tkDConst point begin _end r
+    where getStrokes' = getStr tkDConst point begin _end
           paintAs (Opt (Just (Bin (PAtom n c) tw)))
-              = (one $ (fmap (const keywordStyle) . tokToSpan) n) <> com c
+              = one ((fmap (const keywordStyle) . tokToSpan) n) <> com c
              <> getStr tkImport point begin _end tw
           paintAs a = getStrokes' a
-          paintQu (Opt (Just ((PAtom n c)))) = (one $ (fmap (const keywordStyle) . tokToSpan) n) <> com c
+          paintQu (Opt (Just (PAtom n c))) = one ((fmap (const keywordStyle) . tokToSpan) n) <> com c
           paintQu a = getStrokes' a
-          paintHi (TC (Bin (Bin (PAtom n c) tw) r)) = (one $ (fmap (const keywordStyle) . tokToSpan) n)
+          paintHi (TC (Bin (Bin (PAtom n c) tw) r)) = one ((fmap (const keywordStyle) . tokToSpan) n)
                                              <> com c <> getStr tkImport point begin _end tw
                                              <> getStrokes' r
           paintHi a = getStrokes' a
@@ -50,7 +50,7 @@ getStrokeImp point begin _end imp@(PImport m qu na t t')
 -- | Get strokes for expressions and declarations
 getStr :: (TT -> Endo [Stroke]) -> Point -> Point -> Point -> Exp TT
           -> Endo [Stroke]
-getStr tk point begin _end t0 = getStrokes' t0
+getStr tk point begin _end = getStrokes'
     where getStrokes' :: Exp TT -> Endo [Stroke]
           getStrokes' t@(PImport {}) = getStrokeImp point begin _end t
           getStrokes' t@(PModuleDecl {}) = getStrokeMod point begin _end t
@@ -63,8 +63,8 @@ getStr tk point begin _end t0 = getStrokes' t0
               -- left paren wasn't matched: paint it in red.
               -- note that testing this on the "Paren" node actually forces the parsing of the
               -- right paren, undermining online behaviour.
-              | (posnOfs $ tokPosn $ l) ==
-                    point || (posnOfs $ tokPosn $ r) == point - 1
+              | posnOfs (tokPosn l) ==
+                    point || posnOfs (tokPosn r) == point - 1
                = pStyle hintStyle l <> com c <> getStrokesL g
                       <> pStyle hintStyle r <> com c'
               | otherwise  = tk l <> com c <> getStrokesL g
@@ -96,21 +96,22 @@ ts :: TT -> Stroke
 ts = tokenToStroke
 
 pStyle :: StyleName -> TT -> Endo [Stroke]
-pStyle style = one . (modStroke style) . ts
+pStyle style = one . modStroke style . ts
 
 one :: Stroke -> Endo [Stroke]
 one x = Endo (x :)
 
-paintAtom :: StyleName -> (Exp TT) -> Endo [Stroke]
+paintAtom :: StyleName -> Exp TT -> Endo [Stroke]
 paintAtom col (PAtom a c) = pStyle col a <> com c
 paintAtom _ _ = error "wrong usage of paintAtom"
 
 isErr :: TT -> Bool
 isErr = isErrorTok . tokT
 
-isErrN :: (Foldable v) => (v TT) -> Bool
-isErrN t = (any isErr t)
---         || (not $ null $ isError' t)
+{-# ANN isErrN "HLint: ignore Eta reduce" #-}
+isErrN :: (Foldable v) => v TT -> Bool
+isErrN t = any isErr t
+--         || not $ null $ isError' t
 
 errStyle :: TT -> Endo [Stroke]
 errStyle = pStyle errorStyle
@@ -122,11 +123,11 @@ modStroke :: StyleName -> Stroke -> Stroke
 modStroke f = fmap (f `mappend`)
 
 com :: [TT] -> Endo [Stroke]
-com r = foldMap tkDConst r
+com = foldMap tkDConst
 
 tk' :: (TT -> Bool) -> (TT -> Endo [Stroke]) -> TT -> Endo [Stroke]
 tk' f s t | isErr t = errStyle t
-          | elem (tokT t) (fmap Reserved [As, Qualified, Hiding])
+          | tokT t `elem` fmap Reserved [As, Qualified, Hiding]
             = one $ (fmap (const variableStyle) . tokToSpan) t
           | f t = s t
           | otherwise = one (ts t)

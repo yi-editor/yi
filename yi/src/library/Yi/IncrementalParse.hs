@@ -26,6 +26,6 @@ scanner parser input = Scanner
         updateState0 :: Process token result -> [(st,token)] -> [(State st token result, result)]
         updateState0 _        [] = []
         updateState0 curState toks@((st,tok):rest) = ((st, curState), result) : updateState0 nextState rest
-            where nextState =       evalL $           pushSyms [tok]           $ curState
-                  result    = fst $ evalR $ pushEof $ pushSyms (fmap snd toks) $ curState
+            where nextState =       evalL $           pushSyms [tok]           curState
+                  result    = fst $ evalR $ pushEof $ pushSyms (fmap snd toks) curState
 

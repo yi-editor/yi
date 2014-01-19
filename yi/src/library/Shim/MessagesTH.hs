@@ -62,7 +62,7 @@ mkMessageList = do
   [d| messages = $(listE entries) |]
 
 camelCaseToLisp :: String -> String
-camelCaseToLisp = map toLower . concat . intersperse "-" . splitBy isUpper
+camelCaseToLisp = map toLower . intercalate "-" . splitBy isUpper
 
 -- arity ty | trace (show ty) False = undefined
 arity (AppT ArrowT arg) = 1 + arity arg

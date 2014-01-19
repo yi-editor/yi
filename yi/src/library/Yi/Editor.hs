@@ -16,7 +16,7 @@ import Control.Lens hiding (moveTo)
 import Data.Binary
 import Data.DeriveTH
 import Data.Either (rights)
-import Data.List (nub, delete, (\\), intercalate)
+import Data.List (nub, delete, (\\))
 import Data.Maybe
 import Data.Typeable
 import Data.Default
@@ -207,9 +207,7 @@ deleteBuffer k = do
     >>= \l -> case l of
         1 -> return ()
         _ -> pure (M.lookup k) <*> gets onCloseActions
-                >>= \m_action -> case m_action of
-                    Nothing -> return ()
-                    Just action -> action
+                >>= \m_action -> fromMaybe (return ()) m_action
   -- Now try deleting the buffer. Checking, once again, that it is not the last buffer.
   bs <- gets bufferStack
   ws <- use windowsA
@@ -217,8 +215,8 @@ deleteBuffer k = do
       (b0:nextB:_) -> do
           let pickOther w = if bufkey w == k then w {bufkey = other} else w
               visibleBuffers = fmap bufkey $ toList ws
-              other = head $ (bs \\ visibleBuffers) ++ (delete k bs)
-          when (b0 == k) $ do
+              other = head $ (bs \\ visibleBuffers) ++ delete k bs
+          when (b0 == k) $
               -- we delete the currently selected buffer: the next buffer will become active in
               -- the main window, therefore it must be assigned a new window.
               switchToBufferE nextB
@@ -252,10 +250,7 @@ findBuffer k = gets (M.lookup k . buffers)
 
 -- | Find buffer with this key
 findBufferWith :: BufferRef -> Editor -> FBuffer
-findBufferWith k e =
-    case M.lookup k (buffers e) of
-        Just b  -> b
-        Nothing -> error "Editor.findBufferWith: no buffer has this key"
+findBufferWith k e = fromMaybe (error "Editor.findBufferWith: no buffer has this key") (M.lookup k (buffers e))
 
 
 -- | Find buffer with this name
@@ -298,10 +293,9 @@ withGivenBuffer0 k f = do
 withGivenBufferAndWindow0 :: Window -> BufferRef -> BufferM a -> EditorM a
 withGivenBufferAndWindow0 w k f = do
   accum <- asks configKillringAccumulate
-  (us, v) <- getsAndModify $ (\e ->
+  (us, v) <- getsAndModify (\e ->
                             let b = findBufferWith k e
                                 (v, us, b') = runBufferFull w b f
-
                             in (e {buffers = mapAdjust' (const b') k (buffers e),
                                    killring = (if accum && all updateIsDelete us
                                                then foldl (.) id
@@ -310,7 +304,7 @@ withGivenBufferAndWindow0 w k f = do
                                               (killring e)
                                   }, (us, v)))
   updHandler <- return . bufferUpdateHandler =<< ask
-  unless (null us || null updHandler) $ do
+  unless (null us || null updHandler) $
     forM_ updHandler (\h -> withGivenBufferAndWindow0 w k (h us))
   return v
 
@@ -322,7 +316,7 @@ withBuffer0 f = do
 
 withEveryBufferE :: BufferM a -> EditorM [a]
 withEveryBufferE action =
-    gets bufferStack >>= mapM (flip withGivenBuffer0 action)
+    gets bufferStack >>= mapM (`withGivenBuffer0` action)
 
 currentWindowA :: Lens' Editor Window
 currentWindowA = windowsA . PL.focus
@@ -400,7 +394,7 @@ getDynamic = use (dynamicA . dynamicValueA)
 
 -- | Insert a value into the extensible state, keyed by its type
 setDynamic :: YiVariable a => a -> EditorM ()
-setDynamic x = assign (dynamicA . dynamicValueA) x
+setDynamic = assign (dynamicA . dynamicValueA)
 
 -- | Attach the next buffer in the buffer stack to the current window.
 nextBufW :: EditorM ()
@@ -470,10 +464,10 @@ newWindowE mini bk = newZeroSizeWindow mini bk . WindowRef <$> newRef
 
 -- | Attach the specified buffer to the current window
 switchToBufferE :: BufferRef -> EditorM ()
-switchToBufferE bk = do
+switchToBufferE bk =
     (%=) (windowsA . PL.focus) (\w ->
            w { bufkey = bk,
-               bufAccessList = forceFold1 $ ((bufkey w):) . filter (bk/=) $ bufAccessList w })
+               bufAccessList = forceFold1 $ (bufkey w:) . filter (bk/=) $ bufAccessList w })
 
 -- | Attach the specified buffer to some other window than the current one
 switchToBufferOtherWindowE :: BufferRef -> EditorM ()
@@ -558,13 +552,13 @@ withWindowE w = withGivenBufferAndWindow0 w (bufkey w)
 
 findWindowWith :: WindowRef -> Editor -> Window
 findWindowWith k e =
-    head $ concatMap (\win -> if (wkey win == k) then [win] else []) $ windows e
+    head $ concatMap (\win -> [win | wkey win == k]) $ windows e
 
 -- | Return the windows that are currently open on the buffer whose key is given
 windowsOnBufferE :: BufferRef -> EditorM [Window]
 windowsOnBufferE k = do
   ts <- use tabsA
-  return $ concatMap (concatMap (\win -> if (bufkey win == k) then [win] else []) . (^. tabWindowsA)) ts
+  return $ concatMap (concatMap (\win -> [win | bufkey win == k]) . (^. tabWindowsA)) ts
 
 -- | bring the editor focus the window with the given key.
 --
@@ -588,7 +582,7 @@ focusWindowE k = do
         (False, _, _) -> fail $ "No window with key " ++ show wkey ++ "found. (focusWindowE)"
         (True, tabIndex, winIndex) -> do
             assign tabsA (fromJust $ PL.moveTo tabIndex ts)
-            (%=) windowsA (\ws -> fromJust $ PL.moveTo winIndex ws)
+            (%=) windowsA (fromJust . PL.moveTo winIndex)
 
 -- | Split the current window, opening a second window onto current buffer.
 -- TODO: unfold newWindowE here?
@@ -634,7 +628,7 @@ shrinkWinE = error "shrinkWinE: not implemented"
 
 -- | Sets the given divider position on the current tab
 setDividerPosE :: DividerRef -> DividerPosition -> EditorM ()
-setDividerPosE ref pos = assign (currentTabA . tabDividerPositionA ref) pos
+setDividerPosE ref = assign (currentTabA . tabDividerPositionA ref)
 
 -- | Creates a new tab containing a window that views the current buffer.
 newTabE :: EditorM ()
@@ -665,11 +659,9 @@ moveTab (Just n) = do newTabs <- uses tabsA (PL.moveTo n)
 --   When the last tab is focused, move focus to the left, otherwise
 --   move focus to the right.
 deleteTabE :: EditorM ()
-deleteTabE = (%=) tabsA $ maybe failure id . deleteTab
+deleteTabE = (%=) tabsA $ fromMaybe failure . deleteTab
   where failure = error "deleteTab: cannot delete sole tab"
-        deleteTab tabs = case PL.atEnd tabs of
-                           True ->  PL.deleteLeft tabs
-                           False -> PL.deleteRight tabs
+        deleteTab tabs = if PL.atEnd tabs then PL.deleteLeft tabs else PL.deleteRight tabs
 
 -- | Close the current window. If there is only one tab open and the tab
 -- contains only one window then do nothing.
@@ -677,13 +669,11 @@ tryCloseE :: EditorM ()
 tryCloseE = do
     ntabs <- uses tabsA PL.length
     nwins <- uses windowsA PL.length
-    if ntabs == 1 && nwins == 1
-        then return ()
-        else if nwins == 1
-                -- Could the Maybe response from deleteLeft be used instead of the
-                -- def 'if'?
-                then (%=) tabsA (fromJust . PL.deleteLeft)
-                else (%=) windowsA (fromJust . PL.deleteLeft)
+    unless (ntabs == 1 && nwins == 1) $ if nwins == 1
+      -- Could the Maybe response from deleteLeft be used instead of the
+      -- def 'if'?
+      then (%=) tabsA (fromJust . PL.deleteLeft)
+      else (%=) windowsA (fromJust . PL.deleteLeft)
 
 -- | Make the current window the only window on the screen
 closeOtherE :: EditorM ()
@@ -693,7 +683,7 @@ closeOtherE = (%=) windowsA PL.deleteOthers
 shiftOtherWindow :: MonadEditor m => m ()
 shiftOtherWindow = liftEditor $ do
   len <- uses windowsA PL.length
-  if (len == 1)
+  if len == 1
     then splitE
     else nextWinE
 
@@ -712,7 +702,7 @@ acceptedInputs = do
     cfg <- askCfg
     keymap <- withBuffer0 $ gets (withMode0 modeKeymap)
     let l = I.accepted 3 $ I.mkAutomaton $ extractTopKeymap $ keymap $ defaultKm cfg
-    return $ fmap (intercalate " ") l
+    return $ fmap unwords l
 
 -- | Defines an action to be executed when the current buffer is closed.
 --
@@ -724,8 +714,7 @@ acceptedInputs = do
 -- TODO: All in all, this is a very ugly way to achieve the purpose. The nice way to proceed
 -- is to somehow attach the miniwindow to the window that has spawned it.
 onCloseBufferE :: BufferRef -> EditorM () -> EditorM ()
-onCloseBufferE b a = do
-    (%=) onCloseActionsA $ M.insertWith' (\_ old_a -> old_a >> a) b a
+onCloseBufferE b a = (%=) onCloseActionsA $ M.insertWith' (\_ old_a -> old_a >> a) b a
 
 -- put the template haskell at the end, to avoid 'variable not found' compile errors
 $(derive makeBinary ''TempBufferNameHint)
@@ -743,7 +732,7 @@ addJumpHereE :: EditorM ()
 addJumpHereE = do
     w <- use currentWindowA
     let jl = jumpList w
-    curPoint <- withBuffer0 $ pointB
+    curPoint <- withBuffer0 pointB
     shouldAddJump <- case jl of
         Just (PL.PointedList _ (Jump mark bf) _) -> do
             bfStillAlive <- gets (M.lookup bf . buffers)

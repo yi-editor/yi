@@ -286,17 +286,17 @@ data FBuffer = forall syntax.
         deriving Typeable
 
 
-shortIdentString :: [a] -> FBuffer -> [Char]
+shortIdentString :: [a] -> FBuffer -> String
 shortIdentString prefix b = case b ^. identA of
     Left bName -> "*" ++ bName ++ "*"
-    Right fName -> joinPath $ drop (length prefix) $ splitPath $ fName
+    Right fName -> joinPath $ drop (length prefix) $ splitPath fName
 
-identString :: FBuffer -> [Char]
+identString :: FBuffer -> String
 identString b = case b ^. identA of
     Left bName -> "*" ++ bName ++ "*"
     Right fName -> fName
 
-miniIdentString :: FBuffer -> [Char]
+miniIdentString :: FBuffer -> String
 miniIdentString b = case b ^. identA of
     Right _ -> "MINIFILE:"
     Left bufName -> bufName
@@ -309,7 +309,7 @@ identA = attrsA . identAA
 instance Binary FBuffer where
     put (FBuffer binmode r attributes_) =
       let strippedRaw :: BufferImpl ()
-          strippedRaw = (setSyntaxBI (modeHL emptyMode) r)
+          strippedRaw = setSyntaxBI (modeHL emptyMode) r
       in do
           put (modeName binmode)
           put strippedRaw
@@ -329,7 +329,7 @@ clearSyntax :: FBuffer -> FBuffer
 clearSyntax = modifyRawbuf updateSyntax
 
 modifyRawbuf :: (forall syntax. BufferImpl syntax -> BufferImpl syntax) -> FBuffer -> FBuffer
-modifyRawbuf f (FBuffer f1 f2 f3) = (FBuffer f1 (f f2) f3)
+modifyRawbuf f (FBuffer f1 f2 f3) = FBuffer f1 (f f2) f3
 
 queryAndModifyRawbuf :: (forall syntax. BufferImpl syntax -> (BufferImpl syntax,x)) ->
                      FBuffer -> (FBuffer, x)
@@ -365,7 +365,7 @@ updateTransactionInFlightA = attrsA . updateTransactionInFlightAA
 updateTransactionAccumA :: Lens' FBuffer [Update]
 updateTransactionAccumA = attrsA . updateTransactionAccumAA
 
-file :: FBuffer -> (Maybe FilePath)
+file :: FBuffer -> Maybe FilePath
 file b = case b ^. identA of
     Right f -> Just f
     _ -> Nothing
@@ -485,7 +485,7 @@ instance Show FBuffer where
 --
 
 getModeLine :: [String] -> BufferM String
-getModeLine prefix = withModeB (\m -> (modeModeLine m) prefix)
+getModeLine prefix = withModeB (`modeModeLine` prefix)
 
 defaultModeLine :: [String] -> BufferM String
 defaultModeLine prefix = do
@@ -498,11 +498,10 @@ defaultModeLine prefix = do
     ro <-use readOnlyA
     modeNm <- gets (withMode0 modeName)
     unchanged <- gets isUnchangedBuffer
-    let pct = if (pos == 0) || (s == 0)
-                then " Top"
-                else if (pos == s)
-                  then " Bot"
-                else getPercent p s
+    let pct
+          | pos == 0 || s == 0 = " Top"
+          | pos == s = " Bot"
+          | otherwise = getPercent p s
         chg = if unchanged then "-" else "*"
         roStr = if ro  then "%" else chg
         hexChar = "0x" ++ padString 2 '0' (Numeric.showHex (Data.Char.ord curChar) "")
@@ -552,7 +551,7 @@ delOverlayB ov = do
   modifyBuffer $ delOverlayBI ov
 
 delOverlayLayerB :: OvlLayer -> BufferM ()
-delOverlayLayerB l = do
+delOverlayLayerB l =
   modifyBuffer $ delOverlayLayer l
 
 -- | Execute a @BufferM@ value on a given buffer and window.  The new state of
@@ -662,7 +661,7 @@ redoB = do
 -- | Analogous to const, but returns a function that takes two parameters,
 -- rather than one.
 const2 :: t -> t1 -> t2 -> t
-const2 x = \_ _ -> x
+const2 x _ _ = x
 
 -- | Mode applies function that always returns True.
 modeAlwaysApplies :: FilePath -> String -> Bool
@@ -782,8 +781,8 @@ applyUpdate update = do
 
         isTransacPresent <- use updateTransactionInFlightA
         if isTransacPresent
-        then (%=) updateTransactionAccumA $ (reversed:)
-        else (%=) undosA $ addChangeU $ AtomicChange $ reversed
+        then (%=) updateTransactionAccumA (reversed:)
+        else (%=) undosA $ addChangeU $ AtomicChange reversed
 
         tell [update]
    -- otherwise, just ignore.
@@ -818,7 +817,7 @@ insertNAt' rope pnt = applyUpdate (Insert pnt Forward rope)
 
 -- | Insert the list at specified point, extending size of buffer
 insertNAt :: String -> Point -> BufferM ()
-insertNAt cs pnt = insertNAt' (R.fromString cs) pnt
+insertNAt cs = insertNAt' (R.fromString cs)
 
 -- | Insert the list at current point, extending size of buffer
 insertN :: String -> BufferM ()
@@ -865,7 +864,7 @@ gotoLn x = do moveTo 0
 ---------------------------------------------------------------------
 
 setMode0 :: forall syntax. Mode syntax -> FBuffer -> FBuffer
-setMode0 m (FBuffer _ rb at) = (FBuffer m (setSyntaxBI (modeHL m) rb) at)
+setMode0 m (FBuffer _ rb at) = FBuffer m (setSyntaxBI (modeHL m) rb) at
 
 modifyMode0 :: (forall syntax. Mode syntax -> Mode syntax) -> FBuffer -> FBuffer
 modifyMode0 f (FBuffer m rb f3) = FBuffer m' (setSyntaxBI (modeHL m') rb) f3
@@ -897,9 +896,7 @@ withMode0 f FBuffer {bmode = m} = f m
 
 
 withModeB :: (forall syntax. Mode syntax -> BufferM a) -> BufferM a
-withModeB f = do
-    act <- gets (withMode0 f)
-    act
+withModeB f = join (gets (withMode0 f))
 
 withSyntax0 :: (forall syntax. Mode syntax -> syntax -> a) -> WindowRef -> FBuffer -> a
 withSyntax0 f wk (FBuffer bm rb _attrs) = f bm (getAst wk rb)
@@ -1032,11 +1029,11 @@ savingPrefCol f = do
 
 -- | Move point up one line
 lineUp :: BufferM ()
-lineUp = lineMoveRel (-1) >> return ()
+lineUp = void (lineMoveRel (-1))
 
 -- | Move point down one line
 lineDown :: BufferM ()
-lineDown = lineMoveRel 1 >> return ()
+lineDown = void (lineMoveRel 1)
 
 -- | Return the contents of the buffer as a list
 elemsB :: BufferM String

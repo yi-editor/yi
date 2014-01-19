@@ -10,7 +10,7 @@ import Shim.Utils
 import SrcLoc
 import ErrUtils ( Severity(..) )
 import FastString
-import Directory
+import System.Directory
 
 import Control.Monad.State
 import System.FilePath ( (</>) )
@@ -45,7 +45,7 @@ fuzzyCompleteIdentifier filename name = do
 simpleCompleteIdentifier :: FilePath -> String -> SHM (Response ([String], String))
 simpleCompleteIdentifier filename name = do
   l <- map fst `fmap` Hsinfo.findIdPrefix filename name
-  retVal $ (l, commonPrefix l)
+  retVal (l, commonPrefix l)
 
 bufferNeedsPreprocessing :: FilePath -> String -> SHM (Response [Bool])
 bufferNeedsPreprocessing filename source = do
@@ -87,7 +87,7 @@ retVal = return . Response
 
 encodeSrcLoc :: SrcLoc -> SHM Se
 encodeSrcLoc srcLoc
-  | isGoodSrcLoc srcLoc = do projectDir <- io $ Directory.getCurrentDirectory
+  | isGoodSrcLoc srcLoc = do projectDir <- io Directory.getCurrentDirectory
                              let filename0 = unpackFS $ srcLocFile srcLoc
                                  filename = case filename0 of
                                               ('/':_) -> filename0

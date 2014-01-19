@@ -1,6 +1,5 @@
-{-# LANGUAGE DeriveDataTypeable, FlexibleContexts, FlexibleInstances,
-     FunctionalDependencies, GeneralizedNewtypeDeriving,
-     MultiParamTypeClasses, TypeSynonymInstances #-}
+{-# LANGUAGE FlexibleContexts, FlexibleInstances,
+    MultiParamTypeClasses, TypeSynonymInstances #-}
 
 module Yi.Scion where
 
@@ -96,7 +95,7 @@ thingAtPoint (line,col) fname tcm = do
       --return (Just (O.showSDoc (O.ppr $ S.toList r)))
       unqual <- unqualifiedForModule tcm
       case pathToDeepest r of
-        Nothing -> return ("no info")
+        Nothing -> return "no info"
         Just (x,xs) ->
           --return $ Just (O.showSDoc (O.ppr x O.$$ O.ppr xs))
           case typeOf (x,xs) of
@@ -106,6 +105,7 @@ thingAtPoint (line,col) fname tcm = do
                     pprTypeForUser True t)
             _ -> return $ O.showSDocDebug (O.ppr x O.$$ O.ppr xs )
 
+{-# ANN runScionWithLocation "HLint: ignore Redundant do" #-}
 runScionWithLocation :: Show a => ((Int, Int) -> String -> ScionM a) -> YiM a
 runScionWithLocation f = do
   (pt, fn) <- withEditor $ withBuffer0 $ do

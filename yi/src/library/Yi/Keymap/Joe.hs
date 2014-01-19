@@ -36,11 +36,11 @@ klist = choice [
     "\^E"  ++> moveToSol,
     "\^B"  ++> leftB,
     "\^F"  ++> rightB,
-    "\^P"  ++> (execB Move VLine Backward),
-    "\^N"  ++> (execB Move VLine Forward),
+    "\^P"  ++> execB Move VLine Backward,
+    "\^N"  ++> execB Move VLine Forward,
     "\^U"  ++> upScreenB,
     "\^V"  ++> downScreenB,
-    "\^D"  ++> (deleteN 1),
+    "\^D"  ++> deleteN 1,
     "\BS"  ++> bdeleteB,
     "\^J"  ++> killLineE,
     "\^[J" ++> (moveToSol >> killLineE),
@@ -141,8 +141,7 @@ simpleq prompt initialValue act = do
 echoMode :: String -> String -> JoeProc (Maybe String)
 echoMode prompt initialValue = do
   write (logPutStrLn "echoMode")
-  result <- lineEdit initialValue
-  return result
+  lineEdit initialValue
     where lineEdit s =
               do write $ msgEditor (prompt ++ s)
                  choice [satisfy isEnter >> return (Just s),

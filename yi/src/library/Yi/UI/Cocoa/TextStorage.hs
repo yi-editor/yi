@@ -1,3 +1,4 @@
+{-# ANN module "HLint: ignore Use camelCase" #-}
 {-# LANGUAGE TemplateHaskell, EmptyDataDecls, MultiParamTypeClasses,
              FlexibleInstances, TypeSynonymInstances,
              DeriveDataTypeable, Rank2Types #-}
@@ -26,6 +27,7 @@ import Yi.UI.Utils
 import Yi.Window
 
 import Control.Arrow
+import Control.Monad (liftM,unless)
 
 import Data.Char
 import Data.Maybe
@@ -113,8 +115,8 @@ encodeUTF16 :: Int -> [Unichar]
 encodeUTF16 c
   | c < 0x10000 = [fromIntegral c]
   | otherwise   = let c' = c - 0x10000
-                  in [0xd800 .|. (fromIntegral $ c' `shiftR` 10),
-                      0xdc00 .|. (fromIntegral $ c' .&. 0x3ff)]
+                  in [0xd800 .|. fromIntegral (c' `shiftR` 10),
+                      0xdc00 .|. fromIntegral (c' .&. 0x3ff)]
 
 -- Introduce a NSString subclass that has a Data.Rope internally.
 -- A NSString subclass needs to implement length and characterAtIndex,
@@ -132,11 +134,13 @@ $(exportClass "YiRope" "yirope_" [
   , InstanceMethod 'getCharactersRange -- '
   ])
 
+{-# ANN yirope_length "HLint: ignore Redundant do" #-}
 yirope_length :: YiRope () -> IO CUInt
 yirope_length slf = do
   -- logPutStrLn $ "Calling yirope_length (gah...)"
-  slf #. _str >>= return . fromIntegral . sLength
+  liftM (fromIntegral . sLength) (slf #. _str)
 
+{-# ANN yirope_characterAtIndex "HLint: ignore Redundant do" #-}
 yirope_characterAtIndex :: CUInt -> YiRope () -> IO Unichar
 yirope_characterAtIndex i slf = do
   -- logPutStrLn $ "Calling yirope_characterAtIndex " ++ show i
@@ -144,6 +148,7 @@ yirope_characterAtIndex i slf = do
     s'@(SplitRope _ _ _ (c:_) _) <- return (sSplitAt (fromIntegral i) s)
     return (s', c)
 
+{-# ANN yirope_getCharactersRange "HLint: ignore Redundant do" #-}
 yirope_getCharactersRange :: Ptr Unichar -> NSRange -> YiRope () -> IO ()
 yirope_getCharactersRange p _r@(NSRange i l) slf = do
   -- logPutStrLn $ "Calling yirope_getCharactersRange " ++ show r
@@ -178,7 +183,7 @@ dropStrokesWhile f = helper
   where
     helper [] = []
     helper [_] = []
-    helper ~(x:y:zs) = if f y then helper (y:zs) else (x:y:zs)
+    helper ~(x:y:zs) = if f y then helper (y:zs) else x:y:zs
 
 attributeIsCached :: CUInt -> [PicStroke] -> Bool
 attributeIsCached _ [] = False
@@ -227,6 +232,7 @@ _window      o = (\ (_,_,x,_,_) -> x) <$>  o #. _yiState
 _uiStyle     o = (\ (_,_,_,x,_) -> x) <$>  o #. _yiState
 _stringCache o = (\ (_,_,_,_,x) -> x) <$>  o #. _yiState
 
+{-# ANN yts_length "HLint: ignore Redundant do" #-}
 yts_length :: YiTextStorage () -> IO CUInt
 yts_length slf = do
   -- logPutStrLn "Calling yts_length "
@@ -252,12 +258,12 @@ yts_attributesAtIndexLongestEffectiveRangeInRange i er rl@(NSRange il _) slf = d
   -- check to ensure that we do not re-read the window all the time...
   let use_i = if prev_rl == rl then i else il
   -- logPutStrLn $ "yts_attributesAtIndexLongestEffectiveRangeInRange " ++ show i ++ " " ++ show rl
-  full <- extendPicture use_i (flip storagePicture slf) cache
+  full <- extendPicture use_i (`storagePicture` slf) cache
   returnEffectiveRange full i er rl slf
 
 returnEffectiveRange :: Picture -> CUInt -> NSRangePointer -> NSRange -> YiTextStorage () -> IO (NSDictionary ())
 returnEffectiveRange full i er rl@(NSRange il ll) slf = do
-  pic <- return $ dropStrokesWhile ((fromIntegral i >=) . fst) full
+  let pic = dropStrokesWhile ((fromIntegral i >=) . fst) full
   slf # setIVar _pictureCache (pic, rl)
   case pic of
     (before,s):rest@((next,_):_) -> do
@@ -267,7 +273,7 @@ returnEffectiveRange full i er rl@(NSRange il ll) slf = do
       -- Keep a cache of seen styles... usually, there should not be to many
       -- TODO: Have one centralized cache instead of one per text storage...
       dict <- slf # cachedDictionaryFor s
-      if (nsMaxRange rng == begin)
+      if nsMaxRange rng == begin
         then return dict
         else do
           str <- yts_string slf
@@ -298,7 +304,7 @@ returnEffectiveRange full i er rl@(NSRange il ll) slf = do
     _ -> error "Empty picture?"
 
 cachedDictionaryFor :: Attributes -> YiTextStorage () -> IO (NSDictionary ())
-cachedDictionaryFor s slf = do
+cachedDictionaryFor s slf =
   slf # modifyIVar _dictionaryCache (\dicts ->
     case M.lookup s dicts of
       Just dict -> return (dicts, dict)
@@ -318,6 +324,7 @@ simpleAttr "NSLink"           = Right <$> return nil
 simpleAttr "NSParagraphStyle" = Right <$> castObject <$> defaultParagraphStyle _NSParagraphStyle
 simpleAttr attr               = Left <$> return attr
 
+{-# ANN yts_attributeAtIndexLongestEffectiveRangeInRange "HLint: ignore Redundant do" #-}
 yts_attributeAtIndexLongestEffectiveRangeInRange :: NSString t -> CUInt -> NSRangePointer -> NSRange -> YiTextStorage () -> IO (ID ())
 yts_attributeAtIndexLongestEffectiveRangeInRange attr i er rn slf = do
   sres <- simpleAttr =<< haskellString attr
@@ -331,6 +338,7 @@ yts_attributeAtIndexLongestEffectiveRangeInRange attr i er rn slf = do
       -- logPutStrLn $ "Unoptimized yts_attributeAtIndexLongestEffectiveRangeInRange " ++ attr' ++ " at " ++ show i
       super slf # attributeAtIndexLongestEffectiveRangeInRange attr i er rn
 
+{-# ANN yts_attributeAtIndexEffectiveRange "HLint: ignore Redundant do" #-}
 yts_attributeAtIndexEffectiveRange :: forall t. NSString t -> CUInt -> NSRangePointer -> YiTextStorage () -> IO (ID ())
 yts_attributeAtIndexEffectiveRange attr i er slf = do
   sres <- simpleAttr =<< haskellString attr
@@ -383,7 +391,7 @@ storagePicture i slf = do
 bufferPicture :: Editor -> UIStyle -> FBuffer -> Window -> CUInt -> Picture
 bufferPicture ed sty buf win i = fmap (first fromIntegral) $ fst $ runBuffer win buf $ do
   e <- sizeB
-  (attributesPictureB sty (currentRegex ed) (mkRegion (fromIntegral i) e) [])
+  attributesPictureB sty (currentRegex ed) (mkRegion (fromIntegral i) e) []
 
 type TextStorage = YiTextStorage ()
 initializeClass_TextStorage :: IO ()
@@ -423,7 +431,7 @@ setTextStorageBuffer ed buf storage = do
   flip (modifyIVar_ _yiState) storage $ \ (_,_,w,sty,s) -> do
     s # setIVar _str (mkSplitRope R.empty (runBufferDummyWindow buf (streamB Forward 0)))
     return (ed, buf, w, sty, s)
-  when (not $ null $ getVal pendingUpdatesA buf) $ do
+  unless (null $ getVal pendingUpdatesA buf) $ do
     mapM_ (applyUpdate storage buf) [u | TextUpdate u <- getVal pendingUpdatesA buf]
     storage # setIVar _pictureCache emptyPicture
   storage # endEditing

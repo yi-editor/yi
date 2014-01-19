@@ -27,13 +27,13 @@ data History = History {_historyCurrent :: Int,
 
     deriving (Show, Typeable)
 instance Default History where
-    def = (History (-1) [] "")
+    def = History (-1) [] ""
 $(derive makeBinary ''History)
 
 instance YiVariable (M.Map String History)
 
 dynKeyA :: (Default v, Ord k) => k -> Lens' (M.Map k v) v
-dynKeyA key = lens (M.findWithDefault def key) (\m v -> M.insert key v m)
+dynKeyA key = lens (M.findWithDefault def key) (flip (M.insert key))
 
 miniBuffer :: String
 miniBuffer = "minibuffer"
@@ -71,7 +71,7 @@ historyFind cont len cur delta pref =
   case (next < 0, next >= len) of
     (True,_) -> next
     (_,True) -> next
-    (_,_) -> if isPrefixOf pref (cont !! next)
+    (_,_) -> if pref `isPrefixOf` (cont !! next)
       then next
       else historyFind cont len cur deltaLarger pref
   where
@@ -99,7 +99,7 @@ historyMoveGen ident delta getCurValue = do
          return nextValue
 
 historyPrefixSet :: String -> EditorM ()
-historyPrefixSet pref = historyPrefixSet' miniBuffer pref
+historyPrefixSet = historyPrefixSet' miniBuffer
 
 historyPrefixSet' :: String -> String -> EditorM ()
 historyPrefixSet' ident pref = do

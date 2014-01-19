@@ -30,10 +30,10 @@ parse = Common.parse $ do
 quit :: Bool -> Bool -> Bool -> ExCommand
 quit w f a = Common.impureExCommand {
     cmdShow = concat
-        [ (if w then "w" else "")
+        [ if w then "w" else ""
         , "quit"
-        , (if a then "all" else "")
-        , (if f then "!" else "")
+        , if a then "all" else ""
+        , if f then "!" else ""
         ]
   , cmdAction = YiA $ action w f a
   }

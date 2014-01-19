@@ -54,7 +54,7 @@ import Yi.Keymap.Vim2.StyledRegion
 data Move = Move {
     moveStyle :: !RegionStyle
   , moveIsJump :: !Bool
-  , moveAction :: (Maybe Int -> BufferM ())
+  , moveAction :: Maybe Int -> BufferM ()
   }
 
 data CountedMove = CountedMove !(Maybe Int) !Move

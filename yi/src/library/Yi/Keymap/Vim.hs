@@ -265,15 +265,16 @@ savingDeleteB action = do
       endP   = viEndPos ins0
       beginP = viBeginPos ins0
       shrinkEndPos = viEndPosA %~ (-~ diff)
-      ins1 =
-        if oldP >= beginP && oldP <= endP then
+      ins1
+        | oldP >= beginP && oldP <= endP =
           if newP > endP then
-            viActAfterA  %~ (>> action) $ ins0 { viEndPos = newP }
-          else if newP < beginP then
-            viActBeforeA %~ (>> action) $ shrinkEndPos $ ins0 { viBeginPos = newP }
-          else shrinkEndPos ins0
-        else if newP > oldP then viActAfterA  %~ (>> action) $ emptyViIns newP
-                            else viActBeforeA %~ (>> action) $ emptyViIns newP
+            viActAfterA %~ (>> action) $ ins0{viEndPos = newP} else
+            if newP < beginP then
+              viActBeforeA %~ (>> action) $
+                shrinkEndPos $ ins0{viBeginPos = newP}
+              else shrinkEndPos ins0
+        | newP > oldP = viActAfterA %~ (>> action) $ emptyViIns newP
+        | otherwise = viActBeforeA %~ (>> action) $ emptyViIns newP
 
   assign currentViInsertionA $ Just ins1
 
@@ -331,8 +332,8 @@ viMove (SeqMove move1 move2)         = viMove move1 >> viMove move2
 viMove (Replicate     move i)        = viReplicateMove move i
 
 viReplicateMove :: ViMove -> Int -> BufferM ()
-viReplicateMove (Move VLine Forward)  i = lineMoveRel i >> return ()
-viReplicateMove (Move VLine Backward) i = lineMoveRel (-i) >> return ()
+viReplicateMove (Move VLine Forward)  i = void (lineMoveRel i)
+viReplicateMove (Move VLine Backward) i = void (lineMoveRel (-i))
 viReplicateMove (CharMove Forward)    i = moveXorEol i
 viReplicateMove (CharMove Backward)   i = moveXorSol i
 viReplicateMove (Replicate move j)    i = viReplicateMove move (i * j)
@@ -361,7 +362,7 @@ keymapSet = mkKeymap defKeymap
 
 nilCmd :: VimExCmd
 nilCmd = VimExCmd { cmdNames   = []
-                  , cmdFn      = (return . const ())
+                  , cmdFn      = return . const ()
                   , completeFn = Nothing}
 
 exCmd :: String -> (String -> YiM ()) -> Maybe (String -> YiM ()) -> VimExCmd
@@ -373,7 +374,7 @@ exCmds :: [(String, String->YiM (), Maybe (String -> YiM ()))] -> VimExCmdMap
 exCmds = map $ uncurry3 exCmd
 
 ignoreExCmd :: String -> String
-ignoreExCmd = dropWhile (isSpace) . dropWhile (not . isSpace)
+ignoreExCmd = dropWhile isSpace . dropWhile (not . isSpace)
 
 exSimpleComplete :: (String -> YiM [String]) -> String -> YiM ()
 exSimpleComplete compl s' = simpleComplete compl s >>=
@@ -383,11 +384,11 @@ exSimpleComplete compl s' = simpleComplete compl s >>=
 exInfixComplete' :: Bool -> (String -> YiM [String]) -> String -> YiM ()
 exInfixComplete' caseSensitive compl s' = do
     cs <- infixComplete' caseSensitive compl s
-    when (not $ null cs)
-         (withBuffer $ do
-              leftN (length s)
-              deleteToEol
-              insertN cs)
+    unless (null cs)
+        (withBuffer $ do
+            leftN (length s)
+            deleteToEol
+            insertN cs)
    where s = dropWhile isSpace s'
 
 exInfixComplete :: (String -> YiM [String]) -> String -> YiM ()
@@ -413,7 +414,7 @@ mkExHistComplete matchFn compl s =
     mkWordComplete (return s) compl (withEditor . printMsgs . tail) matchFn >>=
     (withBuffer . (testDeleteB >> ) . insertN)
   where
-    testDeleteB = if null s then return () else deleteWordB
+    testDeleteB = unless (null s) deleteWordB
     deleteWordB = deleteUnitB unitSep Backward
 
 exHistComplete' :: Bool -> (String -> YiM [String]) -> String -> YiM ()
@@ -543,7 +544,7 @@ defKeymap = Proto template
                     gotoFNS n = gotoLn n >> firstNonSpaceB
 
      -- | movement commands (with exclusive cut/yank semantics)
-     moveCmdFM_exclusive :: [(Event, (Int -> ViMove))]
+     moveCmdFM_exclusive :: [(Event, Int -> ViMove)]
      moveCmdFM_exclusive =
          -- left/right
          [(char 'h',    left)
@@ -577,11 +578,11 @@ defKeymap = Proto template
              right = Replicate $ CharMove Forward
              sol   = Replicate viMoveToSol
              eol   = ArbMove . viMoveToNthEol
-             jumpF = \unit -> Replicate $ GenMove unit (Backward,InsideBound) Forward
-             jumpB = \unit -> Replicate $ Move unit Backward
+             jumpF unit = Replicate $ GenMove unit (Backward,InsideBound) Forward
+             jumpB unit = Replicate $ Move unit Backward
 
      -- | movement *multi-chars* commands (with exclusive cut/yank semantics)
-     moveCmdS_exclusive :: [([Event], (Int -> ViMove))]
+     moveCmdS_exclusive :: [([Event], Int -> ViMove)]
      moveCmdS_exclusive =
          [(map char "[(", Replicate $ ArbMove (goUnmatchedB Backward '(' ')'))
          ,(map char "[{", Replicate $ ArbMove (goUnmatchedB Backward '{' '}'))
@@ -597,13 +598,13 @@ defKeymap = Proto template
              down = Replicate (Move VLine Forward)
 
      -- | movement commands (with inclusive cut/yank semantics)
-     moveCmdFM_inclusive :: [(Event, (Int -> ViMove))]
+     moveCmdFM_inclusive :: [(Event, Int -> ViMove)]
      moveCmdFM_inclusive =
          [(char 'e',     Replicate $ GenMove unitViWord (Forward, InsideBound) Forward)
          ,(char 'E',     Replicate $ GenMove unitViWORD (Forward, InsideBound) Forward)]
 
      -- | movement *multi-chars* commands (with inclusive cut/yank semantics)
-     moveCmdS_inclusive :: [(String, (Int -> ViMove))]
+     moveCmdS_inclusive :: [(String, Int -> ViMove)]
      moveCmdS_inclusive =
          [("ge", Replicate $ GenMove unitViWord (Forward, InsideBound) Backward)
          ,("gE", Replicate $ GenMove unitViWORD (Forward, InsideBound) Backward)
@@ -669,7 +670,7 @@ defKeymap = Proto template
          pattern bounded' w = case bounded' of
              Bounded   -> boundedPattern w
              Unbounded -> w
-         boundedPattern x = "\\<" ++ (regexEscapeString x) ++ "\\>"
+         boundedPattern x = "\\<" ++ regexEscapeString x ++ "\\>"
 
      gotoPrevTagMark :: Int -> YiM ()
      gotoPrevTagMark cnt = do
@@ -804,7 +805,7 @@ defKeymap = Proto template
              where mayMove :: BufferM () -> Maybe Int -> BufferM ()
                    mayMove scroll cnt = do
                       case cnt of
-                         Just n -> gotoLn n >> return ()
+                         Just n -> void (gotoLn n)
                          Nothing -> return ()
                       scroll
                    mmGoFNS scroll = mayMove (scroll >> firstNonSpaceB)
@@ -844,7 +845,7 @@ defKeymap = Proto template
                                   swpRsOrIncl _         = Exclusive
 
      -- | operator (i.e. movement-parameterised) actions
-     operators :: [((String->String), (String->String), Char, (Int -> RegionStyle -> Region -> EditorM ()))]
+     operators :: [(String -> String, String -> String, Char, Int -> RegionStyle -> Region -> EditorM ())]
      operators = [ (id, id, 'd', const $ \s r -> cutRegion s r >> withBuffer0 leftOnEol)
                  , (id, id, 'y', const $ nonBlockRegion "y" yankRegion)
                  , (id, id, '=', const $ mapRegions_ indentRegion)
@@ -925,7 +926,7 @@ defKeymap = Proto template
 
      yank :: RegionStyle -> ViMove -> EditorM ()
      yank regionStyle move =
-       yankRegion regionStyle =<< (withBuffer0' $ regionOfViMove move regionStyle)
+       yankRegion regionStyle =<< withBuffer0' (regionOfViMove move regionStyle)
 
      cutRegion :: RegionStyle -> Region -> EditorM ()
      cutRegion Block region = do withBuffer0' $ mapM_ deleteRegionB =<< reverse <$> blockifyRegion region
@@ -1000,7 +1001,7 @@ defKeymap = Proto template
                   ,char 'V'  ?>> change_vis_mode selStyle LineWise
                   ,char 'v'  ?>> change_vis_mode selStyle Inclusive
                   ,ctrlCh 'v'?>> change_vis_mode selStyle Block
-                  ,char ':'  ?>>! (exMode self) ":'<,'>"
+                  ,char ':'  ?>>! exMode self ":'<,'>"
                   ,char 'p'  ?>>! pasteOverSelection -- TODO repeat
                   ,char 'x'  ?>>! (cutSelection >> withBuffer0 leftOnEol) -- TODO repeat
                   ,char 's'  ?>> beginIns self (cutSelection >> withBuffer0 (setVisibleSelection False)) -- TODO repeat
@@ -1020,7 +1021,7 @@ defKeymap = Proto template
      --
      cmd2other :: VimMode
      cmd2other =
-         choice [char ':'     ?>>! (exMode self) ":",
+         choice [char ':'     ?>>! exMode self ":",
                  char 'v'     ?>> vis_mode Inclusive,
                  char 'V'     ?>> vis_mode LineWise,
                  ctrlCh 'v'   ?>> vis_mode Block, -- one use VLine for block mode
@@ -1039,8 +1040,8 @@ defKeymap = Proto template
                  char 'C'     ?>> change NoMove Exclusive viMoveToEol, -- alias of "c$"
                  char 'S'     ?>> change viMoveToSol LineWise viMoveToEol, -- alias of "cc" TODO update
                  char 's'     ?>> change NoMove Exclusive (CharMove Forward), -- non-linewise alias of "cl"
-                 char '/'     ?>>! (exMode self) "/",
-                 char '?'     ?>>! (exMode self) "?",
+                 char '/'     ?>>! exMode self "/",
+                 char '?'     ?>>! exMode self "?",
                  leave,
                  spec KIns    ?>> ins_mode self]
 
@@ -1096,8 +1097,8 @@ TODO: use or remove
                 ,oneOf (map char "xX") >> g [hex,hex] "0x"
                 -- NP: I don't get why this does not work (ex typing "i<CTRL-Q>u3b1.")
                 -- ,char 'u' ?>> f (hex `upTo` 4) "0x"
-                ,char 'u' ?>> f (sequence $ replicate 4 hex) "0x"
-                ,char 'U' ?>> f (sequence $ replicate 8 hex) "0x"]
+                ,char 'u' ?>> f (replicateM 4 hex) "0x"
+                ,char 'U' ?>> f (replicateM 8 hex) "0x"]
        where dec = charOf id '0' '9'
              oct = charOf id '0' '7'
              hex = charOf id '0' '9' <|> charOf id 'a' 'f' <|> charOf id 'A' 'F'
@@ -1117,8 +1118,8 @@ TODO: use or remove
               ,spec KHome     ?>>! moveToSol
               ,spec KDel      ?>>! savingDeleteCharB Forward
               ,spec KEnter    ?>>! savingInsertCharB '\n'
-              ,(ctrl $ spec KLeft)  ?>>! moveB unitViWORD Backward
-              ,(ctrl $ spec KRight) ?>>! genMoveB unitViWORD (Backward,InsideBound) Forward
+              ,ctrl (spec KLeft)  ?>>! moveB unitViWORD Backward
+              ,ctrl (spec KRight) ?>>! genMoveB unitViWORD (Backward,InsideBound) Forward
               ,ctrlCh 'j'     ?>>! savingInsertCharB '\n'
               ,ctrlCh 'm'     ?>>! savingInsertCharB '\r'
               ,spec KTab      ?>>! mapM_ insrepB =<< tabB
@@ -1202,7 +1203,7 @@ exMode self prompt = do
           <|| standardMovementBindings
           <|| (insertChar >>! setHistoryPrefix)
       actionAndHistoryPrefix act = do
-        void $ withBuffer0 $ act
+        void $ withBuffer0 act
         setHistoryPrefix
       setHistoryPrefix = do
         ls <- withEditor . withBuffer0 $ elemsB
@@ -1461,7 +1462,7 @@ exEval self cmd =
 --    Needs to occur in another buffer
 --    fn ('!':f) = runProcessWithInput f []
 
-      fn "reload"     = reload >> return ()    -- not in vim
+      fn "reload"     = void reload    -- not in vim
 
       fn "redr"       = userForceRefresh
       fn "redraw"     = userForceRefresh
@@ -1474,7 +1475,7 @@ exEval self cmd =
       fn "redo"       = withBuffer' redoB
 
       fn ('c':'d':' ':f) = io . setCurrentDirectory . dropSpace $ f
-      fn "pwd"        = (io $ getCurrentDirectory) >>= withEditor . printMsg
+      fn "pwd"        = io getCurrentDirectory >>= withEditor . printMsg
 
       fn "sus"        = suspendEditor
       fn "suspend"    = suspendEditor
@@ -1487,7 +1488,7 @@ exEval self cmd =
       fn ('!':s)         = shellCommandV s
       fn ('y':'i':' ':s) = execEditorAction $ dropSpace s
 
-      fn "hoogle-word" = hoogle >> return ()
+      fn "hoogle-word" = void hoogle
       fn "hoogle-search" = hoogleSearch
       fn "h"          = help
       fn "help"       = help
@@ -1553,7 +1554,7 @@ viFnewE f = void (editFile $ dropSpace f)
 viSearch :: String -> [SearchOption] -> Direction -> EditorM ()
 viSearch needle searchOptions dir = do
   r <- doSearch (if null needle then Nothing else Just needle) searchOptions dir
-  when (dir == Backward) $ do
+  when (dir == Backward) $
     -- move cursor so that it stands on the last character of search term
     -- enabling user to continue searching with # or * after #
     withBuffer0' $ viMove (CharMove Backward)
@@ -1571,7 +1572,7 @@ viSub cs unit = do
                         []     -> ([],[])
                         (_:ds) -> case break (== '/') ds of
                                     (rep'', [])    -> (rep'', [])
-                                    (rep'', (_:fs)) -> (rep'',fs)
+                                    (rep'', _:fs) -> (rep'',fs)
     case opts of
         []    -> do_single pat rep False
         ['g'] -> do_single pat rep True

@@ -40,7 +40,7 @@ instance Ref IORef where
 instance Ref MVar where
     readRef r = liftIO $ readMVar r
     writeRef r x = liftIO $ putMVar r x
-    modifyRef r f = liftIO $ modifyMVar_ r (\x -> return (f x))
+    modifyRef r f = liftIO $ modifyMVar_ r (return . f)
 
 modifiesRef :: (Ref ref, MonadReader r m, MonadIO m) => (r -> ref a) -> (a -> a) -> m ()
 modifiesRef f g = do
@@ -78,10 +78,10 @@ maybeM f (Just x) = f x
 repeatUntilM :: Monad m => m (Bool,a) -> m [a]
 repeatUntilM m = do
   (proceed,x) <- m
-  case proceed of
-    False -> return [x]
-    True -> do xs <- repeatUntilM m
-               return (x:xs)
+  if proceed 
+    then (do xs <- repeatUntilM m 
+             return (x:xs))
+    else return [x]
 
 -- uses :: MonadState s m => Accessor s p -> (p -> a) -> m a
 -- uses a f = gets (f . getVal a)

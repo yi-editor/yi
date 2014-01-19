@@ -1,4 +1,4 @@
-{-# LANGUAGE ScopedTypeVariables, ExistentialQuantification, GeneralizedNewtypeDeriving, MultiParamTypeClasses #-}
+{-# LANGUAGE ScopedTypeVariables, ExistentialQuantification, MultiParamTypeClasses #-}
 {-# OPTIONS_GHC -fno-warn-name-shadowing #-}
 -- Copyright (C) JP Bernardy 2009
 
@@ -47,9 +47,9 @@ mkHighlighter scanner =
                   newCachedStates = reused ++ fmap fst recomputed
                   recomputed = scanRun newScan resumeState
                   newResult :: tree (Tok tt)
-                  newResult = if null recomputed then oldResult else snd $ head $ recomputed
+                  newResult = if null recomputed then oldResult else snd $ head recomputed
           focus r (Cache path states root _focused) =
-              (Cache path' states root focused)
+              Cache path' states root focused
               where (path', focused) = unzipFM $ zipWithFM (\newpath oldpath -> fromNodeToFinal newpath (oldpath,root)) [] r path
 
 unzipFM :: Ord k => [(k,(u,v))] -> (Map k u, Map k v)

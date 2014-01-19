@@ -63,7 +63,7 @@ insertArticle (ADB adb) new = ADB (new S.<| adb)
 
 -- | Serialize given 'ArticleDB' out.
 writeDB :: ArticleDB -> YiM ()
-writeDB adb = void $ io . join . fmap (flip encodeFile adb) $ getArticleDbFilename
+writeDB adb = void $ io . join . fmap (`encodeFile` adb) $ getArticleDbFilename
 
 -- | Read in database from 'getArticleDbFilename' and then parse it into an 'ArticleDB'.
 readDB :: YiM ArticleDB

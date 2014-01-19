@@ -65,7 +65,7 @@ matchFromBool b = if b then WholeMatch () else NoMatch
 
 mkMotionBinding :: RepeatToken -> (VimMode -> Bool) -> VimBinding
 mkMotionBinding token condition = VimBindingE prereq action
-    where prereq evs state | condition (vsMode state) = fmap (const ()) (stringToMove evs)
+    where prereq evs state | condition (vsMode state) = void (stringToMove evs)
           prereq _ _ = NoMatch
           action evs = do
               state <- getDynamic
@@ -111,7 +111,7 @@ indentBlockRegionB count reg = do
     indentSettings <- indentSettingsB
     (start, lengths) <- shapeOfBlockRegionB reg
     moveTo start
-    forM_ (zip [1..] lengths) $ \(i, _) -> do
+    forM_ (zip [1..] lengths) $ \(i, _) ->
         whenM (not <$> atEol) $ do
             if count > 0
             then insertN $ replicate (count * shiftWidth indentSettings) ' '

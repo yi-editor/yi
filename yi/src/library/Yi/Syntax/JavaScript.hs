@@ -1,6 +1,5 @@
 {-# LANGUAGE
   FlexibleInstances,
-  TemplateHaskell,
   DeriveDataTypeable,
   DeriveFoldable #-}
 -- (C) Copyright 2009 Deniz Dogan
@@ -278,11 +277,11 @@ instance Strokable (Array TT) where
 
 -- | Normal stroker.
 normal :: TT -> Endo [Stroke]
-normal x = one tokenToStroke x
+normal = one tokenToStroke
 
 -- | Error stroker.
 error :: TT -> Endo [Stroke]
-error x = one (modStroke errorStyle . tokenToStroke) x
+error = one (modStroke errorStyle . tokenToStroke)
 
 one :: (t -> a) -> t -> Endo [a]
 one f x = Endo (f x :)
@@ -290,7 +289,7 @@ one f x = Endo (f x :)
 -- | Given a new style and a stroke, return a stroke with the new style appended
 --   to the old one.
 modStroke :: StyleName -> Stroke -> Stroke
-modStroke style stroke = fmap (style <>) stroke
+modStroke style = fmap (style <>)
 
 
 -- * Stroking functions
@@ -299,7 +298,7 @@ modStroke style stroke = fmap (style <>) stroke
 --   stroke (@xs'@), returns normal strokes for @xs'@ if there were no errors.
 --   Otherwise returns error strokes for @xs'@.
 nError :: [TT] -> [TT] -> Endo [Stroke]
-nError xs xs' = foldMap (failStroker xs) xs'
+nError xs = foldMap (failStroker xs)
 
 -- | Given a list of @TT@, if any of them is an error, returns an error stroker,
 --   otherwise a normal stroker.  Using e.g. existentials, we could make this
@@ -314,7 +313,7 @@ tokenToStroke = fmap tokenToStyle . tokToSpan
 
 -- | The main stroking function.
 getStrokes :: Tree TT -> Point -> Point -> Point -> [Stroke]
-getStrokes t0 _point _begin _end = trace ("\n" ++ show t0) result
+getStrokes t0 _point _begin _end = trace ('\n' : show t0) result
     where
       result = appEndo (foldMap toStrokes t0) []
 
@@ -357,7 +356,7 @@ statement = FunDecl <$> res Function' <*> plzTok name <*> parameters <*> block
 --   TODO: function hello() var x; is not a valid program.
 block :: P TT (Block TT)
 block = Block    <$> spc '{' <*> many statement <*> plzSpc '}'
-    <|> BlockOne <$> hate 1 (statement)
+    <|> BlockOne <$> hate 1 statement
     <|> BlockErr <$> hate 2 (pure errorToken)
 
 -- | Parser for expressions which may be statements.  In reality, any expression
@@ -365,7 +364,7 @@ block = Block    <$> spc '{' <*> many statement <*> plzSpc '}'
 --   the massive performance loss which is introduced when allowing JavaScript
 --   objects to be valid statements.
 stmtExpr :: P TT (Expr TT)
-stmtExpr = ExprSimple <$> simpleTok <*> optional (opExpr)
+stmtExpr = ExprSimple <$> simpleTok <*> optional opExpr
        <|> ExprPrefix <$> preOp <*> plzExpr
        <|> ExprNew    <$> res New' <*> plz funCall
        <|> funCall
@@ -376,7 +375,7 @@ stmtExpr = ExprSimple <$> simpleTok <*> optional (opExpr)
        <|> ExprErr <$> hate 2 (symbol (const True))
     where
       funCall :: P TT (Expr TT)
-      funCall = ExprFunCall <$> name <*> parExpr <*> optional (opExpr)
+      funCall = ExprFunCall <$> name <*> parExpr <*> optional opExpr
 
 -- | The basic idea here is to parse "the rest" of expressions, e.g. @+ 3@ in @x
 --   + 3@ or @[i]@ in @x[i]@.  Anything which is useful in such a scenario goes
@@ -398,20 +397,20 @@ expression = ExprObj     <$> spc '{' <*> keyValue `sepBy` spc ',' <*> plzSpc '}'
       keyValue :: P TT (KeyValue TT)
       keyValue = KeyValue    <$> name <*> plzSpc ':' <*> plzExpr
              <|> KeyValueErr <$> hate 1 (symbol (const True))
-             <|> KeyValueErr <$> hate 2 (pure $ errorToken)
+             <|> KeyValueErr <$> hate 2 (pure errorToken)
 
 -- | Parses both empty and non-empty arrays.  Should probably be split up into
 --   further parts to allow for the separation of @[]@ and @[1, 2, 3]@.
 array :: P TT (Expr TT)
 array = ExprArr <$> spc '[' <*> optional arrayContents <*> plzSpc ']'
-                <*> optional (opExpr)
+                <*> optional opExpr
     where
       arrayContents :: P TT (Array TT)
       arrayContents = ArrCont <$> expression <*> optional arrRest
       arrRest :: P TT (Array TT)
       arrRest = ArrRest <$> spc ',' <*> (arrayContents
                                      <|> ArrErr <$> hate 1 (symbol (const True))
-                                     <|> ArrErr <$> hate 2 (pure $ errorToken))
+                                     <|> ArrErr <$> hate 2 (pure errorToken))
                                     <*> optional arrRest
 
 
@@ -547,7 +546,7 @@ anything = recoverWith (pure errorToken)
 
 -- | Weighted recovery.
 hate :: Int -> P s a -> P s a
-hate n x = power n recoverWith x
+hate n = power n recoverWith
     where
       power 0 _ = id
       power m f = f . power (m - 1) f

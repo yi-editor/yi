@@ -14,6 +14,7 @@ import Yi.Style
 
 import Control.Applicative
 import Control.Concurrent
+import Control.Monad (liftM)
 
 -- Specify Cocoa imports explicitly, to avoid name-clashes.
 -- Since the number of functions recognized by HOC varies
@@ -70,7 +71,7 @@ fillAttributeDict :: NSMutableDictionary t -> Attributes -> IO ()
 fillAttributeDict d a = do
   getColor True  (foreground a) >>= setForKey nsForegroundColorAttributeName
   getColor False (background a) >>= setForKey nsBackgroundColorAttributeName
-  where setForKey k = \v -> setValueForKey v k d
+  where setForKey k v = setValueForKey v k d
 
 -- | Convert a Yi color into a Cocoa color
 getColor :: Bool -> Color -> IO (NSColor ())
@@ -86,7 +87,7 @@ haskellList a = a # objectEnumerator >>= helper
       e <- enum # nextObject
       if e == nil
         then return []
-        else helper enum >>= return . (e :)
+        else liftM (e :) (helper enum)
 
 mkRangeRegion :: NSRange -> Region
 mkRangeRegion (NSRange i l) = mkSizeRegion (fromIntegral i) (fromIntegral l)

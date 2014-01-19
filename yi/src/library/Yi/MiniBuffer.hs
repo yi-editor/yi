@@ -40,7 +40,7 @@ spawnMinibufferE :: String -> KeymapEndo -> EditorM BufferRef
 spawnMinibufferE prompt kmMod =
     do b <- stringToNewBuffer (Left prompt) (R.fromString "")
        -- Now create the minibuffer keymap and switch to the minibuffer window
-       withGivenBuffer0 b $ do
+       withGivenBuffer0 b $
          modifyMode $ \m -> m { modeKeymap = \kms -> kms { topKeymap = kmMod (insertKeymap kms)
                                                          , startTopKeymap = kmMod (startInsertKeymap kms)
                                                          } }
@@ -63,6 +63,7 @@ spawnMinibufferE prompt kmMod =
        (%=) windowsA (PL.insertRight w)
        return b
 
+{-# ANN withMinibuffer "HLint: ignore Eta reduce" #-}
 -- | @withMinibuffer prompt completer act@: open a minibuffer with @prompt@. Once
 -- a string @s@ is obtained, run @act s@. @completer@ can be used to complete
 -- functions: it returns a list of possible matches.
@@ -171,7 +172,7 @@ withMinibufferFin prompt possibilities act
         -- If the string matches completely then we take that
         -- otherwise we just take the first match.
         best s
-          | any (== s) matches = s
+          | s `elem` matches = s
           | null matches       = s
           | otherwise          = head matches
           where matches = match s
@@ -200,8 +201,7 @@ class Promptable a where
     getMinibuffer _ = withMinibufferFree
 
 doPrompt :: forall a. Promptable a => (a -> YiM ()) -> YiM ()
-doPrompt act = getMinibuffer witness (getPrompt witness ++ ":") $
-                     \string -> act =<< getPromptedValue string
+doPrompt act = getMinibuffer witness (getPrompt witness ++ ":") (act <=< getPromptedValue)
     where witness = error "Promptable argument should not be accessed"
           witness :: a
 
@@ -223,10 +223,10 @@ getPromptedValueList :: [(String,a)] -> String -> YiM a
 getPromptedValueList vs s = maybe (error "Invalid choice") return (lookup s vs)
 
 getMinibufferList :: [(String,a)] -> a -> String -> (String -> YiM ()) -> YiM ()
-getMinibufferList vs _ prompt act = withMinibufferFin prompt (fmap fst vs) act
+getMinibufferList vs _ prompt = withMinibufferFin prompt (fmap fst vs)
 
 enumAll :: (Enum a, Bounded a, Show a) => [(String, a)]
-enumAll = (fmap (\v -> (show v, v)) [minBound..])
+enumAll = fmap (\v -> (show v, v)) [minBound..]
 
 instance Promptable Direction where
     getPromptedValue = getPromptedValueList enumAll

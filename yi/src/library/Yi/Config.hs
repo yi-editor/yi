@@ -67,7 +67,7 @@ data Config = Config {startFrontEnd :: UIBoot,
                       -- ^ Set to 'True' for an emacs-like behaviour, where
                       -- all deleted text is accumulated in a killring.
                       configCheckExternalChangesObsessively :: Bool,
-                      bufferUpdateHandler :: [([Update] -> BufferM ())],
+                      bufferUpdateHandler :: [[Update] -> BufferM ()],
                       layoutManagers :: [AnyLayoutManager],
                       -- ^ List of layout managers for 'cycleLayoutManagersNext'
                       configVars :: ConfigVariables

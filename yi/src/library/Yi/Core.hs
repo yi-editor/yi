@@ -58,7 +58,7 @@ import Control.Lens hiding (Action,act,acts)
 import Data.Foldable
 import Data.Traversable
 import qualified Data.DelayList as DelayList
-import Data.List (intercalate, partition)
+import Data.List (partition)
 import Data.List.Split (splitOn)
 import qualified Data.List.PointedList.Circular as PL
 import qualified Data.Map as M
@@ -114,7 +114,7 @@ startEditor cfg st = do
     logPutStrLn "Starting Core"
 
     -- Use an empty state unless resuming from an earlier session and one is already available
-    let editor = maybe emptyEditor id st
+    let editor = fromMaybe emptyEditor st
     -- here to add load history etc?
 
     -- Setting up the 1st window is a bit tricky because most functions assume there exists a "current window"
@@ -128,7 +128,7 @@ startEditor cfg st = do
         ui <- uiStart cfg inF outF editor
         return (ui, runYi)
 
-    runYi $ loadPersistentState
+    runYi loadPersistentState
 
     runYi $ do if isNothing st
                     then postActions $ startActions cfg -- process options if booting for the first time
@@ -166,8 +166,8 @@ dispatch ev =
        (userActions,_p') <- withBuffer $ do
          keymap <- gets (withMode0 modeKeymap)
          p0 <- use keymapProcessA
-         let km = extractTopKeymap $ keymap $ defaultKm $ yiConfig $ yi
-         let freshP = Chain (configInputPreprocess $ yiConfig $ yi) (mkAutomaton km)
+         let km = extractTopKeymap $ keymap $ defaultKm $ yiConfig yi
+         let freshP = Chain (configInputPreprocess $ yiConfig yi) (mkAutomaton km)
              p = case computeState p0 of
                    Dead  -> freshP
                    _     -> p0
@@ -182,9 +182,7 @@ dispatch ev =
                                          evs <- use pendingEventsA
                                          printMsg ("Unrecognized input: " ++ showEvs (evs ++ [ev]))]
                           _ -> actions
-             actions1 = if ambiguous
-                          then [makeAction $ printMsg "Keymap was in an ambiguous state! Resetting it."]
-                          else []
+             actions1 = [makeAction $ printMsg "Keymap was in an ambiguous state! Resetting it." | ambiguous]
          return (actions0 ++ actions1,p')
        -- logPutStrLn $ "Processing: " ++ show ev
        -- logPutStrLn $ "Actions posted:" ++ show userActions
@@ -197,7 +195,7 @@ dispatch ev =
                                     else assign pendingEventsA []
        postActions $ [makeAction decay] ++ userActions ++ [makeAction pendingFeedback]
 
-showEvs = intercalate " " . fmap prettyEvent
+showEvs = unwords . fmap prettyEvent
 showEvs :: [Event] -> String
 
 -- ---------------------------------------------------------------------
@@ -208,7 +206,7 @@ quitEditor :: YiM ()
 quitEditor = do
     savePersistentState
     onYiVar $ terminateSubprocesses (const True)
-    withUI (flip UI.end True)
+    withUI (`UI.end` True)
 
 -- | Update (visible) buffers if they have changed on disk.
 -- FIXME: since we do IO here we must catch exceptions!
@@ -219,7 +217,7 @@ checkFileChanges e0 = do
         newBuffers <- forM (buffers e0) $ \b ->
           let nothing = return (b, Nothing)
           in if bkey b `elem` visibleBuffers
-          then do
+          then
             case b ^.identA of
                Right fname -> do
                   fe <- doesFileExist fname
@@ -229,7 +227,7 @@ checkFileChanges e0 = do
                      then if isUnchangedBuffer b
                        then do newContents <- R.readFile fname
                                return (snd $ runBuffer (dummyWindow $ bkey b) b (revertB newContents now), Just msg1)
-                       else do return (b, Just msg2)
+                       else return (b, Just msg2)
                      else nothing
                _ -> nothing
           else nothing
@@ -245,7 +243,7 @@ checkFileChanges e0 = do
 
 -- | Hide selection, clear "syntax dirty" flag (as appropriate).
 clearAllSyntaxAndHideSelection :: Editor -> Editor
-clearAllSyntaxAndHideSelection = buffersA %~ (fmap (clearSyntax . clearHighlight))
+clearAllSyntaxAndHideSelection = buffersA %~ fmap (clearSyntax . clearHighlight)
   where
     clearHighlight fb =
       -- if there were updates, then hide the selection.
@@ -256,7 +254,7 @@ clearAllSyntaxAndHideSelection = buffersA %~ (fmap (clearSyntax . clearHighlight
 
 -- Focus syntax tree on the current window, for all visible buffers.
 focusAllSyntax :: Editor -> Editor
-focusAllSyntax e6 = buffersA %~ (fmap (\b -> focusSyntax (regions b) b)) $ e6
+focusAllSyntax e6 = buffersA %~ fmap (\b -> focusSyntax (regions b) b) $ e6
     where regions b = M.fromList [(wkey w, winRegion w) | w <- toList $ windows e6, bufkey w == bkey b]
           -- Why bother filtering the region list? After all the trees are lazily computed.
           -- Answer: focusing is an incremental algorithm. Each "focused" path depends on the previous one.
@@ -272,14 +270,13 @@ refreshEditor = onYiVar $ \yi var -> do
             runOnWins a = runEditor cfg
                                     (do ws <- use windowsA
                                         forM ws $ flip withWindowE a)
-            style = configScrollStyle $ configUI $ cfg
+            style = configScrollStyle $ configUI cfg
         let scroll e3 = let (e4, relayout) = runOnWins (snapScreenB style) e3 in
                 -- Scroll windows to show current points as appropriate
                 -- Do another layout pass if there was any scrolling;
                 (if or relayout then UI.layout (yiUi yi) else return) e4
 
-        e7 <- return (yiEditor var) >>=
-             (if (configCheckExternalChangesObsessively cfg) then checkFileChanges else return) >>=
+        e7 <- (if configCheckExternalChangesObsessively cfg then checkFileChanges else return) (yiEditor var) >>=
              pureM clearAllSyntaxAndHideSelection >>=
              -- Adjust window sizes according to UI info
              UI.layout (yiUi yi) >>=
@@ -288,7 +285,7 @@ refreshEditor = onYiVar $ \yi var -> do
              pureM (fst . runOnWins snapInsB) >>=
              pureM focusAllSyntax >>=
              -- Clear "pending updates" and "followUp" from buffers.
-             pureM (buffersA %~ (fmap (clearUpdates . clearFollow)))
+             pureM (buffersA %~ fmap (clearUpdates . clearFollow))
         -- Display the new state of the editor
         UI.refresh (yiUi yi) e7
         -- Terminate stale processes.
@@ -354,7 +351,7 @@ closeWindow = do
     winCount <- withEditor $ uses windowsA PL.length
     tabCount <- withEditor $ uses tabsA PL.length
     when (winCount == 1 && tabCount == 1) quitEditor
-    withEditor $ tryCloseE
+    withEditor tryCloseE
 
 
 onYiVar :: (Yi -> YiVar -> IO (YiVar, a)) -> YiM a
@@ -386,7 +383,7 @@ startSubprocess cmd args onExit = onYiVar $ \yi var -> do
   where bufferName = "output from " ++ cmd ++ " " ++ show args
 
 startSubprocessWatchers :: SubprocessId -> SubprocessInfo -> Yi -> (Either SomeException ExitCode -> YiM x) -> IO ()
-startSubprocessWatchers procid procinfo yi onExit = do
+startSubprocessWatchers procid procinfo yi onExit =
     mapM_ forkOS ([pipeToBuffer (hErr procinfo) (send . append True) | separateStdErr procinfo] ++
                   [pipeToBuffer (hOut procinfo) (send . append False),
                    waitForExit (procHandle procinfo) >>= reportExit])
@@ -408,9 +405,9 @@ appendToBuffer atErr bufref s = withGivenBuffer0 bufref $ do
     me <- getMarkB (Just "StdERR")
     mo <- getMarkB (Just "StdOUT")
     let mms = if atErr then [mo,me] else [mo]
-    forM_ mms (flip modifyMarkB (\v -> v {markGravity = Forward}))
+    forM_ mms (`modifyMarkB` (\ v -> v{markGravity = Forward}))
     insertNAt s =<< getMarkPointB (if atErr then me else mo)
-    forM_ mms (flip modifyMarkB (\v -> v {markGravity = Backward}))
+    forM_ mms (`modifyMarkB` (\ v -> v{markGravity = Backward}))
 
 sendToProcess :: BufferRef -> String -> YiM ()
 sendToProcess bufref s = do
@@ -420,10 +417,10 @@ sendToProcess bufref s = do
 
 pipeToBuffer :: Handle -> (String -> IO ()) -> IO ()
 pipeToBuffer h append =
-  do _ <- ignoringException $ forever $ (do _ <- hWaitForInput h (-1)
-                                            r <- readAvailable h
-                                            _ <- append r
-                                            return ())
+  do _ <- ignoringException $ forever (do _ <- hWaitForInput h (-1)
+                                          r <- readAvailable h
+                                          _ <- append r
+                                          return ())
      return ()
 
 
@@ -440,7 +437,7 @@ withSyntax :: (Show x, YiAction a x) => (forall syntax. Mode syntax -> syntax ->
 withSyntax f = do
             b <- gets currentBuffer
             act <- withGivenBuffer b $ withSyntaxB f
-            runAction $ makeAction $ act
+            runAction $ makeAction act
 
 userForceRefresh :: YiM ()
 userForceRefresh = withUI UI.userForceRefresh

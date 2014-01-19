@@ -1,4 +1,4 @@
-{-# LANGUAGE Rank2Types, CPP, GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE Rank2Types, CPP #-}
 {-# OPTIONS_GHC -fno-warn-duplicate-exports #-} -- for good documentation, we want control over our export list, which occasionally gives us duplicate exports
 
 {- | A simplified configuration interface for Yi. -}
@@ -154,7 +154,7 @@ configMain c m = yi =<< execStateT (runConfigM m) c
 -- Available frontends are a subset of: \"vty\", \"pango\", \"cocoa\", and \"batch\".
 setFrontendPreferences :: [String] -> ConfigM ()
 setFrontendPreferences fs =
-   case mapMaybe (\f -> lookup f availableFrontends) fs of
+   case mapMaybe (`lookup` availableFrontends) fs of
        (f:_) -> startFrontEndA .= f
        [] -> return ()
 
@@ -178,7 +178,7 @@ modeBindKeys mode keys = ensureModeRegistered "modeBindKeys" (modeName mode) $ m
 modeBindKeysByName :: String -> Keymap -> ConfigM ()
 modeBindKeysByName name k = ensureModeRegistered "modeBindKeysByName" name $ modifyModeByName name (modeKeymapA %~ f)
  where
-  f :: (KeymapSet -> KeymapSet) -> (KeymapSet -> KeymapSet)
+  f :: (KeymapSet -> KeymapSet) -> KeymapSet -> KeymapSet
   f mkm km = topKeymapA %~ (||> k) $ mkm km
 -- (modeKeymapA %~ ((topKeymap %~ (||> k)) .))
 
@@ -198,7 +198,7 @@ modifyMode mode f = ensureModeRegistered "modifyMode" (modeName mode) $ modifyMo
 -- | @modifyModeByName name f@ modifies the mode with name @name@ using the function @f@. Consider using 'modifyMode' instead.
 modifyModeByName :: String -> (forall syntax. Mode syntax -> Mode syntax) -> ConfigM ()
 modifyModeByName name f =
-    ensureModeRegistered "modifyModeByName" name $ modeTableA %= (fmap (onMode g))
+    ensureModeRegistered "modifyModeByName" name $ modeTableA %= fmap (onMode g)
         where
             g :: forall syntax. Mode syntax -> Mode syntax
             g m | modeName m == name = f m
@@ -210,7 +210,7 @@ warn caller msg = io $ putStrLn $ printf "Warning: %s: %s" caller msg
 -- the putStrLn shouldn't be necessary, but it doesn't print anything if it's not there...
 
 isModeRegistered :: String -> ConfigM Bool
-isModeRegistered name = (any (\(AnyMode mode) -> modeName mode == name)) <$> use modeTableA
+isModeRegistered name = any (\(AnyMode mode) -> modeName mode == name) <$> use modeTableA
 
 -- ensure the given mode is registered, and if it is, then run the given action.
 ensureModeRegistered :: String -> String -> ConfigM () -> ConfigM ()

@@ -1,4 +1,3 @@
-{-# LANGUAGE ParallelListComp #-}
 module Yi.Debug (
         initDebug       -- :: FilePath -> IO ()
        ,trace           -- :: String -> a -> a
@@ -33,7 +32,7 @@ initDebug f = do
   case hndl of
     Nothing -> do openFile f WriteMode >>= writeIORef dbgHandle . Just
                   logPutStrLn "Logging initialized."
-    Just _ -> do logPutStrLn "Attempt to re-initialize the logging system."
+    Just _ -> logPutStrLn "Attempt to re-initialize the logging system."
 
 
 

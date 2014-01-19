@@ -1,4 +1,4 @@
-{-# LANGUAGE DeriveDataTypeable, GeneralizedNewtypeDeriving, TypeOperators #-}
+{-# LANGUAGE TypeOperators #-}
 -- Copyright (c) 2008 Jean-Philippe Bernardy
 -- | Various high-level functions to further classify.
 module Yi.Misc
@@ -67,9 +67,10 @@ getAppropriateFiles start s' = do
             (Just path) -> return path
   let s = replaceShorthands s'
       sDir = if hasTrailingPathSeparator s then s else takeDirectory s
-      searchDir = if null sDir then curDir
-                  else if isAbsolute' sDir then sDir
-                  else curDir </> sDir
+      searchDir
+        | null sDir = curDir
+        | isAbsolute' sDir = sDir
+        | otherwise = curDir </> sDir
   searchDir' <- liftIO $ expandTilda searchDir
   let fixTrailingPathSeparator f = do
                        isDir <- doesDirectoryExist (searchDir' </> f)
@@ -108,7 +109,7 @@ matchingFileNames start s = do
   -- a prefix of ("." </> "foobar"), resulting in a failed completion
   --
   -- However, if user inputs ":e ./foo<Tab>", we need to prepend @sDir@ to @files@
-  let results = if (isNothing start && sDir == "." && not ("./" `isPrefixOf` s))
+  let results = if isNothing start && sDir == "." && not ("./" `isPrefixOf` s)
                    then files
                    else fmap (sDir </>) files
 
@@ -131,7 +132,7 @@ promptFile :: String -> (String -> YiM ()) -> YiM ()
 promptFile prompt act = do
   maybePath <- withBuffer $ gets file
   startPath <- addTrailingPathSeparator
-               <$> (liftIO $ canonicalizePath =<< getFolder maybePath)
+               <$> liftIO (canonicalizePath =<< getFolder maybePath)
   -- TODO: Just call withMinibuffer
   withMinibufferGen startPath (findFileHint startPath) prompt
     (completeFile startPath) showCanon (act . replaceShorthands)

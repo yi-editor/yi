@@ -1,7 +1,6 @@
 {-# LANGUAGE
   ScopedTypeVariables,
   ExistentialQuantification,
-  GeneralizedNewtypeDeriving,
   DeriveFunctor,
   DeriveFoldable,
   DeriveTraversable,
@@ -73,7 +72,7 @@ skipScanner n (Scanner i l e r) = Scanner i l e (other 0 . r)
           other m (_:xs) = other (m-1) xs
 
 instance Functor (Scanner st) where
-    fmap f (Scanner i l e r) = Scanner i l (f e) (\st -> fmap (second f) (r st))
+    fmap f (Scanner i l e r) = Scanner i l (f e) (fmap (second f) . r)
 
 data Cache state result = Cache [state] result
 
@@ -107,7 +106,7 @@ mkHighlighter scanner =
                   newCachedStates = reused ++ fmap fst recomputed
                   recomputed = scanRun newScan resumeState
                   newResult :: result
-                  newResult = if null recomputed then oldResult else snd $ head $ recomputed
+                  newResult = if null recomputed then oldResult else snd $ head recomputed
 
 noHighlighter :: Highlighter () syntax
 noHighlighter = SynHL {hlStartState = (),

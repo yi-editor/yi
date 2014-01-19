@@ -1,4 +1,4 @@
-{-# LANGUAGE CPP, DeriveDataTypeable #-}
+{-# LANGUAGE CPP #-}
 -- Copyright (C) 2008 JP Bernardy
 
 -- | This module defines buffer operation on regions
@@ -151,8 +151,8 @@ skippingNull f xs = f xs
 joinLinesB :: Region -> BufferM ()
 joinLinesB =
   savingPointB .
-    (modifyRegionClever $ skippingLast $
-       concat . (skippingFirst $ fmap $ skippingNull ((' ':) . dropWhile isSpace)) . lines')
+    modifyRegionClever (skippingLast $
+       concat . skippingFirst (fmap $ skippingNull ((' ':) . dropWhile isSpace)) . lines')
 
 concatLinesB :: Region -> BufferM ()
-concatLinesB = savingPointB . (modifyRegionClever $ skippingLast $ filter (/='\n'))
+concatLinesB = savingPointB . modifyRegionClever (skippingLast $ filter (/= '\n'))
