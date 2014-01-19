@@ -6,8 +6,8 @@
 -- something other than a single buffer.
 --
 -- If a test is pure and manipulates only a single buffer, it would be better
--- being part of the 'TestVim' module. That module provides a nicer way of
--- writing pure single buffer manipulation tests.
+-- being part of the 'Vim2.TestPureBufferManipulations' module. That module
+-- provides a nicer way of writing pure single buffer manipulation tests.
 --
 module Vim2.TestPureEditorManipulations (tests) where
 
