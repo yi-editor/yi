@@ -62,6 +62,18 @@ extractBufferString editor =
 
 
 --------------------------------------------------
+-- Functions for altering the state of the editor.
+
+-- | Insert the given text into the editor inside an update transaction.
+insertText :: String -> EditorM ()
+insertText text =
+    withBuffer0 $ do
+        startUpdateTransactionB
+        insertN text
+        commitUpdateTransactionB
+
+
+--------------------------------------------------
 -- Useful assertions.
 
 -- | Asserts that the specified actual value is not equal to the unexpected

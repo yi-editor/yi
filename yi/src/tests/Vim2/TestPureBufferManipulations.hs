@@ -20,6 +20,8 @@ import Yi.Config.Default (defaultVimConfig)
 import Yi.Editor
 import Yi.Keymap.Vim2
 
+import Vim2.TestUtils
+
 data VimTest = VimTest {
                    vtName :: String
                  , vtInput :: String
@@ -106,37 +108,38 @@ discoverTests topdir = do
     testsFromFiles <- mapM loadTestFromFile testFiles
     return $ testsFromDirs ++ testsFromFiles
 
+
 mkTestCase :: VimTest -> TestTree
-mkTestCase t = testCase (vtName t) $ assertEqual errorMsg actualOut (vtOutput t)
-    where outputMatches = vtOutput t == actualOut
-          actualOut = extractBufferString . fst $
-              runEditor' (defVimEval $ vtEventString t)
-                         (initialEditor $ vtInput t)
-          extractBufferString editor = cursorPos editor ++ "\n" ++
-                                       snd (runEditor' (withBuffer0 elemsB) editor)
-          cursorPos = show . snd . runEditor' (withBuffer0 $ do
-                                                  l <- curLn
-                                                  c <- curCol
-                                                  return (l, c + 1))
-          errorMsg = unlines [ "Input:", vtInput t
-                             , "Expected:", vtOutput t
-                             , "Got:", actualOut
-                             , "Events:", vtEventString t
-                             , "---"]
-          defVimEval = pureEval (extractValue defVimConfig)
+mkTestCase t = testCase (vtName t) $ do
+    let setupActions = do
+            let (cursorLine, '\n':text) = break (== '\n') (vtInput t)
+            insertText $ text
+            setCursorPosition $ cursorLine
 
-initialEditor :: String -> Editor
-initialEditor input = fst $ runEditor' action emptyEditor
-    where action = withBuffer0 $ do
-                       startUpdateTransactionB
-                       insertN text
-                       commitUpdateTransactionB
-                       let (x, y) = read cursorLine
-                       moveToLineColB x (y - 1)
-          (cursorLine, '\n':text) = break (== '\n') input
+        preConditions _ _ = return ()
 
-runEditor' :: EditorM a -> Editor -> (Editor, a)
-runEditor' = runEditor defaultVimConfig
+        testActions _ = defVimEval $ vtEventString t
+
+        assertions editor _ =
+            let actualOut = cursorPos editor ++ "\n" ++
+                            extractBufferString editor
+            in  assertEqual (errorMsg actualOut) actualOut (vtOutput t)
+
+    runTest setupActions preConditions testActions assertions
+
+  where
+    setCursorPosition cursorLine =
+        let (x, y) = read cursorLine
+        in withBuffer0 $ moveToLineColB x (y - 1)
+    cursorPos = show . snd . runEditor' (withBuffer0 $ do
+                                            l <- curLn
+                                            c <- curCol
+                                            return (l, c + 1))
+    errorMsg actualOut = unlines [ "Input:", vtInput t
+                                 , "Expected:", vtOutput t
+                                 , "Got:", actualOut
+                                 , "Events:", vtEventString t
+                                 , "---"]
 
 getTests :: IO TestTree
 getTests = do
