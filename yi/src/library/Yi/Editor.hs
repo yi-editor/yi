@@ -9,7 +9,8 @@
 module Yi.Editor where
 
 import Prelude hiding (foldl,concatMap,foldr,all)
-import Control.Monad.RWS hiding (get, put, mapM, forM_)
+import Control.Monad.State hiding (get, put, mapM, forM_)
+import Control.Monad.Reader hiding (mapM, forM_ )
 import Control.Applicative
 import Control.Monad
 import Control.Lens hiding (moveTo)
@@ -84,7 +85,7 @@ instance Binary Editor where
                               killring = kr
                              }
 
-newtype EditorM a = EditorM {fromEditorM :: RWS Config () Editor a}
+newtype EditorM a = EditorM {fromEditorM :: ReaderT Config (State Editor) a}
     deriving (Monad, MonadState Editor, MonadReader Config, Functor)
 
 deriving instance Typeable1 EditorM
@@ -130,7 +131,7 @@ emptyEditor = Editor {
 -- ---------------------------------------------------------------------
 
 runEditor :: Config -> EditorM a -> Editor -> (Editor, a)
-runEditor cfg f e = let (a, e',()) = runRWS (fromEditorM f) cfg e in (e',a)
+runEditor cfg f e = let (a, e') = runState (runReaderT (fromEditorM f) cfg) e in (e',a)
 
 makeLensesWithSuffix "A" ''Editor
 
