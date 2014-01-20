@@ -8,7 +8,7 @@ import Data.Binary
 import System.Exit
   ( ExitCode( ExitSuccess,ExitFailure ) )
 import Control.Exception(SomeException)
-import Control.Monad.Trans (MonadIO (..))
+import Control.Monad.Base
 {- External Library Module Imports -}
 {- Local (yi) module imports -}
 
@@ -48,7 +48,7 @@ shellCommandE =
 -- | shell-command with a known argument
 shellCommandV :: String -> YiM ()
 shellCommandV cmd = do
-      (exitCode,cmdOut,cmdErr) <- liftIO $ runShellCommand cmd
+      (exitCode,cmdOut,cmdErr) <- liftBase $ runShellCommand cmd
       case exitCode of
         ExitSuccess -> if length (filter (== '\n') cmdOut) > 1
                        then withEditor . void $ -- see GitHub issue #477

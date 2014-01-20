@@ -1,4 +1,4 @@
-{-# LANGUAGE MultiParamTypeClasses, FunctionalDependencies #-}
+{-# LANGUAGE MultiParamTypeClasses, FunctionalDependencies, FlexibleContexts #-}
 -- Unique code from Yi.Prelude
 
 module Yi.Utils where
@@ -8,15 +8,15 @@ import Data.Foldable hiding (all,any)
 import Data.Default
 import qualified Data.HashMap.Strict as HashMap
 import Data.Hashable(Hashable)
-import Control.Monad.Reader
+import Control.Monad.Base
 import Control.Applicative
 import Control.Lens hiding (cons)
 import qualified Data.Set as Set
 import qualified Data.Map as Map
 import qualified Data.List.PointedList as PL
 
-io :: MonadIO m => IO a -> m a
-io = liftIO
+io :: MonadBase IO m => IO a -> m a
+io = liftBase
 
 fst3 :: (a,b,c) -> a
 fst3 (x,_,_) = x

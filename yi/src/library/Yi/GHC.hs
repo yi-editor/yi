@@ -54,7 +54,7 @@ getShim = do
 withShim :: SHM a -> YiM a
 withShim f = do
   r <- getShim
-  liftIO $ do e <- takeMVar r
+  liftBase $ do e <- takeMVar r
               (a,e') <- runStateT f e
               putMVar r e'
               return a
@@ -62,7 +62,7 @@ withShim f = do
 runShimThread :: SHM () -> YiM ThreadId
 runShimThread f = do
   r <- getShim
-  (liftIO . forkOS) $
+  (liftBase . forkOS) $
            do e <- takeMVar r
               (a,e') <- runStateT f e
               putMVar r e'

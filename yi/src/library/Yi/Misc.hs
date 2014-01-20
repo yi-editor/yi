@@ -34,7 +34,7 @@ import System.Directory
   )
 
 import Control.Applicative
-import Control.Monad.Trans (MonadIO (..))
+import Control.Monad.Base
 {- External Library Module Imports -}
 {- Local (yi) module imports -}
 
@@ -63,7 +63,7 @@ getAppropriateFiles :: Maybe String -> String -> YiM (String, [ String ])
 getAppropriateFiles start s' = do
   curDir <- case start of
             Nothing -> do bufferPath <- withBuffer $ gets file
-                          liftIO $ getFolder bufferPath
+                          liftBase $ getFolder bufferPath
             (Just path) -> return path
   let s = replaceShorthands s'
       sDir = if hasTrailingPathSeparator s then s else takeDirectory s
@@ -71,17 +71,17 @@ getAppropriateFiles start s' = do
         | null sDir = curDir
         | isAbsolute' sDir = sDir
         | otherwise = curDir </> sDir
-  searchDir' <- liftIO $ expandTilda searchDir
+  searchDir' <- liftBase $ expandTilda searchDir
   let fixTrailingPathSeparator f = do
                        isDir <- doesDirectoryExist (searchDir' </> f)
                        return $ if isDir then addTrailingPathSeparator f else f
 
-  files <- liftIO $ getDirectoryContents searchDir'
+  files <- liftBase $ getDirectoryContents searchDir'
 
   -- Remove the two standard current-dir and parent-dir as we do not
   -- need to complete or hint about these as they are known by users.
   let files' = files \\ [ ".", ".." ]
-  fs <- liftIO $ mapM fixTrailingPathSeparator files'
+  fs <- liftBase $ mapM fixTrailingPathSeparator files'
   let matching = filter (isPrefixOf $ takeFileName s) fs
   return (sDir, matching)
 
@@ -132,7 +132,7 @@ promptFile :: String -> (String -> YiM ()) -> YiM ()
 promptFile prompt act = do
   maybePath <- withBuffer $ gets file
   startPath <- addTrailingPathSeparator
-               <$> liftIO (canonicalizePath =<< getFolder maybePath)
+               <$> liftBase (canonicalizePath =<< getFolder maybePath)
   -- TODO: Just call withMinibuffer
   withMinibufferGen startPath (findFileHint startPath) prompt
     (completeFile startPath) showCanon (act . replaceShorthands)

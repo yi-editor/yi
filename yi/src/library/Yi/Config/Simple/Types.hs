@@ -6,6 +6,7 @@ module Yi.Config.Simple.Types
  where
 
 import Control.Monad.State hiding (modify, get)
+import Control.Monad.Base
 import Control.Applicative
 import Control.Lens
 import Yi.Config
@@ -14,7 +15,7 @@ import Yi.Dynamic
 -- | The configuration monad. Run it with 'configMain'.
 newtype ConfigM a = ConfigM {
     runConfigM :: StateT Config IO a
-  } deriving (Monad, Functor, Applicative, MonadState Config, MonadIO)
+  } deriving (Monad, Functor, Applicative, MonadState Config, MonadBase IO)
 
 -- | Fields that can be modified with all lens machinery.
 type Field a = Lens' Config a

@@ -53,8 +53,8 @@ getRealSession :: Ghc Session
 getRealSession = do
   hscEnv <- getSession
   warns  <- getWarnings
-  ref1 <- liftIO $ newIORef hscEnv
-  ref2 <- liftIO $ newIORef warns
+  ref1 <- liftBase $ newIORef hscEnv
+  ref2 <- liftBase $ newIORef warns
   return $ Session ref1 ref2
 
 

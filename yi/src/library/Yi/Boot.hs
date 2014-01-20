@@ -7,6 +7,7 @@ import qualified Config.Dyre as Dyre
 import qualified Config.Dyre.Options as Dyre
 import Config.Dyre.Relaunch
 import Control.Monad.State
+import Control.Monad.Base
 import qualified Data.Rope as R
 import System.Environment
 import System.Exit
@@ -73,4 +74,4 @@ reload :: YiM ()
 reload = do
     editor <- withEditor get
     withUI (`UI.end` False)
-    liftIO $ relaunchWithBinaryState (Just editor) Nothing
+    liftBase $ relaunchWithBinaryState (Just editor) Nothing

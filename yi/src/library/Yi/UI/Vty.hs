@@ -1,4 +1,4 @@
-{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE ScopedTypeVariables, FlexibleContexts #-}
 -- Copyright (C) 2007-8 JP Bernardy
 -- Copyright (C) 2004-5 Don Stewart - http://www.cse.unsw.edu.au/~dons
 -- Originally derived from: riot/UI.hs Copyright (c) Tuomo Valkonen 2004.
@@ -15,7 +15,7 @@ import Control.Monad hiding (mapM,mapM_)
 import Control.Concurrent
 import Control.Exception
 import Control.Monad.State (evalState, get, put)
-import Control.Monad.Trans (liftIO, MonadIO)
+import Control.Monad.Base
 import Control.Lens hiding (wrapped,set)
 import Data.Char (ord,chr)
 import Data.IORef
@@ -75,7 +75,7 @@ mkUI ui = Common.dummyUI
 -- | Initialise the ui
 start :: UIBoot
 start cfg ch outCh editor =
-  liftIO $ do
+  liftBase $ do
           oattr <- getTerminalAttributes stdInput
           v <- mkVtyEscDelay $ configVtyEscDelay $ configUI cfg
           nattr <- getTerminalAttributes stdInput
@@ -205,7 +205,7 @@ layout ui e = do
   -- return $ windowsA ^= forcePL ws'' $ e
 
 -- Do Vty layout inside the Yi event loop
-layoutAction :: (MonadEditor m, MonadIO m) => UI -> m ()
+layoutAction :: (MonadEditor m, MonadBase IO m) => UI -> m ()
 layoutAction ui = do
     withEditor . put =<< io . layout ui =<< withEditor get
     withEditor $ mapM_ (`withWindowE` snapInsB) =<< use windowsA

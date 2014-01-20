@@ -35,7 +35,7 @@ import Yi.MiniBuffer
 import Yi.Completion
 
 import Control.Monad (replicateM, replicateM_,forM,void)
-import Control.Monad.Trans (liftIO)
+import Control.Monad.Base
 import System.Directory (doesDirectoryExist, getDirectoryContents)
 import System.FilePath ((</>))
 import Data.List (intersperse)
@@ -44,7 +44,7 @@ fuzzyOpen :: YiM ()
 fuzzyOpen = do
     withEditor splitE
     bufRef <- withEditor newTempBufferE
-    fileList <- liftIO $ getRecursiveContents "."
+    fileList <- liftBase $ getRecursiveContents "."
     updateMatchList bufRef fileList
     withEditor $ spawnMinibufferE "" $ const $ localKeymap bufRef fileList
     return ()

@@ -1,5 +1,5 @@
 {-# LANGUAGE ScopedTypeVariables, FlexibleInstances, MultiParamTypeClasses,
-             UndecidableInstances, TypeOperators, LambdaCase #-}
+             UndecidableInstances, TypeOperators, LambdaCase, FlexibleContexts #-}
 
 {- |
 Module      :  Yi.UI.Pango
@@ -52,7 +52,7 @@ import System.FilePath (takeDirectory, takeFileName, (</>))
 import System.Directory
   ( doesDirectoryExist
   )
-import Control.Monad.Trans (MonadIO (..))
+import Control.Monad.Base
 {- External Library Module Imports -}
 {- Local (yi) module imports -}
 import Yi.Command (cabalConfigureE, cabalBuildE, reloadProjectE)
@@ -93,10 +93,10 @@ deservesSave b
 
 -- | Is there a proper file associated with the buffer?
 -- In other words, does it make sense to offer to save it?
-isFileBuffer :: (Functor m, MonadIO m) => FBuffer -> m Bool
+isFileBuffer :: (Functor m, MonadBase IO m) => FBuffer -> m Bool
 isFileBuffer b = case b ^. identA of
                    Left _ -> return False
-                   Right fn -> not <$> liftIO (doesDirectoryExist fn)
+                   Right fn -> not <$> liftBase (doesDirectoryExist fn)
 
 --------------------------------------------------
 -- Takes in a list of buffers which have been identified

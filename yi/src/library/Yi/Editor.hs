@@ -34,7 +34,7 @@ import Yi.Layout
 import Yi.Style (StyleName, defaultStyle)
 import Yi.Tab
 import Yi.Window
-import Yi.Monad
+import Yi.Monad hiding (newRef)
 import Yi.Utils
 import Data.Rope (Rope)
 import qualified Data.Rope as R

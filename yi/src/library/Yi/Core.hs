@@ -51,6 +51,7 @@ import Control.Concurrent
 import Control.Monad hiding (mapM_,forM_,forM)
 import Control.Monad.Error ()
 import Control.Monad.Reader hiding (mapM_,forM_,forM)
+import Control.Monad.Base
 import Control.Exception
 import Control.Exc
 import Control.Applicative
@@ -145,7 +146,7 @@ recoverMode tbl buffer  = case fromMaybe (AnyMode emptyMode) (find (\(AnyMode m)
   where oldName = case buffer of FBuffer {bmode = m} -> modeName m
 
 postActions :: [Action] -> YiM ()
-postActions actions = do yi <- ask; liftIO $ output yi actions
+postActions actions = do yi <- ask; liftBase $ output yi actions
 
 -- | Display the errors buffer if it is not already visible.
 showErrors :: YiM ()
@@ -312,7 +313,7 @@ suspendEditor = withUI UI.suspend
 runProcessWithInput :: String -> String -> YiM String
 runProcessWithInput cmd inp = do
     let (f:args) = splitOn " " cmd
-    (_,out,_err) <- liftIO $ readProcessWithExitCode f args inp
+    (_,out,_err) <- liftBase $ readProcessWithExitCode f args inp
     return (chomp "\n" out)
 
 
