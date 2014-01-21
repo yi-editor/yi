@@ -381,7 +381,8 @@ executable parserTest
     array,
     containers,
     directory,
-    filepath>=1.1 && <1.4
+    filepath>=1.1 && <1.4,
+    yi
 
 executable yi
   hs-source-dirs: src/executable
