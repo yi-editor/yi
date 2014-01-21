@@ -1,5 +1,6 @@
 module Yi.Keymap.Vim2.Ex.Commands.Common
     ( parse
+    , parseWithBang
     , parseRange
     , OptionAction(..)
     , parseOption
@@ -7,8 +8,10 @@ module Yi.Keymap.Vim2.Ex.Commands.Common
     , forAllBuffers
     , pureExCommand
     , impureExCommand
+    , errorNoWrite
     ) where
 
+import Control.Applicative
 import Control.Monad
 import Data.List (isPrefixOf)
 import System.Directory
@@ -21,9 +24,29 @@ import Yi.Keymap.Vim2.Ex.Types
 import Yi.Misc
 import Yi.Utils
 import Yi.Monad
+import Yi.Style (errorStyle)
 
 parse :: P.GenParser Char () ExCommand -> String -> Maybe ExCommand
 parse parser s = either (const Nothing) Just (P.parse parser "" s)
+
+
+parseWithBang :: P.GenParser Char () a
+              -- ^ The command name parser.
+              -> (a -> Bool -> P.GenParser Char () ExCommand)
+              -- ^ A parser for the remaining command arguments.
+              -> String
+              -- ^ The string to parse.
+              -> Maybe ExCommand
+parseWithBang nameParser argumentParser s = do
+    either (const Nothing) Just (P.parse parser "" s)
+  where
+    parser = do
+        a    <- nameParser
+        bang <- parseBang
+        argumentParser a bang
+
+parseBang :: P.GenParser Char () Bool
+parseBang = P.string "!" *> return True <|> return False
 
 parseRange :: P.GenParser Char () LineRange
 parseRange = return CurrentLineRange
@@ -93,3 +116,13 @@ pureExCommand = ExCommand {
 
 impureExCommand :: ExCommand
 impureExCommand = pureExCommand { cmdIsPure = False }
+
+
+-- | Show an error on the status line.
+errorEditor :: String -> EditorM ()
+errorEditor s = printStatus (["error: " ++ s], errorStyle)
+
+
+-- | Show the common error message about an unsaved file on the status line.
+errorNoWrite :: EditorM ()
+errorNoWrite = errorEditor "No write since last change (add ! to override)"

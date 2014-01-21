@@ -124,7 +124,8 @@ failBindingE = VimBindingE prereq action
     where prereq evs s = matchFromBool . and $ [vsMode s == Ex, evs == "<CR>"]
           action _ = do
               exitEx False
-              printMsg "Unknown command"
+              s <- getDynamic
+              printMsg $ "Not an editor command: " ++ (vsOngoingInsertEvents s)
               return Drop
 
 printable :: VimBinding
