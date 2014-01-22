@@ -77,7 +77,7 @@ module Yi.Config.Simple (
  ) where
 
 import Yi.Boot
-import Yi.Core hiding(modifyMode)
+import Yi.Core hiding (modifyMode, Attributes(..))
 import Yi.Config.Default
 import Yi.Config.Misc
 import Yi.Config.Simple.Types
@@ -338,4 +338,3 @@ killringAccumulate = configKillringAccumulateA
 -- | ?
 bufferUpdateHandler :: Field [[Update] -> BufferM ()]
 bufferUpdateHandler = bufferUpdateHandlerA
-

@@ -166,6 +166,8 @@ module Yi.Buffer.Misc
   , withEveryLineB
   , startUpdateTransactionB
   , commitUpdateTransactionB
+  , attrsA
+  , Attributes(..)
   )
 where
 
@@ -260,19 +262,20 @@ data Attributes = Attributes
                 , pointFollowsWindow        :: !(WindowRef -> Bool)
                 , updateTransactionInFlight :: !Bool
                 , updateTransactionAccum    :: ![Update]
+                , isImage :: !Bool
                 } deriving Typeable
 
 makeLensesWithSuffix "AA" ''Attributes
 
 instance Binary Attributes where
     put (Attributes n b u bd pc pu selectionStyle_ _proc wm law lst ro ins _pfw
-        isTransacPresent transacAccum) = do
+        isTransacPresent transacAccum img) = do
           put n >> put b >> put u >> put bd
           put pc >> put pu >> put selectionStyle_ >> put wm
-          put law >> put lst >> put ro >> put ins >> put isTransacPresent >> put transacAccum
+          put law >> put lst >> put ro >> put ins >> put isTransacPresent >> put transacAccum >> put img
     get = Attributes <$> get <*> get <*> get <*>
           get <*> get <*> get <*> get <*> pure I.End <*> get <*> get <*> get <*> get <*>
-              get <*> pure (const False) <*> get <*> get
+              get <*> pure (const False) <*> get <*> get <*> get
 
 instance Binary UTCTime where
     put (UTCTime x y) = put (fromEnum x) >> put (fromEnum y)
@@ -697,10 +700,10 @@ emptyMode = Mode
   }
 
 -- | Create buffer named @nm@ with contents @s@
-newB :: BufferRef -> BufferId -> Rope -> FBuffer
+newB :: BufferRef -> BufferId -> Either Rope FilePath -> FBuffer
 newB unique nm s =
  FBuffer { bmode  = emptyMode
-         , rawbuf = newBI s
+         , rawbuf = newBI $ either id (const $ R.fromString "") s
          , attributes =
  Attributes { ident  = nm
             , bkey__ = unique
@@ -713,11 +716,12 @@ newB unique nm s =
             , winMarks = M.empty
             , lastActiveWindow = dummyWindow unique
             , lastSyncTime = epoch
-            , readOnly = False
+            , readOnly = either (const False) (const True) s
             , inserting = True
             , pointFollowsWindow = const False
             , updateTransactionInFlight = False
             , updateTransactionAccum = []
+            , isImage = either (const False) (const True) s
             } }
 
 epoch :: UTCTime

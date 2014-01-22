@@ -35,7 +35,7 @@ module Yi
 import Data.Prototype
 import Yi.Boot
 import Yi.Config
-import Yi.Core
+import Yi.Core hiding (Attributes(..))
 import Yi.Dired
 import Yi.Eval
 import Yi.File

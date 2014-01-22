@@ -123,7 +123,7 @@ emptyEditor = Editor {
        ,maxStatusHeight = 1
        ,onCloseActions = M.empty
        }
-        where buf = newB 0 (Left "console") (R.fromString "")
+        where buf = newB 0 (Left "console") (Left $ R.fromString "")
               win = (dummyWindow (bkey buf)) {wkey = WindowRef 1, isMini = False}
               tab = makeTab1 2 win
 
@@ -168,8 +168,9 @@ newBufRef = BufferRef <$> newRef
 -- | Create and fill a new buffer, using contents of string.
 -- | Does not focus the window, or make it the current window.
 -- | Call newWindowE or switchToBufferE to take care of that.
-stringToNewBuffer :: BufferId -- ^ The buffer indentifier
-                  -> Rope -- ^ The contents with which to populate the buffer
+stringToNewBuffer :: BufferId -- ^ The buffer identifier
+                  -> Either Rope FilePath -- ^ The contents with which to
+                                          -- or the path of the image to render
                   -> EditorM BufferRef
 stringToNewBuffer nm cs = do
     u <- newBufRef
@@ -367,7 +368,7 @@ setTmpStatus delay s = do
 
   b <- case bs of
          (b':_) -> return $ bkey b'
-         [] -> stringToNewBuffer (Left "messages") (R.fromString "")
+         [] -> stringToNewBuffer (Left "messages") (Left $ R.fromString "")
   withGivenBuffer0 b $ do botB; insertN (show s ++ "\n")
 
 
@@ -418,7 +419,7 @@ newBufferE :: BufferId   -- ^ buffer name
               -> Rope -- ^ buffer contents
               -> EditorM BufferRef
 newBufferE f s = do
-    b <- stringToNewBuffer f s
+    b <- stringToNewBuffer f (Left s)
     switchToBufferE b
     return b
 
@@ -461,12 +462,18 @@ alternateBufferE n = do
       else switchToBufferE $ lst!!n
 
 -- | Create a new zero size window on a given buffer
-newZeroSizeWindow ::Bool -> BufferRef -> WindowRef -> Window
+newZeroSizeWindow :: Bool -> BufferRef -> WindowRef -> Window
 newZeroSizeWindow mini bk ref = Window mini bk [] 0 emptyRegion ref 0 Nothing
+
+newZeroSizeImageWindow :: BufferRef -> WindowRef -> Window
+newZeroSizeImageWindow bk ref = Window False bk [] 0 emptyRegion ref 0 Nothing
 
 -- | Create a new window onto the given buffer.
 newWindowE :: Bool -> BufferRef -> EditorM Window
 newWindowE mini bk = newZeroSizeWindow mini bk . WindowRef <$> newRef
+
+newImageWindowE :: BufferRef -> EditorM Window
+newImageWindowE bk = newZeroSizeImageWindow bk . WindowRef <$> newRef
 
 -- | Attach the specified buffer to the current window
 switchToBufferE :: BufferRef -> EditorM ()

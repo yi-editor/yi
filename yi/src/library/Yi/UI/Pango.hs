@@ -13,7 +13,7 @@
 module Yi.UI.Pango (start) where
 
 import Prelude hiding (error, elem, mapM_, foldl, concat, mapM)
-import Control.Exception (catch, SomeException)
+import Control.Exception (catch, SomeException(..), handle)
 import Control.Concurrent
 import Control.Monad hiding (forM_, mapM_, forM, mapM)
 import Control.Applicative
@@ -44,6 +44,7 @@ import Yi.Event
 import Yi.Keymap
 import Yi.Layout(DividerPosition, DividerRef)
 import Yi.Style
+import qualified Yi.Style as YS
 import Yi.Tab
 import Yi.Window
 import Yi.Utils
@@ -348,7 +349,6 @@ mkDummyTab actionCh tab = do
     atRef <- newIORef ""
     return (TabInfo (tkey tab) ld mwp (toWidget tw) ws ftRef atRef)
 
-
 -- | Make a new window.
 newWindow :: Editor -> UI -> Window -> IO WinInfo
 newWindow e ui w = do
@@ -433,11 +433,16 @@ newWindow e ui w = do
 
     v `on` motionNotifyEvent  $ handleMove          ui win
     void $ v `onExpose` render ui win
+
+
     -- also redraw when the window receives/loses focus
     (uiWindow ui) `on` focusInEvent $ io (widgetQueueDraw v) >> return False
     (uiWindow ui) `on` focusOutEvent $ io (widgetQueueDraw v) >> return False
     -- todo: consider adding an 'isDirty' flag to WinLayoutInfo,
     -- so that we don't have to recompute the Attributes when focus changes.
+
+
+
     return win
 
 refresh :: UI -> Editor -> IO ()
@@ -474,75 +479,90 @@ render ui w _event =
     -- read the information
     win <- readIORef (coreWin w)
 
-    -- add color attributes.
-    let picture = askBuffer win b $ attributesPictureAndSelB sty regex
-                  (mkRegion tos bos)
-        sty = extractValue $ configTheme (uiConfig ui)
 
-        picZip = zip picture $ drop 1 (fst <$> picture) ++ [bos]
-        strokes = [ (start',s,end') | ((start', s), end') <- picZip
-                                    , s /= emptyAttributes ]
-
-        rel p = fromIntegral (p - tos)
-        allAttrs = concat $ do
-          (p1, Attributes fg bg _rv bd itlc udrl, p2) <- strokes
-          let atr x = x (rel p1) (rel p2)
-              if' p x y = if p then x else y
-          return [ atr AttrForeground $ mkCol True fg
-                 , atr AttrBackground $ mkCol False bg
-                 , atr AttrStyle $ if' itlc StyleItalic StyleNormal
-                 , atr AttrUnderline $ if' udrl UnderlineSingle UnderlineNone
-                 , atr AttrWeight $ if' bd WeightBold WeightNormal
-                 ]
-
-    layoutSetAttributes layout allAttrs
-
-    drawWindow <- widgetGetDrawWindow $ textview w
-    gc <- gcNew drawWindow
-
-    -- see Note [PangoLayout width]
-    -- draw the layout
-    drawLayout drawWindow gc 1 0 layout
-
-    -- calculate the cursor position
-    im <- readIORef (insertingMode w)
-
-    -- check focus, and decide whether we want a wide cursor
-    bufferFocused <- readIORef (inFocus w)
-    uiFocused <- Gtk.windowHasToplevelFocus (uiWindow ui)
-    let focused = bufferFocused && uiFocused
-        wideCursor =
-         case configCursorStyle (uiConfig ui) of
-           AlwaysFat -> True
-           NeverFat -> False
-           FatWhenFocused -> focused
-           FatWhenFocusedAndInserting -> focused && im
-
-
-    (PangoRectangle (succ -> curX) curY curW curH, _) <-
-      layoutGetCursorPos layout (rel cur)
-    -- tell the input method
-    imContextSetCursorLocation (uiInput ui) $
-      Rectangle (round curX) (round curY) (round curW) (round curH)
-    -- paint the cursor
-    gcSetValues gc
-      (newGCValues { Gtk.foreground = mkCol True . Yi.Style.foreground
-                                      . baseAttributes . configStyle $
-                                      uiConfig ui
-                   , Gtk.lineWidth = if wideCursor then 2 else 1 })
-
-    -- tell the renderer
-    if im
-      then  -- if we are inserting, we just want a line
-      drawLine drawWindow gc (round curX, round curY)
-      (round $ curX + curW, round $ curY + curH)
-
-      -- we aren't inserting, we want a rectangle around the current character
+    -- Warning: This is a WIP, don't use this in actual code until this
+    -- warning is gone. You'll be re-reading the image from disk every time you
+    -- render. You don't want that, do you?
+    if isImage $ b ^. attrsA
+      then case b ^. identA of
+          Left _ -> return ()
+          Right fp -> handle (\(SomeException _) ->
+                               putStrLn $ "Failed to render " ++ fp) $ do
+              p <- pixbufNewFromFile fp
+              drawable <- widgetGetDrawWindow $ textview w
+              gc <- gcNew drawable
+              Gtk.drawPixbuf drawable gc p 0 0 0 0 (-1) (-1)
+                Gtk.RgbDitherNone 0 0
       else do
-      PangoRectangle (succ -> chx) chy chw chh <- layoutIndexToPos
-                                                  layout (rel cur)
-      drawRectangle drawWindow gc False (round chx) (round chy)
-        (if chw > 0 then round chw else 8) (round chh)
+        -- add color attributes.
+        let picture = askBuffer win b $ attributesPictureAndSelB sty regex
+                      (mkRegion tos bos)
+            sty = extractValue $ configTheme (uiConfig ui)
+
+            picZip = zip picture $ drop 1 (fst <$> picture) ++ [bos]
+            strokes = [ (start',s,end') | ((start', s), end') <- picZip
+                                        , s /= emptyAttributes ]
+
+            rel p = fromIntegral (p - tos)
+            allAttrs = concat $ do
+              (p1, YS.Attributes fg bg _rv bd itlc udrl, p2) <- strokes
+              let atr x = x (rel p1) (rel p2)
+                  if' p x y = if p then x else y
+              return [ atr AttrForeground $ mkCol True fg
+                     , atr AttrBackground $ mkCol False bg
+                     , atr AttrStyle $ if' itlc StyleItalic StyleNormal
+                     , atr AttrUnderline $ if' udrl UnderlineSingle UnderlineNone
+                     , atr AttrWeight $ if' bd WeightBold WeightNormal
+                     ]
+
+        layoutSetAttributes layout allAttrs
+
+        drawWindow <- widgetGetDrawWindow $ textview w
+        gc <- gcNew drawWindow
+
+        -- see Note [PangoLayout width]
+        -- draw the layout
+        drawLayout drawWindow gc 1 0 layout
+
+        -- calculate the cursor position
+        im <- readIORef (insertingMode w)
+
+        -- check focus, and decide whether we want a wide cursor
+        bufferFocused <- readIORef (inFocus w)
+        uiFocused <- Gtk.windowHasToplevelFocus (uiWindow ui)
+        let focused = bufferFocused && uiFocused
+            wideCursor =
+             case configCursorStyle (uiConfig ui) of
+               AlwaysFat -> True
+               NeverFat -> False
+               FatWhenFocused -> focused
+               FatWhenFocusedAndInserting -> focused && im
+
+
+        (PangoRectangle (succ -> curX) curY curW curH, _) <-
+          layoutGetCursorPos layout (rel cur)
+        -- tell the input method
+        imContextSetCursorLocation (uiInput ui) $
+          Rectangle (round curX) (round curY) (round curW) (round curH)
+        -- paint the cursor
+        gcSetValues gc
+          (newGCValues { Gtk.foreground = mkCol True . Yi.Style.foreground
+                                          . baseAttributes . configStyle $
+                                          uiConfig ui
+                       , Gtk.lineWidth = if wideCursor then 2 else 1 })
+
+        -- tell the renderer
+        if im
+          then  -- if we are inserting, we just want a line
+          drawLine drawWindow gc (round curX, round curY)
+          (round $ curX + curW, round $ curY + curH)
+
+          -- we aren't inserting, we want a rectangle around the current character
+          else do
+          PangoRectangle (succ -> chx) chy chw chh <- layoutIndexToPos
+                                                      layout (rel cur)
+          drawRectangle drawWindow gc False (round chx) (round chy)
+            (if chw > 0 then round chw else 8) (round chh)
 
     return True
 

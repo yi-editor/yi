@@ -64,16 +64,23 @@ editFile filename = do
     fileToNewBuffer :: FilePath -> YiM BufferRef
     fileToNewBuffer f = do
       now <- io getCurrentTime
-      contents <- io $ R.readFile f
+      b <- if looksLikeImage f
+           then withEditor $ stringToNewBuffer (Right f) (Right f)
+           else do
+             contents <- io $ R.readFile f
+             withEditor $ stringToNewBuffer (Right f) (Left contents)
 
-      b <- withEditor $ stringToNewBuffer (Right f) contents
       withGivenBuffer b $ markSavedB now
 
       return b
 
+    looksLikeImage :: FilePath -> Bool
+    looksLikeImage fp = takeExtension fp `elem` [".jpeg", ".jpg"
+                                                , ".gif", ".png"]
+
     newEmptyBuffer :: FilePath -> YiM BufferRef
     newEmptyBuffer f =
-      withEditor $ stringToNewBuffer (Right f) (R.fromString "")
+      withEditor $ stringToNewBuffer (Right f) (Left $ R.fromString "")
 
     setupMode :: FilePath -> BufferRef -> YiM BufferRef
     setupMode f b = do
@@ -178,4 +185,3 @@ setFileName :: BufferRef -> FilePath -> YiM ()
 setFileName b filename = do
   cfn <- liftIO $ userToCanonPath filename
   withGivenBuffer b $ assign identA $ Right cfn
-

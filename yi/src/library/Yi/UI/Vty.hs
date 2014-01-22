@@ -33,6 +33,7 @@ import Yi.Buffer
 import Yi.Editor
 import Yi.Event
 import Yi.Style
+import qualified Yi.Style as YS
 import qualified Yi.UI.Common as Common
 import Yi.Config
 import Yi.Window
@@ -408,7 +409,7 @@ drawText h w topPoint point tabWidth bufData
     | ord c < 32 = [('^',p),(chr (ord c + 64),p)]
     | otherwise = [(c,p)]
 
-withAttributes :: Attributes -> String -> Image
+withAttributes :: YS.Attributes -> String -> Image
 withAttributes sty str = Vty.string (attributesToAttr sty Vty.def_attr) str
 
 ------------------------------------------------------------------------
@@ -455,8 +456,8 @@ colorToAttr set c =
     Default           -> id
     _                 -> error $ "Color unsupported by Vty frontend: " ++ show c
 
-attributesToAttr :: Attributes -> (Vty.Attr -> Vty.Attr)
-attributesToAttr (Attributes fg bg reverse bd _itlc underline') =
+attributesToAttr :: YS.Attributes -> (Vty.Attr -> Vty.Attr)
+attributesToAttr (YS.Attributes fg bg reverse bd _itlc underline') =
     (if reverse then (flip Vty.with_style Vty.reverse_video)  else id) .
     (if bd then (flip Vty.with_style Vty.bold) else id) .
     (if underline' then (flip Vty.with_style Vty.underline) else id) .

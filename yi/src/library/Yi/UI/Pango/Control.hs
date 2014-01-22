@@ -54,6 +54,7 @@ import Yi.Event
 import Yi.Keymap hiding(withBuffer)
 import Yi.Monad
 import Yi.Style
+import qualified Yi.Style as YS
 import Yi.UI.Utils
 import Yi.Utils
 import Yi.Debug
@@ -576,7 +577,7 @@ newView buffer font = do
 
                     rel p = fromIntegral (p - tos)
                     allAttrs = concat $ do
-                      (p1, Attributes fg bg _rv bd itlc udrl, p2) <- strokes
+                      (p1, YS.Attributes fg bg _rv bd itlc udrl, p2) <- strokes
                       let atr x = x (rel p1) (rel p2)
                           if' p x y = if p then x else y
                       return [ atr AttrForeground $ mkCol True fg

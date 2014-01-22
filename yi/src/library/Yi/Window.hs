@@ -65,4 +65,3 @@ pointInWindow point win = tospnt win <= point && point <= bospnt win
 -- | Return a "fake" window onto a buffer.
 dummyWindow :: BufferRef -> Window
 dummyWindow b = Window False b [] 0 emptyRegion def 0 Nothing
-

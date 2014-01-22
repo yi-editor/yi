@@ -14,7 +14,7 @@ listBuffers :: YiM  ()
 listBuffers = do
      withEditor $  do
        bs <- getBufferStack
-       bufRef <- stringToNewBuffer (Left "Buffer List")  $ fromString $ intercalate "\n" $ map identString bs
+       bufRef <- stringToNewBuffer (Left "Buffer List") $ Left $ fromString $ intercalate "\n" $ map identString bs
        switchToBufferE bufRef
      withBuffer $ do
        modifyMode $ \m -> m {modeKeymap = topKeymapA %~ bufferKeymap, modeName = "buffers"}
@@ -34,4 +34,3 @@ bufferKeymap = do
              oneOf [ spec KEnter, char 'f' ]  >>! (switch >> ( withBuffer $ assign readOnlyA False)),
              char 'v'                        ?>>! switch >> ( withBuffer $ assign readOnlyA True)  ]
      <||)
-

@@ -118,7 +118,7 @@ getJSBuffer = withOtherWindow $ do
 
 -- | Creates a new empty buffer and returns it.
 mkJSBuffer :: YiM BufferRef
-mkJSBuffer = withEditor $ stringToNewBuffer (Left "js") (fromString "")
+mkJSBuffer = withEditor $ stringToNewBuffer (Left "js") (Left $fromString "")
 
 -- | Given a filename, a BufferRef and a list of errors, prints the errors in
 --   that buffer.

@@ -13,6 +13,7 @@ import Data.Monoid
 import Data.Traversable (Traversable, mapM)
 import Data.Foldable (maximumBy)
 import Yi.Style
+import qualified Yi.Style as YS
 import Data.List (transpose, intercalate)
 import Yi.Syntax (Span(..))
 import Data.List.Split (chunksOf)
@@ -70,14 +71,16 @@ paintStrokes f0 x0 lf@((pf,f):tf) lx@((px,x):tx) =
 paintPicture :: a -> [[Span (Endo a)]] -> [(Point,a)]
 paintPicture a = foldr (paintStrokes id a . strokePicture) []
 
-attributesPictureB :: UIStyle -> Maybe SearchExp -> Region -> [[Span StyleName]] -> BufferM [(Point,Attributes)]
+attributesPictureB :: UIStyle -> Maybe SearchExp -> Region -> [[Span StyleName]]
+                   -> BufferM [(Point, YS.Attributes)]
 attributesPictureB sty mexp region extraLayers =
   paintPicture (baseAttributes sty) <$>
     fmap (fmap (fmap ($ sty))) <$>
     (extraLayers ++) <$>
     strokesRangesB mexp region
 
-attributesPictureAndSelB :: UIStyle -> Maybe SearchExp -> Region -> BufferM [(Point,Attributes)]
+attributesPictureAndSelB :: UIStyle -> Maybe SearchExp -> Region
+                         -> BufferM [(Point, YS.Attributes)]
 attributesPictureAndSelB sty mexp region = do
     selReg <- getSelectRegionB
     showSel <- use highlightSelectionA

@@ -38,7 +38,7 @@ import System.CanonicalizePath (replaceShorthands)
 -- string. If you don't need this just supply @return ()@
 spawnMinibufferE :: String -> KeymapEndo -> EditorM BufferRef
 spawnMinibufferE prompt kmMod =
-    do b <- stringToNewBuffer (Left prompt) (R.fromString "")
+    do b <- stringToNewBuffer (Left prompt) (Left $ R.fromString "")
        -- Now create the minibuffer keymap and switch to the minibuffer window
        withGivenBuffer0 b $ do
          modifyMode $ \m -> m { modeKeymap = \kms -> kms { topKeymap = kmMod (insertKeymap kms)

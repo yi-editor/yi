@@ -326,7 +326,7 @@ diredDirBuffer d = do
     -- Emacs doesn't follow symlinks, probbably Yi shouldn't do too
     dir <- io $ canonicalizePath d
     -- XXX Don't specify the path as the filename of the buffer.
-    b <- withEditor $ stringToNewBuffer (Left dir) (R.fromString "")
+    b <- withEditor $ stringToNewBuffer (Left dir) (Left $ R.fromString "")
     withEditor $ switchToBufferE b
     withBuffer $ (%=) bufferDynamicValueA $ \ds -> ds { diredPath = dir }
     diredRefresh
