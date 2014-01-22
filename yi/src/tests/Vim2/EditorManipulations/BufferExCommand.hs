@@ -18,7 +18,7 @@ createInitialBuffers = do
     one   <- newBufferE (Right "one")   (fromString "Buffer one")
     two   <- newBufferE (Right "two")   (fromString "Buffer two")
     three <- newBufferE (Right "three") (fromString "Buffer three")
-    return $! (two, "two")
+    return (two, "two")
 
 
 tests :: TestTree
@@ -27,7 +27,7 @@ tests =
         testCase "Switches to the named buffer" $ do
             let setupActions = createInitialBuffers
 
-                preConditions editor (bufferKey, _name) = do
+                preConditions editor (bufferKey, _name) =
                     assertNotCurrentBuffer bufferKey editor
 
                 testActions (_, name) =
@@ -43,7 +43,7 @@ tests =
       , testCase "Switches to the numbered buffer" $ do
             let setupActions = createInitialBuffers
 
-                preConditions editor (bufferKey, _) = do
+                preConditions editor (bufferKey, _) =
                     assertNotCurrentBuffer bufferKey editor
 
                 testActions (BufferRef bref, _) =

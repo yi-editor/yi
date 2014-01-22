@@ -15,7 +15,7 @@ import qualified Yi.Keymap.Vim2.Ex.Commands.Delete as Delete
 
 data CommandParser = CommandParser
     { cpDescription :: String
-    , cpParser      :: (String -> Maybe ExCommand)
+    , cpParser      :: String -> Maybe ExCommand
     , cpNames       :: [String]
     , cpAcceptsBang :: Bool
     , cpArgs        :: Gen String
@@ -77,7 +77,7 @@ commandParsers =
           BufferDelete.parse
           ["bdelete", "bdel", "bd"]
           True
-          (intercalate " " <$> listOf bufferIdentifier)
+          (unwords <$> listOf bufferIdentifier)
 
     , CommandParser
           "Delete.parse"
@@ -98,10 +98,10 @@ commandParsers =
 commandString :: CommandParser -> Gen String
 commandString cp = do
     name <- elements $ cpNames cp
-    bang <- if (cpAcceptsBang cp)
+    bang <- if cpAcceptsBang cp
                 then elements ["!", ""]
                 else pure ""
-    args <- (cpArgs cp)
+    args <- cpArgs cp
     return $ concat [name, bang, args]
 
 

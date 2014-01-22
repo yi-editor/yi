@@ -127,8 +127,8 @@ mkTestCase :: VimTest -> TestTree
 mkTestCase t = testCase (vtName t) $ do
     let setupActions = do
             let (cursorLine, '\n':text) = break (== '\n') (vtInput t)
-            insertText $ text
-            setCursorPosition $ cursorLine
+            insertText text
+            setCursorPosition cursorLine
 
         preConditions _ _ = return ()
 
