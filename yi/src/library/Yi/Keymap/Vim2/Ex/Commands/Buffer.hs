@@ -19,7 +19,7 @@ import qualified Yi.Keymap.Vim2.Ex.Commands.Common as Common
 
 parse :: String -> Maybe ExCommand
 parse = Common.parseWithBang nameParser $ \ _ bang -> do
-    bufIdent <- P.try ( P.many1 P.digit ) <|>
+    bufIdent <- P.try ( P.many1 P.digit <|> bufferSymbol) <|>
                 P.many1 P.space *> P.many P.anyChar <|>
                 P.eof *> return ""
     return $ Common.pureExCommand {
@@ -32,6 +32,8 @@ parse = Common.parseWithBang nameParser $ \ _ bang -> do
                 else
                     Common.errorNoWrite
       }
+  where
+    bufferSymbol = P.string "%" <|> P.string "#"
 
 
 nameParser :: P.GenParser Char () ()

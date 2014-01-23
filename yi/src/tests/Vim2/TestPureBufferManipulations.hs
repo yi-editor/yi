@@ -1,17 +1,29 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 
-module TestVim (getTests) where
+-- | Tests for pure manipulations of a single buffer in the Vim2 Keymap.
+--
+-- A manipulation of a single buffer is an operation or sequence of operations
+-- which do nothing other than change the contents or cursor position of a
+-- single buffer.
+--
+-- This module loads the tests from files in @src/tests/vimtests@. Adding new
+-- tests, or altering existing tests is done by editing files there. The format
+-- should be self explanatory.
+--
+-- If a test is pure and manipulates something other than the contents or cursor
+-- position of a single buffer, it should be added to the
+-- 'Vim2.TestPureEditorManipulations' module.
+--
+module Vim2.TestPureBufferManipulations (getTests) where
 
-import Test.HUnit
-import Test.Framework.Providers.HUnit
-import qualified Test.Framework as TF
+import Test.Tasty.HUnit
+import Test.Tasty (TestTree, testGroup)
 
 import Control.Monad (filterM, forM, void, unless)
 
 import Data.List (sort, isSuffixOf, intercalate)
 
 import System.Directory
-import System.Environment
 import System.FilePath
 
 import Text.Printf
@@ -21,6 +33,8 @@ import Yi.Buffer
 import Yi.Config.Default (defaultVimConfig)
 import Yi.Editor
 import Yi.Keymap.Vim2
+
+import Vim2.TestUtils
 
 data VimTest = VimTest {
                    vtName :: String
@@ -108,42 +122,43 @@ discoverTests topdir = do
     testsFromFiles <- mapM loadTestFromFile testFiles
     return $ testsFromDirs ++ testsFromFiles
 
-mkTestCase :: VimTest -> TF.Test
-mkTestCase t = testCase (vtName t) $ assertEqual errorMsg actualOut (vtOutput t)
-    where outputMatches = vtOutput t == actualOut
-          actualOut = extractBufferString . fst $
-              runEditor' (defVimEval $ vtEventString t)
-                         (initialEditor $ vtInput t)
-          extractBufferString editor = cursorPos editor ++ "\n" ++
-                                       snd (runEditor' (withBuffer0 elemsB) editor)
-          cursorPos = show . snd . runEditor' (withBuffer0 $ do
-                                                  l <- curLn
-                                                  c <- curCol
-                                                  return (l, c + 1))
-          errorMsg = unlines [ "Input:", vtInput t
-                             , "Expected:", vtOutput t
-                             , "Got:", actualOut
-                             , "Events:", vtEventString t
-                             , "---"]
-          defVimEval = pureEval (extractValue defVimConfig)
 
-initialEditor :: String -> Editor
-initialEditor input = fst $ runEditor' action emptyEditor
-    where action = withBuffer0 $ do
-                       startUpdateTransactionB
-                       insertN text
-                       commitUpdateTransactionB
-                       let (x, y) = read cursorLine
-                       moveToLineColB x (y - 1)
-          (cursorLine, '\n':text) = break (== '\n') input
+mkTestCase :: VimTest -> TestTree
+mkTestCase t = testCase (vtName t) $ do
+    let setupActions = do
+            let (cursorLine, '\n':text) = break (== '\n') (vtInput t)
+            insertText text
+            setCursorPosition cursorLine
 
-runEditor' :: EditorM a -> Editor -> (Editor, a)
-runEditor' = runEditor defaultVimConfig
+        preConditions _ _ = return ()
 
-getTests :: IO [TF.Test]
+        testActions _ = defVimEval $ vtEventString t
+
+        assertions editor _ =
+            let actualOut = cursorPos editor ++ "\n" ++
+                            extractBufferString editor
+            in  assertEqual (errorMsg actualOut) actualOut (vtOutput t)
+
+    runTest setupActions preConditions testActions assertions
+
+  where
+    setCursorPosition cursorLine =
+        let (x, y) = read cursorLine
+        in withBuffer0 $ moveToLineColB x (y - 1)
+    cursorPos = show . snd . runEditor' (withBuffer0 $ do
+                                            l <- curLn
+                                            c <- curCol
+                                            return (l, c + 1))
+    errorMsg actualOut = unlines [ "Input:", vtInput t
+                                 , "Expected:", vtOutput t
+                                 , "Got:", actualOut
+                                 , "Events:", vtEventString t
+                                 , "---"]
+
+getTests :: IO TestTree
 getTests = do
     vimtests <- discoverTests "src/tests/vimtests"
-    return $! fmap mkTestCase . sort $ vimtests
+    return $ testGroup "Vim2 keymap tests" $ fmap mkTestCase . sort $ vimtests
 
 readFile' :: FilePath -> IO String
 readFile' f = do

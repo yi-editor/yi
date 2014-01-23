@@ -1,12 +1,16 @@
 module Main where
 
-import Test.Framework (defaultMain)
+import Test.Tasty (defaultMain, testGroup)
 
-import Test.Framework.Providers.HUnit
-
-import qualified TestVim
+import qualified Vim2.TestPureBufferManipulations as Vim2Buffer
+import qualified Vim2.TestPureEditorManipulations as Vim2Editor
+import qualified Vim2.TestExCommandParsers as Vim2ExCommand
 
 main :: IO ()
 main = do
-    tests <- TestVim.getTests
-    defaultMain tests
+    tests  <- Vim2Buffer.getTests
+    defaultMain $ testGroup "Tests" [ 
+        tests
+      , Vim2Editor.tests
+      , Vim2ExCommand.tests
+      ]
