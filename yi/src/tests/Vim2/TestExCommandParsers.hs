@@ -30,9 +30,9 @@ numberString = (\(NonNegative n) -> show n) <$> (arbitrary :: Gen (NonNegative I
 -- | QuickCheck Generator of buffer identifiers.
 --
 -- A buffer identifier is either an empty string, a "%" character, a "#"
--- character, a string containing only numbers (optionally preceeded by 
+-- character, a string containing only numbers (optionally preceeded by
 -- a space), or a string containing any chars preceeded by a space. E.g.,
--- 
+--
 --   ["", "%", "#", " myBufferName", " 45", "45"]
 --
 -- TODO Don't select "", "%", "#" half of the time.
