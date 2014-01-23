@@ -7,22 +7,22 @@ import Test.Tasty (TestTree, testGroup)
 
 import Yi.Buffer
 import Yi.Editor
+import Yi.Config (Config)
 
-import Vim2.TestUtils
+import Generic.TestUtils
 
 
--- | Create three buffers and return the 'BufferRef' of the second buffer created.
--- Which should be unfoccused.
+-- | Create three buffers and return the 'BufferRef' of the second buffer
+-- created which should be unfoccused.
 createInitialBuffers :: EditorM (BufferRef, String)
 createInitialBuffers = do
-    one   <- newBufferE (Right "one")   (fromString "Buffer one")
+    _   <- newBufferE (Right "one")   (fromString "Buffer one")
     two   <- newBufferE (Right "two")   (fromString "Buffer two")
-    three <- newBufferE (Right "three") (fromString "Buffer three")
+    _ <- newBufferE (Right "three") (fromString "Buffer three")
     return (two, "two")
 
-
-tests :: TestTree
-tests =
+tests :: Config -> KeyEval -> TestTree
+tests c ev =
     testGroup ":buffer" [
         testCase "Switches to the named buffer" $ do
             let setupActions = createInitialBuffers
@@ -31,13 +31,13 @@ tests =
                     assertNotCurrentBuffer bufferKey editor
 
                 testActions (_, name) =
-                    defVimEval $ ":buffer " ++ name ++ "<CR>"
+                    ev $ ":buffer " ++ name ++ "<CR>"
 
                 assertions editor (bufferKey, _) = do
-                    assertContentOfCurrentBuffer "Buffer two" editor
+                    assertContentOfCurrentBuffer c "Buffer two" editor
                     assertCurrentBuffer bufferKey editor
 
-            runTest setupActions preConditions testActions assertions
+            runTest setupActions preConditions testActions assertions c
 
 
       , testCase "Switches to the numbered buffer" $ do
@@ -47,11 +47,11 @@ tests =
                     assertNotCurrentBuffer bufferKey editor
 
                 testActions (BufferRef bref, _) =
-                    defVimEval $ ":buffer " ++ show bref ++ "<CR>"
+                    ev $ ":buffer " ++ show bref ++ "<CR>"
 
                 assertions editor (bufferKey, _) = do
-                    assertContentOfCurrentBuffer "Buffer two" editor
+                    assertContentOfCurrentBuffer c "Buffer two" editor
                     assertCurrentBuffer bufferKey editor
 
-            runTest setupActions preConditions testActions assertions
+            runTest setupActions preConditions testActions assertions c
     ]

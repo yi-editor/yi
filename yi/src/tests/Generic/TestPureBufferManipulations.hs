@@ -24,9 +24,6 @@ import Yi.Editor
 
 import Generic.TestUtils
 
-type KeyEval = String -> EditorM ()
-
-
 data KeymapTest = KeymapTest {
                    ktName :: String
                  , ktInput :: String

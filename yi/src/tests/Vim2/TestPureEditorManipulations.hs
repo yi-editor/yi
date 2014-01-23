@@ -11,18 +11,17 @@
 --
 module Vim2.TestPureEditorManipulations (tests) where
 
-import Test.Tasty.HUnit
 import Test.Tasty (TestTree, testGroup)
 
-import Yi.Buffer
-import Yi.Editor
-
-import Vim2.TestUtils
 import qualified Vim2.EditorManipulations.BufferExCommand as BufferExCommand
 
+import           Yi (extractValue)
+import           Yi.Config.Default (defaultVimConfig)
+import           Yi.Keymap.Vim2
 
 tests :: TestTree
-tests = 
+tests =
     testGroup "Vim2 pure editor manipulation tests"
-        [ BufferExCommand.tests
+        [ BufferExCommand.tests defaultVimConfig
+            (pureEval $ extractValue defVimConfig)
         ]

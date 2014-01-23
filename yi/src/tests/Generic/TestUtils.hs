@@ -8,6 +8,8 @@ import Yi.Buffer
 import Yi.Config (Config)
 import Yi.Editor
 
+
+type KeyEval = String -> EditorM ()
 -- | Run a pure editor manipulation test.
 --
 -- Runs the @setupActions@ against an empty editor. Checks that @preConditions@
