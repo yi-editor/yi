@@ -75,19 +75,19 @@ trimTagStack maxHistory = VimTagStack . take maxHistory . tagsStack
 --     of save file.
 savePersistentState :: YiM ()
 savePersistentState = do
-    MaxHistoryEntries histLimit <- withEditor $ askConfigVariableA
+    MaxHistoryEntries histLimit <- withEditor askConfigVariableA
     pStateFilename      <- getPersistentStateFilename
     (hist :: Histories) <- withEditor $ use dynA
-    tagStack            <- withEditor $ getTagStack
+    tagStack            <- withEditor   getTagStack
     kr                  <- withEditor $ use killringA
-    curRe               <- withEditor $ getRegexE
+    curRe               <- withEditor   getRegexE
     let pState = PersistentState {
                    histories     = trimHistories histLimit hist
                  , vimTagStack   = trimTagStack  histLimit tagStack
                  , aKillring     = kr    -- trimmed during normal operation
                  , aCurrentRegex = curRe -- just a single value -> no need to trim
                  }
-    io $ encodeFile pStateFilename $ pState
+    io $ encodeFile pStateFilename pState
 
 -- | Reads and decodes a persistent state in both strict, and exception robust
 --   way.

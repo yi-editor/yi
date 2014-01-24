@@ -13,11 +13,11 @@ import Data.Monoid
 import Data.Traversable (Traversable, mapM)
 import Data.Foldable (maximumBy)
 import Yi.Style
-import Data.List (transpose, intercalate)
+import Data.List (transpose)
 import Yi.Syntax (Span(..))
 import Data.List.Split (chunksOf)
 import Yi.String (padLeft)
-import Control.Monad.State (runState,modify)
+import Control.Monad.State (evalState,modify)
 import Control.Monad.State.Class (gets)
 
 indexedAnnotatedStreamB :: Point -> BufferM [(Point, Char)]
@@ -27,12 +27,13 @@ indexedAnnotatedStreamB p = do
     return $ spliceAnnots text (dropWhile (\s -> spanEnd s < p) (annots p))
 
 applyHeights :: Traversable t => [Int] -> t Window -> t Window
-applyHeights heights ws = fst $ runState (mapM distribute ws) heights
-    where distribute win = case isMini win of
-                 True -> return win {height = 1}
-                 False -> do h <- gets head
-                             modify tail
-                             return win {height = h}
+applyHeights heights ws = evalState (mapM distribute ws) heights
+    where 
+      distribute win = if isMini win 
+          then return win{height = 1}
+          else (do h <- gets head
+                   modify tail
+                   return win{height = h})
 
 
 spliceAnnots :: [(Point,Char)] -> [Span String] -> [(Point,Char)]
@@ -46,17 +47,17 @@ spliceAnnots text (Span start x stop:anns) = l ++ zip (repeat start) x ++ splice
 --   ensure that the points are strictly increasing and introducing
 --   padding segments where neccessary.
 --   Precondition: Strokes are ordered and not overlapping.
-strokePicture :: [Span (Endo a)] -> [(Point,(a -> a))]
+strokePicture :: [Span (Endo a)] -> [(Point,a -> a)]
 strokePicture [] = []
-strokePicture wholeList@((Span leftMost _ _):_) = helper leftMost wholeList
-    where helper :: Point -> [Span (Endo a)] -> [(Point,(a -> a))]
+strokePicture wholeList@(Span leftMost _ _:_) = helper leftMost wholeList
+    where helper :: Point -> [Span (Endo a)] -> [(Point,a -> a)]
           helper prev [] = [(prev,id)]
-          helper prev ((Span l f r):xs)
+          helper prev (Span l f r:xs)
               | prev < l  = (prev, id) : (l,appEndo f) : helper r xs
               | otherwise = (l,appEndo f) : helper r xs
 
 -- | Paint the given stroke-picture on top of an existing picture
-paintStrokes :: (a -> a) -> a -> [(Point,(a -> a))] -> [(Point,a)] -> [(Point,a)]
+paintStrokes :: (a -> a) -> a -> [(Point,a -> a)] -> [(Point,a)] -> [(Point,a)]
 paintStrokes f0 _  [] lx = fmap (second f0)     lx
 paintStrokes _  x0 lf [] = fmap (second ($ x0)) lf
 paintStrokes f0 x0 lf@((pf,f):tf) lx@((px,x):tx) =
@@ -103,4 +104,4 @@ arrangeItems' items maxWidth numberOfLines = (fittedItems,theLines)
           totalWidths = scanl (\x y -> 1 + x + y) 0 columnsWidth
           shownItems = scanl (+) 0 (fmap length columns)
           fittedItems = snd $ last $ takeWhile ((<= maxWidth) . fst) $ zip totalWidths shownItems
-          theLines = fmap (intercalate " " . zipWith padLeft columnsWidth) $ transpose columns
+          theLines = fmap (unwords . zipWith padLeft columnsWidth) $ transpose columns

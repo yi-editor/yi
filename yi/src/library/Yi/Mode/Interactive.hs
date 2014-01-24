@@ -16,17 +16,17 @@ mode :: Mode (OnlineTree.Tree (Tok Token))
 mode = Compilation.mode
   { modeApplies = modeNeverApplies,
     modeName = "interactive",
-    modeKeymap = topKeymapA %~ ((<||)
+    modeKeymap = topKeymapA %~ (<||)
      (choice
       [spec KHome ?>>! moveToSol,
        spec KEnter ?>>! do
-          eof <- withBuffer $ atLastLine
+          eof <- withBuffer atLastLine
           if eof
             then feedCommand
             else withSyntax modeFollow,
        meta (char 'p') ?>>! interactHistoryMove 1,
        meta (char 'n') ?>>! interactHistoryMove (-1)
-      ]))
+      ])
   }
 
 interactId :: String
@@ -61,7 +61,7 @@ spawnProcess = spawnProcessMode mode
 spawnProcessMode :: Mode syntax -> FilePath -> [String] -> YiM BufferRef
 spawnProcessMode interMode cmd args = do
     b <- startSubprocess cmd args (const $ return ())
-    withEditor $ interactHistoryStart
+    withEditor interactHistoryStart
     mode' <- lookupMode $ AnyMode interMode
     withBuffer $ do m1 <- getMarkB (Just "StdERR")
                     m2 <- getMarkB (Just "StdOUT")
@@ -87,7 +87,7 @@ feedCommand = do
         cmd <- readRegionB $ mkRegion p q
         setMarkPointB me p
         setMarkPointB mo p
-        return $ cmd
+        return cmd
     withEditor interactHistoryStart
     sendToProcess b cmd
 

@@ -45,7 +45,7 @@ nameParser = do
 
 
 switchToBuffer :: String -> EditorM ()
-switchToBuffer s = do
+switchToBuffer s =
     case P.parse bufferRef "" s of
         Right ref -> switchByRef ref
         Left _e   -> switchByName s

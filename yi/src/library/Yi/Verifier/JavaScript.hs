@@ -8,7 +8,7 @@ module Yi.Verifier.JavaScript where
 
 import Control.Monad.Writer.Lazy (Writer, MonadWriter, tell)
 import Control.Monad
-import Data.List (intersperse)
+import Data.List (intercalate)
 import Data.Foldable (toList)
 import Data.Function (on)
 import qualified Data.DList as D
@@ -34,8 +34,7 @@ data Report = Err  Error
 
 instance Show Error where
     show (MultipleFunctionDeclaration n ps) =
-        "Function `" ++ n ++ "' declared more than once: " ++
-                     concat (intersperse ", " $ map show ps)
+        "Function `" ++ n ++ "' declared more than once: " ++ intercalate ", " (map show ps)
 
 instance Show Warning where
     show (UnreachableCode pos) =
@@ -59,8 +58,8 @@ verify t = do
 --   declarations, including the functions' subfunctions.
 checkMultipleFuns :: [Statement TT] -> Writer (D.DList Report) ()
 checkMultipleFuns stmts = do
-  let dupFuns = dupsBy ((ttEq) `on` funName) stmts
-  when (not $ null dupFuns)
+  let dupFuns = dupsBy (ttEq `on` funName) stmts
+  unless (null dupFuns)
     (say (Err (MultipleFunctionDeclaration
                (nameOf $ tokT $ funName $ head dupFuns)
                (map (tokPosn . funName) dupFuns))))
@@ -70,7 +69,7 @@ checkMultipleFuns stmts = do
 checkUnreachable :: [Statement TT] -> Writer (D.DList Report) ()
 checkUnreachable stmts = do
   let afterReturn = dropWhile' (not . isReturn) stmts
-  when (not (null afterReturn))
+  unless (null afterReturn)
     (say (Warn (UnreachableCode (tokPosn $ firstTok $ head afterReturn))))
 
 

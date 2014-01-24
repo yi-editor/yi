@@ -73,7 +73,7 @@ safeHead a l = case l of
 splitBy :: (a -> Bool) -> [a] -> [[a]]
 splitBy p xs = case break p xs of
                  (l,tok:r) -> let (x:xx) = splitBy p r
-                             in [l] ++ (tok : x) : xx
+                             in l : (tok : x) : xx
                  (l, []) -> [l]
 
 splitElem :: Eq a => a -> [a] -> [[a]]
@@ -82,7 +82,7 @@ splitElem c = splitBy (==c)
 unSplit :: a -> [[a]] -> [a]
 unSplit _ [] = []
 unSplit _ (x:[]) = x
-unSplit c (x:xs) = x ++ [c] ++ (unSplit c xs)
+unSplit c (x:xs) = x ++ [c] ++ unSplit c xs
 
 revDrop :: (a -> Bool) -> [a] -> [a]
 revDrop p = reverse . dropWhile p . reverse
@@ -95,8 +95,8 @@ chomp = revDrop (\ch -> ch == '\n' || ch == '\r')
 
 dropPrefix :: Eq a => [a] -> [a] -> [a]
 dropPrefix pre xs = (map snd . dropWhile fst) l2
-  where l1 = zipWith (==) pre xs ++ (repeat False)
-        l2 = zipWith (,) l1 xs
+  where l1 = zipWith (==) pre xs ++ repeat False
+        l2 = zip          l1 xs
 
 dropSuffix :: (Eq a) => [a] -> [a] -> [a]
 dropSuffix suf = reverse . dropPrefix (reverse suf) . reverse
@@ -119,13 +119,12 @@ getNetstring :: Handle -> IO String
 getNetstring h = do
   c <- skipWhite h -- better for testing (line buffered terminal)
   lens <- readCharN h 5
-  text <- readCharN h (hexDecode (c:lens))
-  return text
+  readCharN h (hexDecode (c:lens))
 
 skipWhite :: Handle -> IO Char
 skipWhite h = do
   c <- hGetChar h
-  if (elem c "\n \t")
+  if c `elem` "\n \t"
     then skipWhite h
     else return c
 
@@ -135,9 +134,10 @@ readCharN h n = replicateM n (hGetChar h)
 hexEncode :: Int -> String
 hexEncode = printf "%06x"
 
+{-# ANN hexDecode "HLint: ignore Redundant bracket" #-}
 hexDecode :: (Num a) => String -> a
 hexDecode [] = 0
-hexDecode (x:xs) = (h x)* 16^(length xs) + hexDecode xs
+hexDecode (x:xs) = h x * 16^(length xs) + hexDecode xs
  where h '0' = 0;  h '1' = 1;  h '2' = 2;  h '3' = 3
        h '4' = 4;  h '5' = 5;  h '6' = 6;  h '7' = 7
        h '8' = 8;  h '9' = 9;  h 'a' = 10; h 'b' = 11
@@ -165,7 +165,7 @@ logS = logPutStrLn
 whenM :: (Monad m) => m Bool -> m () -> m ()
 whenM cond m = do
   res <- cond
-  when (res) m
+  when res m
 
 unlessM :: (Monad m) => m Bool -> m () -> m ()
 unlessM cond = whenM (liftM not cond)

@@ -13,9 +13,7 @@ import Prelude (Float)
 import Yi.UI.Cocoa.Application
 import Yi.UI.Cocoa.TextStorage
 import Yi.UI.Cocoa.TextView
-import Yi.UI.Cocoa.Utils
-
- hiding (init)
+import Yi.UI.Cocoa.Utils hiding (init)
 import Yi.Buffer
 import Yi.Editor
 import Yi.Keymap
@@ -29,6 +27,7 @@ import Yi.Window
 import Paths_yi (getDataFileName)
 
 import Control.Monad.Reader (when)
+import Control.Monad (liftM)
 
 import qualified Data.List as L
 import qualified Data.List.PointedList.Circular as PL
@@ -78,9 +77,9 @@ import qualified AppKit.NSView
 import Foreign.C
 import Foreign hiding (new)
 
-foreign import ccall "Processes.h TransformProcessType" transformProcessType :: Ptr (CInt) -> CInt -> IO (CInt)
-foreign import ccall "Processes.h SetFrontProcess" setFrontProcess :: Ptr (CInt) -> IO (CInt)
-foreign import ccall "Processes.h GetCurrentProcess" getCurrentProcess :: Ptr (CInt) -> IO (CInt)
+foreign import ccall "Processes.h TransformProcessType" transformProcessType :: Ptr CInt -> CInt -> IO CInt
+foreign import ccall "Processes.h SetFrontProcess" setFrontProcess :: Ptr CInt -> IO CInt
+foreign import ccall "Processes.h GetCurrentProcess" getCurrentProcess :: Ptr CInt -> IO CInt
 
 -- Don't import this, since it is only available in Leopard...
 $(declareRenamedSelector "setAllowsNonContiguousLayout:" "setAllowsNonContiguousLayout" [t| Bool -> IO () |])
@@ -181,9 +180,9 @@ start cfg ch outCh _ed = do
 
   -- Ensure that our command line application is also treated as a gui application
   fptr <- mallocForeignPtrBytes 32 -- way to many bytes, but hey...
-  withForeignPtr fptr $ getCurrentProcess
-  withForeignPtr fptr $ (flip transformProcessType) 1
-  withForeignPtr fptr $ setFrontProcess
+  withForeignPtr fptr getCurrentProcess
+  withForeignPtr fptr $ flip transformProcessType 1
+  withForeignPtr fptr setFrontProcess
 
   -- Publish Objective-C classes...
   initializeClass_Application
@@ -191,7 +190,7 @@ start cfg ch outCh _ed = do
   initializeClass_TextStorage
   initializeClass_YiScrollView
 
-  app <- _YiApplication # sharedApplication >>= return . toYiApplication
+  app <- liftM toYiApplication (_YiApplication # sharedApplication)
   app # setIVar _eventChannel (Just ch)
   app # setIVar _runAction (Just $ outCh . singleton . makeAction)
 
@@ -207,7 +206,7 @@ start cfg ch outCh _ed = do
     flip setApplicationIconImage app
 
   -- Initialize the app delegate, which allows quit-on-window-close
-  controller <- autonew _YiController >>= return . toYiController
+  controller <- liftM toYiController (autonew _YiController)
   app # setDelegate controller
 
   -- init menus
@@ -222,7 +221,7 @@ start cfg ch outCh _ed = do
   -- Create main cocoa window...
   win <- _NSWindow # alloc >>= initWithContentRect (mkRect 0 0 480 340)
   win # setTitle (toNSString "Yi")
-  content <- win # AppKit.NSWindow.contentView >>= return . toNSView
+  content <- liftM toNSView (win # AppKit.NSWindow.contentView)
   content # setAutoresizingMask allSizable
 
   -- Update the font configuration
@@ -274,7 +273,7 @@ syncWindows e ui = sync
     insert before (w,f) = update (w,f) =<< newWindow before ui w (winbuf w)
     update (w, False) i = return (i{window = w})
     update (w, True) i = do
-      (textview i) # AppKit.NSView.window >>= makeFirstResponder (textview i)
+      textview i # AppKit.NSView.window >>= makeFirstResponder (textview i)
       return (i{window = w})
 
 setColors :: (Has_setBackgroundColor t, Has_setTextColor t) => Style.Attributes -> t -> IO ()
@@ -292,12 +291,12 @@ newWindow before ui win b = do
   v # sizeToFit
   let sty = configStyle $ uiConfig ui
       ground = Style.baseAttributes sty
-  attrs <- convertAttributes $ appEndo (Style.selectedStyle sty) $ ground
+  attrs <- convertAttributes $ appEndo (Style.selectedStyle sty) ground
   v # setSelectedTextAttributes attrs
   v # setColors ground
   v # textColor >>= flip setInsertionPointColor v
 
-  (ml, view) <- if (isMini win)
+  (ml, view) <- if isMini win
    then do
     v # setHorizontallyResizable False
     v # setVerticallyResizable False
@@ -318,10 +317,10 @@ newWindow before ui win b = do
     hb # addSubview v
     hb # setAutoresizingMask nsViewWidthSizable
 
-    brect <- (uiBox ui) # bounds
+    brect <- uiBox ui # bounds
     hb # setFrame (mkRect 0 0 (nsWidth brect) (nsHeight prect))
 
-    (uiBox ui) # addSubview hb
+    uiBox ui # addSubview hb
     dummy <- _NSTextField # alloc >>= init
 
     return (dummy, hb)
@@ -329,7 +328,7 @@ newWindow before ui win b = do
     v # setHorizontallyResizable True
     v # setVerticallyResizable True
 
-    when (not $ configLineWrap $ uiConfig ui) $ do
+    unless (configLineWrap $ uiConfig ui) $ do
       tc <- v # textContainer
       NSSize _ h <- tc # containerSize
       tc # setContainerSize (NSSize 1.0e7 h)
@@ -357,10 +356,10 @@ newWindow before ui win b = do
   flip (setIVar _runBuffer) v $ \act -> do
     wCache <- readIORef (windowCache ui)
     uiActionCh ui $ makeAction $ do
-      ((%=) windowsA) $ fromJust . (PL.move $ fromJust $ L.findIndex ((k ==) . wikey) wCache)
+      (windowsA %=) $ fromJust . PL.move (fromJust $ L.findIndex ((k ==) . wikey) wCache)
       withGivenBufferAndWindow0 win (bkey b) act
 
-  return $ WinInfo
+  return WinInfo
     { wikey    = k
     , window   = win
     , textview = v
@@ -372,7 +371,7 @@ newWindow before ui win b = do
 getSelectedRegions :: BufferM [NSRange]
 getSelectedRegions = do
   rect <- use rectangleSelectionA
-  if (not rect)
+  if not rect
     then singleton <$> mkRegionRange <$> getSelectRegionB
     else do
       (reg, x1, x2) <- getRectangle
@@ -392,25 +391,25 @@ refresh ui e = withAutoreleasePool $ logNSException "refresh" $ do
     _YiApplication # sharedApplication >>=
       pushClipboard (snd $ runEditor (uiFullConfig ui) getRegE e) . toYiApplication
 
-    (uiCmdLine ui) # setStringValue (toNSString $ L.intercalate "\n" $ statusLine e)
+    uiCmdLine ui # setStringValue (toNSString $ L.intercalate "\n" $ statusLine e)
 
     cache <- readRef $ windowCache ui
-    (uiWindow ui) # setAutodisplay False -- avoid redrawing while window syncing
+    uiWindow ui # setAutodisplay False -- avoid redrawing while window syncing
     cache' <- syncWindows e ui (toList $ PL.withFocus $ windows e) cache
     writeRef (windowCache ui) cache'
-    (uiBox ui) # adjustSubviews -- FIX: maybe it is not needed
-    (uiWindow ui) # setAutodisplay True -- reenable automatic redrawing
+    uiBox ui # adjustSubviews -- FIX: maybe it is not needed
+    uiWindow ui # setAutodisplay True -- reenable automatic redrawing
 
     forM_ cache' $ \w ->
         do let buf = findBufferWith (bufkey (window w)) e
-           (storage w) # setMonospaceFont -- FIXME: Why is this needed for mini buffers?
-           (storage w) # setTextStorageBuffer e buf
+           storage w # setMonospaceFont -- FIXME: Why is this needed for mini buffers?
+           storage w # setTextStorageBuffer e buf
 
            let ((p0,txt,rs),_) = runBuffer (window w) buf $
                  (,,) <$> pointB <*> getModeLine (commonNamePrefix e) <*> getSelectedRegions
            a <- castObject <$> _NSMutableArray # array :: IO (NSMutableArray ())
            mapM_ ((flip addObject a =<<) . flip valueWithRange _NSValue) rs
-           (textview w) # setSelectedRanges (castObject a)
-           (textview w) # scrollRangeToVisible (NSRange (fromIntegral p0) 0)
-           (modeline w) # setStringValue (toNSString txt)
-           (textview w) # visibleRange >>= flip visibleRangeChanged (storage w)
+           textview w # setSelectedRanges (castObject a)
+           textview w # scrollRangeToVisible (NSRange (fromIntegral p0) 0)
+           modeline w # setStringValue (toNSString txt)
+           textview w # visibleRange >>= flip visibleRangeChanged (storage w)

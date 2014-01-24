@@ -20,14 +20,14 @@ import Yi.Keymap
 import Data.Char
 import Prelude hiding (error)
 import Yi.Interact hiding (write)
-import Control.Monad (when)
+import Control.Monad (unless)
 import Yi.Debug
 import Data.List (sort, nub)
 
 printableChar :: (MonadInteract m w Event) => m Char
 printableChar = do
   Event (KASCII c) [] <- anyEvent
-  when (not $ isPrint c) $
+  unless (isPrint c) $
        fail "unprintable character"
   return c
 

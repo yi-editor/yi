@@ -35,6 +35,7 @@ import Data.Char (toLower)
 import Data.DeriveTH
 import Data.Default
 import Data.Typeable
+import Data.Maybe
 import Data.Foldable (find)
 import qualified Data.Map as M
 import qualified Data.Rope as R
@@ -117,7 +118,7 @@ resetDiredOpState :: YiM ()
 resetDiredOpState = withBuffer $ (%=) bufferDynamicValueA (\_ds -> def :: DiredOpState)
 
 incDiredOpSucCnt :: YiM ()
-incDiredOpSucCnt = withBuffer $ (%=) bufferDynamicValueA (\ds -> ds { diredOpSucCnt = (diredOpSucCnt ds) + 1 })
+incDiredOpSucCnt = withBuffer $ (%=) bufferDynamicValueA (\ds -> ds { diredOpSucCnt = diredOpSucCnt ds + 1 })
 
 getDiredOpState :: YiM DiredOpState
 getDiredOpState = withBuffer $ use bufferDynamicValueA
@@ -128,13 +129,13 @@ modDiredOpState f = withBuffer $ (%=) bufferDynamicValueA f
 -- | execute the operations
 -- Pass the list of remaining operations down, insert new ops at the head if needed
 procDiredOp :: Bool -> [DiredOp] -> YiM ()
-procDiredOp counting ((DORemoveFile f):ops) = do
+procDiredOp counting (DORemoveFile f:ops) = do
   io $ printingException ("Remove file " ++ f) (removeLink f)
   when counting postproc
   procDiredOp counting ops
     where postproc = do incDiredOpSucCnt
                         withBuffer $ diredUnmarkPath (takeFileName f)
-procDiredOp counting ((DORemoveDir f):ops) = do
+procDiredOp counting (DORemoveDir f:ops) = do
   io $ printingException ("Remove directory " ++ f) (removeDirectoryRecursive f)
   -- document suggests removeDirectoryRecursive will follow
   -- symlinks in f, but it seems not the case, at least on OS X.
@@ -143,8 +144,8 @@ procDiredOp counting ((DORemoveDir f):ops) = do
     where postproc = do
             incDiredOpSucCnt
             withBuffer $ diredUnmarkPath (takeFileName f)
-procDiredOp _counting ((DORemoveBuffer _):_) = undefined -- TODO
-procDiredOp counting  ((DOCopyFile o n):ops) = do
+procDiredOp _counting (DORemoveBuffer _:_) = undefined -- TODO
+procDiredOp counting  (DOCopyFile o n:ops) = do
   io $ printingException ("Copy file " ++ o) (copyFile o n)
   when counting postproc
   procDiredOp counting ops
@@ -152,7 +153,7 @@ procDiredOp counting  ((DOCopyFile o n):ops) = do
             incDiredOpSucCnt
             withBuffer $ diredUnmarkPath (takeFileName o)
             -- TODO: mark copied files with "C" if the target dir's dired buffer exists
-procDiredOp counting ((DOCopyDir o n):ops) = do
+procDiredOp counting (DOCopyDir o n:ops) = do
   contents <- io $ printingException (concat ["Copy directory ", o, " to ", n]) doCopy
   subops <- io $ mapM builder $ filter (`notElem` [".", ".."]) contents
   procDiredOp False subops
@@ -174,50 +175,48 @@ procDiredOp counting ((DOCopyDir o n):ops) = do
             let npath = n </> name
             let opath = o </> name
             isDir <- doesDirectoryExist opath
-            return $ DOCkOverwrite npath $ (getOp isDir) opath npath
+            return $ DOCkOverwrite npath $ getOp isDir opath npath
                 where getOp isDir = if isDir then DOCopyDir else DOCopyFile
 
 
-procDiredOp counting ((DORename o n):ops) = do
+procDiredOp counting (DORename o n:ops) = do
   io $ printingException (concat ["Rename ", o, " to ", n]) (rename o n)
   when counting postproc
   procDiredOp counting ops
     where postproc = do
             incDiredOpSucCnt
             withBuffer $ diredUnmarkPath (takeFileName o)
-procDiredOp counting r@((DOConfirm prompt eops enops):ops) = do
+procDiredOp counting r@(DOConfirm prompt eops enops:ops) =
     withMinibuffer (prompt ++ " (yes/no)") noHint act
     where act s = case map toLower s of
                     "yes" -> procDiredOp counting (eops ++ ops)
                     "no"  -> procDiredOp counting (enops ++ ops)
                     _     -> procDiredOp counting r
                              -- TODO: show an error msg
-procDiredOp counting ((DOCheck check eops enops):ops) = do
-  res <- io $ check
-  if res then procDiredOp counting (eops ++ ops)
-         else procDiredOp counting (enops ++ ops)
-procDiredOp counting ((DOCkOverwrite fp op):ops) = do
+procDiredOp counting (DOCheck check eops enops:ops) = do
+  res <- io check
+  procDiredOp counting (if res then eops ++ ops else enops ++ ops)
+procDiredOp counting (DOCkOverwrite fp op:ops) = do
   exists <- io $ fileExist fp
-  if exists then procDiredOp counting (newOp:ops)
-            else procDiredOp counting (op:ops)
+  procDiredOp counting (if exists then newOp:ops else op:ops)
       where newOp = DOChoice (concat ["Overwrite ", fp, " ?"]) op
-procDiredOp counting ((DOInput prompt opGen):ops) = do
+procDiredOp counting (DOInput prompt opGen:ops) =
   promptFile prompt act
-    where act s = do procDiredOp counting $ (opGen s) ++ ops
-procDiredOp counting ((DONoOp):ops) = procDiredOp counting ops
-procDiredOp counting ((DOFeedback f):ops) = do
+    where act s = procDiredOp counting $ opGen s ++ ops
+procDiredOp counting (DONoOp:ops) = procDiredOp counting ops
+procDiredOp counting (DOFeedback f:ops) =
   getDiredOpState >>= f >> procDiredOp counting ops
-procDiredOp counting r@((DOChoice prompt op):ops) = do
+procDiredOp counting r@(DOChoice prompt op:ops) = do
   st <- getDiredOpState
   if diredOpForAll st then proceedYes
                       else void $ withEditor $ spawnMinibufferE msg (const askKeymap)
-    where msg = concat [prompt, " (y/n/!/q/h)"]
-          askKeymap = choice ([ char 'n' ?>>! noAction
-                              , char 'y' ?>>! yesAction
-                              , char '!' ?>>! allAction
-                              , char 'q' ?>>! quit
-                              , char 'h' ?>>! help
-                              ])
+    where msg = prompt ++ " (y/n/!/q/h)"
+          askKeymap = choice [ char 'n' ?>>! noAction
+                             , char 'y' ?>>! yesAction
+                             , char '!' ?>>! allAction
+                             , char 'q' ?>>! quit
+                             , char 'h' ?>>! help
+                             ]
           noAction = cleanUp >> proceedNo
           yesAction = cleanUp >> proceedYes
           allAction = do cleanUp
@@ -242,7 +241,7 @@ procDiredOp _ _ = return ()
 -- 3. Show the number of successful deletions at the end of the excution
 -- 4. TODO: ask confirmation for wether to remove the associated buffers when a file is removed
 askDelFiles :: FilePath -> [(FilePath, DiredEntry)] -> YiM ()
-askDelFiles dir fs = do
+askDelFiles dir fs =
   case fs of
     (_x:_) -> do
             resetDiredOpState
@@ -254,7 +253,7 @@ askDelFiles dir fs = do
     -- no files listed
     []     -> procDiredOp True [DOFeedback showNothing]
     where prompt = concat ["Delete ", show $ length fs, " file(s)?"]
-          ops = (map opGenerator fs)
+          ops = map opGenerator fs
           showResult st = do
                        diredRefresh
                        msgEditor $ concat [show $ diredOpSucCnt st, " of ",
@@ -267,15 +266,15 @@ askDelFiles dir fs = do
                        if exists then case de of
                                         (DiredDir _dfi) -> do
                                                 isNull <- liftM nullDir $ getDirectoryContents path
-                                                return $ if isNull then (DOConfirm recDelPrompt [DORemoveDir path] [DONoOp])
-                                                         else (DORemoveDir path)
+                                                return $ if isNull then DOConfirm recDelPrompt [DORemoveDir path] [DONoOp]
+                                                         else DORemoveDir path
                                         _               -> return (DORemoveFile path)
                                  else return DONoOp
               where path = dir </> fn
                     recDelPrompt = concat ["Recursive delete of ", fn, "?"]
                     -- Test the emptyness of a folder
                     nullDir :: [FilePath] -> Bool
-                    nullDir contents = Data.List.any (not . flip Data.List.elem [".", ".."]) contents
+                    nullDir = Data.List.any (not . flip Data.List.elem [".", ".."])
 
 diredDoDel :: YiM ()
 diredDoDel = do
@@ -285,14 +284,15 @@ diredDoDel = do
     Just (fn, de) -> askDelFiles dir [(fn, de)]
     Nothing       -> noFileAtThisLine
 
+{-# ANN diredDoMarkedDel "HLint: ignore Use string literal" #-}
 diredDoMarkedDel :: YiM ()
 diredDoMarkedDel = do
   dir <- currentDir
-  fs <- markedFiles (flip Data.List.elem ['D'])
+  fs <- markedFiles (`Data.List.elem` ['D'])
   askDelFiles dir fs
 
 diredKeymap :: Keymap -> Keymap
-diredKeymap = do
+diredKeymap =
     (choice [
              char 'p'                   ?>>! filenameColOf lineUp,
              oneOf [char 'n', char ' ']  >>! filenameColOf lineDown,
@@ -319,7 +319,7 @@ dired = do
     void $ editFile dir
 
 diredDir :: FilePath -> YiM ()
-diredDir dir = diredDirBuffer dir >> return ()
+diredDir dir = void (diredDirBuffer dir)
 
 diredDirBuffer :: FilePath -> YiM BufferRef
 diredDirBuffer d = do
@@ -349,9 +349,9 @@ diredRefresh = do
     -- Compute results
     let dlines = linesToDisplay ds
         (strss, stys, strs) = unzip3 dlines
-        strss' = transpose $ map doPadding $ transpose $ strss
+        strss' = transpose $ map doPadding $ transpose strss
         namecol = if null strss' then 0 else
-                  let l1details = init $ head strss' in Data.List.sum (map length l1details) + (length l1details)
+                  let l1details = init $ head strss' in Data.List.sum (map length l1details) + length l1details
 
     -- Set buffer contents
     withBuffer $ do -- Clear buffer
@@ -382,11 +382,11 @@ diredRefresh = do
     doPadding drs = map (pad ((maximum . map drlength) drs)) drs
 
     pad _n (DRPerms s)  = s
-    pad n  (DRLinks s)  = (replicate (max 0 (n - length s)) ' ') ++ s
-    pad n  (DROwners s) = s ++ (replicate (max 0 (n - length s)) ' ') ++ " "
-    pad n  (DRGroups s) = s ++ (replicate (max 0 (n - length s)) ' ')
-    pad n  (DRSizes s)  = (replicate (max 0 (n - length s)) ' ') ++ s
-    pad n  (DRDates s)  = (replicate (max 0 (n - length s)) ' ') ++ s
+    pad n  (DRLinks s)  = replicate (max 0 (n - length s)) ' ' ++ s
+    pad n  (DROwners s) = s ++ replicate (max 0 (n - length s)) ' ' ++ " "
+    pad n  (DRGroups s) = s ++ replicate (max 0 (n - length s)) ' '
+    pad n  (DRSizes s)  = replicate (max 0 (n - length s)) ' ' ++ s
+    pad n  (DRDates s)  = replicate (max 0 (n - length s)) ' ' ++ s
     pad _n (DRFiles s)  = s       -- Don't right-justify the filename
 
     drlength = length . undrs
@@ -395,9 +395,9 @@ diredRefresh = do
 --   and the FilePath of the file represented by that textual region
 insertDiredLine :: ([String], StyleName, String) -> BufferM (Point, Point, FilePath)
 insertDiredLine (fields, sty, filenm) = bypassReadOnly $ do
-    insertN $ (concat $ intersperse " " (init fields))
+    insertN (unwords (init fields))
     p1 <- pointB
-    insertN (" " ++ last fields)
+    insertN (' ' : last fields)
     p2 <- pointB
     insertN "\n"
     addOverlayB (mkOverlay UserLayer (mkRegion p1 p2) sty)
@@ -412,16 +412,16 @@ data DRStrings = DRPerms {undrs :: String}
                | DRFiles {undrs :: String}
 
 -- | Return a List of (prefix, fullDisplayNameIncludingSourceAndDestOfLink, style, filename)
-linesToDisplay :: DiredState ->([([DRStrings], StyleName, String)])
+linesToDisplay :: DiredState -> [([DRStrings], StyleName, String)]
 linesToDisplay dState = map (\(k, i) -> let k' = UTF8.decodeString k in lineToDisplay k' i) (M.assocs $ diredEntries dState)
     where
     lineToDisplay k (DiredFile v)      = (l " -" v ++ [DRFiles k], defaultStyle, k)
     lineToDisplay k (DiredDir v)       = (l " d" v ++ [DRFiles k], const (withFg blue), k)
     lineToDisplay k (DiredSymLink v s) = (l " l" v ++ [DRFiles $ k ++ " -> " ++ s], const (withFg cyan), k)
-    lineToDisplay k (DiredSocket v) = (l " s" v ++ [DRFiles $ k], const (withFg magenta), k)
-    lineToDisplay k (DiredCharacterDevice v) = (l " c" v ++ [DRFiles $ k], const (withFg yellow), k)
-    lineToDisplay k (DiredBlockDevice v) = (l " b" v ++ [DRFiles $ k], const (withFg yellow), k)
-    lineToDisplay k (DiredNamedPipe v) = (l " p" v ++ [DRFiles $ k], const (withFg brown), k)
+    lineToDisplay k (DiredSocket v) = (l " s" v ++ [DRFiles k], const (withFg magenta), k)
+    lineToDisplay k (DiredCharacterDevice v) = (l " c" v ++ [DRFiles k], const (withFg yellow), k)
+    lineToDisplay k (DiredBlockDevice v) = (l " b" v ++ [DRFiles k], const (withFg yellow), k)
+    lineToDisplay k (DiredNamedPipe v) = (l " p" v ++ [DRFiles k], const (withFg brown), k)
     lineToDisplay k DiredNoInfo        = ([DRFiles $ k ++ " : Not a file/dir/symlink"], defaultStyle, k)
 
     l pre v = [DRPerms $ pre ++ permString v,
@@ -441,18 +441,20 @@ diredScanDir dir = do
     where
     lineForFile :: String -> M.Map FilePath DiredEntry -> String -> IO (M.Map FilePath DiredEntry)
     lineForFile d m f = do
-                        let fp = (d </> f)
+                        let fp = d </> f
                         fileStatus <- getSymbolicLinkStatus fp
                         dfi <- lineForFilePath fp fileStatus
                         let islink = isSymbolicLink fileStatus
                         linkTarget <- if islink then readSymbolicLink fp else return ""
-                        let de = if (isDirectory fileStatus) then (DiredDir dfi) else
-                                   if (isRegularFile fileStatus) then (DiredFile dfi) else
-                                     if islink then (DiredSymLink dfi linkTarget) else
-                                       if (isSocket fileStatus) then (DiredSocket dfi) else
-                                         if (isCharacterDevice fileStatus) then (DiredCharacterDevice dfi) else
-                                           if (isBlockDevice fileStatus) then (DiredBlockDevice dfi) else
-                                             if (isNamedPipe fileStatus) then (DiredNamedPipe dfi) else DiredNoInfo
+                        let de
+                              | isDirectory fileStatus = DiredDir dfi
+                              | isRegularFile fileStatus = DiredFile dfi
+                              | islink = DiredSymLink dfi linkTarget
+                              | isSocket fileStatus = DiredSocket dfi
+                              | isCharacterDevice fileStatus = DiredCharacterDevice dfi
+                              | isBlockDevice fileStatus = DiredBlockDevice dfi
+                              | isNamedPipe fileStatus = DiredNamedPipe dfi
+                              | otherwise = DiredNoInfo
                         return (M.insert f de m)
 
     lineForFilePath :: FilePath -> FileStatus -> IO DiredFileInfo
@@ -460,31 +462,31 @@ diredScanDir dir = do
                         let modTimeStr = shortCalendarTimeToString $ posixSecondsToUTCTime $ realToFrac $ modificationTime fileStatus
                         let uid = fileOwner fileStatus
                             gid = fileGroup fileStatus
-                        _filenm <- if (isSymbolicLink fileStatus) then
-                                  return . ((++) (takeFileName fp ++ " -> ")) =<< readSymbolicLink fp else
+                        _filenm <- if isSymbolicLink fileStatus then
+                                  return . ((takeFileName fp ++ " -> ") ++) =<< readSymbolicLink fp else
                                   return $ takeFileName fp
-                        ownerEntry <- orException (getUserEntryForID uid) (getAllUserEntries >>= return . scanForUid uid)
-                        groupEntry <- orException (getGroupEntryForID gid) (getAllGroupEntries >>= return . scanForGid gid)
-                        let fmodeStr   = (modeString . fileMode) fileStatus
+                        ownerEntry <- orException (getUserEntryForID uid) (liftM (scanForUid uid) getAllUserEntries)
+                        groupEntry <- orException (getGroupEntryForID gid) (liftM (scanForGid gid) getAllGroupEntries)
+                        let fmodeStr = (modeString . fileMode) fileStatus
                             sz = toInteger $ fileSize fileStatus
                             ownerStr   = userName ownerEntry
                             groupStr   = groupName groupEntry
                             numOfLinks = toInteger $ linkCount fileStatus
-                        return $ DiredFileInfo { permString = fmodeStr
-                                               , numLinks = numOfLinks
-                                               , owner = ownerStr
-                                               , grp = groupStr
-                                               , sizeInBytes = sz
-                                               , modificationTimeString = modTimeStr}
+                        return DiredFileInfo { permString = fmodeStr
+                                             , numLinks = numOfLinks
+                                             , owner = ownerStr
+                                             , grp = groupStr
+                                             , sizeInBytes = sz
+                                             , modificationTimeString = modTimeStr}
 
 
 -- | Needed on Mac OS X 10.4
 scanForUid :: UserID -> [UserEntry] -> UserEntry
-scanForUid uid entries = maybe (UserEntry "?" "" uid 0 "" "" "") id (find ((== uid) . userID) entries)
+scanForUid uid entries = fromMaybe (UserEntry "?" "" uid 0 "" "" "") (find ((== uid) . userID) entries)
 
 -- | Needed on Mac OS X 10.4
 scanForGid :: GroupID -> [GroupEntry] -> GroupEntry
-scanForGid gid entries = maybe (GroupEntry "?" "" gid []) id (find ((== gid) . groupID) entries)
+scanForGid gid entries = fromMaybe (GroupEntry "?" "" gid []) (find ((== gid) . groupID) entries)
 
 modeString :: FileMode -> String
 modeString fm = ""
@@ -524,6 +526,7 @@ diredMarkWithChar c mv = bypassReadOnly $ do
                                             diredRefreshMark
                              Nothing        -> filenameColOf mv
 
+{-# ANN diredRefreshMark "HLint: ignore Use string literal" #-}
 diredRefreshMark :: BufferM ()
 diredRefreshMark = do b <- pointB
                       dState <- use bufferDynamicValueA
@@ -534,7 +537,7 @@ diredRefreshMark = do b <- pointB
                                                   moveTo pos >> moveToSol >> insertN [mark] >> deleteN 1
                                                   e <- pointB
                                                   addOverlayB $ mkOverlay UserLayer (mkRegion (e - 1) e) (styleOfMark mark)
-                                                Nothing -> do
+                                                Nothing ->
                                                   -- for deleted marks
                                                   moveTo pos >> moveToSol >> insertN [' '] >> deleteN 1
                       mapM_ draw posDict
@@ -552,15 +555,15 @@ diredUnmark = bypassReadOnly $ do
                   Just (fn, _de) -> do (%=) bufferDynamicValueA (\ds -> ds {diredMarks = M.delete fn $ diredMarks ds})
                                        filenameColOf lineUp
                                        diredRefreshMark
-                  Nothing        -> do filenameColOf lineUp
+                  Nothing        -> filenameColOf lineUp
 
 
 diredUnmarkPath :: FilePath -> BufferM()
-diredUnmarkPath fn = do (%=) bufferDynamicValueA (\ds -> ds {diredMarks = M.delete fn $ diredMarks ds})
+diredUnmarkPath fn = (%=) bufferDynamicValueA (\ds -> ds {diredMarks = M.delete fn $ diredMarks ds})
 
 diredUnmarkAll :: BufferM ()
 diredUnmarkAll = bypassReadOnly $ do
-                   (%=) bufferDynamicValueA (\ds -> ds {diredMarks = const M.empty $ diredMarks ds})
+                   (%=) bufferDynamicValueA (\ds -> ds {diredMarks = M.empty})
                    filenameColOf $ return ()
                    diredRefreshMark
 
@@ -589,15 +592,15 @@ askRenameFiles :: FilePath -> [(FilePath, DiredEntry)] -> YiM ()
 askRenameFiles dir fs =
     case fs of
       (_x:[]) -> do resetDiredOpState
-                    procDiredOp True [DOInput prompt $ sOpIsDir]
+                    procDiredOp True [DOInput prompt sOpIsDir]
       (_x:_)  -> do resetDiredOpState
-                    procDiredOp True [DOInput prompt $ mOpIsDirAndExists]
+                    procDiredOp True [DOInput prompt mOpIsDirAndExists]
       []      -> procDiredOp True [DOFeedback showNothing]
     where prompt = concat ["Move ", show total, " item(s) to:"]
           mOpIsDirAndExists t = [DOCheck (doesDirectoryExist t) posOps negOps]
               where
-                posOps = (map builder fs) ++ [DOFeedback showResult]
-                negOps = [DOFeedback (\_ -> errorEditor $ concat [t, " is not directory!"])]
+                posOps = map builder fs ++ [DOFeedback showResult]
+                negOps = [DOFeedback (const $ errorEditor (t ++ " is not directory!"))]
                 builder (fn, _de) = let old = dir </> fn
                                         new = t </> fn
                                     in DOCkOverwrite new (DORename old new)
@@ -619,7 +622,7 @@ askRenameFiles dir fs =
               diredRefresh
               msgEditor $ concat [show (diredOpSucCnt st),
                                   " of ", show total, " item(s) moved."]
-          showNothing _ = msgEditor $ "Quit"
+          showNothing _ = msgEditor "Quit"
           total = length fs
 
 -- | copy selected files in a given directory to the target location given
@@ -628,30 +631,30 @@ askRenameFiles dir fs =
 -- askCopyFiles follow the same logic as askRenameFiles,
 -- except dir and file are done by different DiredOP
 askCopyFiles :: FilePath -> [(FilePath, DiredEntry)] -> YiM ()
-askCopyFiles dir fs = do
+askCopyFiles dir fs =
     case fs of
       (_x:[]) -> do resetDiredOpState
-                    procDiredOp True [DOInput prompt $ sOpIsDir]
+                    procDiredOp True [DOInput prompt sOpIsDir]
       (_x:_)  -> do resetDiredOpState
-                    procDiredOp True [DOInput prompt $ mOpIsDirAndExists]
+                    procDiredOp True [DOInput prompt mOpIsDirAndExists]
       []      -> procDiredOp True [DOFeedback showNothing]
     where prompt = concat ["Copy ", show total, " item(s) to:"]
           mOpIsDirAndExists t = [DOCheck (doesDirectoryExist t) posOps negOps]
               where
-                posOps = (map builder fs) ++ [DOFeedback showResult]
-                negOps = [DOFeedback (\_ -> errorEditor $ concat [t, " is not directory!"])]
+                posOps = map builder fs ++ [DOFeedback showResult]
+                negOps = [DOFeedback $ const $ errorEditor (t ++ " is not directory!")]
                 builder (fn, de) = let old = dir </> fn
                                        new = t </> fn
-                                   in DOCkOverwrite new ((op4Type de) old new)
+                                   in DOCkOverwrite new (op4Type de old new)
           sOpIsDir t = [DOCheck (doesDirectoryExist t) posOps sOpDirCopy]
               where (fn, de) = head fs -- the only item
-                    posOps = [DOCkOverwrite new ((op4Type de) old new),
+                    posOps = [DOCkOverwrite new (op4Type de old new),
                               DOFeedback showResult]
                         where new = t </> fn
                               old = dir </> fn
                     sOpDirCopy = [DOCheck ckParentDir posOps' negOps,
                                   DOFeedback showResult]
-                        where posOps' = [DOCkOverwrite new ((op4Type de) old new)]
+                        where posOps' = [DOCkOverwrite new (op4Type de old new)]
                               negOps =
                                   [DOFeedback (\_ -> errorEditor $ concat ["Cannot copy ", old, " to ", new])]
                               new = t
@@ -661,26 +664,28 @@ askCopyFiles dir fs = do
                         diredRefresh
                         msgEditor $ concat [show (diredOpSucCnt st),
                                             " of ", show total, " item(s) copied."]
-          showNothing _ = msgEditor $ "Quit"
+          showNothing _ = msgEditor "Quit"
           total = length fs
           op4Type :: DiredEntry -> FilePath -> FilePath -> DiredOp
           op4Type (DiredDir _) = DOCopyDir
           op4Type _            = DOCopyFile
 
+{-# ANN diredRename "HLint: ignore Use string literal" #-}
 diredRename :: YiM ()
 diredRename = do
   dir <- currentDir
-  fs <- markedFiles (flip Data.List.elem ['*'])
+  fs <- markedFiles (`Data.List.elem` ['*'])
   if null fs then do maybefile <- withBuffer fileFromPoint
                      case maybefile of
                        Just (fn, de) -> askRenameFiles dir [(fn, de)]
                        Nothing       -> noFileAtThisLine
              else askRenameFiles dir fs
 
+{-# ANN diredCopy "HLint: ignore Use string literal" #-}
 diredCopy :: YiM ()
 diredCopy = do
   dir <- currentDir
-  fs <- markedFiles (flip Data.List.elem ['*'])
+  fs <- markedFiles (`Data.List.elem` ['*'])
   if null fs then do maybefile <- withBuffer fileFromPoint
                      case maybefile of
                        Just (fn, de) -> askCopyFiles dir [(fn, de)]
@@ -712,20 +717,24 @@ diredLoad = do
                                             msgEditor $ target ++ " does not exist"
                             (DiredSocket _dfi) -> do
                                     exists <- io $ doesFileExist sel
-                                    if exists then msgEditor ("Can't open Socket " ++ sel)
-                                              else msgEditor $ sel ++ " no longer exists"
+                                    msgEditor (if exists
+                                        then "Can't open Socket " ++ sel
+                                        else sel ++ " no longer exists")
                             (DiredBlockDevice _dfi) -> do
                                     exists <- io $ doesFileExist sel
-                                    if exists then msgEditor ("Can't open Block Device " ++ sel)
-                                              else msgEditor $ sel ++ " no longer exists"
+                                    msgEditor (if exists
+                                        then "Can't open Block Device " ++ sel
+                                        else sel ++ " no longer exists")
                             (DiredCharacterDevice _dfi) -> do
                                     exists <- io $ doesFileExist sel
-                                    if exists then msgEditor ("Can't open Character Device " ++ sel)
-                                              else msgEditor $ sel ++ " no longer exists"
+                                    msgEditor (if exists
+                                        then "Can't open Character Device " ++ sel
+                                        else sel ++ " no longer exists")
                             (DiredNamedPipe _dfi) -> do
                                     exists <- io $ doesFileExist sel
-                                    if exists then msgEditor ("Can't open Pipe " ++ sel)
-                                              else msgEditor $ sel ++ " no longer exists"
+                                    msgEditor (if exists 
+                                        then "Can't open Pipe " ++ sel
+                                        else sel ++ " no longer exists")
                             DiredNoInfo -> msgEditor $ "No File Info for:"++sel
       Nothing        -> noFileAtThisLine
 
@@ -747,7 +756,7 @@ markedFiles :: (Char -> Bool) -> YiM [(FilePath, DiredEntry)]
 markedFiles cond = do
   dState <- withBuffer $ use bufferDynamicValueA
   let fs = fst . unzip $ filter (cond . snd) (M.assocs $ diredMarks dState)
-  return $ map (\f -> (f, (diredEntries dState) M.! f)) fs
+  return $ map (\f -> (f, diredEntries dState M.! f)) fs
 
 diredUpDir :: YiM ()
 diredUpDir = do
@@ -755,7 +764,7 @@ diredUpDir = do
     diredDir $ takeDirectory dir
 
 diredCreateDir :: YiM ()
-diredCreateDir = do
+diredCreateDir =
     withMinibufferGen "" noHint "Create Dir:"
       return (const $ return ()) $ \nm -> do
         dir <- currentDir

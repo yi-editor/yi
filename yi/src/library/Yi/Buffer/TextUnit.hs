@@ -64,7 +64,7 @@ genBoundary :: Int -> (String -> Bool) -> Direction -> BufferM Bool
 genBoundary ofs condition dir = condition <$> peekB
   where -- | read some characters in the specified direction
         peekB = savingPointB $
-          do moveN $ mayNegate $ ofs
+          do moveN $ mayNegate ofs
              fmap snd <$> (indexedStreamB dir =<< pointB)
         mayNegate = case dir of Forward -> id
                                 Backward -> negate
@@ -199,7 +199,7 @@ unitSentence = GenUnit unitEmacsParagraph $ \dir -> checkPeekB (if dir == Forwar
 
 -- | Unit that have its left and right boundaries at the left boundary of the argument unit.
 leftBoundaryUnit :: TextUnit -> TextUnit
-leftBoundaryUnit u = GenUnit Document $ (\_dir -> atBoundaryB u Backward)
+leftBoundaryUnit u = GenUnit Document (\_dir -> atBoundaryB u Backward)
 
 -- | @genAtBoundaryB u d s@ returns whether the point is at a given boundary @(d,s)@ .
 -- Boundary @(d,s)@ , taking Word as example, means:
@@ -257,14 +257,14 @@ doUntilB cond f = loop
                 else return []
 
 doUntilB_ :: BufferM Bool -> BufferM a -> BufferM ()
-doUntilB_ cond f = doUntilB cond f >> return () -- maybe do an optimized version?
+doUntilB_ cond f = void (doUntilB cond f) -- maybe do an optimized version?
 
 untilB_ :: BufferM Bool -> BufferM a -> BufferM ()
-untilB_ cond f = untilB cond f >> return () -- maybe do an optimized version?
+untilB_ cond f = void (untilB cond f) -- maybe do an optimized version?
 
 -- | Do an action if the current buffer character passes the predicate
 doIfCharB :: (Char -> Bool) -> BufferM a -> BufferM ()
-doIfCharB p o = readB >>= \c -> if p c then o >> return () else return ()
+doIfCharB p o = readB >>= \c -> when (p c) $ void o
 
 
 -- | Boundary side

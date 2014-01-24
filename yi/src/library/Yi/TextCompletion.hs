@@ -64,7 +64,7 @@ mkWordComplete extractFn sourceFn msgFn predMatch = do
     [] -> do -- no alternatives, build them.
       w <- extractFn
       ws <- sourceFn w
-      withEditor $ setDynamic (Completion $ (nubSet $ filter (matches w) ws) ++ [w])
+      withEditor $ setDynamic (Completion $ nubSet (filter (matches w) ws) ++ [w])
       -- We put 'w' back at the end so we go back to it after seeing
       -- all possibilities.
       mkWordComplete extractFn sourceFn msgFn predMatch -- to pick the 1st possibility.
@@ -73,7 +73,7 @@ mkWordComplete extractFn sourceFn msgFn predMatch = do
 
 wordCompleteString' :: Bool -> YiM String
 wordCompleteString' caseSensitive = mkWordComplete
-                                      (withEditor $ withBuffer0 $ do readRegionB =<< regionOfPartB unitWord Backward)
+                                      (withEditor $ withBuffer0 $ readRegionB =<< regionOfPartB unitWord Backward)
                                       (\_ -> withEditor wordsForCompletion)
                                       (\_ -> return ())
                                       (mkIsPrefixOf caseSensitive)
@@ -128,7 +128,7 @@ veryQuickCompleteWord scope =
   do (curWord, curWords) <- withBuffer0 wordsAndCurrentWord
      allWords <- fmap concat $ withEveryBufferE $ fmap words' elemsB
      let match :: String -> Maybe String
-         match x = if (isPrefixOf curWord x) && (x /= curWord) then Just x else Nothing
+         match x = if (curWord `isPrefixOf` x) && (x /= curWord) then Just x else Nothing
          wordsToChooseFrom = if scope == FromCurrentBuffer then curWords else allWords
      preText             <- completeInList curWord match wordsToChooseFrom
      if curWord == ""
@@ -150,12 +150,12 @@ wordsForCompletionInBuffer = do
 wordsForCompletion :: EditorM [String]
 wordsForCompletion = do
     (_b:bs) <- fmap bkey <$> getBufferStack
-    w0 <- withBuffer0 $ wordsForCompletionInBuffer
+    w0 <- withBuffer0 wordsForCompletionInBuffer
     contents <- forM bs $ \b->withGivenBuffer0 b elemsB
     return $ w0 ++ concatMap words' contents
 
 words' :: String -> [String]
-words' = filter (not . isNothing . charClass . head) . groupBy ((==) `on` charClass)
+words' = filter (isJust . charClass . head) . groupBy ((==) `on` charClass)
 
 charClass :: Char -> Maybe Int
 charClass c = findIndex (generalCategory c `elem`)

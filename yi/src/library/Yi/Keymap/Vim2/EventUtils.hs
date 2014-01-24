@@ -17,7 +17,7 @@ import Yi.Keymap.Keys (char, spec, ctrl, meta)
 import Yi.Keymap.Vim2.Common
 
 specMap :: M.Map EventString Key
-specMap = M.fromList $ specList
+specMap = M.fromList specList
 
 invSpecMap :: M.Map Key EventString
 invSpecMap = M.fromList $ fmap swap specList
@@ -93,7 +93,7 @@ stringToRepeatableAction s = RepeatableAction count command
 
 splitCountedCommand :: String -> (Int, String)
 splitCountedCommand s = (count, commandString)
-    where (countString, commandString) = break (not . isDigit) s
+    where (countString, commandString) = span isDigit s
           count = case countString of
                    [] -> 1
                    _ -> read countString

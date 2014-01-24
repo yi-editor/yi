@@ -25,6 +25,7 @@ module Yi.UI.Cocoa.TextView
 import Yi.String
 import Yi.Buffer hiding (runBuffer)
 import Yi.UI.Cocoa.Utils
+import Control.Monad (unless)
 
 -- Specify Cocoa imports explicitly, to avoid name-clashes.
 -- Since the number of functions recognized by HOC varies
@@ -50,6 +51,8 @@ import qualified AppKit.NSScrollView (contentView)
 
 import Foreign
 import Foreign.C
+
+{-# ANN module "HLint: ignore Use camelCase" #-}
 
 -- TODO: The correct way of doing this would be to add the
 --       protocol constraints on the performDragOperation
@@ -85,7 +88,7 @@ ytv_setSelectedRangesAffinityStillSelecting rs a b v = do
   r@(NSRange i len) <- foldlM nsUnionRange (NSRange 0 0) =<< mapM rangeValue hrs
   p <- v #. _selectingPosition
   case (b, p) of
-    (True, Nothing) -> do
+    (True, Nothing) ->
       -- Assume that the initial indication gives starting position
       v # setIVar _selectingPosition (Just $ fromIntegral i)
     (False, Just p0) -> do
@@ -95,7 +98,7 @@ ytv_setSelectedRangesAffinityStillSelecting rs a b v = do
         setVisibleSelection (len /= 0)
         setSelectionMarkPointB (fromIntegral p0)
         moveTo (fromIntegral $ if fromIntegral i == p0 then i + len else i)
-    _ -> do
+    _ ->
       -- Ignore intermediate updates (Cocoa buffers events until selection finishes)
       -- Ignore direct updates (to avoid having to detect "our" updates)
       return ()
@@ -134,7 +137,7 @@ ytv_performDragOperation dragInfo slf = do
     runbuf <- slf #. _runBuffer
     runbuf $ do
       hasSel <- use highlightSelectionA
-      rSel <- if hasSel && src == (castObject slf) then getSelectRegionB else return emptyRegion
+      rSel <- if hasSel && src == castObject slf then getSelectRegionB else return emptyRegion
 
       moveTo $ fromIntegral pIns
       -- To not affect positions we make the "latter" modification first
@@ -159,7 +162,7 @@ charAtMouse p slf = do
   index <- layout # glyphIndexForPointInTextContainerFractionOfDistanceThroughGlyph mouse container pf
   fract <- peek pf
   free pf
-  return $ if (fract > 0.5) then index + 1 else index
+  return $ if fract > 0.5 then index + 1 else index
 
 -- | Compute the currently visible text range in the view
 visibleRange :: YiTextView () -> IO NSRange
@@ -182,12 +185,10 @@ ysv_tile :: YiScrollView () -> IO ()
 ysv_tile slf = do
   super slf # tile
   moveScroller <- slf #. _leftScroller
-  if not moveScroller
-    then return ()
-    else do
-      -- Copied from NostalgicScrollView (found on /.)
-      c <- slf # AppKit.NSScrollView.contentView
-      s <- slf # verticalScroller
-      sf <- s # frame
-      s # setFrameOrigin (NSPoint 0.0 (nsMinY sf))
-      c # frame >>= (flip setFrameOrigin c) . (NSPoint (nsWidth sf)) . nsMinY
+  unless (not moveScroller) $ do
+    -- Copied from NostalgicScrollView (found on /.)
+    c <- slf # AppKit.NSScrollView.contentView
+    s <- slf # verticalScroller
+    sf <- s # frame
+    s # setFrameOrigin (NSPoint 0.0 (nsMinY sf))
+    c # frame >>= (`setFrameOrigin` c) . NSPoint (nsWidth sf) . nsMinY

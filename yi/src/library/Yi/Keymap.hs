@@ -37,6 +37,7 @@ import Control.Concurrent
 import Control.Applicative
 import Control.Monad.Reader hiding (mapM_)
 import Control.Monad.State hiding (mapM_)
+import Control.Monad.Base
 import Control.Exception
 import Data.Typeable
 import Yi.Buffer
@@ -50,6 +51,8 @@ import Yi.Utils
 import qualified Data.Map as M
 import qualified Yi.Editor as Editor
 import qualified Yi.Interact as I
+
+-- TODO: refactor this!
 
 data Action = forall a. Show a => YiA (YiM a)
             | forall a. Show a => EditorA (EditorM a)
@@ -81,6 +84,10 @@ data Yi = Yi {yiUi          :: UI,
               input         :: Event -> IO (),      -- ^ input stream
               output        :: [Action] -> IO (),   -- ^ output stream
               yiConfig      :: Config,
+              -- TODO: this leads to anti-patterns and seems like one itself
+              -- too coarse for actual concurrency, otherwise pointless
+              -- And MVars can be empty so this causes soundness problems
+              -- Also makes code a bit opaque
               yiVar         :: MVar YiVar           -- ^ The only mutable state in the program
              }
              deriving Typeable
@@ -92,8 +99,10 @@ data YiVar = YiVar {yiEditor             :: !Editor,
                    }
 
 -- | The type of user-bindable functions
+-- TODO: doc how these are actually user-bindable
+-- are they?
 newtype YiM a = YiM {runYiM :: ReaderT Yi IO a}
-    deriving (Monad, MonadReader Yi, MonadIO, Typeable, Functor)
+    deriving (Monad, Applicative, MonadReader Yi, MonadBase IO, Typeable, Functor)
 
 instance MonadState Editor YiM where
     get = yiEditor <$> (readRef =<< yiVar <$> ask)
@@ -104,7 +113,7 @@ instance MonadEditor YiM where
     withEditor f = do
       r <- asks yiVar
       cfg <- asks yiConfig
-      liftIO $ unsafeWithEditor cfg r f
+      liftBase $ unsafeWithEditor cfg r f
 
 -----------------------
 -- Keymap basics
@@ -156,7 +165,7 @@ handleJustE p h c = catchJustE p c h
 -- | Shut down all of our threads. Should free buffers etc.
 shutdown :: YiM ()
 shutdown = do ts <- threads <$> readsRef yiVar
-              liftIO $ mapM_ killThread ts
+              liftBase $ mapM_ killThread ts
 
 -- -------------------------------------------
 

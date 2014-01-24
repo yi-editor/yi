@@ -76,7 +76,7 @@ cleverMode = haskellAbstract
     Driver.mkHighlighter (skipScanner 50 . IncrParser.scanner Paren.parse . Paren.indentScanner . haskellLexer)
 
   , modeAdjustBlock = adjustBlock
-  , modePrettify = (cleverPrettify . allToks)
+  , modePrettify = cleverPrettify . allToks
   , modeGetAnnotations = tokenBasedAnnots Paren.tokenToAnnot
 
  }
@@ -144,8 +144,7 @@ adjustBlock e len = do
                                 if len >= 0
                                  then do insertN (replicate len ' ')
                                          leftN len
-                                 else do
-                                    deleteN (negate len)
+                                 else deleteN (negate len)
 
 -- | Returns true if the token should be indented to look as "inside" the group.
 insideGroup :: Token -> Bool
@@ -169,11 +168,11 @@ cleverAutoIndentHaskellB e behaviour = do
           | isErrorTok (tokT close) || getLastOffset g >= solPnt
               = [groupIndent open ctnt]  -- stop here: we want to be "inside" that group.
           | otherwise = stopsOf ts' -- this group is closed before this line; just skip it.
-      stopsOf ((Paren.Atom (Tok {tokT = t})):_) | startsLayout t = [nextIndent, previousIndent + indentLevel]
+      stopsOf (Paren.Atom (Tok {tokT = t}):_) | startsLayout t = [nextIndent, previousIndent + indentLevel]
         -- of; where; etc. we want to start the block here.
         -- Also use the next line's indent:
         -- maybe we are putting a new 1st statement in the block here.
-      stopsOf ((Paren.Atom _):ts) = stopsOf ts
+      stopsOf (Paren.Atom _:ts) = stopsOf ts
          -- any random part of expression, we ignore it.
       stopsOf (t@(Paren.Block _):ts) = shiftBlock + maybe 0 (posnCol . tokPosn) (getFirstElement t) : stopsOf ts
       stopsOf (_:ts) = stopsOf ts
@@ -194,7 +193,7 @@ cleverAutoIndentHaskellB e behaviour = do
               Nothing -> openCol + nominalIndent openChar -- no such token: indent normally.
               Just t -> posnCol . tokPosn $ t -- indent along that other token
           | otherwise = openCol
-      groupIndent (Tok _ _ _) _ = error "unable to indent code"
+      groupIndent (Tok {}) _ = error "unable to indent code"
   case getLastPath [e] solPnt of
     Nothing -> return ()
     Just path -> let stops = stopsOf path
@@ -221,24 +220,24 @@ cleverAutoIndentHaskellC e behaviour = do
             -- stop here: we want to be "inside" that group.
           | otherwise = stopsOf ts
            -- this group is closed before this line; just skip it.
-      stopsOf ((Hask.PAtom (Tok {tokT = t}) _):_) | startsLayout t || (t == ReservedOp Equal)
+      stopsOf (Hask.PAtom (Tok {tokT = t}) _:_) | startsLayout t || (t == ReservedOp Equal)
           = [nextIndent, previousIndent + indentLevel]
         -- of; where; etc. ends the previous line. We want to start the block here.
         -- Also use the next line's indent:
         -- maybe we are putting a new 1st statement in the block here.
       stopsOf (l@(Hask.PLet _ (Hask.Block _) _):ts') = [colOf' l | lineStartsWith (Reserved Haskell.In)] ++ stopsOf ts'
                                                        -- offer to align with let only if this is an "in"
-      stopsOf (t@(Hask.Block _):ts') = [shiftBlock + colOf' t] ++ stopsOf ts'
+      stopsOf (t@(Hask.Block _):ts') = (shiftBlock + colOf' t) : stopsOf ts'
                                        -- offer add another statement in the block
-      stopsOf ((Hask.PGuard' (PAtom pipe  _) _ _):ts') = [tokCol pipe | lineStartsWith (ReservedOp Haskell.Pipe)] ++ stopsOf ts'
+      stopsOf (Hask.PGuard' (PAtom pipe _) _ _:ts') = [tokCol pipe | lineStartsWith (ReservedOp Haskell.Pipe)] ++ stopsOf ts'
                                                                  -- offer to align against another guard
       stopsOf (d@(Hask.PData {}):ts') = colOf' d + indentLevel
                                            : stopsOf ts' --FIXME!
-      stopsOf ((Hask.RHS (Hask.PAtom{}) (exp)):ts')
-          = [(case firstTokOnLine of
+      stopsOf (Hask.RHS (Hask.PAtom{}) exp:ts')
+          = [case firstTokOnLine of
               Just (Operator op) -> opLength op (colOf' exp) -- Usually operators are aligned against the '=' sign
               -- case of an operator should check so that value always is at least 1
-              _ -> colOf' exp) | lineIsExpression ] ++ stopsOf ts'
+              _ -> colOf' exp | lineIsExpression ] ++ stopsOf ts'
                    -- offer to continue the RHS if this looks like an expression.
       stopsOf [] = [0] -- maybe it's new declaration in the module
       stopsOf (_:ts) = stopsOf ts -- by default, there is no reason to indent against an expression.
@@ -269,7 +268,7 @@ cleverAutoIndentHaskellC e behaviour = do
               -- no such token: indent normally.
               Just t -> posnCol . tokPosn $ t -- indent along that other token
           | otherwise = openCol
-      groupIndent (Tok _ _ _) _ = error "unable to indent code"
+      groupIndent (Tok{}) _ = error "unable to indent code"
   case getLastPath [e] solPnt of
     Nothing -> return ()
     Just path ->let stops = stopsOf path
@@ -309,14 +308,14 @@ cleverPrettify :: [TT] -> BufferM ()
 cleverPrettify toks = do
   pnt <- pointB
   let groups = groupBy' coalesce toks
-      isCommentGroup g = (tokTyp $ tokT $ head $ g) `elem` fmap Just [Haskell.Line]
-      thisCommentGroup = listToMaybe $ dropWhile ((pnt >) . tokEnd . last) $ filter isCommentGroup $ groups
+      isCommentGroup g = tokTyp (tokT $ head g) `elem` fmap Just [Haskell.Line]
+      thisCommentGroup = listToMaybe $ dropWhile ((pnt >) . tokEnd . last) $ filter isCommentGroup groups
                          -- FIXME: laziness
   case thisCommentGroup of
     Nothing -> return ()
     Just g -> do let region = mkRegion (tokBegin . head $ g) (tokEnd . last $ g)
                  text <- unwords . fmap (drop 2) <$> mapM tokText g
-                 modifyRegionClever (const $ unlines' $ fmap ("-- " ++) $ fillText 80 $ text) region
+                 modifyRegionClever (const $ unlines' $ fmap ("-- " ++) $ fillText 80 text) region
 
 tokTyp :: Token -> Maybe Haskell.CommentType
 tokTyp (Comment t) = Just t
@@ -367,7 +366,7 @@ ghci = do
 -- Show it in another window.
 ghciGet :: YiM BufferRef
 ghciGet = withOtherWindow $ do
-    GhciBuffer mb <- withEditor $ getDynamic
+    GhciBuffer mb <- withEditor getDynamic
     case mb of
         Nothing -> ghci
         Just b -> do
@@ -397,7 +396,7 @@ ghciLoadBuffer = do
 ghciInferType :: YiM ()
 ghciInferType = do
     nm <- withBuffer $ readUnitB unitWord
-    when (not $ null nm) $
+    unless (null nm) $
         withMinibufferGen nm noHint "Insert type of which identifier?"
         return (const $ return ()) ghciInferTypeOf
 

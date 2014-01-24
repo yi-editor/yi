@@ -134,7 +134,7 @@ pasteBefore = do
     register <- getRegisterE . vsActiveRegister =<< getDynamic
     case register of
         Nothing -> return ()
-        Just (Register LineWise rope) -> withBuffer0 $ when (not $ R.null rope) $
+        Just (Register LineWise rope) -> withBuffer0 $ unless (R.null rope) $
             -- Beware of edge cases ahead
             insertRopeWithStyleB (addNewLineIfNecessary rope) LineWise
         Just (Register style rope) -> withBuffer0 $ pasteInclusiveB rope style
@@ -222,8 +222,8 @@ nonrepeatableBindings = fmap (mkBindingE Normal Drop)
     -- Search
     , (char '*', addJumpHereE >> searchWordE True Forward, resetCount)
     , (char '#', addJumpHereE >> searchWordE True Backward, resetCount)
-    , (char 'n', addJumpHereE >> (withCount $ continueSearching id), resetCount)
-    , (char 'N', addJumpHereE >> (withCount $ continueSearching reverseDir), resetCount)
+    , (char 'n', addJumpHereE >> withCount (continueSearching id), resetCount)
+    , (char 'N', addJumpHereE >> withCount (continueSearching reverseDir), resetCount)
     , (char ';', repeatGotoCharE id, id)
     , (char ',', repeatGotoCharE reverseDir, id)
 

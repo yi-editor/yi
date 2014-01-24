@@ -1,4 +1,3 @@
-{-# LANGUAGE DeriveDataTypeable #-}
 -- Copyright (C) 2008 JP Bernardy
 module Yi.Buffer.HighLevel where
 
@@ -55,11 +54,11 @@ leftOnEol = savingPrefCol $ do
 
 -- | Move @x@ chars back, or to the sol, whichever is less
 moveXorSol :: Int -> BufferM ()
-moveXorSol x = replicateM_ x $ do c <- atSol; when (not c) leftB
+moveXorSol x = replicateM_ x $ do c <- atSol; unless c leftB
 
 -- | Move @x@ chars forward, or to the eol, whichever is less
 moveXorEol :: Int -> BufferM ()
-moveXorEol x = replicateM_ x $ do c <- atEol; when (not c) rightB
+moveXorEol x = replicateM_ x $ do c <- atEol; unless c rightB
 
 -- | Move to first char of next word forwards
 nextWordB :: BufferM ()
@@ -124,7 +123,7 @@ lastNonSpaceB = do moveToEol
 -- if already there, then go to the beginning of the line.
 moveNonspaceOrSol :: BufferM ()
 moveNonspaceOrSol = do prev <- readPreviousOfLnB
-                       if and . map isSpace $ prev then moveToSol else firstNonSpaceB
+                       if all isSpace prev then moveToSol else firstNonSpaceB
 
 -- | True if current line consists of just a newline (no whitespace)
 isCurrentLineEmptyB :: BufferM Bool
@@ -221,7 +220,7 @@ readPreviousOfLnB :: BufferM String
 readPreviousOfLnB = readRegionB =<< regionOfPartB Line Backward
 
 hasWhiteSpaceBefore :: BufferM Bool
-hasWhiteSpaceBefore = prevPointB >>= readAtB >>= return . isSpace
+hasWhiteSpaceBefore = liftM isSpace (prevPointB >>= readAtB)
 
 -- | Get the previous point, unless at the beginning of the file
 prevPointB :: BufferM Point
@@ -433,7 +432,7 @@ scrollB n = do
     void $ gotoLnFrom n
     setMarkPointB fr =<< pointB
   w <- askWindow wkey
-  (%=) pointFollowsWindowA (\old w' -> if w == w' then True else old w')
+  (%=) pointFollowsWindowA (\old w' -> ((w == w') || old w'))
 
 -- | Move the point to inside the viewable region
 snapInsB :: BufferM ()
@@ -443,7 +442,7 @@ snapInsB = do
     when (movePoint w) $ do
         r <- winRegionB
         p <- pointB
-        moveTo $ max (regionStart r) $ min (regionEnd r) $ p
+        moveTo $ max (regionStart r) $ min (regionEnd r) p
 
 -- | return index of Sol on line @n@ above current line
 indexOfSolAbove :: Int -> BufferM Point
@@ -634,9 +633,9 @@ unLineCommentSelectionB s1 s2 =
   where
   unCommentLine :: String -> String
   unCommentLine line
-    | isPrefixOf s1 line = drop (length s1) line
-    | isPrefixOf s2 line = drop (length s2) line
-    | otherwise         = line
+    | s1 `isPrefixOf` line = drop (length s1) line
+    | s2 `isPrefixOf` line = drop (length s2) line
+    | otherwise            = line
 
 -- | Toggle line comments in the selection by adding or removing a prefix to each
 -- line.
@@ -752,9 +751,7 @@ leftEdgesOfRegionB Block reg = savingPointB $ do
         void $ lineMoveRel i
         p <- pointB
         eol <- atEol
-        if not eol
-        then return $ Just p
-        else return Nothing
+        return (if not eol then Just p else Nothing)
 leftEdgesOfRegionB _ r = return [regionStart r]
 
 rightEdgesOfRegionB :: RegionStyle -> Region -> BufferM [Point]

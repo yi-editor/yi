@@ -1,6 +1,6 @@
 {-# LANGUAGE RecordWildCards, ScopedTypeVariables, MultiParamTypeClasses
-           , DeriveDataTypeable, StandaloneDeriving
-           , GeneralizedNewtypeDeriving #-}
+           , DeriveDataTypeable
+           , GeneralizedNewtypeDeriving, FlexibleContexts #-}
 
 -- this module isn't finished, and there's heaps of warnings.
 {-# OPTIONS_GHC -w #-}
@@ -38,7 +38,7 @@ import Control.Monad.Reader hiding (mapM_, forM_)
 import Control.Applicative
 import Control.Lens hiding (moveTo, views, Action)
 import Data.Foldable
-import Data.Maybe (maybe, fromJust)
+import Data.Maybe (maybe, fromJust, fromMaybe)
 import Data.IORef
 import Data.List (nub, filter, drop, zip, take, length)
 import Data.Prototype
@@ -80,9 +80,9 @@ import Graphics.UI.Gtk.Gdk.GC as Gtk
 import qualified Graphics.UI.Gtk as Gtk
 import qualified Graphics.UI.Gtk.Gdk.Events as Gdk.Events
 import System.Glib.GError
-import Control.Monad.Reader (liftIO, ask, asks, MonadReader(..))
+import Control.Monad.Reader (ask, asks, MonadReader(..))
 import Control.Monad.State (liftM, ap, get, put, modify)
-import Control.Monad.Writer (MonadIO(..))
+import Control.Monad.Base
 import Control.Concurrent (newMVar, modifyMVar, MVar, newEmptyMVar, putMVar,
                            readMVar, isEmptyMVar)
 import Data.Typeable
@@ -113,12 +113,12 @@ instance Show TabInfo where
 
 --type ControlM = YiM
 newtype ControlM a = ControlM { runControl'' :: ReaderT Control IO a }
-    deriving (Monad, MonadIO, MonadReader Control, Typeable,
+    deriving (Monad, MonadBase IO, MonadReader Control, Typeable,
               Functor, Applicative)
 
 -- Helper functions to avoid issues with mismatching monad libraries
 controlIO :: IO a -> ControlM a
-controlIO = liftIO
+controlIO = liftBase
 
 getControl :: ControlM Control
 getControl = ask
@@ -126,7 +126,7 @@ getControl = ask
 liftYi :: YiM a -> ControlM a
 liftYi m = do
     yi <- asks controlYi
-    liftIO $ runReaderT (runYiM m) yi
+    liftBase $ runReaderT (runYiM m) yi
 
 --instance MonadState Editor ControlM where
 --    get = readRef =<< editor <$> ask
@@ -137,11 +137,10 @@ liftYi m = do
 --    withEditor f = do
 --      r <- asks editor
 --      cfg <- asks config
---      liftIO $ controlUnsafeWithEditor cfg r f
+--      liftBase $ controlUnsafeWithEditor cfg r f
 
 startControl :: Config -> ControlM () -> IO ()
-startControl config main = do
-    startEditor (config { startFrontEnd = start main } ) Nothing
+startControl config main = startEditor (config { startFrontEnd = start main } ) Nothing
 
 runControl' :: ControlM a -> MVar Control -> IO (Maybe a)
 runControl' m yiMVar = do
@@ -157,14 +156,14 @@ runControl' m yiMVar = do
 -- runControl m yi = runReaderT (runYiM m) yi
 
 runControl :: ControlM a -> Control -> IO a
-runControl f s = runReaderT (runControl'' f) s
+runControl f = runReaderT (runControl'' f)
 
 -- runControlEditor f yiMVar = yiMVar
 
 runAction :: Action -> ControlM ()
 runAction action = do
     out <- liftYi $ asks output
-    liftIO $ out [action]
+    liftBase $ out [action]
 
 -- | Test 2
 mkUI :: IO () -> MVar Control -> Common.UI
@@ -173,7 +172,7 @@ mkUI main yiMVar = Common.dummyUI
     , Common.end           = \_ -> void $ runControl' end yiMVar
     , Common.suspend       = void $ runControl' suspend yiMVar
     , Common.refresh       = \e -> void $ runControl' (refresh e) yiMVar
-    , Common.layout        = \e -> liftM (maybe e id) $
+    , Common.layout        = \e -> liftM (fromMaybe e) $
                                    runControl' (doLayout e) yiMVar
     , Common.reloadProject = \f -> void $ runControl' (reloadProject f) yiMVar
     }
@@ -185,28 +184,29 @@ start main cfg ch outCh ed =
 makeControl :: MVar Control -> YiM ()
 makeControl controlMVar = do
     controlYi <- ask
-    tabCache  <- liftIO $ newIORef []
-    views  <- liftIO $ newIORef Map.empty
-    liftIO $ putMVar controlMVar Control{..}
+    tabCache  <- liftBase $ newIORef []
+    views  <- liftBase $ newIORef Map.empty
+    liftBase $ putMVar controlMVar Control{..}
 
 startNoMsg :: ControlM () -> UIBoot
 startNoMsg main config input output ed = do
     control <- newEmptyMVar
     let wrappedMain = do
         output [makeAction $ makeControl control]
-        runControl' main control >> return ()
+        void (runControl' main control)
     return (mkUI wrappedMain control)
 
 end :: ControlM ()
 end = do
-    liftIO $ putStrLn "Yi Control End"
-    liftIO $ mainQuit
+    liftBase $ putStrLn "Yi Control End"
+    liftBase mainQuit
 
 suspend :: ControlM ()
 suspend = do
-    liftIO $ putStrLn "Yi Control Suspend"
+    liftBase $ putStrLn "Yi Control Suspend"
     return ()
 
+{-# ANN refresh "HLint: ignore Redundant do" #-}
 refresh :: Editor -> ControlM ()
 refresh e = do
     --contextId <- statusbarGetContextId (uiStatusbar ui) "global"
@@ -215,7 +215,7 @@ refresh e = do
 
     updateCache e -- The cursor may have changed since doLayout
     viewsRef <- asks views
-    vs <- liftIO $ readRef viewsRef
+    vs <- liftBase $ readRef viewsRef
     forM_ (Map.elems vs) $ \v -> do
         let b = findBufferWith (viewFBufRef v) e
         -- when (not $ null $ b ^. pendingUpdatesA) $
@@ -224,14 +224,14 @@ refresh e = do
             -- signalDisconnect sig
             -- writeRef (renderer w)
             -- =<< (textview w `onExpose` render e ui b (wkey (coreWin w)))
-            liftIO $ widgetQueueDraw (drawArea v)
+            liftBase $ widgetQueueDraw (drawArea v)
 
 doLayout :: Editor -> ControlM Editor
 doLayout e = do
-    liftIO $ putStrLn "Yi Control Do Layout"
+    liftBase $ putStrLn "Yi Control Do Layout"
     updateCache e
     cacheRef <- asks tabCache
-    tabs <- liftIO $ readRef cacheRef
+    tabs <- liftBase $ readRef cacheRef
     heights <- concat <$> mapM (getHeightsInTab e) tabs
     let e' = (tabsA %~ fmap (mapWindows updateWin)) e
         updateWin w = case find (\(ref,_,_) -> (wkey w == ref)) heights of
@@ -245,11 +245,11 @@ doLayout e = do
 getHeightsInTab :: Editor -> TabInfo -> ControlM [(WindowRef,Int,Region)]
 getHeightsInTab e tab = do
   viewsRef <- asks views
-  vs <- liftIO $ readRef viewsRef
-  foldlM (\a w -> do
+  vs <- liftBase $ readRef viewsRef
+  foldlM (\a w ->
         case Map.lookup (wkey w) vs of
             Just v -> do
-                (_, h) <- liftIO $ widgetGetSize $ drawArea v
+                (_, h) <- liftBase $ widgetGetSize $ drawArea v
                 let lineHeight = ascent (metrics v) + descent (metrics v)
                 let b0 = findBufferWith (viewFBufRef v) e
                 rgn <- shownRegion e v b0
@@ -266,9 +266,9 @@ shownRegion e v b = do
 updatePango :: Editor -> View -> FBuffer -> PangoLayout
             -> ControlM (Point, Point, Point)
 updatePango e v b layout = do
-  (width', height') <- liftIO $ widgetGetSize $ drawArea v
+  (width', height') <- liftBase $ widgetGetSize $ drawArea v
 
-  font <- liftIO $ layoutGetFontDescription layout
+  font <- liftBase $ layoutGetFontDescription layout
 
   --oldFont <- layoutGetFontDescription layout
   --oldFontStr <- maybe (return Nothing)
@@ -293,21 +293,21 @@ updatePango e v b layout = do
                                               else (++"\n")
                               return (from, p, addNL $ Rope.toString content)
 
-  config   <- liftYi $ askCfg
+  config   <- liftYi askCfg
   if configLineWrap $ configUI config
-    then do oldWidth <- liftIO $ layoutGetWidth layout
+    then do oldWidth <- liftBase $ layoutGetWidth layout
             when (oldWidth /= Just width'') $
-              liftIO $ layoutSetWidth layout $ Just width''
+              liftBase $ layoutSetWidth layout $ Just width''
     else do
-    (Rectangle px _py pwidth _pheight, _) <- liftIO $
+    (Rectangle px _py pwidth _pheight, _) <- liftBase $
                                              layoutGetPixelExtents layout
-    liftIO $ widgetSetSizeRequest (drawArea v) (px+pwidth) (-1)
+    liftBase $ widgetSetSizeRequest (drawArea v) (px+pwidth) (-1)
 
   -- optimize for cursor movement
-  oldText <- liftIO $ layoutGetText layout
-  when (oldText /= text) $ liftIO $ layoutSetText layout text
+  oldText <- liftBase $ layoutGetText layout
+  when (oldText /= text) $ liftBase $ layoutSetText layout text
 
-  (_, bosOffset, _) <- liftIO $ layoutXYToIndex layout width''
+  (_, bosOffset, _) <- liftBase $ layoutXYToIndex layout width''
                        (fromIntegral winh * lineHeight - 1)
   return (tos, point, tos + fromIntegral bosOffset + 1)
 
@@ -315,9 +315,9 @@ updateCache :: Editor -> ControlM ()
 updateCache e = do
     let tabs = e ^. tabsA
     cacheRef <- asks tabCache
-    cache <- liftIO $ readRef cacheRef
+    cache <- liftBase $ readRef cacheRef
     cache' <- syncTabs e (toList $ PL.withFocus tabs) cache
-    liftIO $ writeRef cacheRef cache'
+    liftBase $ writeRef cacheRef cache'
 
 syncTabs :: Editor -> [(Tab, Bool)] -> [TabInfo] -> ControlM [TabInfo]
 syncTabs e (tfocused@(t,focused):ts) (c:cs)
@@ -339,12 +339,12 @@ syncTabs e ts [] = mapM (\(t,focused) -> do
 syncTabs _ [] cs = mapM_ removeTab cs >> return []
 
 syncTab :: Editor -> TabInfo -> Tab -> ControlM TabInfo
-syncTab e tab ws = do
-    -- TODO Maybe do something here
-    return tab
+syncTab e tab ws =
+  -- TODO Maybe do something here
+  return tab
 
 setTabFocus :: TabInfo -> ControlM ()
-setTabFocus t = do
+setTabFocus t =
   -- TODO this needs to set the tab focus with callback
   -- but only if the tab focus has changed
   return ()
@@ -369,12 +369,12 @@ setWindowFocus e t v = do
   return ()
 
 removeTab :: TabInfo -> ControlM ()
-removeTab t = do
+removeTab t =
   -- TODO this needs to close the views in the tab with callback
   return ()
 
 removeView :: TabInfo -> View -> ControlM ()
-removeView tab view = do
+removeView tab view =
   -- TODO this needs to close the view with callback
   return ()
 
@@ -385,22 +385,22 @@ newTab e ws = do
 --    cache <- syncWindows e t' (toList $ PL.withFocus ws) []
     return t' -- { views = cache }
 
+{-# ANN insertTabBefore "HLint: ignore Redundant do" #-}
 insertTabBefore :: Editor -> Tab -> TabInfo -> ControlM TabInfo
 insertTabBefore e ws c = do
     -- Just p <- notebookPageNum (uiNotebook ui) (page c)
     -- vb <- vBoxNew False 1
     -- notebookInsertPage (uiNotebook ui) vb "" p
     -- widgetShowAll $ vb
-    t <- newTab e ws
-    return t
+    newTab e ws
 
+{-# ANN insertTab "HLint: ignore Redundant do" #-}
 insertTab :: Editor -> Tab -> ControlM TabInfo
 insertTab e ws = do
     -- vb <- vBoxNew False 1
     -- notebookAppendPage (uiNotebook ui) vb ""
     -- widgetShowAll $ vb
-    t <- newTab e ws
-    return t
+    newTab e ws
 
 {-
 insertWindowBefore :: Editor -> TabInfo -> Yi.Window -> WinInfo -> IO WinInfo
@@ -412,7 +412,7 @@ insertWindowAtEnd e ui tab w = insertWindow e ui tab w
 insertWindow :: Editor -> UI -> TabInfo -> Window -> IO WinInfo
 insertWindow e ui tab win = do
   let buf = findBufferWith (bufkey win) e
-  liftIO $ do w <- newWindow e ui win buf
+  liftBase $ do w <- newWindow e ui win buf
 
               set (page tab) $
                 [ containerChild := widget w
@@ -475,7 +475,7 @@ newBuffer id text = do
 newView :: Buffer -> FontDescription -> ControlM View
 newView buffer font = do
     control  <- ask
-    config   <- liftYi $ askCfg
+    config   <- liftYi askCfg
     let viewFBufRef = fBufRef buffer
     newWindow <-
       fmap (\w -> w { height=50
@@ -486,56 +486,55 @@ newView buffer font = do
         (%=) windowsA (PL.insertRight newWindow)
         e <- get
         put $ focusAllSyntax e
-    drawArea <- liftIO $ drawingAreaNew
-    liftIO . widgetModifyBg drawArea StateNormal . mkCol False
+    drawArea <- liftBase drawingAreaNew
+    liftBase . widgetModifyBg drawArea StateNormal . mkCol False
       . Yi.Style.background . baseAttributes . configStyle $ configUI config
-    context  <- liftIO $ widgetCreatePangoContext drawArea
-    layout   <- liftIO $ layoutEmpty context
-    liftIO $ layoutSetFontDescription layout (Just font)
-    language <- liftIO $ contextGetLanguage context
-    metrics  <- liftIO $ contextGetMetrics context font language
-    liftIO $ layoutSetText layout ""
+    context  <- liftBase $ widgetCreatePangoContext drawArea
+    layout   <- liftBase $ layoutEmpty context
+    liftBase $ layoutSetFontDescription layout (Just font)
+    language <- liftBase $ contextGetLanguage context
+    metrics  <- liftBase $ contextGetMetrics context font language
+    liftBase $ layoutSetText layout ""
 
-    scrollWin <- liftIO $ scrolledWindowNew Nothing Nothing
-    liftIO $ do
+    scrollWin <- liftBase $ scrolledWindowNew Nothing Nothing
+    liftBase $ do
         scrolledWindowAddWithViewport scrollWin drawArea
         scrolledWindowSetPolicy scrollWin PolicyAutomatic PolicyNever
 
     initialTos <-
       liftYi . withEditor . withGivenBufferAndWindow0 newWindow viewFBufRef $
         getMarkPointB =<< fromMark <$> askMarks
-    shownTos <- liftIO $ newIORef initialTos
-    winMotionSignal <- liftIO $ newIORef Nothing
+    shownTos <- liftBase $ newIORef initialTos
+    winMotionSignal <- liftBase $ newIORef Nothing
 
     let view = View {..}
 
-    liftIO $ Gtk.widgetAddEvents drawArea [KeyPressMask]
-    liftIO $ Gtk.set drawArea [Gtk.widgetCanFocus := True]
+    liftBase $ Gtk.widgetAddEvents drawArea [KeyPressMask]
+    liftBase $ Gtk.set drawArea [Gtk.widgetCanFocus := True]
 
-    liftIO $ drawArea `Gtk.onKeyPress` \event -> do
+    liftBase $ drawArea `Gtk.onKeyPress` \event -> do
         putStrLn $ "Yi Control Key Press = " ++ show event
-        runControl (do
-            runAction $ makeAction $ do
-                focusWindowE windowRef
-                switchToBufferE viewFBufRef) control
+        runControl (runAction $ makeAction $ do
+            focusWindowE windowRef
+            switchToBufferE viewFBufRef) control
         result <- processEvent (input $ controlYi control) event
         widgetQueueDraw drawArea
         return result
 
-    liftIO $ drawArea `Gtk.onButtonPress` \event -> do
+    liftBase $ drawArea `Gtk.onButtonPress` \event -> do
         widgetGrabFocus drawArea
         runControl (handleClick view event) control
 
-    liftIO $ drawArea `Gtk.onButtonRelease` \event -> do
+    liftBase $ drawArea `Gtk.onButtonRelease` \event ->
         runControl (handleClick view event) control
 
-    liftIO $ drawArea `Gtk.onScroll` \event -> do
+    liftBase $ drawArea `Gtk.onScroll` \event ->
         runControl (handleScroll view event) control
 
-    liftIO $ drawArea `Gtk.onExpose` \event -> do
+    liftBase $ drawArea `Gtk.onExpose` \event -> do
         (text, allAttrs, debug, tos, rel, point, inserting) <-
           runControl (liftYi $ withEditor $ do
-            window <- (findWindowWith windowRef) <$> get
+            window <- findWindowWith windowRef <$> get
             (%=) buffersA (fmap (clearSyntax . clearHighlight))
             let winh = height window
             let tos = max 0 (regionStart (winRegion window))
@@ -600,7 +599,7 @@ newView buffer font = do
         oldText <- layoutGetText layout
         when (text /= oldText) $ layoutSetText layout text
         drawLayout dw gc 0 0 layout
-        liftIO $ writeRef shownTos tos
+        liftBase $ writeRef shownTos tos
 
         -- paint the cursor
         (PangoRectangle curx cury curw curh, _) <-
@@ -613,27 +612,23 @@ newView buffer font = do
                                           . baseAttributes . configStyle $
                                           configUI config })
         if inserting
-          then do
-          drawLine dw gc (round curx, round cury)
-            (round $ curx + curw, round $ cury + curh)
-          else do
-          drawRectangle dw gc False (round chx) (round chy)
-            (if chw > 0 then round chw else 8) (round chh)
+          then drawLine dw gc (round curx, round cury) (round $ curx + curw, round $ cury + curh)
+          else drawRectangle dw gc False (round chx) (round chy) (if chw > 0 then round chw else 8) (round chh)
 
         return True
 
-    liftIO $ widgetGrabFocus drawArea
+    liftBase $ widgetGrabFocus drawArea
 
     tabsRef <- asks tabCache
-    ts <- liftIO $ readRef tabsRef
+    ts <- liftBase $ readRef tabsRef
     -- TODO: the Tab idkey should be assigned using
     -- Yi.Editor.newRef. But we can't modify that here, since our
     -- access to 'Yi' is readonly.
-    liftIO $ writeRef tabsRef (TabInfo (makeTab1 0 newWindow):ts)
+    liftBase $ writeRef tabsRef (TabInfo (makeTab1 0 newWindow):ts)
 
     viewsRef <- asks views
-    vs <- liftIO $ readRef viewsRef
-    liftIO $ writeRef viewsRef $ Map.insert windowRef view vs
+    vs <- liftBase $ readRef viewsRef
+    liftBase $ writeRef viewsRef $ Map.insert windowRef view vs
 
     return view
   where
@@ -643,22 +638,23 @@ newView buffer font = do
           us = view pendingUpdatesA fb
       in highlightSelectionA .~ (h && null us) $ fb
 
+{-# ANN setBufferMode "HLint: ignore Redundant do" #-}
 setBufferMode :: FilePath -> Buffer -> ControlM ()
 setBufferMode f buffer = do
     let bufRef = fBufRef buffer
     -- adjust the mode
     tbl <- liftYi $ asks (modeTable . yiConfig)
-    contents <- liftYi $ withEditor $ withGivenBuffer0 bufRef $ elemsB
+    contents <- liftYi $ withEditor $ withGivenBuffer0 bufRef elemsB
     let header = take 1024 contents
         hmode = case header =~ "\\-\\*\\- *([^ ]*) *\\-\\*\\-" of
             AllTextSubmatches [_,m] -> m
             _ -> ""
-        Just mode = (find (\(AnyMode m)-> modeName m == hmode) tbl) <|>
-                    (find (\(AnyMode m)-> modeApplies m f contents) tbl) <|>
+        Just mode = find (\(AnyMode m)-> modeName m == hmode) tbl <|>
+                    find (\(AnyMode m)-> modeApplies m f contents) tbl <|>
                     Just (AnyMode emptyMode)
     case mode of
         AnyMode newMode -> do
-            -- liftIO $ putStrLn $ show (f, modeName newMode)
+            -- liftBase $ putStrLn $ show (f, modeName newMode)
             liftYi $ withEditor $ do
                 withGivenBuffer0 bufRef $ do
                     setMode newMode
@@ -714,9 +710,9 @@ handleClick view event = do
       -- TODO: check that tabIdx is the focus?
 --      (%=) windowsA (fromJust . PL.move winIdx)
 
-  liftIO $ case (Gdk.Events.eventClick event, Gdk.Events.eventButton event) of
+  liftBase $ case (Gdk.Events.eventClick event, Gdk.Events.eventButton event) of
      (Gdk.Events.SingleClick, Gdk.Events.LeftButton) -> do
-        cid <- onMotionNotify (drawArea view) False $ \event -> do
+        cid <- onMotionNotify (drawArea view) False $ \event ->
             runControl (handleMove view p1 event) control
         writeRef (winMotionSignal view) $ Just cid
 
@@ -729,37 +725,37 @@ handleClick view event = do
       runAction . makeAction $ do
         -- b <- gets $ (bkey . findBufferWith (viewFBufRef view))
         -- focusWindow
-        window <- (findWindowWith winRef) <$> get
+        window <- findWindowWith winRef <$> get
         withGivenBufferAndWindow0 window (viewFBufRef view) $ do
             moveTo p1
             setVisibleSelection False
     -- (Gdk.Events.SingleClick, _) -> runAction focusWindow
     (Gdk.Events.ReleaseClick, Gdk.Events.MiddleButton) -> do
-        disp <- liftIO $ widgetGetDisplay (drawArea view)
-        cb <- liftIO $ clipboardGetForDisplay disp selectionPrimary
+        disp <- liftBase $ widgetGetDisplay (drawArea view)
+        cb <- liftBase $ clipboardGetForDisplay disp selectionPrimary
         let cbHandler Nothing = return ()
             cbHandler (Just txt) = runControl (runAction . makeAction $ do
-                window <- (findWindowWith winRef) <$> get
+                window <- findWindowWith winRef <$> get
                 withGivenBufferAndWindow0 window (viewFBufRef view) $ do
                     pointB >>= setSelectionMarkPointB
                     moveTo p1
                     insertN txt) control
-        liftIO $ clipboardRequestText cb cbHandler
+        liftBase $ clipboardRequestText cb cbHandler
     _ -> return ()
 
-  liftIO $ widgetQueueDraw (drawArea view)
+  liftBase $ widgetQueueDraw (drawArea view)
   return True
 
 handleScroll :: View -> Gdk.Events.Event -> ControlM Bool
 handleScroll view event = do
-  let editorAction = do
+  let editorAction =
         withBuffer0 $ vimScrollB $ case Gdk.Events.eventDirection event of
-                        Gdk.Events.ScrollUp   -> (-1)
+                        Gdk.Events.ScrollUp   -> -1
                         Gdk.Events.ScrollDown -> 1
                         _ -> 0 -- Left/right scrolling not supported
 
   runAction $ makeAction editorAction
-  liftIO $ widgetQueueDraw (drawArea view)
+  liftBase $ widgetQueueDraw (drawArea view)
   return True
 
 handleMove :: View -> Point -> Gdk.Events.Event -> ControlM Bool
@@ -769,14 +765,14 @@ handleMove view p0 event = do
 
   -- retrieve the clicked offset.
   (_,layoutIndex,_) <-
-    liftIO $ layoutXYToIndex (layout view)
+    liftBase $ layoutXYToIndex (layout view)
     (Gdk.Events.eventX event) (Gdk.Events.eventY event)
   tos <- readRef (shownTos view)
   let p1 = tos + fromIntegral layoutIndex
 
 
   let editorAction = do
-        txt <- withBuffer0 $ do
+        txt <- withBuffer0 $
            if p0 /= p1
             then Just <$> do
               m <- selMark <$> askMarks
@@ -791,20 +787,20 @@ handleMove view p0 event = do
   -- drawWindowGetPointer (textview w) -- be ready for next message.
 
   -- Relies on uiActionCh being synchronous
-  selection <- liftIO $ newIORef ""
+  selection <- liftBase $ newIORef ""
   let yiAction = do
       txt <- withEditor (withBuffer0 (readRegionB =<< getSelectRegionB))
              :: YiM String
-      liftIO $ writeIORef selection txt
+      liftBase $ writeIORef selection txt
   runAction $ makeAction yiAction
-  txt <- liftIO $ readIORef selection
+  txt <- liftBase $ readIORef selection
 
-  disp <- liftIO $ widgetGetDisplay (drawArea view)
-  cb <- liftIO $ clipboardGetForDisplay disp selectionPrimary
-  liftIO $ clipboardSetWithData cb [(targetString,0)]
-      (\0 -> selectionDataSetText txt >> return ()) (return ())
+  disp <- liftBase $ widgetGetDisplay (drawArea view)
+  cb <- liftBase $ clipboardGetForDisplay disp selectionPrimary
+  liftBase $ clipboardSetWithData cb [(targetString,0)]
+      (\0 -> void (selectionDataSetText txt)) (return ())
 
-  liftIO $ widgetQueueDraw (drawArea view)
+  liftBase $ widgetQueueDraw (drawArea view)
   return True
 
 processEvent :: (Event -> IO ()) -> Gdk.Events.Event -> IO Bool

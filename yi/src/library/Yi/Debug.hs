@@ -1,4 +1,4 @@
-{-# LANGUAGE ParallelListComp #-}
+{-# LANGUAGE FlexibleContexts #-}
 module Yi.Debug (
         initDebug       -- :: FilePath -> IO ()
        ,trace           -- :: String -> a -> a
@@ -11,7 +11,7 @@ module Yi.Debug (
     ) where
 
 import Control.Concurrent
-import Control.Monad.Trans
+import Control.Monad.Base
 import Data.IORef
 import System.IO
 import System.IO.Unsafe ( unsafePerformIO )
@@ -33,7 +33,7 @@ initDebug f = do
   case hndl of
     Nothing -> do openFile f WriteMode >>= writeIORef dbgHandle . Just
                   logPutStrLn "Logging initialized."
-    Just _ -> do logPutStrLn "Attempt to re-initialize the logging system."
+    Just _ -> logPutStrLn "Attempt to re-initialize the logging system."
 
 
 
@@ -49,8 +49,8 @@ error :: String -> a
 error s = unsafePerformIO $ do logPutStrLn s
                                Prelude.error s
 
-logPutStrLn :: (MonadIO m) => String -> m ()
-logPutStrLn s = liftIO $ do
+logPutStrLn :: (MonadBase IO m) => String -> m ()
+logPutStrLn s = liftBase $ do
                    mh <- readIORef dbgHandle
                    case mh of
                      Nothing -> return ()
@@ -63,7 +63,7 @@ logPutStrLn s = liftIO $ do
       -- A bug in rfc822DateFormat makes us use our own format string
       rfc822DateFormat' = "%a, %d %b %Y %H:%M:%S %Z"
 
-logError :: (MonadIO m) => String -> m ()
+logError :: (MonadBase IO m) => String -> m ()
 logError s = logPutStrLn $ "error: " ++ s
 
 logStream :: Show a => String -> Chan a -> IO ()

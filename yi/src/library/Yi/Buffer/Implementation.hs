@@ -103,7 +103,7 @@ data BufferImpl syntax =
 
 
 dummyHlState :: HLState syntax
-dummyHlState = (HLState noHighlighter (hlStartState noHighlighter))
+dummyHlState = HLState noHighlighter (hlStartState noHighlighter)
 
 -- Atm we can't store overlays because stylenames are functions (can't be serialized)
 -- TODO: ideally I'd like to get rid of overlays entirely; although we could imagine them storing mere styles.
@@ -155,7 +155,7 @@ newBI s = FBufferData s M.empty M.empty dummyHlState Set.empty 0
 
 -- | read @n@ bytes from buffer @b@, starting at @i@
 readChunk :: Rope -> Size -> Point -> Rope
-readChunk p (Size n) (Point i) = F.take n $ F.drop i $ p
+readChunk p (Size n) (Point i) = F.take n $ F.drop i p
 
 -- | Write string into buffer.
 insertChars :: Rope -> Rope -> Point -> Rope
@@ -200,12 +200,12 @@ nelemsBI :: Int -> Point -> BufferImpl syntax -> String
 nelemsBI n i fb = F.toString $ readChunk (mem fb) (Size n) i
 
 getStream :: Direction -> Point -> BufferImpl syntax -> Rope
-getStream Forward  (Point i) fb =             F.drop i $ mem $ fb
-getStream Backward (Point i) fb = F.reverse $ F.take i $ mem $ fb
+getStream Forward  (Point i) fb =             F.drop i $ mem fb
+getStream Backward (Point i) fb = F.reverse $ F.take i $ mem fb
 
 getIndexedStream :: Direction -> Point -> BufferImpl syntax -> [(Point,Char)]
-getIndexedStream Forward  (Point p) fb = zip [Point p..]           $ F.toString        $ F.drop p $ mem $ fb
-getIndexedStream Backward (Point p) fb = zip (dF (pred (Point p))) $ F.toReverseString $ F.take p $ mem $ fb
+getIndexedStream Forward  (Point p) fb = zip [Point p..]           $ F.toString        $ F.drop p $ mem fb
+getIndexedStream Backward (Point p) fb = zip (dF (pred (Point p))) $ F.toReverseString $ F.take p $ mem fb
     where dF n = n : dF (pred n)
 
 -- | Create an "overlay" for the style @sty@ between points @s@ and @e@
@@ -244,7 +244,7 @@ strokesRangesBI getStrokes regex rgn  point fb = result
     dropBefore = dropWhile (\s ->spanEnd s <= i)
     takeIn  = takeWhile (\s -> spanBegin s <= j)
 
-    groundLayer = [(Span i mempty j)]
+    groundLayer = [Span i mempty j]
 
     -- zero-length spans seem to break stroking in general, so filter them out!
     syntaxHlLayer = filter (\(Span b _m a) -> b /= a)  $ getStrokes point i j
@@ -295,7 +295,7 @@ reverseUpdateI (Insert p dir cs) = Delete p (reverseDir dir) cs
 
 -- | Line at the given point. (Lines are indexed from 1)
 lineAt :: Point -> BufferImpl syntax -> Int
-lineAt (Point point) fb = 1 + (F.countNewLines $ F.take point (mem fb))
+lineAt (Point point) fb = 1 + F.countNewLines (F.take point (mem fb))
 
 -- | Point that starts the given line (Lines are indexed from 1)
 solPoint :: Int -> BufferImpl syntax -> Point

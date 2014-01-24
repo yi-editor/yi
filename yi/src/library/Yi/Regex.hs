@@ -61,7 +61,7 @@ makeSearchOptsM opts re = (\p->SearchExp { seInput        = re
                                          , seBackCompiled = compile $ reversePattern p
                                          , seOptions      = opts
                                          }) <$> pattern
-    where searchOpts = foldr (.) id . map searchOpt
+    where searchOpts = foldr ((.) . searchOpt) id
           compile source = patternToRegex source (searchOpts opts defaultCompOpt) defaultExecOpt
           pattern = if QuoteRegex `elem` opts
                           then Right (literalPattern re)
@@ -94,7 +94,7 @@ literalPattern' = PConcat . map (PChar (DoPa 0))
 
 -- | Reverse a pattern. Note that the submatches will be reversed as well.
 reversePattern :: (Pattern, (t, DoPa)) -> (Pattern, (t, DoPa))
-reversePattern (pattern,(gi,DoPa maxDoPa)) = (transform (rev) pattern, (gi,DoPa maxDoPa))
+reversePattern (pattern,(gi,DoPa maxDoPa)) = (transform rev pattern, (gi,DoPa maxDoPa))
     where rev (PConcat l) = PConcat (reverse l)
           rev (PCarat  x) = PDollar x
           rev (PDollar x) = PCarat  x
@@ -126,18 +126,17 @@ to the input pattern.
 
 -- Cannot use Derive because we have to handle list arguments specially (POr, PConcat)
 instance Uniplate Pattern where
-    uniplate = \pat ->
-      case pat of
-          PGroup x p -> ([p], \[z] ->PGroup x z)
-          POr ps -> (ps, POr)
-          PConcat ps -> (ps, PConcat)
-          PQuest p ->([p], \[z] -> PQuest z)
-          PPlus p ->([p], \[z] -> PPlus z)
-          PStar x p -> ([p], \[z] ->PStar x z)
-          PBound w x p -> ([p], \[z] ->PBound w x z)
-          PNonCapture p ->([p], \[z] -> PNonCapture z)
-          PNonEmpty p ->([p], \[z] -> PNonEmpty z)
-          p ->([],\[]->p)
+    uniplate pat = case pat of
+        PGroup x p -> ([p], \[z] ->PGroup x z)
+        POr ps -> (ps, POr)
+        PConcat ps -> (ps, PConcat)
+        PQuest p ->([p], \[z] -> PQuest z)
+        PPlus p ->([p], \[z] -> PPlus z)
+        PStar x p -> ([p], \[z] ->PStar x z)
+        PBound w x p -> ([p], \[z] ->PBound w x z)
+        PNonCapture p ->([p], \[z] -> PNonCapture z)
+        PNonEmpty p ->([p], \[z] -> PNonEmpty z)
+        p ->([],\[]->p)
 
 emptySearch :: SearchExp
 emptySearch = SearchExp "" emptyRegex emptyRegex []

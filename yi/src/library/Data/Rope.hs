@@ -107,7 +107,7 @@ reverse :: Rope -> Rope
 reverse = Rope . fmap' (mkChunk . B.fromString . L.reverse . B.toString . fromChunk) . T.reverse . fromRope
 
 toReverseString :: Rope -> String
-toReverseString = L.concat . map (L.reverse . B.toString . fromChunk) . toList . T.reverse . fromRope
+toReverseString = concatMap (L.reverse . B.toString . fromChunk) . toList . T.reverse . fromRope
 
 toString :: Rope -> String
 toString = LB.toString . toLazyByteString
@@ -117,7 +117,7 @@ fromLazyByteString = Rope . toTree T.empty
    where
      toTree acc b | LB.null b = acc
                   | otherwise = let (h,t) = LB.splitAt (fromIntegral defaultChunkSize) b
-                                    chunk = mkChunk $ B.concat $ LB.toChunks $ h
+                                    chunk = mkChunk $ B.concat $ LB.toChunks h
                                 in acc `seq` chunk `seq` toTree (acc |> chunk) t
 
 
@@ -148,9 +148,9 @@ append :: Rope -> Rope -> Rope
 append (Rope a) (Rope b) = Rope $
      case T.viewr a of
        EmptyR -> b
-       l :> (Chunk len x) -> case T.viewl b of
+       l :> Chunk len x -> case T.viewl b of
                    EmptyL  -> a
-                   (Chunk len' x') :< r -> if (fromIntegral len) + (fromIntegral len') < defaultChunkSize
+                   Chunk len' x' :< r -> if fromIntegral len + fromIntegral len' < defaultChunkSize
                                 then l >< singleton (Chunk (len + len') (x `B.append` x')) >< r
                                 else a >< b
 
@@ -165,8 +165,8 @@ drop n = snd . splitAt n
 splitAt :: Int -> Rope -> (Rope, Rope)
 splitAt n (Rope t) =
    case T.viewl c of
-     (Chunk len x) :< r | n' /= 0 ->
-       let (lx, rx) = B.splitAt n' x in (Rope $ l |> (Chunk (fromIntegral n') lx), Rope $ (Chunk (len - fromIntegral n') rx) -| r)
+     Chunk len x :< r | n' /= 0 ->
+       let (lx, rx) = B.splitAt n' x in (Rope $ l |> Chunk (fromIntegral n') lx, Rope $ Chunk (len - fromIntegral n') rx -| r)
      _ -> (Rope l, Rope c)
    where
      (l, c) = T.split ((> n) . charIndex) t

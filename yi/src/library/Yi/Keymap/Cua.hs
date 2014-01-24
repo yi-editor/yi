@@ -47,7 +47,7 @@ setMark :: Bool -> BufferM ()
 setMark b = do
   isSet <- use highlightSelectionA
   assign rectangleSelectionA b
-  when (not isSet) $ do
+  unless isSet $ do
        assign highlightSelectionA True
        pointB >>= setSelectionMarkPointB
 
@@ -77,7 +77,7 @@ del = do
   if asRect
     then killRectangle
     else withBuffer0 $ deleteRegionB =<< getSelectRegionB
-copy = do
+copy =
   (setRegE =<<) $ withBuffer0 $ do
     asRect <- use rectangleSelectionA
     if not asRect

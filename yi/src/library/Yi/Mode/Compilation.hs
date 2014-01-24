@@ -16,15 +16,15 @@ mode = (linearSyntaxMode Compilation.initState Compilation.alexScanToken tokenTo
   {
    modeApplies = modeNeverApplies,
    modeName = "compilation",
-   modeKeymap = topKeymapA %~ ((<||) (spec KEnter ?>>! withSyntax modeFollow)),
-   modeFollow = \synTree -> YiA (follow synTree)
+   modeKeymap = topKeymapA %~ ((spec KEnter ?>>! withSyntax modeFollow) <||),
+   modeFollow = YiA . follow
   }
     where tokenToStyle _ = commentStyle
           follow errs = do
               point <- withBuffer pointB
               case OnlineTree.tokAtOrBefore point errs of
                  Just (t@Tok {tokT = Compilation.Report filename line col _message}) -> do
-                     withBuffer $ moveTo $ posnOfs $ tokPosn $ t
+                     withBuffer $ moveTo $ posnOfs $ tokPosn t
                      shiftOtherWindow
                      void $ editFile filename
                      withBuffer $ do

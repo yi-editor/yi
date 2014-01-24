@@ -133,8 +133,8 @@ undoUntilInteractive pointMark xs ur@(URList cs rs) b = case cs of
       (SavedFilePoint:cs') ->
         undoUntilInteractive pointMark xs (URList cs' (SavedFilePoint:rs)) b
       (AtomicChange u:cs') ->
-        let ur' = (URList cs' (AtomicChange (reverseUpdateI u):rs))
-            b' = (applyUpdateWithMoveI u b)
+        let ur' = URList cs' (AtomicChange (reverseUpdateI u):rs)
+            b' = applyUpdateWithMoveI u b
             (b'', (ur'', xs'')) = undoUntilInteractive pointMark xs ur' b'
         in (b'', (ur'', u:xs''))
     where

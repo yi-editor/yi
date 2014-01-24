@@ -61,11 +61,10 @@ parseOption name action = parse $ do
     void $ P.string name
     bangs <- P.many (P.string "!")
     qs <- P.many (P.string "?")
-    let
     return $ pureExCommand {
         cmdShow = "set " ++ concat nos ++ name ++ concat bangs ++ concat qs
       , cmdAction = action $
-          case (fmap (not . null) [qs, bangs, invs, nos]) of
+          case fmap (not . null) [qs, bangs, invs, nos] of
               [True, _, _, _] -> Ask
               [_, True, _, _] -> Invert
               [_, _, True, _] -> Invert

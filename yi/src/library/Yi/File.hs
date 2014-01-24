@@ -17,10 +17,10 @@ module Yi.File
 
 import Control.Applicative
 import Control.Monad.Reader (asks)
+import Control.Monad.Base
 import Control.Lens
 import Data.Time
 import Data.Foldable (find)
-import Control.Monad.Trans
 import System.Directory
 import System.FilePath
 import System.FriendlyPath
@@ -45,7 +45,7 @@ editFile :: FilePath -> YiM BufferRef
 editFile filename = do
     f <- io $ userToCanonPath filename
 
-    dupBufs <- filter ((maybe False (equalFilePath f)) . file) <$> gets bufferSet
+    dupBufs <- filter (maybe False (equalFilePath f) . file) <$> gets bufferSet
 
     dirExists  <- io $ doesDirectoryExist f
     fileExists <- io $ doesFileExist f
@@ -78,14 +78,14 @@ editFile filename = do
     setupMode :: FilePath -> BufferRef -> YiM BufferRef
     setupMode f b = do
       tbl <- asks (modeTable . yiConfig)
-      content <- withGivenBuffer b $ elemsB
+      content <- withGivenBuffer b elemsB
 
       let header = take 1024 content
           hmode = case header =~ "\\-\\*\\- *([^ ]*) *\\-\\*\\-" of
               AllTextSubmatches [_,m] ->m
               _ -> ""
-          Just mode = (find (\(AnyMode m)->modeName m == hmode) tbl) <|>
-                      (find (\(AnyMode m)->modeApplies m f content) tbl) <|>
+          Just mode = find (\(AnyMode m) -> modeName m == hmode) tbl <|>
+                      find (\(AnyMode m) -> modeApplies m f content) tbl <|>
                       Just (AnyMode emptyMode)
       case mode of
           AnyMode newMode -> withGivenBuffer b $ setMode newMode
@@ -99,7 +99,7 @@ revertE = do
             case mfp of
                      Just fp -> do
                              now <- io getCurrentTime
-                             s <- liftIO $ R.readFile fp
+                             s <- liftBase $ R.readFile fp
                              withBuffer $ revertB s now
                              msgEditor ("Reverted from " ++ show fp)
                      Nothing -> do
@@ -117,8 +117,9 @@ viWrite = do
             bufInfo <- withBuffer bufInfoB
             let s   = bufInfoFileName bufInfo
             fwriteE
-            let message = if f == s then show f ++ " written"
-                                    else show f ++ " " ++ show s ++ " written"
+            let message = (show f ++) (if f == s
+                              then " written"
+                              else " " ++ show s ++ " written")
             msgEditor message
 
 -- | Try to write to a named file in the manner of vi\/vim
@@ -127,14 +128,15 @@ viWriteTo f = do
     bufInfo <- withBuffer bufInfoB
     let s   = bufInfoFileName bufInfo
     fwriteToE f
-    let message = if f == s then show f ++ " written"
-                            else show f ++ " " ++ show s ++ " written"
+    let message = (show f ++) (if f == s 
+                      then " written"
+                      else " " ++ show s ++ " written")
     msgEditor message
 
 -- | Try to write to a named file if it doesn't exist. Error out if it does.
 viSafeWriteTo :: String -> YiM ()
 viSafeWriteTo f = do
-    existsF <- liftIO $ doesFileExist f
+    existsF <- liftBase $ doesFileExist f
     if existsF
        then errorEditor $ f ++ ": File exists (add '!' to override)"
        else viWriteTo f
@@ -148,7 +150,7 @@ fwriteBufferE :: BufferRef -> YiM ()
 fwriteBufferE bufferKey =
   do nameContents <- withGivenBuffer bufferKey ((,) <$> gets file <*> streamB Forward 0)
      case nameContents of
-       (Just f, contents) -> do liftIO $ R.writeFile f contents
+       (Just f, contents) -> do liftBase $ R.writeFile f contents
                                 now <- io getCurrentTime
                                 withGivenBuffer bufferKey (markSavedB now)
        (Nothing, _c)      -> msgEditor "Buffer not associated with a file"
@@ -176,6 +178,6 @@ backupE = error "backupE not implemented"
 -- | Associate buffer with file; canonicalize the given path name.
 setFileName :: BufferRef -> FilePath -> YiM ()
 setFileName b filename = do
-  cfn <- liftIO $ userToCanonPath filename
+  cfn <- liftBase $ userToCanonPath filename
   withGivenBuffer b $ assign identA $ Right cfn
 

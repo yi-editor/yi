@@ -110,7 +110,7 @@ rightLog (Fail) = Node LFail []
 rightLog (Dislike p) = Node LDislike [rightLog p]
 rightLog (Log msg p) = Node (LLog msg) [rightLog p]
 rightLog (Sus _ _) = Node LSusp []
-rightLog (Best _ _ l r) = Node LEmpty ((rightLog l):[rightLog r])
+rightLog (Best _ _ l r) = Node LEmpty (rightLog l:[rightLog r])
 rightLog (Sh' _) = error "Sh' should be hidden by Sus"
 
 profile :: Steps s r -> Profile
@@ -126,12 +126,12 @@ profile (Best _ pr _ _) = pr
 profile (Sh' _) = error "Sh' should be hidden by Sus"
 
 instance Show (Steps s r) where
-    show (Val _ p) = "v" ++ show p
-    show (App p) = "*" ++ show p
+    show (Val _ p) = 'v' : show p
+    show (App p) = '*' : show p
     show (Done) = "1"
-    show (Shift p) = ">" ++ show p
-    show (Sh' p) = "'" ++ show p
-    show (Dislike p) = "?"  ++ show p
+    show (Shift p) = '>' : show p
+    show (Sh' p) = '\'' : show p
+    show (Dislike p) = '?' : show p
     show (Log msg p) = "[" ++ msg ++ "]"  ++ show p
     show (Fail) = "0"
     show (Sus _ _) = "..."
@@ -139,7 +139,7 @@ instance Show (Steps s r) where
 
 countWidth :: Zip s r -> Int
 countWidth (Zip _ _ r) = countWidth' r
-  where countWidth' :: (Steps s r) -> Int
+  where countWidth' :: Steps s r -> Int
         countWidth' r' = case r' of
             (Best _ _ p q) ->  countWidth' p + countWidth' q
             (Val _ p) -> countWidth' p
@@ -183,7 +183,7 @@ instance Functor (Parser s) where
 
 instance Applicative (Parser s) where
     (<*>) = Appl
-    pure x = Pure x
+    pure = Pure
 
 instance Alternative (Parser s) where
     (<|>) = Disj
@@ -194,24 +194,24 @@ instance Monad (Parser s) where
     return = pure
     fail _message = Empt
 
-toQ :: Parser s a -> forall h r. ((h,a) -> Steps s r)  -> (h -> Steps s r)
+toQ :: Parser s a -> forall h r. ((h,a) -> Steps s r)  -> h -> Steps s r
 toQ (Look a f) = \k h -> Sus (toQ a k h) (\s -> toQ (f s) k h)
 toQ (p `Appl` q) = \k -> toQ p $ toQ q $ \((h, b2a), b) -> k (h, b2a b)
 toQ (Pure a)     = \k h -> k (h, a)
 toQ (Disj p q)   = \k h -> iBest (toQ p k h) (toQ q k h)
-toQ (Bind p a2q) = \k -> (toQ p) (\(h,a) -> toQ (a2q a) k h)
+toQ (Bind p a2q) = \k -> toQ p (\(h,a) -> toQ (a2q a) k h)
 toQ Empt = \_k _h -> Fail
 toQ (Yuck p) = \k h -> Dislike $ toQ p k h
 toQ (Enter err p) = \k h -> Log err $ toQ p k h
 toQ (Shif p) = \k h -> Sh' $ toQ p k h
 
-toP :: Parser s a -> forall r. (Steps s r)  -> (Steps s (a :< r))
+toP :: Parser s a -> forall r. Steps s r -> Steps s (a :< r)
 toP (Look a f) = \fut -> Sus (toP a fut) (\s -> toP (f s) fut)
 toP (Appl f x) = App . toP f . toP x
 toP (Pure x)   = Val x
-toP Empt = \_fut -> Fail
+toP Empt = const Fail
 toP (Disj a b)  = \fut -> iBest (toP a fut) (toP b fut)
-toP (Bind p a2q) = \fut -> (toQ p) (\(_,a) -> (toP (a2q a)) fut) ()
+toP (Bind p a2q) = \fut -> toQ p (\(_,a) -> toP (a2q a) fut) ()
 toP (Yuck p) = Dislike . toP p
 toP (Enter err p) = Log err . toP p
 toP (Shif p) = Sh' . toP p
@@ -221,7 +221,7 @@ iBest :: Steps s a -> Steps s a -> Steps s a
 iBest p q = let ~(choice, pr) = better 0 (profile p) (profile q) in Best choice pr p q
 
 symbol :: forall s. (s -> Bool) -> Parser s s
-symbol f = Look empty $ \s -> if f s then (Shif $ pure s) else empty
+symbol f = Look empty $ \s -> if f s then Shif $ pure s else empty
 
 eof :: forall s. Parser s ()
 eof = Look (pure ()) (const empty)
@@ -275,9 +275,9 @@ evalL' :: Zip s output -> Zip s output
 evalL' (Zip errs0 l0 r0) = Zip errs0 l0 (simplRhs r0)
     where simplRhs :: Steps s a ->Steps s a
           simplRhs rhs = case rhs of
-            (Val a r) ->(Val a (simplRhs r))
-            (App r)  -> (App (simplRhs r))
-            (Shift p) -> (Shift (simplRhs p))
+            (Val a r) -> Val a (simplRhs r)
+            (App r)  -> App (simplRhs r)
+            (Shift p) -> Shift (simplRhs p)
             (Log err p) -> Log err $ simplRhs p
             (Dislike p) -> Dislike $ simplRhs p
             (Best choice _ p q) -> case choice of
@@ -300,15 +300,15 @@ mkProcess p = Zip [] RStop (toP p Done)
 
 -- | Run a process (in case you do not need the incremental interface)
 run :: Process s a -> [s] -> (a, [String])
-run p input = evalR $ pushEof $ pushSyms input $ p
+run p input = evalR $ pushEof $ pushSyms input p
 
 testNext :: (Maybe s -> Bool) -> Parser s ()
 testNext f = Look (if f Nothing then ok else empty) (\s ->
-   if (f $ Just s) then ok else empty)
+   if f $ Just s then ok else empty)
     where ok = pure ()
 
 lookNext :: Parser s (Maybe s)
-lookNext = Look (pure Nothing) (\s -> pure (Just s))
+lookNext = Look (pure Nothing) (pure . Just)
 
 
 
@@ -354,8 +354,8 @@ data Zip s output where
    -- note that the Stack produced by the Polish expression matches
    -- the stack consumed by the RP automaton.
 
-fullLog :: Zip s output -> ([String],(Tree LogEntry))
-fullLog (Zip msg _ rhs) = ((reverse msg), (rightLog rhs))
+fullLog :: Zip s output -> ([String],Tree LogEntry)
+fullLog (Zip msg _ rhs) = (reverse msg, rightLog rhs)
 
 instance Show (Zip s output) where
     show (Zip errs l r) = show l ++ "<>" ++ show r ++ ", errs = " ++ show errs

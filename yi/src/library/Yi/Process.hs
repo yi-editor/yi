@@ -88,12 +88,12 @@ createSubprocess cmd args bufref = do
     hSetBuffering inp NoBuffering
     hSetBuffering out NoBuffering
     hSetBuffering err NoBuffering
-    return $ SubprocessInfo { procCmd=cmd, procArgs=args, procHandle=handle, hIn=inp, hOut=out, hErr=err, bufRef=bufref, separateStdErr=separate }
+    return SubprocessInfo { procCmd=cmd, procArgs=args, procHandle=handle, hIn=inp, hOut=out, hErr=err, bufRef=bufref, separateStdErr=separate }
 
 
 -- Read as much as possible from handle without blocking
 readAvailable :: Handle -> IO String
-readAvailable handle = (fmap concat) $ repeatUntilM $ read_chunk handle
+readAvailable handle = fmap concat $ repeatUntilM $ read_chunk handle
 
 -- Read a chunk from a handle, bool indicates if there is potentially more data available
 read_chunk :: Handle -> IO (Bool,String)
@@ -102,5 +102,5 @@ read_chunk handle = do
     allocaBytes bufferSize $ \buffer -> do
                  bytesRead <- hGetBufNonBlocking handle buffer bufferSize
                  s <- peekCStringLen (buffer,bytesRead)
-                 let mightHaveMore = (bytesRead == bufferSize)
+                 let mightHaveMore = bytesRead == bufferSize
                  return (mightHaveMore, s)

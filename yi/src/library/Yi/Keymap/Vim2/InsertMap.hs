@@ -44,8 +44,7 @@ exitBinding digraphs = VimBindingE prereq action
               modifyStateE $ \s -> s { vsSecondaryCursors = [] }
               resetCountE
               switchModeE Normal
-              withBuffer0 $ do
-                  whenM isCurrentLineAllWhiteSpaceB $ moveToSol >> deleteToEol
+              withBuffer0 $ whenM isCurrentLineAllWhiteSpaceB $ moveToSol >> deleteToEol
               return Finish
 
 rawPrintable :: VimBinding
@@ -73,25 +72,24 @@ replay digraphs (e1:es1) = do
         bindingMatch1 = selectBinding evs1 state (defInsertMap digraphs)
     case bindingMatch1 of
         WholeMatch (VimBindingE _ action) -> void (action evs1) >> recurse es1
-        PartialMatch -> do
-            case es1 of
-                [] -> return ()
-                (e2:es2) -> do
-                    let evs2 = evs1 ++ eventToString e2
-                        bindingMatch2 = selectBinding evs2 state (defInsertMap digraphs)
-                    case bindingMatch2 of
-                        WholeMatch (VimBindingE _ action) -> void (action evs2) >> recurse es2
-                        _ -> recurse es2
+        PartialMatch -> case es1 of
+            [] -> return ()
+            (e2:es2) -> do
+                let evs2 = evs1 ++ eventToString e2
+                    bindingMatch2 = selectBinding evs2 state (defInsertMap digraphs)
+                case bindingMatch2 of
+                    WholeMatch (VimBindingE _ action) -> void (action evs2) >> recurse es2
+                    _ -> recurse es2
         _ -> recurse es1
 
 oneshotNormalBinding :: VimBinding
 oneshotNormalBinding = VimBindingE prereq action
     where prereq "<C-o>" (VimState { vsMode = Insert _ }) = PartialMatch
           prereq ('<':'C':'-':'o':'>':evs) (VimState { vsMode = Insert _ }) =
-              fmap (const ()) (stringToMove (dropWhile isDigit evs))
+              void (stringToMove (dropWhile isDigit evs))
           prereq _ _ = NoMatch
           action ('<':'C':'-':'o':'>':evs) = do
-              let (countString, motionCmd) = break (not . isDigit) evs
+              let (countString, motionCmd) = span isDigit evs
                   WholeMatch (Move _style _isJump move) = stringToMove motionCmd
               withBuffer0 $ move (if null countString then Nothing else Just (read countString))
               return Continue
@@ -107,8 +105,7 @@ pasteRegisterBinding = VimBindingE prereq action
               mr <- getRegisterE regName
               case mr of
                 Nothing -> return ()
-                Just (Register _style rope) -> withBuffer0 $ do
-                    insertRopeWithStyleB rope Inclusive
+                Just (Register _style rope) -> withBuffer0 $ insertRopeWithStyleB rope Inclusive
               return Continue
 
 digraphBinding :: [(String, Char)] -> VimBinding
@@ -148,8 +145,7 @@ printableAction evs = do
                             isOldLineEmpty <- isCurrentLineEmptyB
                             shouldTrimOldLine <- isCurrentLineAllWhiteSpaceB
                             if isOldLineEmpty
-                            then do
-                                newlineB
+                            then newlineB
                             else if shouldTrimOldLine
                             then savingPointB $ do
                                 moveToSol

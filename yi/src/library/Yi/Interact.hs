@@ -126,7 +126,7 @@ instance PEq w => MonadPlus (I event w) where
 instance PEq w => MonadInteract (I event w) w event where
     write = Writes
     eventBounds = Gets
-    adjustPriority dp = Priority dp
+    adjustPriority = Priority
 
 
 infixl 3 <||
@@ -140,10 +140,10 @@ a <|| b = a <|> (deprioritize >> b)
 (||>) = flip (<||)
 
 -- | Convert a process description to an "executable" process.
-mkProcess :: PEq w => I ev w a -> ((a -> P ev w) -> P ev w)
+mkProcess :: PEq w => I ev w a -> (a -> P ev w) -> P ev w
 mkProcess (Returns x) = \fut -> fut x
-mkProcess Fails = (\_fut -> Fail)
-mkProcess (m `Binds` f) = \fut -> (mkProcess m) (\a -> mkProcess (f a) fut)
+mkProcess Fails = const Fail
+mkProcess (m `Binds` f) = \fut -> mkProcess m (\a -> mkProcess (f a) fut)
 mkProcess (Gets l h) = Get l h
 mkProcess (Writes w) = \fut -> Write w (fut ())
 mkProcess (Priority p) = \fut -> Prior p (fut ())
@@ -167,7 +167,7 @@ accepted :: (Show ev) => Int -> P ev w -> [[String]]
 accepted 0 _ = [[]]
 accepted d (Get (Just low) (Just high) k) = do
     t <- accepted (d - 1) (k low)
-    let h = if low == high then show low else (show low ++ ".." ++ show high)
+    let h = if low == high then show low else show low ++ ".." ++ show high
     return (h : t)
 accepted _ (Get Nothing Nothing _) = [["<any>"]]
 accepted _ (Get Nothing (Just e) _) = [[".." ++ show e]]
@@ -225,7 +225,7 @@ findWrites p (Write w c) = Ambiguous [(p,w,c)]
 findWrites p (Prior dp c) = findWrites (p+dp) c
 findWrites _ Fail = Dead
 findWrites _ End = Dead
-findWrites _ (Get _ _ _) = Waiting
+findWrites _ (Get{})     = Waiting
 findWrites p (Chain a b) = case computeState a of
     Dead -> Dead
     Ambiguous _ -> Dead -- If ambiguity, don't try to do anything clever for now; die.
@@ -238,10 +238,10 @@ findWrites p (Chain a b) = case computeState a of
 
 computeState :: PEq w => P event w -> InteractState event  w
 computeState a = case findWrites 0 a of
-    Ambiguous actions -> let prior = minimum $ map fst3 $ actions
+    Ambiguous actions -> let prior = minimum $ map fst3 actions
                              bests = groupBy (equiv `on` snd3) $ filter ((prior ==) . fst3) actions
                          in case bests of
-                              [((_,w,c):_)] -> Running w c
+                              [(_,w,c):_] -> Running w c
                               _ -> Ambiguous $ map head bests
     s -> s
 

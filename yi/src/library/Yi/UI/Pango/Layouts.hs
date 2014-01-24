@@ -64,7 +64,7 @@ type StackDescr = [(Widget, RelativeSize)]
 weightedStackNew :: Orientation -> StackDescr -> IO WeightedStack
 weightedStackNew o s =
   do
-    when (not . null . Prelude.filter ((<= 0) . snd) $ s) $ error "Yi.UI.Pango.WeightedStack.WeightedStack: all weights must be positive"
+    when (any ((<= 0) . snd) s) $ error "Yi.UI.Pango.WeightedStack.WeightedStack: all weights must be positive"
     l <- fixedNew
     set l (fmap ((containerChild :=) . fst) s)
     void $ Gtk.on l sizeRequest (doSizeRequest o s)
@@ -85,7 +85,7 @@ doSizeRequest o s =
             \(Requisition w _) -> w)
 
      totalWeight = sum . fmap snd $ s
-     sizeAlong widgetRequests = totalWeight * (maximum . fmap (\(request,relSize) -> (requestAlong request) / relSize) $ widgetRequests)
+     sizeAlong widgetRequests = totalWeight * (maximum . fmap (\(request,relSize) -> requestAlong request / relSize) $ widgetRequests)
      sizeAcross widgetRequests = maximum . fmap (requestAcross . fst) $ widgetRequests
      mkRequisition wr =
        case o of
@@ -124,8 +124,7 @@ relayout o s (Rectangle x y width height) =
         Horizontal -> x
         Vertical -> y
     widgetPositions = fmap widgetToRectangle (snd (mapAccumL calcPosition startPosition s))
-  in do
-   forM_ widgetPositions $ \(rect, widget) -> widgetSizeAllocate widget rect
+  in forM_ widgetPositions $ \(rect, widget) -> widgetSizeAllocate widget rect
 
 ------------------------------------------------------- SlidingPair
 
@@ -178,7 +177,7 @@ is also no need to correct the slider position.
           let newPos = fromIntegral sliderPos / fromIntegral sz
           writeIORef posRef newPos
           when (oldPos /= newPos) $ handleNewPos newPos
-        else do -- the size was changed; restore the slider position and save the new position
+        else -- the size was changed; restore the slider position and save the new position
           set p [ panedPosition := round (oldPos * fromIntegral sz) ]
 
   return (SP p)
@@ -243,7 +242,7 @@ layoutDisplaySet ld lyt = do
 
   case mimpl of
     Nothing -> applyLayout
-    Just impl -> if sameLayout impl lyt then return () else do
+    Just impl -> unless (sameLayout impl lyt) $ do
       unattachWidgets (toContainer $ mainWidget ld) impl
       applyLayout
 
@@ -362,7 +361,7 @@ simpleNotebookSet sn ts = do
     -- update the tabs, if they have changed
     when (fmap fst curTsList /= fmap fst tsList) $ do
       forM_ curTsList $ const (notebookRemovePage nb (-1))
-      forM_ tsList $ \(w,s) -> notebookAppendPage nb w s
+      forM_ tsList $ uncurry (notebookAppendPage nb)
 
     -- now update the titles if they have changed
     forM_ tsList $ \(w,s) -> update nb (notebookChildTabLabel w) s

@@ -1,4 +1,4 @@
-{-# LANGUAGE MultiParamTypeClasses, FunctionalDependencies #-}
+{-# LANGUAGE MultiParamTypeClasses, FunctionalDependencies, FlexibleContexts #-}
 -- Unique code from Yi.Prelude
 
 module Yi.Utils where
@@ -8,15 +8,15 @@ import Data.Foldable hiding (all,any)
 import Data.Default
 import qualified Data.HashMap.Strict as HashMap
 import Data.Hashable(Hashable)
-import Control.Monad.Reader
+import Control.Monad.Base
 import Control.Applicative
 import Control.Lens hiding (cons)
 import qualified Data.Set as Set
 import qualified Data.Map as Map
 import qualified Data.List.PointedList as PL
 
-io :: MonadIO m => IO a -> m a
-io = liftIO
+io :: MonadBase IO m => IO a -> m a
+io = liftBase
 
 fst3 :: (a,b,c) -> a
 fst3 (x,_,_) = x
@@ -41,12 +41,14 @@ list :: b -> (a -> [a] -> b) -> [a] -> b
 list nil _     []     = nil
 list _   cons' (x:xs) = cons' x xs
 
+{-# ANN nubSet "HLint: ignore Eta reduce" #-}
 -- TODO: move somewhere else.
 -- | As 'Prelude.nub', but with O(n*log(n)) behaviour.
 nubSet :: (Ord a) => [a] -> [a]
-nubSet xss = f Set.empty xss where
-       f _ [] = []
-       f s (x:xs) = if x `Set.member` s then f s xs else x : f (Set.insert x s) xs
+nubSet xss = f Set.empty xss
+  where
+      f _ [] = []
+      f s (x:xs) = if x `Set.member` s then f s xs else x : f (Set.insert x s) xs
 
 -- | As Map.adjust, but the combining function is applied strictly.
 mapAdjust' :: (Ord k) => (a -> a) -> k -> Map.Map k a -> Map.Map k a
@@ -96,6 +98,7 @@ commonPrefix strings
           prefix = head heads
 -- for an alternative implementation see GHC's InteractiveUI module.
 
+{-# ANN findPL "HLint: ignore Eta reduce" #-}
 ---------------------- PointedList stuff
 -- | Finds the first element satisfying the predicate, and returns a zipper pointing at it.
 findPL :: (a -> Bool) -> [a] -> Maybe (PL.PointedList a)
@@ -104,6 +107,7 @@ findPL p xs = go [] xs where
   go ls (f:rs) | p f    = Just (PL.PointedList ls f rs)
                | otherwise = go (f:ls) rs
 
+{-# ANN swapFocus "HLint: ignore Redundant bracket" #-}
 -- | Given a function which moves the focus from index A to index B, return a function which swaps the elements at indexes A and B and then moves the focus. See Yi.Editor.swapWinWithFirstE for an example.
 swapFocus :: (PL.PointedList a -> PL.PointedList a) -> (PL.PointedList a -> PL.PointedList a)
 swapFocus moveFocus xs =

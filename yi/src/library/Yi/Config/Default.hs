@@ -55,6 +55,7 @@ import qualified Yi.UI.Cocoa
 #endif
 import qualified Yi.UI.Batch
 
+{-# ANN availableFrontends "HLint: ignore Use list literal" #-}
 availableFrontends :: [(String, UIBoot)]
 availableFrontends =
 #ifdef FRONTEND_VTY
@@ -77,7 +78,7 @@ availableFrontends =
 -- Failing to conform to this rule exposes the code to instant deletion.
 
 defaultPublishedActions :: HM.HashMap String Action
-defaultPublishedActions = HM.fromList $
+defaultPublishedActions = HM.fromList
     [
       ("atBoundaryB"            , box atBoundaryB)
     , ("cabalBuildE"            , box cabalBuildE)
@@ -219,7 +220,7 @@ toCuaStyleConfig cfg = cfg {defaultKm = Cua.keymap}
 openScratchBuffer :: YiM ()
 openScratchBuffer = withEditor $ do
       noFileBufOpen <- null . rights . fmap (view identA) . M.elems <$> use buffersA
-      when noFileBufOpen $ do
+      when noFileBufOpen $
            void $ newBufferE (Left "scratch") $ R.fromString $ unlines
                    ["This buffer is for notes you don't want to save.", --, and for haskell evaluation" -- maybe someday?
                     "If you want to create a file, open that file,",
@@ -227,15 +228,15 @@ openScratchBuffer = withEditor $ do
 
 nilKeymap :: Keymap
 nilKeymap = choice [
-             char 'c' ?>>  openCfg (Cua.keymap)    "yi-cua.hs",
-             char 'e' ?>>  openCfg (Emacs.keymap)  "yi.hs",
-             char 'v' ?>>  openCfg (Vim.keymapSet) "yi-vim.hs",
+             char 'c' ?>>  openCfg Cua.keymap    "yi-cua.hs",
+             char 'e' ?>>  openCfg Emacs.keymap  "yi.hs",
+             char 'v' ?>>  openCfg Vim.keymapSet "yi-vim.hs",
              char 'q' ?>>! quitEditor,
              char 'r' ?>>! reload,
              char 'h' ?>>! configHelp
             ]
             <|| (anyEvent >>! errorEditor "Keymap not defined, 'q' to quit, 'h' for help.")
-    where configHelp = newBufferE (Left "configuration help") $ R.fromString $ unlines $
+    where configHelp = newBufferE (Left "configuration help") $ R.fromString $ unlines
                          ["This instance of Yi is not configured.",
                           "To get a standard reasonable keymap, you can run yi with either --as=cua, --as=vim or --as=emacs.",
                           "You should however create your own ~/.config/yi/yi.hs file: ",
@@ -248,7 +249,7 @@ nilKeymap = choice [
             void $ editFile cfgFile -- load config file
             -- locally override the keymap to the user choice
             withBuffer $ modifyMode (\m -> m { modeKeymap = const km })
-            when (not cfgExists) $ do
+            unless cfgExists $ do
                 -- file did not exist, load a reasonable default
                 defCfg <- io $ readFile exampleCfg
                 withBuffer $ insertN defCfg

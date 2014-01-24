@@ -56,7 +56,7 @@ layoutHandler isSpecial parens isIgnored (openT, closeT, nextT) isGroupOpen lexS
                stPosn = startPosn
               }
 
-          deepestIndent [] = (-1)
+          deepestIndent [] = -1
           deepestIndent (Indent i:_) = i
           deepestIndent (_:levs) = deepestIndent levs
 
@@ -76,9 +76,9 @@ layoutHandler isSpecial parens isIgnored (openT, closeT, nextT) isGroupOpen lexS
 
             -- start a compound if the rest of the line is empty then skip to it!
             | doOpen
-              = case isGroupOpen tok of -- check so that the do is not followed by a {
-                  False -> (st', tt openT) : parse (IState (Indent col:levels) False line) toks
-                  True  ->                   parse (IState levels              False lastLine) toks
+              = if isGroupOpen tok -- check so that the do is not followed by a {
+                  then parse (IState levels False lastLine) toks
+                  else (st', tt openT) : parse (IState (Indent col : levels) False line) toks
                   -- if it's a block opening, we ignore the layout, and just let the "normal" rule
                   -- handle the creation of another level.
 
@@ -108,7 +108,7 @@ layoutHandler isSpecial parens isIgnored (openT, closeT, nextT) isGroupOpen lexS
                   -- drop all paren levels inside the indent
 
             -- open a paren block
-            | isJust $ findParen fst $ (tokT tok)
+            | isJust $ findParen fst $ tokT tok
               = (st', tok) : parse (IState (Paren (tokT tok):levels) (isSpecial (tokT tok)) line) tokss
               -- important note: the the token can be both special and an opening. This is the case of the
               -- haskell 'let' (which is closed by 'in'). In that case the inner block is that of the indentation.

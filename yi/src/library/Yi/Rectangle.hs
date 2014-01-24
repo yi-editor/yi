@@ -81,8 +81,7 @@ killRectangle = do
 yankRectangle :: EditorM ()
 yankRectangle = do
     text <- lines' <$> getRegE
-    withBuffer0 $ do
-        forM_ text $ \t -> do
-            savingPointB $ insertN t
-            lineDown
+    withBuffer0 $ forM_ text $ \t -> do
+        savingPointB $ insertN t
+        lineDown
 

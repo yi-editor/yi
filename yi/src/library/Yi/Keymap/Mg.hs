@@ -47,6 +47,7 @@ import Yi.Char
 import Numeric              ( showOct )
 import Data.Char            ( ord, chr )
 import Data.List            ((\\), isPrefixOf)
+import Data.Foldable (forM_)
 import qualified Data.Map as M
 import Control.Arrow
 import Control.Exception    ( try, evaluate )
@@ -57,6 +58,8 @@ import Yi.Keymap.Emacs.Utils (findFile, isearchProcess, withMinibuffer, complete
 import Yi.Keymap.Emacs.KillRing
 import Yi.String (dropSpace)
 
+{-# ANN module "HLint: ignore Use string literal" #-}
+{-# ANN module "HLint: ignore Use String" #-}
 ------------------------------------------------------------------------
 
 c_ :: Char -> Char
@@ -114,49 +117,49 @@ globalTable = [
         write $ errorEditor "apropos unimplemented"),
   ("backward-char",
         [[c_ 'b'], [m_ 'O', 'D'], [keyLeft]],
-        write $ leftB),
+        write leftB),
   ("backward-kill-word",
         [[m_ '\127']],
-        write $ bkillWordB),
+        write bkillWordB),
   ("backward-word",
         [[m_ 'b']],
-        write $ prevWordB),
+        write prevWordB),
   ("beginning-of-buffer",
         [[m_ '<']],
-        write $ topB),
+        write topB),
   ("beginning-of-line",
         [[c_ 'a'], [m_ 'O', 'H']],
-        write $ moveToSol),
+        write moveToSol),
   ("call-last-kbd-macro",
         [[c_ 'x', 'e']],
-        write $ errorEditor "call-last-kbd-macro unimplemented"),
+        write errorEditor "call-last-kbd-macro unimplemented"),
   ("capitalize-word",
         [[m_ 'c']],
-        write $ capitaliseWordB),
+        write capitaliseWordB),
   ("copy-region-as-kill",
         [[m_ 'w']],
-        write $ errorEditor "copy-region-as-kill unimplemented"),
+        write errorEditor "copy-region-as-kill unimplemented"),
   ("delete-backward-char",
         [['\127'], ['\BS'], [keyBackspace]],
-        write $ bdeleteB),
+        write bdeleteB),
   ("delete-blank-lines",
         [[c_ 'x', c_ 'o']],
-        write $ mgDeleteBlanks),
+        write mgDeleteBlanks),
   ("delete-char",
         [[c_ 'd']],
         write $ deleteN 1),
   ("delete-horizontal-space",
         [[m_ '\\']],
-        write $ mgDeleteHorizBlanks),
+        write mgDeleteHorizBlanks),
   ("delete-other-windows",
         [[c_ 'x', '1']],
-        write $ closeOtherE),
+        write closeOtherE),
   ("delete-window",
         [[c_ 'x', '0']],
-        write $ closeWindow),
+        write closeWindow),
   ("describe-bindings",
         [[c_ 'h', 'b']],
-        write $ describeBindings),
+        write describeBindings),
   ("describe-key-briefly",
         [[c_ 'h', 'c']],
         describeKeyMode),
@@ -171,22 +174,22 @@ globalTable = [
         write $ errorEditor "downcase-region unimplemented"),
   ("downcase-word",
         [[m_ 'l']],
-        write $ lowercaseWordB),
+        write lowercaseWordB),
   ("end-kbd-macro",
         [[c_ 'x', ')']],
         write $ errorEditor "end-kbd-macro unimplemented"),
   ("end-of-buffer",
         [[m_ '>']],
-        write $ botB),
+        write botB),
   ("end-of-line",
         [[c_ 'e'], [m_ 'O', 'F']],
-        write $ moveToEol),
+        write moveToEol),
   ("enlarge-window",
         [[c_ 'x', '^']],
-        write $ enlargeWinE),
+        write enlargeWinE),
   ("shrink-window",             -- not in mg
         [[c_ 'x', 'v']],
-        write $ shrinkWinE),
+        write shrinkWinE),
   ("exchange-point-and-mark",
         [[c_ 'x', c_ 'x']],
         write $ errorEditor "exchange-point-and-mark unimplemented"),
@@ -207,13 +210,13 @@ globalTable = [
         write $ errorEditor "find-file-other-window unimplemented"),
   ("forward-char",
         [[c_ 'f'], [m_ 'O', 'C'], [keyRight]],
-        write $ rightB),
+        write rightB),
   ("forward-paragraph",
         [[m_ ']']],
         write $ nextNParagraphs 1),
   ("forward-word",
         [[m_ 'f']],
-        write $ nextWordB),
+        write nextWordB),
   ("goto-line",
         [[c_ 'x', 'g']],
         gotoMode),
@@ -245,16 +248,16 @@ globalTable = [
         killBufferMode),
   ("kill-line",
         [[c_ 'k']],
-        write $ killLineE),
+        write killLineE),
   ("kill-region",
         [[c_ 'w']],
         write $ errorEditor "kill-region unimplemented"),
   ("kill-word",
         [[m_ 'd']],
-        write $ killWordB),
+        write killWordB),
   ("list-buffers",
         [[c_ 'x', c_ 'b']],
-        write $ mgListBuffers),
+        write mgListBuffers),
   ("negative-argument",
         [[m_ '-']],
         write $ errorEditor "negative-argument unimplemented"),
@@ -266,7 +269,7 @@ globalTable = [
         write $ errorEditor "newline-and-indent unimplemented"),
   ("next-line",
         [[c_ 'n'], [m_ 'O', 'B'], [keyDown]], -- doesn't remember goal column
-        write $ (execB Move VLine Forward)),
+        write $ execB Move VLine Forward),
   ("not-modified",
         [[m_ '~']],
         write $ errorEditor "not-modified unimplemented"),
@@ -275,13 +278,13 @@ globalTable = [
         write $ insertB '\n'),
   ("other-window",
         [[c_ 'x', 'n'], [c_ 'x', 'o']],
-        write $ nextWinE),
+        write nextWinE),
   ("previous-line",
         [[c_ 'p'], [m_ 'O', 'A'], [keyUp]],
-        write $ (execB Move VLine Backward)),
+        write $ execB Move VLine Backward),
   ("previous-window",
         [[c_ 'x', 'p']],
-        write $ prevWinE),
+        write prevWinE),
   ("query-replace",
         [[m_ '%']],
         write $ errorEditor "query-replace unimplemented"),
@@ -293,22 +296,22 @@ globalTable = [
         write $ errorEditor "recenter unimplemented"),
   ("save-buffer",
         [[c_ 'x', c_ 's']],
-        write $ writeFileMode),
+        write writeFileMode),
   ("save-buffers-kill-emacs",
         [[c_ 'x', c_ 'c']],
-        write $ quitEditor), -- should ask to save buffers
+        write quitEditor), -- should ask to save buffers
   ("save-some-buffers",
         [[c_ 'x', 's']],
         write $ errorEditor "save-some-buffers unimplemented"),
   ("scroll-down",
         [[m_ '[', '5', '~'], [m_ 'v'], [keyPPage]],
-        write $ upScreenB),
+        write upScreenB),
   ("scroll-other-window",
         [[m_ (c_ 'v')]],
         write $ errorEditor "scroll-other-window unimplemented"),
   ("scroll-up",
         [[c_ 'v'], [m_ '[', '6', '~'], [keyNPage]],
-        write $ downScreenB),
+        write downScreenB),
   ("search-backward",
         [[m_ 'r']],
         write $ errorEditor "search-backward unimplemented"),
@@ -323,13 +326,13 @@ globalTable = [
         write $ errorEditor "set-mark-command unimplemented"),
   ("split-window-vertically",
         [[c_ 'x', '2']],
-        write $ splitE),
+        write splitE),
   ("start-kbd-macro",
         [[c_ 'x', '(']],
         write $ errorEditor "start-kbd-macro unimplemented"),
   ("suspend-emacs",
         [[c_ 'z']],
-        write $ suspendEditor),
+        write suspendEditor),
   ("switch-to-buffer",
         [[c_ 'x', 'b']],
         write $ errorEditor "switch-to-buffer unimplemented"),
@@ -338,10 +341,10 @@ globalTable = [
         write $ errorEditor "switch-to-buffer-other-window unimplemented"),
   ("transpose-chars",
         [[c_ 't']],
-        write $ swapB),
+        write swapB),
   ("undo",
         [[c_ 'x', 'u'], ['\^_']],
-        write $ undoB),
+        write undoB),
   ("universal-argument",
         [[c_ 'u']],
         write $ errorEditor "universal-argument unimplemented"),
@@ -350,10 +353,10 @@ globalTable = [
         write $ errorEditor "upcase-region unimplemented"),
   ("upcase-word",
         [[m_ 'u']],
-        write $ uppercaseWordB),
+        write uppercaseWordB),
   ("what-cursor-position",
         [[c_ 'x', '=']],
-        write $ whatCursorPos),
+        write whatCursorPos),
   ("write-file",
         [[c_ 'x', c_ 'w']],
         writeFileMode),
@@ -413,7 +416,7 @@ metaSwitch = do event '\ESC' ; write  (msgEditor "ESC-"); metaMode       -- hitt
 --
 metaMode :: MgMode
 metaMode = do c <- oneOf ['\0' .. '\255']       -- not quite right
-              when ((m_ c) `elem` unitKeysList) $ keys2action [m_ c]
+              when (m_ c `elem` unitKeysList) $ keys2action [m_ c]
               write msgClr
 
 ------------------------------------------------------------------------
@@ -437,19 +440,17 @@ echoMode prompt = do
   return result
     where lineEdit s =
               do write $ msgEditor (prompt ++ s)
-                 (do delete; lineEdit (take (length s - 1) s)
+                 do delete; lineEdit (take (length s - 1) s)
                   +++ do c <- anyButDelNlArrow; lineEdit (s++[c])
                   +++ do event '\^G'; return Nothing
-                  +++ do enter; return (Just s))
+                  +++ do enter; return (Just s)
           anyButDelNlArrow = oneOf $ any' \\ (enter' ++ delete' ++ ['\ESC',keyUp,keyDown])
 
 
 withLineEditor :: String -> (String -> MgMode) -> MgMode
 withLineEditor prompt cont = do
   s <- echoMode prompt
-  case s of
-    Nothing -> return ()
-    Just x -> cont x
+  forM_ s cont
 
 
 ------------------------------------------------------------------------
@@ -459,13 +460,13 @@ withLineEditor prompt cont = do
 -- keystroke, and execute that.
 
 metaXSwitch :: MgMode
-metaXSwitch = do (event (m_ 'x') +++ event (m_ 'X')); withLineEditor "M-x " metaXEval
+metaXSwitch = do 
+  event (m_ 'x') +++ event (m_ 'X')
+  withLineEditor "M-x " metaXEval
 
 -- | M-x mode, evaluate a string entered after M-x
 metaXEval :: String -> MgMode
-metaXEval cmd = case M.lookup cmd extended2action of
-                  Nothing -> write $ msgEditor "[No match]"
-                  Just a  -> a
+metaXEval cmd = fromMaybe (write $ msgEditor "[No match]") (M.lookup cmd extended2action)
 
 -- metaXTab :: MgMode
 
@@ -479,7 +480,7 @@ describeChar prompt acc = do
   c <- anything
   let keys = acc ++ [c]
   case M.lookup keys keys2extended of
-            Just ex -> write $ msgEditor $ (printable keys) ++ " runs the command " ++ ex
+            Just ex -> write $ msgEditor $ printable keys ++ " runs the command " ++ ex
             Nothing ->
                 -- only continue if this is the prefix of something in the table
                 if any (isPrefixOf keys) (M.keys keys2extended)
@@ -500,8 +501,7 @@ writeFileMode = withMinibuffer "Write file: "
 -- | Killing a buffer by name
 
 killBufferMode :: MgMode
-killBufferMode = withLineEditor "Kill buffer: " $ \buf -> write $ do
-                   closeBufferE buf
+killBufferMode = withLineEditor "Kill buffer: " $ \buf -> write $ closeBufferE buf
 
 -- ---------------------------------------------------------------------
 -- | Goto a line
@@ -563,7 +563,7 @@ whatCursorPos = do
                 "  row=? col="++ show col
 
 describeBindings :: Action
-describeBindings = newBufferE "*help*" s >> return ()
+describeBindings = void (newBufferE "*help*" s)
     where
       s = unlines [ let p = printable k
                     in p ++ replicate (17 - length p) ' ' ++ ex
@@ -581,7 +581,7 @@ mgListBuffers = do
         return ()
     where
         name = "*Buffer List*"
-        f bs = unlines [ "  "++(show i)++"\t"++(show n) | (n,i) <- bs ]
+        f bs = unlines [ "  " ++ show i ++ "\t" ++ show n | (n,i) <- bs ]
 
 --
 -- delete all blank lines from this point

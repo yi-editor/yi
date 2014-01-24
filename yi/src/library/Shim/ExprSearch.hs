@@ -67,7 +67,7 @@ searchRenamedSource (group, _, _, _, _) = searchGroup group
 -- Utils used in expr searching
 
 searchList :: (a -> Search b) -> [a] -> Search b
-searchList f xs = foldr orSearch failSearch (map f xs)
+searchList f = foldr (orSearch . f) failSearch
 
 searchBag :: (a -> Search b) -> Bag a -> Search b
 searchBag f bag = searchList f (bagToList bag)
@@ -85,7 +85,7 @@ lsearch' f (L span a) = contSpan span (f a)
 -- -----------------------------------------------------------------------------
 -- Binds
 
-searchLBinds binds = searchBag searchLBind binds
+searchLBinds = searchBag searchLBind
 
 searchLBind (L _ (AbsBinds _ _ exports bs))
   = extendIdMap pairs $ searchLBinds bs
@@ -113,7 +113,7 @@ searchValBinds (ValBindsOut binds sigs)
   = foldr (\(_,binds) cont -> searchLBinds binds `orSearch` cont) failSearch binds
    `orSearch` Search (\line col idmap ret -> runSearch line col FoundName (searchList searchLSig sigs))
 
-searchLIPBind lipbind = lsearch searchIPBind lipbind
+searchLIPBind = lsearch searchIPBind
 searchIPBind (IPBind _ipname e) = searchLExpr e
 
 -- -----------------------------------------------------------------------------
@@ -169,7 +169,7 @@ searchConDeclDetails search (RecCon fields) = searchList rec fields
 
 searchMatchGroup (MatchGroup lmatches _) = searchLMatches lmatches
 
-searchLMatches lmatches = searchList searchLMatch lmatches
+searchLMatches = searchList searchLMatch
 
 searchLMatch lmatch@(L span _) = lsearch' searchMatch lmatch
 
@@ -191,8 +191,8 @@ searchGRHS (GRHS stmts expr)
 -- -----------------------------------------------------------------------------
 -- Statements
 
-searchLStmts lstmts = searchList searchLStmt lstmts
-searchLStmt lstmt = lsearch searchStmt lstmt
+searchLStmts = searchList searchLStmt
+searchLStmt = lsearch searchStmt
 
 searchStmt (BindStmt pat lexpr _ _)
   = searchLPat pat
@@ -211,13 +211,13 @@ searchStmt (RecStmt lstmts _ _ exprs _)
 
 searchLId (L span id) = checkId span id
 
-searchLExprs lexprs = searchList searchLExpr lexprs
+searchLExprs = searchList searchLExpr
 
 searchLExpr (L span (HsLit lit)) = checkLiteral span lit
 searchLExpr (L span (HsVar id))  = checkId span id
 searchLExpr (L span (HsWrap _ e)) = checkId span id
    where id = getCornerId e
-searchLExpr lexpr = lsearch searchExpr lexpr
+searchLExpr = lsearch searchExpr
 
 -- The typechecker likes to expand identifiers with type applications
 -- and dictionary applications, but it doesn't propagate the srcloc
@@ -295,7 +295,7 @@ searchRecBinds (HsRecFields fields dotdot) = searchList searchRecBind fields
 -- ----------------------------------------------------------------------------
 -- Sigs
 
-searchLSig lsig = lsearch searchSig lsig
+searchLSig = lsearch searchSig
 
 searchSig (TypeSig lid tp) = searchLId lid `orSearch` searchLType tp
 searchSig (SpecSig lid tp _) = searchLId lid `orSearch` searchLType tp
@@ -306,19 +306,19 @@ searchSig (FixSig fix) = searchFixitySig fix
 -- ----------------------------------------------------------------------------
 -- FixitySig
 
-searchLFixitySig fix = lsearch searchFixitySig fix
+searchLFixitySig = lsearch searchFixitySig
 
 searchFixitySig (FixitySig lid _) = searchLId lid
 
 -- ----------------------------------------------------------------------------
 -- Types
 
-searchLTypes ltps = searchList searchLType ltps
+searchLTypes = searchList searchLType
 
-searchLType lty = lsearch searchType lty
+searchLType = lsearch searchType
 
 searchType (HsForAllTy _ _ ctxt tp) = searchLContext ctxt `orSearch` searchLType tp
-searchType (HsTyVar id) = Search $ (\line col idmap ret -> ret id)
+searchType (HsTyVar id) = Search (\line col idmap ret -> ret id)
 searchType (HsBangTy _ tp) = searchLType tp
 searchType (HsAppTy tp1 tp2) = searchLType tp1 `orSearch` searchLType tp2
 searchType (HsFunTy tp1 tp2) = searchLType tp1 `orSearch` searchLType tp2
@@ -333,9 +333,9 @@ searchType _ = failSearch
 -- ----------------------------------------------------------------------------
 -- Context
 
-searchLContext lctxt = lsearch searchContext lctxt
+searchLContext = lsearch searchContext
 
-searchContext lpreds = searchList searchLPred lpreds
+searchContext = searchList searchLPred
 
 -- ----------------------------------------------------------------------------
 -- Pred
@@ -349,7 +349,7 @@ searchPred (HsIParam _ tp) = searchLType tp
 -- ----------------------------------------------------------------------------
 -- TyClDecl
 
-searchLTyClDecl ltyClass = lsearch searchTyClDecl ltyClass
+searchLTyClDecl = lsearch searchTyClDecl
 
 searchTyClDecl (ForeignType lid _ _) = searchLId lid
 searchTyClDecl td@(TyData {}) =
@@ -369,7 +369,7 @@ searchTyClDecl cd@(ClassDecl {}) =
 -- ----------------------------------------------------------------------------
 -- ConDecl
   
-searchLConDecl lconDecl = lsearch searchConDecl lconDecl
+searchLConDecl = lsearch searchConDecl
 searchConDecl (ConDecl lid _ lbndrs lctxt details res _) =
   searchLId lid `orSearch`
   searchList searchLBndr lbndrs `orSearch`
@@ -386,7 +386,7 @@ searchConDecl (ConDecl lid _ lbndrs lctxt details res _) =
 -- ----------------------------------------------------------------------------
 -- InstDecl
 
-searchLInstDecl linstDecl = lsearch searchInstDecl linstDecl
+searchLInstDecl = lsearch searchInstDecl
 
 searchInstDecl (InstDecl ltp lbinds lsigs _) =
   searchLType ltp `orSearch`
@@ -396,14 +396,14 @@ searchInstDecl (InstDecl ltp lbinds lsigs _) =
 -- ----------------------------------------------------------------------------
 -- DefaultDecl
 
-searchLDefaultDecl ldefDecl = lsearch searchDefaultDecl ldefDecl
+searchLDefaultDecl = lsearch searchDefaultDecl
 
 searchDefaultDecl (DefaultDecl ltps) = searchLTypes ltps
 
 -- ----------------------------------------------------------------------------
 -- ForeignDecl
 
-searchLForeignDecl lfDecl = lsearch searchForeignDecl lfDecl
+searchLForeignDecl = lsearch searchForeignDecl
 
 searchForeignDecl (ForeignImport lid ltp _) = searchLId lid `orSearch` searchLType ltp
 searchForeignDecl (ForeignExport lid ltp _) = searchLId lid `orSearch` searchLType ltp
@@ -411,7 +411,7 @@ searchForeignDecl (ForeignExport lid ltp _) = searchLId lid `orSearch` searchLTy
 -- ----------------------------------------------------------------------------
 -- RuleDecl
 
-searchLRuleDecl lruleDecl = lsearch searchRuleDecl lruleDecl
+searchLRuleDecl = lsearch searchRuleDecl
 
 searchRuleDecl (HsRule _ _ bndrs lexpr1 _ lexpr2 _) =
   searchList searchRuleBndr bndrs `orSearch`
@@ -437,7 +437,7 @@ searchGroup g@(HsGroup {}) =
 -- ----------------------------------------------------------------------------
 -- ImportDecl
 
-searchLImportDecl ldecl = lsearch searchImportDecl ldecl
+searchLImportDecl = lsearch searchImportDecl
 
 searchImportDecl (ImportDecl (L span modl) _ _ _ _ _) = inSpan span (Search $ \_ _ _ _ -> FoundModule modl)
 

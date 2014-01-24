@@ -16,6 +16,7 @@ import qualified Shim.GhcCompat as GhcCompat
 
 import Control.Applicative
 import Control.Monad.State
+import Control.Arrow ((***))
 import Data.List ( isPrefixOf, find, nubBy, sort, (\\) )
 import Data.Maybe
 import System.Directory
@@ -109,9 +110,9 @@ getCabalOpts sourcefile = do
 ghcSetDir :: FilePath -> SHM ()
 ghcSetDir projectroot = do
   ses <- getSession
-  oldDir <- io $ getCurrentDirectory
+  oldDir <- io getCurrentDirectory
   io $ setCurrentDirectory projectroot
-  newDir <- io $ getCurrentDirectory
+  newDir <- io getCurrentDirectory
   when (newDir /= oldDir) $
     io $ GhcCompat.workingDirectoryChanged ses
 
@@ -219,7 +220,7 @@ load' sourcefile source = do
          return (Failed,ses)
 
 addTime :: Maybe String -> SHM (Maybe (StringBuffer, ClockTime))
-addTime (Just s) = do now <- io $ getClockTime
+addTime (Just s) = do now <- io getClockTime
                       sb <- io $ stringToStringBuffer s
                       return $ Just (sb,now)
 addTime Nothing = return Nothing
@@ -233,8 +234,8 @@ getSessionFor sourcefile = do
       getCabalSession opts cabalfile
     Nothing -> do
       ses <- getSession
-      logInfo $ concat ["No cabal file found. ",
-                        "Using default options and current directory"]
+      logInfo ("No cabal file found. " ++
+               "Using default options and current directory")
       ghcSetDir $ dropFileName sourcefile
       return ses
 
@@ -258,7 +259,7 @@ getCabalSession opts cabalfile = do
   mses <- lookupSession cabalfile
   ses <- case mses of
            Just ses -> return ses
-           Nothing  -> do ses <- io $ ghcInit
+           Nothing  -> do ses <- io ghcInit
                           addSession cabalfile ses
                           return ses
   logInfo $ concat ["Using options ", unSplit ',' opts,
@@ -270,7 +271,7 @@ getCabalSession opts cabalfile = do
   return ses
 
 storeFileInfo :: FilePath -> CompilationResult -> Maybe CachedMod -> IdData -> SHM ()
-storeFileInfo sourcefile compile_res cm id_data = do
+storeFileInfo sourcefile compile_res cm id_data =
   addCompBuffer sourcefile id_data compile_res cm
 
 getIdData :: Session -> IO IdData
@@ -300,11 +301,11 @@ findIdPrefix :: FilePath -> String -> SHM [(String, String)]
 findIdPrefix sourcefile pref = do
   l0 <- M.lookup sourcefile `fmap` getCompBuffer
   case l0 of
-    Just (_,l,_) -> return . (filterPrefix pref) $ l
+    Just (_,l,_) -> return . filterPrefix pref $ l
     Nothing -> do
       load sourcefile True Nothing
       l1 <- M.lookup sourcefile `fmap` getCompBuffer
-      maybe (return []) (return . (filterPrefix pref) . snd3) l1
+      (return . maybe [] (filterPrefix pref . snd3)) l1
 
 
 findTypeOfName :: Session -> String -> SHM String
@@ -328,7 +329,7 @@ getModuleExports :: FilePath -> String -> String -> SHM IdData
 getModuleExports sourcefile0 modname pref = do
   ses <- getSessionFor sourcefile0
   let currentmod = "AHJEXLJLLKJIUOHGJ"
-      sourcefile = (dropFileName sourcefile0) </> currentmod ++ ".hs"
+      sourcefile = dropFileName sourcefile0 </> currentmod ++ ".hs"
       minSrc = unlines ["module "++currentmod++" where",
                         "",
                         "import "++modname]
@@ -345,14 +346,11 @@ getModuleExports sourcefile0 modname pref = do
     Just mod_info -> do
       let names = modInfoExports mod_info
       things <- io $ forM names
-                       (\n -> ((,) n) `fmap` GhcCompat.lookupName ses n)
+                       (\n -> (,) n `fmap` GhcCompat.lookupName ses n)
       return
         $ filterPrefix pref
-        $ map (\(n,t) ->
-                 (showSDocForUser unqual . ppr $ n,
-                  maybe ""
-                    (showSDocForUser unqual . pprTyThingInContext False)
-                    t))
+        $ map ((showSDocForUser unqual . ppr) ***
+               maybe "" (showSDocForUser unqual . pprTyThingInContext False))
               things
 
 findDefinition :: FilePath -> Int -> Int -> Maybe String -> SHM SrcLoc
@@ -361,7 +359,7 @@ findDefinition sourcefile line col source = do
   case findExprInCheckedModule line col cm of
     FoundName name -> return $ nameSrcLoc name
     FoundId ident  -> return $ nameSrcLoc (getName ident)
-    _              -> return $ noSrcLoc
+    _              -> return   noSrcLoc
 
 pprExplicitForAlls :: SHM Bool
 pprExplicitForAlls = do
@@ -380,9 +378,9 @@ findTypeOfPos sourcefile line col source = do
       case mb_tyThing of
             Just tyThing -> return $! showSDocForUser unqual
                               (pprTyThingInContextLoc True tyThing)
-            Nothing      -> return $ "<not found>"
+            Nothing      -> return "<not found>"
     FoundId ident ->  return $ pprIdent ident
-    _ -> return $ "<not found>"
+    _ -> return "<not found>"
 
 --------------------------------------------------------------
 -- utility functions
@@ -439,10 +437,10 @@ testFilename :: String
 testFilename = "/tmp/ShimTest.hs"
 
 assertLEq :: (Show a, Monad m, Ord a) => [a] -> [a] -> m ()
-assertLEq expected got = do
-  unless ((sort expected)==(sort got)) $
-    error $ "\nexpected: " ++ (show expected) ++ "\ngot:      " ++ (show got)
-            ++ "\ndiff: " ++ (show $ (expected \\ got) ++ (got \\ expected))
+assertLEq expected got =
+  unless (sort expected == sort got) $
+    error $ "\nexpected: " ++ show expected ++ "\ngot:      " ++ show got
+            ++ "\ndiff: " ++ show ((expected \\ got) ++ (got \\ expected))
 
 t1 :: IO ()
 t1 = do
@@ -459,9 +457,9 @@ t_findIdPrefix source pref expected = do
 
 t2 :: IO ()
 t2 = t_findIdPrefix testSource "from"
-       ([("fromTest","Integer"),
-         ("fromJust","Maybe a -> a"),
-         ("fromMaybe","a -> Maybe a -> a")])
+       [("fromTest","Integer"),
+        ("fromJust","Maybe a -> a"),
+        ("fromMaybe","a -> Maybe a -> a")]
 
 t3 :: IO ()
 t3 = t_findIdPrefix testSource "someF" [("someFun","Integer")]

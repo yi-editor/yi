@@ -47,8 +47,9 @@ expandSym fpath = do
   -- checking its status, so it's useless here
   deref <- ignoringException (Just <$> readSymbolicLink fpath)
   case deref of
-    Just slink -> if isAbsolute slink then expandSym slink
-                  else expandSym $ foldl combinePath (takeDirectory fpath) $ splitPath slink
+    Just slink -> expandSym (if isAbsolute slink
+                    then slink
+                    else foldl combinePath (takeDirectory fpath) $ splitPath slink)
     Nothing -> return fpath
 
 -- | Make a path absolute.

@@ -1,4 +1,4 @@
-{-# LANGUAGE NoMonomorphismRestriction #-}
+{-# LANGUAGE NoMonomorphismRestriction, FlexibleContexts #-}
 module Yi.Paths ( getEvaluatorContextFilename
                 , getConfigFilename
                 , getConfigModules
@@ -15,11 +15,11 @@ import System.Directory(getAppUserDataDirectory, -- TODO: phase out in favour of
                         createDirectoryIfMissing)
 import System.FilePath((</>))
 import Control.Monad (liftM)
-import Control.Monad.Trans(liftIO, MonadIO)
+import Control.Monad.Base
 import qualified System.Environment.XDG.BaseDir as XDG
 
-appUserDataCond ::(MonadIO m) => ([Char] -> IO FilePath) -> m FilePath
-appUserDataCond dirQuery = liftIO $
+appUserDataCond ::(MonadBase IO m) => (String -> IO FilePath) -> m FilePath
+appUserDataCond dirQuery = liftBase $
   do oldDir <- getAppUserDataDirectory "yi"
      newDir <- dirQuery "yi"
      oldDirExists <- doesDirectoryExist oldDir
@@ -31,25 +31,25 @@ appUserDataCond dirQuery = liftIO $
                else do createDirectoryIfMissing True newDir -- none exists, use new style, but create it
                        return newDir
 
-getConfigDir ::(MonadIO m) => m FilePath
+getConfigDir ::(MonadBase IO m) => m FilePath
 getConfigDir = appUserDataCond XDG.getUserConfigDir
 
-getDataDir ::(MonadIO m) => m FilePath
+getDataDir ::(MonadBase IO m) => m FilePath
 getDataDir = appUserDataCond XDG.getUserDataDir
 
 -- | Given a path relative to application data directory,
 --   this function finds a path to a given data file.
-getDataPath :: (MonadIO m) => FilePath -> m FilePath
-getDataPath fp = getDataDir >>= (return . (</> fp))
+getDataPath :: (MonadBase IO m) => FilePath -> m FilePath
+getDataPath fp = liftM (</> fp) getDataDir
 
 -- | Given a path relative to application configuration directory,
 --   this function finds a path to a given configuration file.
-getConfigPath :: MonadIO m => FilePath -> m FilePath
+getConfigPath :: MonadBase IO m => FilePath -> m FilePath
 getConfigPath = getCustomConfigPath getConfigDir
 
 -- | Given an action that retrieves config path, and a path relative to it,
 -- this function joins the two together to create a config file path.
-getCustomConfigPath :: MonadIO m => m FilePath -> FilePath -> m FilePath
+getCustomConfigPath :: MonadBase IO m => m FilePath -> FilePath -> m FilePath
 getCustomConfigPath cd fp = (</> fp) `liftM` cd
 
 -- Note: Dyre also uses XDG cache dir - that would be:
@@ -57,7 +57,7 @@ getCustomConfigPath cd fp = (</> fp) `liftM` cd
 
 -- Below are all points that are used in Yi code (to keep it clean.)
 getEvaluatorContextFilename, getConfigFilename, getConfigModules,
-    getArticleDbFilename, getPersistentStateFilename :: (MonadIO m) => m FilePath
+    getArticleDbFilename, getPersistentStateFilename :: (MonadBase IO m) => m FilePath
 
 -- | Get Yi master configuration script.
 getConfigFilename = getConfigPath "yi.hs"

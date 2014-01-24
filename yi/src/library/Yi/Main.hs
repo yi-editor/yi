@@ -21,7 +21,9 @@ import Data.List (intercalate)
 import Distribution.Text (display)
 import System.Console.GetOpt
 import System.Exit
+#ifndef HLINT
 #include "ghcconfig.h"
+#endif
 
 import Yi.Config
 import Yi.Config.Default
@@ -84,6 +86,7 @@ editors = [("emacs", toEmacsStyleConfig),
            ("vim2",  toVim2StyleConfig),
            ("cua",   toCuaStyleConfig)]
 
+{-# ANN options "HLint: ignore Use string literal" #-}
 options :: [OptDescr Opts]
 options =
   [ Option []     ["self-check"]  (NoArg  SelfCheck)             "Run self-checks"
@@ -96,10 +99,8 @@ options =
   , Option []     ["as"]          (ReqArg EditorNm   "EDITOR")   editorHelp
   , Option []     ["ghc-option"]  (ReqArg GhcOption  "OPTION")   "Specify option to pass to ghc when compiling configuration file"
   , Option [openInTabsShort] [openInTabsLong] (NoArg  OpenInTabs)  "Open files in tabs"
-  ] where frontendHelp = ("Select frontend, which can be one of:\n"
-                             ++ intercalate ", " frontendNames)
-          editorHelp   = ("Start with editor keymap, where editor is one of:\n"
-                             ++ (intercalate ", " . fmap fst) editors)
+  ] where frontendHelp = "Select frontend, which can be one of:\n" ++ intercalate ", " frontendNames
+          editorHelp   = "Start with editor keymap, where editor is one of:\n" ++ (intercalate ", " . fmap fst) editors
 
 openInTabsShort :: Char
 openInTabsShort = 'p'
@@ -109,14 +110,14 @@ openInTabsLong = "open-in-tabs"
 
 -- | usage string.
 usage, versinfo :: String
-usage = usageInfo ("Usage: yi [option...] [file]") options
+usage = usageInfo "Usage: yi [option...] [file]" options
 
 versinfo = "yi " ++ display version
 
 -- | Transform the config with options
 do_args :: Config -> [String] -> Either Err (Config, ConsoleConfig)
 do_args cfg args =
-    case (getOpt (ReturnInOrder File) options args) of
+    case getOpt (ReturnInOrder File) options args of
         (os, [], []) -> foldM (getConfig shouldOpenInTabs) (cfg, defaultConsoleConfig) os
         (_, _, errs) -> fail (concat errs)
     where
@@ -137,20 +138,20 @@ getConfig shouldOpenInTabs (cfg, cfgcon) opt =
                          x : xs -> return (cfg { startActions = x:makeAction (gotoLn (read l)):xs }, cfgcon)
                          []     -> fail "The `-l' option must come after a file argument"
 
-      File filename -> if shouldOpenInTabs && (length (startActions cfg) > 0) then
+      File filename -> if shouldOpenInTabs && not (null (startActions cfg)) then
                          prependActions [YiA (editFile filename), EditorA newTabE]
                        else
                          prependAction (editFile filename)
 
       EditorNm emul -> case lookup (fmap toLower emul) editors of
-             Just modifyCfg -> return $ (modifyCfg cfg, cfgcon)
+             Just modifyCfg -> return (modifyCfg cfg, cfgcon)
              Nothing -> fail $ "Unknown emulation: " ++ show emul
       GhcOption ghcOpt -> return (cfg, cfgcon { ghcOptions = ghcOptions cfgcon ++ [ghcOpt] })
       ConfigFile f -> return (cfg, cfgcon { userConfigDir = return f })
       _ -> return (cfg, cfgcon)
   where
-    prependActions as = return $ (cfg { startActions = (fmap makeAction as) ++ startActions cfg }, cfgcon)
-    prependAction a = return $ (cfg { startActions = makeAction a : startActions cfg}, cfgcon)
+    prependActions as = return (cfg { startActions = fmap makeAction as ++ startActions cfg }, cfgcon)
+    prependAction a = return (cfg { startActions = makeAction a : startActions cfg}, cfgcon)
 
 -- ---------------------------------------------------------------------
 -- | Static main. This is the front end to the statically linked

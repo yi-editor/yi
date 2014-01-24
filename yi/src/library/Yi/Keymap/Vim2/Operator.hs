@@ -120,13 +120,12 @@ formatRegionB _style reg = do
             p <- pointB
             col <- curCol
             char <- readB
-            if p >= end
-            then return ()
-            else if col < 80 && char == '\n'
-            then writeB ' ' >> go
-            else if col == 80 && char /= '\n'
-            then writeB '\n' >> go
-            else go
+            unless (p >= end) $
+                if col < 80 && char == '\n'
+                then writeB ' ' >> go
+                else if col == 80 && char /= '\n'
+                then writeB '\n' >> go
+                else go
     go
     moveTo start
 
@@ -145,9 +144,8 @@ mkShiftOperator name countMod = VimOperator {
     operatorName = name
   , operatorApplyToRegionE = \count (StyledRegion style reg) -> do
         withBuffer0 $
-            if (style == Block)
-            then do
-                indentBlockRegionB (countMod count) reg
+            if style == Block
+            then indentBlockRegionB (countMod count) reg
             else do
                 reg' <- convertRegionToStyleB reg style
                 shiftIndentOfRegion (countMod count) reg'

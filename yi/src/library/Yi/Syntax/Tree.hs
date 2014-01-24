@@ -84,9 +84,7 @@ fromNodeToFinal r (xs,root) =
     trace ("r = " ++ show r) $
     trace ("focused ~ " ++ show (subtreeRegion focused) ) $
     trace ("pathFromFocusedToLeaf = " ++ show focusedToLeaf) $
-    trace ("pruned ~ " ++ show (subtreeRegion focused) ) $
-
-    (xs', pruned)
+    trace ("pruned ~ " ++ show (subtreeRegion focused)) (xs', pruned)
 
     where n@(xs',_) = fromLeafToLeafAfter (regionEnd r) (xs,root)
           (_,(focusedToLeaf,focused)) = fromLeafAfterToFinal p0 n
@@ -114,7 +112,7 @@ fromLeafAfterToFinal :: IsTree tree => Point -> Node (tree (Tok a)) -> (Path, No
 fromLeafAfterToFinal p n =
     -- trace ("reg = " ++ show (fmap (subtreeRegion . snd) nsPth)) $
       firstThat (\(_,(_,s)) -> getFirstOffset s <= p) ns
-    where ns = (reverse (nodesOnPath n))
+    where ns = reverse (nodesOnPath n)
 
 -- | Search the tree in pre-order starting at a given node, until finding a leaf which is at
 -- or after the given point. An effort is also made to return a leaf as close as possible to @p@.
@@ -127,8 +125,7 @@ fromLeafToLeafAfter p (xs,root) =
     trace ("p = " ++ show p) $
     trace ("leafBeforeP = " ++ show leafBeforeP) $
     trace ("leaf ~ " ++ show (subtreeRegion leaf)) $
-    trace ("xs' = " ++ show xs') $
-    result
+    trace ("xs' = " ++ show xs') result
     where xs' = if null candidateLeaves
                       then []
                       else fst $ firstOrLastThat (\(_,s) -> getFirstOffset s >= p) candidateLeaves
@@ -248,7 +245,7 @@ subtreeRegion t = mkRegion (getFirstOffset t) (getLastOffset t)
 
 -- | Given a tree, return (first offset, number of lines).
 getSubtreeSpan :: (Foldable tree) => tree (Tok t) -> (Point, Int)
-getSubtreeSpan tree = (posnOfs $ firstOff, lastLine - firstLine)
+getSubtreeSpan tree = (posnOfs firstOff, lastLine - firstLine)
     where bounds@[firstOff, _last] = fmap (tokPosn . assertJust) [getFirstElement tree, getLastElement tree]
           [firstLine, lastLine] = fmap posnLine bounds
           assertJust (Just x) = x

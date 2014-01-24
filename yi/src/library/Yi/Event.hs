@@ -45,8 +45,7 @@ eventToChar (Event KBS _)    = '\127'
 eventToChar (Event KTab _)   = '\t'
 
 eventToChar (Event (KASCII c) mods) = (if MMeta `elem` mods then setMeta else id) $
-                                      (if MCtrl `elem` mods then ctrlLowcase else id) $
-                                      c
+                                      (if MCtrl `elem` mods then ctrlLowcase else id) c
 
 eventToChar _ev = '?'
 

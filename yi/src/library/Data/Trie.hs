@@ -18,7 +18,7 @@ empty = Trie False Map.empty
 -- | Insert a new string into the trie.
 insert :: String -> Trie -> Trie
 insert []     (Trie _ m) = Trie True m
-insert (x:xs) (Trie b m) = Trie b $ Map.alter (maybe (Just $ fromString xs) (Just . insert xs)) x m
+insert (x:xs) (Trie b m) = Trie b $ Map.alter (Just . maybe (fromString xs) (insert xs)) x m
 
 fromString :: String -> Trie
 fromString = foldr (\x xs -> Trie False (Map.singleton x xs)) (Trie True Map.empty)

@@ -33,8 +33,9 @@ prefixMatch prefix s = if prefix `isPrefixOf` s then Just s else Nothing
 
 -- | Infix matching function, for use with 'completeInList'
 infixMatch :: String -> String -> Maybe String
-infixMatch needle haystack = fmap (\n -> drop n haystack) $ findIndex (needle `isPrefixOf`) (tails haystack)
+infixMatch needle haystack = fmap (`drop` haystack) $ findIndex (needle `isPrefixOf`) (tails haystack)
 
+{-# ANN subsequenceMatch "HLint: ignore Eta reduce" #-}
 -- | Example: "abc" matches "a1b2c"
 subsequenceMatch :: String -> String -> Bool
 subsequenceMatch needle haystack = go needle haystack
@@ -78,8 +79,8 @@ completeInListCustomShow showFunction s match possibilities
 completeInList' :: String -> (String -> Maybe String) -> [String] -> EditorM String
 completeInList' s match l
     | null filtered = printMsg "No match" >> return s
-    | isSingleton filtered && s == (head filtered) = printMsg "Sole completion" >> return s
-    | isSingleton filtered                         = return $ head filtered
+    | isSingleton filtered && s == head filtered = printMsg "Sole completion" >> return s
+    | isSingleton filtered                       = return $ head filtered
     | otherwise = printMsgs filtered >> return (bestMatch filtered s)
     where
     filtered = filterMatches match l

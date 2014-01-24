@@ -2,6 +2,7 @@ module Yi.Char.Unicode (greek, symbols, subscripts, superscripts, checkAmbs, dis
 
 import Data.List (isPrefixOf)
 import Control.Applicative
+{-# ANN module "HLint: ignore Use string literal" #-}
 
 greek :: [(String, String)]
 greek = [(name, unicode) | (_,name,unicode) <- greekData] ++

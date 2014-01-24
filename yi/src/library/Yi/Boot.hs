@@ -7,6 +7,7 @@ import qualified Config.Dyre as Dyre
 import qualified Config.Dyre.Options as Dyre
 import Config.Dyre.Relaunch
 import Control.Monad.State
+import Control.Monad.Base
 import qualified Data.Rope as R
 import System.Environment
 import System.Exit
@@ -32,7 +33,7 @@ realMain configs = do
 -- output.
 showErrorsInConf :: (Config, ConsoleConfig) -> String -> (Config, ConsoleConfig)
 showErrorsInConf (conf, confcon) errs
-    = (conf { initialActions = (makeAction $ splitE >> newBufferE (Left "*errors*") (R.fromString errs)) : initialActions conf }
+    = (conf { initialActions = makeAction (splitE >> newBufferE (Left "*errors*") (R.fromString errs)) : initialActions conf }
       , confcon)
 
 yi, yiDriver :: Config -> IO ()
@@ -54,12 +55,12 @@ yiDriver cfg = do
                             , Dyre.realMain     = realMain
                             , Dyre.showError    = showErrorsInConf
                             , Dyre.configDir    = Just $ userConfigDir cfgcon
-                            , Dyre.ghcOpts      = (["-threaded", "-O2"] ++
-                                                   ["-i" ++ modules] ++
+                            , Dyre.ghcOpts      = ["-threaded", "-O2"] ++
+                                                  ["-i" ++ modules] ++
 #ifdef PROFILING
-                                                   ["-prof", "-auto-all", "-rtsopts", "-osuf=p_o", "-hisuf=p_hi"] ++
+                                                  ["-prof", "-auto-all", "-rtsopts", "-osuf=p_o", "-hisuf=p_hi"] ++
 #endif
-                                                   ghcOptions cfgcon)
+                                                  ghcOptions cfgcon
                             , Dyre.includeCurrentDirectory = False
                             }
             Dyre.wrapMain yiParams (finalCfg, cfgcon)
@@ -72,5 +73,5 @@ yiDriver cfg = do
 reload :: YiM ()
 reload = do
     editor <- withEditor get
-    withUI (\ui -> UI.end ui False)
-    liftIO $ relaunchWithBinaryState (Just editor) Nothing
+    withUI (`UI.end` False)
+    liftBase $ relaunchWithBinaryState (Just editor) Nothing

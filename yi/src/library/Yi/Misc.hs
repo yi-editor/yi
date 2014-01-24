@@ -1,4 +1,4 @@
-{-# LANGUAGE DeriveDataTypeable, GeneralizedNewtypeDeriving, TypeOperators #-}
+{-# LANGUAGE TypeOperators #-}
 -- Copyright (c) 2008 Jean-Philippe Bernardy
 -- | Various high-level functions to further classify.
 module Yi.Misc
@@ -34,7 +34,7 @@ import System.Directory
   )
 
 import Control.Applicative
-import Control.Monad.Trans (MonadIO (..))
+import Control.Monad.Base
 {- External Library Module Imports -}
 {- Local (yi) module imports -}
 
@@ -63,24 +63,25 @@ getAppropriateFiles :: Maybe String -> String -> YiM (String, [ String ])
 getAppropriateFiles start s' = do
   curDir <- case start of
             Nothing -> do bufferPath <- withBuffer $ gets file
-                          liftIO $ getFolder bufferPath
+                          liftBase $ getFolder bufferPath
             (Just path) -> return path
   let s = replaceShorthands s'
       sDir = if hasTrailingPathSeparator s then s else takeDirectory s
-      searchDir = if null sDir then curDir
-                  else if isAbsolute' sDir then sDir
-                  else curDir </> sDir
-  searchDir' <- liftIO $ expandTilda searchDir
+      searchDir
+        | null sDir = curDir
+        | isAbsolute' sDir = sDir
+        | otherwise = curDir </> sDir
+  searchDir' <- liftBase $ expandTilda searchDir
   let fixTrailingPathSeparator f = do
                        isDir <- doesDirectoryExist (searchDir' </> f)
                        return $ if isDir then addTrailingPathSeparator f else f
 
-  files <- liftIO $ getDirectoryContents searchDir'
+  files <- liftBase $ getDirectoryContents searchDir'
 
   -- Remove the two standard current-dir and parent-dir as we do not
   -- need to complete or hint about these as they are known by users.
   let files' = files \\ [ ".", ".." ]
-  fs <- liftIO $ mapM fixTrailingPathSeparator files'
+  fs <- liftBase $ mapM fixTrailingPathSeparator files'
   let matching = filter (isPrefixOf $ takeFileName s) fs
   return (sDir, matching)
 
@@ -108,7 +109,7 @@ matchingFileNames start s = do
   -- a prefix of ("." </> "foobar"), resulting in a failed completion
   --
   -- However, if user inputs ":e ./foo<Tab>", we need to prepend @sDir@ to @files@
-  let results = if (isNothing start && sDir == "." && not ("./" `isPrefixOf` s))
+  let results = if isNothing start && sDir == "." && not ("./" `isPrefixOf` s)
                    then files
                    else fmap (sDir </>) files
 
@@ -131,7 +132,7 @@ promptFile :: String -> (String -> YiM ()) -> YiM ()
 promptFile prompt act = do
   maybePath <- withBuffer $ gets file
   startPath <- addTrailingPathSeparator
-               <$> (liftIO $ canonicalizePath =<< getFolder maybePath)
+               <$> liftBase (canonicalizePath =<< getFolder maybePath)
   -- TODO: Just call withMinibuffer
   withMinibufferGen startPath (findFileHint startPath) prompt
     (completeFile startPath) showCanon (act . replaceShorthands)

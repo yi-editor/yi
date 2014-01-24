@@ -31,16 +31,16 @@ abellaModeGen abellaBinding =
   , modeApplies = anyExtension ["thm"]
   , modeGetAnnotations = tokenBasedAnnots (sequenceA . tokToSpan . fmap Abella.tokenToText)
   , modeToggleCommentSelection = toggleCommentSelectionB "% " "%"
-  , modeKeymap = topKeymapA %~ ((<||)
+  , modeKeymap = topKeymapA %~ (<||)
      (choice
       [ abellaBinding 'p' ?*>>! sav abellaUndo
       , abellaBinding 'e' ?*>>! sav abellaEval
       , abellaBinding 'n' ?*>>! sav abellaNext
       , abellaBinding 'a' ?*>>! sav abellaAbort
       , abellaBinding '\r' ?*>>! sav abellaEvalFromProofPoint
-      ]))
+      ])
   }
-  where sav f = savingCommandY (flip replicateM_ f) 1
+  where sav f = savingCommandY (`replicateM_` f) 1
 
 abellaModeVim :: TokenBasedMode Abella.Token
 abellaModeVim = abellaModeGen (\ch -> [char '\\', char ch])
@@ -103,7 +103,7 @@ abella (CommandArguments args) = do
 -- Show it in another window.
 abellaGet :: YiM BufferRef
 abellaGet = withOtherWindow $ do
-    AbellaBuffer mb <- withEditor $ getDynamic
+    AbellaBuffer mb <- withEditor getDynamic
     case mb of
         Nothing -> abella (CommandArguments [])
         Just b -> do

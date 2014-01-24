@@ -126,7 +126,7 @@ newtype DynamicValues = DV (M.HashMap ConcreteTypeRep Dynamic)
 -- | Accessor for a dynamic component. If the component is not found, the value 'def' is used.
 dynamicValueA :: forall a f. (YiVariable a, Functor f) =>
     (a -> f a) -> DynamicValues -> f DynamicValues
-dynamicValueA vf dvs = (\v -> setDynamicValue v dvs) <$> vf (getDynamicValue dvs)
+dynamicValueA vf dvs = (`setDynamicValue` dvs) <$> vf (getDynamicValue dvs)
     where
       setDynamicValue :: a -> DynamicValues -> DynamicValues
       setDynamicValue v (DV dv) = DV (M.insert (cTypeOf (undefined :: a)) (toDyn v) dv)

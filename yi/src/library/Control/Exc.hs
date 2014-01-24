@@ -13,7 +13,7 @@ ignoringException f = f `catch` ignore
   where ignore (_ :: SomeException) = return Nothing
 
 -- | Execute IO () action, replacing all exceptions with messages
-printingException :: [Char] -> IO a -> IO a
+printingException :: String -> IO a -> IO a
 printingException desc f = f `catch` handler
   where handler (err :: SomeException) = fail $ concat [desc, " failed: ", show err]
 

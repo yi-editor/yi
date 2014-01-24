@@ -15,7 +15,7 @@ import Data.Foldable (find)
 import Data.DeriveTH
 import Data.List hiding (find, elem, concat, concatMap)
 import Data.Char (isSpace)
-import Data.Maybe (fromJust, isJust)
+import Data.Maybe (catMaybes)
 import Data.Default
 
 import Yi.Buffer
@@ -54,15 +54,15 @@ instance YiVariable BufferMarks
 instance YiVariable DependentMarks
 
 instance Ord MarkInfo where
-  a `compare` b = (userIndex a) `compare` (userIndex b)
+  a `compare` b = userIndex a `compare` userIndex b
 
 cursor = SimpleMark
 cursorWith = ValuedMark
 dep = DependentMark
 
-isDependentMark (SimpleMarkInfo _ _)    = False
-isDependentMark (ValuedMarkInfo _ _ _)  = False
-isDependentMark (DependentMarkInfo _ _ _) = True
+isDependentMark (SimpleMarkInfo{})    = False
+isDependentMark (ValuedMarkInfo{})    = False
+isDependentMark (DependentMarkInfo{}) = True
 
 bufferMarkers (SimpleMarkInfo _ s) = [s]
 bufferMarkers m = [startMark m, endMark m]
@@ -116,7 +116,7 @@ text txt = do
 
     expand _ str [] = reverse str
     expand indentSettings str (s:rst)
-        | s == '\t' = expand indentSettings ((replicate (tabSize indentSettings) ' ') ++ str) rst
+        | s == '\t' = expand indentSettings (replicate (tabSize indentSettings) ' ' ++ str) rst
         | otherwise = expand indentSettings (s:str) rst
 
 -- unfortunatelly data converted to snippets are no monads,
@@ -139,9 +139,9 @@ runSnippet deleteLast s = do
         let newDepMarks = filter (not . len1) $
                             groupBy belongTogether $
                               sort markInfo
-        (%=) bufferDynamicValueA ((BufferMarks newMarks) `mappend`)
-        unless (null newDepMarks) $ do
-            (%=) bufferDynamicValueA ((DependentMarks newDepMarks) `mappend`)
+        (%=) bufferDynamicValueA (BufferMarks newMarks `mappend`)
+        unless (null newDepMarks) $
+            (%=) bufferDynamicValueA (DependentMarks newDepMarks `mappend`)
         moveToNextBufferMark deleteLast
     return a
   where
@@ -155,8 +155,7 @@ updateUpdatedMarks upds = findEditedMarks upds >>=
                           mapM_ updateDependents
 
 findEditedMarks :: [Update] -> BufferM [MarkInfo]
-findEditedMarks upds = sequence (map findEditedMarks' upds) >>=
-                       return . nub . concat
+findEditedMarks upds = liftM (nub . concat) (mapM findEditedMarks' upds)
   where
     findEditedMarks' :: Update -> BufferM [MarkInfo]
     findEditedMarks' upd = do
@@ -168,7 +167,7 @@ findEditedMarks upds = sequence (map findEditedMarks' upds) >>=
                             || p `inRegion` r
                          then Just m
                          else Nothing
-        return . map fromJust . filter isJust $ ms
+        return . catMaybes $ ms
 
 dependentSiblings :: MarkInfo -> [[MarkInfo]] -> [MarkInfo]
 dependentSiblings mark deps =
@@ -197,7 +196,7 @@ setMarkText :: String -> MarkInfo -> BufferM ()
 setMarkText txt (SimpleMarkInfo _ start) = do
     p <- getMarkPointB start
     c <- readAtB p
-    if (isSpace c)
+    if isSpace c
       then insertNAt txt p
       else do  r <- regionOfPartNonEmptyAtB unitViWordOnLine Forward p
                modifyRegionClever (const txt) r
@@ -252,21 +251,20 @@ adjMarkRegion m = do
     adjustStart s e = do
         txt <- readRegionB (mkRegion s e)
         let sP = s + (Point . length $ takeWhile isSpace txt)
-        when (sP > s) $ do
+        when (sP > s) $
             setMarkPointB (startMark m) sP
         return sP
 
     -- test if we generated overlappings and repair
     repairOverlappings origEnd = do overlappings <- allOverlappingMarks True m
-                                    when (not $ null overlappings) $
+                                    unless (null overlappings) $
                                         setMarkPointB (endMark m) origEnd
 
 findOverlappingMarksWith :: (MarkInfo -> BufferM Region) ->
                             ([[MarkInfo]] -> [MarkInfo]) -> Bool -> Region ->
                             MarkInfo -> BufferM [MarkInfo]
 findOverlappingMarksWith fMarkRegion flattenMarks border r m =
-    use bufferDynamicValueA >>=
-    return . filter (not . (m==)) . flattenMarks . marks >>=
+    liftM (filter (not . (m ==)) . flattenMarks . marks) (use bufferDynamicValueA) >>=
     filterM (liftM (regionsOverlap border r) . fMarkRegion)
 
 findOverlappingMarks :: ([[MarkInfo]] -> [MarkInfo]) -> Bool -> Region ->
@@ -295,9 +293,9 @@ dependentOverlappingMarks border = overlappingMarks border True
 nextBufferMark :: Bool -> BufferM (Maybe MarkInfo)
 nextBufferMark deleteLast = do
     BufferMarks ms <- use bufferDynamicValueA
-    if (null ms)
+    if null ms
       then return Nothing
-      else do assign bufferDynamicValueA . BufferMarks . (if deleteLast then (const $ tail ms) else (tail ms ++)) $ [head ms]
+      else do assign bufferDynamicValueA . BufferMarks . (if deleteLast then const $ tail ms else (tail ms ++)) $ [head ms]
               return . Just $ head ms
 
 isDependentMarker bMark = do
@@ -352,9 +350,9 @@ superTab caseSensitive (Supertab expander) =
 
     insertTab = withBuffer $ mapM_ savingInsertCharB =<< tabB
 
-    runCompleter = do w <- withBuffer $ readPrevWordB
+    runCompleter = do w <- withBuffer readPrevWordB
                       case expander w of
-                        Just cmd -> withBuffer $ do bkillWordB >> cmd
+                        Just cmd -> withBuffer $ bkillWordB >> cmd
                         _        -> autoComplete
 
     autoComplete = wordCompleteString' caseSensitive >>=

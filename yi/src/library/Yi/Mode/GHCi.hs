@@ -6,7 +6,6 @@ import Data.List (elemIndex)
 import Yi.Core
 import Yi.Lexer.Alex (Tok)
 import Yi.Lexer.Compilation (Token())
-import qualified Yi.Mode.Compilation as Compilation
 import qualified Yi.Syntax.OnlineTree as OnlineTree
 
 import qualified Yi.Mode.Interactive as I
@@ -14,7 +13,7 @@ import qualified Yi.Mode.Interactive as I
 mode :: Mode (OnlineTree.Tree (Tok Token))
 mode = I.mode
   { modeName = "ghci",
-    modeKeymap = (topKeymapA %~ ((<||) (choice [spec KHome ?>>! homeKey]))) . modeKeymap I.mode
+    modeKeymap = (topKeymapA %~ (choice [spec KHome ?>>! homeKey] <||)) . modeKeymap I.mode
   }
 
 -- | The GHCi prompt always begins with ">"; this goes to just before it, or if one is already at the start

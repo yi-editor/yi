@@ -31,14 +31,14 @@ runQ = trace . ("runQ: " ++) . show <*> mapM_ run1Q . sortBy (flip compare)
        run1Q :: QueuedUpdate -> BufferM ()
        run1Q (QueuedUpdate { qUpdatePoint = p, qInsert = i, qDelete = d })
               = do deleteNAt Forward d p
-                   when (not $ null i) $ insertNAt i p
+                   unless (null i) $ insertNAt i p
 
 openParen, closeParen :: Token
 openParen = Special '('
 closeParen = Special ')'
 
 isNormalParen :: Tree TT -> Bool
-isNormalParen (Paren t1 xs t2) = tokT t1 == openParen && tokT t2 == closeParen && (not $ any isTuple xs)
+isNormalParen (Paren t1 xs t2) = tokT t1 == openParen && tokT t2 == closeParen && not (any isTuple xs)
 isNormalParen _               = False
 
 isTuple ::Tree TT -> Bool
@@ -63,8 +63,8 @@ stripComments = filter $ \t -> case t of { (Atom x) -> not (isComment $ tokT x);
 dollarifyTop :: Tree TT -> [QueuedUpdate]
 dollarifyTop p@(Paren t1 e t2)
    | isNormalParen p = case stripComments e of
-       [Paren _ _ _] -> [queueDelete t2, queueDelete t1]
-       e'            -> dollarifyExpr e'
+       [Paren{}] -> [queueDelete t2, queueDelete t1]
+       e'        -> dollarifyExpr e'
 dollarifyTop (Block blk) = dollarifyExpr . stripComments =<< [x | Expr x <- blk]
 dollarifyTop _ = []
 
@@ -76,20 +76,20 @@ dollarifyExpr e@(_:_)
     , all isSimple e
     = let dollarifyLoop :: Expr TT -> [QueuedUpdate]
           dollarifyLoop [] = []
-          dollarifyLoop e3@[Paren _ _ _] = dollarifyExpr e3
+          dollarifyLoop e3@[Paren{}] = dollarifyExpr e3
           dollarifyLoop e3 = if isCollapsible e3 then [queueDelete t2, queueReplaceWith "$ " t] else []
           in dollarifyLoop $ stripComments e2
 dollarifyExpr _ = []
 
 isSimple :: Tree TT -> Bool
-isSimple (Paren _ _ _) = True
-isSimple (Block _)     = False
-isSimple (Atom t)      = tokT t `elem` [Number, CharTok, StringTok, VarIdent, ConsIdent]
-isSimple _             = False
+isSimple (Paren{}) = True
+isSimple (Block{}) = False
+isSimple (Atom t)  = tokT t `elem` [Number, CharTok, StringTok, VarIdent, ConsIdent]
+isSimple _         = False
 
 -- Expression must not contain comments
 isCollapsible :: Expr TT -> Bool
-isCollapsible = (((&&) `on` isSimple) . head <*> last)
+isCollapsible = ((&&) `on` isSimple) . head <*> last
 
 selectedTree :: Expr TT -> Region -> Maybe (Tree TT)
 selectedTree e r = findLargestWithin r <$> getLastPath e (regionLast r)
@@ -114,7 +114,7 @@ dollarifyWithinP :: H.Exp TT -> BufferM ()
 dollarifyWithinP = trace . ("dollarifyWithin: " ++) . show <*> runQ . (dollarifyTopP =<<) . getAllSubTrees
 
 isNormalParenP :: H.Exp TT -> Bool
-isNormalParenP (H.Paren (H.PAtom r _) xs (H.PAtom r' _)) = tokT r == openParen && tokT r' == closeParen && (not $ any isTupleP xs)
+isNormalParenP (H.Paren (H.PAtom r _) xs (H.PAtom r' _)) = tokT r == openParen && tokT r' == closeParen && not (any isTupleP xs)
 isNormalParenP _               = False
 
 isTupleP :: H.Exp TT -> Bool
@@ -128,8 +128,8 @@ stripCommentsP = filter $ \t -> case t of { (H.PAtom x _) -> not (isComment $ to
 dollarifyTopP :: H.Exp TT -> [QueuedUpdate]
 dollarifyTopP p@(H.Paren (H.PAtom t1 _) e (H.PAtom t2 _))
    | isNormalParenP p = case stripCommentsP e of
-       [H.Paren _ _ _] -> [queueDelete t2, queueDelete t1]
-       e'            -> dollarifyExprP e'
+       [H.Paren{}] -> [queueDelete t2, queueDelete t1]
+       e'          -> dollarifyExprP e'
 dollarifyTopP (H.Block bList) = dollarifyExprP . stripCommentsP $ bList
 dollarifyTopP _ = []
 
@@ -141,20 +141,20 @@ dollarifyExprP e@(_:_)
     , all isSimpleP e
     = let dollarifyLoop :: [H.Exp TT] -> [QueuedUpdate]
           dollarifyLoop [] = []
-          dollarifyLoop e3@[H.Paren _ _ _] = dollarifyExprP e3
+          dollarifyLoop e3@[H.Paren{}] = dollarifyExprP e3
           dollarifyLoop e3 = if isCollapsibleP e3 then [queueDelete t2, queueReplaceWith "$ " t] else []
           in dollarifyLoop $ stripCommentsP e2
 dollarifyExprP _ = []
 
 isSimpleP :: H.Exp TT -> Bool
-isSimpleP (H.Paren _ _ _) = True
-isSimpleP (H.Block _)     = False
-isSimpleP (H.PAtom t _)      = tokT t `elem` [Number, CharTok, StringTok, VarIdent, ConsIdent]
+isSimpleP (H.Paren{})   = True
+isSimpleP (H.Block{})   = False
+isSimpleP (H.PAtom t _) = tokT t `elem` [Number, CharTok, StringTok, VarIdent, ConsIdent]
 isSimpleP _             = False
 
 -- Expression must not contain comments
 isCollapsibleP :: [H.Exp TT] -> Bool
-isCollapsibleP = (((&&) `on` isSimpleP) . head <*> last)
+isCollapsibleP = ((&&) `on` isSimpleP) . head <*> last
 
 selectedTreeP :: [H.Exp TT] -> Region -> Maybe (H.Exp TT)
 selectedTreeP e r = findLargestWithinP r <$> getLastPath e (regionLast r)

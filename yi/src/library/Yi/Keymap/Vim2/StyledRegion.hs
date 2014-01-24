@@ -32,9 +32,9 @@ normalizeRegion sr@(StyledRegion style reg) =
     then do
         let end = regionEnd reg
         (_, endColumn) <- getLineAndColOfPoint end
-        if endColumn == 0
-        then return $ StyledRegion Inclusive $ reg { regionEnd = end -~ 2 }
-        else return sr
+        return (if endColumn == 0
+            then StyledRegion Inclusive $ reg { regionEnd = end -~ 2 }
+            else sr)
     else return sr
 
 transformCharactersInRegionB :: StyledRegion -> (Char -> Char) -> BufferM ()
