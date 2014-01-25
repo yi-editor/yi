@@ -9,7 +9,8 @@
   StandaloneDeriving,
   ExistentialQuantification,
   Rank2Types,
-  TypeSynonymInstances #-}
+  TypeSynonymInstances,
+  FlexibleContexts #-}
 
 -- Copyright (C) 2004, 2007 Don Stewart - http://www.cse.unsw.edu.au/~dons
 -- Copyright (C) 2007, 2008 JP Bernardy
@@ -194,6 +195,8 @@ import Data.Maybe
 import {-# source #-} Yi.Keymap
 import Yi.Interact as I
 import Yi.Buffer.Basic
+import {-# SOURCE #-} Yi.Buffer.HighLevel
+import {-# SOURCE #-} Yi.MiniBuffer (withMinibufferFree)
 import Yi.Monad
 import Yi.Utils
 import Data.Time
@@ -433,7 +436,7 @@ data Mode syntax = Mode
      modeAdjustBlock :: syntax -> Int -> BufferM (), -- ^ adjust the indentation after modification
      modeFollow :: syntax -> Action, -- ^ Follow a \"link\" in the file. (eg. go to location of error message)
      modeIndentSettings :: IndentSettings,
-     modeToggleCommentSelection :: BufferM (),
+     modeToggleCommentSelection :: YiM (),
      modeGetStrokes :: syntax -> Point -> Point -> Point -> [Stroke], -- ^ Strokes that should be applied when displaying a syntax element
      modeGetAnnotations :: syntax -> Point -> [Span String],
      modePrintTree :: syntax -> BufferM (),
@@ -687,13 +690,23 @@ emptyMode = Mode
    , tabSize = 8
    , shiftWidth = 4
    },
-   modeToggleCommentSelection = fail "'comment selection' not defined for this mode",
+   modeToggleCommentSelection = promptCommentString,
    modeGetStrokes = \_ _ _ _ -> [],
    modeGetAnnotations = \_ _ -> [],
    modePrintTree = \_ -> return (),
    modeOnLoad = return (),
    modeModeLine = defaultModeLine
   }
+
+promptCommentString :: YiM ()
+promptCommentString =
+  withMinibufferFree "No comment syntax is defined. Use: " $ \cString -> do
+    let c = cString ++ " "
+    toggleCommentSelectionB c c
+    withBuffer $ do
+      modifyMode (\x -> x { modeToggleCommentSelection =
+                               toggleCommentSelectionB c c
+                          })
 
 -- | Create buffer named @nm@ with contents @s@
 newB :: BufferRef -> BufferId -> Rope -> FBuffer

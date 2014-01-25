@@ -31,6 +31,7 @@ module Yi.Keymap
     , Yi(..)
     , YiVar(..)
     , write
+    , withModeY
     ) where
 
 import Control.Concurrent
@@ -214,3 +215,14 @@ modelessKeymapSet k = KeymapSet
  , topKeymap = k
  , startTopKeymap = return ()
  }
+
+-- | @withModeY f@ runs @f@ on the current buffer's mode. As this runs in
+-- the YiM monad, we're able to do more than with just 'withModeB' such as
+-- prompt the user for something before running the action.
+withModeY :: (forall syntax. Mode syntax -> YiM ()) -> YiM ()
+withModeY f = do
+   bufref <- gets Editor.currentBuffer
+   mfbuf <- withEditor $ Editor.findBuffer bufref
+   case mfbuf of
+     Nothing -> return ()
+     Just (FBuffer {bmode = m}) -> f m

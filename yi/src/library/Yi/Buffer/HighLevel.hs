@@ -19,6 +19,7 @@ import Yi.Buffer.Basic
 import Yi.Buffer.Misc
 import Yi.Buffer.Normal
 import Yi.Buffer.Region
+import {-# SOURCE #-} Yi.Keymap (YiM, withBuffer)
 import Yi.String
 import Yi.Window
 import Yi.Config.Misc (ScrollStyle(SingleLine))
@@ -639,8 +640,8 @@ unLineCommentSelectionB s1 s2 =
 
 -- | Toggle line comments in the selection by adding or removing a prefix to each
 -- line.
-toggleCommentSelectionB :: String -> String -> BufferM ()
-toggleCommentSelectionB insPrefix delPrefix = do
+toggleCommentSelectionB :: String -> String -> YiM ()
+toggleCommentSelectionB insPrefix delPrefix = withBuffer $ do
   l <- readUnitB Line
   if delPrefix `isPrefixOf` l
     then unLineCommentSelectionB insPrefix delPrefix
