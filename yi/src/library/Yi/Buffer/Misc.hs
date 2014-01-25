@@ -894,9 +894,8 @@ onMode f (AnyMode m) = AnyMode (f m)
 withMode0 :: (forall syntax. Mode syntax -> a) -> FBuffer -> a
 withMode0 f FBuffer {bmode = m} = f m
 
-
 withModeB :: (forall syntax. Mode syntax -> BufferM a) -> BufferM a
-withModeB f = join (gets (withMode0 f))
+withModeB = join . gets . withMode0
 
 withSyntax0 :: (forall syntax. Mode syntax -> syntax -> a) -> WindowRef -> FBuffer -> a
 withSyntax0 f wk (FBuffer bm rb _attrs) = f bm (getAst wk rb)
@@ -910,7 +909,7 @@ focusSyntax ::  M.Map WindowRef Region -> FBuffer -> FBuffer
 focusSyntax r = modifyRawbuf (focusAst r)
 
 withSyntaxB' :: (forall syntax. Mode syntax -> syntax -> BufferM a) -> BufferM a
-withSyntaxB' f = join $ withSyntaxB f
+withSyntaxB' = join . withSyntaxB
 
 -- | Return indices of strings in buffer matched by regex in the
 -- given region.
