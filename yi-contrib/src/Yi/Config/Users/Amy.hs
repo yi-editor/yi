@@ -7,7 +7,6 @@ import Yi.Prelude
 -- Some are not complied in, so we import none here.
 
 -- import Yi.UI.Vty (start)
--- import Yi.UI.Cocoa (start)
 -- import Yi.UI.Pango (start)
 
 import Yi.Keymap.Cua

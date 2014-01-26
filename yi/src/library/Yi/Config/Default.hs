@@ -50,9 +50,6 @@ import qualified Yi.UI.Vty
 #ifdef FRONTEND_PANGO
 import qualified Yi.UI.Pango
 #endif
-#ifdef FRONTEND_COCOA
-import qualified Yi.UI.Cocoa
-#endif
 import qualified Yi.UI.Batch
 
 {-# ANN availableFrontends "HLint: ignore Use list literal" #-}
@@ -63,9 +60,6 @@ availableFrontends =
 #endif
 #ifdef FRONTEND_PANGO
    ("pango", Yi.UI.Pango.start) :
-#endif
-#ifdef FRONTEND_COCOA
-   ("cocoa", Yi.UI.Cocoa.start) :
 #endif
    ("batch", Yi.UI.Batch.start) :
    []

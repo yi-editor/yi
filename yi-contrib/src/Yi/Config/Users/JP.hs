@@ -88,12 +88,7 @@ tta :: Yi.Lexer.Alex.Tok Token -> Maybe (Yi.Syntax.Span String)
 tta = sequenceA . tokToSpan . (fmap Yi.Config.Users.JP.tokenToText)
 
 frontend :: UIBoot
-frontendName :: String
-Just (frontendName, frontend) = foldr1 (<|>) $ fmap (\nm -> find ((nm ==) . fst) availableFrontends) ["cocoa", "vty"] 
-
-isCocoa :: Bool
-isCocoa = frontendName == "cocoa"
-
+Just (_, frontend) = foldr1 (<|>) $ fmap (\nm -> find ((nm ==) . fst) availableFrontends) ["vty"] 
 
 defaultConfig :: Config
 defaultConfig = defaultEmacsConfig
@@ -127,7 +122,7 @@ config = defaultConfig {
                                      : AnyMode (haskellModeHooks Haskell.literateMode) 
                                      : modeTable defaultConfig,
                            configUI = (configUI defaultConfig) 
-                             { configFontSize = if isCocoa then Just 12 else Just 10
+                             { configFontSize = Just 10
                                -- , configTheme = darkBlueTheme
                              , configTheme = defaultTheme `override` \superTheme _ -> superTheme
                                {

@@ -25,10 +25,6 @@ source-repository head
   location: https://github.com/yi-editor/yi.git
 
 -- Frontends
-flag cocoa
-  Default: False
-  Description: "Build with Cocoa frontend"
-
 flag pango
   Default: False
   Description: "Build with Pango frontend"
@@ -283,20 +279,6 @@ library
       random
 
   -- Frontends
-  if flag(cocoa)
-    exposed-modules:
-      Yi.UI.Cocoa
-    other-modules:
-      Yi.UI.Cocoa.Application
-      Yi.UI.Cocoa.TextStorage
-      Yi.UI.Cocoa.TextView
-      Yi.UI.Cocoa.Utils
-    build-depends:
-      HOC,
-      HOC-AppKit,
-      HOC-Foundation
-    cpp-options: -DFRONTEND_COCOA
-
   if flag(pango)
     exposed-modules:
       Yi.UI.Pango

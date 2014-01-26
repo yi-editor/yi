@@ -151,7 +151,7 @@ configMain c m = yi =<< execStateT (runConfigM m) c
 ---------------------------------- Frontend
 -- | Sets the frontend to the first frontend from the list which is installed.
 --
--- Available frontends are a subset of: \"vty\", \"pango\", \"cocoa\", and \"batch\".
+-- Available frontends are a subset of: \"vty\", \"pango\", and \"batch\".
 setFrontendPreferences :: [String] -> ConfigM ()
 setFrontendPreferences fs =
    case mapMaybe (`lookup` availableFrontends) fs of

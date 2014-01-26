@@ -33,10 +33,6 @@ import Yi.File
 import Yi.Paths (getConfigDir)
 import Paths_yi
 
-#ifdef FRONTEND_COCOA
-import HOC (withAutoreleasePool)
-#endif
-
 frontendNames :: [String]
 frontendNames = fmap fst' availableFrontends
   where fst' :: (a,UIBoot) -> a
@@ -160,9 +156,6 @@ getConfig shouldOpenInTabs (cfg, cfgcon) opt =
 --
 main :: (Config, ConsoleConfig) -> Maybe Editor -> IO ()
 main (cfg, _cfgcon) state = do
-#ifdef FRONTEND_COCOA
-       withAutoreleasePool $ do
-#endif
-         when (debugMode cfg) $ initDebug ".yi.dbg"
-         startEditor cfg state
+  when (debugMode cfg) $ initDebug ".yi.dbg"
+  startEditor cfg state
 

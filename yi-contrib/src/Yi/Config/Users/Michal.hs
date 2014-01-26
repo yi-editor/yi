@@ -10,7 +10,6 @@ import System.Locale(defaultTimeLocale)
 import Data.Time.Format(formatTime)
 
 import Yi.UI.Vty (start)
--- import Yi.UI.Cocoa (start)
 import Yi.UI.Pango (start)
 
 -- Used in Theme declaration
