@@ -20,6 +20,7 @@ import qualified Yi.Syntax.Tree as Tree
 import Yi.Hoogle
 import Yi.Buffer
 import Yi.Keymap.Vim (viWrite, v_ex_cmds, v_top_level, v_ins_char, v_opts, tildeop, savingInsertStringB, savingDeleteCharB, exCmds, exHistInfixComplete')
+import Yi.Keymap (withModeY)
 import Yi.MiniBuffer (matchingBufferNames)
 import qualified Yi.Keymap.Vim as Vim
 
@@ -98,7 +99,7 @@ extendedVimKeymap = Vim.defKeymap `override` \super self -> super
     { v_top_level = (deprioritize >> v_top_level super)
                     <|> (char ',' ?>>! viWrite)
                     <|> ((events $ map char "\\u") >>! unicodifySymbols)
-                    <|> ((events $ map char "\\c") >>! withModeB modeToggleCommentSelection)
+                    <|> ((events $ map char "\\c") >>! withModeY modeToggleCommentSelection)
     , v_ins_char =
             (deprioritize >> v_ins_char super)
             -- I want softtabs to be deleted as if they are tabs. So if the
