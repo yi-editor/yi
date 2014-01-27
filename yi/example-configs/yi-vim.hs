@@ -5,7 +5,6 @@ import Yi.Style
 import Yi.Style.Library
 
 -- import Yi.UI.Vty (start)
--- import Yi.UI.Cocoa (start)
 -- import Yi.UI.Pango (start)
 
 -- Uncomment for Shim support

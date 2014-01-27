@@ -4,7 +4,6 @@ import Yi
 -- Some are not complied in, so we import none here.
 
 -- import Yi.UI.Vty (start)
--- import Yi.UI.Cocoa (start)
 -- import Yi.UI.Pango (start)
 
 myConfig = defaultCuaConfig -- replace with defaultVimConfig or defaultCuaConfig
