@@ -702,10 +702,10 @@ promptCommentString :: YiM ()
 promptCommentString =
   withMinibufferFree "No comment syntax is defined. Use: " $ \cString -> do
     let c = cString ++ " "
-    toggleCommentSelectionB c c
+    toggleCommentSelectionB c cString
     withBuffer $ do
       modifyMode (\x -> x { modeToggleCommentSelection =
-                               toggleCommentSelectionB c c
+                               toggleCommentSelectionB c cString
                           })
 
 -- | Create buffer named @nm@ with contents @s@
