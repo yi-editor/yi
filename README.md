@@ -7,7 +7,7 @@ Its features include
 * a purely functional editor core;
 * keybindings written as parsers of the input;
 * Emacs, Vim and Cua (subset) emulations provided by default;
-* Vty (terminal) and Gtk-based Pango UIs, as well as a Cocoa frontend in development.
+* Vty (terminal) and Gtk-based Pango UIs
 
 The long term goal of the project is to make Yi the editor of choice for the haskell hacker. The main short term goal is to maximize Yi's Fun Factor. This means that we want to
 
@@ -33,7 +33,7 @@ You can specify frontends to compile, also:
 
     $ cabal install yi -fvty -fpango
 
-Options are `-fvty`, `-fpango`, and `-fcocoa`. Some are likely broken.
+Options are `-fvty` and `-fpango`.
 
 You can also install the `yi-contrib` package, which contains some extra contributed things (like user configs):
 
@@ -85,10 +85,10 @@ It's possible to customize even these user configs in the same way as the exampl
 
 ## Frontend Compatibility
 
-            |  Vty    Pango  Cocoa
-    --------+----------------------
+            |  Vty    Pango
+    --------+----------------
     Linux   |   X       X
-    OSX     |   X       X      X
+    OSX     |   X       X
     Windows |           X
 
 Windows support for Vty may eventually come; patches on the vty package would certainly be appreciated.
