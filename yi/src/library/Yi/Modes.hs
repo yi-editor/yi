@@ -151,8 +151,8 @@ pythonMode = base
   {
     modeName = "python",
     modeApplies = anyExtension ["py"],
-    modeIndentSettings = (modeIndentSettings base),
-    modeToggleCommentSelection = toggleCommentSelectionB "# " "#"
+    modeToggleCommentSelection = toggleCommentSelectionB "# " "#",
+    modeIndentSettings = (modeIndentSettings base)
       {
         expandTabs = True,
         tabSize = 4
