@@ -152,6 +152,7 @@ pythonMode = base
     modeName = "python",
     modeApplies = anyExtension ["py"],
     modeIndentSettings = (modeIndentSettings base)
+    modeToggleCommentSelection = toggleCommentSelectionB "# " "#"
       {
         expandTabs = True,
         tabSize = 4
@@ -242,4 +243,3 @@ applyModeHooks hs ms = flip map ms $ \am -> case filter (($am) . fst) hs of
 -- original mode, if it isn't the case.
 lookupMode :: AnyMode -> YiM AnyMode
 lookupMode am@(AnyMode m) = fromMaybe am <$> anyModeByNameM (modeName m)
-
