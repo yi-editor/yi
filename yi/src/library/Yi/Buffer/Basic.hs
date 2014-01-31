@@ -57,19 +57,17 @@ newtype Mark = Mark {markId::Int} deriving (Eq, Ord, Show, Typeable, Binary)
 
 -- | Reference to a buffer.
 newtype BufferRef = BufferRef Int
-    deriving (Eq, Ord, Typeable, Binary)
-deriving instance Num BufferRef
+    deriving (Eq, Ord, Typeable, Binary,
+              Num)
 
 instance Show BufferRef where
     show (BufferRef r) = "B#" ++ show r
 
 -- | A point in a buffer
 newtype Point = Point {fromPoint :: Int}           -- offset in the buffer (#codepoints, NOT bytes)
-    deriving (Eq, Ord, Enum, Bounded, Typeable, Binary, Ix)
+    deriving (Eq, Ord, Enum, Bounded, Typeable, Binary, Ix,
+              Num, Real, Integral)
 
-deriving instance Num Point
-deriving instance Real Point
-deriving instance Integral Point
 instance Show Point where
     show (Point p) = show p
 
