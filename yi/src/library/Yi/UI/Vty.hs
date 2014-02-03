@@ -467,10 +467,10 @@ attributesToAttr (Attributes fg bg reverse bd _itlc underline') =
 -- attributes are not used, @sty@ and @changes@ are not evaluated.
 paintChars :: a -> [(Point,a)] -> [(Point,Char)] -> [(Char, (a,Point))]
 paintChars sty changes cs = [(c,(s,p)) | ((p,c),s) <- zip cs attrs]
-    where attrs = lazy (stys sty changes cs)
+    where attrs = lazy' (stys sty changes cs)
 
-lazy :: [a] -> [a]
-lazy l = head l : lazy (tail l)
+lazy' :: [a] -> [a]
+lazy' l = head l : lazy' (tail l)
 
 stys :: a -> [(Point,a)] -> [(Point,Char)] -> [a]
 stys sty [] cs = [ sty | _ <- cs ]
