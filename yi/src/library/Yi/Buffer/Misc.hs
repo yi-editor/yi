@@ -1131,9 +1131,7 @@ colMove col '\t' = (col + 7) `mod` 8
 colMove col _    = col + 1
 
 solPointB :: BufferM Point
-solPointB = do
-  p <- pointB
-  queryBuffer $ solPoint' p
+solPointB = pointB >>= queryBuffer . solPoint'
 
 -- | Go to line indexed from current point
 -- Returns the actual moved difference which of course
