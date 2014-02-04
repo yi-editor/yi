@@ -139,7 +139,8 @@ blockifyRegion r = savingPointB $ do
        [startLine..endLine]
 
 skippingFirst :: ([a] -> [a]) -> [a] -> [a]
-skippingFirst f = list [] (\x -> (x :) . f)
+skippingFirst _ []     = []
+skippingFirst f (x:xs) = x:f xs
 
 skippingLast :: ([a] -> [a]) -> [a] -> [a]
 skippingLast f xs = f (init xs) ++ [last xs]

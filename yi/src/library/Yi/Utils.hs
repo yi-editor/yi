@@ -35,12 +35,6 @@ class SemiNum absolute relative | absolute -> relative where
 singleton :: a -> [a]
 singleton x = [x]
 
-
--- 'list' is the canonical list destructor as 'either' or 'maybe'.
-list :: b -> (a -> [a] -> b) -> [a] -> b
-list nil _     []     = nil
-list _   cons' (x:xs) = cons' x xs
-
 {-# ANN nubSet "HLint: ignore Eta reduce" #-}
 -- TODO: move somewhere else.
 -- | As 'Prelude.nub', but with O(n*log(n)) behaviour.
