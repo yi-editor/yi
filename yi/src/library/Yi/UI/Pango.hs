@@ -202,7 +202,7 @@ startNoMsg cfg ch outCh ed = do
 
   fontRef <- newIORef undefined
 
-  let actionCh = outCh . singleton
+  let actionCh = outCh . return
   tc <- newIORef =<< newCache ed actionCh
 
 #ifdef GNOME_ENABLED

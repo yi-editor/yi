@@ -32,9 +32,6 @@ class SemiNum absolute relative | absolute -> relative where
     (-~) :: absolute -> relative -> absolute
     (~-) :: absolute -> absolute -> relative
 
-singleton :: a -> [a]
-singleton x = [x]
-
 {-# ANN nubSet "HLint: ignore Eta reduce" #-}
 -- TODO: move somewhere else.
 -- | As 'Prelude.nub', but with O(n*log(n)) behaviour.

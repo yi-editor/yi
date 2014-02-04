@@ -777,7 +777,7 @@ rightEdgesOfRegionB LineWise reg = savingPointB $ do
 rightEdgesOfRegionB _ reg = savingPointB $ do
     moveTo $ regionEnd reg
     leftOnEol
-    fmap singleton pointB
+    fmap return pointB
 
 splitBlockRegionToContiguousSubRegionsB :: Region -> BufferM [Region]
 splitBlockRegionToContiguousSubRegionsB reg = savingPointB $ do
