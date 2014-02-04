@@ -6,7 +6,6 @@ module Yi.Utils where
 import Data.Binary
 import Data.Char (toLower)
 import Data.Foldable hiding (all,any)
-import Data.Default
 import qualified Data.HashMap.Strict as HashMap
 import Data.Hashable(Hashable)
 import Control.Monad.Base
@@ -116,14 +115,6 @@ swapFocus moveFocus xs =
         f1  = view PL.focus xs
         f2  = view PL.focus xs'
     in set PL.focus f1 . moveFocus . set PL.focus f2 $ xs
-
--- | Write nothing. Use with 'dummyGet'
-dummyPut :: a -> Put
-dummyPut _ = return ()
-
--- | Read nothing, and return 'def'. Use with 'dummyPut'.
-dummyGet :: Default a => Get a
-dummyGet = return def
 
 ----------------- Orphan 'Binary' instances
 instance (Eq k, Hashable k, Binary k, Binary v) => Binary (HashMap.HashMap k v) where
