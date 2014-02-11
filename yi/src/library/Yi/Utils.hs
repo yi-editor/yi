@@ -4,6 +4,7 @@
 module Yi.Utils where
 
 import Data.Binary
+import Data.Char (toLower)
 import Data.Foldable hiding (all,any)
 import Data.Default
 import qualified Data.HashMap.Strict as HashMap
@@ -128,6 +129,14 @@ dummyGet = return def
 instance (Eq k, Hashable k, Binary k, Binary v) => Binary (HashMap.HashMap k v) where
     put x = put (HashMap.toList x)
     get = HashMap.fromList <$> get
+
+makeClassyWithSuffix s = makeLensesWith (classyRules 
+  & lensField .~ Just . (++s)
+  & lensClass .~ classy)
+  where
+    classy :: String -> Maybe (String, String)
+    classy n@(a:as) = Just ("Has" ++ n, toLower a:(as++s))
+    classy _ = Nothing
 
 makeLensesWithSuffix s =
   makeLensesWith (defaultRules & lensField .~ Just . (++s))

@@ -256,7 +256,7 @@ data Attributes = Attributes
                 , preferCol :: !(Maybe Int)       -- ^ prefered column to arrive at when we do a lineDown / lineUp
                 , pendingUpdates :: ![UIUpdate]   -- ^ updates that haven't been synched in the UI yet
                 , selectionStyle :: !SelectionStyle
-                , process :: !KeymapProcess
+                , keymapProcess :: !KeymapProcess
                 , winMarks :: !(M.Map WindowRef WinMarks)
                 , lastActiveWindow :: !Window
                 , lastSyncTime :: !UTCTime        -- ^ time of the last synchronization with disk
@@ -268,7 +268,7 @@ data Attributes = Attributes
                 , updateTransactionAccum    :: ![Update]
                 } deriving Typeable
 
-makeLensesWithSuffix "AA" ''Attributes
+makeClassyWithSuffix "A" ''Attributes
 
 instance Binary Attributes where
     put (Attributes n b u bd pc pu selectionStyle_ _proc wm law lst ro ins _dc _pfw
@@ -291,6 +291,8 @@ data FBuffer = forall syntax.
                }
         deriving Typeable
 
+instance HasAttributes FBuffer where
+    attributesA = lens attributes (\(FBuffer f1 f2 _) a -> FBuffer f1 f2 a)
 
 shortIdentString :: [a] -> FBuffer -> String
 shortIdentString prefix b = case b ^. identA of
@@ -306,12 +308,6 @@ miniIdentString :: FBuffer -> String
 miniIdentString b = case b ^. identA of
     Right _ -> "MINIFILE:"
     Left bufName -> bufName
-
-identA :: Lens' FBuffer BufferId
-identA = attrsA . identAA
-
-directoryContentA :: Lens' FBuffer Bool
-directoryContentA = attrsA . directoryContentAA
 
 -- unfortunately the dynamic stuff can't be read.
 instance Binary FBuffer where
@@ -345,56 +341,16 @@ queryAndModifyRawbuf f (FBuffer f1 f5 f3) =
     let (f5', x) = f f5
     in (FBuffer f1 f5' f3, x)
 
-attrsA :: Lens' FBuffer Attributes
-attrsA = lens attributes (\(FBuffer f1 f2 _) a -> FBuffer f1 f2 a)
-
--- | Use in readonly!
-lastActiveWindowA :: Lens' FBuffer Window
-lastActiveWindowA = attrsA . lastActiveWindowAA
-
-lastSyncTimeA :: Lens' FBuffer UTCTime
-lastSyncTimeA = attrsA . lastSyncTimeAA
-
-undosA :: Lens' FBuffer URList
-undosA = attrsA . undosAA
-
-readOnlyA :: Lens' FBuffer Bool
-readOnlyA = attrsA . readOnlyAA
-
-insertingA :: Lens' FBuffer Bool
-insertingA = attrsA . insertingAA
-
-pointFollowsWindowA :: Lens' FBuffer (WindowRef -> Bool)
-pointFollowsWindowA = attrsA . pointFollowsWindowAA
-
-updateTransactionInFlightA :: Lens' FBuffer Bool
-updateTransactionInFlightA = attrsA . updateTransactionInFlightAA
-
-updateTransactionAccumA :: Lens' FBuffer [Update]
-updateTransactionAccumA = attrsA . updateTransactionAccumAA
-
 file :: FBuffer -> Maybe FilePath
 file b = case b ^. identA of
     Right f -> Just f
     _ -> Nothing
-
-preferColA :: Lens' FBuffer (Maybe Int)
-preferColA = attrsA . preferColAA
 
 setPrefCol :: Maybe Int -> BufferM ()
 setPrefCol = assign preferColA
 
 getPrefCol :: BufferM (Maybe Int)
 getPrefCol = use preferColA
-
-bufferDynamicA :: Lens' FBuffer DynamicValues
-bufferDynamicA = attrsA . bufferDynamicAA
-
-pendingUpdatesA :: Lens' FBuffer [UIUpdate]
-pendingUpdatesA = attrsA . pendingUpdatesAA
-
-selectionStyleA :: Lens' FBuffer SelectionStyle
-selectionStyleA = attrsA . selectionStyleAA
 
 highlightSelectionA :: Lens' FBuffer Bool
 highlightSelectionA = selectionStyleA .
@@ -403,12 +359,6 @@ highlightSelectionA = selectionStyleA .
 rectangleSelectionA :: Lens' FBuffer Bool
 rectangleSelectionA = selectionStyleA .
   lens rectangleSelection (\e x -> e { rectangleSelection = x })
-
-keymapProcessA :: Lens' FBuffer KeymapProcess
-keymapProcessA = attrsA . processAA
-
-winMarksA :: Lens' FBuffer (M.Map WindowRef WinMarks)
-winMarksA = attrsA . winMarksAA
 
 {- | Currently duplicates some of Vim's indent settings. Allowing a buffer to
  - specify settings that are more dynamic, perhaps via closures, could be
@@ -615,7 +565,7 @@ markSavedB t = do (%=) undosA setSavedFilePointU
                   assign lastSyncTimeA t
 
 bkey :: FBuffer -> BufferRef
-bkey = view (attrsA . bkey__AA)
+bkey = view bkey__A
 
 isUnchangedBuffer :: FBuffer -> Bool
 isUnchangedBuffer = isAtSavedFilePointU . view undosA
@@ -726,7 +676,7 @@ newB unique nm s =
             , bufferDynamic = def
             , pendingUpdates = []
             , selectionStyle = SelectionStyle False False
-            , process = I.End
+            , keymapProcess = I.End
             , winMarks = M.empty
             , lastActiveWindow = dummyWindow unique
             , lastSyncTime = epoch
