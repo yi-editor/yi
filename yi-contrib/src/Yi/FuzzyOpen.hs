@@ -33,8 +33,9 @@ module Yi.FuzzyOpen
 import Yi
 import Yi.MiniBuffer
 import Yi.Completion
+import Yi.Utils() -- instance MonadBase YiM IO
 
-import Control.Monad (replicateM, replicateM_,forM,void)
+import Control.Monad (replicateM, replicateM_, forM, void)
 import Control.Monad.Base
 import System.Directory (doesDirectoryExist, getDirectoryContents)
 import System.FilePath ((</>))

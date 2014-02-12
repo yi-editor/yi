@@ -18,13 +18,16 @@ build-type:     Simple
 library
   hs-source-dirs: src
   exposed-modules:
+    Yi.Config.Users.Amy
     Yi.Config.Users.Anders
-    -- Yi.Config.Users.Cmcq
+    -- Yi.Config.Users.Cmcq -- needs build-depends: on GTK
     Yi.Config.Users.Corey
     Yi.Config.Users.Ertai
     Yi.Config.Users.Gwern
     Yi.Config.Users.Jeff
     Yi.Config.Users.JP
+    --Yi.Config.Users.JP.Experimental
+    Yi.Config.Users.Michal
     Yi.Config.Users.Reiner
     Yi.Style.Misc
     Yi.Templates
@@ -39,4 +42,6 @@ library
     split >= 0.1 && < 0.3,
     mtl >= 0.1.0.1,
     yi == 0.7.0,
+    time >= 1.0 && < 2.0,
+    old-locale >= 1.0 && < 1.2,
     transformers-base

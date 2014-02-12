@@ -1,4 +1,8 @@
-import Prelude (take, length, repeat)
+module Yi.Config.Users.Michal where
+
+import Prelude (String, take, length, repeat, (++),
+                fmap, ($), (.),
+                IO, Monad(..), (>>))
 import Data.List(isPrefixOf, isSuffixOf)
 import System.FilePath(takeFileName)
 import Yi
@@ -10,7 +14,10 @@ import qualified Yi.Keymap.Vim2.Utils as V2
 import qualified Yi.Mode.Haskell as Haskell
 
 -- Used in Theme declaration
-import Data.Monoid(mappend)
+import Data.Eq
+import Data.Bool
+import Data.Function
+import Data.Monoid((<>))
 import qualified Yi.Style(Color(Default))
 
 -- Used for inserting current date
@@ -19,8 +26,7 @@ import Data.Time.Clock(getCurrentTime)
 import System.Locale(defaultTimeLocale)
 import Data.Time.Format(formatTime)
 
-main :: IO ()
-main = yi $ defaultVimConfig {
+myConfig = defaultVimConfig {
     modeTable = myModes ++ fmap (onMode prefIndent) (modeTable defaultVimConfig),
     defaultKm = myKeymapSet,
     configCheckExternalChangesObsessively = False,
@@ -93,19 +99,19 @@ myTheme = defaultTheme `override` \super _ -> super
   { modelineAttributes   = emptyAttributes { foreground = black,   background = darkcyan           }
   , tabBarAttributes     = emptyAttributes { foreground = white,   background = defaultColor            }
   , baseAttributes       = emptyAttributes { foreground = defaultColor, background = defaultColor, bold=True }
-  , commentStyle         = withFg darkred `mappend` withBd False `mappend` withItlc True
---  , selectedStyle        = withFg black   `mappend` withBg green `mappend` withReverse True
+  , commentStyle         = withFg darkred <> withBd False <> withItlc True
+--  , selectedStyle        = withFg black   <> withBg green <> withReverse True
   , selectedStyle        = withReverse True
-  , errorStyle           = withBg red     `mappend` withFg white
-  , operatorStyle        = withFg brown   `mappend` withBd False
-  , hintStyle            = withBg brown   `mappend` withFg black
+  , errorStyle           = withBg red     <> withFg white
+  , operatorStyle        = withFg brown   <> withBd False
+  , hintStyle            = withBg brown   <> withFg black
   , importStyle          = withFg blue
   , dataConstructorStyle = withFg blue
   , typeStyle            = withFg blue
   , keywordStyle         = withFg yellow
   , builtinStyle         = withFg brown
-  , strongHintStyle      = withBg brown   `mappend` withUnderline True
-  , stringStyle          = withFg brown   `mappend` withBd False
+  , strongHintStyle      = withBg brown   <> withUnderline True
+  , stringStyle          = withFg brown   <> withBd False
   , preprocessorStyle    = withFg blue
 --  , constantStyle      = withFg cyan
 --  , specialStyle      = withFg yellow

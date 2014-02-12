@@ -1,7 +1,8 @@
+module Yi.Config.Users.Amy where
+
 import Yi
 
-import Prelude ()
-import Yi.Prelude
+import Prelude
 
 -- Import the desired UI as needed. 
 -- Some are not complied in, so we import none here.
@@ -11,25 +12,7 @@ import Yi.Prelude
 
 import Yi.Keymap.Cua
 
-myConfig = defaultCuaConfig
-
-defaultUIConfig = configUI myConfig
-
--- Add M-x (which is probably Alt-x on your system) to the default
--- keyset, and have it launch our custom macro.
-extendedCuaKeymapSet = customizedCuaKeymapSet $
-  choice [
-    metaCh 'x' ?>>! helloWorld
-  ]
-
--- A custom macro
-helloWorld :: YiM ()
-helloWorld = withBuffer $ insertN "Hello, world!"
-
-
-main :: IO ()
-main = yi $ myConfig
-  {
+myConfig = defaultCuaConfig {
     -- Keymap Configuration
     defaultKm = extendedCuaKeymapSet,
 
@@ -50,4 +33,16 @@ main = yi $ myConfig
       }
   }
 
+defaultUIConfig = configUI myConfig
+
+-- Add M-x (which is probably Alt-x on your system) to the default
+-- keyset, and have it launch our custom macro.
+extendedCuaKeymapSet = customizedCuaKeymapSet $
+  choice [
+    metaCh 'x' ?>>! helloWorld
+  ]
+
+-- A custom macro
+helloWorld :: YiM ()
+helloWorld = withBuffer $ insertN "Hello, world!"
 
