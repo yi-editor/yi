@@ -97,7 +97,23 @@ The plan is to move the UI frontends into separate packages, but this has not ye
 
 ## Profiling
 
-If you're interested in optimizing Yi, [this thread][profiling-discussion] may be of use.
+If you're interested in optimizing Yi, here is a [way to get profiling][profiling-discussion]:
+
+1. Change ghcOptions in `yi/src/library/Yi/Main.hs`:
+```
+-                  ghcOptions = [],
++                  ghcOptions = ["-auto-all", "-prof", "-osuf=p_o", "-hisuf=p_hi", "-rtsopts"],
+```
+2. Recompile yi with `--enable-library-profiling`:
+```
+cabal configure --enable-library-profiling && cabal install --reinstall
+```
+3. Run `yi` first to get a compiled **real** executable.
+
+4. Then call **real** executable from cache directory with profiling options. On any XDG-compatible (Unix-like) system this should look like:
+```
+~/.cache/yi/yi-linux-x86_64 +RTS -Pa
+```
 
 ## Reading material
 
