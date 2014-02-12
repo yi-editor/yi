@@ -48,6 +48,73 @@ And the contrib package:
 
     $ (cd yi-contrib && cabal install)
 
+### Installing inside a Cabal sandbox
+
+Many people want to install Yi inside a cabal sandbox (cabal-install
+1.18 feature). This is especially important if you plan on hacking on
+Yi itself or on libraries for Yi.
+
+As Yi compiles your config file once you start it, the config needs to
+know where to look for any of its dependencies, such as Yi itself! If
+these are inside of the sandbox, it doesn't know where to look and
+you'll get config compilation errors due to missing modules.
+
+To sandbox, navigate to your source yi directory. For me it's
+`~/programming/yi/yi`.
+
+Once there, run `cabal sandbox init` as you normally would, then
+`cabal install`. Now check your `.cabal-sandbox` directory. You should
+see a bunch of files but we're looking for the directory storing all
+the sandboxed packages. For me, it's
+`i386-linux-ghc-7.6.3-packages.conf.d`. If you `cabal install` with
+different versions of the compiler, you might have more than one of
+these directories. I also have
+`i386-linux-ghc-7.9.20140129-packages.conf.d`. This is important if
+you want to work on Yi with multiple compiler versions but most people
+will only have a single such directory.
+
+Next, we need to somehow tell Yi/GHC where to look for these packages
+when compiling our config. Thankfully, a `GHC_PACKAGE_PATH`
+environment variable can do just that. Here's mine, called `runyi`
+that I put in my `$PATH` for easy access:
+
+```
+#!/bin/bash
+export GHC_PACKAGE_PATH=$HOME/programming/yi/yi/.cabal-sandbox/i386-linux-ghc-7.6.3-packages.conf.d:$GHC_PACKAGE_PATH
+$HOME/programming/yi/yi/.cabal-sandbox/bin/yi "$@"
+```
+
+What it does is it sets `GHC_PACKAGE_PATH` to the directory we have
+found inside `.cabal-sandbox` earlier and then runs the `yi` binary
+which is also in the sandbox. The `"$@"` part means that all the
+arguments we pass to this script are passed on to the Yi binary which
+means we can still use all the regular flags, such as `runyi
+--as=emacs`. Of course, you'll need to adjust the paths used to match
+your sandbox and package directories. Pick the version that your
+compiler is going to be when running Yi.
+
+There's one more thing to mention in this section and that is config
+dependencies. One of the great things about Yi is that we have access
+to the wealth of existing Haskell libraries and we can take advantage
+of this in our config file. There are two scenarios:
+
+If the package your config depends on is on Hackage and you want to
+use that, just use `cabal install` in the sandboxed Yi directory. So
+if your config depends on `semigroups`, you'd run `cabal install
+semigroups`. After doing this, `semigroups` should now be visible when
+your config is getting compiled.
+
+If the package your config depends on is local, for example when
+you're developing the library that you want to use or if you need a
+patched version, you'll have to use `cabal add-source` command. As an
+example, I'm developing a `yi-haskell-utils` package and my config
+depends on it. To accommodate for this, I ran `cabal add-source
+~/programming/yi-haskell-utils`.
+
+I suspect that it'd be perfectly possible to make your config file
+into a cabal project and manage the dependencies that way but I have
+not yet investigated this approach.
+
 ## Getting Source
 
 Yi source repository is available on [GitHub][github].
