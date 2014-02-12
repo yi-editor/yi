@@ -18,6 +18,18 @@ We also want to simplify the core Yi package to make it more accessible, splitti
 
 Other information (much of it old) is available on the [Haskell wiki][haskellwiki].
 
+## Contents
+* [Installing](#installing)
+  * [Installing inside a Cabal sandbox](#installing-inside-a-cabal-sandbox)
+* [Getting Source](#getting-source)
+* [Reporting Bugs](#reporting-bugs)
+* [Mailing List](#mailing-list)
+* [IRC channel](#irc-channel)
+* [Configuring Yi](#configuring-yi)
+* [Frontend Compatibility](#frontend-compatibility)
+* [Profiling](#profiling)
+* [Reading material](#reading-material)
+
 ## Installing
 
 Yi requires the Haskell Platform 2011.2.0.0 at minimum (for GHC 7, alex, and cabal-install, among other things).
