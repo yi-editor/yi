@@ -13,7 +13,6 @@
 module Yi.Buffer.Basic where
 import Data.Binary
 import Data.Typeable
-import qualified Data.Rope as R
 #if __GLASGOW_HASKELL__ < 708
 import Data.DeriveTH
 #else
@@ -79,9 +78,6 @@ instance SemiNum Point Size where
     Point p +~ Size s = Point (p + s)
     Point p -~ Size s = Point (p - s)
     Point p ~- Point q = Size (abs (p - q))
-
-fromString :: String -> R.Rope
-fromString = R.fromString
 
 -- | Window references
 newtype WindowRef = WindowRef { unWindowRef :: Int }

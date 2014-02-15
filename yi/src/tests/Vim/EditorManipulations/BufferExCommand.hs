@@ -1,3 +1,4 @@
+{-# LANGUAGE OverloadedStrings #-}
 -- | Tests for the :buffer ex command in the Vim keymap
 --
 module Vim.EditorManipulations.BufferExCommand (tests) where
@@ -17,9 +18,9 @@ type BufferName = String
 -- each.
 createInitialBuffers :: EditorM [(BufferRef, BufferName)]
 createInitialBuffers = do
-    one   <- newBufferE (Right "one")   (fromString "Buffer one")
-    two   <- newBufferE (Right "two")   (fromString "Buffer two")
-    three <- newBufferE (Right "three") (fromString "Buffer three")
+    one   <- newBufferE (Right "one")   "Buffer one"
+    two   <- newBufferE (Right "two")   "Buffer two"
+    three <- newBufferE (Right "three") "Buffer three"
     return [(one, "one"), (two, "two"), (three, "three")]
 
 

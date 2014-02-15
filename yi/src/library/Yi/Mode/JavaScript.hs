@@ -1,4 +1,9 @@
-{-# LANGUAGE FlexibleContexts, GeneralizedNewtypeDeriving, DeriveDataTypeable, NoMonomorphismRestriction #-}
+{-# LANGUAGE
+  FlexibleContexts,
+  GeneralizedNewtypeDeriving,
+  DeriveDataTypeable,
+  NoMonomorphismRestriction,
+  OverloadedStrings #-}
 
 -- (C) Copyright 2009 Deniz Dogan
 
@@ -14,7 +19,7 @@ import Data.Foldable (toList)
 import Data.Typeable
 import Data.Binary
 import System.FilePath.Posix (takeBaseName)
-import Yi.Buffer.Basic (BufferRef, Direction(..), fromString)
+import Yi.Buffer.Basic (BufferRef, Direction(..))
 import Yi.Buffer.Indent (indentSettingsB, indentOfB, cycleIndentsB, newlineAndIndentB)
 import Yi.Buffer.HighLevel (replaceBufferContent, getNextNonBlankLineB, moveToSol)
 import Yi.Buffer.Misc (Mode(..), BufferM, IndentBehaviour, file, pointAt, shiftWidth)
@@ -118,7 +123,7 @@ getJSBuffer = withOtherWindow $ do
 
 -- | Creates a new empty buffer and returns it.
 mkJSBuffer :: YiM BufferRef
-mkJSBuffer = withEditor $ stringToNewBuffer (Left "js") (fromString "")
+mkJSBuffer = withEditor $ stringToNewBuffer (Left "js") ""
 
 -- | Given a filename, a BufferRef and a list of errors, prints the errors in
 --   that buffer.

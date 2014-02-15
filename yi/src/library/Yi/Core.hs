@@ -1,6 +1,8 @@
-{-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE RecursiveDo #-}
-{-# LANGUAGE Rank2Types #-}
+{-# LANGUAGE
+  ScopedTypeVariables,
+  RecursiveDo,
+  Rank2Types,
+  OverloadedStrings #-}
 
 -- Copyright (c) Tuomo Valkonen 2004.
 -- Copyright (c) Don Stewart 2004-5. http://www.cse.unsw.edu.au/~dons
@@ -369,7 +371,7 @@ startSubprocess :: FilePath -> [String] -> (Either SomeException ExitCode -> YiM
 startSubprocess cmd args onExit = onYiVar $ \yi var -> do
         let (e', bufref) = runEditor
                               (yiConfig yi)
-                              (printMsg ("Launched process: " ++ cmd) >> newBufferE (Left bufferName) (R.fromString ""))
+                              (printMsg ("Launched process: " ++ cmd) >> newBufferE (Left bufferName) "")
                               (yiEditor var)
             procid = yiSubprocessIdSupply var + 1
         procinfo <- createSubprocess cmd args bufref

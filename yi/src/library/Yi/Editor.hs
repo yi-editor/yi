@@ -6,7 +6,8 @@
   StandaloneDeriving,
   ScopedTypeVariables,
   CPP,
-  DeriveGeneric #-}
+  DeriveGeneric,
+  OverloadedStrings #-}
 
 -- Copyright (c) 2004-5, Don Stewart - http://www.cse.unsw.edu.au/~dons
 -- Copyright (c) 2007-8, JP Bernardy
@@ -135,7 +136,7 @@ emptyEditor = Editor {
        ,maxStatusHeight = 1
        ,onCloseActions = M.empty
        }
-        where buf = newB 0 (Left "console") (R.fromString "")
+        where buf = newB 0 (Left "console") ""
               win = (dummyWindow (bkey buf)) {wkey = WindowRef 1, isMini = False}
               tab = makeTab1 2 win
 
@@ -373,7 +374,7 @@ setTmpStatus delay s = do
 
   b <- case bs of
          (b':_) -> return $ bkey b'
-         [] -> stringToNewBuffer (Left "messages") (R.fromString "")
+         [] -> stringToNewBuffer (Left "messages") ""
   withGivenBuffer0 b $ do botB; insertN (show s ++ "\n")
 
 
@@ -445,8 +446,7 @@ newTempBufferE = do
         inc in_name = TempBufferNameHint (tmp_name_base in_name) (tmp_name_index in_name  + 1)
         next_tmp_name = find_next hint
 
-    b <- newBufferE (Left $ show next_tmp_name)
-                    (R.fromString "")
+    b <- newBufferE (Left $ show next_tmp_name) ""
     setDynamic $ inc next_tmp_name
     return b
 

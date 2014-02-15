@@ -3,7 +3,8 @@
   TemplateHaskell,
   CPP,
   StandaloneDeriving,
-  DeriveGeneric #-}
+  DeriveGeneric,
+  OverloadedStrings #-}
 
 -- Copyright (c) 2007, 2008, 2009 Ben Moseley, Wen Pu
 
@@ -308,11 +309,10 @@ diredDoDel = do
     Just (fn, de) -> askDelFiles dir [(fn, de)]
     Nothing       -> noFileAtThisLine
 
-{-# ANN diredDoMarkedDel "HLint: ignore Use string literal" #-}
 diredDoMarkedDel :: YiM ()
 diredDoMarkedDel = do
   dir <- currentDir
-  fs <- markedFiles (`Data.List.elem` ['D'])
+  fs <- markedFiles (`Data.List.elem` "D")
   askDelFiles dir fs
 
 diredKeymap :: Keymap -> Keymap
@@ -350,7 +350,7 @@ diredDirBuffer d = do
     -- Emacs doesn't follow symlinks, probbably Yi shouldn't do too
     dir <- io $ canonicalizePath d
     -- XXX Don't specify the path as the filename of the buffer.
-    b <- withEditor $ stringToNewBuffer (Left dir) (R.fromString "")
+    b <- withEditor $ stringToNewBuffer (Left dir) ""
     withEditor $ switchToBufferE b
     withBuffer $ do
       bufferDynamicValueA %= (diredPathA .~ dir)
@@ -551,7 +551,6 @@ diredMarkWithChar c mv = bypassReadOnly $ do
                                             diredRefreshMark
                              Nothing        -> filenameColOf mv
 
-{-# ANN diredRefreshMark "HLint: ignore Use string literal" #-}
 diredRefreshMark :: BufferM ()
 diredRefreshMark = do b <- pointB
                       dState <- use bufferDynamicValueA
@@ -564,7 +563,7 @@ diredRefreshMark = do b <- pointB
                                                   addOverlayB $ mkOverlay UserLayer (mkRegion (e - 1) e) (styleOfMark mark)
                                                 Nothing ->
                                                   -- for deleted marks
-                                                  moveTo pos >> moveToSol >> insertN [' '] >> deleteN 1
+                                                  moveTo pos >> moveToSol >> insertN " " >> deleteN 1
                       mapM_ draw posDict
                       moveTo b
     where
@@ -693,22 +692,20 @@ askCopyFiles dir fs =
           op4Type (DiredDir _) = DOCopyDir
           op4Type _            = DOCopyFile
 
-{-# ANN diredRename "HLint: ignore Use string literal" #-}
 diredRename :: YiM ()
 diredRename = do
   dir <- currentDir
-  fs <- markedFiles (`Data.List.elem` ['*'])
+  fs <- markedFiles (`Data.List.elem` "*")
   if null fs then do maybefile <- withBuffer fileFromPoint
                      case maybefile of
                        Just (fn, de) -> askRenameFiles dir [(fn, de)]
                        Nothing       -> noFileAtThisLine
              else askRenameFiles dir fs
 
-{-# ANN diredCopy "HLint: ignore Use string literal" #-}
 diredCopy :: YiM ()
 diredCopy = do
   dir <- currentDir
-  fs <- markedFiles (`Data.List.elem` ['*'])
+  fs <- markedFiles (`Data.List.elem` "*")
   if null fs then do maybefile <- withBuffer fileFromPoint
                      case maybefile of
                        Just (fn, de) -> askCopyFiles dir [(fn, de)]

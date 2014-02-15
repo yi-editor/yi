@@ -1,3 +1,4 @@
+{-# LANGUAGE OverloadedStrings #-}
 module Yi.File
  (
   -- * File-based actions
@@ -73,7 +74,7 @@ editFile filename = do
 
     newEmptyBuffer :: FilePath -> YiM BufferRef
     newEmptyBuffer f =
-      withEditor $ stringToNewBuffer (Right f) (R.fromString "")
+      withEditor $ stringToNewBuffer (Right f) ""
 
     setupMode :: FilePath -> BufferRef -> YiM BufferRef
     setupMode f b = do
@@ -81,7 +82,7 @@ editFile filename = do
       content <- withGivenBuffer b elemsB
 
       let header = take 1024 content
-          hmode = case header =~ "\\-\\*\\- *([^ ]*) *\\-\\*\\-" of
+          hmode = case header =~ ("\\-\\*\\- *([^ ]*) *\\-\\*\\-"::String) of
               AllTextSubmatches [_,m] ->m
               _ -> ""
           Just mode = find (\(AnyMode m) -> modeName m == hmode) tbl <|>

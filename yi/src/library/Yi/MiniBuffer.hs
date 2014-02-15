@@ -1,5 +1,14 @@
-{-# LANGUAGE ScopedTypeVariables, FlexibleInstances, MultiParamTypeClasses, UndecidableInstances, TypeSynonymInstances,
-  TypeOperators, EmptyDataDecls, DeriveDataTypeable, GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE
+  ScopedTypeVariables,
+  FlexibleInstances,
+  MultiParamTypeClasses,
+  UndecidableInstances,
+  TypeSynonymInstances,
+  TypeOperators,
+  EmptyDataDecls,
+  DeriveDataTypeable,
+  GeneralizedNewtypeDeriving,
+  OverloadedStrings #-}
 
 module Yi.MiniBuffer
  (
@@ -30,7 +39,6 @@ import Yi.Completion (infixMatch, prefixMatch, containsMatch', completeInList, c
 import Yi.Style (defaultStyle)
 import Yi.Utils
 import Yi.Monad
-import qualified Data.Rope as R
 import System.CanonicalizePath (replaceShorthands)
 
 -- | Open a minibuffer window with the given prompt and keymap
@@ -39,7 +47,7 @@ import System.CanonicalizePath (replaceShorthands)
 -- string. If you don't need this just supply @return ()@
 spawnMinibufferE :: String -> KeymapEndo -> EditorM BufferRef
 spawnMinibufferE prompt kmMod =
-    do b <- stringToNewBuffer (Left prompt) (R.fromString "")
+    do b <- stringToNewBuffer (Left prompt) ""
        -- Now create the minibuffer keymap and switch to the minibuffer window
        withGivenBuffer0 b $
          modifyMode $ \m -> m { modeKeymap = \kms -> kms { topKeymap = kmMod (insertKeymap kms)
@@ -63,13 +71,12 @@ spawnMinibufferE prompt kmMod =
        (%=) windowsA (PL.insertRight w)
        return b
 
-{-# ANN withMinibuffer "HLint: ignore Eta reduce" #-}
 -- | @withMinibuffer prompt completer act@: open a minibuffer with @prompt@. Once
 -- a string @s@ is obtained, run @act s@. @completer@ can be used to complete
 -- functions: it returns a list of possible matches.
 withMinibuffer :: String -> (String -> YiM [String]) -> (String -> YiM ()) -> YiM ()
-withMinibuffer prompt getPossibilities act =
-  withMinibufferGen "" giveHint prompt completer (const $ return ()) act
+withMinibuffer prompt getPossibilities =
+  withMinibufferGen "" giveHint prompt completer (const $ return ())
     where giveHint s = catMaybes . fmap (prefixMatch s) <$> getPossibilities s
           completer = simpleComplete getPossibilities
 

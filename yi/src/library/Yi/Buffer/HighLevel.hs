@@ -1,3 +1,4 @@
+{-# LANGUAGE OverloadedStrings #-}
 -- Copyright (C) 2008 JP Bernardy
 module Yi.Buffer.HighLevel where
 
@@ -864,7 +865,7 @@ readRegionRopeWithStyleB reg Block = savingPointB $ do
             r <- readRegionB' $ mkRegion p (p +~ Size l)
             void $ lineMoveRel 1
             return r
-    return $ R.concat $ intersperse (R.fromString "\n") chunks
+    return $ R.concat $ intersperse "\n" chunks
 readRegionRopeWithStyleB reg style = readRegionB' =<< convertRegionToStyleB reg style
 
 insertRopeWithStyleB :: Rope -> RegionStyle -> BufferM ()

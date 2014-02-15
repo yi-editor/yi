@@ -1,3 +1,4 @@
+{-# LANGUAGE OverloadedStrings #-}
 module Yi.Keymap.Vim.Utils
   ( mkBindingE
   , mkBindingY
@@ -177,5 +178,5 @@ pasteInclusiveB rope style = do
 addNewLineIfNecessary :: R.Rope -> R.Rope
 addNewLineIfNecessary rope = if lastChar == '\n'
                              then rope
-                             else R.append rope (R.fromString "\n")
+                             else R.append rope "\n"
     where lastChar = head $ R.toString $ R.drop (R.length rope - 1) rope

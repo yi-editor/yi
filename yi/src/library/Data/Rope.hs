@@ -54,6 +54,7 @@ import Data.FingerTree hiding (null, empty, reverse, split)
 import Data.Binary
 import Data.Char (ord)
 import Data.Monoid
+import Data.String (IsString(..))
 
 import System.IO.Cautious (writeFileL)
 
@@ -120,14 +121,13 @@ fromLazyByteString = Rope . toTree T.empty
                                     chunk = mkChunk $ B.concat $ LB.toChunks h
                                 in acc `seq` chunk `seq` toTree (acc |> chunk) t
 
-
-fromString :: String -> Rope
-fromString = Rope . toTree T.empty
-   where
-     toTree acc [] = acc
-     toTree acc b  = let (h,t) = L.splitAt defaultChunkSize b
-                         chunk = mkChunk $ B.fromString h
-                     in acc `seq` chunk `seq` toTree (acc |> chunk) t
+instance IsString Rope where
+    fromString = Rope . toTree T.empty
+       where
+         toTree acc [] = acc
+         toTree acc b  = let (h,t) = L.splitAt defaultChunkSize b
+                             chunk = mkChunk $ B.fromString h
+                         in acc `seq` chunk `seq` toTree (acc |> chunk) t
 
 null :: Rope -> Bool
 null (Rope a) = T.null a
