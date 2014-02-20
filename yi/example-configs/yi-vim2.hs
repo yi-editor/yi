@@ -37,9 +37,10 @@ myBindings :: (String -> EditorM ()) -> [V2.VimBinding]
 myBindings eval =
     let nmap x y = V2.mkStringBindingE V2.Normal V2.Drop (x, y, id)
         imap x y = V2.VimBindingE (\evs state -> case V2.vsMode state of
-                                    V2.Insert _ -> evs `V2.matchesString` x
+                                    V2.Insert _ ->
+                                        fmap (const (y >> return V2.Continue))
+                                             (evs `V2.matchesString` x)
                                     _ -> V2.NoMatch)
-                                  (\_evs -> y >> return V2.Continue)
     in [
          -- Tab traversal
          nmap "<C-h>" previousTabE
