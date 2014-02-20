@@ -45,3 +45,5 @@ library
     time >= 1.0 && < 2.0,
     old-locale >= 1.0 && < 1.2,
     transformers-base
+
+  ghc-options: -Wall
