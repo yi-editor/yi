@@ -81,10 +81,9 @@ handleEvent config event = do
         prevMode = vsMode currentState
 
     repeatToken <- case bindingMatch of
-        WholeMatch (VimBindingY _ action) -> do
+        WholeMatch action -> do
             withEditor dropBindingAccumulatorE
-            action evs
-        WholeMatch (VimBindingE _ action) -> withEditor $ dropBindingAccumulatorE >> action evs
+            action
         NoMatch -> do
             withEditor dropBindingAccumulatorE
             return Drop
@@ -130,21 +129,20 @@ pureHandleEvent :: VimConfig -> Event -> EditorM ()
 pureHandleEvent config event = do
     currentState <- getDynamic
     let evs = vsBindingAccumulator currentState ++ eventToString event
-        bindingMatch = selectBinding evs currentState (allPureBindings config)
+        bindingMatch = selectPureBinding evs currentState (allPureBindings config)
         prevMode = vsMode currentState
     case bindingMatch of
         NoMatch -> dropBindingAccumulatorE
         PartialMatch -> do
             accumulateBindingEventE event
             accumulateEventE event
-        WholeMatch (VimBindingE _ action) -> do
-            repeatToken <- withEditor $ action evs
+        WholeMatch action -> do
+            repeatToken <- withEditor action
             dropBindingAccumulatorE
             case repeatToken of
                 Drop -> dropAccumulatorE
                 Continue -> accumulateEventE event
                 Finish -> accumulateEventE event >> flushAccumulatorIntoRepeatableActionE
-        WholeMatch (VimBindingY _ _) -> fail "Impure binding found"
 
     newMode <- vsMode <$> getDynamic
 
@@ -168,5 +166,5 @@ performEvalIfNecessary config = do
 
 allPureBindings :: VimConfig -> [VimBinding]
 allPureBindings config = filter isPure $ vimBindings config
-    where isPure (VimBindingE _ _) = True
+    where isPure (VimBindingE _) = True
           isPure _ = False

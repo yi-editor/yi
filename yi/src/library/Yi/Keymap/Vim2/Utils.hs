@@ -4,6 +4,7 @@ module Yi.Keymap.Vim2.Utils
   , mkStringBindingE
   , splitCountedCommand
   , selectBinding
+  , selectPureBinding
   , matchFromBool
   , mkMotionBinding
   , mkChooseRegisterBinding
@@ -15,8 +16,8 @@ module Yi.Keymap.Vim2.Utils
 import Control.Applicative
 import Control.Monad
 
+import Data.Foldable (asum)
 import Data.List (group)
-import Data.Rope (Rope)
 import qualified Data.Rope as R
 
 import Yi.Buffer hiding (Insert)
@@ -35,20 +36,20 @@ import Yi.Monad
 
 mkStringBindingE :: VimMode -> RepeatToken
     -> (String, EditorM (), VimState -> VimState) -> VimBinding
-mkStringBindingE mode rtoken (eventString, action, mutate) = VimBindingE prereq combinedAction
-    where prereq _ vs | vsMode vs /= mode = NoMatch
-          prereq evs _ = evs `matchesString` eventString
-          combinedAction _ = combineAction action mutate rtoken
+mkStringBindingE mode rtoken (eventString, action, mutate) = VimBindingE f
+    where f _ vs | vsMode vs /= mode = NoMatch
+          f evs _ = combineAction action mutate rtoken <$
+                    evs `matchesString` eventString
 
 mkBindingE :: VimMode -> RepeatToken -> (Event, EditorM (), VimState -> VimState) -> VimBinding
-mkBindingE mode rtoken (event, action, mutate) = VimBindingE prereq combinedAction
-    where prereq evs vs = matchFromBool $ vsMode vs == mode && evs == eventToString event
-          combinedAction _ = combineAction action mutate rtoken
+mkBindingE mode rtoken (event, action, mutate) = VimBindingE f
+    where f evs vs = combineAction action mutate rtoken <$
+                     matchFromBool (vsMode vs == mode && evs == eventToString event)
 
 mkBindingY :: VimMode -> (Event, YiM (), VimState -> VimState) -> VimBinding
-mkBindingY mode (event, action, mutate) = VimBindingY prereq combinedAction
-    where prereq evs vs = matchFromBool $ vsMode vs == mode && evs == eventToString event
-          combinedAction _ = combineAction action mutate Drop
+mkBindingY mode (event, action, mutate) = VimBindingY f
+    where f evs vs = combineAction action mutate Drop <$
+                     matchFromBool (vsMode vs == mode && evs == eventToString event)
 
 combineAction :: MonadEditor m => m () -> (VimState -> VimState) -> RepeatToken -> m RepeatToken
 combineAction action mutateState rtoken = do
@@ -56,20 +57,26 @@ combineAction action mutateState rtoken = do
     withEditor $ modifyStateE mutateState
     return rtoken
 
-selectBinding :: String -> VimState -> [VimBinding] -> MatchResult VimBinding
-selectBinding eventString state = foldl go NoMatch
-    where go match b = match <|> fmap (const b) (vbPrerequisite b eventString state)
+-- | All impure bindings will be ignored.
+selectPureBinding :: EventString -> VimState -> [VimBinding] -> MatchResult (EditorM RepeatToken)
+selectPureBinding evs state = asum . fmap try
+    where try (VimBindingE matcher) = matcher evs state
+          try (VimBindingY _) = NoMatch
+
+selectBinding :: String -> VimState -> [VimBinding] -> MatchResult (YiM RepeatToken)
+selectBinding input state = asum . fmap try
+    where try (VimBindingY matcher) = matcher input state
+          try (VimBindingE matcher) = fmap withEditor $ matcher input state
 
 matchFromBool :: Bool -> MatchResult ()
 matchFromBool b = if b then WholeMatch () else NoMatch
 
 mkMotionBinding :: RepeatToken -> (VimMode -> Bool) -> VimBinding
-mkMotionBinding token condition = VimBindingE prereq action
-    where prereq evs state | condition (vsMode state) = void (stringToMove evs)
-          prereq _ _ = NoMatch
-          action evs = do
+mkMotionBinding token condition = VimBindingE f
+    where f evs state | condition (vsMode state) = fmap (go evs) (stringToMove evs)
+          f _ _ = NoMatch
+          go evs (Move _style isJump move) = do
               state <- getDynamic
-              let WholeMatch (Move _style isJump move) = stringToMove evs
               count <- getMaybeCountE
               when isJump addJumpHereE
               withBuffer0 $ move count >> leftOnEol
@@ -97,14 +104,12 @@ mkMotionBinding token condition = VimBindingE prereq action
               return token
 
 mkChooseRegisterBinding :: (VimState -> Bool) -> VimBinding
-mkChooseRegisterBinding statePredicate = VimBindingE prereq action
-    where prereq "\"" s | statePredicate s = PartialMatch
-          prereq ('"':_:[]) s | statePredicate s = WholeMatch ()
-          prereq _ _ = NoMatch
-          action ('"':c:[]) = do
+mkChooseRegisterBinding statePredicate = VimBindingE f
+    where f "\"" s | statePredicate s = PartialMatch
+          f ('"':c:[]) s | statePredicate s = WholeMatch $ do
               modifyStateE $ \s -> s { vsActiveRegister = c }
               return Continue
-          action _ = error "can't happen"
+          f _ _ = NoMatch
 
 indentBlockRegionB :: Int -> Region -> BufferM ()
 indentBlockRegionB count reg = do
@@ -126,7 +131,7 @@ indentBlockRegionB count reg = do
             void $ lineMoveRel i
     moveTo start
 
-pasteInclusiveB :: Rope -> RegionStyle -> BufferM ()
+pasteInclusiveB :: R.Rope -> RegionStyle -> BufferM ()
 pasteInclusiveB rope style = do
     p0 <- pointB
     insertRopeWithStyleB rope style
@@ -134,7 +139,7 @@ pasteInclusiveB rope style = do
     then leftB
     else moveTo p0
 
-addNewLineIfNecessary :: Rope -> Rope
+addNewLineIfNecessary :: R.Rope -> R.Rope
 addNewLineIfNecessary rope = if lastChar == '\n'
                              then rope
                              else R.append rope (R.fromString "\n")

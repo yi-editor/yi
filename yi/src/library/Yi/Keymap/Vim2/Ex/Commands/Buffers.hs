@@ -24,7 +24,6 @@ import qualified Data.Rope as R
 parse :: String -> Maybe ExCommand
 parse = Common.parse $ do
     void $ P.try ( P.string "buffers") <|> P.try ( P.string "ls") <|> P.try ( P.string "files" )
-    bufName <- P.many P.anyChar
     return $ Common.pureExCommand {
         cmdShow = "buffers"
       , cmdAction = EditorA $ withEditor printBuffers 

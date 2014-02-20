@@ -58,9 +58,8 @@ chooseRegisterBinding :: VimBinding
 chooseRegisterBinding = mkChooseRegisterBinding ((== Normal) . vsMode)
 
 zeroBinding :: VimBinding
-zeroBinding = VimBindingE prereq action
-    where prereq evs state = matchFromBool $ evs == "0" && (vsMode state == Normal)
-          action _ = do
+zeroBinding = VimBindingE f
+    where f "0" (VimState {vsMode = Normal}) = WholeMatch $ do
               currentState <- getDynamic
               case vsCount currentState of
                   Just c -> do
@@ -70,11 +69,11 @@ zeroBinding = VimBindingE prereq action
                       withBuffer0 moveToSol
                       setDynamic $ resetCount currentState
                       return Drop
+          f _ _ = NoMatch
 
 repeatBinding :: VimBinding
-repeatBinding = VimBindingE prereq action
-    where prereq evs state = matchFromBool $ evs == "." && (vsMode state == Normal)
-          action _ = do
+repeatBinding = VimBindingE f
+    where f "." (VimState {vsMode = Normal}) = WholeMatch $ do
                 currentState <- getDynamic
                 case vsRepeatableAction currentState of
                     Nothing -> return ()
@@ -83,6 +82,7 @@ repeatBinding = VimBindingE prereq action
                         scheduleActionStringForEval $ show count ++ actionString
                         resetCountE
                 return Drop
+          f _ _ = NoMatch
 
 jumpBindings :: [VimBinding]
 jumpBindings = fmap (mkBindingE Normal Drop)
@@ -269,15 +269,13 @@ nonrepeatableBindings = fmap (mkBindingE Normal Drop)
     ]
 
 setMarkBinding :: VimBinding
-setMarkBinding = VimBindingE prereq action
-    where prereq _ s | vsMode s /= Normal = NoMatch
-          prereq "m" _ = PartialMatch
-          prereq ('m':_:[]) _ = WholeMatch ()
-          prereq _ _ = NoMatch
-          action ('m':c:[]) = do
+setMarkBinding = VimBindingE f
+    where f _ s | vsMode s /= Normal = NoMatch
+          f "m" _ = PartialMatch
+          f ('m':c:[]) _ = WholeMatch $ do
               withBuffer0 $ setNamedMarkHereB [c]
               return Drop
-          action _ = error "Can't happen"
+          f _ _ = NoMatch
 
 searchWordE :: Bool -> Direction -> EditorM ()
 searchWordE wholeWord dir = do
@@ -296,17 +294,17 @@ searchWordE wholeWord dir = do
 
 
 searchBinding :: VimBinding
-searchBinding = VimBindingE prereq action
-    where prereq evs (VimState { vsMode = Normal }) = matchFromBool $ evs `elem` group "/?"
-          prereq _ _ = NoMatch
-          action evs = do
-              state <- fmap vsMode getDynamic
-              let dir = if evs == "/" then Forward else Backward
-              switchModeE $ Search state dir
-              isearchInitE dir
-              historyStart
-              historyPrefixSet ""
-              return Continue
+searchBinding = VimBindingE f
+    where f evs (VimState { vsMode = Normal }) | evs `elem` group "/?"
+            = WholeMatch $ do
+                  state <- fmap vsMode getDynamic
+                  let dir = if evs == "/" then Forward else Backward
+                  switchModeE $ Search state dir
+                  isearchInitE dir
+                  historyStart
+                  historyPrefixSet ""
+                  return Continue
+          f _ _ = NoMatch
 
 continueSearching :: (Direction -> Direction) -> EditorM ()
 continueSearching fdir = do
@@ -358,16 +356,14 @@ cutCharE dir count = do
     setRegisterE regName Inclusive r
 
 tabTraversalBinding :: VimBinding
-tabTraversalBinding = VimBindingE prereq action
-    where prereq "g" (VimState { vsMode = Normal }) = PartialMatch
-          prereq ('g':c:[]) (VimState { vsMode = Normal }) | c `elem` "tT" = WholeMatch ()
-          prereq _ _ = NoMatch
-          action ('g':c:[]) = do
+tabTraversalBinding = VimBindingE f
+    where f "g" (VimState { vsMode = Normal }) = PartialMatch
+          f ('g':c:[]) (VimState { vsMode = Normal }) | c `elem` "tT" = WholeMatch $ do
               count <- getCountE
               replicateM_ count $ if c == 'T' then previousTabE else nextTabE
               resetCountE
               return Drop
-          action _ = error "can't happen"
+          f _ _ = NoMatch
 
 -- TODO: withCount name implies that parameter has type (Int -> EditorM ())
 --       Is there a better name for this function?

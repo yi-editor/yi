@@ -23,10 +23,10 @@ defNormalOperatorPendingMap :: [VimOperator] -> [VimBinding]
 defNormalOperatorPendingMap operators = [textObject operators, escBinding]
 
 textObject :: [VimOperator] -> VimBinding
-textObject operators = VimBindingE prereq action
+textObject operators = VimBindingE f
     where
-        prereq _ vs = case vsMode vs of
-                            NormalOperatorPending _ -> WholeMatch ()
+        f evs vs = case vsMode vs of
+                            NormalOperatorPending _ -> WholeMatch $ action evs
                             _ -> NoMatch
         action evs = do
             currentState <- getDynamic

@@ -2,11 +2,12 @@ module Yi.Keymap.Vim2.ExMap
     ( defExMap
     ) where
 
+import Control.Applicative
+import Control.Monad (when)
 import Data.Char (isSpace)
 import Data.Maybe (fromJust)
 import Data.List.Split (splitWhen)
 import System.FilePath (isPathSeparator)
-import Control.Monad (when)
 
 import Yi.Buffer hiding (Insert)
 import Yi.Editor
@@ -30,16 +31,14 @@ defExMap cmdParsers =
     ]
 
 completionBinding :: [String -> Maybe ExCommand] -> VimBinding
-completionBinding commandParsers = VimBindingY prereq action
-    where prereq evs (VimState { vsMode = Ex }) = matchFromBool $ evs == "<Tab>"
-          prereq _ _ = NoMatch
-          action :: EventString -> YiM RepeatToken
-          action _ = do
+completionBinding commandParsers = VimBindingY f
+    where f "<Tab>" (VimState { vsMode = Ex }) = WholeMatch $ do
               commandString <- withEditor . withBuffer0 $ elemsB
               case stringToExCommand commandParsers commandString of
                   Just cmd -> complete cmd
                   Nothing -> return ()
               return Drop
+          f _ _ = NoMatch
           complete :: ExCommand -> YiM ()
           complete cmd = do
               possibilities <- cmdComplete cmd
@@ -81,25 +80,24 @@ exitEx success = do
     closeBufferAndWindowE
 
 exitBinding :: VimBinding
-exitBinding = VimBindingE prereq action
-    where prereq "<CR>" (VimState { vsMode = Ex, vsOngoingInsertEvents = [] })
-              = WholeMatch ()
-          prereq evs (VimState { vsMode = Ex })
-              = matchFromBool $ evs `elem` ["<Esc>", "<C-c>"]
-          prereq _ _ = NoMatch
-          action _ = do
-              exitEx False
-              return Drop
+exitBinding = VimBindingE f
+    where f "<CR>" (VimState { vsMode = Ex, vsOngoingInsertEvents = [] })
+              = WholeMatch action
+          f evs (VimState { vsMode = Ex })
+              = action <$ matchFromBool (evs `elem` ["<Esc>", "<C-c>"])
+          f _ _ = NoMatch
+          action = exitEx False >> return Drop
 
 finishBindingY :: [String -> Maybe ExCommand] -> VimBinding
-finishBindingY commandParsers = VimBindingY
-    (finishPrereq commandParsers (not . cmdIsPure))
-    (const $ finishAction commandParsers exEvalY)
+finishBindingY commandParsers = VimBindingY f
+    where f evs state = finishAction commandParsers exEvalY
+                      <$ finishPrereq commandParsers (not . cmdIsPure) evs state
+    
 
 finishBindingE :: [String -> Maybe ExCommand] -> VimBinding
-finishBindingE commandParsers = VimBindingE
-    (finishPrereq commandParsers cmdIsPure)
-    (const $ finishAction commandParsers exEvalE)
+finishBindingE commandParsers = VimBindingE f
+    where f evs state = finishAction commandParsers exEvalE
+                      <$ finishPrereq commandParsers cmdIsPure evs state
 
 finishPrereq :: [String -> Maybe ExCommand] -> (ExCommand -> Bool)
     -> EventString -> VimState -> MatchResult ()
@@ -121,31 +119,31 @@ finishAction commandParsers execute = do
     return Drop
 
 failBindingE :: VimBinding
-failBindingE = VimBindingE prereq action
-    where prereq evs s = matchFromBool . and $ [vsMode s == Ex, evs == "<CR>"]
-          action _ = do
-              exitEx False
-              s <- getDynamic
-              printMsg $ "Not an editor command: " ++ (vsOngoingInsertEvents s)
-              return Drop
+failBindingE = VimBindingE f
+    where f evs s | vsMode s == Ex && evs == "<CR>"
+            = WholeMatch $ do
+                  exitEx False
+                  state <- getDynamic
+                  printMsg $ "Not an editor command: " ++ vsOngoingInsertEvents state
+                  return Drop
+          f _ _ = NoMatch
 
 printable :: VimBinding
-printable = VimBindingE prereq editAction
-    where prereq _ (VimState { vsMode = Ex }) = WholeMatch ()
-          prereq _ _ = NoMatch
+printable = VimBindingE f
+    where f evs (VimState { vsMode = Ex }) = WholeMatch $ editAction evs
+          f _ _ = NoMatch
 
 historyBinding :: VimBinding
-historyBinding = VimBindingE prereq action
-    where prereq evs (VimState { vsMode = Ex }) =
-              matchFromBool $ evs `elem` fmap fst binds
-          prereq _ _ = NoMatch
-          action evs = do
+historyBinding = VimBindingE f
+    where f evs (VimState { vsMode = Ex }) | evs `elem` fmap fst binds
+             = WholeMatch $ do
               fromJust $ lookup evs binds
               command <- withBuffer0 elemsB
               modifyStateE $ \state -> state {
                   vsOngoingInsertEvents = command
               }
               return Drop
+          f _ _ = NoMatch
           binds =
               [ ("<Up>", historyUp)
               , ("<C-p>", historyUp)

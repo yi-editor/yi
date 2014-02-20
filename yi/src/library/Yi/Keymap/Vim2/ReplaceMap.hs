@@ -31,9 +31,9 @@ exitReplaceMode = do
     withBuffer0 $ moveXorSol 1
 
 printable :: VimBinding
-printable = VimBindingE prereq action
-    where prereq _ s = matchFromBool $ Replace == vsMode s
-          action = printableAction
+printable = VimBindingE f
+    where f evs s | Replace == vsMode s = WholeMatch $ printableAction evs
+          f _ _ = NoMatch
 
 printableAction :: EventString -> EditorM RepeatToken
 printableAction evs = do
