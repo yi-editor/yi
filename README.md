@@ -60,6 +60,12 @@ And the contrib package:
 
     $ (cd yi-contrib && cabal install)
 
+If you're getting errors about Alex version bounds or are experiencing
+similar problems, it's recommended that you install from the sources
+available in the GitHub repository which has the version bounds
+adjusted and contains a couple of nice fixes that might not be present
+in the latest Hackage version.
+
 ### Installing inside a Cabal sandbox
 
 Many people want to install Yi inside a cabal sandbox (cabal-install
