@@ -1,4 +1,10 @@
 
+0.7.1
+-----
+
+ This is a maintenance release, yi.cabal got cleaned up a little
+ and dependencies got bumped, some problematic upper bounds were removed.
+
 0.7.0
 -----
 
