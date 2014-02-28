@@ -28,37 +28,36 @@ defVisualMap operators =
     ++ operatorBindings operators ++ digitBindings ++ [replaceBinding, switchEdgeBinding]
     ++ [insertBinding, exBinding, shiftDBinding]
 
+escAction :: EditorM RepeatToken
+escAction = do
+    resetCountE
+    clrStatus
+    withBuffer0 $ do
+        setVisibleSelection False
+        assign regionStyleA Inclusive
+    switchModeE Normal
+    return Drop
+
 escBinding :: VimBinding
-escBinding = VimBindingE prereq action
-    where prereq evs (VimState { vsMode = (Visual _) }) =
-              matchFromBool $ evs `elem` ["<Esc>", "<C-c>"]
-          prereq _ _ = NoMatch
-          action _ = do
-              resetCountE
-              clrStatus
-              withBuffer0 $ do
-                  setVisibleSelection False
-                  assign regionStyleA Inclusive
-              switchModeE Normal
-              return Drop
+escBinding = VimBindingE f
+    where f evs (VimState { vsMode = (Visual _) }) = escAction <$
+              matchFromBool (evs `elem` ["<Esc>", "<C-c>"])
+          f _ _ = NoMatch
 
 exBinding :: VimBinding
-exBinding = VimBindingE prereq action
-    where prereq ":" (VimState { vsMode = (Visual _) }) = WholeMatch ()
-          prereq _ _ = NoMatch
-          action _ = do
+exBinding = VimBindingE f
+    where f ":" (VimState { vsMode = (Visual _) }) = WholeMatch $ do
               void $ spawnMinibufferE ":'<,'>" id
               switchModeE Ex
               return Finish
+          f _ _ = NoMatch
 
 digitBindings :: [VimBinding]
 digitBindings = zeroBinding : fmap mkDigitBinding ['1' .. '9']
 
 zeroBinding :: VimBinding
-zeroBinding = VimBindingE prereq action
-    where prereq "0" (VimState { vsMode = (Visual _) }) = WholeMatch ()
-          prereq _ _ = NoMatch
-          action _ = do
+zeroBinding = VimBindingE f
+    where f "0" (VimState { vsMode = (Visual _) }) = WholeMatch $ do
               currentState <- getDynamic
               case vsCount currentState of
                   Just c -> do
@@ -68,46 +67,46 @@ zeroBinding = VimBindingE prereq action
                       withBuffer0 moveToSol
                       setDynamic $ resetCount currentState
                       return Continue
+          f _ _ = NoMatch
 
 setMarkBinding :: VimBinding
-setMarkBinding = VimBindingE prereq action
-    where prereq "m" (VimState { vsMode = (Visual _) }) = PartialMatch
-          prereq ('m':_:[]) (VimState { vsMode = (Visual _) }) = WholeMatch ()
-          prereq _ _ = NoMatch
-          action ('m':c:[]) = do
+setMarkBinding = VimBindingE f
+    where f "m" (VimState { vsMode = (Visual _) }) = PartialMatch
+          f ('m':c:[]) (VimState { vsMode = (Visual _) }) = WholeMatch $ do
               withBuffer0 $ setNamedMarkHereB [c]
               return Continue
-          action _ = error "Can't happen"
+          f _ _ = NoMatch
 
 changeVisualStyleBinding :: VimBinding
-changeVisualStyleBinding = VimBindingE prereq action
-    where prereq evs (VimState { vsMode = (Visual _) }) | evs `elem` ["v", "V", "<C-v>"] = WholeMatch ()
-          prereq _ _ = NoMatch
-          action evs = do
-              currentMode <- fmap vsMode getDynamic
-              let newStyle = case evs of
-                                 "v" -> Inclusive
-                                 "V" -> LineWise
-                                 "<C-v>" -> Block
-                                 _ -> error "Can't happen because of prereq, this just prevents warning"
-                  newMode = Visual newStyle
-              if newMode == currentMode
-              then vbeAction escBinding "<Esc>"
-              else do
-                  modifyStateE $ \s -> s { vsMode = newMode }
-                  withBuffer0 $ do
-                      assign regionStyleA newStyle
-                      assign rectangleSelectionA $ Block == newStyle
-                      setVisibleSelection True
-                  return Finish
+changeVisualStyleBinding = VimBindingE f
+    where f evs (VimState { vsMode = (Visual _) })
+            | evs `elem` ["v", "V", "<C-v>"]
+            = WholeMatch $ do
+                  currentMode <- fmap vsMode getDynamic
+                  let newStyle = case evs of
+                         "v" -> Inclusive
+                         "V" -> LineWise
+                         "<C-v>" -> Block
+                         _ -> error "Just silencing false positive warning."
+                      newMode = Visual newStyle
+                  if newMode == currentMode
+                  then escAction
+                  else do
+                      modifyStateE $ \s -> s { vsMode = newMode }
+                      withBuffer0 $ do
+                          assign regionStyleA newStyle
+                          assign rectangleSelectionA $ Block == newStyle
+                          setVisibleSelection True
+                      return Finish
+          f _ _ = NoMatch
 
 mkDigitBinding :: Char -> VimBinding
-mkDigitBinding c = VimBindingE prereq action
-    where prereq (c':[]) (VimState { vsMode = (Visual _) }) = matchFromBool $ c == c'
-          prereq _ _ = NoMatch
-          action _ = do
-              modifyStateE mutate
-              return Continue
+mkDigitBinding c = VimBindingE f
+    where f [c'] (VimState { vsMode = (Visual _) }) | c == c'
+            = WholeMatch $ do
+                  modifyStateE mutate
+                  return Continue
+          f _ _ = NoMatch
           mutate vs@(VimState {vsCount = Nothing}) = vs { vsCount = Just d }
           mutate vs@(VimState {vsCount = Just count}) = vs { vsCount = Just $ count * 10 + d }
           d = ord c - ord '0'
@@ -144,10 +143,8 @@ chooseRegisterBinding = mkChooseRegisterBinding $
         _ -> False
 
 shiftDBinding :: VimBinding
-shiftDBinding = VimBindingE prereq action
-    where prereq "D" (VimState { vsMode = (Visual _) }) = WholeMatch ()
-          prereq _ _ = NoMatch
-          action _ = do
+shiftDBinding = VimBindingE f
+    where f "D" (VimState { vsMode = (Visual _) }) = WholeMatch $ do
               (Visual style) <- vsMode <$> getDynamic
               reg <- withBuffer0 regionOfSelectionB
               case style of
@@ -169,12 +166,13 @@ shiftDBinding = VimBindingE prereq action
               resetCountE
               switchModeE Normal
               return Finish
+          f _ _ = NoMatch
 
 mkOperatorBinding :: VimOperator -> VimBinding
-mkOperatorBinding op = VimBindingE prereq action
-    where prereq evs (VimState { vsMode = (Visual _) }) = evs `matchesString` operatorName op
-          prereq _ _ = NoMatch
-          action _ = do
+mkOperatorBinding op = VimBindingE f
+    where f evs (VimState { vsMode = (Visual _) }) = action <$ evs `matchesString` operatorName op
+          f _ _ = NoMatch
+          action = do
               (Visual style) <- vsMode <$> getDynamic
               region <- withBuffer0 regionOfSelectionB
               count <- getCountE
@@ -187,53 +185,48 @@ mkOperatorBinding op = VimBindingE prereq action
               return token
 
 replaceBinding :: VimBinding
-replaceBinding = VimBindingE prereq action
-    where prereq evs (VimState { vsMode = (Visual _) }) =
+replaceBinding = VimBindingE f
+    where f evs (VimState { vsMode = (Visual _) }) =
               case evs of
                 "r" -> PartialMatch
-                ('r':_:[]) -> WholeMatch ()
+                ('r':c:[]) -> WholeMatch $ do
+                    (Visual style) <- vsMode <$> getDynamic
+                    region <- withBuffer0 regionOfSelectionB
+                    withBuffer0 $ transformCharactersInRegionB (StyledRegion style region)
+                                      (\x -> if x == '\n' then x else c)
+                    switchModeE Normal
+                    return Finish
                 _ -> NoMatch
-          prereq _ _ = NoMatch
-          action (_:c:[]) = do
-              (Visual style) <- vsMode <$> getDynamic
-              region <- withBuffer0 regionOfSelectionB
-              withBuffer0 $ transformCharactersInRegionB (StyledRegion style region)
-                                (\x -> if x == '\n' then x else c)
-              switchModeE Normal
-              return Finish
-          action _ = error "can't happen"
+          f _ _ = NoMatch
 
 switchEdgeBinding :: VimBinding
-switchEdgeBinding = VimBindingE prereq action
-    where prereq evs (VimState { vsMode = (Visual _) }) =
-              matchFromBool $ evs `elem` group "oO"
-          prereq _ _ = NoMatch
-          action (c:[]) = do
-              (Visual style) <- vsMode <$> getDynamic
-              withBuffer0 $ do
-                  here <- pointB
-                  there <- getSelectionMarkPointB
-                  (here', there') <- case (c, style) of
-                                        ('O', Block) -> flipRectangleB here there
-                                        (_, _) -> return (there, here)
-                  moveTo here'
-                  setSelectionMarkPointB there'
-              return Continue
-          action _ = error "can't happen"
+switchEdgeBinding = VimBindingE f
+    where f [c] (VimState { vsMode = (Visual _) }) | c `elem` "oO"
+              = WholeMatch $ do
+                  (Visual style) <- vsMode <$> getDynamic
+                  withBuffer0 $ do
+                      here <- pointB
+                      there <- getSelectionMarkPointB
+                      (here', there') <- case (c, style) of
+                                            ('O', Block) -> flipRectangleB here there
+                                            (_, _) -> return (there, here)
+                      moveTo here'
+                      setSelectionMarkPointB there'
+                  return Continue
+          f _ _ = NoMatch
 
 insertBinding :: VimBinding
-insertBinding = VimBindingE prereq action
-    where prereq evs (VimState { vsMode = (Visual _) }) =
-              matchFromBool $ evs `elem` group "IA"
-          prereq _ _ = NoMatch
-          action evs = do
-              (Visual style) <- vsMode <$> getDynamic
-              region <- withBuffer0 regionOfSelectionB
-              cursors <- withBuffer0 $ case evs of
-                  "I" -> leftEdgesOfRegionB style region
-                  "A" -> rightEdgesOfRegionB style region
-                  _ -> error "can't happen"
-              withBuffer0 $ moveTo $ head cursors
-              modifyStateE $ \s -> s { vsSecondaryCursors = drop 1 cursors }
-              switchModeE $ Insert (head evs)
-              return Continue
+insertBinding = VimBindingE f
+    where f evs (VimState { vsMode = (Visual _) }) | evs `elem` group "IA"
+            = WholeMatch $ do
+                  (Visual style) <- vsMode <$> getDynamic
+                  region <- withBuffer0 regionOfSelectionB
+                  cursors <- withBuffer0 $ case evs of
+                      "I" -> leftEdgesOfRegionB style region
+                      "A" -> rightEdgesOfRegionB style region
+                      _ -> error "Just silencing ghc's false positive warning."
+                  withBuffer0 $ moveTo $ head cursors
+                  modifyStateE $ \s -> s { vsSecondaryCursors = drop 1 cursors }
+                  switchModeE $ Insert (head evs)
+                  return Continue
+          f _ _ = NoMatch

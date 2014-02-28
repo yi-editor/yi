@@ -61,12 +61,11 @@ myBindings :: (String -> EditorM ()) -> [V2.VimBinding]
 myBindings eval =
     let nmap  x y = V2.mkStringBindingE V2.Normal V2.Drop (x, y, id)
         imap  x y = V2.VimBindingE (\evs state -> case V2.vsMode state of
-                                    V2.Insert _ -> evs `V2.matchesString` x
+                                    V2.Insert _ ->
+                                        fmap (const (y >> return V2.Continue))
+                                             (evs `V2.matchesString` x)
                                     _ -> V2.NoMatch)
-                                  (\_evs -> y >> return V2.Continue)
-        nmap'  x y = V2.VimBindingY prereq (\_ -> y >> return V2.Drop)
-          where prereq _ vs | V2.vsMode vs /= V2.Normal = V2.NoMatch
-                prereq evs _ = evs `V2.matchesString` "D"
+        nmap'  x y = V2.mkStringBindingY V2.Normal (x, y, id)
     in [
          -- Tab traversal
          nmap  "<C-h>" previousTabE
@@ -85,7 +84,7 @@ myBindings eval =
 
        , imap  "<Home>" (withBuffer0 moveToSol)
        , imap  "<End>"  (withBuffer0 moveToEol)
-       , nmap' "<D>"    insertCurrentDate
+       , nmap' "<F12>"  insertCurrentDate
        ]
 
 -- | I declare "proper black" in GTK, since Vty terminal seems to have grayish black in 16-color system.

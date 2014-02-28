@@ -2,6 +2,7 @@ module Yi.Keymap.Vim2.SearchMotionMap
     ( defSearchMotionMap
     ) where
 
+import Control.Applicative
 import Control.Monad
 import Data.Maybe (fromMaybe)
 
@@ -18,10 +19,8 @@ defSearchMotionMap :: [VimBinding]
 defSearchMotionMap = [enterBinding, editBinding, exitBinding]
 
 enterBinding :: VimBinding
-enterBinding = VimBindingE prereq action
-    where prereq "<CR>" (VimState { vsMode = Search {}} ) = WholeMatch ()
-          prereq _ _ = NoMatch
-          action _ = do
+enterBinding = VimBindingE f
+    where f "<CR>" (VimState { vsMode = Search {}} ) = WholeMatch $ do
               Search prevMode dir <- fmap vsMode getDynamic
               -- TODO: parse cmd into regex and flags
               isearchFinishE
@@ -39,12 +38,14 @@ enterBinding = VimBindingE prereq action
               case prevMode of
                   Visual _ -> return Continue
                   _ -> return Finish
+          f _ _ = NoMatch
 
 editBinding :: VimBinding
-editBinding = VimBindingE prereq action
-    where prereq evs (VimState { vsMode = Search {}} ) = matchFromBool $
-            evs `elem` fmap fst binds || null (drop 1 evs)
-          prereq _ _ = NoMatch
+editBinding = VimBindingE f
+    where f evs (VimState { vsMode = Search {}} )
+            = action evs <$
+              matchFromBool (evs `elem` fmap fst binds || null (drop 1 evs))
+          f _ _ = NoMatch
           action evs = do
               fromMaybe (isearchAddE evs) (lookup evs binds)
               withBuffer0 elemsB >>= historyPrefixSet
@@ -59,11 +60,10 @@ editBinding = VimBindingE prereq action
                   ]
 
 exitBinding :: VimBinding
-exitBinding = VimBindingE prereq action
-    where prereq _ (VimState { vsMode = Search {}} ) = WholeMatch ()
-          prereq _ _ = NoMatch
-          action _ = do
+exitBinding = VimBindingE f
+    where f _ (VimState { vsMode = Search {}} ) = WholeMatch $ do
               Search prevMode _dir <- fmap vsMode getDynamic
               isearchCancelE
               switchModeE prevMode
               return Drop
+          f _ _ = NoMatch

@@ -109,11 +109,7 @@ data RepeatToken = Finish
     deriving Show
 
 -- Distinction between YiM and EditorM variants is for testing.
-data VimBinding = VimBindingY {
-                      vbPrerequisite :: EventString -> VimState -> MatchResult (),
-                      vbyAction :: EventString -> YiM RepeatToken
-                  }
-                | VimBindingE {
-                      vbPrerequisite :: EventString -> VimState -> MatchResult (),
-                      vbeAction :: EventString -> EditorM RepeatToken
-                  }
+data VimBinding
+    = VimBindingY (EventString -> VimState -> MatchResult (YiM RepeatToken))
+    | VimBindingE (EventString -> VimState -> MatchResult (EditorM RepeatToken))
+

@@ -39,7 +39,7 @@ import Control.Monad (replicateM, replicateM_, forM, void)
 import Control.Monad.Base
 import System.Directory (doesDirectoryExist, getDirectoryContents)
 import System.FilePath ((</>))
-import Data.List (intersperse)
+import Data.List (intercalate)
 
 fuzzyOpen :: YiM ()
 fuzzyOpen = do
@@ -47,8 +47,7 @@ fuzzyOpen = do
     bufRef <- withEditor newTempBufferE
     fileList <- liftBase $ getRecursiveContents "."
     updateMatchList bufRef fileList
-    withEditor $ spawnMinibufferE "" $ const $ localKeymap bufRef fileList
-    return ()
+    void $ withEditor $ spawnMinibufferE "" $ const $ localKeymap bufRef fileList
 
 -- shamelessly stolen from Chapter 9 of Real World Haskell
 -- takes about 3 seconds to traverse linux kernel, which is not too outrageous
@@ -90,10 +89,9 @@ localKeymap bufRef fileList =
              <|| (insertChar >>! update)
     where update = updateMatchList bufRef fileList
           updatingB bufAction = withBuffer bufAction >> update
-          updatingE editorAction = withEditor editorAction >> update
 
 showFileList :: [FilePath] -> String
-showFileList = concat . intersperse "\n" . map ("  " ++)
+showFileList = intercalate "\n" . map ("  " ++)
 
 {- Implementation detail:
    The index of selected file is stored as vertical cursor position.
