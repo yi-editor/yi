@@ -2,6 +2,7 @@ module Yi.Keymap.Vim2.Utils
   ( mkBindingE
   , mkBindingY
   , mkStringBindingE
+  , mkStringBindingY
   , splitCountedCommand
   , selectBinding
   , selectPureBinding
@@ -39,6 +40,13 @@ mkStringBindingE :: VimMode -> RepeatToken
 mkStringBindingE mode rtoken (eventString, action, mutate) = VimBindingE f
     where f _ vs | vsMode vs /= mode = NoMatch
           f evs _ = combineAction action mutate rtoken <$
+                    evs `matchesString` eventString
+
+mkStringBindingY :: VimMode
+    -> (String, YiM (), VimState -> VimState) -> VimBinding
+mkStringBindingY mode (eventString, action, mutate) = VimBindingY f
+    where f _ vs | vsMode vs /= mode = NoMatch
+          f evs _ = combineAction action mutate Drop <$
                     evs `matchesString` eventString
 
 mkBindingE :: VimMode -> RepeatToken -> (Event, EditorM (), VimState -> VimState) -> VimBinding
