@@ -55,6 +55,7 @@ switchToBuffer s =
 
 switchByName :: String -> EditorM ()
 switchByName ""      = return ()
+switchByName "%"     = return ()
 switchByName "#"     = switchToBufferWithNameE "" 
 switchByName bufName = switchToBufferWithNameE bufName 
 

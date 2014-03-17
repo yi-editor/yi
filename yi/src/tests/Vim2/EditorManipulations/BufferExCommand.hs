@@ -64,4 +64,62 @@ tests c ev =
                     assertCurrentBuffer (nthBufferRef 1 buffers) editor
 
             runTest setupActions preConditions testActions assertions c
+
+
+      , testCase ":buffer # switches to the previous buffer" $ do
+            let setupActions = createInitialBuffers
+
+                preConditions editor buffers =
+                    assertEqual "Unexpected buffer stack"
+                        [nthBufferRef 2 buffers, nthBufferRef 1 buffers]
+                        (take 2 $ bufferStack editor)
+
+                testActions _ =
+                    ev $ ":buffer #<CR>"
+
+                assertions editor buffers = do
+                    assertEqual "Unexpected buffer stack"
+                        [nthBufferRef 1 buffers, nthBufferRef 2 buffers]
+                        (take 2 $ bufferStack editor)
+
+            runTest setupActions preConditions testActions assertions c
+
+
+      , testCase ":buffer % is a no-op" $ do
+            let setupActions = createInitialBuffers
+
+                preConditions editor buffers =
+                    assertCurrentBuffer (nthBufferRef 2 buffers) editor
+
+                testActions _ =
+                    ev $ ":buffer %<CR>"
+
+                assertions editor buffers = do
+                    assertContentOfCurrentBuffer c "Buffer three" editor
+                    assertCurrentBuffer (nthBufferRef 2 buffers) editor
+
+            runTest setupActions preConditions testActions assertions c
+
+
+      , testCase ":buffer is a no-op" $ do
+            let setupActions = createInitialBuffers
+
+                preConditions editor buffers =
+                    assertCurrentBuffer (nthBufferRef 2 buffers) editor
+
+                testActions _ =
+                    ev $ ":buffer<CR>"
+
+                assertions editor buffers = do
+                    assertContentOfCurrentBuffer c "Buffer three" editor
+                    assertCurrentBuffer (nthBufferRef 2 buffers) editor
+
+            runTest setupActions preConditions testActions assertions c
+
+
+      -- , testCase "A modified buffer is not abandoned" $ do
+      -- , testCase "A modified buffer can be abandoned with a bang" $ do
+      -- , testCase "A buffer number can be given as a count" $ do
+      -- , testCase "A named buffer can be shown in a split window" $ do
+      -- , testCase "A numbered buffer can be shown in a split window" $ do
     ]
