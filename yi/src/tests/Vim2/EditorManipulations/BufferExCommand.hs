@@ -24,7 +24,7 @@ createInitialBuffers = do
 tests :: Config -> KeyEval -> TestTree
 tests c ev =
     testGroup ":buffer" [
-        testCase "Switches to the named buffer" $ do
+        testCase ":buffer {bufname} switches to the named buffer" $ do
             let setupActions = createInitialBuffers
 
                 preConditions editor (bufferKey, _name) =
@@ -40,7 +40,7 @@ tests c ev =
             runTest setupActions preConditions testActions assertions c
 
 
-      , testCase "Switches to the numbered buffer" $ do
+      , testCase ":buffer N switches to the numbered buffer" $ do
             let setupActions = createInitialBuffers
 
                 preConditions editor (bufferKey, _) =
