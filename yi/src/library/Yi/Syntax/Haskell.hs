@@ -505,7 +505,7 @@ pAlternative = Bin <$> (Expr <$> pPattern)
 pClass :: Parser TT (Exp TT)
 pClass = PClass <$> pAtom [Reserved Class, Reserved Instance]
                 <*> (TC . Expr <$>  pTypeExpr')
-                <*> please (pWhere pTopDecl)
+                <*> pOpt (please (pWhere pTopDecl))
                 -- use topDecl since we have associated types and such.
 
 
