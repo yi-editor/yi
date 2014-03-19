@@ -2,8 +2,10 @@
   FlexibleInstances,
   TypeFamilies,
   DeriveFoldable #-}
-{-# OPTIONS_GHC -fno-warn-missing-signatures -fno-warn-incomplete-patterns -fno-warn-name-shadowing #-}
--- we have lots of parsers which don't want signatures; and we have uniplate patterns
+{-# OPTIONS_GHC -fno-warn-missing-signatures -fno-warn-incomplete-patterns
+                -fno-warn-name-shadowing #-}
+-- we have lots of parsers which don't want signatures; and we have
+-- uniplate patterns
 
 -- Copyright (c) Anders Karlsson 2009
 -- Copyright (c) JP Bernardy 2009
@@ -41,9 +43,8 @@ indentScanner = layoutHandler startsLayout [(Special '(', Special ')'),
                          (Special '<', Special '>', Special '.')
                          isBrace
 
--- HACK: We insert the Special '<', '>', '.',
--- which do not occur in normal haskell
--- parsing.
+-- HACK: We insert the Special '<', '>', '.', which do not occur in
+-- normal haskell parsing.
 
 -- | Check if a token is a brace, this function is used to
 -- fix the layout so that do { works correctly
@@ -143,7 +144,8 @@ instance IsTree Exp where
        (ProgMod a b)     -> ([a,b], \[a,b] -> ProgMod a b)
        (Body x exp exp') -> ([x, exp, exp'], \[x, exp, exp'] -> Body x exp exp')
        (PModule x (Just e)) -> ([e],\[e] -> PModule x (Just e))
-       (Paren l g r)  -> (l:g ++ [r], \(l:gr) -> Paren l (init gr) (last gr)) -- TODO: improve
+       (Paren l g r)  -> -- TODO: improve
+         (l:g ++ [r], \(l:gr) -> Paren l (init gr) (last gr))
        (RHS l g)      -> ([l,g],\[l,g] -> (RHS l g))
        (Block s)      -> (s,Block)
        (PLet l s i)   -> ([l,s,i],\[l,s,i] -> PLet l s i)
@@ -391,7 +393,8 @@ pImport = PImport  <$> pAtom [Reserved Import]
 
 -- | Parse simple type synonyms
 pType :: Parser TT (Exp TT)
-pType = PType <$> (Bin <$> pAtom [Reserved Type] <*> pOpt (pAtom [Reserved Instance]))
+pType = PType <$> (Bin <$> pAtom [Reserved Type]
+                   <*> pOpt (pAtom [Reserved Instance]))
      <*> (TC . Expr <$> pTypeExpr')
      <*> ppAtom [ReservedOp Equal]
      <*> (TC . Expr <$> pTypeExpr')
@@ -479,11 +482,14 @@ pLet = PLet <$> pAtom [Reserved Let]
 -- | Parse a Do block
 pDo :: Parser TT (Exp TT)
 pDo = Bin <$> pAtom [Reserved Do]
-          <*> pBlock (pExpr ((Special ';' : recognizedSometimes) \\ [ReservedOp LeftArrow]))
+          <*> pBlock (pExpr ((Special ';' : recognizedSometimes)
+                             \\ [ReservedOp LeftArrow]))
 
 -- | Parse part of a lambda binding.
 pLambda :: Parser TT (Exp TT)
-pLambda = Bin <$> pAtom [ReservedOp BackSlash] <*> (Bin <$> (Expr <$> pPattern) <*> please (pBareAtom [ReservedOp RightArrow]))
+pLambda = Bin <$> pAtom [ReservedOp BackSlash]
+          <*> (Bin <$> (Expr <$> pPattern)
+               <*> please (pBareAtom [ReservedOp RightArrow]))
 
 -- | Parse an Of block
 pOf :: Parser TT (Exp TT)
@@ -508,29 +514,39 @@ pGuard :: Token -> Parser TT (Exp TT)
 pGuard equalSign = PGuard
      <$> some (PGuard' <$> pCAtom [ReservedOp Pipe] pEmpty <*>
                -- comments are by default parsed after this
-               pExpr (recognizedSometimes \\ [ReservedOp LeftArrow, Special ',']) -- those two symbols can appear in guards.
+               pExpr (recognizedSometimes
+                      -- these two symbols can appear in guards.
+                      \\ [ReservedOp LeftArrow, Special ','])
                <*> please (pEq equalSign))
                -- this must be -> if used in case
 
 -- | Right-hand-side of a function or case equation (after the pattern)
 pFunRHS :: Token -> Parser TT (Exp TT)
-pFunRHS equalSign = Bin <$> (pGuard equalSign <|> pEq equalSign) <*> pOpt (pWhere pFunDecl)
+pFunRHS equalSign =
+  Bin <$> (pGuard equalSign <|> pEq equalSign) <*> pOpt (pWhere pFunDecl)
 
 pWhere :: Parser TT (Exp TT) -> Parser TT (Exp TT)
-pWhere p = PWhere <$> pAtom [Reserved Where] <*> please (pBlock p) <*> pMany pErr
+pWhere p =
+  PWhere <$> pAtom [Reserved Where] <*> please (pBlock p) <*> pMany pErr
 -- After a where there might "misaligned" code that do not "belong" to anything.
 -- Here we swallow it as errors.
 
 -- Note that this can both parse an equation and a type declaration.
 -- Since they can start with the same token, the left part is factored here.
 pDecl :: Bool -> Bool -> Parser TT (Exp TT)
-pDecl acceptType acceptEqu = Expr <$> ((Yuck $ Enter "missing end of type or equation declaration" $ pure [])
-             <|> ((:) <$> pElem False recognizedSometimes <*> pToList (pDecl acceptType acceptEqu))
-             <|> ((:) <$> pBareAtom [Special ','] <*> pToList (pDecl acceptType False))
-                 -- if a comma is found, then the rest must be a type declaration.
-             <|> (if acceptType then pTypeEnding else empty)
-             <|> (if acceptEqu  then pEquEnding else empty))
-    where pTypeEnding = (:) <$> (TS <$> exact [ReservedOp DoubleColon] <*> pTypeExpr') <*> pure []
+pDecl acceptType acceptEqu =
+  Expr <$> ((Yuck $
+               Enter "missing end of type or equation declaration" $ pure [])
+            <|> ((:) <$> pElem False recognizedSometimes
+                 <*> pToList (pDecl acceptType acceptEqu))
+            <|> ((:) <$> pBareAtom [Special ',']
+                 <*> pToList (pDecl acceptType False))
+                 -- if a comma is found, then the rest must be a type
+                 -- declaration.
+            <|> (if acceptType then pTypeEnding else empty)
+            <|> (if acceptEqu  then pEquEnding else empty))
+    where pTypeEnding = (:) <$> (TS <$> exact [ReservedOp DoubleColon]
+                                 <*> pTypeExpr') <*> pure []
           pEquEnding =  (:) <$> pFunRHS (ReservedOp Equal) <*> pure []
 
 pFunDecl = pDecl True True
@@ -599,10 +615,13 @@ pExpr at = Expr <$> pExprOrPattern True at
 
 -- | Parse an expression, as a concatenation of elements.
 pExprOrPattern :: Bool -> [Token] -> Parser TT [Exp TT]
-pExprOrPattern isExpresssion at = pure []
-       <|> ((:) <$> pElem isExpresssion at          <*> pExprOrPattern True at)
-       <|> ((:) <$> (TS <$> exact [ReservedOp DoubleColon] <*> pTypeExpr') <*> pure [])
-     -- TODO: not really correct: in (x :: X , y :: Z), all after the first :: will be a "type".
+pExprOrPattern isExpresssion at =
+  pure []
+  <|> ((:) <$> pElem isExpresssion at          <*> pExprOrPattern True at)
+  <|> ((:) <$> (TS <$> exact [ReservedOp DoubleColon] <*> pTypeExpr')
+       <*> pure [])
+     -- TODO: not really correct: in (x :: X , y :: Z), all after the
+     -- first :: will be a "type".
 
 pPattern = pExprOrPattern False recognizedSometimes
 
@@ -611,11 +630,21 @@ pExprElem = pElem True
 -- | Parse an "element" of an expression or a pattern.
 -- "at" is a list of symbols that, if found, should be considered errors.
 pElem :: Bool -> [Token] -> Parser TT (Exp TT)
-pElem isExpresssion at
-    = pCParen (pExprOrPattern isExpresssion (recognizedSometimes \\ [Special ','])) pEmpty -- might be a tuple, so accept commas as noise
-  <|> pCBrack (pExprOrPattern isExpresssion (recognizedSometimes \\ [ReservedOp DoubleDot, ReservedOp Pipe, ReservedOp LeftArrow, Special ','])) pEmpty -- list thing
-  <|> pCBrace (many $ pElem isExpresssion (recognizedSometimes \\ [ReservedOp Equal, Special ',', ReservedOp Pipe])) pEmpty -- record: TODO: improve
-  <|> (Yuck $ Enter "incorrectly placed block" $ pBlockOf (pExpr recognizedSometimes)) -- no error token, but the previous keyword will be one. (of, where, ...)
+pElem isExpresssion at =
+  pCParen (pExprOrPattern isExpresssion
+           -- might be a tuple, so accept commas as noise
+           (recognizedSometimes \\ [Special ','])) pEmpty
+  <|> pCBrack (pExprOrPattern isExpresssion
+               (recognizedSometimes \\ [ ReservedOp DoubleDot, ReservedOp Pipe
+                                       , ReservedOp LeftArrow
+                                       , Special ','])) pEmpty -- list thing
+  <|> pCBrace (many $ pElem isExpresssion
+               -- record: TODO: improve
+               (recognizedSometimes \\ [ ReservedOp Equal, Special ','
+                                       , ReservedOp Pipe])) pEmpty
+  <|> (Yuck $ Enter "incorrectly placed block" $
+        -- no error token, but the previous keyword will be one. (of, where, ...)
+         pBlockOf (pExpr recognizedSometimes))
   <|> (PError <$> recoverWith
        (sym $ flip elem $ isNoiseErr at) <*> errTok <*> pEmpty)
   <|> (PAtom <$> sym (`notElem` isNotNoise at) <*> pEmpty)
@@ -628,12 +657,15 @@ pTypeExpr' = pTypeExpr (recognizedSometimes \\ [ReservedOp RightArrow,
 
 pTypeElem :: [Token] -> Parser TT (Exp TT)
 pTypeElem at
-    = pCParen (pTypeExpr (recognizedSometimes \\ [ReservedOp RightArrow,
-                                                  ReservedOp DoubleRightArrow,
-                                                  Special ','])) pEmpty -- might be a tuple, so accept commas as noise
+    = pCParen (pTypeExpr (recognizedSometimes
+                          \\ [ ReservedOp RightArrow,
+                              ReservedOp DoubleRightArrow,
+                              -- might be a tuple, so accept commas as noise
+                              Special ','])) pEmpty
   <|> pCBrack pTypeExpr' pEmpty
   <|> pCBrace pTypeExpr' pEmpty -- TODO: this is an error: mark as such.
-  <|> (Yuck $ Enter "incorrectly placed block" $ pBlockOf (pExpr recognizedSometimes))
+  <|> (Yuck $ Enter "incorrectly placed block" $
+         pBlockOf (pExpr recognizedSometimes))
   <|> (PError <$> recoverWith
        (sym $ flip elem $ isNoiseErr at) <*> errTok <*> pEmpty)
   <|> (PAtom <$> sym (`notElem` isNotNoise at) <*> pEmpty)
@@ -644,7 +676,8 @@ isNoiseErr r = recoverableSymbols ++ r
 
 recoverableSymbols = recognizedSymbols \\ fmap Special "([{<>."
 -- We just don't recover opening symbols (only closing are "fixed").
--- Layout symbols "<>." are never recovered, because layout is constructed correctly.
+-- Layout symbols "<>." are never recovered, because layout is
+-- constructed correctly.
 
 -- | List of things that should not be parsed as noise
 isNotNoise :: [Token] -> [Token]
@@ -694,9 +727,9 @@ pBrack = flip pCBrack pComments
 pEBrace p = Paren  <$> pCAtom [Special '{'] pEmpty
         <*> p <*> (recoverAtom <|> pCAtom [Special '}'] pComments)
 
--- | Create a special error token. (e.g. fill in where there is no correct token to parse)
--- Note that the position of the token has to be correct for correct computation of
--- node spans.
+-- | Create a special error token. (e.g. fill in where there is no
+-- correct token to parse) Note that the position of the token has to
+-- be correct for correct computation of node spans.
 errTok = mkTok <$> curPos
    where curPos = tB <$> lookNext
          tB Nothing = maxBound
