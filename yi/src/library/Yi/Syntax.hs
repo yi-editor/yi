@@ -10,6 +10,9 @@
 --
 --
 
+-- Hours wasted attempting to unfuck
+-- lexing/parsing/highlighting/modes/unicode: 15
+
 -- | This module defines a common interface for syntax-awareness.
 
 module Yi.Syntax
@@ -114,5 +117,3 @@ noHighlighter = SynHL {hlStartState = (),
                        hlFocus = \_ c -> c,
                        hlGetTree = \ _ -> error "noHighlighter: tried to use syntax"
                       }
-
-
