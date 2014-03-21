@@ -15,9 +15,11 @@ import Data.Function (fix)
 -- > o1 = Proto $ \self -> O
 -- >   {
 -- >    f1 = 1,
--- >    f2 = f1 self + 1,  -- 'f1 self' refers to the overriden definition of f1.
+-- >    f2 = f1 self + 1,  -- 'f1 self' refers to the overriden definition of f1
 -- >    f3 = f1 self + 2
 -- >   }
+--
+-- Calling @'extractValue' o1@ would then produce @O {f1 = 1, f2 = 2, f3 = 3}@.
 newtype Proto a = Proto {fromProto :: a -> a}
 
 -- | Get the value of a prototype.
@@ -42,6 +44,3 @@ override (Proto base) extension = Proto (\self -> let super = base self
 -- | Field access
 (.->) :: forall t a. Proto t -> (t -> a) -> a
 p .-> f = f (extractValue p)
-
-
-
