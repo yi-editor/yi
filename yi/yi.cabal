@@ -1,5 +1,5 @@
 name:           yi
-version:        0.7.1
+version:        0.7.2
 category:       Development, Editor
 synopsis:       The Haskell-Scriptable Editor
 description:
@@ -270,7 +270,7 @@ library
   if flag(testing)
     cpp-options: -DTESTING
     build-depends:
-      QuickCheck >= 2.1.0.2,
+      QuickCheck >= 2.5 && < 2.7,
       random
 
   -- Frontends
@@ -385,7 +385,7 @@ Test-Suite test-suite
     test-framework,
     test-framework-hunit,
     HUnit,
-    QuickCheck,
+    QuickCheck >= 2.5 && < 2.7,
     filepath,
     directory,
     yi
