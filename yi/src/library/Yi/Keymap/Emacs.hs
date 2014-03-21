@@ -1,4 +1,4 @@
-{-# LANGUAGE FlexibleContexts, TypeOperators #-}
+{-# LANGUAGE FlexibleContexts, TypeOperators, TemplateHaskell #-}
 -- Copyright (c) 2005,2007,2008 Jean-Philippe Bernardy
 
 -- | This module aims at a mode that should be (mostly) intuitive to
@@ -52,24 +52,26 @@ import Data.Char
 
 import Control.Monad
 
-data ModeMap = ModeMap { eKeymap :: Keymap
-                       , completionCaseSensitive :: Bool
+data ModeMap = ModeMap { _eKeymap :: Keymap
+                       , _completionCaseSensitive :: Bool
                        }
+
+$(makeLenses ''ModeMap)
 
 keymap :: KeymapSet
 keymap = mkKeymap defKeymap
 
 mkKeymap :: Proto ModeMap -> KeymapSet
-mkKeymap = modelessKeymapSet . eKeymap . extractValue
+mkKeymap = modelessKeymapSet . _eKeymap . extractValue
 
 defKeymap :: Proto ModeMap
 defKeymap = Proto template
   where
-    template self = ModeMap { eKeymap = emacsKeymap
-                            , completionCaseSensitive = False }
+    template self = ModeMap { _eKeymap = emacsKeymap
+                            , _completionCaseSensitive = False }
       where
         emacsKeymap :: Keymap
-        emacsKeymap = selfInsertKeymap Nothing isDigit <|> completionKm (completionCaseSensitive self) <|>
+        emacsKeymap = selfInsertKeymap Nothing isDigit <|> completionKm (_completionCaseSensitive self) <|>
              do univArg <- readUniversalArg
                 selfInsertKeymap univArg (not . isDigit) <|> emacsKeys univArg
 

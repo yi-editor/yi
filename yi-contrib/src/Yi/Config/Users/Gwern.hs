@@ -3,7 +3,7 @@ module Yi.Config.Users.Gwern (config) where
 import Control.Lens
 import Yi
 import Yi.Hoogle (hoogle)
-import Yi.Keymap.Emacs (defKeymap, eKeymap, mkKeymap)
+import Yi.Keymap.Emacs (defKeymap, _eKeymap, mkKeymap)
 import qualified Yi.Mode.Haskell as H
 import qualified Yi.Mode.IReader as IReader (ireaderMode)
 
@@ -27,7 +27,7 @@ config = defaultEmacsConfig
 
 myKeymap :: KeymapSet
 myKeymap = mkKeymap $ override Yi.Keymap.Emacs.defKeymap $ \proto _self ->
-   proto { eKeymap = eKeymap proto ||>
+   proto { _eKeymap = _eKeymap proto ||>
            -- Add a M-g binding for goto-line
            (metaCh 'g' ?>>! gotoLn)
            -- Use a more clever binding for Home

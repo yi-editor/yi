@@ -106,10 +106,10 @@ fixKeymap =   choice [(ctrlCh 'd'           ?>>! (deleteB'))
 myKeymap :: KeymapSet
 myKeymap = mkKeymap $ override defKeymap $ \proto _self -> 
    proto {
-           completionCaseSensitive = True,
-           eKeymap = (adjustPriority (-1) >> choice [extraInput]) <|| (fixKeymap <|| eKeymap proto)
-                     <|> (ctrl (char '>') ?>>! increaseIndent)
-                     <|> (ctrl (char '<') ?>>! decreaseIndent)
+           _completionCaseSensitive = True,
+           _eKeymap = (adjustPriority (-1) >> choice [extraInput]) <|| (fixKeymap <|| _eKeymap proto)
+                      <|> (ctrl (char '>') ?>>! increaseIndent)
+                      <|> (ctrl (char '<') ?>>! decreaseIndent)
          }
 
 config :: Config
