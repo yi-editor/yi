@@ -10,7 +10,10 @@
 module Yi.Keymap.Emacs (keymap,
                         mkKeymap,
                         defKeymap,
-                        ModeMap(..)) where
+                        ModeMap(..),
+                        eKeymap,
+                        completionCaseSensitive
+                        ) where
 
 import Control.Applicative
 import Control.Lens
