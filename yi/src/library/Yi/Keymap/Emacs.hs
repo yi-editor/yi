@@ -210,6 +210,8 @@ emacsKeys univArg =
          , metaCh 'x'           ?>>! executeExtendedCommandE
          , metaCh 'y'           ?>>! yankPopE
          , metaCh '.'           ?>>! promptTag
+         , metaCh '{'           ?>>! repeatingArg (prevNParagraphs 1)
+         , metaCh '}'           ?>>! repeatingArg (nextNParagraphs 1)
 
          -- Other meta key-bindings
          , meta (spec KBS)      ?>>! repeatingArg bkillWordB
