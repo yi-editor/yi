@@ -275,7 +275,7 @@ library
   if flag(testing)
     cpp-options: -DTESTING
     build-depends:
-      QuickCheck >= 2.1.0.2,
+      QuickCheck >= 2.7 && < 2.8,
       random
 
   -- Frontends

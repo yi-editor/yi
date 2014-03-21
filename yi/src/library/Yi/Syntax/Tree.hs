@@ -31,6 +31,7 @@ import Data.Monoid (First(..), Last(..), getFirst, getLast)
 import Data.Foldable
 #ifdef TESTING
 import Test.QuickCheck
+import Test.QuickCheck.Property (unProperty)
 #endif
 
 import Yi.Buffer.Basic
@@ -346,24 +347,26 @@ prop_fromLeafAfterToFinal (N n) = let
      ((regionStart finalRegion <= p) && (initialRegion `includedRegion` finalRegion))
 
 prop_allLeavesAfter :: NTTT -> Property
-prop_allLeavesAfter (N n@(xs,t)) = do
+prop_allLeavesAfter (N n@(xs,t)) = property $ do
   let after = allLeavesRelative afterChild n
   (xs',t') <- elements after
   let t'' = walkDown (xs',t)
-  whenFail (do putStrLn $ "t' = " ++ show t'
-               putStrLn $ "t'' = " ++ show t''
-               putStrLn $ "xs' = " ++ show xs'
-           ) (Just t' == t'' && xs <= xs')
+  unProperty $ whenFail (do
+      putStrLn $ "t' = " ++ show t'
+      putStrLn $ "t'' = " ++ show t''
+      putStrLn $ "xs' = " ++ show xs'
+    ) (Just t' == t'' && xs <= xs')
 
 prop_allLeavesBefore :: NTTT -> Property
-prop_allLeavesBefore (N n@(xs,t)) = do
+prop_allLeavesBefore (N n@(xs,t)) = property $ do
   let after = allLeavesRelative beforeChild n
   (xs',t') <- elements after
   let t'' = walkDown (xs',t)
-  whenFail (do putStrLn $ "t' = " ++ show t'
-               putStrLn $ "t'' = " ++ show t''
-               putStrLn $ "xs' = " ++ show xs'
-           ) (Just t' == t'' && xs' <= xs)
+  unProperty $ whenFail (do
+      putStrLn $ "t' = " ++ show t'
+      putStrLn $ "t'' = " ++ show t''
+      putStrLn $ "xs' = " ++ show xs'
+    ) (Just t' == t'' && xs' <= xs)
 
 prop_fromNodeToLeafAfter :: NTTT -> Property
 prop_fromNodeToLeafAfter (N n) = forAll (pointInside (subtreeRegion $ snd n)) $ \p -> do
