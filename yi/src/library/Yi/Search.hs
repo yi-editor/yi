@@ -355,8 +355,7 @@ isearchEnd accept = do
   historyFinishGen iSearch (return lastSearched)
   assign searchDirectionA dir
   if accept
-     then do resetRegexE
-             withBuffer0 $ setSelectionMarkPointB $ regionStart p0
+     then do withBuffer0 $ setSelectionMarkPointB $ regionStart p0
              printMsg "Quit"
      else do resetRegexE
              withBuffer0 $ moveTo $ regionStart p0
@@ -408,3 +407,4 @@ qrReplaceCurrent :: Window -> BufferRef -> String -> EditorM ()
 qrReplaceCurrent win b replacement =
   withGivenBufferAndWindow0 win b $
    flip replaceRegionB replacement =<< getRawestSelectRegionB
+
