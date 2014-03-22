@@ -1,3 +1,4 @@
+{-# LANGUAGE LambdaCase #-}
 module Yi.Keymap.Vim2.SearchMotionMap
     ( defSearchMotionMap
     ) where
@@ -28,13 +29,15 @@ enterBinding = VimBindingE f
               switchModeE prevMode
 
               count <- getCountE
-              Just regex <- getRegexE
-              withBuffer0 $ if count == 1 && dir == Forward
-                            then do
-                                -- Workaround for isearchFinishE leaving cursor after match
-                                continueVimSearch (regex, Backward)
-                                continueVimSearch (regex, Forward)
-                            else replicateM_ (count - 1) $ continueVimSearch (regex, dir)
+              getRegexE >>= \case
+                Nothing -> return ()
+                Just regex -> withBuffer0 $
+                  if count == 1 && dir == Forward
+                  then do
+                    -- Workaround for isearchFinishE leaving cursor after match
+                    continueVimSearch (regex, Backward)
+                    continueVimSearch (regex, Forward)
+                  else replicateM_ (count - 1) $ continueVimSearch (regex, dir)
               case prevMode of
                   Visual _ -> return Continue
                   _ -> return Finish
