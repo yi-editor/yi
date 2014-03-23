@@ -43,7 +43,8 @@ before_install:
 
 install:
  - cabal-1.18 update
- - travis_retry cabal-1.18 install -j2 alex happy gtk2hs-buildtools
+ - travis_retry cabal-1.18 install -j2 alex happy
+ - travis_retry cabal-1.18 install -j2 gtk2hs-buildtools
 
 script:
  - cd yi
