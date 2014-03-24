@@ -12,14 +12,17 @@ module Yi.Keymap.Vim2.Utils
   , pasteInclusiveB
   , addNewLineIfNecessary
   , indentBlockRegionB
+  , addVimJumpHereE
   ) where
 
 import Control.Applicative
 import Control.Monad
-
+import Data.Char (isSpace)
 import Data.Foldable (asum)
-import Data.List (group)
+import Data.List (find, group)
+import Data.Maybe (maybe)
 import qualified Data.Rope as R
+import Safe (headDef)
 
 import Yi.Buffer hiding (Insert)
 import Yi.Editor
@@ -79,6 +82,25 @@ selectBinding input state = asum . fmap try
 matchFromBool :: Bool -> MatchResult ()
 matchFromBool b = if b then WholeMatch () else NoMatch
 
+setUnjumpMarks :: Point -> BufferM ()
+setUnjumpMarks p = do
+    solP <- solPointB p
+    lineStream <- indexedStreamB Forward solP
+    let fstNonBlank =
+            headDef solP [ p | (p, ch) <- lineStream, not (isSpace ch) || ch == '\n' ]
+    flip setMarkPointB p =<< getMarkB (Just "`")
+    flip setMarkPointB fstNonBlank =<< getMarkB (Just "'")
+
+addVimJumpAtE :: Point -> EditorM ()
+addVimJumpAtE p = do
+    withBuffer0 $ setUnjumpMarks p
+    addJumpAtE p
+
+addVimJumpHereE :: EditorM ()
+addVimJumpHereE = do
+    withBuffer0 $ setUnjumpMarks =<< pointB
+    addJumpHereE
+
 mkMotionBinding :: RepeatToken -> (VimMode -> Bool) -> VimBinding
 mkMotionBinding token condition = VimBindingE f
     where f evs state | condition (vsMode state) = fmap (go evs) (stringToMove evs)
@@ -86,8 +108,12 @@ mkMotionBinding token condition = VimBindingE f
           go evs (Move _style isJump move) = do
               state <- getDynamic
               count <- getMaybeCountE
-              when isJump addJumpHereE
-              withBuffer0 $ move count >> leftOnEol
+              prevPoint <- withBuffer0 $ do
+                  p <- pointB
+                  move count
+                  leftOnEol
+                  return p
+              when isJump $ addVimJumpAtE prevPoint
               resetCountE
 
               -- moving with j/k after $ sticks cursor to the right edge

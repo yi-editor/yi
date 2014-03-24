@@ -220,10 +220,10 @@ nonrepeatableBindings = fmap (mkBindingE Normal Drop)
         , id)
 
     -- Search
-    , (char '*', addJumpHereE >> searchWordE True Forward, resetCount)
-    , (char '#', addJumpHereE >> searchWordE True Backward, resetCount)
-    , (char 'n', addJumpHereE >> withCount (continueSearching id), resetCount)
-    , (char 'N', addJumpHereE >> withCount (continueSearching reverseDir), resetCount)
+    , (char '*', addVimJumpHereE >> searchWordE True Forward, resetCount)
+    , (char '#', addVimJumpHereE >> searchWordE True Backward, resetCount)
+    , (char 'n', addVimJumpHereE >> withCount (continueSearching id), resetCount)
+    , (char 'N', addVimJumpHereE >> withCount (continueSearching reverseDir), resetCount)
     , (char ';', repeatGotoCharE id, id)
     , (char ',', repeatGotoCharE reverseDir, id)
 
