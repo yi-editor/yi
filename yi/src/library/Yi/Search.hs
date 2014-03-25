@@ -51,7 +51,7 @@ module Yi.Search (
 
 import Control.Applicative
 import Control.Monad
-import Control.Lens hiding (moveTo, re, from, to)
+import Control.Lens hiding (re, from, to)
 import Data.Char
 import Data.Maybe
 import Data.Default

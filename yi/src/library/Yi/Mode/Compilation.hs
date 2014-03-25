@@ -2,13 +2,13 @@
 module Yi.Mode.Compilation where
 
 import Control.Monad
-import Control.Lens hiding (moveTo)
+import Control.Lens
 import Yi.Core
 import Yi.File (editFile)
 import Yi.Lexer.Alex (Tok(..), Posn(..))
 import Yi.Style
 import Yi.Modes (linearSyntaxMode)
-import qualified Yi.Lexer.Compilation         as Compilation
+import qualified Yi.Lexer.Compilation as Compilation
 import qualified Yi.Syntax.OnlineTree as OnlineTree
 
 mode :: Mode (OnlineTree.Tree (Tok Compilation.Token))

@@ -5,7 +5,7 @@ import Control.Monad.RWS.Strict (ask)
 import Control.Monad.State hiding (forM, forM_, sequence_)
 import Control.Applicative
 import Control.Monad
-import Control.Lens hiding (moveTo, (-~), (+~), re, transform)
+import Control.Lens hiding ((-~), (+~), re, transform)
 
 import Data.Char
 import Data.List (isPrefixOf, sort, intersperse)

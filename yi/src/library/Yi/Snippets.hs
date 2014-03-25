@@ -8,7 +8,7 @@ import Control.Arrow
 import Control.Applicative
 import Control.Monad
 import Control.Monad.RWS hiding (mapM, mapM_, sequence, get, put)
-import Control.Lens hiding (Action, moveTo)
+import Control.Lens hiding (Action)
 import Data.Binary
 import Data.Typeable
 import Data.Foldable (find)

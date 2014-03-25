@@ -36,7 +36,7 @@ import Control.Exception (catch)
 import Control.Monad        hiding (mapM_, forM_)
 import Control.Monad.Reader hiding (mapM_, forM_)
 import Control.Applicative
-import Control.Lens hiding (moveTo, views, Action)
+import Control.Lens hiding (views, Action)
 import Data.Foldable
 import Data.Maybe (maybe, fromJust, fromMaybe)
 import Data.IORef

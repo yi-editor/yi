@@ -4,7 +4,7 @@ module Yi.Keymap.Vim2.NormalMap
 
 import Control.Monad
 import Control.Applicative
-import Control.Lens hiding (moveTo, re)
+import Control.Lens hiding (re)
 
 import Data.Char
 import Data.List (group)

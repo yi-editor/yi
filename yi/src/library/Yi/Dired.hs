@@ -28,7 +28,7 @@ module Yi.Dired
 
 import qualified Codec.Binary.UTF8.String as UTF8
 import Control.Monad.Reader hiding (mapM)
-import Control.Lens hiding (moveTo,act,op,pre)
+import Control.Lens hiding (act, op, pre)
 import Data.Binary
 import Data.List hiding (find, maximum, concat)
 import Data.Char (toLower)

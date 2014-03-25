@@ -13,7 +13,7 @@ import Control.Monad.State hiding (get, put, mapM, forM_)
 import Control.Monad.Reader hiding (mapM, forM_ )
 import Control.Applicative
 import Control.Monad
-import Control.Lens hiding (moveTo)
+import Control.Lens
 import Data.Binary
 import Data.DeriveTH
 import Data.Either (rights)
