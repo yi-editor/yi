@@ -59,7 +59,7 @@ import System.Posix (fileExist)
 import System.FilePath (takeFileName)
 import System.Directory (getCurrentDirectory, setCurrentDirectory)
 
-import Control.Lens hiding (moveTo, Action, (-~), (+~), op, act)
+import Control.Lens hiding (Action, (-~), (+~), op, act)
 import Control.Applicative
 import Control.Monad.State hiding (mapM_, mapM, sequence)
 import Control.Arrow hiding (left, right)

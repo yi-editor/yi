@@ -7,7 +7,7 @@ where
 
 import Control.Applicative
 import Control.Monad
-import Control.Lens hiding (moveTo)
+import Control.Lens
 import Data.Char (isSpace)
 import Data.Binary
 import Data.Maybe (isJust)

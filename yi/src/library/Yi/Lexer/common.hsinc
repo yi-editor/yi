@@ -6,6 +6,14 @@
 
 #define IBOX(n) (I# (n))
 
+#if __GLASGOW_HASKELL__ > 706
+#define GEQ(x, y) (tagToEnum# (x >=# y))
+#define EQ(x, y) (tagToEnum# (x ==# y))
+#else
+#define GEQ(x, y) (x >=# y)
+#define EQ(x, y) (x ==# y)
+#endif
+
 -- | Scan one token. Return (maybe) a token and a new state.
 alexScanToken :: (AlexState HlState, AlexInput) -> Maybe (Tok Token, (AlexState HlState, AlexInput))
 alexScanToken (AlexState state lookedOfs pos, inp@(_prevCh,str)) =
@@ -55,11 +63,11 @@ alex_scan_tkn' user orig_input len input s last_acc =
      Nothing -> (new_acc, input, IBOX(len))
      Just (c, new_input) ->
       let base       = alexIndexInt32OffAddr alex_base s
-          (I# ord_c) = ord c
+          ord_c = case ord c of (I# x) -> x
           offset     = (base +# ord_c)
           check      = alexIndexInt16OffAddr alex_check offset
 
-          new_s      = if (offset >=# 0#) && (check ==# ord_c)
+          new_s      = if GEQ(offset, 0#) && EQ(check, ord_c)
                        then alexIndexInt16OffAddr alex_table offset
                        else alexIndexInt16OffAddr alex_deflt s
           new_len    = len +# 1#

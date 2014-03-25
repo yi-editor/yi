@@ -17,7 +17,7 @@ import Control.Exception (catch, SomeException)
 import Control.Concurrent
 import Control.Monad hiding (forM_, mapM_, forM, mapM)
 import Control.Applicative
-import Control.Lens hiding (moveTo, set, Action, from)
+import Control.Lens hiding (set, Action, from)
 import Data.Prototype
 import Data.IORef
 import Data.List (intercalate)

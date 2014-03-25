@@ -44,7 +44,7 @@ module Yi.Buffer.Normal (TextUnit(Character, Line, VLine, Document, GenUnit),
                          , regionStyleA
                          ) where
 
-import Control.Lens hiding (moveTo)
+import Control.Lens
 import Data.Binary
 import Data.DeriveTH
 import Data.Default

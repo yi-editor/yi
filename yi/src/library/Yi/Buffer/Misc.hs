@@ -9,6 +9,7 @@
   StandaloneDeriving,
   ExistentialQuantification,
   Rank2Types,
+  ImpredicativeTypes,
   TypeSynonymInstances,
   FlexibleContexts #-}
 
@@ -180,7 +181,7 @@ import Yi.Dynamic
 import Yi.Window
 import Control.Monad.RWS.Strict hiding (mapM_, mapM, get, put, forM_, forM)
 import Control.Applicative
-import Control.Lens hiding (moveTo, (+~), Action, reversed, at, act)
+import Control.Lens hiding ((+~), Action, reversed, at, act)
 import Data.Binary
 import Data.Default
 import Data.DeriveTH
