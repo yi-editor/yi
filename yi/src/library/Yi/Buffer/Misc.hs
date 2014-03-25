@@ -327,7 +327,7 @@ instance Binary SelectionStyle where
   put (SelectionStyle h r) = put h >> put r
   get = SelectionStyle <$> get <*> get
 
--- | udpate the syntax information (clear the dirty "flag")
+-- | update the syntax information (clear the dirty "flag")
 clearSyntax :: FBuffer -> FBuffer
 clearSyntax = modifyRawbuf updateSyntax
 
@@ -1017,7 +1017,7 @@ movingToPrefCol f = do
 
 moveToColB :: Int -> BufferM ()
 moveToColB targetCol = do
-  solPnt <- solPointB
+  solPnt <- solPointB =<< pointB
   chrs <- nelemsB maxBound solPnt -- get all chars in the buffer, lazily.
   let cols = scanl colMove 0 chrs    -- columns corresponding to the char
       toSkip = takeWhile (\(char,col) -> char /= '\n' && col < targetCol) (zip chrs cols)
@@ -1130,10 +1130,9 @@ colMove :: Int -> Char -> Int
 colMove col '\t' = (col + 7) `mod` 8
 colMove col _    = col + 1
 
-solPointB :: BufferM Point
-solPointB = do
-  p <- pointB
-  queryBuffer $ solPoint' p
+-- | Returns start of line point for a given point @p@
+solPointB :: Point -> BufferM Point
+solPointB p = queryBuffer $ solPoint' p
 
 -- | Go to line indexed from current point
 -- Returns the actual moved difference which of course

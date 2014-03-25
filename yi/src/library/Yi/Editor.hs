@@ -730,10 +730,12 @@ instance Default TempBufferNameHint where
 instance YiVariable TempBufferNameHint
 
 addJumpHereE :: EditorM ()
-addJumpHereE = do
+addJumpHereE = addJumpAtE =<< withBuffer0 pointB
+
+addJumpAtE :: Point -> EditorM ()
+addJumpAtE point = do
     w <- use currentWindowA
     let jl = jumpList w
-    curPoint <- withBuffer0 pointB
     shouldAddJump <- case jl of
         Just (PL.PointedList _ (Jump mark bf) _) -> do
             bfStillAlive <- gets (M.lookup bf . buffers)
@@ -741,7 +743,7 @@ addJumpHereE = do
                 Nothing -> return False
                 _ -> do
                     p <- withGivenBuffer0 bf $ getMarkPointB mark
-                    return $! (p, bf) /= (curPoint, bufkey w)
+                    return $! (p, bf) /= (point, bufkey w)
         _ -> return True
     when shouldAddJump $ do
         m <- withBuffer0 setMarkHereB
