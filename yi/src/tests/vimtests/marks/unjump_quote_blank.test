@@ -1,0 +1,14 @@
+-- Input
+(1,1)
+    Lorem ipsum dolor sit amet
+                
+    Lorem ipsum dolor sit amet
+    Lorem ipsum dolor sit amet
+-- Output
+(2,16)
+    Lorem ipsum dolor sit amet
+                
+    Lorem ipsum dolor sit amet
+    Lorem ipsum dolor sit amet
+-- Events
+wwjG''
