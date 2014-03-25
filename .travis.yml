@@ -1,7 +1,6 @@
 matrix:
   allow_failures:
     - env: GHCVER=head
-    - env: GHCVER=7.8.1
     - env: HPVER=2012.4.0.0
     - env: HPVER=2013.2.0.0
 
@@ -49,7 +48,7 @@ install:
 script:
  - cd yi
  - travis_retry cabal-1.18 install -j2 -fpango --enable-tests -ftesting --only-dependencies
- - cabal-1.18 install -fpango --enable-tests -ftesting
+ - cabal-1.18 install -fpango --enable-tests -ftesting || cat /home/travis/.cabal/logs/yi-*
  - cd ../yi/example-configs
  - for config in yi-*.hs;
    do

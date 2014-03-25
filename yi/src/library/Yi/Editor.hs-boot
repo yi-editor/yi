@@ -4,12 +4,13 @@
 
 module Yi.Editor where
 
+import Control.Monad.Reader hiding (mapM, forM_ )
 import Control.Monad.State hiding (mapM_)
 import {-# SOURCE #-} Yi.Config
 import Yi.Monad (getsAndModify)
 
 data Editor
-data EditorM a
+newtype EditorM a = EditorM {fromEditorM :: ReaderT Config (State Editor) a}
 
 runEditor :: Config -> EditorM a -> Editor -> (Editor, a)
 

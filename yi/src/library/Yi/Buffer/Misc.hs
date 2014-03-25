@@ -9,6 +9,7 @@
   StandaloneDeriving,
   ExistentialQuantification,
   Rank2Types,
+  ImpredicativeTypes,
   TypeSynonymInstances,
   FlexibleContexts #-}
 
