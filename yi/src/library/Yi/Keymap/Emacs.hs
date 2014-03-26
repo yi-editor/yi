@@ -42,7 +42,6 @@ import Yi.Keymap.Emacs.Utils
   , readUniversalArg
   , scrollDownE
   , scrollUpE
-  , cabalConfigureE
   , switchBufferE
   , askSaveEditor
   , argToInt
@@ -187,7 +186,6 @@ emacsKeys univArg =
          , metaCh ' '           ?>>! justOneSep
          , metaCh 'v'           ?>>! scrollUpE univArg
          , metaCh '!'           ?>>! shellCommandE
-         , metaCh 'p'           ?>>! cabalConfigureE
          , metaCh '<'           ?>>! repeatingArg topB
          , metaCh '>'           ?>>! repeatingArg botB
          , metaCh '%'           ?>>! queryReplaceE
