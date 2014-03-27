@@ -85,7 +85,7 @@ editFile filename = do
               AllTextSubmatches [_,m] ->m
               _ -> ""
           Just mode = find (\(AnyMode m) -> modeName m == hmode) tbl <|>
-                      find (\(AnyMode m) -> modeApplies m f content) tbl <|>
+                      find (\(AnyMode m) -> modeApplies m f header) tbl <|>
                       Just (AnyMode emptyMode)
       case mode of
           AnyMode newMode -> withGivenBuffer b $ setMode newMode
