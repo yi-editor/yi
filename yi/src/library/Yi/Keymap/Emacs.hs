@@ -1,4 +1,4 @@
-{-# LANGUAGE FlexibleContexts, TypeOperators, TemplateHaskell #-}
+{-# LANGUAGE FlexibleContexts, TypeOperators, TemplateHaskell, UnicodeSyntax #-}
 -- Copyright (c) 2005,2007,2008 Jean-Philippe Bernardy
 
 -- | This module aims at a mode that should be (mostly) intuitive to
@@ -25,6 +25,7 @@ import Yi.File
 import Yi.MiniBuffer
 import Yi.Misc (adjBlock, adjIndent)
 import Yi.Rectangle
+import Yi.Search (isearchFinishWithE, resetRegexE)
 import Yi.TextCompletion
 import Yi.Keymap.Emacs.KillRing
 import Yi.Mode.Buffers ( listBuffers )
@@ -102,6 +103,11 @@ selectAll =  botB >> placeMark >> topB >> setVisibleSelection True
 deleteB' :: BufferM ()
 deleteB' = adjBlock (-1) >> deleteN 1
 
+-- | Wrapper around 'moveE' which also cancels incremental search. See
+-- issue #499 for details.
+moveE ∷ TextUnit → Direction → EditorM ()
+moveE u d = isearchFinishWithE resetRegexE >> withBuffer (moveB u d)
+
 emacsKeys :: Maybe Int -> Keymap
 emacsKeys univArg =
   choice [ -- First all the special key bindings
@@ -116,8 +122,8 @@ emacsKeys univArg =
          , spec KEnd            ?>>! repeatingArg moveToEol
          , spec KLeft           ?>>! repeatingArg leftB
          , spec KRight          ?>>! repeatingArg rightB
-         , spec KUp             ?>>! repeatingArg $ moveB VLine Backward
-         , spec KDown           ?>>! repeatingArg $ moveB VLine Forward
+         , spec KUp             ?>>! repeatingArg $ moveE VLine Backward
+         , spec KDown           ?>>! repeatingArg $ moveE VLine Forward
          , spec KPageDown       ?>>! repeatingArg downScreenB
          , spec KPageUp         ?>>! repeatingArg upScreenB
 
@@ -149,9 +155,9 @@ emacsKeys univArg =
          , ctrlCh 'k'           ?>>! killLineE univArg
          , ctrlCh 'l'           ?>>! (withBuffer scrollToCursorB >> userForceRefresh)
          , ctrlCh 'm'           ?>>! repeatingArg (insertB '\n')
-         , ctrlCh 'n'           ?>>! repeatingArg (moveB VLine Forward)
+         , ctrlCh 'n'           ?>>! repeatingArg (moveE VLine Forward)
          , ctrlCh 'o'           ?>>! repeatingArg (insertB '\n' >> leftB)
-         , ctrlCh 'p'           ?>>! repeatingArg (moveB VLine Backward)
+         , ctrlCh 'p'           ?>>! repeatingArg (moveE VLine Backward)
          , ctrlCh 'q'           ?>>  insertNextC univArg
          , ctrlCh 'r'           ?>>  isearchKeymap Backward
          , ctrlCh 's'           ?>>  isearchKeymap Forward
@@ -191,11 +197,11 @@ emacsKeys univArg =
          , metaCh '%'           ?>>! queryReplaceE
          , metaCh '^'           ?>>! joinLinesE univArg
          , metaCh ';'           ?>>! withModeY modeToggleCommentSelection
-         , metaCh 'a'           ?>>! repeatingArg (moveB unitSentence Backward)
+         , metaCh 'a'           ?>>! repeatingArg (moveE unitSentence Backward)
          , metaCh 'b'           ?>>! repeatingArg prevWordB
          , metaCh 'c'           ?>>! repeatingArg capitaliseWordB
          , metaCh 'd'           ?>>! repeatingArg killWordB
-         , metaCh 'e'           ?>>! repeatingArg (moveB unitSentence Forward)
+         , metaCh 'e'           ?>>! repeatingArg (moveE unitSentence Forward)
          , metaCh 'f'           ?>>! repeatingArg nextWordB
          , metaCh 'h'           ?>>! (setSelectRegionB =<< regionOfB unitParagraph)
          , metaCh 'k'           ?>>! repeatingArg (deleteB unitSentence Forward)

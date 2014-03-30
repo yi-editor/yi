@@ -1,4 +1,5 @@
 {-# LANGUAGE DeriveDataTypeable, GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE LambdaCase #-}
 
 -- Copyright (c) Tuomo Valkonen 2004.
 -- Copyright (c) 2005, 2008 Don Stewart - http://www.cse.unsw.edu.au/~dons
@@ -41,6 +42,8 @@ module Yi.Search (
         isearchDelE,
         isearchCancelE,
         isearchFinishE,
+        isearchCancelWithE,
+        isearchFinishWithE,
 
         -- * Replace
         qrNext,
@@ -338,28 +341,52 @@ isearchWordE = do
       word = takeWhile isAlpha rest
   isearchAddE (prefix ++ word)
 
+-- | Succesfully finish a search. Also see 'isearchFinishWithE'.
 isearchFinishE :: EditorM ()
 isearchFinishE = isearchEnd True
 
+-- | Cancel a search. Also see 'isearchCancelWithE'.
 isearchCancelE :: EditorM ()
 isearchCancelE = isearchEnd False
+
+-- | Wrapper over 'isearchEndWith' that passes through the action and
+-- accepts the search as successful (i.e. when the user wants to stay
+-- at the result).
+isearchFinishWithE :: EditorM a -> EditorM ()
+isearchFinishWithE act = isearchEndWith act True
+
+-- | Wrapper over 'isearchEndWith' that passes through the action and
+-- marks the search as unsuccessful (i.e. when the user wants to
+-- jump back to where the search started).
+isearchCancelWithE :: EditorM a -> EditorM ()
+isearchCancelWithE act = isearchEndWith act False
 
 iSearch :: String
 iSearch = "isearch"
 
-isearchEnd :: Bool -> EditorM ()
-isearchEnd accept = do
-  Isearch s <- getDynamic
-  let (lastSearched,_,dir) = head s
-  let (_,p0,_) = last s
-  historyFinishGen iSearch (return lastSearched)
-  assign searchDirectionA dir
-  if accept
-     then do withBuffer0 $ setSelectionMarkPointB $ regionStart p0
-             printMsg "Quit"
-     else do resetRegexE
-             withBuffer0 $ moveTo $ regionStart p0
+-- | Editor action describing how to end finish incremental search.
+-- The @act@ parameter allows us to specify an extra action to run
+-- before finishing up the search. For Vim, we don't want to do
+-- anything so we use 'isearchEnd' which just does nothing. For emacs,
+-- we want to cancel highlighting and stay where we are.
+isearchEndWith :: EditorM a -> Bool -> EditorM ()
+isearchEndWith act accept = getDynamic >>= \case
+  Isearch [] -> return ()
+  Isearch s -> do
+    let (lastSearched,_,dir) = head s
+    let (_,p0,_) = last s
+    historyFinishGen iSearch (return lastSearched)
+    assign searchDirectionA dir
+    if accept
+       then do act
+               withBuffer0 $ setSelectionMarkPointB $ regionStart p0
+               printMsg "Quit"
+       else do resetRegexE
+               withBuffer0 $ moveTo $ regionStart p0
 
+-- | Specialised 'isearchEndWith' to do nothing as the action.
+isearchEnd :: Bool -> EditorM ()
+isearchEnd = isearchEndWith (return ())
 
 -----------------
 -- Query-Replace
@@ -407,4 +434,3 @@ qrReplaceCurrent :: Window -> BufferRef -> String -> EditorM ()
 qrReplaceCurrent win b replacement =
   withGivenBufferAndWindow0 win b $
    flip replaceRegionB replacement =<< getRawestSelectRegionB
-

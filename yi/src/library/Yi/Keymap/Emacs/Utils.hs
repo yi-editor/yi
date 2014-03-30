@@ -178,7 +178,8 @@ isearchKeymap dir =
   do write $ isearchInitE dir
      void $ many searchKeymap
      choice [ ctrl (char 'g') ?>>! isearchCancelE
-            , oneOf [ctrl (char 'm'), spec KEnter] >>! isearchFinishE
+            , oneOf [ctrl (char 'm'), spec KEnter]
+              >>! isearchFinishWithE resetRegexE
             ]
        <|| write isearchFinishE
 
