@@ -31,6 +31,7 @@ import qualified Language.Haskell.Interpreter as LHI
 import System.Directory(doesFileExist)
 import qualified Data.HashMap.Strict as M
 
+import {-# source #-} Yi.Boot (reload)
 import Yi.Config.Simple.Types
 import Yi.Core
 import Yi.File
@@ -91,6 +92,7 @@ exists, it is imported unqualified.
 ghciEvaluator :: Evaluator
 ghciEvaluator = Evaluator{..} where
     execEditorActionImpl :: String -> YiM ()
+    execEditorActionImpl "reload" = reload
     execEditorActionImpl s = do
        contextFile <- Yi.Paths.getEvaluatorContextFilename
        haveUserContext <- io $ doesFileExist contextFile
