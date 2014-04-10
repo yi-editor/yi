@@ -96,8 +96,7 @@ module Yi.Buffer.Misc
   , savingPrefCol
   , forgetPreferCol
   , movingToPrefCol
-  , getPrefCol
-  , setPrefCol
+  , preferColA
   , markSavedB
   , addOverlayB
   , delOverlayB
@@ -345,12 +344,6 @@ file :: FBuffer -> Maybe FilePath
 file b = case b ^. identA of
     Right f -> Just f
     _ -> Nothing
-
-setPrefCol :: Maybe Int -> BufferM ()
-setPrefCol = assign preferColA
-
-getPrefCol :: BufferM (Maybe Int)
-getPrefCol = use preferColA
 
 highlightSelectionA :: Lens' FBuffer Bool
 highlightSelectionA = selectionStyleA .
@@ -964,11 +957,11 @@ lineMoveRel = movingToPrefCol . gotoLnFrom
 
 movingToPrefCol :: BufferM a -> BufferM a
 movingToPrefCol f = do
-  prefCol <- getPrefCol
+  prefCol <- use preferColA
   targetCol <- maybe curCol return prefCol
   r <- f
   moveToColB targetCol
-  setPrefCol $ Just targetCol
+  preferColA .= Just targetCol
   return r
 
 moveToColB :: Int -> BufferM ()
@@ -986,13 +979,13 @@ pointOfLineColB :: Int -> Int -> BufferM Point
 pointOfLineColB line col = savingPointB $ moveToLineColB line col >> pointB
 
 forgetPreferCol :: BufferM ()
-forgetPreferCol = setPrefCol Nothing
+forgetPreferCol = preferColA .= Nothing
 
 savingPrefCol :: BufferM a -> BufferM a
 savingPrefCol f = do
-  pc <- getPrefCol
+  pc <- use preferColA
   result <- f
-  setPrefCol pc
+  preferColA .= pc
   return result
 
 -- | Move point up one line
