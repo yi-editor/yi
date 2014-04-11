@@ -1,4 +1,4 @@
-{-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE TemplateHaskell, CPP, StandaloneDeriving, DeriveGeneric #-}
 
 -- Copyright (c) 2005,8 Jean-Philippe Bernardy
 module Yi.KillRing (Killring
@@ -12,7 +12,11 @@ module Yi.KillRing (Killring
     where
 
 import Data.Binary
+#if __GLASGOW_HASKELL__ < 708
 import Data.DeriveTH
+#else
+import GHC.Generics (Generic)
+#endif
 import Yi.Buffer.Basic
 
 data Killring = Killring { krKilled :: Bool
@@ -22,7 +26,12 @@ data Killring = Killring { krKilled :: Bool
                          }
     deriving (Show)
 
+#if __GLASGOW_HASKELL__ < 708
 $(derive makeBinary ''Killring)
+#else
+deriving instance Generic Killring
+instance Binary Killring
+#endif
 
 maxDepth :: Int
 maxDepth = 10

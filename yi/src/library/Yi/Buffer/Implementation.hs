@@ -1,4 +1,14 @@
-{-# LANGUAGE PatternGuards, ExistentialQuantification, DeriveDataTypeable, Rank2Types, FlexibleContexts, FlexibleInstances, TemplateHaskell #-}
+{-# LANGUAGE
+  PatternGuards,
+  ExistentialQuantification,
+  DeriveDataTypeable,
+  Rank2Types,
+  FlexibleContexts,
+  FlexibleInstances,
+  TemplateHaskell,
+  CPP,
+  StandaloneDeriving,
+  DeriveGeneric #-}
 -- Copyright (c) 2004-5 Don Stewart - http://www.cse.unsw.edu.au/~dons
 -- Copyright (c) 2007-8 JP Bernardy
 
@@ -48,7 +58,11 @@ where
 import Control.Applicative
 import Data.Array
 import Data.Binary
+#if __GLASGOW_HASKELL__ < 708
 import Data.DeriveTH
+#else
+import GHC.Generics (Generic)
+#endif
 import Data.List (groupBy)
 import Data.Maybe
 import Data.Monoid
@@ -68,7 +82,12 @@ import qualified Data.Set as Set
 data MarkValue = MarkValue {markPoint :: !Point, markGravity :: !Direction}
                deriving (Ord, Eq, Show, Typeable)
 
+#if __GLASGOW_HASKELL__ < 708
 $(derive makeBinary ''MarkValue)
+#else
+deriving instance Generic MarkValue
+instance Binary MarkValue
+#endif
 
 type Marks = M.Map Mark MarkValue
 
@@ -128,7 +147,13 @@ data Update = Insert {updatePoint :: !Point, updateDirection :: !Direction, inse
               -- the data with the buffer. If it's an "Insert" we have to keep the data any way.
 
               deriving (Show, Typeable)
+
+#if __GLASGOW_HASKELL__ < 708
 $(derive makeBinary ''Update)
+#else
+deriving instance Generic Update
+instance Binary Update
+#endif
 
 updateIsDelete :: Update -> Bool
 updateIsDelete Delete {} = True
@@ -143,8 +168,12 @@ updateSize = Size . fromIntegral . F.length . updateString
 
 data UIUpdate = TextUpdate !Update
               | StyleUpdate !Point !Size
+#if __GLASGOW_HASKELL__ < 708
 $(derive makeBinary ''UIUpdate)
-
+#else
+deriving instance Generic UIUpdate
+instance Binary UIUpdate
+#endif
 
 --------------------------------------------------
 -- Low-level primitives.

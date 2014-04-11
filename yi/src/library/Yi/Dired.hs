@@ -1,4 +1,9 @@
-{-# LANGUAGE DeriveDataTypeable, TemplateHaskell #-}
+{-# LANGUAGE
+  DeriveDataTypeable,
+  TemplateHaskell,
+  CPP,
+  StandaloneDeriving,
+  DeriveGeneric #-}
 
 -- Copyright (c) 2007, 2008, 2009 Ben Moseley, Wen Pu
 
@@ -32,7 +37,11 @@ import Control.Lens hiding (act, op, pre)
 import Data.Binary
 import Data.List hiding (find, maximum, concat)
 import Data.Char (toLower)
+#if __GLASGOW_HASKELL__ < 708
 import Data.DeriveTH
+#else
+import GHC.Generics (Generic)
+#endif
 import Data.Default
 import Data.Typeable
 import Data.Maybe
@@ -90,7 +99,13 @@ data DiredState = DiredState
   deriving (Show, Eq, Typeable)
 
 makeLensesWithSuffix "A" ''DiredState
+
+#if __GLASGOW_HASKELL__ < 708
 $(derive makeBinary ''DiredState)
+#else
+deriving instance Generic DiredState
+instance Binary DiredState
+#endif
 
 instance Default DiredState where
     def = DiredState { diredPath        = ""
@@ -103,7 +118,15 @@ instance Default DiredState where
 
 instance YiVariable DiredState
 
-$(derives [makeBinary] [''DiredEntry, ''DiredFileInfo])
+#if __GLASGOW_HASKELL__ < 708
+$(derive makeBinary ''DiredEntry)
+$(derive makeBinary ''DiredFileInfo)
+#else
+deriving instance Generic DiredEntry
+deriving instance Generic DiredFileInfo
+instance Binary DiredEntry
+instance Binary DiredFileInfo
+#endif
 
 bypassReadOnly :: BufferM a -> BufferM a
 bypassReadOnly f = do ro <- use readOnlyA
@@ -817,6 +840,11 @@ data DiredOpState = DiredOpState
 instance Default DiredOpState where
     def = DiredOpState {diredOpSucCnt = 0, diredOpForAll = False}
 
+#if __GLASGOW_HASKELL__ < 708
 $(derive makeBinary ''DiredOpState)
+#else
+deriving instance Generic DiredOpState
+instance Binary DiredOpState
+#endif
 
 instance YiVariable DiredOpState

@@ -1,11 +1,24 @@
-{-# LANGUAGE StandaloneDeriving, DeriveDataTypeable, ScopedTypeVariables, ExistentialQuantification, GeneralizedNewtypeDeriving, MultiParamTypeClasses, TemplateHaskell #-}
+{-# LANGUAGE
+  StandaloneDeriving,
+  DeriveDataTypeable,
+  ScopedTypeVariables,
+  ExistentialQuantification,
+  GeneralizedNewtypeDeriving,
+  MultiParamTypeClasses,
+  TemplateHaskell,
+  DeriveGeneric,
+  CPP #-}
 -- Copyright 2008 JP Bernardy
 -- | Basic types useful everywhere we play with buffers.
 module Yi.Buffer.Basic where
 import Data.Binary
 import Data.Typeable
 import qualified Data.Rope as R
+#if __GLASGOW_HASKELL__ < 708
 import Data.DeriveTH
+#else
+import GHC.Generics (Generic)
+#endif
 import Data.Ix
 import Data.Default
 import Yi.Utils
@@ -15,7 +28,12 @@ data Direction = Backward
                | Forward
                  deriving (Eq,Ord,Typeable,Show,Bounded,Enum)
 
+#if __GLASGOW_HASKELL__ < 708
 $(derive makeBinary ''Direction)
+#else
+deriving instance Generic Direction
+instance Binary Direction
+#endif
 
 reverseDir :: Direction -> Direction
 reverseDir Forward = Backward

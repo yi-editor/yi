@@ -220,6 +220,8 @@ library
     Yi.Window
     Yi.Char.Unicode
 
+  if impl(ghc < 7.8)
+    build-depends: derive >=2.4 && <2.7
   build-depends:
     Cabal >= 1.10 && < 1.20,
     Diff >=0.1 && <0.4,
@@ -229,7 +231,6 @@ library
     bytestring >= 0.9.1 && < 0.11,
     cautious-file >= 1.0.1,
     concrete-typerep >= 0.1.0.2 && < 0.1.1,
-    derive >=2.4 && <2.7,
     data-default,
     lens >= 4.0,
     dlist >=0.4.1,

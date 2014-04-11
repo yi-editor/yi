@@ -11,7 +11,9 @@
   Rank2Types,
   ImpredicativeTypes,
   TypeSynonymInstances,
-  FlexibleContexts #-}
+  FlexibleContexts,
+  StandaloneDeriving,
+  DeriveGeneric #-}
 
 -- Copyright (C) 2004, 2007 Don Stewart - http://www.cse.unsw.edu.au/~dons
 -- Copyright (C) 2007, 2008 JP Bernardy
@@ -183,7 +185,11 @@ import Control.Applicative
 import Control.Lens hiding ((+~), Action, reversed, at, act)
 import Data.Binary
 import Data.Default
+#if __GLASGOW_HASKELL__ < 708
 import Data.DeriveTH
+#else
+import GHC.Generics (Generic)
+#endif
 import Data.Foldable
 import Data.Traversable
 import Data.Typeable
@@ -229,8 +235,12 @@ type WinMarks = MarkSet Mark
 
 data MarkSet a = MarkSet { fromMark, insMark, selMark :: !a } deriving (Traversable, Foldable, Functor)
 
+#if __GLASGOW_HASKELL__ < 708
 $(derive makeBinary ''MarkSet)
-
+#else
+deriving instance Generic (MarkSet a)
+instance Binary a => Binary (MarkSet a)
+#endif
 
 data SelectionStyle = SelectionStyle
   { highlightSelection :: !Bool

@@ -1,4 +1,4 @@
-{-# LANGUAGE DeriveDataTypeable, TemplateHaskell #-}
+{-# LANGUAGE DeriveDataTypeable, TemplateHaskell, CPP, StandaloneDeriving, DeriveGeneric #-}
 --
 -- Copyright (C) 2008 JP Bernardy
 --
@@ -46,7 +46,11 @@ module Yi.Buffer.Normal (TextUnit(Character, Line, VLine, Document, GenUnit),
 
 import Control.Lens
 import Data.Binary
+#if __GLASGOW_HASKELL__ < 708
 import Data.DeriveTH
+#else
+import GHC.Generics (Generic)
+#endif
 import Data.Default
 import Data.Typeable
 import Data.List (sort)
@@ -65,7 +69,12 @@ data RegionStyle = LineWise
                  | Block
   deriving (Eq, Typeable, Show)
 
+#if __GLASGOW_HASKELL__ < 708
 $(derive makeBinary ''RegionStyle)
+#else
+deriving instance Generic RegionStyle
+instance Binary RegionStyle
+#endif
 
 -- TODO: put in the buffer state proper.
 instance Default RegionStyle where

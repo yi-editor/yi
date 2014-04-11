@@ -1,4 +1,5 @@
-{-# LANGUAGE ScopedTypeVariables, DeriveDataTypeable, TemplateHaskell, FlexibleInstances #-}
+{-# LANGUAGE ScopedTypeVariables, DeriveDataTypeable, TemplateHaskell, FlexibleInstances,
+  CPP, StandaloneDeriving, DeriveGeneric #-}
 {-# LANGUAGE Rank2Types #-}
 
 -- Copyright (c) 2005,2007,2008 Jean-Philippe Bernardy
@@ -9,7 +10,11 @@ module Yi.History where
 
 import Control.Lens
 import Data.Binary
+#if __GLASGOW_HASKELL__ < 708
 import Data.DeriveTH
+#else
+import GHC.Generics (Generic)
+#endif
 import Data.List
 import Data.Default
 import Data.Typeable
@@ -28,7 +33,12 @@ data History = History {_historyCurrent :: Int,
     deriving (Show, Typeable)
 instance Default History where
     def = History (-1) [] ""
+#if __GLASGOW_HASKELL__ < 708
 $(derive makeBinary ''History)
+#else
+deriving instance Generic History
+instance Binary History
+#endif
 
 instance YiVariable (M.Map String History)
 

@@ -1,4 +1,5 @@
-{-# LANGUAGE FlexibleContexts, TemplateHaskell, RecordWildCards #-}
+{-# LANGUAGE FlexibleContexts, TemplateHaskell, RecordWildCards,
+  CPP, StandaloneDeriving, DeriveGeneric #-}
 -- Copyright (c) Jean-Philippe Bernardy 2008
 module Yi.Regex
   (
@@ -11,7 +12,11 @@ module Yi.Regex
 where
 
 import Data.Binary
+#if __GLASGOW_HASKELL__ < 708
 import Data.DeriveTH
+#else
+import GHC.Generics (Generic)
+#endif
 import Text.Regex.TDFA
 import Text.Regex.TDFA.Pattern
 import Control.Applicative
@@ -47,7 +52,12 @@ data SearchOption
     | QuoteRegex   -- ^ Treat the input not as a regex but as a literal string to search for.
     deriving Eq
 
+#if __GLASGOW_HASKELL__ < 708
 $(derive makeBinary ''SearchOption)
+#else
+deriving instance Generic SearchOption
+instance Binary SearchOption
+#endif
 
 searchOpt :: SearchOption -> CompOption -> CompOption
 searchOpt IgnoreCase = \o->o{caseSensitive = False}
