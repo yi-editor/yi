@@ -19,7 +19,7 @@ Emacs-specific changes:
 
  * Dynamic reconfiguring yi with "M-x reload" now works (issue #515).
  * Cancel incremental search on cursor movement/return (issue #499).
- * Remove binding to cabal configure from emacs skeymap (issue #522).
+ * Remove binding to cabal configure from emacs keymap (issue #522).
  * Bind M-{ and M-} to jump between paragraphs (issue #106).
  * Prompt the user for comment style when it's missing (issue #413).
 
