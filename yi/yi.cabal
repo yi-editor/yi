@@ -231,7 +231,7 @@ library
     concrete-typerep >= 0.1.0.2 && < 0.1.1,
     derive >=2.4 && <2.7,
     data-default,
-    lens >= 3.9,
+    lens >= 4.0,
     dlist >=0.4.1,
     dyre >=0.8.11,
     filepath>=1.1 && <1.4,
