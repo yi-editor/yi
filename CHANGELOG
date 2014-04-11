@@ -4,28 +4,28 @@
 
  * This release works with GHC 7.8.1.
  * And doesn't work with GHC 7.4.
- * Lens is now used instead of data-accessor.
-   Migration was mostly mechanical, patches for more idiomatic lens usage
-   are welcome.
+ * Lens is now used instead of data-accessor. Migration was mostly mechanical,
+   patches for more idiomatic lens usage are welcome.
  * Yi.Prelude was getting complaints over the years so it's now gone.
  * Commandline flag for choosing config directory now works.
- * Vte and Cocoa frontends that were abandoned for years are removed.
+ * Vte and Cocoa (issue #481) frontends that were abandoned for years are removed.
    If you want to revive these or make new frontends (Qt, EFL, SDL,
    threepenny-gui, etc), patches are welcome!
- * Test files no longer make case sensitive filesystems mad (we had vim tests like de.test and dE.test).
+ * Test files no longer make case sensitive filesystems mad (issue #458).
  * Yi no longer eats (20 x filesize) memory when opening a file.
  * Other bugfixes and usability tweaks here and there.
 
 Emacs-specific changes:
 
- * Dynamic reconfiguring yi with "M-x reload" now works.
+ * Dynamic reconfiguring yi with "M-x reload" now works (issue #515).
+ * Cancel incremental search on cursor movement/return (issue #499).
 
 Vim2-specific changes:
 
  * C-n completion now uses words from all open buffer instead of just current one.
  * Introduced :buffer, :buffers and :bdelete commands and C-^ and C-6 normal mode bindings.
  * Meta modifier is now available for use in Vim2 bindings.
- * :s(ubstitute) now works with delimiters other than '/'.
+ * :s(ubstitute) now works with delimiters other than '/' (issue #461).
  * Introduced :cabal command.
  * More tests.
 
