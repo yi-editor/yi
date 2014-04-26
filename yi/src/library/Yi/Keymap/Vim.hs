@@ -1638,10 +1638,10 @@ jumpToMark c = do
   case mm of
     Nothing -> fail "Mark not set"
     Just m -> do
-       p_next <- getMarkPointB m
+       p_next <- use $ markPointA m
        -- Retain the current point in the mark "'" automatically.
        p <- pointB
-       getViMarkB '\'' >>= flip setMarkPointB p
+       getViMarkB '\'' >>= (.= p) . markPointA
        -- now jump to p_next.
        moveTo p_next
 
@@ -1651,13 +1651,13 @@ setMark = do
     write $ do
         p <- pointB
         -- Retain the current point in the mark "'" automatically.
-        getViMarkB '\'' >>= flip setMarkPointB p
-        getViMarkB c >>= flip setMarkPointB p
+        getViMarkB '\'' >>= (.= p) . markPointA
+        getViMarkB c >>= (.= p) . markPointA
 
 setMarkHere :: Char -> BufferM ()
 setMarkHere c = do
     p <- pointB
-    getViMarkB c >>= flip setMarkPointB p
+    getViMarkB c >>= (.= p) . markPointA
 
 getViMarkB :: Char -> BufferM Mark
 getViMarkB '<' = selMark <$> askMarks

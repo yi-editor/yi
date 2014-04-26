@@ -17,6 +17,7 @@ import Yi.Style.Library (darkBlueTheme)
 import Data.List (isPrefixOf)
 import Control.Monad (replicateM_)
 import Control.Applicative
+import Control.Lens hiding (Action)
 
 -- Set soft tabs of 4 spaces in width.
 prefIndent :: Mode s -> Mode s
@@ -115,7 +116,7 @@ startExtesnionNameInsert :: ModeMap -> I Event Action ()
 startExtesnionNameInsert self = beginIns self $ do
     p_current <- pointB
     m_current <- getMarkB (Just "'") 
-    setMarkPointB m_current p_current
+    markPointA m_current .= p_current
     moveTo $ Point 0
     insertB '\n'
     moveTo $ Point 0

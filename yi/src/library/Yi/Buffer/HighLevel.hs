@@ -316,11 +316,11 @@ deleteTrailingSpaceB = modifyRegionClever deleteSpaces =<< regionOfB Document
 
 -- | Set the current buffer selection mark
 setSelectionMarkPointB :: Point -> BufferM ()
-setSelectionMarkPointB p = flip setMarkPointB p =<< selMark <$> askMarks
+setSelectionMarkPointB p = (.= p) . markPointA =<< selMark <$> askMarks
 
 -- | Get the current buffer selection mark
 getSelectionMarkPointB :: BufferM Point
-getSelectionMarkPointB = getMarkPointB =<< selMark <$> askMarks
+getSelectionMarkPointB = use . markPointA =<< selMark <$> askMarks
 
 -- | Exchange point & mark.
 exchangePointAndMarkB :: BufferM ()
@@ -432,9 +432,9 @@ scrollB :: Int -> BufferM ()
 scrollB n = do
   MarkSet fr _ _ <- askMarks
   savingPointB $ do
-    moveTo =<< getMarkPointB fr
+    moveTo =<< use (markPointA fr)
     void $ gotoLnFrom n
-    setMarkPointB fr =<< pointB
+    (markPointA fr .=) =<< pointB
   w <- askWindow wkey
   (%=) pointFollowsWindowA (\old w' -> ((w == w') || old w'))
 
@@ -483,14 +483,14 @@ snapScreenB style = do
                         _               -> h `div` 2
             i <- indexOfSolAbove gap
             f <- fromMark <$> askMarks
-            setMarkPointB f i
+            markPointA f .= i
             return True
 
 
 -- | Move to @n@ lines down from top of screen
 downFromTosB :: Int -> BufferM ()
 downFromTosB n = do
-  moveTo =<< getMarkPointB =<< fromMark <$> askMarks
+  moveTo =<< use . markPointA =<< fromMark <$> askMarks
   replicateM_ n lineDown
 
 -- | Move to @n@ lines up from the bottom of the screen
@@ -506,7 +506,7 @@ middleB :: BufferM ()
 middleB = do
   w <- ask
   f <- fromMark <$> askMarks
-  moveTo =<< getMarkPointB f
+  moveTo =<< use (markPointA f)
   replicateM_ (height w `div` 2) lineDown
 
 pointInWindowB :: Point -> BufferM Bool

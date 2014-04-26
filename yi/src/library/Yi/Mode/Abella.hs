@@ -60,7 +60,7 @@ getTheoremPointMark = getMarkB $ Just "t"
 
 abellaEval :: YiM ()
 abellaEval = do reg <- withBuffer . savingPointB $ do
-                          join $ setMarkPointB <$> getProofPointMark <*> pointB
+                          join (assign . markPointA <$> getProofPointMark <*> pointB)
                           leftB
                           readRegionB =<< regionOfNonEmptyB unitSentence
                 abellaSend reg
@@ -68,9 +68,9 @@ abellaEval = do reg <- withBuffer . savingPointB $ do
 abellaEvalFromProofPoint :: YiM ()
 abellaEvalFromProofPoint = abellaSend =<< withBuffer f
   where f = do mark <- getProofPointMark
-               p <- getMarkPointB mark
+               p <- use $ markPointA mark
                cur <- pointB
-               setMarkPointB mark cur
+               markPointA mark .= cur
                readRegionB $ mkRegion p cur
 
 abellaNext :: YiM ()
@@ -80,17 +80,17 @@ abellaNext = do reg <- withBuffer $ rightB >> (readRegionB =<< regionOfNonEmptyB
                                 rightB
                                 untilB_ (not . isSpace <$> readB) rightB
                                 untilB_ ((/= '%') <$> readB) $ moveToEol >> rightB >> firstNonSpaceB
-                                join $ setMarkPointB <$> getProofPointMark <*> pointB
+                                join (assign . markPointA <$> getProofPointMark <*> pointB)
 
 abellaUndo :: YiM ()
 abellaUndo = do abellaSend "undo."
                 withBuffer $ do moveB unitSentence Backward
-                                join $ setMarkPointB <$> getProofPointMark <*> pointB
+                                join (assign . markPointA <$> getProofPointMark <*> pointB)
 
 abellaAbort :: YiM ()
 abellaAbort = do abellaSend "abort."
-                 withBuffer $ do moveTo =<< getMarkPointB =<< getTheoremPointMark
-                                 join $ setMarkPointB <$> getProofPointMark <*> pointB
+                 withBuffer $ do moveTo =<< use . markPointA =<< getTheoremPointMark
+                                 join (assign . markPointA <$> getProofPointMark <*> pointB)
 
 -- | Start Abella in a buffer
 abella :: CommandArguments -> YiM BufferRef
@@ -117,7 +117,7 @@ abellaGet = withOtherWindow $ do
 abellaSend :: String -> YiM ()
 abellaSend cmd = do
     when ("Theorem" `isInfixOf` cmd) $
-      withBuffer $ join $ setMarkPointB <$> getTheoremPointMark <*> pointB
+      withBuffer $ join (assign . markPointA <$> getTheoremPointMark <*> pointB)
     b <- abellaGet
     withGivenBuffer b botB
     sendToProcess b (cmd ++ "\n")

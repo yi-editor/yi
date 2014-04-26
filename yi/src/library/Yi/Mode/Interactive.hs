@@ -44,7 +44,7 @@ interactHistoryStart = historyStartGen interactId
 getInputRegion :: BufferM Region
 getInputRegion = do mo <- getMarkB (Just "StdOUT")
                     p <- pointAt botB
-                    q <- getMarkPointB mo
+                    q <- use $ markPointA mo
                     return $ mkRegion p q
 
 getInput :: BufferM String
@@ -83,10 +83,10 @@ feedCommand = do
         me <- getMarkB (Just "StdERR")
         mo <- getMarkB (Just "StdOUT")
         p <- pointB
-        q <- getMarkPointB mo
+        q <- use $ markPointA mo
         cmd <- readRegionB $ mkRegion p q
-        setMarkPointB me p
-        setMarkPointB mo p
+        markPointA me .= p
+        markPointA mo .= p
         return cmd
     withEditor interactHistoryStart
     sendToProcess b cmd

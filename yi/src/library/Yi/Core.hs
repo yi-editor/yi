@@ -407,7 +407,7 @@ appendToBuffer atErr bufref s = withGivenBuffer0 bufref $ do
     mo <- getMarkB (Just "StdOUT")
     let mms = if atErr then [mo,me] else [mo]
     forM_ mms (`modifyMarkB` (\ v -> v{markGravity = Forward}))
-    insertNAt s =<< getMarkPointB (if atErr then me else mo)
+    insertNAt s =<< use (markPointA (if atErr then me else mo))
     forM_ mms (`modifyMarkB` (\ v -> v{markGravity = Backward}))
 
 sendToProcess :: BufferRef -> String -> YiM ()

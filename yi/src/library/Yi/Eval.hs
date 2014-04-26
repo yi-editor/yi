@@ -218,5 +218,5 @@ consoleKeymap = do _ <- event (Event KEnter [])
                                                 pt <- pointB
                                                 insertN prompt
                                                 bm <- getBookmarkB "errorInsert"
-                                                setMarkPointB bm pt
+                                                markPointA bm .= pt
                                               execEditorAction $ takeCommand x

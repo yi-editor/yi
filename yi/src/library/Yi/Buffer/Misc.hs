@@ -77,7 +77,7 @@ module Yi.Buffer.Misc
   , setNamedMarkHereB
   , mayGetMarkB
   , getMarkValueB
-  , setMarkPointB
+  , markPointA
   , modifyMarkB
   , newMarkB
   , deleteMarkB
@@ -144,7 +144,6 @@ module Yi.Buffer.Misc
   , strokesRangesB
   , streamB
   , indexedStreamB
-  , getMarkPointB
   , askMarks
   , pointAt
   , SearchExp
@@ -331,6 +330,9 @@ instance Binary SelectionStyle where
 clearSyntax :: FBuffer -> FBuffer
 clearSyntax = modifyRawbuf updateSyntax
 
+queryRawbuf :: (forall syntax. BufferImpl syntax -> x) -> FBuffer -> x
+queryRawbuf f (FBuffer _ fb _) = f fb
+
 modifyRawbuf :: (forall syntax. BufferImpl syntax -> BufferImpl syntax) -> FBuffer -> FBuffer
 modifyRawbuf f (FBuffer f1 f2 f3) = FBuffer f1 (f f2) f3
 
@@ -481,13 +483,13 @@ getPercent a b = padString 3 ' ' (show p) ++ "%"
           bb = fromIntegral b :: Double
 
 queryBuffer :: (forall syntax. BufferImpl syntax -> x) -> BufferM x
-queryBuffer f = gets (\(FBuffer _ fb _) -> f fb)
+queryBuffer = gets . queryRawbuf
 
 modifyBuffer :: (forall syntax. BufferImpl syntax -> BufferImpl syntax) -> BufferM ()
-modifyBuffer f = modify (modifyRawbuf f)
+modifyBuffer = modify . modifyRawbuf
 
 queryAndModify :: (forall syntax. BufferImpl syntax -> (BufferImpl syntax,x)) -> BufferM x
-queryAndModify f = getsAndModify (queryAndModifyRawbuf f)
+queryAndModify = getsAndModify . queryAndModifyRawbuf
 
 -- | Adds an "overlay" to the buffer
 addOverlayB :: Overlay -> BufferM ()
@@ -513,7 +515,10 @@ runBuffer w b f =
     in (a, b')
 
 getMarks :: Window -> BufferM (Maybe WinMarks)
-getMarks w = uses winMarksA (M.lookup $ wkey w)
+getMarks = gets . getMarksRaw
+
+getMarksRaw :: Window -> FBuffer -> Maybe WinMarks
+getMarksRaw w b = M.lookup (wkey w) (b ^. winMarksA)
 
 runBufferFull :: Window -> FBuffer -> BufferM a -> (a, [Update], FBuffer)
 runBufferFull w b f =
@@ -537,8 +542,11 @@ runBufferFull w b f =
             f
     in (a, updates, pendingUpdatesA %~ (++ fmap TextUpdate updates) $ b')
 
+getMarkValueRaw :: Mark -> FBuffer -> MarkValue
+getMarkValueRaw m = fromMaybe (MarkValue 0 Forward) . queryRawbuf (getMarkValueBI m)
+
 getMarkValueB :: Mark -> BufferM MarkValue
-getMarkValueB m = fromMaybe (MarkValue 0 Forward) <$> queryBuffer (getMarkValueBI m)
+getMarkValueB = gets . getMarkValueRaw
 
 newMarkB :: MarkValue -> BufferM Mark
 newMarkB v = queryAndModify $ newMarkBI v
@@ -690,7 +698,7 @@ sizeB = queryBuffer sizeBI
 
 -- | Extract the current point
 pointB :: BufferM Point
-pointB = getMarkPointB =<< getInsMark
+pointB = use . markPointA =<< getInsMark
 
 
 -- | Return @n@ elems starting at @i@ of the buffer as a list
@@ -719,7 +727,7 @@ strokesRangesB regex r = do
 moveTo :: Point -> BufferM ()
 moveTo x = do
   forgetPreferCol
-  flip setMarkPointB x =<< getInsMark
+  (.= x) . markPointA =<< getInsMark
 
 ------------------------------------------------------------------------
 
@@ -813,7 +821,7 @@ curLn = do
 -- | Return line numbers of marks
 markLines :: BufferM (MarkSet Int)
 markLines = mapM getLn =<< askMarks
-        where getLn m = getMarkPointB m >>= lineOf
+        where getLn m = use (markPointA m) >>= lineOf
 
 
 -- | Go to line number @n@. @n@ is indexed from 1. Returns the
@@ -888,12 +896,11 @@ regexB dir rx = do
 
 ---------------------------------------------------------------------
 
--- | Set the given mark's point.
-setMarkPointB :: Mark -> Point -> BufferM ()
-setMarkPointB m pos = modifyMarkB m (\v -> v {markPoint = pos})
+modifyMarkRaw :: Mark -> (MarkValue -> MarkValue) -> FBuffer -> FBuffer
+modifyMarkRaw m f = modifyRawbuf $ modifyMarkBI m f
 
 modifyMarkB :: Mark -> (MarkValue -> MarkValue) -> BufferM ()
-modifyMarkB m f = modifyBuffer $ modifyMarkBI m f
+modifyMarkB = (modify .) . modifyMarkRaw
 
 setMarkHereB :: BufferM Mark
 setMarkHereB = getMarkB Nothing
@@ -901,7 +908,7 @@ setMarkHereB = getMarkB Nothing
 setNamedMarkHereB :: String -> BufferM ()
 setNamedMarkHereB name = do
     p <- pointB
-    getMarkB (Just name) >>= flip setMarkPointB p
+    getMarkB (Just name) >>= (.= p) . markPointA
 
 -- | Highlight the selection
 setVisibleSelection :: Bool -> BufferM ()
@@ -1107,11 +1114,13 @@ savingExcursionB :: BufferM a -> BufferM a
 savingExcursionB f = do
     m <- getMarkB Nothing
     res <- f
-    moveTo =<< getMarkPointB m
+    moveTo =<< use (markPointA m)
     return res
 
-getMarkPointB :: Mark -> BufferM Point
-getMarkPointB m = markPoint <$> getMarkValueB m
+markPointA :: Mark -> Lens' FBuffer Point
+markPointA mark = lens getter setter where
+  getter b = markPoint $ getMarkValueRaw mark b
+  setter b pos = modifyMarkRaw mark (\v -> v {markPoint = pos}) b
 
 -- | perform an @BufferM a@, and return to the current point
 savingPointB :: BufferM a -> BufferM a
