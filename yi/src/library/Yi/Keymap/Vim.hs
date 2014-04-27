@@ -1148,6 +1148,7 @@ TODO: use or remove
             choice [spec KBS   ?>>! savingDeleteCharB Backward
                    ,ctrlCh 'h' ?>>! savingDeleteCharB Backward
                    ,ctrlCh 'w' ?>>! savingDeleteWordB Backward
+                   ,ctrlCh 'u' ?>>! bdeleteLineB
                    ]
             <|> ins_rep_char savingInsertCharB
             <|| (textChar >>= write . (adjBlock 1 >>) . savingInsertCharB)

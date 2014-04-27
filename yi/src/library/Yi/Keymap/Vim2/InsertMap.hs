@@ -160,6 +160,7 @@ printableAction evs = do
                         "<C-h>" -> deleteB Character Backward
                         "<Del>" -> deleteB Character Forward
                         "<C-w>" -> deleteRegionB =<< regionOfPartNonEmptyB unitViWordOnLine Backward
+                        "<C-u>" -> bdeleteLineB
                         "<lt>" -> insertB '<'
                         evs' -> error $ "Unhandled event " ++ evs' ++ " in insert mode"
     updatedCursors <- withBuffer0 $ do
