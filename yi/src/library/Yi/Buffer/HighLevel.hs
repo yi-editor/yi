@@ -262,6 +262,9 @@ killWordB = deleteB unitWord Forward
 bkillWordB :: BufferM ()
 bkillWordB = deleteB unitWord Backward
 
+-- | Delete backward to the sof or the new line character
+bdeleteLineB :: BufferM ()
+bdeleteLineB = atSol >>= \ sol -> if sol then bdeleteB else deleteB Line Backward
 
 ----------------------------------------
 -- Transform operations

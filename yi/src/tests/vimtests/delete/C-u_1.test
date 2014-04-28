@@ -1,0 +1,10 @@
+-- Input
+(2,5)
+Lorem ipsum dolor sit amet
+qwe rty uiop
+-- Output
+(2,1)
+Lorem ipsum dolor sit amet
+rty uiop
+-- Events
+i<C-u>
