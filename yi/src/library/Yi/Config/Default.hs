@@ -8,7 +8,6 @@ module Yi.Config.Default (defaultConfig, availableFrontends,
 import Control.Applicative
 import Control.Monad
 import Control.Lens hiding (Action)
-import Data.Either (rights)
 import Data.Default
 import Paths_yi
 import System.Directory
@@ -213,12 +212,15 @@ toCuaStyleConfig cfg = cfg {defaultKm = Cua.keymap}
 -- | Open an emacs-like scratch buffer if no file is open.
 openScratchBuffer :: YiM ()
 openScratchBuffer = withEditor $ do
-      noFileBufOpen <- null . rights . fmap (view identA) . M.elems <$> use buffersA
-      when noFileBufOpen $
+      fileBufOpen <- any isFileOrDir . M.elems <$> use buffersA
+      unless fileBufOpen $
            void $ newBufferE (Left "scratch") $ R.fromString $ unlines
                    ["This buffer is for notes you don't want to save.", --, and for haskell evaluation" -- maybe someday?
                     "If you want to create a file, open that file,",
                     "then enter the text in that file's own buffer."]
+      where
+        isFileOrDir :: FBuffer -> Bool
+        isFileOrDir attrs = either (const $ view directoryContentA attrs) (const True) (view identA attrs)
 
 nilKeymap :: Keymap
 nilKeymap = choice [
