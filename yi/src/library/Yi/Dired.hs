@@ -89,6 +89,7 @@ data DiredState = DiredState
   }
   deriving (Show, Eq, Typeable)
 
+makeLensesWithSuffix "A" ''DiredState
 $(derive makeBinary ''DiredState)
 
 instance Default DiredState where
@@ -329,7 +330,7 @@ diredDirBuffer d = do
     b <- withEditor $ stringToNewBuffer (Left dir) (R.fromString "")
     withEditor $ switchToBufferE b
     withBuffer $ do
-      (%=) bufferDynamicValueA $ \ds -> ds { diredPath = dir }
+      bufferDynamicValueA %= (diredPathA .~ dir)
       assign directoryContentA True
     diredRefresh
     return b
@@ -347,7 +348,7 @@ diredRefresh = do
                         case maybefile of
                           Just (fp, _) -> return fp
                           Nothing      -> return ""
-    let ds = dState {diredEntries = di, diredCurrFile = currFile}
+    let ds = diredEntriesA .~ di $ diredCurrFileA .~ currFile $ dState
     -- Compute results
     let dlines = linesToDisplay ds
         (strss, stys, strs) = unzip3 dlines
@@ -366,8 +367,7 @@ diredRefresh = do
                     -- paint header
                     addOverlayB $ mkOverlay UserLayer (mkRegion 0 (p-2)) headStyle
                     ptsList <- mapM insertDiredLine $ zip3 strss' stys strs
-                    assign bufferDynamicValueA ds{diredFilePoints=ptsList,
-                                                diredNameCol   =namecol}
+                    assign bufferDynamicValueA $ diredFilePointsA .~ ptsList $ diredNameColA .~ namecol $ ds
                     -- Colours for Dired come from overlays not syntax highlighting
                     modifyMode $ \m -> m {modeKeymap = topKeymapA %~ diredKeymap, modeName = "dired"}
                     diredRefreshMark
@@ -523,7 +523,7 @@ diredMarkWithChar c mv = bypassReadOnly $ do
                            maybefile <- fileFromPoint
                            case maybefile of
                              Just (fn, _de) -> do
-                                            (%=) bufferDynamicValueA (\ds -> ds {diredMarks = M.insert fn c $ diredMarks ds})
+                                            bufferDynamicValueA %= (diredMarksA %~ M.insert fn c)
                                             filenameColOf mv
                                             diredRefreshMark
                              Nothing        -> filenameColOf mv
@@ -554,18 +554,18 @@ diredUnmark :: BufferM ()
 diredUnmark = bypassReadOnly $ do
                 maybefile <- fileFromPoint
                 case maybefile of
-                  Just (fn, _de) -> do (%=) bufferDynamicValueA (\ds -> ds {diredMarks = M.delete fn $ diredMarks ds})
+                  Just (fn, _de) -> do diredUnmarkPath fn
                                        filenameColOf lineUp
                                        diredRefreshMark
                   Nothing        -> filenameColOf lineUp
 
 
 diredUnmarkPath :: FilePath -> BufferM()
-diredUnmarkPath fn = (%=) bufferDynamicValueA (\ds -> ds {diredMarks = M.delete fn $ diredMarks ds})
+diredUnmarkPath fn = bufferDynamicValueA %= (diredMarksA %~ M.delete fn)
 
 diredUnmarkAll :: BufferM ()
 diredUnmarkAll = bypassReadOnly $ do
-                   (%=) bufferDynamicValueA (\ds -> ds {diredMarks = M.empty})
+                   bufferDynamicValueA %= (diredMarksA .~ M.empty)
                    filenameColOf $ return ()
                    diredRefreshMark
 
