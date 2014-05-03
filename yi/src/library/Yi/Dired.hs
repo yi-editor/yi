@@ -328,7 +328,9 @@ diredDirBuffer d = do
     -- XXX Don't specify the path as the filename of the buffer.
     b <- withEditor $ stringToNewBuffer (Left dir) (R.fromString "")
     withEditor $ switchToBufferE b
-    withBuffer $ (%=) bufferDynamicValueA $ \ds -> ds { diredPath = dir }
+    withBuffer $ do
+      (%=) bufferDynamicValueA $ \ds -> ds { diredPath = dir }
+      assign directoryContentA True
     diredRefresh
     return b
 
@@ -568,9 +570,7 @@ diredUnmarkAll = bypassReadOnly $ do
                    diredRefreshMark
 
 currentDir :: YiM FilePath
-currentDir = do
-  DiredState { diredPath = dir } <- withBuffer $ use bufferDynamicValueA
-  return dir
+currentDir = fmap diredPath $ withBuffer $ use bufferDynamicValueA
 
 -- | move selected files in a given directory to the target location given
 -- by user input

@@ -155,6 +155,7 @@ module Yi.Buffer.Misc
   , identString
   , miniIdentString
   , identA
+  , directoryContentA
   , BufferId
   , file
   , lastSyncTimeA
@@ -260,7 +261,8 @@ data Attributes = Attributes
                 , lastActiveWindow :: !Window
                 , lastSyncTime :: !UTCTime        -- ^ time of the last synchronization with disk
                 , readOnly :: !Bool               -- ^ read-only flag
-                , inserting                 :: !Bool               -- ^ the keymap is ready for insertion into this buffer
+                , inserting                 :: !Bool -- ^ the keymap is ready for insertion into this buffer
+                , directoryContent          :: !Bool -- ^ does buffer contain directory contents
                 , pointFollowsWindow        :: !(WindowRef -> Bool)
                 , updateTransactionInFlight :: !Bool
                 , updateTransactionAccum    :: ![Update]
@@ -269,13 +271,13 @@ data Attributes = Attributes
 makeLensesWithSuffix "AA" ''Attributes
 
 instance Binary Attributes where
-    put (Attributes n b u bd pc pu selectionStyle_ _proc wm law lst ro ins _pfw
+    put (Attributes n b u bd pc pu selectionStyle_ _proc wm law lst ro ins _dc _pfw
         isTransacPresent transacAccum) = do
           put n >> put b >> put u >> put bd
           put pc >> put pu >> put selectionStyle_ >> put wm
-          put law >> put lst >> put ro >> put ins >> put isTransacPresent >> put transacAccum
+          put law >> put lst >> put ro >> put ins >> put _dc >> put isTransacPresent >> put transacAccum
     get = Attributes <$> get <*> get <*> get <*>
-          get <*> get <*> get <*> get <*> pure I.End <*> get <*> get <*> get <*> get <*>
+          get <*> get <*> get <*> get <*> pure I.End <*> get <*> get <*> get <*> get <*> get <*>
               get <*> pure (const False) <*> get <*> get
 
 instance Binary UTCTime where
@@ -308,6 +310,8 @@ miniIdentString b = case b ^. identA of
 identA :: Lens' FBuffer BufferId
 identA = attrsA . identAA
 
+directoryContentA :: Lens' FBuffer Bool
+directoryContentA = attrsA . directoryContentAA
 
 -- unfortunately the dynamic stuff can't be read.
 instance Binary FBuffer where
@@ -727,6 +731,7 @@ newB unique nm s =
             , lastActiveWindow = dummyWindow unique
             , lastSyncTime = epoch
             , readOnly = False
+            , directoryContent = False
             , inserting = True
             , pointFollowsWindow = const False
             , updateTransactionInFlight = False
