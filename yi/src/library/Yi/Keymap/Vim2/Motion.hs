@@ -16,7 +16,6 @@ module Yi.Keymap.Vim2.Motion
 -- ]m, ]M, [m, [M
 -- [#, ]#
 -- [*, [/, ]*, ]/
--- H, M, L
 --
 -- Traversing changelist
 
@@ -95,8 +94,12 @@ linewiseMotions = fmap withDefaultCount
     , ("<PageUp>", False, scrollScreensB . negate)
     , ("<C-f>", False, scrollScreensB)
     , ("<PageDown>", False, scrollScreensB)
+    , ("H", True, downFromTosB . pred)
+    , ("M", True, const middleB)
+    , ("L", True, upFromBosB . pred)
     ]
-    ++ [("G", True, gotoXOrEOF)]
+    ++ [ ("G", True, gotoXOrEOF) ]
+
 
 -- Exclusive motions which treat no count as being the same as a count of 1.
 exclusiveMotions :: [(String, Bool, Maybe Int -> BufferM ())]
