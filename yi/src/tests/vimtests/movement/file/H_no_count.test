@@ -1,0 +1,21 @@
+--+ WindowSize 12 5
+-- Input
+(4,3)
+aa bb cc dd
+aa bb cc dd
+aa bb cc dd
+aa bb cc dd
+aa bb cc dd
+aa bb cc dd
+aa bb cc dd
+-- Output
+(2,1)
+aa bb cc dd
+aa bb cc dd
+aa bb cc dd
+aa bb cc dd
+aa bb cc dd
+aa bb cc dd
+aa bb cc dd
+-- Events
+2H

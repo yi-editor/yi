@@ -389,6 +389,7 @@ Test-Suite test-suite
   main-is: TestSuite.hs
   build-depends:
     base,
+    lens >= 4.0,
     tasty,
     tasty-hunit,
     tasty-quickcheck,
