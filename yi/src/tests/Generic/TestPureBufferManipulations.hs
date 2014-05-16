@@ -10,8 +10,10 @@ import Test.Tasty.HUnit
 import Test.Tasty (TestTree, testGroup)
 
 import Control.Monad (filterM, forM, void, unless)
+import Control.Lens ((%=))
 
-import Data.List (sort, isSuffixOf, intercalate)
+import Data.List (sort, isSuffixOf, intercalate, isPrefixOf)
+import Data.Ord (comparing)
 
 import System.Directory
 import System.FilePath
@@ -21,23 +23,32 @@ import Text.Printf
 import Yi.Buffer
 import Yi.Config (Config)
 import Yi.Editor
+import Yi.Window
+import Yi.Region
 
 import Generic.TestUtils
 
 data KeymapTest = KeymapTest {
                    ktName :: String
+                 , ktOptionalSettings :: [OptionalSetting]
                  , ktInput :: String
                  , ktOutput :: String
                  , ktEventString :: String
                  , ktKeysEval :: KeyEval
                }
 
+data OptionalSetting = WindowSize Int Int  -- ^ WindowSize Width Height 
+                     deriving Eq
+
+instance Show OptionalSetting where
+    show (WindowSize w h) = unwords ["+WindowSize", (show w), (show h)]
+
 instance Eq KeymapTest where
-  KeymapTest n i o e _ == KeymapTest n' i' o' e' _ =
-    n == n' && i == i' && o == o' && e == e'
+  KeymapTest n s i o e _ == KeymapTest n' s' i' o' e' _ =
+    n == n' && s == s' && i == i' && o == o' && e == e'
 
 instance Ord KeymapTest where
-  KeymapTest n _ _ _ _ <= KeymapTest n' _ _ _ _ = n <= n'
+  compare = comparing ktName
 
 
 data TestResult = TestPassed String
@@ -50,17 +61,28 @@ instance Show TestResult where
 unlines' :: [String] -> String
 unlines' = intercalate "\n"
 
+optionalSettingPrefix :: String
+optionalSettingPrefix = "--+ " 
+
+isOptionalSetting :: String -> Bool
+isOptionalSetting = (optionalSettingPrefix `isPrefixOf`)
+
+decodeOptionalSetting :: [String] -> OptionalSetting
+decodeOptionalSetting ["WindowSize", w, h] = WindowSize (read w) (read h)
+decodeOptionalSetting unknownSetting = 
+    error $ "Invalid Setting: " ++ (intercalate " " unknownSetting) 
+
 loadTestFromDirectory :: FilePath -- ^ Directory of the test
                       -> KeyEval -- ^ Function that can run
                                                 -- ‘events’ commands
                       -> IO KeymapTest
 loadTestFromDirectory path ev = do
     [input, output, events] <- mapM (readFile' . (path </>)) ["input", "output", "events"]
-    return $ KeymapTest (joinPath . drop 1 . splitPath $ path) input output events ev
+    return $ KeymapTest (joinPath . drop 1 . splitPath $ path) [] input output events ev
 
 isValidTestFile :: String -> Bool
 isValidTestFile text =
-    case lines text of
+    case (skipOptionals . lines $ text) of
         [] -> False
         ("-- Input": ls) ->
             case break (== "-- Output") ls of
@@ -68,6 +90,8 @@ isValidTestFile text =
                 (_, "-- Output":ls') -> "-- Events" `elem` ls'
                 _ -> False
         _ -> False
+    where
+        skipOptionals = dropWhile isOptionalSetting
 
 -- | See Arguments to 'loadTestFromDirectory'
 loadTestFromFile :: FilePath -> KeyEval -> IO KeymapTest
@@ -75,13 +99,15 @@ loadTestFromFile path ev = do
     text <- readFile' path
     unless (isValidTestFile text) $
         void $ printf "Test %s is invalid\n" path
-    let ls = tail $ lines text
+    let (optionals, testContents) = span isOptionalSetting (lines text) 
+        ls = tail testContents
         (input, rest) = break (== "-- Output") ls
         (output, rest2) = break (== "-- Events") $ tail rest
         eventText = tail rest2
     return $
       KeymapTest
         (joinPath . drop 1 . splitPath . dropExtension $ path)
+        (map (decodeOptionalSetting . drop 1 . words) optionals)
         (unlines' input)
         (unlines' output)
         (unlines' eventText)
@@ -125,11 +151,16 @@ discoverTests topdir ev = do
     testsFromFiles <- mapM (`loadTestFromFile` ev) testFiles
     return $ testsFromDirs ++ testsFromFiles
 
+optionalSettingAction :: OptionalSetting -> EditorM ()
+optionalSettingAction (WindowSize w h) = 
+    let region = mkSizeRegion (Point 0) (Size (w*h))
+    in currentWindowA %= (\w -> w { height = h, winRegion = region })
 
 mkTestCase :: Config -> KeymapTest -> TestTree
 mkTestCase cf t = testCase (ktName t) $ do
     let setupActions = do
             let (cursorLine, '\n':text) = break (== '\n') (ktInput t)
+            mapM_ optionalSettingAction $ ktOptionalSettings t
             insertText text
             setCursorPosition cursorLine
 
@@ -152,11 +183,13 @@ mkTestCase cf t = testCase (ktName t) $ do
                                             l <- curLn
                                             c <- curCol
                                             return (l, c + 1))
-    errorMsg actualOut = unlines [ "Input:", ktInput t
+    errorMsg actualOut = unlines $ optionalSettings ++
+                                 [ "Input:", ktInput t
                                  , "Expected:", ktOutput t
                                  , "Got:", actualOut
                                  , "Events:", ktEventString t
                                  , "---"]
+    optionalSettings = map show $ ktOptionalSettings t
 
 -- | Takes a directory with the tests, a name of the keymap
 -- and an evaluation function for the keys contained in the tests.
