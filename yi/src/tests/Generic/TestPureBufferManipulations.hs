@@ -13,6 +13,7 @@ import Control.Monad (filterM, forM, void, unless)
 import Control.Lens ((%=))
 
 import Data.List (sort, isSuffixOf, intercalate, isPrefixOf)
+import Data.Ord (comparing)
 
 import System.Directory
 import System.FilePath
@@ -40,14 +41,14 @@ data OptionalSetting = WindowSize Int Int  -- ^ WindowSize Width Height
                      deriving Eq
 
 instance Show OptionalSetting where
-    show (WindowSize w h) = intercalate " " ["+WindowSize", (show w), (show h)]
+    show (WindowSize w h) = unwords ["+WindowSize", (show w), (show h)]
 
 instance Eq KeymapTest where
   KeymapTest n s i o e _ == KeymapTest n' s' i' o' e' _ =
     n == n' && s == s' && i == i' && o == o' && e == e'
 
 instance Ord KeymapTest where
-  KeymapTest n _ _ _ _ _ <= KeymapTest n' _ _ _ _ _ = n <= n'
+  compare = comparing ktName
 
 
 data TestResult = TestPassed String
