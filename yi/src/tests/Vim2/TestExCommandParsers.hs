@@ -18,6 +18,7 @@ data CommandParser = CommandParser
     , cpParser      :: String -> Maybe ExCommand
     , cpNames       :: [String]
     , cpAcceptsBang :: Bool
+    , cpAcceptsCount :: Bool
     , cpArgs        :: Gen String
     }
 
@@ -70,6 +71,7 @@ commandParsers =
           Buffer.parse
           ["buffer", "buf", "bu", "b"]
           True
+          True
           bufferIdentifier
 
     , CommandParser
@@ -77,6 +79,7 @@ commandParsers =
           BufferDelete.parse
           ["bdelete", "bdel", "bd"]
           True
+          False
           (unwords <$> listOf bufferIdentifier)
 
     , CommandParser
@@ -87,6 +90,7 @@ commandParsers =
           -- :dl, :dell, :delel, :deletl, :deletel
           -- :dp, :dep, :delp, :delep, :deletp, :deletep
           True
+          False
           (oneof [ pure ""
                  , addingSpace registerName
                  , addingSpace count
@@ -101,8 +105,11 @@ commandString cp = do
     bang <- if cpAcceptsBang cp
                 then elements ["!", ""]
                 else pure ""
+    count' <- if cpAcceptsCount cp
+                then count
+                else pure ""
     args <- cpArgs cp
-    return $ concat [name, bang, args]
+    return $ concat [count', name, bang, args]
 
 
 expectedParserParses :: CommandParser -> TestTree

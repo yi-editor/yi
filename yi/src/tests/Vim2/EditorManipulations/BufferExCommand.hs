@@ -117,9 +117,57 @@ tests c ev =
             runTest setupActions preConditions testActions assertions c
 
 
-      -- , testCase "A modified buffer is not abandoned" $ do
-      -- , testCase "A modified buffer can be abandoned with a bang" $ do
-      -- , testCase "A buffer number can be given as a count" $ do
+      , testCase "A modified buffer is not abandoned" $ do
+            let setupActions = createInitialBuffers
+
+                preConditions editor buffers =
+                    assertNotCurrentBuffer (nthBufferRef 1 buffers) editor
+
+                testActions buffers = do
+                    withBuffer0 $ insertN "The buffer is altered"
+                    ev $ ":buffer " ++ nthBufferName 1 buffers ++ "<CR>"
+
+                assertions editor buffers = do
+                    assertNotCurrentBuffer (nthBufferRef 1 buffers) editor
+
+            runTest setupActions preConditions testActions assertions c
+
+
+      , testCase "A modified buffer can be abandoned with a bang" $ do
+            let setupActions = createInitialBuffers
+
+                preConditions editor buffers =
+                    assertNotCurrentBuffer (nthBufferRef 1 buffers) editor
+
+                testActions buffers = do
+                    withBuffer0 $ insertN "The buffer is altered"
+                    ev $ ":buffer! " ++ nthBufferName 1 buffers ++ "<CR>"
+
+                assertions editor buffers = do
+                    assertCurrentBuffer (nthBufferRef 1 buffers) editor
+
+            runTest setupActions preConditions testActions assertions c
+
+
+      , testCase ":Nbuffer switches to the numbered buffer" $ do
+            let setupActions = createInitialBuffers
+
+                preConditions editor buffers =
+                    assertNotCurrentBuffer (nthBufferRef 1 buffers) editor
+
+                testActions buffers =
+                    -- return ()
+                    let (BufferRef bref) = nthBufferRef 1 buffers
+                    in ev $ ":" ++ show bref ++ "buffer<CR>"
+                    -- in ev $ ":buffer " ++ show bref ++ "<CR>"
+
+                assertions editor buffers = do
+                    -- assertContentOfCurrentBuffer c "Buffer two" editor
+                    assertCurrentBuffer (nthBufferRef 1 buffers) editor
+
+            runTest setupActions preConditions testActions assertions c
+
+
       -- , testCase "A named buffer can be shown in a split window" $ do
       -- , testCase "A numbered buffer can be shown in a split window" $ do
     ]

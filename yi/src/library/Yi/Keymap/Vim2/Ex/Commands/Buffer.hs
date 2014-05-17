@@ -18,7 +18,7 @@ import qualified Yi.Keymap.Vim2.Ex.Commands.Common as Common
 
 
 parse :: String -> Maybe ExCommand
-parse = Common.parseWithBang nameParser $ \ _ bang -> do
+parse = Common.parseWithBangAndCount nameParser $ \ _ bang mcount -> do
     bufIdent <- P.try ( P.many1 P.digit <|> bufferSymbol) <|>
                 P.many1 P.space *> P.many P.anyChar <|>
                 P.eof *> return ""
@@ -28,7 +28,9 @@ parse = Common.parseWithBang nameParser $ \ _ bang -> do
             unchanged <- withBuffer0 $ gets isUnchangedBuffer
             if bang || unchanged
                 then
-                    switchToBuffer bufIdent
+                    case mcount of
+                        Nothing -> switchToBuffer bufIdent
+                        Just i  -> switchByRef $ BufferRef i
                 else
                     Common.errorNoWrite
       }
