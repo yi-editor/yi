@@ -1,5 +1,5 @@
 name:           yi
-version:        0.8.1
+version:        0.9.0
 category:       Development, Editor
 synopsis:       The Haskell-Scriptable Editor
 description:
@@ -104,8 +104,6 @@ library
     Yi.Keymap.Emacs.Utils
     Yi.Keymap.Keys
     Yi.Keymap.Readline
-    Yi.Keymap.Vim
-    Yi.Keymap.Vim.TagStack
     Yi.Keymap.Vim2
     Yi.Keymap.Vim2.Common
     Yi.Keymap.Vim2.Digraph

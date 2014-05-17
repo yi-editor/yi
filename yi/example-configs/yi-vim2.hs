@@ -1,5 +1,4 @@
 import Yi
-import Yi.Keymap.Vim
 import qualified Yi.Keymap.Vim2 as V2
 import qualified Yi.Keymap.Vim2.Common as V2
 import qualified Yi.Keymap.Vim2.Utils as V2
@@ -8,7 +7,7 @@ import qualified Yi.Mode.Haskell as Haskell
 
 main :: IO ()
 main = yi $ defaultVimConfig {
-    modeTable = (myModes ++ modeTable defaultVimConfig),
+    modeTable = myModes ++ modeTable defaultVimConfig,
     defaultKm = myKeymapSet,
     configCheckExternalChangesObsessively = False
 }

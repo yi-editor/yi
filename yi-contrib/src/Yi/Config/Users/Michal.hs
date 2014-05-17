@@ -6,7 +6,6 @@ import Prelude (String, take, length, repeat, (++),
 import Data.List(isPrefixOf, isSuffixOf)
 import System.FilePath(takeFileName)
 import Yi
-import Yi.Keymap.Vim
 import qualified Yi.Keymap.Vim2 as V2
 import qualified Yi.Keymap.Vim2.Common as V2
 import qualified Yi.Keymap.Vim2.Utils as V2

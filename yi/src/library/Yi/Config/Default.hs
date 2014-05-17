@@ -3,7 +3,7 @@
 
 module Yi.Config.Default (defaultConfig, availableFrontends,
                           defaultEmacsConfig, defaultVimConfig, defaultCuaConfig,
-                          toVimStyleConfig, toVim2StyleConfig, toEmacsStyleConfig, toCuaStyleConfig) where
+                          toVim2StyleConfig, toEmacsStyleConfig, toCuaStyleConfig) where
 
 import Control.Applicative
 import Control.Monad
@@ -34,7 +34,6 @@ import qualified Data.Map as M
 import qualified Data.HashMap.Strict as HM
 import qualified Yi.Keymap.Cua  as Cua
 import qualified Yi.Keymap.Emacs  as Emacs
-import qualified Yi.Keymap.Vim  as Vim
 import qualified Yi.Keymap.Vim2  as Vim2
 import qualified Yi.Mode.Abella as Abella
 import qualified Yi.Mode.Haskell as Haskell
@@ -180,10 +179,10 @@ defaultConfig =
 
 defaultEmacsConfig, defaultVimConfig, defaultCuaConfig :: Config
 defaultEmacsConfig = toEmacsStyleConfig defaultConfig
-defaultVimConfig = toVimStyleConfig defaultConfig
+defaultVimConfig = toVim2StyleConfig defaultConfig
 defaultCuaConfig = toCuaStyleConfig defaultConfig
 
-toEmacsStyleConfig, toVimStyleConfig, toVim2StyleConfig, toCuaStyleConfig :: Config -> Config
+toEmacsStyleConfig, toVim2StyleConfig, toCuaStyleConfig :: Config -> Config
 toEmacsStyleConfig cfg
     = cfg {
             configUI = (configUI cfg)
@@ -210,11 +209,6 @@ escToMeta = mkAutomaton $ forever $ (anyEvent >>= I.write) ||> do
     c <- printableChar
     I.write (Event (KASCII c) [MMeta])
 
-toVimStyleConfig cfg = cfg { defaultKm = Vim.keymapSet
-                           , configUI = (configUI cfg) { configScrollStyle = Just SingleLine}
-                           , configRegionStyle = Inclusive
-                           , modeTable = AnyMode Abella.abellaModeVim : modeTable cfg }
-
 toVim2StyleConfig cfg = cfg { defaultKm = Vim2.keymapSet
                             , configUI = (configUI cfg) { configScrollStyle = Just SingleLine}
                             , configRegionStyle = Inclusive }
@@ -238,7 +232,7 @@ nilKeymap :: Keymap
 nilKeymap = choice [
              char 'c' ?>>  openCfg Cua.keymap    "yi-cua.hs",
              char 'e' ?>>  openCfg Emacs.keymap  "yi.hs",
-             char 'v' ?>>  openCfg Vim.keymapSet "yi-vim.hs",
+             char 'v' ?>>  openCfg Vim2.keymapSet "yi-vim.hs",
              char 'q' ?>>! quitEditor,
              char 'r' ?>>! reload,
              char 'h' ?>>! configHelp

@@ -3,7 +3,7 @@ import Yi
 -- Import the desired keymap "template":
 import Yi.Keymap.Emacs (keymap)
 import Yi.Keymap.Cua (keymap)
-import Yi.Keymap.Vim (keymapSet)
+import Yi.Keymap.Vim2 (keymapSet)
 
 -- Import the desired UI as needed.
 -- Some are not complied in, so we import none here.

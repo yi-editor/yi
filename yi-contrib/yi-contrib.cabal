@@ -1,5 +1,5 @@
 name:           yi-contrib
-version:        0.8.1
+version:        0.9.0
 category:       Development, Editor
 synopsis:       Add-ons to Yi, the Haskell-Scriptable Editor
 description:
@@ -20,13 +20,11 @@ library
   exposed-modules:
     Yi.Config.Users.Amy
     Yi.Config.Users.Anders
-    -- Yi.Config.Users.Cmcq -- needs build-depends: on GTK
-    Yi.Config.Users.Corey
-    Yi.Config.Users.Ertai
+    -- Yi.Config.Users.Corey
+    -- Yi.Config.Users.Ertai
     Yi.Config.Users.Gwern
-    Yi.Config.Users.Jeff
+    -- Yi.Config.Users.Jeff
     Yi.Config.Users.JP
-    --Yi.Config.Users.JP.Experimental
     Yi.Config.Users.Michal
     Yi.Config.Users.Reiner
     Yi.Style.Misc
@@ -41,7 +39,7 @@ library
     filepath < 1.4,
     split >= 0.1 && < 0.3,
     mtl >= 0.1.0.1,
-    yi == 0.8.1,
+    yi == 0.9.0,
     time >= 1.0 && < 2.0,
     old-locale >= 1.0 && < 1.2,
     transformers-base
