@@ -1,5 +1,4 @@
 {-# LANGUAGE FlexibleContexts, TemplateHaskell, RecordWildCards #-}
-{-# OPTIONS_GHC -fno-warn-incomplete-patterns #-} -- uniplate uses incomplete patterns
 -- Copyright (c) Jean-Philippe Bernardy 2008
 module Yi.Regex
   (
@@ -13,10 +12,10 @@ where
 
 import Data.Binary
 import Data.DeriveTH
-import Data.Generics.Uniplate
 import Text.Regex.TDFA
 import Text.Regex.TDFA.Pattern
 import Control.Applicative
+import Control.Lens
 import Text.Regex.TDFA.ReadRegex(parseRegex)
 import Text.Regex.TDFA.TDFA(patternToRegex)
 import Yi.Buffer.Basic (Direction(..))
@@ -124,19 +123,17 @@ to the input pattern.
 
 -}
 
--- Cannot use Derive because we have to handle list arguments specially (POr, PConcat)
-instance Uniplate Pattern where
-    uniplate pat = case pat of
-        PGroup x p -> ([p], \[z] ->PGroup x z)
-        POr ps -> (ps, POr)
-        PConcat ps -> (ps, PConcat)
-        PQuest p ->([p], \[z] -> PQuest z)
-        PPlus p ->([p], \[z] -> PPlus z)
-        PStar x p -> ([p], \[z] ->PStar x z)
-        PBound w x p -> ([p], \[z] ->PBound w x z)
-        PNonCapture p ->([p], \[z] -> PNonCapture z)
-        PNonEmpty p ->([p], \[z] -> PNonEmpty z)
-        p ->([],\[]->p)
+instance Plated Pattern where
+    plate f (PGroup x p) = PGroup <$> pure x <*> f p
+    plate f (POr ps)     = POr <$> traverse f ps
+    plate f (PConcat ps) = PConcat <$> traverse f ps
+    plate f (PQuest p)   = PQuest <$> f p
+    plate f (PPlus p)    = PPlus <$> f p
+    plate f (PStar x p)  = PStar <$> pure x <*> f p
+    plate f (PBound w x p) = PBound <$> pure w <*> pure x <*> f p
+    plate f (PNonCapture p) = PNonCapture <$> f p
+    plate f (PNonEmpty p) = PNonEmpty <$> f p
+    plate _ p = pure p
 
 emptySearch :: SearchExp
 emptySearch = SearchExp "" emptyRegex emptyRegex []
