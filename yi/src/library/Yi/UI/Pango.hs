@@ -391,7 +391,7 @@ newWindow e ui w = do
                boxChildPacking ml := PackNatural]
       return (castToBox vb)
 
-    tosRef    <- newIORef (askBuffer w b (getMarkPointB
+    tosRef    <- newIORef (askBuffer w b (use . markPointA
                                           =<< fromMark <$> askMarks))
     context   <- widgetCreatePangoContext v
     layout    <- layoutEmpty context
@@ -625,7 +625,7 @@ updatePango ui font w b layout = do
       winh                = max 1 $ floor (height'' / lineHeight)
 
       (tos, size, point, text) = askBuffer win b $ do
-        from     <- getMarkPointB =<< fromMark <$> askMarks
+        from     <- use . markPointA =<< fromMark <$> askMarks
         rope     <- streamB Forward from
         p        <- pointB
         bufEnd     <- sizeB
@@ -722,7 +722,7 @@ handleButtonClick ui ref = do
           b <- gets $ bkey . findBufferWith (bufkey win)
           withGivenBufferAndWindow0 win b $ do
             m <- selMark <$> askMarks
-            setMarkPointB m point
+            markPointA m .= point
             moveTo point
             setVisibleSelection False
       _ -> return ()

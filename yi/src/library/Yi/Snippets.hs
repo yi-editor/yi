@@ -194,7 +194,7 @@ markText m = markRegion m >>= readRegionB
 
 setMarkText :: String -> MarkInfo -> BufferM ()
 setMarkText txt (SimpleMarkInfo _ start) = do
-    p <- getMarkPointB start
+    p <- use $ markPointA start
     c <- readAtB p
     if isSpace c
       then insertNAt txt p
@@ -202,15 +202,15 @@ setMarkText txt (SimpleMarkInfo _ start) = do
                modifyRegionClever (const txt) r
 
 setMarkText txt mi = do
-    start <- getMarkPointB $ startMark mi
-    end   <- getMarkPointB $  endMark mi
+    start <- use $ markPointA $ startMark mi
+    end   <- use $ markPointA $ endMark mi
     let r = mkRegion start end
     modifyRegionClever (const txt) r
     when (start == end) $
-        setMarkPointB (endMark mi) (end + (Point $ length txt))
+        markPointA (endMark mi) .= (end + (Point $ length txt))
 
 withSimpleRegion (SimpleMarkInfo _ s) f = do
-    p <- getMarkPointB s
+    p <- use $ markPointA s
     c <- readAtB p
     if isSpace c
       then return $ mkRegion p p  -- return empty region
@@ -226,8 +226,8 @@ markRegion m@SimpleMarkInfo{} = withSimpleRegion m $ \r -> do
                    else min end $ regionStart r
 
 markRegion m = liftM2 mkRegion
-                   (getMarkPointB $ startMark m)
-                   (getMarkPointB $ endMark m)
+                   (use $ markPointA $ startMark m)
+                   (use $ markPointA $ endMark m)
 
 safeMarkRegion m@(SimpleMarkInfo _ _) = withSimpleRegion m return
 safeMarkRegion m = markRegion m
@@ -235,30 +235,30 @@ safeMarkRegion m = markRegion m
 adjMarkRegion s@(SimpleMarkInfo _ _) = markRegion s
 
 adjMarkRegion m = do
-    s <- getMarkPointB $ startMark m
-    e <- getMarkPointB $ endMark m
+    s <- use $ markPointA $ startMark m
+    e <- use $ markPointA $ endMark m
     c <- readAtB e
     when (isWordChar c) $ do adjustEnding e
                              repairOverlappings e
-    e <- getMarkPointB $ endMark m
+    e <- use $ markPointA $ endMark m
     s <- adjustStart s e
     return $ mkRegion s e
   where
     adjustEnding end = do
         r' <- regionOfPartNonEmptyAtB unitViWordOnLine Forward end
-        setMarkPointB (endMark m) (regionEnd r')
+        markPointA (endMark m) .= (regionEnd r')
 
     adjustStart s e = do
         txt <- readRegionB (mkRegion s e)
         let sP = s + (Point . length $ takeWhile isSpace txt)
         when (sP > s) $
-            setMarkPointB (startMark m) sP
+            markPointA (startMark m) .= sP
         return sP
 
     -- test if we generated overlappings and repair
     repairOverlappings origEnd = do overlappings <- allOverlappingMarks True m
                                     unless (null overlappings) $
-                                        setMarkPointB (endMark m) origEnd
+                                        markPointA (endMark m) .= origEnd
 
 findOverlappingMarksWith :: (MarkInfo -> BufferM Region) ->
                             ([[MarkInfo]] -> [MarkInfo]) -> Bool -> Region ->
@@ -314,12 +314,12 @@ moveToNextBufferMark deleteLast = do
       Nothing -> return ()
   where
     mv (SimpleMarkInfo _ m)   = do
-        moveTo =<< getMarkPointB m
+        moveTo =<< use (markPointA m)
         when deleteLast $ safeDeleteMarkB m
 
     mv (ValuedMarkInfo _ s e) = do
-        sp <- getMarkPointB s
-        ep <- getMarkPointB e
+        sp <- use $ markPointA s
+        ep <- use $ markPointA e
         deleteRegionB (mkRegion sp ep)
         moveTo sp
         when deleteLast $ do

@@ -113,7 +113,7 @@ bypassReadOnly f = do ro <- use readOnlyA
                       return res
 
 filenameColOf :: BufferM () -> BufferM ()
-filenameColOf f = use bufferDynamicValueA >>= setPrefCol . Just . diredNameCol >> f
+filenameColOf f = use bufferDynamicValueA >>= assign preferColA . Just . diredNameCol >> f
 
 resetDiredOpState :: YiM ()
 resetDiredOpState = withBuffer $ (%=) bufferDynamicValueA (\_ds -> def :: DiredOpState)

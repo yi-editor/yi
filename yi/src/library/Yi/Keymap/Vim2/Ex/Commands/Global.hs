@@ -4,6 +4,7 @@ module Yi.Keymap.Vim2.Ex.Commands.Global
 
 import Control.Applicative
 import Control.Monad
+import Control.Lens
 
 import Data.List (isInfixOf)
 import qualified Text.ParserCombinators.Parsec as P
@@ -41,7 +42,7 @@ global p c = Common.pureExCommand {
                     EditorA action -> void action
                     _ -> error "Impure command as an argument to global."
         withBuffer0 $ do
-            getMarkPointB mark >>= moveTo
+            use (markPointA mark) >>= moveTo
             deleteMarkB mark
   }
 

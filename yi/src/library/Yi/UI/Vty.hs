@@ -313,7 +313,7 @@ drawWindow cfg e focused win w h = (Rendered { picture = pict,cursor = cur}, mkR
         -- fromMark that is always equal to the end of the buffer contents.
         (Just (MarkSet fromM _ _), _) = runBuffer win b (getMarks win)
         fromMarkPoint = if notMini
-                            then fst $ runBuffer win b (getMarkPointB fromM)
+                            then fst $ runBuffer win b $ use $ markPointA fromM
                             else Point 0
         (text, _)    = runBuffer win b (indexedAnnotatedStreamB fromMarkPoint) -- read chars from the buffer, lazily
 

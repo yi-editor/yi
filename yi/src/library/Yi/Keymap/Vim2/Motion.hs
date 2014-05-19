@@ -43,6 +43,7 @@ import Prelude hiding (repeat)
 
 import Control.Applicative
 import Control.Monad
+import Control.Lens
 
 import Data.Maybe (fromMaybe)
 
@@ -187,7 +188,7 @@ matchGotoMarkMove (m:c:[]) = WholeMatch $ Move style True action
               mmark <- mayGetMarkB [c]
               case mmark of
                   Nothing -> fail $ "Mark " ++ show c ++ " not set"
-                  Just mark -> moveTo =<< getMarkPointB mark
+                  Just mark -> moveTo =<< use (markPointA mark)
 matchGotoMarkMove _ = NoMatch
 
 matchGotoCharMove :: String -> MatchResult Move

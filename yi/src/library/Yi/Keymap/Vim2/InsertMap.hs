@@ -4,6 +4,7 @@ module Yi.Keymap.Vim2.InsertMap
 
 import Control.Applicative
 import Control.Monad
+import Control.Lens
 import Data.Char (isDigit)
 
 import Yi.Buffer hiding (Insert)
@@ -165,7 +166,7 @@ printableAction evs = do
                         evs' -> error $ "Unhandled event " ++ evs' ++ " in insert mode"
     updatedCursors <- withBuffer0 $ do
         updatedCursors <- forM marks $ \mark -> do
-            moveTo =<< getMarkPointB mark
+            moveTo =<< use (markPointA mark)
             bufAction
             pointB
         mapM_ deleteMarkB marks

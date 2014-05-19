@@ -17,6 +17,7 @@ module Yi.Keymap.Vim2.Utils
 
 import Control.Applicative
 import Control.Monad
+import Control.Lens
 import Data.Char (isSpace)
 import Data.Foldable (asum)
 import Data.List (find, group)
@@ -88,8 +89,8 @@ setUnjumpMarks p = do
     lineStream <- indexedStreamB Forward solP
     let fstNonBlank =
             headDef solP [ p | (p, ch) <- lineStream, not (isSpace ch) || ch == '\n' ]
-    flip setMarkPointB p =<< getMarkB (Just "`")
-    flip setMarkPointB fstNonBlank =<< getMarkB (Just "'")
+    (.= p)           . markPointA =<< getMarkB (Just "`")
+    (.= fstNonBlank) . markPointA =<< getMarkB (Just "'")
 
 addVimJumpAtE :: Point -> EditorM ()
 addVimJumpAtE p = do

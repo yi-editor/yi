@@ -742,7 +742,7 @@ addJumpAtE point = do
             case bfStillAlive of
                 Nothing -> return False
                 _ -> do
-                    p <- withGivenBuffer0 bf $ getMarkPointB mark
+                    p <- withGivenBuffer0 bf $ use $ markPointA mark
                     return $! (p, bf) /= (point, bufkey w)
         _ -> return True
     when shouldAddJump $ do
@@ -767,6 +767,6 @@ modifyJumpListE f = do
         Nothing -> return ()
         Just (PL.PointedList _ (Jump mark bf) _) -> do
             switchToBufferE bf
-            withBuffer0 $ getMarkPointB mark >>= moveTo
+            withBuffer0 $ use (markPointA mark) >>= moveTo
 
             (%=) currentWindowA (\win -> win { jumpList = f (jumpList win) })

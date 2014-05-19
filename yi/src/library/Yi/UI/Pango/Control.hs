@@ -283,7 +283,7 @@ updatePango e v b layout = do
       winh                = max 1 $ floor (height'' / lineHeight)
 
       (tos, point, text)  = askBuffer win b $ do
-                              from <- getMarkPointB =<< fromMark <$> askMarks
+                              from <- (use . markPointA) =<< fromMark <$> askMarks
                               rope <- streamB Forward from
                               p    <- pointB
                               let content = fst $ Rope.splitAtLine winh rope
@@ -503,7 +503,7 @@ newView buffer font = do
 
     initialTos <-
       liftYi . withEditor . withGivenBufferAndWindow0 newWindow viewFBufRef $
-        getMarkPointB =<< fromMark <$> askMarks
+        (use . markPointA) =<< fromMark <$> askMarks
     shownTos <- liftBase $ newIORef initialTos
     winMotionSignal <- liftBase $ newIORef Nothing
 
@@ -776,7 +776,7 @@ handleMove view p0 event = do
            if p0 /= p1
             then Just <$> do
               m <- selMark <$> askMarks
-              setMarkPointB m p0
+              markPointA m .= p0
               moveTo p1
               setVisibleSelection True
               readRegionB =<< getSelectRegionB
