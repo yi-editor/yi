@@ -1,6 +1,7 @@
 module Yi.Keymap.Vim2.Ex.Commands.Common
     ( parse
     , parseWithBang
+    , parseWithBangAndCount
     , parseRange
     , OptionAction(..)
     , parseOption
@@ -16,6 +17,7 @@ import Control.Monad
 import Data.List (isPrefixOf)
 import System.Directory
 import qualified Text.ParserCombinators.Parsec as P
+import Text.Read (readMaybe)
 
 import Yi.Buffer
 import Yi.Editor
@@ -29,6 +31,22 @@ import Yi.Style (errorStyle)
 parse :: P.GenParser Char () ExCommand -> String -> Maybe ExCommand
 parse parser s = either (const Nothing) Just (P.parse parser "" s)
 
+
+parseWithBangAndCount :: P.GenParser Char () a
+                      -- ^ The command name parser.
+                      -> (a -> Bool -> (Maybe Int) -> P.GenParser Char () ExCommand)
+                      -- ^ A parser for the remaining command arguments.
+                      -> String
+                      -- ^ The string to parse.
+                      -> Maybe ExCommand
+parseWithBangAndCount nameParser argumentParser s = do
+    either (const Nothing) Just (P.parse parser "" s)
+  where
+    parser = do
+        mcount <- parseCount
+        a      <- nameParser
+        bang   <- parseBang
+        argumentParser a bang mcount
 
 parseWithBang :: P.GenParser Char () a
               -- ^ The command name parser.
@@ -50,6 +68,10 @@ parseBang = P.string "!" *> return True <|> return False
 
 parseRange :: P.GenParser Char () LineRange
 parseRange = return CurrentLineRange
+
+parseCount :: P.GenParser Char () (Maybe Int)
+parseCount = do
+    readMaybe <$> P.many P.digit
 
 data OptionAction = Set !Bool | Invert | Ask
 
