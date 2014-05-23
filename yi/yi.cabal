@@ -205,7 +205,9 @@ library
     Yi.Char.Unicode
 
   if impl(ghc < 7.8)
-    build-depends: derive >=2.4 && <2.7
+    build-depends: derive >=2.4 && <2.7, binary >= 0.5
+  else
+    build-depends: binary >= 0.7
   build-depends:
     Cabal >= 1.10,
     Diff >=0.2,
@@ -215,7 +217,6 @@ library
     process >= 1.0.1.1,
     old-locale,
     base >= 4 && < 5,
-    binary >= 0.5,
     bytestring >= 0.9.1 && < 0.11,
     cautious-file >= 1.0.1,
     concrete-typerep >= 0.1.0.2 && < 0.1.1,
