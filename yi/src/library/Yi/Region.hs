@@ -1,4 +1,4 @@
-{-# LANGUAGE DeriveDataTypeable, TemplateHaskell #-}
+{-# LANGUAGE DeriveDataTypeable, TemplateHaskell, CPP, StandaloneDeriving, DeriveGeneric #-}
 -- Copyright (C) 2008 JP Bernardy
 
 -- | This module defines the Region ADT
@@ -25,7 +25,11 @@ import Yi.Buffer.Basic
 import Yi.Utils
 import Data.Typeable
 import Data.Binary
+#if __GLASGOW_HASKELL__ < 708
 import Data.DeriveTH
+#else
+import GHC.Generics (Generic)
+#endif
 
 -- | The region data type.
 --The region is semi open: it includes the start but not the end bound. This allows simpler region-manipulation algorithms.
@@ -34,7 +38,12 @@ data Region = Region {regionDirection :: !Direction,
                       regionStart, regionEnd :: !Point}
                  deriving (Typeable)
 
+#if __GLASGOW_HASKELL__ < 708
 $(derive makeBinary ''Region)
+#else
+deriving instance Generic Region
+instance Binary Region
+#endif
 
 instance Show Region where
     show r = show (regionStart r) ++

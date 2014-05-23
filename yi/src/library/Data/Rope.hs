@@ -1,4 +1,4 @@
-{-# LANGUAGE CPP, MultiParamTypeClasses, FlexibleInstances #-}
+{-# LANGUAGE MultiParamTypeClasses, FlexibleInstances #-}
 -- Consider splitting off as a separate package
 -- Copyright (c) 2008 Gustav Munkby
 -- Copyright (c) 2008 Jean-Philippe Bernardy

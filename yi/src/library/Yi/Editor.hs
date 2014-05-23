@@ -1,5 +1,13 @@
-{-# LANGUAGE TemplateHaskell, GeneralizedNewtypeDeriving, DeriveDataTypeable, FlexibleContexts, StandaloneDeriving #-}
-{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE
+  TemplateHaskell,
+  GeneralizedNewtypeDeriving,
+  DeriveDataTypeable,
+  FlexibleContexts,
+  StandaloneDeriving,
+  ScopedTypeVariables,
+  CPP,
+  StandaloneDeriving,
+  DeriveGeneric #-}
 
 -- Copyright (c) 2004-5, Don Stewart - http://www.cse.unsw.edu.au/~dons
 -- Copyright (c) 2007-8, JP Bernardy
@@ -15,7 +23,11 @@ import Control.Applicative
 import Control.Monad
 import Control.Lens
 import Data.Binary
+#if __GLASGOW_HASKELL__ < 708
 import Data.DeriveTH
+#else
+import GHC.Generics (Generic)
+#endif
 import Data.Either (rights)
 import Data.List (nub, delete, (\\))
 import Data.Maybe
@@ -717,8 +729,12 @@ acceptedInputs = do
 onCloseBufferE :: BufferRef -> EditorM () -> EditorM ()
 onCloseBufferE b a = (%=) onCloseActionsA $ M.insertWith' (\_ old_a -> old_a >> a) b a
 
--- put the template haskell at the end, to avoid 'variable not found' compile errors
+#if __GLASGOW_HASKELL__ < 708
 $(derive makeBinary ''TempBufferNameHint)
+#else
+deriving instance Generic TempBufferNameHint
+instance Binary TempBufferNameHint
+#endif
 
 -- For GHC 7.0 with template-haskell 2.5 (at least on my computer - coconnor) the Binary instance
 -- needs to be defined before the YiVariable instance.

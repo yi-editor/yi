@@ -1,4 +1,5 @@
-{-# LANGUAGE FlexibleContexts, DeriveDataTypeable, TemplateHaskell #-}
+{-# LANGUAGE FlexibleContexts, DeriveDataTypeable, TemplateHaskell,
+  CPP, StandaloneDeriving, DeriveGeneric #-}
 
 -- | A module for CTags integration
 
@@ -32,7 +33,11 @@ import Data.List.Split (splitOn)
 
 import qualified Data.Trie as Trie
 import Data.Binary
+#if __GLASGOW_HASKELL__ < 708
 import Data.DeriveTH
+#else
+import GHC.Generics (Generic)
+#endif
 import Data.Default
 import Data.Typeable
 
@@ -124,13 +129,19 @@ getTagsFileList = do
   TagsFileList fps <- getDynamic
   return fps
 
--- template haskell at the end to avoid 'not found' compilation errors
-$(derives [makeBinary] [''Tags, ''TagTable, ''TagsFileList])
+#if __GLASGOW_HASKELL__ < 708
+$(derive makeBinary ''Tags)
+$(derive makeBinary ''TagTable)
+$(derive makeBinary ''TagsFileList)
+#else
+deriving instance Generic Tags
+deriving instance Generic TagTable
+deriving instance Generic TagsFileList
+instance Binary Tags
+instance Binary TagTable
+instance Binary TagsFileList
+#endif
 
--- For GHC 7.0 with template-haskell 2.5 (at least on my computer - coconnor) the Binary instance
--- needs to be defined before the YiVariable instance.
---
--- GHC 7.1 does not appear to have this issue.
 instance YiVariable Tags
 
 instance YiVariable TagsFileList

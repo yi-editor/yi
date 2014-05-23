@@ -1,4 +1,4 @@
-{-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE TemplateHaskell, CPP, StandaloneDeriving, DeriveGeneric #-}
 
 -- Copyright (c) 2004 Don Stewart - http://www.cse.unsw.edu.au/~dons
 -- Copyright (c) 2008 JP Bernardy
@@ -58,7 +58,11 @@ module Yi.Buffer.Undo (
    ) where
 
 import Data.Binary
+#if __GLASGOW_HASKELL__ < 708
 import Data.DeriveTH
+#else
+import GHC.Generics (Generic)
+#endif
 import Yi.Buffer.Implementation
 
 data Change = SavedFilePoint
@@ -68,11 +72,21 @@ data Change = SavedFilePoint
 -- !!! we'll keep a full copy of the buffer state for each update
 -- !!! (thunk) put in the URList.
             deriving (Show)
+#if __GLASGOW_HASKELL__ < 708
 $(derive makeBinary ''Change)
+#else
+deriving instance Generic Change
+instance Binary Change
+#endif
 -- | A URList consists of an undo and a redo list.
 data URList = URList ![Change] ![Change]
             deriving (Show)
+#if __GLASGOW_HASKELL__ < 708
 $(derive makeBinary ''URList)
+#else
+deriving instance Generic URList
+instance Binary URList
+#endif
 
 -- | A new empty 'URList'.
 -- Notice we must have a saved file point as this is when we assume we are

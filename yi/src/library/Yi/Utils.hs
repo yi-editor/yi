@@ -6,7 +6,6 @@ module Yi.Utils where
 import Data.Binary
 import Data.Char (toLower)
 import Data.Foldable hiding (all,any)
-import Data.Default
 import qualified Data.HashMap.Strict as HashMap
 import Data.Hashable(Hashable)
 import Control.Monad.Base
@@ -32,15 +31,6 @@ class SemiNum absolute relative | absolute -> relative where
     (+~) :: absolute -> relative -> absolute
     (-~) :: absolute -> relative -> absolute
     (~-) :: absolute -> absolute -> relative
-
-singleton :: a -> [a]
-singleton x = [x]
-
-
--- 'list' is the canonical list destructor as 'either' or 'maybe'.
-list :: b -> (a -> [a] -> b) -> [a] -> b
-list nil _     []     = nil
-list _   cons' (x:xs) = cons' x xs
 
 {-# ANN nubSet "HLint: ignore Eta reduce" #-}
 -- TODO: move somewhere else.
@@ -116,14 +106,6 @@ swapFocus moveFocus xs =
         f1  = view PL.focus xs
         f2  = view PL.focus xs'
     in set PL.focus f1 . moveFocus . set PL.focus f2 $ xs
-
--- | Write nothing. Use with 'dummyGet'
-dummyPut :: a -> Put
-dummyPut _ = return ()
-
--- | Read nothing, and return 'def'. Use with 'dummyPut'.
-dummyGet :: Default a => Get a
-dummyGet = return def
 
 ----------------- Orphan 'Binary' instances
 instance (Eq k, Hashable k, Binary k, Binary v) => Binary (HashMap.HashMap k v) where

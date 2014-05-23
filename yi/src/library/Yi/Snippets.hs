@@ -1,6 +1,7 @@
 {-# LANGUAGE DeriveDataTypeable, FlexibleContexts, FlexibleInstances,
     FunctionalDependencies, GeneralizedNewtypeDeriving, MultiParamTypeClasses,
-    NoMonomorphismRestriction, TypeSynonymInstances, TemplateHaskell #-}
+    NoMonomorphismRestriction, TypeSynonymInstances, TemplateHaskell, CPP,
+    StandaloneDeriving, DeriveGeneric #-}
 {-# OPTIONS_GHC -fno-warn-missing-signatures -fno-warn-incomplete-patterns -fno-warn-name-shadowing #-}
 module Yi.Snippets where
 
@@ -12,7 +13,11 @@ import Control.Lens hiding (Action)
 import Data.Binary
 import Data.Typeable
 import Data.Foldable (find)
+#if __GLASGOW_HASKELL__ < 708
 import Data.DeriveTH
+#else
+import GHC.Generics (Generic)
+#endif
 import Data.List hiding (find, elem, concat, concatMap)
 import Data.Char (isSpace)
 import Data.Maybe (catMaybes)
@@ -36,7 +41,12 @@ data MarkInfo = SimpleMarkInfo { userIndex :: !Int, startMark :: !Mark }
               | DependentMarkInfo { userIndex :: !Int, startMark :: !Mark, endMark :: !Mark }
   deriving (Eq, Show)
 
+#if __GLASGOW_HASKELL__ < 708
 $(derive makeBinary ''MarkInfo)
+#else
+deriving instance Generic MarkInfo
+instance Binary MarkInfo
+#endif
 
 newtype BufferMarks = BufferMarks { bufferMarks :: [MarkInfo] }
   deriving (Eq, Show, Monoid, Typeable, Binary)

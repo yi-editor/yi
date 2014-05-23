@@ -1,4 +1,5 @@
-{-# LANGUAGE DeriveDataTypeable, TemplateHaskell #-}
+{-# LANGUAGE DeriveDataTypeable, TemplateHaskell,
+  CPP, StandaloneDeriving, DeriveGeneric #-}
 
 module Yi.Keymap.Vim2.Common
     ( VimMode(..)
@@ -16,7 +17,11 @@ module Yi.Keymap.Vim2.Common
     ) where
 
 import Data.Binary
+#if __GLASGOW_HASKELL__ < 708
 import Data.DeriveTH
+#else
+import GHC.Generics (Generic)
+#endif
 import qualified Data.HashMap.Strict as HM
 import qualified Data.Rope as R
 import Data.Default
@@ -76,21 +81,38 @@ data VimState = VimState {
         , vsPaste :: !Bool -- ^ like vim's :help paste
     } deriving (Typeable)
 
+#if __GLASGOW_HASKELL__ < 708
 $(derive makeBinary ''RepeatableAction)
-
 $(derive makeBinary ''Register)
-
 $(derive makeBinary ''GotoCharCommand)
+#else
+deriving instance Generic RepeatableAction
+deriving instance Generic Register
+deriving instance Generic GotoCharCommand
+instance Binary RepeatableAction
+instance Binary Register
+instance Binary GotoCharCommand
+#endif
 
 instance Default VimMode where
     def = Normal
 
+#if __GLASGOW_HASKELL__ < 708
 $(derive makeBinary ''VimMode)
+#else
+deriving instance Generic VimMode
+instance Binary VimMode
+#endif
 
 instance Default VimState where
     def = VimState Normal Nothing [] [] HM.empty '\0' Nothing [] False [] Nothing [] [] False
 
+#if __GLASGOW_HASKELL__ < 708
 $(derive makeBinary ''VimState)
+#else
+deriving instance Generic VimState
+instance Binary VimState
+#endif
 
 instance YiVariable VimState
 

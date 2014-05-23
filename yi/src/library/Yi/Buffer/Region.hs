@@ -26,6 +26,7 @@ where
 
 import Control.Applicative
 import Control.Monad
+import Control.Lens
 import Data.Algorithm.Diff
 import Data.Char (isSpace)
 import Data.List (sort)
@@ -138,12 +139,6 @@ blockifyRegion r = savingPointB $ do
   mapM (\line -> mkRegion <$> pointOfLineColB line lowCol <*> pointOfLineColB line (1 + highCol))
        [startLine..endLine]
 
-skippingFirst :: ([a] -> [a]) -> [a] -> [a]
-skippingFirst f = list [] (\x -> (x :) . f)
-
-skippingLast :: ([a] -> [a]) -> [a] -> [a]
-skippingLast f xs = f (init xs) ++ [last xs]
-
 skippingNull :: ([a] -> [b]) -> [a] -> [b]
 skippingNull _ [] = []
 skippingNull f xs = f xs
@@ -151,8 +146,8 @@ skippingNull f xs = f xs
 joinLinesB :: Region -> BufferM ()
 joinLinesB =
   savingPointB .
-    modifyRegionClever (skippingLast $
-       concat . skippingFirst (fmap $ skippingNull ((' ':) . dropWhile isSpace)) . lines')
+    modifyRegionClever (over _init $
+       concat . over _tail (fmap $ skippingNull ((' ':) . dropWhile isSpace)) . lines')
 
 concatLinesB :: Region -> BufferM ()
-concatLinesB = savingPointB . modifyRegionClever (skippingLast $ filter (/= '\n'))
+concatLinesB = savingPointB . modifyRegionClever (over _init $ filter (/= '\n'))

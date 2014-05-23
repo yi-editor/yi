@@ -139,8 +139,8 @@ data ViCmd = ArbCmd !(Int -> YiM ()) !Int
   deriving (Typeable)
 
 instance Data.Binary.Binary ViCmd where
-    put = dummyPut
-    get = dummyGet
+    put _ = return ()
+    get   = return def
 
 instance Default ViCmd where
   def = NoOp
@@ -158,8 +158,8 @@ newtype MViInsertion = MVI { unMVI :: Maybe ViInsertion }
   deriving(Typeable, Default)
 
 instance Data.Binary.Binary MViInsertion where
-    put = dummyPut
-    get = dummyGet
+    put _ = return ()
+    get   = return def
 instance YiVariable MViInsertion
 
 makeLensesWithSuffix "A" ''ViInsertion

@@ -1,4 +1,13 @@
-{-# LANGUAGE TemplateHaskell, ScopedTypeVariables, NoMonomorphismRestriction, Haskell2010, GeneralizedNewtypeDeriving, DeriveDataTypeable #-}
+{-# LANGUAGE
+  TemplateHaskell,
+  ScopedTypeVariables,
+  NoMonomorphismRestriction,
+  Haskell2010,
+  GeneralizedNewtypeDeriving,
+  DeriveDataTypeable,
+  CPP,
+  StandaloneDeriving,
+  DeriveGeneric #-}
 -- Copyright '2012 by Michal J. Gajda
 --
 -- | This module implements persistence across different Yi runs.
@@ -13,7 +22,11 @@ where
 
 import Data.Typeable
 import Data.Binary
+#if __GLASGOW_HASKELL__ < 708
 import Data.DeriveTH
+#else
+import GHC.Generics (Generic)
+#endif
 import Data.Default
 import System.Directory(doesFileExist)
 import qualified Data.Map as M
@@ -39,7 +52,12 @@ data PersistentState = PersistentState { histories     :: !Histories
                                        , aCurrentRegex :: Maybe SearchExp
                                        }
 
+#if __GLASGOW_HASKELL__ < 708
 $(derive makeBinary ''PersistentState)
+#else
+deriving instance Generic PersistentState
+instance Binary PersistentState
+#endif
 
 newtype MaxHistoryEntries = MaxHistoryEntries { unMaxHistoryEntries :: Int }
   deriving(Typeable, Binary)

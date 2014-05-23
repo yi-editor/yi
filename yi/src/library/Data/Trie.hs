@@ -1,11 +1,15 @@
-{-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE TemplateHaskell, CPP, DeriveGeneric, StandaloneDeriving #-}
 
 module Data.Trie where
 
 -- Trie module. Partly taken from http://www.haskell.org/haskellwiki/Haskell_Quiz/Word_Search/Solution_Sjanssen
 
 import Data.Binary
+#if __GLASGOW_HASKELL__ < 708
 import Data.DeriveTH
+#else
+import GHC.Generics (Generic)
+#endif
 import qualified Data.Map as Map
 import Control.Monad
 
@@ -65,4 +69,9 @@ certainSuffix :: String -> Trie -> String
 certainSuffix prefix fulltrie =
     lookupPrefix prefix fulltrie >>= forcedNext
 
+#if __GLASGOW_HASKELL__ < 708
 $(derive makeBinary ''Trie)
+#else
+deriving instance Generic Trie
+instance Binary Trie
+#endif
