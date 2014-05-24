@@ -5,6 +5,7 @@ module Yi.Keymap.Vim2.NormalMap
 import Control.Monad
 import Control.Applicative
 import Control.Lens hiding (re)
+import System.Directory (doesFileExist)
 
 import Data.Char
 import Data.List (group)
@@ -29,6 +30,9 @@ import Yi.Misc
 import Yi.Regex (seInput, makeSearchOptsM)
 import Yi.Search (getRegexE, isearchInitE, setRegexE, makeSimpleSearch)
 import Yi.Monad
+import Yi.Keymap
+import Yi.File (editFile)
+import Yi.Utils (io)
 
 mkDigitBinding :: Char -> VimBinding
 mkDigitBinding c = mkBindingE Normal Continue (char c, return (), mutate)
@@ -46,6 +50,7 @@ defNormalMap operators =
     continuingBindings ++
     nonrepeatableBindings ++
     jumpBindings ++
+    fileEditBindings ++
     [tabTraversalBinding]
 
 motionBinding :: VimBinding
@@ -268,6 +273,13 @@ nonrepeatableBindings = fmap (mkBindingE Normal Drop)
     , ("<C-w>p", prevWinE, resetCount)
     ]
 
+fileEditBindings :: [VimBinding]
+fileEditBindings =  fmap (mkStringBindingY Normal)
+    [ ("gf", openFileUnderCursor Nothing, resetCount)
+    , ("<C-w>gf", openFileUnderCursor $ Just newTabE, resetCount)
+    , ("<C-w>f", openFileUnderCursor $ Just (splitE >> prevWinE), resetCount)
+    ]
+
 setMarkBinding :: VimBinding
 setMarkBinding = VimBindingE f
     where f _ s | vsMode s /= Normal = NoMatch
@@ -291,7 +303,6 @@ searchWordE wholeWord dir = do
             Right re -> search re
             Left _ -> return ()
     else search $ makeSimpleSearch word
-
 
 searchBinding :: VimBinding
 searchBinding = VimBindingE f
@@ -365,6 +376,16 @@ tabTraversalBinding = VimBindingE f
               return Drop
           f _ _ = NoMatch
 
+openFileUnderCursor :: Maybe (EditorM ()) -> YiM ()
+openFileUnderCursor editorAction = do
+    fileName   <- withEditor . withBuffer0 $ readUnitB unitViWORD
+    fileExists <- io $ doesFileExist fileName
+    if (not fileExists) then
+        withEditor . fail $ "Can't find file \"" ++ fileName ++ "\""
+    else do
+        maybeM withEditor editorAction
+        void . editFile $ fileName 
+
 -- TODO: withCount name implies that parameter has type (Int -> EditorM ())
 --       Is there a better name for this function?
 withCount :: EditorM () -> EditorM ()
@@ -372,3 +393,4 @@ withCount action = flip replicateM_ action =<< getCountE
 
 withCountOnBuffer0 :: BufferM () -> EditorM ()
 withCountOnBuffer0 action = withCount $ withBuffer0 action
+
