@@ -17,6 +17,7 @@ import Control.Applicative
 import Control.Monad
 import Control.Lens hiding (act)
 import Data.List (isInfixOf)
+import Data.Proxy
 import qualified Data.List.PointedList.Circular as PL
 import Data.Maybe
 import Data.String (IsString)
@@ -195,14 +196,14 @@ completionFunction f = do
 
 class Promptable a where
     getPromptedValue :: String -> YiM a
-    getPrompt :: a -> String           -- Parameter can be "undefined/bottom"
-    getMinibuffer :: a -> String -> (String -> YiM ()) -> YiM ()
+    getPrompt :: Proxy a -> String
+    getMinibuffer :: Proxy a -> String -> (String -> YiM ()) -> YiM ()
     getMinibuffer _ = withMinibufferFree
 
 doPrompt :: forall a. Promptable a => (a -> YiM ()) -> YiM ()
 doPrompt act = getMinibuffer witness (getPrompt witness ++ ":") (act <=< getPromptedValue)
-    where witness = error "Promptable argument should not be accessed"
-          witness :: a
+    where witness = undefined
+          witness :: Proxy a
 
 instance Promptable String where
     getPromptedValue = return
@@ -221,7 +222,7 @@ instance Promptable Int where
 getPromptedValueList :: [(String,a)] -> String -> YiM a
 getPromptedValueList vs s = maybe (error "Invalid choice") return (lookup s vs)
 
-getMinibufferList :: [(String,a)] -> a -> String -> (String -> YiM ()) -> YiM ()
+getMinibufferList :: [(String,a)] -> Proxy a -> String -> (String -> YiM ()) -> YiM ()
 getMinibufferList vs _ prompt = withMinibufferFin prompt (fmap fst vs)
 
 enumAll :: (Enum a, Bounded a, Show a) => [(String, a)]
