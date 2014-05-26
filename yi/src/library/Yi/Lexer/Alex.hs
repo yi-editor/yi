@@ -119,20 +119,20 @@ alexInputPrevChar (prevChar,_) = prevChar
 
 -- | Return a constant token
 actionConst :: token -> Action lexState token
-actionConst token _str state = (state, token)
+actionConst token = \_str state -> (state, token)
 
 -- | Return a constant token, and modify the lexer state
 actionAndModify :: (lexState -> lexState) -> token -> Action lexState token
-actionAndModify modifierFct token _str state = (modifierFct state, token)
+actionAndModify modifierFct token = \_str state -> (modifierFct state, token)
 
 -- | Convert the parsed string into a token,
 --   and also modify the lexer state
-actionStringAndModify :: (lexState -> lexState) -> (String ->token) -> Action lexState token
-actionStringAndModify modifierFct f indexedStr state = (modifierFct state, f $ fmap snd indexedStr)
+actionStringAndModify :: (lexState -> lexState) -> (String -> token) -> Action lexState token
+actionStringAndModify modifierFct f = \indexedStr state -> (modifierFct state, f $ fmap snd indexedStr)
 
 -- | Convert the parsed string into a token
 actionStringConst :: (String -> token) -> Action lexState token
-actionStringConst f indexedStr state = (state, f $ fmap snd indexedStr)
+actionStringConst f = \indexedStr state -> (state, f $ fmap snd indexedStr)
 
 type ASI s = (AlexState s, AlexInput)
 
