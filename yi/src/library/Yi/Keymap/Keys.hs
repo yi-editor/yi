@@ -82,22 +82,27 @@ optMod f ev = oneOf [ev, f ev]
 spec :: Key -> Event
 spec k = Event k []
 
-
+-- | > p >>! act = p >> 'write' act
 (>>!) :: (MonadInteract m Action Event, YiAction a x, Show x) => m b -> a -> m ()
 p >>! act = p >> write act
 
+-- | > p >>=! act = p >>= 'write' . act
 (>>=!) :: (MonadInteract m Action Event, YiAction a x, Show x) => m b -> (b -> a) -> m ()
 p >>=! act = p >>= write . act
 
+-- | @ ev ?>> proc = 'event' ev >> proc @
 (?>>) :: (MonadInteract m action Event) => Event -> m a -> m a
 ev ?>> proc = event ev >> proc
 
+-- | @ ev ?>>! act = 'event' ev >> 'write' act @
 (?>>!) :: (MonadInteract m Action Event, YiAction a x, Show x) => Event -> a -> m ()
 ev ?>>! act = event ev >> write act
 
+-- | @ ev ?*>> proc = 'events' ev >> proc @
 (?*>>) :: (MonadInteract m action Event) => [Event] -> m a -> m a
 ev ?*>> proc = events ev >> proc
 
+-- | @ ev ?*>>! act = 'events' ev >> 'write' act @
 (?*>>!) :: (MonadInteract m Action Event, YiAction a x, Show x) => [Event] -> a -> m ()
 ev ?*>>! act = events ev >> write act
 
