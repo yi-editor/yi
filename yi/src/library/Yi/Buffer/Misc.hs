@@ -323,12 +323,11 @@ instance Binary FBuffer where
       let strippedRaw :: BufferImpl ()
           strippedRaw = setSyntaxBI (modeHL emptyMode) r
       in do
-          put (modeName binmode)
+          put binmode
           put strippedRaw
           put attributes_
     get = do
-        mnm <- get
-        FBuffer <$> pure (emptyMode {modeName = mnm}) <*> getStripped <*> get
+        FBuffer <$> get <*> getStripped <*> get
       where getStripped :: Get (BufferImpl ())
             getStripped = get
 
