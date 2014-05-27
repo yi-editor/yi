@@ -128,7 +128,7 @@ dummyHlState = HLState noHighlighter (hlStartState noHighlighter)
 -- TODO: ideally I'd like to get rid of overlays entirely; although we could imagine them storing mere styles.
 instance Binary (BufferImpl ()) where
     put b = put (mem b) >> put (marks b) >> put (markNames b)
-    get = pure FBufferData <*> get <*> get <*> get <*> pure dummyHlState <*> pure Set.empty <*> pure 0
+    get = FBufferData <$> get <*> get <*> get <*> pure dummyHlState <*> pure Set.empty <*> pure 0
 
 
 

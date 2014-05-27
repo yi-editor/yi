@@ -215,10 +215,10 @@ deleteBuffer k = do
   --
   -- The close actions seem dangerous, but I know of no other simple way to resolve issues related
   -- to what buffer receives actions after the minibuffer closes.
-  pure length <*> gets bufferStack
+  length <$> gets bufferStack
     >>= \l -> case l of
         1 -> return ()
-        _ -> pure (M.lookup k) <*> gets onCloseActions
+        _ -> M.lookup k <$> gets onCloseActions
                 >>= \m_action -> fromMaybe (return ()) m_action
   -- Now try deleting the buffer. Checking, once again, that it is not the last buffer.
   bs <- gets bufferStack
