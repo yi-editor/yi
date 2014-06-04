@@ -149,7 +149,7 @@ emacsKeys univArg =
          , ctrlCh 'e'           ?>>! repeatingArg (maybeMoveB Line Forward)
          , ctrlCh 'f'           ?>>! repeatingArg rightB
          , ctrlCh 'g'           ?>>! setVisibleSelection False
-         , ctrlCh 'h'           ?>> char 'b' ?>>! acceptedInputs
+         , ctrlCh 'h'           ?>> char 'b' ?>>! acceptedInputsOtherWindow
          , ctrlCh 'i'           ?>>! adjIndent IncreaseOnly
          , ctrlCh 'j'           ?>>! newlineAndIndentB
          , ctrlCh 'k'           ?>>! killLineE univArg
