@@ -722,7 +722,7 @@ acceptedInputsOtherWindow = do
   ai <- acceptedInputs
   b <- stringToNewBuffer (Left "keybindings") (R.fromString $ unlines ai)
   w <- newWindowE False b
-  (%=) windowsA (PL.insertRight w)
+  windowsA %= (PL.insertRight w)
 
 
 -- | Defines an action to be executed when the current buffer is closed.
