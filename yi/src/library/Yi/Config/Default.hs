@@ -232,7 +232,6 @@ nilKeymap :: Keymap
 nilKeymap = choice [
              char 'c' ?>>  openCfg Cua.keymap    "yi-cua.hs",
              char 'e' ?>>  openCfg Emacs.keymap  "yi.hs",
-             char 'v' ?>>  openCfg Vim2.keymapSet "yi-vim.hs",
              char 'q' ?>>! quitEditor,
              char 'r' ?>>! reload,
              char 'h' ?>>! configHelp
@@ -242,7 +241,10 @@ nilKeymap = choice [
                          ["This instance of Yi is not configured.",
                           "To get a standard reasonable keymap, you can run yi with either --as=cua, --as=vim or --as=emacs.",
                           "You should however create your own ~/.config/yi/yi.hs file: ",
-                          "You can type 'c', 'e' or 'v' now to create and edit it using a temporary cua, emacs or vim keymap."]
+                          "You can type 'c' or 'e' now to create and edit it using a temporary cua or emacs keymap.",
+                          "",
+                          "Sorry, vim keymap is not available via this wizard, you should",
+                          "start with copying yi/example-configs/yi-vim.hs to ~/.config/yi/yi.hs"]
           openCfg km kmName = write $ do
             dataDir <- io getDataDir
             let exampleCfg = dataDir </> "example-configs" </> kmName
@@ -250,24 +252,10 @@ nilKeymap = choice [
             cfgExists <- io $ doesFileExist cfgFile
             void $ editFile cfgFile -- load config file
             -- locally override the keymap to the user choice
+            -- Beware: newly created buffers (including minibuffers) won't
+            -- inherit this keymap
             withBuffer $ modifyMode (\m -> m { modeKeymap = const km })
             unless cfgExists $ do
                 -- file did not exist, load a reasonable default
                 defCfg <- io $ readFile exampleCfg
                 withBuffer $ insertN defCfg
---          openCfg km kmName = write $ do
---            dataDir <- io $ getDataDir
---            let exampleCfg = dataDir </> "example-configs" </> kmName
---            homeDir <- io $ getHomeDirectory
---            let cfgDir = homeDir </> ".yi"
---                cfgFile = cfgDir </> "yi.hs"
---            cfgExists <- io $ doesFileExist cfgFile
---            -- io $ print cfgExists
---            io $ createDirectoryIfMissing True cfgDir -- so that the file can be saved.
---            void $ editFile cfgFile -- load config file
---            -- locally override the keymap to the user choice
---            withBuffer $ modifyMode (\m -> m {modeKeymap = const km})
---            when (not cfgExists) $ do
---                 -- file did not exist, load a reasonable default
---                 defCfg <- io $ readFile exampleCfg
---                 withBuffer $ insertN defCfg
