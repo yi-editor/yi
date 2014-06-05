@@ -42,7 +42,6 @@ spawnMinibufferE prompt kmMod =
        -- Now create the minibuffer keymap and switch to the minibuffer window
        withGivenBuffer0 b $
          modifyMode $ \m -> m { modeKeymap = \kms -> kms { topKeymap = kmMod (insertKeymap kms)
-                                                         , startTopKeymap = kmMod (startInsertKeymap kms)
                                                          } }
        -- The minibuffer window must not be moved from the position newWindowE places it!
        -- First: This way the minibuffer is just below the window that was in focus when
