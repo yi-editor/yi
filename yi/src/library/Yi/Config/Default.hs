@@ -3,7 +3,7 @@
 
 module Yi.Config.Default (defaultConfig, availableFrontends,
                           defaultEmacsConfig, defaultVimConfig, defaultCuaConfig,
-                          toVim2StyleConfig, toEmacsStyleConfig, toCuaStyleConfig) where
+                          toVimStyleConfig, toEmacsStyleConfig, toCuaStyleConfig) where
 
 import Control.Applicative
 import Control.Monad
@@ -34,7 +34,7 @@ import qualified Data.Map as M
 import qualified Data.HashMap.Strict as HM
 import qualified Yi.Keymap.Cua  as Cua
 import qualified Yi.Keymap.Emacs  as Emacs
-import qualified Yi.Keymap.Vim2  as Vim2
+import qualified Yi.Keymap.Vim  as Vim
 import qualified Yi.Mode.Abella as Abella
 import qualified Yi.Mode.Haskell as Haskell
 import qualified Yi.Mode.JavaScript as JS
@@ -179,10 +179,10 @@ defaultConfig =
 
 defaultEmacsConfig, defaultVimConfig, defaultCuaConfig :: Config
 defaultEmacsConfig = toEmacsStyleConfig defaultConfig
-defaultVimConfig = toVim2StyleConfig defaultConfig
+defaultVimConfig = toVimStyleConfig defaultConfig
 defaultCuaConfig = toCuaStyleConfig defaultConfig
 
-toEmacsStyleConfig, toVim2StyleConfig, toCuaStyleConfig :: Config -> Config
+toEmacsStyleConfig, toVimStyleConfig, toCuaStyleConfig :: Config -> Config
 toEmacsStyleConfig cfg
     = cfg {
             configUI = (configUI cfg)
@@ -209,7 +209,7 @@ escToMeta = mkAutomaton $ forever $ (anyEvent >>= I.write) ||> do
     c <- printableChar
     I.write (Event (KASCII c) [MMeta])
 
-toVim2StyleConfig cfg = cfg { defaultKm = Vim2.keymapSet
+toVimStyleConfig cfg = cfg { defaultKm = Vim.keymapSet
                             , configUI = (configUI cfg) { configScrollStyle = Just SingleLine}
                             , configRegionStyle = Inclusive }
 

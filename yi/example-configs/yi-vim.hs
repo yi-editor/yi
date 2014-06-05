@@ -1,7 +1,7 @@
 import Yi
-import qualified Yi.Keymap.Vim2 as V2
-import qualified Yi.Keymap.Vim2.Common as V2
-import qualified Yi.Keymap.Vim2.Utils as V2
+import qualified Yi.Keymap.Vim as V2
+import qualified Yi.Keymap.Vim.Common as V2
+import qualified Yi.Keymap.Vim.Utils as V2
 
 import qualified Yi.Mode.Haskell as Haskell
 
@@ -22,8 +22,8 @@ myKeymapSet = V2.mkKeymapSet $ V2.defVimConfig `override` \super this ->
     let eval = V2.pureEval this
     in super {
           -- Here we can add custom bindings.
-          -- See Yi.Keymap.Vim2.Common for datatypes and
-          -- Yi.Keymap.Vim2.Utils for useful functions like mkStringBindingE
+          -- See Yi.Keymap.Vim.Common for datatypes and
+          -- Yi.Keymap.Vim.Utils for useful functions like mkStringBindingE
 
           -- In case of conflict, that is if there exist multiple bindings
           -- whose prereq function returns WholeMatch,
