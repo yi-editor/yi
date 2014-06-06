@@ -1,4 +1,4 @@
-module Yi.Config.Users.Corey (config) where
+module Yi.Config.Users.Corey (config, main) where
 {- An example yi.hs that uses the Vim keymap with these additions:
     - Always uses the VTY UI by default.
     - The color style is darkBlueTheme
@@ -6,7 +6,7 @@ module Yi.Config.Users.Corey (config) where
       I find useful.
  -}
 import Yi
-import Yi.Keymap.Vim
+import Yi.Keymap.Vim2
 import Yi.Buffer.Indent (indentAsPreviousB)
 import Yi.Keymap.Keys
 import Yi.Misc (adjBlock)
@@ -18,6 +18,8 @@ import Data.List (isPrefixOf)
 import Control.Monad (replicateM_)
 import Control.Applicative
 import Control.Lens hiding (Action)
+
+main = yi config
 
 -- Set soft tabs of 4 spaces in width.
 prefIndent :: Mode s -> Mode s
@@ -37,7 +39,7 @@ config = defaultConfig
     {
         -- Use VTY as the default UI.
         -- startFrontEnd = Yi.UI.Vty.start,
-        defaultKm = mkKeymap extendedVimKeymap,
+        defaultKm = keymapSet,
         modeTable = fmap (onMode $ noHaskellAnnots . prefIndent) (modeTable defaultConfig),
         configUI = (configUI defaultConfig)
             {
@@ -45,6 +47,7 @@ config = defaultConfig
             }
     }
 
+{-
 extendedVimKeymap = defKeymap `override` \super self -> super
     {
         v_top_level = 
@@ -124,4 +127,4 @@ startExtesnionNameInsert self = beginIns self $ do
     p <- pointB
     insertN " #-}"
     moveTo p
-
+-}
