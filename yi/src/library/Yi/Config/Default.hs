@@ -10,13 +10,10 @@ import Control.Monad
 import Control.Lens hiding (Action)
 import Data.Default
 import Paths_yi
-import System.Directory
 import System.FilePath
 import Yi.Command (cabalBuildE, cabalConfigureE, grepFind, makeBuild, reloadProjectE, searchSources, shell)
-import {-# source #-} Yi.Boot
 import Yi.Config
 import Yi.Config.Misc
-import Yi.Paths(getConfigFilename)
 import Yi.Core
 import Yi.Utils
 import Yi.Eval(publishedActions)
@@ -95,7 +92,6 @@ defaultPublishedActions = HM.fromList
     , ("regionOfB"              , box regionOfB)
     , ("regionOfPartB"          , box regionOfPartB)
     , ("regionOfPartNonEmptyB"  , box regionOfPartNonEmptyB)
-    , ("reloadEditor"           , box reload)
     , ("reloadProjectE"         , box reloadProjectE)
     , ("replaceString"          , box replaceString)
     , ("revertE"                , box revertE)
@@ -230,32 +226,20 @@ openScratchBuffer = withEditor $ do
 
 nilKeymap :: Keymap
 nilKeymap = choice [
-             char 'c' ?>>  openCfg Cua.keymap    "yi-cua.hs",
-             char 'e' ?>>  openCfg Emacs.keymap  "yi.hs",
              char 'q' ?>>! quitEditor,
-             char 'r' ?>>! reload,
              char 'h' ?>>! configHelp
             ]
             <|| (anyEvent >>! errorEditor "Keymap not defined, 'q' to quit, 'h' for help.")
-    where configHelp = newBufferE (Left "configuration help") $ R.fromString $ unlines
-                         ["This instance of Yi is not configured.",
-                          "To get a standard reasonable keymap, you can run yi with either --as=cua, --as=vim or --as=emacs.",
-                          "You should however create your own ~/.config/yi/yi.hs file: ",
-                          "You can type 'c' or 'e' now to create and edit it using a temporary cua or emacs keymap.",
-                          "",
-                          "Sorry, vim keymap is not available via this wizard, you should",
-                          "start with copying yi/example-configs/yi-vim.hs to ~/.config/yi/yi.hs"]
-          openCfg km kmName = write $ do
+    where configHelp :: YiM ()
+          configHelp = do
             dataDir <- io getDataDir
-            let exampleCfg = dataDir </> "example-configs" </> kmName
-            cfgFile <- getConfigFilename -- automatically creates directory, if missing
-            cfgExists <- io $ doesFileExist cfgFile
-            void $ editFile cfgFile -- load config file
-            -- locally override the keymap to the user choice
-            -- Beware: newly created buffers (including minibuffers) won't
-            -- inherit this keymap
-            withBuffer $ modifyMode (\m -> m { modeKeymap = const km })
-            unless cfgExists $ do
-                -- file did not exist, load a reasonable default
-                defCfg <- io $ readFile exampleCfg
-                withBuffer $ insertN defCfg
+            let welcomeText = unlines
+                         ["This instance of Yi is not configured.",
+                          "",
+                          "To get a standard reasonable keymap, you can run yi with",
+                          "either --as=cua, --as=vim or --as=emacs.",
+                          "",
+                          "You should however create your own ~/.config/yi/yi.hs file.",
+                          "As a starting point it's recommended to use one of the configs",
+                          "from " ++ dataDir </> "example-configs/"]
+            withEditor (void (newBufferE (Left "configuration help") (R.fromString welcomeText)))

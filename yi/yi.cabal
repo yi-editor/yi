@@ -103,7 +103,6 @@ library
     Yi.Keymap.Emacs.KillRing
     Yi.Keymap.Emacs.Utils
     Yi.Keymap.Keys
-    Yi.Keymap.Readline
     Yi.Keymap.Vim
     Yi.Keymap.Vim.Common
     Yi.Keymap.Vim.Digraph
