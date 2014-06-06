@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE TemplateHaskell #-}
 
 module Yi.Config where
@@ -17,8 +18,14 @@ import {-# source #-} Yi.UI.Common
 import qualified Yi.Interact as I
 import Yi.Utils
 
+#ifdef FRONTEND_VTY
+import qualified Graphics.Vty as Vty
+#endif
+
 data UIConfig = UIConfig {
-   configVtyEscDelay :: Int,
+#ifdef FRONTEND_VTY
+   configVty :: Vty.Config,
+#endif
    configFontName :: Maybe String,  -- ^ Font name, for the UI that support it.
    configFontSize :: Maybe Int,     -- ^ Font size, for the UI that support it.
    configScrollStyle ::Maybe ScrollStyle,

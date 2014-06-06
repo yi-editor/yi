@@ -45,6 +45,7 @@ import qualified Data.Rope as R
 
 #ifdef FRONTEND_VTY
 import qualified Yi.UI.Vty
+import qualified Graphics.Vty.Config as Vty
 #endif
 #ifdef FRONTEND_PANGO
 import qualified Yi.UI.Pango
@@ -135,7 +136,9 @@ defaultConfig =
            , configAutoHideTabBar = True
            , configWindowFill = ' '
            , configTheme = defaultTheme
-           , configVtyEscDelay = 0
+#ifdef FRONTEND_VTY
+           , configVty = def
+#endif
            }
          , defaultKm        = modelessKeymapSet nilKeymap
          , startActions     = []
@@ -183,7 +186,16 @@ defaultCuaConfig = toCuaStyleConfig defaultConfig
 toEmacsStyleConfig, toVimStyleConfig, toVim2StyleConfig, toCuaStyleConfig :: Config -> Config
 toEmacsStyleConfig cfg
     = cfg {
-            configUI = (configUI cfg) { configVtyEscDelay = 1000 , configScrollStyle = Just SnapToCenter},
+            configUI = (configUI cfg)
+                       { configScrollStyle = Just SnapToCenter
+#ifdef FRONTEND_VTY
+                       -- corey: does this actually matter? escToMeta appears to perform all the
+                       -- meta joining required. I'm not an emacs user and cannot evaluate feel. For
+                       -- me these settings join esc;key to meta-key OK. The 100 millisecond lag in
+                       -- ESC is terrible for me. Maybe that's just how it is under emacs...
+                       , configVty = def { Vty.vtime = Just 100, Vty.vmin = Just 2 }
+#endif
+                       },
             defaultKm = Emacs.keymap,
             startActions = makeAction openScratchBuffer : startActions cfg,
             configInputPreprocess = escToMeta,
