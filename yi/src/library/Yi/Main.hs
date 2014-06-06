@@ -78,7 +78,7 @@ data Opts = Help
 -- | List of editors for which we provide an emulation.
 editors :: [(String,Config -> Config)]
 editors = [("emacs", toEmacsStyleConfig),
-           ("vim2",  toVimStyleConfig),
+           ("vim",  toVimStyleConfig),
            ("cua",   toCuaStyleConfig)]
 
 {-# ANN options "HLint: ignore Use string literal" #-}
