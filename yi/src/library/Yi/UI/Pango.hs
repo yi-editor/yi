@@ -206,7 +206,7 @@ startNoMsg cfg ch outCh ed = do
          , boxChildPacking status := PackNatural
          ]
 
-  fontRef <- newIORef undefined
+  fontRef <- fontDescriptionNew >>= newIORef
 
   let actionCh = outCh . return
   tc <- newIORef =<< newCache ed actionCh
