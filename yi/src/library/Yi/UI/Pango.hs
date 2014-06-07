@@ -1,5 +1,5 @@
 {-# LANGUAGE CPP, ExistentialQuantification, TupleSections, NamedFieldPuns
-           , ViewPatterns, ScopedTypeVariables #-}
+           , ViewPatterns, ScopedTypeVariables, LambdaCase #-}
 {-# OPTIONS_GHC -funbox-strict-fields #-}
 
 -- |
@@ -193,6 +193,12 @@ startNoMsg cfg ch outCh ed = do
   panedAdd2 paned (baseWidget tabs)
 
   status  <- statusbarNew
+
+  -- Allow multiple lines in statusbar, GitHub issue #478
+  statusbarGetMessageArea status >>= containerGetChildren >>= \case
+    [w] -> labelSetSingleLineMode (castToLabel w) False
+    _ -> return ()
+
   -- statusbarGetContextId status "global"
 
   set vb [ containerChild := paned

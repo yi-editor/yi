@@ -50,7 +50,7 @@ shellCommandV :: String -> YiM ()
 shellCommandV cmd = do
       (exitCode,cmdOut,cmdErr) <- liftBase $ runShellCommand cmd
       case exitCode of
-        ExitSuccess -> if length (filter (== '\n') cmdOut) > 1
+        ExitSuccess -> if length (filter (== '\n') cmdOut) > 17
                        then withEditor . void $ -- see GitHub issue #477
                               newBufferE (Left "Shell Command Output")
                                          (R.fromString cmdOut)
