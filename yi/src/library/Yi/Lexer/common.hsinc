@@ -7,11 +7,11 @@
 #define IBOX(n) (I# (n))
 
 #if __GLASGOW_HASKELL__ > 706
-#define GEQ(x, y) (tagToEnum# (x >=# y))
-#define EQ(x, y) (tagToEnum# (x ==# y))
+#define GEQ_(x, y) (tagToEnum# (x >=# y))
+#define EQ_(x, y) (tagToEnum# (x ==# y))
 #else
-#define GEQ(x, y) (x >=# y)
-#define EQ(x, y) (x ==# y)
+#define GEQ_(x, y) (x >=# y)
+#define EQ_(x, y) (x ==# y)
 #endif
 
 -- | Scan one token. Return (maybe) a token and a new state.
@@ -67,7 +67,7 @@ alex_scan_tkn' user orig_input len input s last_acc =
           offset     = (base +# ord_c)
           check      = alexIndexInt16OffAddr alex_check offset
 
-          new_s      = if GEQ(offset, 0#) && EQ(check, ord_c)
+          new_s      = if GEQ_(offset, 0#) && EQ_(check, ord_c)
                        then alexIndexInt16OffAddr alex_table offset
                        else alexIndexInt16OffAddr alex_deflt s
           new_len    = len +# 1#

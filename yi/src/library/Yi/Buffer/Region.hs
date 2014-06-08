@@ -26,7 +26,7 @@ where
 
 import Control.Applicative
 import Control.Monad
-import Control.Lens
+import Control.Lens hiding (transform)
 import Data.Algorithm.Diff
 import Data.Char (isSpace)
 import Data.List (sort)

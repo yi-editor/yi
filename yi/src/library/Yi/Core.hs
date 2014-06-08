@@ -146,7 +146,7 @@ recoverMode tbl buffer  = case fromMaybe (AnyMode emptyMode) (find (\(AnyMode m)
   where oldName = case buffer of FBuffer {bmode = m} -> modeName m
 
 postActions :: [Action] -> YiM ()
-postActions actions = do yi <- ask; liftBase $ output yi actions
+postActions actions = do yi <- ask; liftBase $ yiOutput yi actions
 
 -- | Display the errors buffer if it is not already visible.
 showErrors :: YiM ()
@@ -388,7 +388,7 @@ startSubprocessWatchers procid procinfo yi onExit =
     mapM_ forkOS ([pipeToBuffer (hErr procinfo) (send . append True) | separateStdErr procinfo] ++
                   [pipeToBuffer (hOut procinfo) (send . append False),
                    waitForExit (procHandle procinfo) >>= reportExit])
-  where send a = output yi [makeAction a]
+  where send a = yiOutput yi [makeAction a]
         append :: Bool -> String -> YiM ()
         append atMark s = withEditor $ appendToBuffer atMark (bufRef procinfo) s
         reportExit ec = send $ do append True ("Process exited with " ++ show ec)

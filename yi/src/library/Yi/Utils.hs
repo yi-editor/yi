@@ -14,6 +14,7 @@ import Control.Lens hiding (cons)
 import qualified Data.Set as Set
 import qualified Data.Map as Map
 import qualified Data.List.PointedList as PL
+import qualified Language.Haskell.TH.Syntax as THS
 
 io :: MonadBase IO m => IO a -> m a
 io = liftBase
@@ -112,6 +113,7 @@ instance (Eq k, Hashable k, Binary k, Binary v) => Binary (HashMap.HashMap k v) 
     put x = put (HashMap.toList x)
     get = HashMap.fromList <$> get
 
+makeClassyWithSuffix :: String -> THS.Name -> THS.Q [THS.Dec]
 makeClassyWithSuffix s = makeLensesWith (classyRules 
   & lensField .~ Just . (++s)
   & lensClass .~ classy)
@@ -120,5 +122,6 @@ makeClassyWithSuffix s = makeLensesWith (classyRules
     classy n@(a:as) = Just ("Has" ++ n, toLower a:(as++s))
     classy _ = Nothing
 
+makeLensesWithSuffix :: String -> THS.Name -> THS.Q [THS.Dec]
 makeLensesWithSuffix s =
   makeLensesWith (defaultRules & lensField .~ Just . (++s))

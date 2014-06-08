@@ -80,8 +80,8 @@ type KeymapEndo = Keymap -> Keymap
 type KeymapProcess = I.P Event Action
 
 data Yi = Yi {yiUi          :: UI,
-              input         :: Event -> IO (),      -- ^ input stream
-              output        :: [Action] -> IO (),   -- ^ output stream
+              yiInput       :: Event -> IO (),      -- ^ input stream
+              yiOutput      :: [Action] -> IO (),   -- ^ output stream
               yiConfig      :: Config,
               -- TODO: this leads to anti-patterns and seems like one itself
               -- too coarse for actual concurrency, otherwise pointless
