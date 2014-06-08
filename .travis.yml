@@ -1,14 +1,13 @@
 matrix:
   allow_failures:
     - env: GHCVER=head
-    - env: HPVER=2012.4.0.0
     - env: HPVER=2013.2.0.0
 
 env:
- - GHCVER=7.6.1
- - GHCVER=7.6.2
  - GHCVER=7.6.3
  - GHCVER=7.8.1
+ - GHCVER=7.8.2
+ - GHCVER=7.8.3
  - GHCVER=head
  - HPVER=2013.2.0.0
  - HPVER=2012.4.0.0
@@ -20,10 +19,6 @@ before_install:
     "2013.2.0.0")
       export GHCVER=7.6.3 ;
       echo "constraints:async==2.0.1.4,attoparsec==0.10.4.0,case-insensitive==1.0.0.1,cgi==3001.1.7.5,fgl==5.4.2.4,GLUT==2.4.0.0,GLURaw==1.3.0.0,haskell-src==1.0.1.5,hashable==1.1.2.5,html==1.0.1.2,HTTP==4000.2.8,HUnit==1.2.5.2,mtl==2.1.2,network==2.4.1.2,OpenGL==2.8.0.0,OpenGLRaw==1.3.0.0,parallel==3.2.0.3,parsec==3.1.3,QuickCheck==2.6,random==1.0.1.1,regex-base==0.93.2,regex-compat==0.95.1,regex-posix==0.95.2,split==0.2.2,stm==2.4.2,syb==0.4.0,text==0.11.3.1,transformers==0.3.0.0,unordered-containers==0.2.3.0,vector==0.10.0.1,xhtml==3000.2.1,zlib==0.5.4.1" > cabal.config ;;
-
-    "2012.4.0.0")
-      export GHCVER=7.6.2 ;
-      echo "constraints:async==2.0.1.3,cgi==3001.1.7.4,fgl==5.4.2.4,GLUT==2.1.2.1,haskell-src==1.0.1.5,html==1.0.1.2,HTTP==4000.2.5,HUnit==1.2.5.1,mtl==2.1.2,network==2.3.1.0,OpenGL==2.2.3.1,parallel==3.2.0.3,parsec==3.1.3,QuickCheck==2.5.1.1,random==1.0.1.1,regex-base==0.93.2,regex-compat==0.95.1,regex-posix==0.95.2,split==0.2.1.1,stm==2.4,syb==0.3.7,text==0.11.2.3,transformers==0.3.0.0,vector==0.10.0.1,xhtml==3000.2.1,zlib==0.5.4.0" > cabal.config ;;
 
     *)
       export GHCVER=unknown ;
@@ -37,18 +32,18 @@ before_install:
  - cp cabal.config yi-contrib
  - sudo add-apt-repository -y ppa:hvr/ghc
  - sudo apt-get update
- - sudo apt-get install cabal-install-1.18 ghc-$GHCVER
+ - sudo apt-get install cabal-install-1.20 ghc-$GHCVER
  - export PATH=/opt/ghc/$GHCVER/bin:$PATH
 
 install:
- - cabal-1.18 update
- - travis_retry cabal-1.18 install -j2 alex happy
- - travis_retry cabal-1.18 install -j2 gtk2hs-buildtools
+ - cabal-1.20 update
+ - travis_retry cabal-1.20 install -j2 alex happy
+ - travis_retry cabal-1.20 install -j2 gtk2hs-buildtools
 
 script:
  - cd yi
- - travis_retry cabal-1.18 install -j2 -fpango --enable-tests -ftesting --only-dependencies --reorder-goals
- - cabal-1.18 install -fpango --enable-tests -ftesting || cat /home/travis/.cabal/logs/yi-*
+ - travis_retry cabal-1.20 install -j2 -fpango --enable-tests -ftesting --only-dependencies --reorder-goals
+ - cabal-1.20 install -fpango --enable-tests -ftesting || cat /home/travis/.cabal/logs/yi-* && cat dist/logs/*test-suite.log
  - cd ../yi/example-configs
  - for config in yi-*.hs;
    do
@@ -56,4 +51,4 @@ script:
    done;
 
  - cd ../../yi-contrib
- - cabal-1.18 install
+ - cabal-1.20 install
