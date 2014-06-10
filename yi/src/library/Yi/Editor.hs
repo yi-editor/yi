@@ -6,7 +6,6 @@
   StandaloneDeriving,
   ScopedTypeVariables,
   CPP,
-  StandaloneDeriving,
   DeriveGeneric #-}
 
 -- Copyright (c) 2004-5, Don Stewart - http://www.cse.unsw.edu.au/~dons
@@ -227,7 +226,7 @@ deleteBuffer k = do
   case bs of
       (b0:nextB:_) -> do
           let pickOther w = if bufkey w == k then w {bufkey = other} else w
-              visibleBuffers = fmap bufkey $ toList ws
+              visibleBuffers = bufkey <$> toList ws
               other = head $ (bs \\ visibleBuffers) ++ delete k bs
           when (b0 == k) $
               -- we delete the currently selected buffer: the next buffer will become active in
