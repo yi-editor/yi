@@ -2,6 +2,7 @@
 ------
 
  * Unicode syntax highlighting fixed (issue #82)
+ * Hook to GTK Window exposed (#557)
 
 0.9.0
 -----

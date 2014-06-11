@@ -10,7 +10,7 @@
 -- This module defines a user interface implemented using gtk2hs and
 -- pango for direct text rendering.
 
-module Yi.UI.Pango (start) where
+module Yi.UI.Pango (start, startGtkHook) where
 
 import Prelude hiding (error, elem, mapM_, foldl, concat, mapM)
 import Control.Exception (catch, SomeException)
@@ -161,13 +161,20 @@ askBuffer w b f = fst $ runBuffer w b f
 
 -- | Initialise the ui
 start :: UIBoot
-start cfg ch outCh ed =
-  catch (startNoMsg cfg ch outCh ed)
+start = startGtkHook (const $ return ())
+
+-- | Initialise the ui, calling a given function
+--   on the Gtk window. This could be used to
+--   set additional callbacks, adjusting the window
+--   layout, etc.
+startGtkHook :: (Gtk.Window -> IO ()) -> UIBoot
+startGtkHook userHook cfg ch outCh ed =
+  catch (startNoMsgGtkHook userHook cfg ch outCh ed)
   (\(GError _dom _code msg) -> fail $ unpack msg)
 
-startNoMsg :: UIBoot
-startNoMsg cfg ch outCh ed = do
-  logPutStrLn "startNoMsg"
+startNoMsgGtkHook :: (Gtk.Window -> IO ()) -> UIBoot
+startNoMsgGtkHook userHook cfg ch outCh ed = do
+  logPutStrLn "startNoMsgGtkHook"
   void unsafeInitGUIForThreadedRTS
 
   win   <- windowNew
@@ -220,6 +227,9 @@ startNoMsg cfg ch outCh ed = do
   let watchFont = (fontDescriptionFromString "Monospace 10" >>=)
 #endif
   watchFont $ updateFont (configUI cfg) fontRef tc status
+
+  -- I think this is the correct place to put it...
+  userHook win
 
   -- use our magic threads thingy
   -- http://haskell.org/gtk2hs/archives/2005/07/24/writing-multi-threaded-guis/
