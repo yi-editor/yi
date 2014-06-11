@@ -10,7 +10,7 @@
 -- This module defines a user interface implemented using gtk2hs and
 -- pango for direct text rendering.
 
-module Yi.UI.Pango (start) where
+module Yi.UI.Pango (start, startGtkHook) where
 
 import Prelude hiding (error, elem, mapM_, foldl, concat, mapM)
 import Control.Exception (catch, SomeException)
@@ -217,6 +217,86 @@ startNoMsg cfg ch outCh ed = do
   let watchFont = (fontDescriptionFromString "Monospace 10" >>=)
 #endif
   watchFont $ updateFont (configUI cfg) fontRef tc status
+
+  -- use our magic threads thingy
+  -- http://haskell.org/gtk2hs/archives/2005/07/24/writing-multi-threaded-guis/
+  void $ timeoutAddFull (yield >> return True) priorityDefaultIdle 50
+
+  widgetShowAll win
+
+  let ui = UI win tabs status tc actionCh (configUI cfg) fontRef im
+
+  -- Keep the current tab focus up to date
+  let move n pl = fromMaybe pl (PL.moveTo n pl)
+      runAction = uiActionCh ui . makeAction
+  -- why does this cause a hang without postGUIAsync?
+  simpleNotebookOnSwitchPage (uiNotebook ui) $ \n -> postGUIAsync $
+    runAction ((%=) tabsA (move n) :: EditorM ())
+
+  return (mkUI ui)
+
+-- | Initialise the ui
+startGtkHook :: (Gtk.Window -> IO ()) -> UIBoot
+startGtkHook userHook cfg ch outCh ed =
+  catch (startNoMsgGtkHook userHook cfg ch outCh ed)
+  (\(GError _dom _code msg) -> fail msg)
+
+startNoMsgGtkHook :: (Gtk.Window -> IO ()) -> UIBoot
+startNoMsgGtkHook userHook cfg ch outCh ed = do
+  logPutStrLn "startNoMsgGtkHook"
+  void unsafeInitGUIForThreadedRTS
+
+  win   <- windowNew
+  ico   <- loadIcon "yi+lambda-fat-32.png"
+  vb    <- vBoxNew False 1    -- Top-level vbox
+
+  im <- imMulticontextNew
+  imContextSetUsePreedit im False  -- handler for preedit string not implemented
+
+  -- Yi.Buffer.Misc.insertN for atomic input?
+  im `on` imContextCommit $ mapM_ (\k -> ch $ Event (KASCII k) [])
+
+  set win [ windowDefaultWidth  := 700
+          , windowDefaultHeight := 900
+          , windowTitle         := "Yi"
+          , windowIcon          := Just ico
+          , containerChild      := vb
+          ]
+  win `on` deleteEvent $ io $ mainQuit >> return True
+  win `on` keyPressEvent $ handleKeypress ch im
+
+  paned <- hPanedNew
+  tabs <- simpleNotebookNew
+  panedAdd2 paned (baseWidget tabs)
+
+  status  <- statusbarNew
+
+  -- Allow multiple lines in statusbar, GitHub issue #478
+  statusbarGetMessageArea status >>= containerGetChildren >>= \case
+    [w] -> labelSetSingleLineMode (castToLabel w) False
+    _ -> return ()
+
+  -- statusbarGetContextId status "global"
+
+  set vb [ containerChild := paned
+         , containerChild := status
+         , boxChildPacking status := PackNatural
+         ]
+
+  fontRef <- fontDescriptionNew >>= newIORef
+
+  let actionCh = outCh . return
+  tc <- newIORef =<< newCache ed actionCh
+
+#ifdef GNOME_ENABLED
+  let watchFont = watchSystemFont
+#else
+  let watchFont = (fontDescriptionFromString "Monospace 10" >>=)
+#endif
+  watchFont $ updateFont (configUI cfg) fontRef tc status
+
+  -- I think this is the correct place to put it...
+  userHook win
 
   -- use our magic threads thingy
   -- http://haskell.org/gtk2hs/archives/2005/07/24/writing-multi-threaded-guis/
