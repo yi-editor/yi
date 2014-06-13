@@ -10,7 +10,6 @@ env:
  - GHCVER=7.8.3
  - GHCVER=head
  - HPVER=2013.2.0.0
- - HPVER=2012.4.0.0
 
 before_install:
  - case "$HPVER" in
@@ -43,7 +42,7 @@ install:
 script:
  - cd yi
  - travis_retry cabal-1.20 install -j2 -fpango --enable-tests -ftesting --only-dependencies --reorder-goals
- - cabal-1.20 install -fpango --enable-tests -ftesting || cat /home/travis/.cabal/logs/yi-* && cat dist/logs/*test-suite.log
+ - cabal-1.20 install -j1 -fpango --enable-tests -ftesting
  - cd ../yi/example-configs
  - for config in yi-*.hs;
    do

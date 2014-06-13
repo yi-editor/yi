@@ -162,7 +162,7 @@ runControl f = runReaderT (runControl'' f)
 
 runAction :: Action -> ControlM ()
 runAction action = do
-    out <- liftYi $ asks output
+    out <- liftYi $ asks yiOutput
     liftBase $ out [action]
 
 -- | Test 2
@@ -517,7 +517,7 @@ newView buffer font = do
         runControl (runAction $ makeAction $ do
             focusWindowE windowRef
             switchToBufferE viewFBufRef) control
-        result <- processEvent (input $ controlYi control) event
+        result <- processEvent (yiInput $ controlYi control) event
         widgetQueueDraw drawArea
         return result
 
