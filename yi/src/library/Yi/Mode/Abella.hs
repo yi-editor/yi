@@ -1,7 +1,7 @@
 -- Copyright (c) 2009 Nicolas Pouillard
 {-# LANGUAGE GeneralizedNewtypeDeriving, DeriveDataTypeable #-}
 module Yi.Mode.Abella
-  ( abellaModeVim, abellaModeEmacs, abella
+  ( abellaModeEmacs, abella
   , abellaEval, abellaEvalFromProofPoint, abellaUndo, abellaGet, abellaSend)
 where
 
@@ -22,7 +22,6 @@ import qualified Yi.Lexer.Abella as Abella
 import Yi.Syntax.Tree
 import Yi.MiniBuffer (CommandArguments(..))
 import Yi.Lexer.Alex
-import Yi.Keymap.Vim (savingCommandY)
 
 abellaModeGen :: (Char -> [Event]) -> TokenBasedMode Abella.Token
 abellaModeGen abellaBinding =
@@ -33,17 +32,13 @@ abellaModeGen abellaBinding =
   , modeToggleCommentSelection = toggleCommentSelectionB "% " "%"
   , modeKeymap = topKeymapA %~ (<||)
      (choice
-      [ abellaBinding 'p' ?*>>! sav abellaUndo
-      , abellaBinding 'e' ?*>>! sav abellaEval
-      , abellaBinding 'n' ?*>>! sav abellaNext
-      , abellaBinding 'a' ?*>>! sav abellaAbort
-      , abellaBinding '\r' ?*>>! sav abellaEvalFromProofPoint
+      [ abellaBinding 'p' ?*>>! abellaUndo
+      , abellaBinding 'e' ?*>>! abellaEval
+      , abellaBinding 'n' ?*>>! abellaNext
+      , abellaBinding 'a' ?*>>! abellaAbort
+      , abellaBinding '\r' ?*>>! abellaEvalFromProofPoint
       ])
   }
-  where sav f = savingCommandY (`replicateM_` f) 1
-
-abellaModeVim :: TokenBasedMode Abella.Token
-abellaModeVim = abellaModeGen (\ch -> [char '\\', char ch])
 
 abellaModeEmacs :: TokenBasedMode Abella.Token
 abellaModeEmacs = abellaModeGen (\ch -> [ctrlCh 'c', ctrlCh ch])

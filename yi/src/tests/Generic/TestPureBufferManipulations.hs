@@ -193,11 +193,11 @@ mkTestCase cf t = testCase (ktName t) $ do
 
 -- | Takes a directory with the tests, a name of the keymap
 -- and an evaluation function for the keys contained in the tests.
--- For Vim2, we might do something like:
+-- For Vim, we might do something like:
 --
 -- @
 -- getTests defaultVimConfig "src/tests/vimtests"
---   "Vim2" (pureEval $ extractValue defVimConfig)
+--   "Vim" (pureEval $ extractValue defVimConfig)
 -- @
 getTests :: Config -> FilePath -> String
          -> KeyEval -> IO TestTree

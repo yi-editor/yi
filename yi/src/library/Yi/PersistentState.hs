@@ -11,7 +11,7 @@
 -- Copyright '2012 by Michal J. Gajda
 --
 -- | This module implements persistence across different Yi runs.
---   It includes minibuffer command history, marks, VimTagStack etc.
+--   It includes minibuffer command history, marks etc.
 --   Warning: Current version will _not_ check whether two or more instances
 --   of Yi are run at the same time.
 
@@ -39,7 +39,6 @@ import Yi.Config.Simple.Types(customVariable, Field)
 import Yi.History
 import Yi.Editor
 import Yi.Keymap(YiM)
-import Yi.Keymap.Vim.TagStack(VimTagStack(..), getTagStack, setTagStack)
 import Yi.KillRing(Killring(..))
 import Yi.Search(getRegexE, setRegexE)
 import Yi.Regex(SearchExp(..))
@@ -47,7 +46,6 @@ import Yi.Paths(getPersistentStateFilename)
 import Yi.Utils
 
 data PersistentState = PersistentState { histories     :: !Histories
-                                       , vimTagStack   :: !VimTagStack
                                        , aKillring     :: !Killring
                                        , aCurrentRegex :: Maybe SearchExp
                                        }
@@ -79,10 +77,6 @@ trimHistories maxHistory = M.map trimH
     trimH (History cur content prefix) = History cur (trim content) prefix
     trim content = drop (max 0 (length content - maxHistory)) content
 
--- | Trims VimTagStack to contain at most N values.
-trimTagStack :: Int -> VimTagStack -> VimTagStack
-trimTagStack maxHistory = VimTagStack . take maxHistory . tagsStack
-
 -- | Here is a persistent history saving part.
 --   We assume each command is a single line.
 --   To add new components, one has to:
@@ -96,12 +90,10 @@ savePersistentState = do
     MaxHistoryEntries histLimit <- withEditor askConfigVariableA
     pStateFilename      <- getPersistentStateFilename
     (hist :: Histories) <- withEditor $ use dynA
-    tagStack            <- withEditor   getTagStack
     kr                  <- withEditor $ use killringA
     curRe               <- withEditor   getRegexE
     let pState = PersistentState {
                    histories     = trimHistories histLimit hist
-                 , vimTagStack   = trimTagStack  histLimit tagStack
                  , aKillring     = kr    -- trimmed during normal operation
                  , aCurrentRegex = curRe -- just a single value -> no need to trim
                  }
@@ -126,7 +118,6 @@ loadPersistentState = do
     case maybePState of
       Nothing     -> return ()
       Just pState -> do withEditor $ assign dynA                 $ histories     pState
-                        withEditor $ setTagStack                 $ vimTagStack   pState
                         withEditor $ assign killringA            $ aKillring     pState
                         withEditor $ maybe (return ()) setRegexE $ aCurrentRegex pState
 

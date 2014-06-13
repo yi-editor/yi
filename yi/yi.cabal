@@ -1,5 +1,5 @@
 name:           yi
-version:        0.8.1
+version:        0.9.0
 category:       Development, Editor
 synopsis:       The Haskell-Scriptable Editor
 description:
@@ -103,49 +103,46 @@ library
     Yi.Keymap.Emacs.KillRing
     Yi.Keymap.Emacs.Utils
     Yi.Keymap.Keys
-    Yi.Keymap.Readline
     Yi.Keymap.Vim
-    Yi.Keymap.Vim.TagStack
-    Yi.Keymap.Vim2
-    Yi.Keymap.Vim2.Common
-    Yi.Keymap.Vim2.Digraph
-    Yi.Keymap.Vim2.Eval
-    Yi.Keymap.Vim2.EventUtils
-    Yi.Keymap.Vim2.Ex
-    Yi.Keymap.Vim2.Ex.Commands.Common
-    Yi.Keymap.Vim2.Ex.Commands.Buffer
-    Yi.Keymap.Vim2.Ex.Commands.Buffers
-    Yi.Keymap.Vim2.Ex.Commands.BufferDelete
-    Yi.Keymap.Vim2.Ex.Commands.Cabal
-    Yi.Keymap.Vim2.Ex.Commands.Delete
-    Yi.Keymap.Vim2.Ex.Commands.Edit
-    Yi.Keymap.Vim2.Ex.Commands.Global
-    Yi.Keymap.Vim2.Ex.Commands.GotoLine
-    Yi.Keymap.Vim2.Ex.Commands.Nohl
-    Yi.Keymap.Vim2.Ex.Commands.Paste
-    Yi.Keymap.Vim2.Ex.Commands.Quit
-    Yi.Keymap.Vim2.Ex.Commands.Reload
-    Yi.Keymap.Vim2.Ex.Commands.Substitute
-    Yi.Keymap.Vim2.Ex.Commands.Write
-    Yi.Keymap.Vim2.Ex.Commands.Yi
-    Yi.Keymap.Vim2.Ex.Types
-    Yi.Keymap.Vim2.Ex.Eval
-    Yi.Keymap.Vim2.ExMap
-    Yi.Keymap.Vim2.InsertMap
-    Yi.Keymap.Vim2.MatchResult
-    Yi.Keymap.Vim2.Motion
-    Yi.Keymap.Vim2.NormalMap
-    Yi.Keymap.Vim2.NormalOperatorPendingMap
-    Yi.Keymap.Vim2.Operator
-    Yi.Keymap.Vim2.ReplaceMap
-    Yi.Keymap.Vim2.ReplaceSingleCharMap
-    Yi.Keymap.Vim2.Search
-    Yi.Keymap.Vim2.SearchMotionMap
-    Yi.Keymap.Vim2.StateUtils
-    Yi.Keymap.Vim2.StyledRegion
-    Yi.Keymap.Vim2.TextObject
-    Yi.Keymap.Vim2.Utils
-    Yi.Keymap.Vim2.VisualMap
+    Yi.Keymap.Vim.Common
+    Yi.Keymap.Vim.Digraph
+    Yi.Keymap.Vim.Eval
+    Yi.Keymap.Vim.EventUtils
+    Yi.Keymap.Vim.Ex
+    Yi.Keymap.Vim.Ex.Commands.Common
+    Yi.Keymap.Vim.Ex.Commands.Buffer
+    Yi.Keymap.Vim.Ex.Commands.Buffers
+    Yi.Keymap.Vim.Ex.Commands.BufferDelete
+    Yi.Keymap.Vim.Ex.Commands.Cabal
+    Yi.Keymap.Vim.Ex.Commands.Delete
+    Yi.Keymap.Vim.Ex.Commands.Edit
+    Yi.Keymap.Vim.Ex.Commands.Global
+    Yi.Keymap.Vim.Ex.Commands.GotoLine
+    Yi.Keymap.Vim.Ex.Commands.Nohl
+    Yi.Keymap.Vim.Ex.Commands.Paste
+    Yi.Keymap.Vim.Ex.Commands.Quit
+    Yi.Keymap.Vim.Ex.Commands.Reload
+    Yi.Keymap.Vim.Ex.Commands.Substitute
+    Yi.Keymap.Vim.Ex.Commands.Write
+    Yi.Keymap.Vim.Ex.Commands.Yi
+    Yi.Keymap.Vim.Ex.Types
+    Yi.Keymap.Vim.Ex.Eval
+    Yi.Keymap.Vim.ExMap
+    Yi.Keymap.Vim.InsertMap
+    Yi.Keymap.Vim.MatchResult
+    Yi.Keymap.Vim.Motion
+    Yi.Keymap.Vim.NormalMap
+    Yi.Keymap.Vim.NormalOperatorPendingMap
+    Yi.Keymap.Vim.Operator
+    Yi.Keymap.Vim.ReplaceMap
+    Yi.Keymap.Vim.ReplaceSingleCharMap
+    Yi.Keymap.Vim.Search
+    Yi.Keymap.Vim.SearchMotionMap
+    Yi.Keymap.Vim.StateUtils
+    Yi.Keymap.Vim.StyledRegion
+    Yi.Keymap.Vim.TextObject
+    Yi.Keymap.Vim.Utils
+    Yi.Keymap.Vim.VisualMap
     Yi.KillRing
     Yi.Layout
     Yi.Lexer.Abella

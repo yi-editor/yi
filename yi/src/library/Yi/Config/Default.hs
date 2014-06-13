@@ -3,20 +3,17 @@
 
 module Yi.Config.Default (defaultConfig, availableFrontends,
                           defaultEmacsConfig, defaultVimConfig, defaultCuaConfig,
-                          toVimStyleConfig, toVim2StyleConfig, toEmacsStyleConfig, toCuaStyleConfig) where
+                          toVimStyleConfig, toEmacsStyleConfig, toCuaStyleConfig) where
 
 import Control.Applicative
 import Control.Monad
 import Control.Lens hiding (Action)
 import Data.Default
 import Paths_yi
-import System.Directory
 import System.FilePath
 import Yi.Command (cabalBuildE, cabalConfigureE, grepFind, makeBuild, reloadProjectE, searchSources, shell)
-import {-# source #-} Yi.Boot
 import Yi.Config
 import Yi.Config.Misc
-import Yi.Paths(getConfigFilename)
 import Yi.Core
 import Yi.Utils
 import Yi.Eval(publishedActions)
@@ -35,7 +32,6 @@ import qualified Data.HashMap.Strict as HM
 import qualified Yi.Keymap.Cua  as Cua
 import qualified Yi.Keymap.Emacs  as Emacs
 import qualified Yi.Keymap.Vim  as Vim
-import qualified Yi.Keymap.Vim2  as Vim2
 import qualified Yi.Mode.Abella as Abella
 import qualified Yi.Mode.Haskell as Haskell
 import qualified Yi.Mode.JavaScript as JS
@@ -96,7 +92,6 @@ defaultPublishedActions = HM.fromList
     , ("regionOfB"              , box regionOfB)
     , ("regionOfPartB"          , box regionOfPartB)
     , ("regionOfPartNonEmptyB"  , box regionOfPartNonEmptyB)
-    , ("reloadEditor"           , box reload)
     , ("reloadProjectE"         , box reloadProjectE)
     , ("replaceString"          , box replaceString)
     , ("revertE"                , box revertE)
@@ -183,7 +178,7 @@ defaultEmacsConfig = toEmacsStyleConfig defaultConfig
 defaultVimConfig = toVimStyleConfig defaultConfig
 defaultCuaConfig = toCuaStyleConfig defaultConfig
 
-toEmacsStyleConfig, toVimStyleConfig, toVim2StyleConfig, toCuaStyleConfig :: Config -> Config
+toEmacsStyleConfig, toVimStyleConfig, toCuaStyleConfig :: Config -> Config
 toEmacsStyleConfig cfg
     = cfg {
             configUI = (configUI cfg)
@@ -211,11 +206,6 @@ escToMeta = mkAutomaton $ forever $ (anyEvent >>= I.write) ||> do
     I.write (Event (KASCII c) [MMeta])
 
 toVimStyleConfig cfg = cfg { defaultKm = Vim.keymapSet
-                           , configUI = (configUI cfg) { configScrollStyle = Just SingleLine}
-                           , configRegionStyle = Inclusive
-                           , modeTable = AnyMode Abella.abellaModeVim : modeTable cfg }
-
-toVim2StyleConfig cfg = cfg { defaultKm = Vim2.keymapSet
                             , configUI = (configUI cfg) { configScrollStyle = Just SingleLine}
                             , configRegionStyle = Inclusive }
 
@@ -236,44 +226,20 @@ openScratchBuffer = withEditor $ do
 
 nilKeymap :: Keymap
 nilKeymap = choice [
-             char 'c' ?>>  openCfg Cua.keymap    "yi-cua.hs",
-             char 'e' ?>>  openCfg Emacs.keymap  "yi.hs",
-             char 'v' ?>>  openCfg Vim.keymapSet "yi-vim.hs",
              char 'q' ?>>! quitEditor,
-             char 'r' ?>>! reload,
              char 'h' ?>>! configHelp
             ]
             <|| (anyEvent >>! errorEditor "Keymap not defined, 'q' to quit, 'h' for help.")
-    where configHelp = newBufferE (Left "configuration help") $ R.fromString $ unlines
-                         ["This instance of Yi is not configured.",
-                          "To get a standard reasonable keymap, you can run yi with either --as=cua, --as=vim or --as=emacs.",
-                          "You should however create your own ~/.config/yi/yi.hs file: ",
-                          "You can type 'c', 'e' or 'v' now to create and edit it using a temporary cua, emacs or vim keymap."]
-          openCfg km kmName = write $ do
+    where configHelp :: YiM ()
+          configHelp = do
             dataDir <- io getDataDir
-            let exampleCfg = dataDir </> "example-configs" </> kmName
-            cfgFile <- getConfigFilename -- automatically creates directory, if missing
-            cfgExists <- io $ doesFileExist cfgFile
-            void $ editFile cfgFile -- load config file
-            -- locally override the keymap to the user choice
-            withBuffer $ modifyMode (\m -> m { modeKeymap = const km })
-            unless cfgExists $ do
-                -- file did not exist, load a reasonable default
-                defCfg <- io $ readFile exampleCfg
-                withBuffer $ insertN defCfg
---          openCfg km kmName = write $ do
---            dataDir <- io $ getDataDir
---            let exampleCfg = dataDir </> "example-configs" </> kmName
---            homeDir <- io $ getHomeDirectory
---            let cfgDir = homeDir </> ".yi"
---                cfgFile = cfgDir </> "yi.hs"
---            cfgExists <- io $ doesFileExist cfgFile
---            -- io $ print cfgExists
---            io $ createDirectoryIfMissing True cfgDir -- so that the file can be saved.
---            void $ editFile cfgFile -- load config file
---            -- locally override the keymap to the user choice
---            withBuffer $ modifyMode (\m -> m {modeKeymap = const km})
---            when (not cfgExists) $ do
---                 -- file did not exist, load a reasonable default
---                 defCfg <- io $ readFile exampleCfg
---                 withBuffer $ insertN defCfg
+            let welcomeText = unlines
+                         ["This instance of Yi is not configured.",
+                          "",
+                          "To get a standard reasonable keymap, you can run yi with",
+                          "either --as=cua, --as=vim or --as=emacs.",
+                          "",
+                          "You should however create your own ~/.config/yi/yi.hs file.",
+                          "As a starting point it's recommended to use one of the configs",
+                          "from " ++ dataDir </> "example-configs/"]
+            withEditor (void (newBufferE (Left "configuration help") (R.fromString welcomeText)))
