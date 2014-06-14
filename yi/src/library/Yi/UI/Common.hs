@@ -3,6 +3,7 @@
 module Yi.UI.Common where
 
 import Yi.Editor
+import Graphics.UI.Gtk (Window)
 
 {- | Record presenting a frontend's interface.
 
@@ -53,6 +54,7 @@ data UI = UI
     , userForceRefresh      :: IO ()               -- ^ User force-refresh (in case the screen has been messed up from outside)
     , layout                :: Editor -> IO Editor -- ^ Set window width and height
     , reloadProject         :: FilePath -> IO ()   -- ^ Reload cabal project views
+    , gtkWindow             :: Maybe Window
     }
 
 dummyUI :: UI
@@ -64,4 +66,5 @@ dummyUI = UI
   , userForceRefresh = return ()
   , layout           = return
   , reloadProject    = const (return ())
+  , gtkWindow        = Nothing
   }

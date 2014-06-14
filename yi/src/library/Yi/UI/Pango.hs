@@ -135,6 +135,17 @@ mkUI ui = Common.dummyUI
     , Common.reloadProject = const reloadProject
     }
 
+mkUIGtk :: UI -> Gtk.Window -> Common.UI
+mkUIGtk ui win = Common.dummyUI
+    { Common.main          = main
+    , Common.end           = const end
+    , Common.suspend       = windowIconify (uiWindow ui)
+    , Common.refresh       = refresh ui
+    , Common.layout        = doLayout ui
+    , Common.reloadProject = const reloadProject
+    , Common.gtkWindow     = Just win
+    }
+
 updateFont :: UIConfig -> IORef FontDescription -> IORef TabCache -> Statusbar
                   -> FontDescription -> IO ()
 updateFont cfg fontRef tc status font = do
@@ -243,7 +254,7 @@ startNoMsgGtkHook userHook cfg ch outCh ed = do
   simpleNotebookOnSwitchPage (uiNotebook ui) $ \n -> postGUIAsync $
     runAction ((%=) tabsA (move n) :: EditorM ())
 
-  return (mkUI ui)
+  return (mkUIGtk ui win)
 
 
 main :: IO ()
