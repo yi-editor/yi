@@ -23,6 +23,7 @@ import Data.DeriveTH
 import GHC.Generics (Generic)
 #endif
 import qualified Data.HashMap.Strict as HM
+import Data.Monoid
 import qualified Data.Rope as R
 import Data.Default
 import Data.Typeable
@@ -38,6 +39,7 @@ type EventString = String
 type OperatorName = String
 
 type RegisterName = Char
+type MacroName = Char
 
 data RepeatableAction = RepeatableAction {
           raPreviousCount :: !Int
@@ -79,6 +81,8 @@ data VimState = VimState {
         , vsBindingAccumulator :: !EventString
         , vsSecondaryCursors :: ![Point]
         , vsPaste :: !Bool -- ^ like vim's :help paste
+        , vsMacros :: !(HM.HashMap MacroName EventString)
+        , vsCurrentMacroRecording :: !(Maybe (MacroName, EventString))
     } deriving (Typeable)
 
 #if __GLASGOW_HASKELL__ < 708
@@ -105,7 +109,23 @@ instance Binary VimMode
 #endif
 
 instance Default VimState where
-    def = VimState Normal Nothing [] [] HM.empty '\0' Nothing [] False [] Nothing [] [] False
+    def = VimState
+            Normal -- mode
+            Nothing -- count
+            mempty -- accumulator
+            mempty -- textobject accumulator
+            mempty -- register map
+            '\0' -- active register
+            Nothing -- repeatable action
+            mempty -- string to eval
+            False -- sticky eol
+            [] -- ongoing insert events
+            Nothing -- last goto char command
+            [] -- binding accumulator
+            [] -- secondary cursors
+            False -- :set paste
+            mempty -- macros map
+            Nothing -- current macro recording
 
 #if __GLASGOW_HASKELL__ < 708
 $(derive makeBinary ''VimState)

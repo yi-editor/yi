@@ -101,12 +101,14 @@ handleEvent config event = do
             (_, Insert _) -> withBuffer0 startUpdateTransactionB
             _ -> return ()
 
+        accumulateEventE event
+
         case repeatToken of
             Drop -> dropAccumulatorE
-            Continue -> accumulateEventE event
+            Continue -> return ()
             Finish -> do
                 accumulateEventE event
-                flushAccumulatorIntoRepeatableActionE
+                flushAccumulatorE
 
         performEvalIfNecessary config
         updateModeIndicatorE prevMode
@@ -139,10 +141,11 @@ pureHandleEvent config event = do
         WholeMatch action -> do
             repeatToken <- withEditor action
             dropBindingAccumulatorE
+            accumulateEventE event
             case repeatToken of
                 Drop -> dropAccumulatorE
-                Continue -> accumulateEventE event
-                Finish -> accumulateEventE event >> flushAccumulatorIntoRepeatableActionE
+                Continue -> return ()
+                Finish -> flushAccumulatorE
 
     newMode <- vsMode <$> getDynamic
 

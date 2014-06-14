@@ -8,8 +8,10 @@ import Control.Lens hiding (re)
 import System.Directory (doesFileExist)
 
 import Data.Char
-import Data.List (group)
+import Data.List (group, isPrefixOf)
 import Data.Maybe (fromMaybe)
+import Data.Monoid
+import qualified Data.HashMap.Strict as HM
 import qualified Data.Rope as R
 
 import Yi.Buffer hiding (Insert)
@@ -42,6 +44,7 @@ mkDigitBinding c = mkBindingE Normal Continue (char c, return (), mutate)
 
 defNormalMap :: [VimOperator] -> [VimBinding]
 defNormalMap operators =
+    [recordMacroBinding, finishRecordingMacroBinding, playMacroBinding] ++
     [zeroBinding, repeatBinding, motionBinding, searchBinding] ++
     [chooseRegisterBinding, setMarkBinding] ++
     fmap mkDigitBinding ['1' .. '9'] ++
@@ -258,7 +261,6 @@ nonrepeatableBindings = fmap (mkBindingE Normal Drop)
     -- unsorted TODO
     , (char '-', return (), id)
     , (char '+', return (), id)
-    , (char 'q', return (), id)
     , (spec KEnter, return (), id)
     ] ++ fmap (mkStringBindingE Normal Drop)
     [ ("g*", searchWordE False Forward, resetCount)
@@ -385,6 +387,46 @@ openFileUnderCursor editorAction = do
     else do
         maybeM withEditor editorAction
         void . editFile $ fileName 
+
+recordMacroBinding :: VimBinding
+recordMacroBinding = VimBindingE f
+    where f "q" (VimState { vsMode = Normal
+                          , vsCurrentMacroRecording = Nothing })
+                = PartialMatch
+          f ['q', c] (VimState { vsMode = Normal })
+              = WholeMatch $ do
+                    modifyStateE $ \s ->
+                        s { vsCurrentMacroRecording = Just (c, mempty) }
+                    return Finish
+          f _ _ = NoMatch
+
+finishRecordingMacroBinding :: VimBinding
+finishRecordingMacroBinding = VimBindingE f
+    where f "q" (VimState { vsMode = Normal
+                          , vsCurrentMacroRecording = Just (macroName, macroBody) })
+                = WholeMatch $ do
+                      modifyStateE $ \s ->
+                          s { vsCurrentMacroRecording = Nothing
+                              , vsMacros = HM.singleton macroName (drop 2 macroBody)
+                                          <> vsMacros s
+                              }
+                      return Finish
+          f _ _ = NoMatch
+
+playMacroBinding :: VimBinding
+playMacroBinding = VimBindingE f
+    where f "@" (VimState { vsMode = Normal }) = PartialMatch
+          f ['@', c] (VimState { vsMode = Normal
+                               , vsMacros = macros
+                               , vsCount = mbCount }) = WholeMatch $ do
+              resetCountE
+              case HM.lookup c macros of
+                  Just evs -> do
+                      let count = fromMaybe 1 mbCount
+                      scheduleActionStringForEval (concat (replicate count evs))
+                      return Finish
+                  Nothing -> return Drop
+          f _ _ = NoMatch
 
 -- TODO: withCount name implies that parameter has type (Int -> EditorM ())
 --       Is there a better name for this function?
