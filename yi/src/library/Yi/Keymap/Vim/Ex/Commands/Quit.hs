@@ -18,6 +18,7 @@ import Yi.Keymap
 import Yi.Keymap.Vim.Ex.Types
 import qualified Yi.Keymap.Vim.Ex.Commands.Common as Common
 import Yi.Monad
+import Yi.Window (bufkey)
 
 parse :: String -> Maybe ExCommand
 parse = Common.parse $ do
@@ -39,14 +40,22 @@ quit w f a = Common.impureExCommand {
   }
 
 action :: Bool -> Bool -> Bool -> YiM ()
-action False False False = closeWindow
+action False False False = quitWindowE
 action False False  True = quitAllE
 action  True False False = viWrite >> closeWindow
 action  True False  True = saveAndQuitAllE
-action False  True False = quitEditor
-action False  True  True = quitAllE
+action False  True False = closeWindow
+action False  True  True = quitEditor
 action  True  True False = viWrite >> closeWindow
 action  True  True  True = saveAndQuitAllE
+
+quitWindowE :: YiM ()
+quitWindowE = do
+    nw <- withBuffer needsAWindowB
+    ws <- withEditor $ use currentWindowA >>= windowsOnBufferE . bufkey
+    if length ws == 1 && nw
+       then errorEditor "No write since last change (add ! to override)"
+       else closeWindow
 
 quitAllE :: YiM ()
 quitAllE = do
