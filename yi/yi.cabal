@@ -140,6 +140,7 @@ library
     Yi.Keymap.Vim.SearchMotionMap
     Yi.Keymap.Vim.StateUtils
     Yi.Keymap.Vim.StyledRegion
+    Yi.Keymap.Vim.Tag
     Yi.Keymap.Vim.TextObject
     Yi.Keymap.Vim.Utils
     Yi.Keymap.Vim.VisualMap
