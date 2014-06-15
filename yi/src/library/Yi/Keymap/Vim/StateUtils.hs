@@ -10,7 +10,7 @@ module Yi.Keymap.Vim.StateUtils
     , accumulateEventE
     , accumulateBindingEventE
     , accumulateTextObjectEventE
-    , flushAccumulatorIntoRepeatableActionE
+    , flushAccumulatorE
     , dropAccumulatorE
     , dropBindingAccumulatorE
     , dropTextObjectAccumulatorE
@@ -23,10 +23,12 @@ module Yi.Keymap.Vim.StateUtils
     , saveInsertEventStringE
     ) where
 
+import Control.Applicative
 import Control.Monad
 
 import qualified Data.HashMap.Strict as HM
 import Data.Maybe (fromMaybe)
+import Data.Monoid
 import qualified Data.Rope as R
 
 import Yi.Buffer.Normal
@@ -76,16 +78,25 @@ accumulateTextObjectEventE :: EventString -> EditorM ()
 accumulateTextObjectEventE evs = modifyStateE $
     \s -> s { vsTextObjectAccumulator = vsTextObjectAccumulator s ++ evs }
 
-flushAccumulatorIntoRepeatableActionE :: EditorM ()
-flushAccumulatorIntoRepeatableActionE = do
-    currentState <- getDynamic
-    let repeatableAction = stringToRepeatableAction $ vsAccumulator currentState
-    modifyStateE $ \s -> s { vsRepeatableAction = Just repeatableAction
-                           , vsAccumulator = []
-                           }
+flushAccumulatorE :: EditorM ()
+flushAccumulatorE = do
+    accum <- vsAccumulator <$> getDynamic
+    let repeatableAction = stringToRepeatableAction accum
+    modifyStateE $ \s ->
+        s { vsRepeatableAction = Just repeatableAction
+          , vsAccumulator = []
+          , vsCurrentMacroRecording = fmap (fmap (<> accum))
+                                           (vsCurrentMacroRecording s)
+          }
 
 dropAccumulatorE :: EditorM ()
-dropAccumulatorE = modifyStateE $ \s -> s { vsAccumulator = [] }
+dropAccumulatorE =
+    modifyStateE $ \s ->
+        let accum = vsAccumulator s
+        in s { vsAccumulator = []
+             , vsCurrentMacroRecording = fmap (fmap (<> accum))
+                                              (vsCurrentMacroRecording s)
+             }
 
 dropBindingAccumulatorE :: EditorM ()
 dropBindingAccumulatorE = modifyStateE $ \s -> s { vsBindingAccumulator = [] }

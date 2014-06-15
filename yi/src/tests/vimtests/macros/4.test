@@ -1,0 +1,12 @@
+-- Input
+(2,2)
+qwf
+ars
+zxc
+-- Output
+(2,11)
+qwf
+arfoofoofoos
+zxc
+-- Events
+qaafoo<Esc>q2@a
