@@ -1,0 +1,10 @@
+-- Input
+(2,1)
+abc
+A123<Esc>b
+-- Output
+(1,1)
+abc123
+A123<Esc>b
+-- Events
+"0yyk@0

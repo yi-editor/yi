@@ -405,10 +405,11 @@ finishRecordingMacroBinding = VimBindingE f
     where f "q" (VimState { vsMode = Normal
                           , vsCurrentMacroRecording = Just (macroName, macroBody) })
                 = WholeMatch $ do
+                      let reg = Register Exclusive (R.fromString (drop 2 macroBody))
                       modifyStateE $ \s ->
                           s { vsCurrentMacroRecording = Nothing
-                              , vsMacros = HM.singleton macroName (drop 2 macroBody)
-                                          <> vsMacros s
+                              , vsRegisterMap = HM.singleton macroName reg
+                                              <> vsRegisterMap s
                               }
                       return Finish
           f _ _ = NoMatch
@@ -417,13 +418,13 @@ playMacroBinding :: VimBinding
 playMacroBinding = VimBindingE f
     where f "@" (VimState { vsMode = Normal }) = PartialMatch
           f ['@', c] (VimState { vsMode = Normal
-                               , vsMacros = macros
+                               , vsRegisterMap = registers
                                , vsCount = mbCount }) = WholeMatch $ do
               resetCountE
-              case HM.lookup c macros of
-                  Just evs -> do
+              case HM.lookup c registers of
+                  Just (Register _ evs) -> do
                       let count = fromMaybe 1 mbCount
-                      scheduleActionStringForEval (concat (replicate count evs))
+                      scheduleActionStringForEval (concat (replicate count (R.toString evs)))
                       return Finish
                   Nothing -> return Drop
           f _ _ = NoMatch

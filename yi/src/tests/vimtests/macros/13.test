@@ -1,0 +1,10 @@
+-- Input
+(1,1)
+abc
+
+-- Output
+(2,10)
+abc123
+A123<Esc>b
+-- Events
+qqA123<Esc>bqj"qp

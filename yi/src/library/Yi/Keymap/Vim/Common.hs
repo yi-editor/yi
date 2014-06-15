@@ -81,7 +81,6 @@ data VimState = VimState {
         , vsBindingAccumulator :: !EventString
         , vsSecondaryCursors :: ![Point]
         , vsPaste :: !Bool -- ^ like vim's :help paste
-        , vsMacros :: !(HM.HashMap MacroName EventString)
         , vsCurrentMacroRecording :: !(Maybe (MacroName, EventString))
     } deriving (Typeable)
 
@@ -124,7 +123,6 @@ instance Default VimState where
             [] -- binding accumulator
             [] -- secondary cursors
             False -- :set paste
-            mempty -- macros map
             Nothing -- current macro recording
 
 #if __GLASGOW_HASKELL__ < 708
