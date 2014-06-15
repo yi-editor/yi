@@ -28,7 +28,7 @@ gv = filter f
 hoogleRaw :: String -> String -> IO [String]
 hoogleRaw srch opts = do
   let options = filter (not . null) [opts, srch]
-  outp@(status,out,_err) <- runProgCommand "hoogle" options
+  outp@(_status, out, _err) <- runProgCommand "hoogle" options
   case outp of
     (ExitFailure 1, "", "") -> -- no output, probably failed to run binary
       fail "Error running hoogle command.  Is hoogle on path?"

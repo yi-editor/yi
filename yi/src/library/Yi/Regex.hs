@@ -20,7 +20,7 @@ import GHC.Generics (Generic)
 import Text.Regex.TDFA
 import Text.Regex.TDFA.Pattern
 import Control.Applicative
-import Control.Lens
+import Control.Lens hiding (re)
 import Text.Regex.TDFA.ReadRegex(parseRegex)
 import Text.Regex.TDFA.TDFA(patternToRegex)
 import Yi.Buffer.Basic (Direction(..))

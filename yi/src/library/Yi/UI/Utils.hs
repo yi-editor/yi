@@ -10,7 +10,7 @@ import Control.Applicative
 import Control.Lens
 import Data.Function (on)
 import Data.Monoid
-import Data.Traversable (Traversable, mapM)
+import Data.Traversable (mapM)
 import Data.Foldable (maximumBy)
 import Yi.Style
 import Data.List (transpose)

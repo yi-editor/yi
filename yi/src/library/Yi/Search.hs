@@ -54,7 +54,7 @@ module Yi.Search (
 
 import Control.Applicative
 import Control.Monad
-import Control.Lens hiding (re, from, to)
+import Control.Lens hiding (re, from, to, act)
 import Data.Char
 import Data.Maybe
 import Data.Default
@@ -378,7 +378,7 @@ isearchEndWith act accept = getDynamic >>= \case
     historyFinishGen iSearch (return lastSearched)
     assign searchDirectionA dir
     if accept
-       then do act
+       then do void act
                withBuffer0 $ setSelectionMarkPointB $ regionStart p0
                printMsg "Quit"
        else do resetRegexE

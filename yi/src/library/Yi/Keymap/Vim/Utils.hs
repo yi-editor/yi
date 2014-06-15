@@ -20,7 +20,7 @@ import Control.Monad
 import Control.Lens
 import Data.Char (isSpace)
 import Data.Foldable (asum)
-import Data.List (find, group)
+import Data.List (group)
 import Data.Maybe (maybe)
 import qualified Data.Rope as R
 import Safe (headDef)
@@ -88,7 +88,7 @@ setUnjumpMarks p = do
     solP <- solPointB p
     lineStream <- indexedStreamB Forward solP
     let fstNonBlank =
-            headDef solP [ p | (p, ch) <- lineStream, not (isSpace ch) || ch == '\n' ]
+            headDef solP [ p' | (p', ch) <- lineStream, not (isSpace ch) || ch == '\n' ]
     (.= p)           . markPointA =<< getMarkB (Just "`")
     (.= fstNonBlank) . markPointA =<< getMarkB (Just "'")
 
