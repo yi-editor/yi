@@ -61,8 +61,8 @@ data Action = forall a. Show a => YiA (YiM a)
 emptyAction :: Action
 emptyAction = BufferA (return ())
 
-instance I.PEq Action where
-    equiv _ _ = False
+instance Eq Action where
+    _ == _ = False
 
 instance Show Action where
     show (YiA _) = "@Y"
@@ -185,10 +185,6 @@ instance YiAction (BufferM x) x where
 
 instance YiAction Action () where
     makeAction = id
-
-
-instance I.PEq Event where
-    equiv = (==)
 
 data KeymapSet = KeymapSet
     { topKeymap :: Keymap         -- ^ Content of the top-level loop.

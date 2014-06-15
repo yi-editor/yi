@@ -26,7 +26,7 @@ deserve a bit more explanation:
 in @p = (a '<|>' b)@, what happens if @a@ and @b@ recognize the same
 input (prefix), but produce conflicting output?
 
-* if the output is the same (as by the PEq class), then the processes (prefixes) are "merged"
+* if the output is the same (as by the Eq class), then the processes (prefixes) are "merged"
 * if a Write is more prioritized than the other, the one with low priority will be discarded
 * otherwise, the output will be delayed until one of the branches can be discarded.
 * if there is no way to disambiguate, then no output will be generated anymore.
@@ -38,7 +38,6 @@ module Yi.Interact
      I, P (Chain,End),
      InteractState (..),
      MonadInteract (..),
-     PEq (..),
      deprioritize,
      (<||),
      (||>),
@@ -66,11 +65,8 @@ import Yi.Utils
 ------------------------------------------------
 -- Classes
 
-class PEq a where
-    equiv :: a -> a -> Bool
-
 -- | Abstraction of monadic interactive processes
-class (PEq w, Monad m, Alternative m, Applicative m, MonadPlus m) => MonadInteract m w e | m -> w e where
+class (Eq w, Monad m, Alternative m, Applicative m, MonadPlus m) => MonadInteract m w e | m -> w e where
     write :: w -> m ()
     -- ^ Outputs a result.
     eventBounds :: Ord e => Maybe e -> Maybe e -> m e
@@ -119,11 +115,11 @@ instance Monad (I event w) where
   fail _  = Fails
   (>>=)   = Binds
 
-instance PEq w => MonadPlus (I event w) where
+instance Eq w => MonadPlus (I event w) where
   mzero = Fails
   mplus = Plus
 
-instance PEq w => MonadInteract (I event w) w event where
+instance Eq w => MonadInteract (I event w) w event where
     write = Writes
     eventBounds = Gets
     adjustPriority = Priority
@@ -140,7 +136,7 @@ a <|| b = a <|> (deprioritize >> b)
 (||>) = flip (<||)
 
 -- | Convert a process description to an "executable" process.
-mkProcess :: PEq w => I ev w a -> (a -> P ev w) -> P ev w
+mkProcess :: Eq w => I ev w a -> (a -> P ev w) -> P ev w
 mkProcess (Returns x) = \fut -> fut x
 mkProcess Fails = const Fail
 mkProcess (m `Binds` f) = \fut -> mkProcess m (\a -> mkProcess (f a) fut)
@@ -161,7 +157,7 @@ data P event w
     | Prior Int (P event w) -- low numbers indicate high priority
     | Best (P event w) (P event w)
     | End
-    | forall mid. (Show mid, PEq mid) => Chain (P event mid) (P mid w)
+    | forall mid. (Show mid, Eq mid) => Chain (P event mid) (P mid w)
 
 accepted :: (Show ev) => Int -> P ev w -> [[String]]
 accepted 0 _ = [[]]
@@ -182,11 +178,11 @@ accepted _ (Chain _ _) = error "accepted: chain not supported"
 -- ---------------------------------------------------------------------------
 -- Operations over P
 
-runWrite :: PEq w => P event w -> [event] -> [w]
+runWrite :: Eq w => P event w -> [event] -> [w]
 runWrite _ [] = []
 runWrite p (c:cs) = let (ws, p') = processOneEvent p c in ws ++ runWrite p' cs
 
-processOneEvent :: PEq w => P event w -> event -> ([w], P event w)
+processOneEvent :: Eq w => P event w -> event -> ([w], P event w)
 processOneEvent p e = pullWrites $ pushEvent p e
 
 -- | Push an event in the automaton
@@ -236,10 +232,10 @@ findWrites p (Chain a b) = case computeState a of
         Dead -> Dead
         Waiting -> Waiting
 
-computeState :: PEq w => P event w -> InteractState event  w
+computeState :: Eq w => P event w -> InteractState event  w
 computeState a = case findWrites 0 a of
     Ambiguous actions -> let prior = minimum $ map fst3 actions
-                             bests = groupBy (equiv `on` snd3) $ filter ((prior ==) . fst3) actions
+                             bests = groupBy ((==) `on` snd3) $ filter ((prior ==) . fst3) actions
                          in case bests of
                               [(_,w,c):_] -> Running w c
                               _ -> Ambiguous $ map head bests
@@ -247,7 +243,7 @@ computeState a = case findWrites 0 a of
 
 
 
-pullWrites :: PEq w => P event w -> ([w], P event w)
+pullWrites :: Eq w => P event w -> ([w], P event w)
 pullWrites a = case computeState a of
     Running w c -> first (w:) (pullWrites c)
     _ -> ([], a)
@@ -294,18 +290,11 @@ option :: (MonadInteract m w e) => a -> m a -> m a
 --   any input.
 option x p = p `mplus` return x
 
--- runProcess :: PEq w => I event w a -> [event] -> [w]
--- -- ^ Converts a process into a function that maps input to output.
--- -- The process does not hold to the input stream (no space leak) and
--- -- produces the output as soon as possible.
--- runProcess f = runWrite (mkF f)
---     where mkF i = mkProcess i (const (Get (const Fail)))
-
-mkAutomaton :: PEq w => I ev w a -> P ev w
+mkAutomaton :: Eq w => I ev w a -> P ev w
 mkAutomaton i = mkProcess i (const End)
 
 -- An automaton that produces its input
-idAutomaton :: (Ord a, PEq a) => P a a
+idAutomaton :: (Ord a, Eq a) => P a a
 idAutomaton = Get Nothing Nothing $ \e -> Write e idAutomaton
 -- It would be much nicer to write:
 --    mkAutomaton (forever 0 (anyEvent >>= write))

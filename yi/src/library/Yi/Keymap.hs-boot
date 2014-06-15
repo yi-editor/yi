@@ -12,7 +12,7 @@ import {-# SOURCE #-} Yi.Buffer.Misc (BufferM)
 
 data Action
 
-instance I.PEq Action
+instance Eq Action
 
 emptyAction :: Action
 
