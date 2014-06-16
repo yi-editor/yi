@@ -56,11 +56,15 @@ defNormalMap operators =
     jumpBindings ++
     fileEditBindings ++
     [tabTraversalBinding] ++
-    [tagJumpBinding]
+    [tagJumpBinding, tagPopBinding]
 
 tagJumpBinding :: VimBinding
 tagJumpBinding = mkBindingY Normal (Event (KASCII ']') [MCtrl], f, id)
    where f = withBuffer readCurrentWordB >>= gotoTag
+
+tagPopBinding :: VimBinding
+tagPopBinding = mkBindingY Normal (Event (KASCII 't') [MCtrl], f, id)
+   where f = popTag
 
 motionBinding :: VimBinding
 motionBinding = mkMotionBinding Drop $

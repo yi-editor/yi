@@ -6,7 +6,7 @@
   TemplateHaskell #-}
 module Yi.Keymap.Vim.Tag
     ( gotoTag
-    , visitTagTable
+    , popTag
     ) where
 
 import Data.Binary
@@ -104,6 +104,20 @@ gotoTag tag =
             withEditor $ pushTagStack tag fn ln cn
             void $ editFile filename
             void . withBuffer $ gotoLn line
+
+-- | Return to location from before last tag jump.
+popTag :: YiM ()
+popTag = do
+    tl <- withEditor getTagList
+    case tl of
+        [] -> errorEditor "tag stack empty"
+        _ -> do
+            posloc <- withEditor popTagStack
+            case posloc of
+                Nothing -> errorEditor "at bottom of tag stack"
+                Just (_, fn, ln, cn) -> do
+                    void $ editFile fn
+                    void . withBuffer $ moveToLineColB ln cn
 
 -- | Gets the first valid tags file in @TagsFileList@, if such a valid
 -- file exists.
