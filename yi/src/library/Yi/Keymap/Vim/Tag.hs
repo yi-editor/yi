@@ -5,8 +5,10 @@
   StandaloneDeriving,
   TemplateHaskell #-}
 module Yi.Keymap.Vim.Tag
-    ( gotoTag
+    ( completeVimTag
+    , gotoTag
     , popTag
+    , unpopTag
     ) where
 
 import Data.Binary
@@ -118,6 +120,34 @@ popTag = do
                 Just (_, fn, ln, cn) -> do
                     void $ editFile fn
                     void . withBuffer $ moveToLineColB ln cn
+
+-- | Go to next tag in the tag stack. Represents :tag without any
+-- specified tag.
+unpopTag :: YiM ()
+unpopTag = do
+    tl <- withEditor getTagList
+    ti <- withEditor getTagIndex
+    if ti >= length tl
+        then case tl of
+                [] -> errorEditor "at top of tag stack"
+                _ -> errorEditor "tag stack empty"
+        else let (tag, _, _, _) = tl !! ti
+             in void . visitTagTable $ \tagTable ->
+                 case lookupTag tag tagTable of
+                     Nothing -> errorEditor $ "tag not found: " ++ tag
+                     Just (filename, line) -> do
+                         bufinf <- withBuffer bufInfoB
+                         let ln = bufInfoLineNo bufinf
+                             cn = bufInfoColNo bufinf
+                             fn = bufInfoFileName bufinf
+                             tl' = take ti tl
+                                     ++ (tag, fn, ln, cn):(drop (ti + 1) tl)
+                         withEditor $ setTagList tl'
+                         void $ editFile filename
+                         void . withBuffer $ gotoLn line
+
+completeVimTag :: String -> YiM [String]
+completeVimTag s = fmap maybeToList . visitTagTable $ return . flip completeTag s
 
 -- | Gets the first valid tags file in @TagsFileList@, if such a valid
 -- file exists.

@@ -123,6 +123,7 @@ library
     Yi.Keymap.Vim.Ex.Commands.Quit
     Yi.Keymap.Vim.Ex.Commands.Reload
     Yi.Keymap.Vim.Ex.Commands.Substitute
+    Yi.Keymap.Vim.Ex.Commands.Tag
     Yi.Keymap.Vim.Ex.Commands.Write
     Yi.Keymap.Vim.Ex.Commands.Yi
     Yi.Keymap.Vim.Ex.Types
