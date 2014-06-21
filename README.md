@@ -92,14 +92,16 @@ you want to work on Yi with multiple compiler versions but most people
 will only have a single such directory.
 
 Next, we need to somehow tell Yi/GHC where to look for these packages
-when compiling our config. Thankfully, a `GHC_PACKAGE_PATH`
-environment variable can do just that. Here's mine, called `runyi`
-that I put in my `$PATH` for easy access:
+when compiling our config. Thankfully, a `GHC_PACKAGE_PATH` environment
+variable can do just that, in combination with passing the `-package-db` option
+through to ghc. Here's mine, called `runyi` that I put in my `$PATH` for easy
+access:
 
 ```
 #!/bin/bash
-export GHC_PACKAGE_PATH=$HOME/programming/yi/yi/.cabal-sandbox/i386-linux-ghc-7.6.3-packages.conf.d:$GHC_PACKAGE_PATH
-$HOME/programming/yi/yi/.cabal-sandbox/bin/yi "$@"
+SANDBOX_DB=$HOME/programming/yi/yi/.cabal-sandbox/i386-linux-ghc-7.6.3-packages.conf.d
+export GHC_PACKAGE_PATH=$SANDBOX_DB:/usr/lib/ghc-7.6.3/package.conf.d
+$HOME/programming/yi/yi/.cabal-sandbox/bin/yi --ghc-option="-package-db $SANDBOX_DB" "$@"
 ```
 
 What it does is it sets `GHC_PACKAGE_PATH` to the directory we have
@@ -110,6 +112,16 @@ means we can still use all the regular flags, such as `runyi
 --as=emacs`. Of course, you'll need to adjust the paths used to match
 your sandbox and package directories. Pick the version that your
 compiler is going to be when running Yi.
+
+Note that cabal sandboxes still inherit some packages (such as `base`) from the
+global package database, so it is necessary to include the global package
+(`/usr/lib/ghc-7.6.3/package.conf.d` in the example above) directory in
+`GHC_PACKAGE_PATH`. The path may vary per system, and can be found with a
+command like:
+
+```
+find / -name package.conf.d 2>/dev/null
+```
 
 There's one more thing to mention in this section and that is config
 dependencies. One of the great things about Yi is that we have access
