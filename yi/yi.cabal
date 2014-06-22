@@ -208,7 +208,7 @@ library
     build-depends: derive >=2.4 && <2.7
   build-depends:
     Cabal >= 1.10,
-    Diff >=0.1 && <0.4,
+    Diff >=0.2,
     array,
     containers,
     directory,
