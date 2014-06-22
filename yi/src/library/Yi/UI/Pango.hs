@@ -832,36 +832,3 @@ setSelectionClipboard ui _w cb = do
 
   unless (null txt) $ clipboardSetText cb txt
 
-
-
--- Some useful stuff from `startNoMsg`
---
--- Disable the left pane (file/module browser) until Shim/Scion discussion has
--- concluded. Shim causes crashes, but it's not worth fixing if we'll soon
--- replace it.
-
-{-
-tabs' <- notebookNew
-widgetSetSizeRequest tabs' 200 (-1)
-notebookSetTabPos tabs' PosBottom
-panedAdd1 paned tabs'
-
--- Create the tree views for files and modules
-(filesProject, modulesProject) <- loadProject =<< getCurrentDirectory
-
-filesStore   <- treeStoreNew [filesProject]
-modulesStore <- treeStoreNew [modulesProject]
-
-filesTree   <- projectTreeNew (outCh . singleton) filesStore
-modulesTree <- projectTreeNew (outCh . singleton) modulesStore
-
-scrlProject <- scrolledWindowNew Nothing Nothing
-scrolledWindowAddWithViewport scrlProject filesTree
-scrolledWindowSetPolicy scrlProject PolicyAutomatic PolicyAutomatic
-notebookAppendPage tabs scrlProject "Project"
-
-scrlModules <- scrolledWindowNew Nothing Nothing
-scrolledWindowAddWithViewport scrlModules modulesTree
-scrolledWindowSetPolicy scrlModules PolicyAutomatic PolicyAutomatic
-notebookAppendPage tabs scrlModules "Modules"
--}

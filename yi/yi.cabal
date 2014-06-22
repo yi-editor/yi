@@ -33,10 +33,6 @@ flag vty
   Default: True
   Description: "Build with Vty frontend"
 
-flag scion
-  Default: False
-  Description: Use the scion library to provide extra commands that interface with GHC (experimental)
-
 flag profiling
   Default: False
   Description:
@@ -287,13 +283,6 @@ library
       unix-compat >=0.1 && <0.5,
       vty >= 5.1.0 && < 6
     cpp-options: -DFRONTEND_VTY
-
-  if flag (scion)
-    cpp-options: -DSCION
-    exposed-modules: Yi.Scion
-    build-depends:
-      scion == 0.1.*,
-      ghc-syb-utils
 
   other-modules:
     Paths_yi,
