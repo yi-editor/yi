@@ -6,9 +6,10 @@ where
 
 {- Standard Library Module Imports -}
 import Data.Char
-  ( isUpper
+  ( chr
+  , isAlpha
   , isLower
-  , chr
+  , isUpper
   , ord
   )
 import Data.List
@@ -154,8 +155,8 @@ findFileHint :: String -> String -> YiM [String]
 findFileHint startPath s = snd <$> getAppropriateFiles (Just startPath) s
 
 onCharLetterCode :: (Int -> Int) -> Char -> Char
-onCharLetterCode f c | isUpper c || isLower c = chr (f (ord c - a) `mod` 26 + a)
-                     | otherwise              = c
+onCharLetterCode f c | isAlpha c = chr (f (ord c - a) `mod` 26 + a)
+                     | otherwise = c
                      where a | isUpper c = ord 'A'
                              | isLower c = ord 'a'
                              | otherwise = undefined

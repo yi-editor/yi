@@ -63,10 +63,10 @@ toksInRegion :: Foldable t1 => Region -> t1 (Tok t) -> [Tok t]
 toksInRegion reg = takeWhile (\t -> tokBegin t <= regionEnd   reg) . dropWhile (\t -> tokEnd t < regionStart reg) . toksAfter (regionStart reg)
 
 tokenBasedAnnots :: (Foldable t1) => (a1 -> Maybe a) -> t1 a1 -> t -> [a]
-tokenBasedAnnots tta t begin = catMaybes $ fmap tta $ toksAfter begin t
+tokenBasedAnnots tta t begin = catMaybes (tta <$> toksAfter begin t)
 
 tokenBasedStrokes :: (Foldable t3) => (a -> b) -> t3 a -> t -> t2 -> t1 -> [b]
-tokenBasedStrokes tts t _point begin _end = fmap tts $ toksAfter begin t
+tokenBasedStrokes tts t _point begin _end = tts <$> toksAfter begin t
 
 -- | Prune the nodes before the given point.
 -- The path is used to know which nodes we can force or not.
@@ -296,14 +296,6 @@ arbitraryFromList xs = do
   m <- choose (1,length xs - 1)
   let (l,r) = splitAt m xs
   Bin <$> arbitraryFromList l <*> arbitraryFromList r
-
-instance Eq (Tok a) where
-    x == y = tokPosn x == tokPosn y
-
-instance Arbitrary Region where
-    arbitrary = sized $ \size -> do
-        x0 :: Int <- arbitrary
-        return $ mkRegion (fromIntegral x0) (fromIntegral (x0 + size))
 
 newtype NTTT = N (Node (Test TT)) deriving Show
 
