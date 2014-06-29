@@ -136,10 +136,10 @@ your config is getting compiled.
 
 If the package your config depends on is local, for example when
 you're developing the library that you want to use or if you need a
-patched version, you'll have to use `cabal add-source` command. As an
-example, I'm developing a `yi-haskell-utils` package and my config
-depends on it. To accommodate for this, I ran `cabal add-source
-~/programming/yi-haskell-utils`.
+patched version, you'll have to use `cabal sandbox add-source`
+command. As an example, I'm developing a `yi-haskell-utils` package
+and my config depends on it. To accommodate for this, I ran `cabal
+sandbox add-source ~/programming/yi-haskell-utils`.
 
 I suspect that it'd be perfectly possible to make your config file
 into a cabal project and manage the dependencies that way but I have
