@@ -141,7 +141,7 @@ mkMotionBinding token condition = VimBindingE f
 mkChooseRegisterBinding :: (VimState -> Bool) -> VimBinding
 mkChooseRegisterBinding statePredicate = VimBindingE f
     where f "\"" s | statePredicate s = PartialMatch
-          f ('"':c:[]) s | statePredicate s = WholeMatch $ do
+          f ['"', c] s | statePredicate s = WholeMatch $ do
               modifyStateE $ \s -> s { vsActiveRegister = c }
               return Continue
           f _ _ = NoMatch

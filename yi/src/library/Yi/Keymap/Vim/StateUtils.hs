@@ -21,6 +21,7 @@ module Yi.Keymap.Vim.StateUtils
     , maybeMult
     , updateModeIndicatorE
     , saveInsertEventStringE
+    , resetActiveRegisterE
     ) where
 
 import Control.Applicative
@@ -152,3 +153,6 @@ updateModeIndicatorE prevMode = do
 saveInsertEventStringE :: EventString -> EditorM ()
 saveInsertEventStringE evs =
     modifyStateE $ \s -> s { vsOngoingInsertEvents = vsOngoingInsertEvents s ++ evs }
+
+resetActiveRegisterE :: EditorM ()
+resetActiveRegisterE = modifyStateE $ \s -> s { vsActiveRegister = '\0' }

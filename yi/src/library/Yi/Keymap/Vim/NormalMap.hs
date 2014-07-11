@@ -172,7 +172,7 @@ pasteAfter = do
 operatorBindings :: [VimOperator] -> [VimBinding]
 operatorBindings = fmap mkOperatorBinding
     where mkOperatorBinding (VimOperator {operatorName = opName}) =
-              mkStringBindingE Normal (if opName == "y" then Drop else Continue)
+              mkStringBindingE Normal Continue
                   (opName, return (), switchMode (NormalOperatorPending opName))
 
 continuingBindings :: [VimBinding]

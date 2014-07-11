@@ -104,9 +104,12 @@ handleEvent config event = do
         accumulateEventE event
 
         case repeatToken of
-            Drop -> dropAccumulatorE
+            Drop -> do
+                resetActiveRegisterE
+                dropAccumulatorE
             Continue -> return ()
             Finish -> do
+                resetActiveRegisterE
                 accumulateEventE event
                 flushAccumulatorE
 
@@ -143,9 +146,13 @@ pureHandleEvent config event = do
             dropBindingAccumulatorE
             accumulateEventE event
             case repeatToken of
-                Drop -> dropAccumulatorE
+                Drop -> do
+                    resetActiveRegisterE
+                    dropAccumulatorE
                 Continue -> return ()
-                Finish -> flushAccumulatorE
+                Finish -> do
+                    resetActiveRegisterE
+                    flushAccumulatorE
 
     newMode <- vsMode <$> getDynamic
 
