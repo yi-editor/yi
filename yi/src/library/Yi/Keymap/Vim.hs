@@ -71,25 +71,55 @@ defVimConfig = Proto $ \this -> VimConfig {
 defVimKeymap :: VimConfig -> KeymapM ()
 defVimKeymap config = do
     e <- anyEvent
-    write $ handleEvent config e
+    write $ impureHandleEvent config e
 
-handleEvent :: VimConfig -> Event -> YiM ()
-handleEvent config event = do
+-- This is not in Yi.Keymap.Vim.Eval to avoid circular dependency:
+-- eval needs to know about bindings, which contains normal bindings,
+-- which contains '.', which needs to eval things
+-- So as a workaround '.' just saves a string that needs eval in VimState
+-- and the actual evaluation happens in impureHandleEvent
+pureEval :: VimConfig -> String -> EditorM ()
+pureEval config s = sequence_ actions
+        where actions = map (pureHandleEvent config) $ parseEvents s
+
+impureEval :: VimConfig -> String -> YiM ()
+impureEval config s = sequence_ actions
+        where actions = map (impureHandleEvent config) $ parseEvents s
+
+pureHandleEvent :: VimConfig -> Event -> EditorM ()
+pureHandleEvent = genericHandleEvent allPureBindings selectPureBinding
+
+impureHandleEvent :: VimConfig -> Event -> YiM ()
+impureHandleEvent = genericHandleEvent vimBindings selectBinding
+
+genericHandleEvent :: MonadEditor m
+    => (VimConfig -> [VimBinding])
+    -> (EventString -> VimState -> [VimBinding] -> MatchResult (m RepeatToken))
+    -> VimConfig -> Event -> m ()
+genericHandleEvent getBindings pick config event = do
     currentState <- withEditor getDynamic
     let evs = vsBindingAccumulator currentState ++ eventToString event
-        bindingMatch = selectBinding evs currentState (vimBindings config)
+        bindingMatch = pick evs currentState (getBindings config)
         prevMode = vsMode currentState
 
-    repeatToken <- case bindingMatch of
+    case bindingMatch of
+        NoMatch -> withEditor dropBindingAccumulatorE
+        PartialMatch -> withEditor $ do
+            accumulateBindingEventE event
+            accumulateEventE event
         WholeMatch action -> do
-            withEditor dropBindingAccumulatorE
-            action
-        NoMatch -> do
-            withEditor dropBindingAccumulatorE
-            return Drop
-        PartialMatch -> do
-            withEditor $ accumulateBindingEventE event
-            return Continue
+            repeatToken <- action
+            withEditor $ do
+                dropBindingAccumulatorE
+                accumulateEventE event
+                case repeatToken of
+                    Drop -> do
+                        resetActiveRegisterE
+                        dropAccumulatorE
+                    Continue -> return ()
+                    Finish -> do
+                        resetActiveRegisterE
+                        flushAccumulatorE
 
     withEditor $ do
         newMode <- vsMode <$> getDynamic
@@ -101,70 +131,8 @@ handleEvent config event = do
             (_, Insert _) -> withBuffer0 startUpdateTransactionB
             _ -> return ()
 
-        accumulateEventE event
-
-        case repeatToken of
-            Drop -> do
-                resetActiveRegisterE
-                dropAccumulatorE
-            Continue -> return ()
-            Finish -> do
-                resetActiveRegisterE
-                accumulateEventE event
-                flushAccumulatorE
-
         performEvalIfNecessary config
         updateModeIndicatorE prevMode
-
--- This is not in Yi.Keymap.Vim.Eval to avoid circular dependency:
--- eval needs to know about bindings, which contains normal bindings,
--- which contains '.', which needs to eval things
--- So as a workaround '.' just saves a string that needs eval in VimState
--- and the actual evaluation happens in handleEvent
-pureEval :: VimConfig -> String -> EditorM ()
-pureEval config s = sequence_ actions
-        where actions = map (pureHandleEvent config) $ parseEvents s
-
-impureEval :: VimConfig -> String -> YiM ()
-impureEval config s = sequence_ actions
-        where actions = map (handleEvent config) $ parseEvents s
-
--- TODO: merge handleEvent and pureHandleEvent somehow
-pureHandleEvent :: VimConfig -> Event -> EditorM ()
-pureHandleEvent config event = do
-    currentState <- getDynamic
-    let evs = vsBindingAccumulator currentState ++ eventToString event
-        bindingMatch = selectPureBinding evs currentState (allPureBindings config)
-        prevMode = vsMode currentState
-    case bindingMatch of
-        NoMatch -> dropBindingAccumulatorE
-        PartialMatch -> do
-            accumulateBindingEventE event
-            accumulateEventE event
-        WholeMatch action -> do
-            repeatToken <- withEditor action
-            dropBindingAccumulatorE
-            accumulateEventE event
-            case repeatToken of
-                Drop -> do
-                    resetActiveRegisterE
-                    dropAccumulatorE
-                Continue -> return ()
-                Finish -> do
-                    resetActiveRegisterE
-                    flushAccumulatorE
-
-    newMode <- vsMode <$> getDynamic
-
-    -- TODO: we should introduce some hook mechanism like autocommands in vim
-    case (prevMode, newMode) of
-        (Insert _, Insert _) -> return ()
-        (Insert _, _) -> withBuffer0 commitUpdateTransactionB
-        (_, Insert _) -> withBuffer0 startUpdateTransactionB
-        _ -> return ()
-
-    performEvalIfNecessary config
-    updateModeIndicatorE prevMode
 
 performEvalIfNecessary :: VimConfig -> EditorM ()
 performEvalIfNecessary config = do
