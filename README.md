@@ -80,48 +80,30 @@ you'll get config compilation errors due to missing modules.
 To sandbox, navigate to your source yi directory. For me it's
 `~/programming/yi/yi`.
 
-Once there, run `cabal sandbox init` as you normally would, then
-`cabal install`. Now check your `.cabal-sandbox` directory. You should
-see a bunch of files but we're looking for the directory storing all
-the sandboxed packages. For me, it's
-`i386-linux-ghc-7.6.3-packages.conf.d`. If you `cabal install` with
-different versions of the compiler, you might have more than one of
-these directories. I also have
-`i386-linux-ghc-7.9.20140129-packages.conf.d`. This is important if
-you want to work on Yi with multiple compiler versions but most people
-will only have a single such directory.
+We then setup a cabal sandbox following instructions from the
+[cabal userguide](http://www.haskell.org/cabal/users-guide/installing-packages.html#sandboxes-basic-usage):
 
-Next, we need to somehow tell Yi/GHC where to look for these packages
-when compiling our config. Thankfully, a `GHC_PACKAGE_PATH` environment
-variable can do just that, in combination with passing the `-package-db` option
-through to ghc. Here's mine, called `runyi` that I put in my `$PATH` for easy
-access:
+```
+$ cabal sandbox init
+$ cabal install --only-dependencies
+$ cabal build
+```
+
+From cabal-install 1.20, Yi can be launched in an environment using the
+sandbox's package DB using `cabal exec dist/build/Yi/yi`. It may be useful
+to create an alias or small script for this, along the lines of:
 
 ```
 #!/bin/bash
-SANDBOX_DB=$HOME/programming/yi/yi/.cabal-sandbox/i386-linux-ghc-7.6.3-packages.conf.d
-export GHC_PACKAGE_PATH=$SANDBOX_DB:/usr/lib/ghc-7.6.3/package.conf.d
-$HOME/programming/yi/yi/.cabal-sandbox/bin/yi --ghc-option="-package-db $SANDBOX_DB" "$@"
+YI_DIR=$HOME/programming/yi/yi
+env CABAL_SANDBOX_CONFIG=$YI_DIR/cabal.sandbox.config cabal exec $YI_DIR/dist/build/Yi/yi "$@"
 ```
 
-What it does is it sets `GHC_PACKAGE_PATH` to the directory we have
-found inside `.cabal-sandbox` earlier and then runs the `yi` binary
-which is also in the sandbox. The `"$@"` part means that all the
+The `"$@"` part means that all the
 arguments we pass to this script are passed on to the Yi binary which
 means we can still use all the regular flags, such as `runyi
 --as=emacs`. Of course, you'll need to adjust the paths used to match
-your sandbox and package directories. Pick the version that your
-compiler is going to be when running Yi.
-
-Note that cabal sandboxes still inherit some packages (such as `base`) from the
-global package database, so it is necessary to include the global package
-(`/usr/lib/ghc-7.6.3/package.conf.d` in the example above) directory in
-`GHC_PACKAGE_PATH`. The path may vary per system, and can be found with a
-command like:
-
-```
-find / -name package.conf.d 2>/dev/null
-```
+your sandbox and package directories.
 
 There's one more thing to mention in this section and that is config
 dependencies. One of the great things about Yi is that we have access
@@ -140,6 +122,10 @@ patched version, you'll have to use `cabal sandbox add-source`
 command. As an example, I'm developing a `yi-haskell-utils` package
 and my config depends on it. To accommodate for this, I ran `cabal
 sandbox add-source ~/programming/yi-haskell-utils`.
+You can then `cabal install yi-haskell-utils` to add the package to
+the sandbox. You should call `cabal build` in the sandbox directory
+after you modify a local package so that the sandbox has an up-to-date
+version of the package.
 
 I suspect that it'd be perfectly possible to make your config file
 into a cabal project and manage the dependencies that way but I have
