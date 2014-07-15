@@ -1,0 +1,10 @@
+-- Input
+(1,1)
+abc
+def
+-- Output
+(1,3)
+123abc
+123def
+-- Events
+<C-v>jI123<Esc>
