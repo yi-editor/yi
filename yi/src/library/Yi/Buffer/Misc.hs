@@ -776,8 +776,7 @@ revertPendingUpdatesB = do
 -- | Write an element into the buffer at the current point.
 writeB :: Char -> BufferM ()
 writeB c = do
-  off <- pointB
-  deleteNAt Forward 1 off
+  deleteN 1
   insertB c
 
 -- | Write the list into the buffer at current point.
@@ -1032,8 +1031,7 @@ readAtB i = do
 
 replaceCharB :: Char -> BufferM ()
 replaceCharB c = do
-    deleteN 1
-    insertB c
+    writeB c
     leftB
 
 replaceCharWithBelowB :: BufferM ()

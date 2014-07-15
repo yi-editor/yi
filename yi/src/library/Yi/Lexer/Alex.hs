@@ -52,6 +52,9 @@ data Tok t = Tok
      tokPosn :: Posn
     } deriving Functor
 
+instance Eq (Tok a) where
+    x == y = tokPosn x == tokPosn y
+
 tokToSpan :: Tok t -> Span t
 tokToSpan (Tok t len posn) = Span (posnOfs posn) t (posnOfs posn +~ len)
 

@@ -15,24 +15,10 @@ import Control.Applicative
 import Data.Traversable
 import Data.Foldable
 
-#ifdef TESTING
-import Test.QuickCheck
-import Parser.Incremental
-#endif
-
 import Yi.Buffer.Basic
 import Yi.IncrementalParse
 import Yi.Lexer.Alex
 import Yi.Syntax.Tree
-
-#ifdef TESTING
-instance Arbitrary Point where
-    arbitrary = Point  <$> arbitrary
-#endif
-
-
-data MaybeOneMore f x = None | OneMore x (f x)
-    deriving Show
 
 data Tree a = Bin (Tree a) (Tree a)
             | Leaf a

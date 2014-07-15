@@ -1,4 +1,10 @@
-{-# LANGUAGE DeriveDataTypeable, TemplateHaskell, CPP, StandaloneDeriving, DeriveGeneric #-}
+{-# LANGUAGE DeriveDataTypeable #-}
+{-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE CPP #-}
+{-# LANGUAGE StandaloneDeriving #-}
+{-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+
 -- Copyright (C) 2008 JP Bernardy
 
 -- | This module defines the Region ADT
@@ -31,6 +37,10 @@ import Data.DeriveTH
 import GHC.Generics (Generic)
 #endif
 
+#ifdef TESTING
+import Test.QuickCheck
+#endif
+
 -- | The region data type.
 --The region is semi open: it includes the start but not the end bound. This allows simpler region-manipulation algorithms.
 -- Invariant : regionStart r <= regionEnd r
@@ -44,6 +54,14 @@ $(derive makeBinary ''Region)
 deriving instance Generic Region
 instance Binary Region
 #endif
+
+#ifdef TESTING
+instance Arbitrary Region where
+    arbitrary = sized $ \size -> do
+        x0 :: Int <- arbitrary
+        return $ mkRegion (fromIntegral x0) (fromIntegral (x0 + size))
+#endif
+
 
 instance Show Region where
     show r = show (regionStart r) ++

@@ -22,9 +22,6 @@ import Yi.IReader (saveAsNewArticle)
 import Yi.Mode.IReader (ireaderMode, ireadMode)
 import Yi.Layout
 import Yi.Modes
-#ifdef SCION
-import Yi.Scion
-#endif
 import Yi.Search
 import Yi.Style.Library
 import qualified Data.Map as M
@@ -103,9 +100,6 @@ defaultPublishedActions = HM.fromList
     , ("writeB"                 , box writeB)
     , ("ghciGet"                , box Haskell.ghciGet)
     , ("abella"                 , box Abella.abella)
-#ifdef SCION
-    , ("scion"                  , box scion)
-#endif
     ]
 
   where
