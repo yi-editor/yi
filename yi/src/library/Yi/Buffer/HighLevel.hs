@@ -756,10 +756,32 @@ leftEdgesOfRegionB Block reg = savingPointB $ do
         p <- pointB
         eol <- atEol
         return (if not eol then Just p else Nothing)
+leftEdgesOfRegionB LineWise reg = savingPointB $ do
+    lastSol <- do
+        moveTo $ regionEnd reg
+        moveToSol
+        pointB
+    let  go acc p = do moveTo p
+                       moveToSol
+                       edge <- pointB
+                       if edge >= lastSol
+                       then return $ reverse (edge:acc)
+                       else do
+                           void $ lineMoveRel 1
+                           go (edge:acc) =<< pointB
+    go [] (regionStart reg)
 leftEdgesOfRegionB _ r = return [regionStart r]
 
 rightEdgesOfRegionB :: RegionStyle -> Region -> BufferM [Point]
--- rightEdgesOfRegionB Block reg = return [regionEnd reg]
+rightEdgesOfRegionB Block reg = savingPointB $ do
+    (l0, _) <- getLineAndColOfPoint $ regionStart reg
+    (l1, _) <- getLineAndColOfPoint $ regionEnd reg
+    moveTo $ 1 + regionEnd reg
+    fmap (reverse . catMaybes) $ forM [0 .. abs (l0 - l1)] $ \i -> savingPointB $ do
+        void $ lineMoveRel $ -i
+        p <- pointB
+        eol <- atEol
+        return (if not eol then Just p else Nothing)
 rightEdgesOfRegionB LineWise reg = savingPointB $ do
     lastEol <- do
         moveTo $ regionEnd reg
@@ -768,8 +790,8 @@ rightEdgesOfRegionB LineWise reg = savingPointB $ do
     let  go acc p = do moveTo p
                        moveToEol
                        edge <- pointB
-                       if edge > lastEol
-                       then return $ reverse acc
+                       if edge >= lastEol
+                       then return $ reverse (edge:acc)
                        else do
                            void $ lineMoveRel 1
                            go (edge:acc) =<< pointB
