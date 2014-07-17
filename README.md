@@ -90,13 +90,13 @@ $ cabal build
 ```
 
 From cabal-install 1.20, Yi can be launched in an environment using the
-sandbox's package DB using `cabal exec dist/build/Yi/yi`. It may be useful
+sandbox's package DB using `cabal exec ./dist/build/yi/yi`. It may be useful
 to create an alias or small script for this, along the lines of:
 
 ```
 #!/bin/bash
 YI_DIR=$HOME/programming/yi/yi
-env CABAL_SANDBOX_CONFIG=$YI_DIR/cabal.sandbox.config cabal exec $YI_DIR/dist/build/Yi/yi "$@"
+env CABAL_SANDBOX_CONFIG=$YI_DIR/cabal.sandbox.config cabal exec $YI_DIR/dist/build/yi/yi "$@"
 ```
 
 The `"$@"` part means that all the
