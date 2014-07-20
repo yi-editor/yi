@@ -9,9 +9,12 @@ module Yi.Keymap.Vim
     , VimConfig (..)
     , pureEval
     , impureEval
+    , relayoutFromTo
     ) where
 
 import Control.Applicative
+import Data.Char (toUpper)
+import Data.List (find)
 import Data.Prototype
 
 import Yi.Buffer hiding (Insert)
@@ -42,6 +45,7 @@ data VimConfig = VimConfig {
   , vimOperators :: [VimOperator]
   , vimExCommandParsers :: [String -> Maybe ExCommand]
   , vimDigraphs :: [(String, Char)]
+  , vimRelayout :: Char -> Char
   }
 
 mkKeymapSet :: Proto VimConfig -> KeymapSet
@@ -66,6 +70,7 @@ defVimConfig = Proto $ \this -> VimConfig {
   , vimOperators = defOperators
   , vimExCommandParsers = defExCommandParsers
   , vimDigraphs = defDigraphs
+  , vimRelayout = id
   }
 
 defVimKeymap :: VimConfig -> KeymapM ()
@@ -95,10 +100,13 @@ impureHandleEvent = genericHandleEvent vimBindings selectBinding
 genericHandleEvent :: MonadEditor m
     => (VimConfig -> [VimBinding])
     -> (EventString -> VimState -> [VimBinding] -> MatchResult (m RepeatToken))
-    -> VimConfig -> Event -> m ()
-genericHandleEvent getBindings pick config event = do
+    -> VimConfig
+    -> Event
+    -> m ()
+genericHandleEvent getBindings pick config unconvertedEvent = do
     currentState <- withEditor getDynamic
-    let evs = vsBindingAccumulator currentState ++ eventToString event
+    let event = convertEvent (vsMode currentState) (vimRelayout config) unconvertedEvent
+        evs = vsBindingAccumulator currentState ++ eventToString event
         bindingMatch = pick evs currentState (getBindings config)
         prevMode = vsMode currentState
 
@@ -146,3 +154,22 @@ allPureBindings :: VimConfig -> [VimBinding]
 allPureBindings config = filter isPure $ vimBindings config
     where isPure (VimBindingE _) = True
           isPure _ = False
+
+convertEvent :: VimMode -> (Char -> Char) -> Event -> Event
+convertEvent (Insert _) f (Event (KASCII c) mods)
+    | MCtrl `elem` mods || MMeta `elem` mods = Event (KASCII (f c)) mods
+convertEvent Ex _ e = e
+convertEvent (Insert _) _ e = e
+convertEvent InsertNormal _ e = e
+convertEvent InsertVisual _ e = e
+convertEvent Replace _ e = e
+convertEvent ReplaceSingleChar _ e = e
+convertEvent (Search _ _) _ e = e
+convertEvent _ f (Event (KASCII c) mods) = Event (KASCII (f c)) mods
+convertEvent _ _ e = e
+
+relayoutFromTo :: String -> String -> (Char -> Char)
+relayoutFromTo keysFrom keysTo = \c ->
+    maybe c fst (find ((== c) . snd)
+                      (zip (keysTo ++ fmap toUpper keysTo)
+                           (keysFrom ++ fmap toUpper keysFrom)))
