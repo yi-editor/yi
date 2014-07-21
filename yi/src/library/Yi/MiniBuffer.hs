@@ -95,12 +95,15 @@ infixComplete' caseSensitive = mkCompleteFn completeInList' $ containsMatch' cas
 infixComplete :: (String -> YiM [String]) -> String -> YiM String
 infixComplete = infixComplete' True
 
+-- | Hint function that does nothing, for use with @'withMinibufferGen'@
 noHint :: String -> YiM [String]
 noHint = const $ return []
 
 noPossibilities :: String -> YiM [ String ]
 noPossibilities _s = return []
 
+-- | @withMinibufferFree prompt act@:
+-- Simple version of @'withMinibufferGen'@
 withMinibufferFree :: String -> (String -> YiM ()) -> YiM ()
 withMinibufferFree prompt = withMinibufferGen "" noHint prompt
                             return (const $ return ())

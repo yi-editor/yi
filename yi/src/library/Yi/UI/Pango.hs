@@ -486,7 +486,7 @@ render ui w _event =
     -- add color attributes.
     let picture = askBuffer win b $ attributesPictureAndSelB sty regex
                   (mkRegion tos bos)
-        sty = extractValue $ configTheme (uiConfig ui)
+        sty = configStyle $ uiConfig ui
 
         picZip = zip picture $ drop 1 (fst <$> picture) ++ [bos]
         strokes = [ (start',s,end') | ((start', s), end') <- picZip

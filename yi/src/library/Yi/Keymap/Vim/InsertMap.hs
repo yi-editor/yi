@@ -60,8 +60,8 @@ rawPrintable = VimBindingE f
                               "<lt>" -> insertB '<'
                               "<CR>" -> newlineB
                               "<Tab>" -> insertB '\t'
-                              "<BS>"  -> deleteB Character Backward
-                              "<C-h>" -> deleteB Character Backward
+                              "<BS>"  -> bdeleteB
+                              "<C-h>" -> bdeleteB
                               "<Del>" -> deleteB Character Forward
                               c -> insertN c
                           return Continue
@@ -159,8 +159,8 @@ printableAction evs = do
                         "<C-d>" -> shiftIndentOfRegion (-1) =<< regionOfB Line
                         "<C-e>" -> insertCharWithBelowB
                         "<C-y>" -> insertCharWithAboveB
-                        "<BS>"  -> deleteB Character Backward
-                        "<C-h>" -> deleteB Character Backward
+                        "<BS>"  -> bdeleteB
+                        "<C-h>" -> bdeleteB
                         "<Del>" -> deleteB Character Forward
                         "<C-w>" -> deleteRegionB =<< regionOfPartNonEmptyB unitViWordOnLine Backward
                         "<C-u>" -> bdeleteLineB

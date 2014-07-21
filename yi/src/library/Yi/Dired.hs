@@ -63,7 +63,7 @@ import Text.Printf
 
 import Yi.Core
 import {-# source #-} Yi.File (editFile)
-import Yi.MiniBuffer (spawnMinibufferE, withMinibufferGen, noHint, withMinibuffer)
+import Yi.MiniBuffer (spawnMinibufferE, withMinibufferFree, noHint, withMinibuffer)
 import Yi.Misc (getFolder, promptFile)
 import Yi.Style
 import Yi.Utils
@@ -785,8 +785,7 @@ diredUpDir = do
 
 diredCreateDir :: YiM ()
 diredCreateDir =
-    withMinibufferGen "" noHint "Create Dir:"
-      return (const $ return ()) $ \nm -> do
+    withMinibufferFree "Create Dir:" $ \nm -> do
         dir <- currentDir
         let newdir = dir </> nm
         msgEditor $ "Creating "++newdir++"..."

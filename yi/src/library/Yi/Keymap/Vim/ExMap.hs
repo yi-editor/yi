@@ -155,8 +155,8 @@ editAction :: EventString -> EditorM RepeatToken
 editAction evs = do
     withBuffer0 $ case evs of
         (c:[]) -> insertB c
-        "<BS>"  -> deleteB Character Backward
-        "<C-h>" -> deleteB Character Backward
+        "<BS>"  -> bdeleteB
+        "<C-h>" -> bdeleteB
         "<C-w>" -> do
             r <- regionOfPartNonEmptyB unitViWordOnLine Backward
             deleteRegionB r

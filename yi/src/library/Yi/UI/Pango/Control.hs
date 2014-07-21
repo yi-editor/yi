@@ -560,7 +560,7 @@ newView buffer font = do
                 let addNL = if Rope.countNewLines content == winh
                               then id
                               else (++"\n")
-                    sty = extractValue $ configTheme (configUI config)
+                    sty = configStyle $ configUI config
                           -- attributesPictureAndSelB sty (currentRegex e)
                           --   (mkRegion tos bos)
                           -- return (from, p, addNL $ Rope.toString content,

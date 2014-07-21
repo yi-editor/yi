@@ -560,7 +560,7 @@ getSelectRegionB :: BufferM Region
 getSelectRegionB = do
   regionStyle <- use regionStyleA
   r <- getRawSelectRegionB
-  mkRegionOfStyleB (regionStart r) (regionEnd r) regionStyle
+  convertRegionToStyleB r regionStyle
 
 -- | Select the given region: set the selection mark at the 'regionStart'
 -- and the current point at the 'regionEnd'.
