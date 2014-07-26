@@ -10,7 +10,7 @@
 -- This module defines a user interface implemented using gtk2hs and
 -- pango for direct text rendering.
 
-module Yi.UI.Pango (start) where
+module Yi.UI.Pango (start, startGtkHook) where
 
 import Prelude hiding (error, elem, mapM_, foldl, concat, mapM)
 import Control.Exception (catch, SomeException)
@@ -135,6 +135,17 @@ mkUI ui = Common.dummyUI
     , Common.reloadProject = const reloadProject
     }
 
+mkUIGtk :: UI -> Gtk.Window -> Common.UI
+mkUIGtk ui win = Common.dummyUI
+    { Common.main          = main
+    , Common.end           = const end
+    , Common.suspend       = windowIconify (uiWindow ui)
+    , Common.refresh       = refresh ui
+    , Common.layout        = doLayout ui
+    , Common.reloadProject = const reloadProject
+    , Common.gtkWindow     = Just win
+    }
+
 updateFont :: UIConfig -> IORef FontDescription -> IORef TabCache -> Statusbar
                   -> FontDescription -> IO ()
 updateFont cfg fontRef tc status font = do
@@ -160,13 +171,20 @@ askBuffer w b f = fst $ runBuffer w b f
 
 -- | Initialise the ui
 start :: UIBoot
-start cfg ch outCh ed =
-  catch (startNoMsg cfg ch outCh ed)
+start = startGtkHook (const $ return ())
+
+-- | Initialise the ui, calling a given function
+--   on the Gtk window. This could be used to
+--   set additional callbacks, adjusting the window
+--   layout, etc.
+startGtkHook :: (Gtk.Window -> IO ()) -> UIBoot
+startGtkHook userHook cfg ch outCh ed =
+  catch (startNoMsgGtkHook userHook cfg ch outCh ed)
   (\(GError _dom _code msg) -> fail msg)
 
-startNoMsg :: UIBoot
-startNoMsg cfg ch outCh ed = do
-  logPutStrLn "startNoMsg"
+startNoMsgGtkHook :: (Gtk.Window -> IO ()) -> UIBoot
+startNoMsgGtkHook userHook cfg ch outCh ed = do
+  logPutStrLn "startNoMsgGtkHook"
   void unsafeInitGUIForThreadedRTS
 
   win   <- windowNew
@@ -218,6 +236,9 @@ startNoMsg cfg ch outCh ed = do
 #endif
   watchFont $ updateFont (configUI cfg) fontRef tc status
 
+  -- I think this is the correct place to put it...
+  userHook win
+
   -- use our magic threads thingy
   -- http://haskell.org/gtk2hs/archives/2005/07/24/writing-multi-threaded-guis/
   void $ timeoutAddFull (yield >> return True) priorityDefaultIdle 50
@@ -233,7 +254,7 @@ startNoMsg cfg ch outCh ed = do
   simpleNotebookOnSwitchPage (uiNotebook ui) $ \n -> postGUIAsync $
     runAction ((%=) tabsA (move n) :: EditorM ())
 
-  return (mkUI ui)
+  return (mkUIGtk ui win)
 
 
 main :: IO ()
