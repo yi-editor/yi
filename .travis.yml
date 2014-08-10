@@ -37,18 +37,19 @@ before_install:
  - cp cabal.config yi-contrib
  - sudo add-apt-repository -y ppa:hvr/ghc
  - sudo apt-get update
- - sudo apt-get install cabal-install-1.18 ghc-$GHCVER
+ - sudo apt-get install cabal-install-1.20 ghc-$GHCVER
  - export PATH=/opt/ghc/$GHCVER/bin:$PATH
 
 install:
- - cabal-1.18 update
- - travis_retry cabal-1.18 install -j2 alex happy
- - travis_retry cabal-1.18 install -j2 gtk2hs-buildtools
+ - cabal-1.20 update
+ - travis_retry cabal-1.20 install Cabal
+ - travis_retry cabal-1.20 install -j2 alex happy
+ - travis_retry cabal-1.20 install -j2 gtk2hs-buildtools
 
 script:
  - cd yi
- - travis_retry cabal-1.18 install -j2 -fpango --enable-tests -ftesting --only-dependencies
- - cabal-1.18 install -fpango --enable-tests -ftesting || cat /home/travis/.cabal/logs/yi-*
+ - travis_retry cabal-1.20 install -j2 -fpango --enable-tests -ftesting --only-dependencies
+ - cabal-1.20 install -fpango --enable-tests -ftesting || cat /home/travis/.cabal/logs/yi-*
  - cd ../yi/example-configs
  - for config in yi-*.hs;
    do
@@ -56,4 +57,4 @@ script:
    done;
 
  - cd ../../yi-contrib
- - cabal-1.18 install
+ - cabal-1.20 install
