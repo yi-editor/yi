@@ -19,6 +19,7 @@ import Control.Monad hiding (forM_, mapM_, forM, mapM)
 import Control.Applicative
 import Control.Lens hiding (set, Action, from)
 import Data.Prototype
+import Data.Text (unpack, Text)
 import Data.IORef
 import Data.List (intercalate)
 import qualified Data.List.PointedList as PL (moveTo)
@@ -162,7 +163,7 @@ askBuffer w b f = fst $ runBuffer w b f
 start :: UIBoot
 start cfg ch outCh ed =
   catch (startNoMsg cfg ch outCh ed)
-  (\(GError _dom _code msg) -> fail msg)
+  (\(GError _dom _code msg) -> fail $ unpack msg)
 
 startNoMsg :: UIBoot
 startNoMsg cfg ch outCh ed = do
@@ -177,7 +178,9 @@ startNoMsg cfg ch outCh ed = do
   imContextSetUsePreedit im False  -- handler for preedit string not implemented
 
   -- Yi.Buffer.Misc.insertN for atomic input?
-  im `on` imContextCommit $ mapM_ (\k -> ch $ Event (KASCII k) [])
+  let imContextCommitS :: Signal IMContext (String -> IO ())
+      imContextCommitS = imContextCommit
+  im `on` imContextCommitS $ mapM_ (\k -> ch $ Event (KASCII k) [])
 
   set win [ windowDefaultWidth  := 700
           , windowDefaultHeight := 900
@@ -361,7 +364,7 @@ newWindow e ui w = do
     let b = findBufferWith (bufkey w) e
     f <- readIORef (uiFont ui)
 
-    ml <- labelNew Nothing
+    ml <- labelNew (Nothing :: Maybe Text)
     widgetModifyFont ml (Just f)
     set ml [ miscXalign := 0.01 ] -- so the text is left-justified.
 
@@ -617,11 +620,12 @@ updatePango :: UI -> FontDescription -> WinInfo -> FBuffer
 updatePango ui font w b layout = do
   (width_', height') <- widgetGetSize $ textview w
   let width' = max 0 (width_' - 1) -- see Note [PangoLayout width]
-
+      fontDescriptionToStringT :: FontDescription -> IO Text
+      fontDescriptionToStringT = fontDescriptionToString
   oldFont <- layoutGetFontDescription layout
   oldFontStr <- maybe (return Nothing)
-                (fmap Just . fontDescriptionToString) oldFont
-  newFontStr <- Just <$> fontDescriptionToString font
+                (fmap Just . fontDescriptionToStringT) oldFont
+  newFontStr <- Just <$> fontDescriptionToStringT font
   when (oldFontStr /= newFontStr) (layoutSetFontDescription layout (Just font))
 
   win <- readIORef (coreWin w)
@@ -831,4 +835,3 @@ setSelectionClipboard ui _w cb = do
   txt <- readIORef selection
 
   unless (null txt) $ clipboardSetText cb txt
-

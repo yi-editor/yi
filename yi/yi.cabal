@@ -1,5 +1,5 @@
 name:           yi
-version:        0.9.0
+version:        0.9.1
 category:       Development, Editor
 synopsis:       The Haskell-Scriptable Editor
 description:
@@ -235,6 +235,7 @@ library
     safe >= 0.3.4 && < 0.4,
     split >= 0.1 && < 0.3,
     template-haskell >= 2.4,
+    text,
     time >= 1.1 && < 1.5,
     utf8-string >= 0.3.1,
     unix-compat >=0.1 && <0.5,
@@ -275,9 +276,9 @@ library
       Yi.UI.Pango.Layouts
       Yi.UI.Pango.Utils
     build-depends:
-      gtk ==0.12.*,
-      glib ==0.12.*,
-      pango ==0.12.*
+      gtk ==0.13.*,
+      glib ==0.13.*,
+      pango ==0.13.*
     cpp-options: -DFRONTEND_PANGO
 
   if flag(vty)

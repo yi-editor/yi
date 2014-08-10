@@ -1,5 +1,5 @@
 {-# LANGUAGE RecordWildCards, ScopedTypeVariables, MultiParamTypeClasses
-           , DeriveDataTypeable
+           , DeriveDataTypeable, OverloadedStrings
            , GeneralizedNewtypeDeriving, FlexibleContexts #-}
 
 -- this module isn't finished, and there's heaps of warnings.
@@ -31,6 +31,7 @@ module Yi.UI.Pango.Control (
 ,   keyTable
 ) where
 
+import Data.Text (unpack, pack, Text)
 import Prelude hiding (concatMap, concat, foldl, elem, mapM_)
 import Control.Exception (catch)
 import Control.Monad        hiding (mapM_, forM_)
@@ -179,7 +180,8 @@ mkUI main yiMVar = Common.dummyUI
 
 start :: ControlM () -> UIBoot
 start main cfg ch outCh ed =
-  catch (startNoMsg main cfg ch outCh ed) (\(GError _dom _code msg) -> fail msg)
+  catch (startNoMsg main cfg ch outCh ed) (\(GError _dom _code msg) ->
+                                            fail $ unpack msg)
 
 makeControl :: MVar Control -> YiM ()
 makeControl controlMVar = do
@@ -206,7 +208,7 @@ suspend = do
     liftBase $ putStrLn "Yi Control Suspend"
     return ()
 
-{-# ANN refresh "HLint: ignore Redundant do" #-}
+{-# ANN refresh ("HLint: ignore Redundant do" :: String) #-}
 refresh :: Editor -> ControlM ()
 refresh e = do
     --contextId <- statusbarGetContextId (uiStatusbar ui) "global"
@@ -385,7 +387,7 @@ newTab e ws = do
 --    cache <- syncWindows e t' (toList $ PL.withFocus ws) []
     return t' -- { views = cache }
 
-{-# ANN insertTabBefore "HLint: ignore Redundant do" #-}
+{-# ANN insertTabBefore ("HLint: ignore Redundant do" :: String) #-}
 insertTabBefore :: Editor -> Tab -> TabInfo -> ControlM TabInfo
 insertTabBefore e ws c = do
     -- Just p <- notebookPageNum (uiNotebook ui) (page c)
@@ -394,7 +396,7 @@ insertTabBefore e ws c = do
     -- widgetShowAll $ vb
     newTab e ws
 
-{-# ANN insertTab "HLint: ignore Redundant do" #-}
+{-# ANN insertTab ("HLint: ignore Redundant do" :: String) #-}
 insertTab :: Editor -> Tab -> ControlM TabInfo
 insertTab e ws = do
     -- vb <- vBoxNew False 1
@@ -494,7 +496,7 @@ newView buffer font = do
     liftBase $ layoutSetFontDescription layout (Just font)
     language <- liftBase $ contextGetLanguage context
     metrics  <- liftBase $ contextGetMetrics context font language
-    liftBase $ layoutSetText layout ""
+    liftBase $ layoutSetText layout ("" :: Text)
 
     scrollWin <- liftBase $ scrolledWindowNew Nothing Nothing
     liftBase $ do
@@ -638,7 +640,7 @@ newView buffer font = do
           us = view pendingUpdatesA fb
       in highlightSelectionA .~ (h && null us) $ fb
 
-{-# ANN setBufferMode "HLint: ignore Redundant do" #-}
+{-# ANN setBufferMode ("HLint: ignore Redundant do" :: String) #-}
 setBufferMode :: FilePath -> Buffer -> ControlM ()
 setBufferMode f buffer = do
     let bufRef = fBufRef buffer
@@ -646,7 +648,7 @@ setBufferMode f buffer = do
     tbl <- liftYi $ asks (modeTable . yiConfig)
     contents <- liftYi $ withEditor $ withGivenBuffer0 bufRef elemsB
     let header = take 1024 contents
-        hmode = case header =~ "\\-\\*\\- *([^ ]*) *\\-\\*\\-" of
+        hmode = case header =~ ("\\-\\*\\- *([^ ]*) *\\-\\*\\-" :: String) of
             AllTextSubmatches [_,m] -> m
             _ -> ""
         Just mode = find (\(AnyMode m)-> modeName m == hmode) tbl <|>
@@ -830,7 +832,7 @@ gtkToYiEvent (Gdk.Events.Key {Gdk.Events.eventKeyName = key
 gtkToYiEvent _ = Nothing
 
 -- | Map GTK long names to Keys
-keyTable :: Map.Map String Key
+keyTable :: Map.Map Text Key
 keyTable = Map.fromList
     [("Down",       KDown)
     ,("Up",         KUp)

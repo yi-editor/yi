@@ -1,3 +1,4 @@
+{-# LANGUAGE OverloadedStrings #-}
 --
 -- Copyright (c) Krasimir Angelov 2008.
 --
@@ -8,6 +9,7 @@ module Yi.UI.Pango.Utils where
 
 import Control.Exception (catch, throw)
 
+import Data.Text (append)
 import Paths_yi
 import System.FilePath
 import Graphics.UI.Gtk
@@ -20,6 +22,6 @@ loadIcon fpath = do
     catch (pixbufNewFromFile iconfile)
     (\(GError dom code msg) ->
       throw $ GError dom code $
-        msg ++ " -- use the yi_datadir environment variable to"
-            ++ " specify an alternate location")
+        msg `append` " -- use the yi_datadir environment variable to"
+            `append` " specify an alternate location")
   pixbufAddAlpha icoProject (Just (0,255,0))
