@@ -6,7 +6,6 @@ import Control.Applicative
 import Control.Monad
 import Data.List (sort, transpose)
 
-import Yi.Core (YiM, msgEditor)
 import Yi.Buffer
 import Yi.Editor
 import Yi.String
@@ -85,16 +84,3 @@ yankRectangle = do
     withBuffer0 $ forM_ text $ \t -> do
         savingPointB $ insertN t
         lineDown
-
--- TODO: use TextUnit to count things inside region for better experienc
--- | Counts the number of lines, words and characters inside selected
--- region. Coresponds to emacs' @count-words-region@.
-countWordsRegion :: YiM ()
-countWordsRegion = do
-  (l, w, c) <- withEditor $ do
-    t <- withBuffer0 $ getRectangle >>= \(reg, _, _) -> readRegionB reg
-    return (length $ lines t, length $ words t, length t)
-  msgEditor $ unwords [ "Region has", show l, "line,"
-                      , show w, "words, and"
-                      , show c, "characters."
-                      ]

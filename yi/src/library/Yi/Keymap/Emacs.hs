@@ -49,6 +49,7 @@ import Yi.Keymap.Emacs.Utils
   , promptTag
   , justOneSep
   , joinLinesE
+  , countWordsRegion
   )
 import Data.Maybe
 import Data.Char

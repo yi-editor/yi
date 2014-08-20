@@ -37,6 +37,7 @@ module Yi.Keymap.Emacs.Utils
   , promptTag
   , justOneSep
   , joinLinesE
+  , countWordsRegion
   )
 where
 
@@ -61,6 +62,7 @@ import Yi.Eval
 import Yi.File
 import Yi.MiniBuffer
 import Yi.Misc (promptFile)
+import Yi.Rectangle
 import Yi.Regex
 import Yi.Tag
 import Yi.Search
@@ -204,6 +206,7 @@ queryReplaceE = withMinibufferFree "Replace:" $ \replaceWhat ->
                  ++ replaceWith ++ " (y,n,q,!):")
                 (const replaceKm)
            qrNext win b re
+
 
 executeExtendedCommandE :: YiM ()
 executeExtendedCommandE
@@ -387,6 +390,20 @@ visitTagTable act = do
                                            takeDirectory path </> filename
                        withEditor $ setTags tagTable
                        act tagTable
+
+-- TODO: use TextUnit to count things inside region for better experienc
+-- | Counts the number of lines, words and characters inside selected
+-- region. Coresponds to emacs' @count-words-region@.
+countWordsRegion :: YiM ()
+countWordsRegion = do
+  (l, w, c) <- withEditor $ do
+    t <- withBuffer0 $ getRectangle >>= \(reg, _, _) -> readRegionB reg
+    return (length $ lines t, length $ words t, length t)
+  msgEditor $ unwords [ "Region has", show l, "line,"
+                      , show w, "words, and"
+                      , show c, "characters."
+                      ]
+
 
 {-
 TODO: export or remove
