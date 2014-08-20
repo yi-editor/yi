@@ -1,29 +1,27 @@
 -- Copyright (C) 2008 JP Bernardy
 module Yi.Buffer.HighLevel where
 
-import Control.Monad.RWS.Strict (ask)
-import Control.Monad.State hiding (forM, forM_, sequence_)
-import Control.Applicative
-import Control.Monad
-import Control.Lens hiding ((-~), (+~), re, transform)
-
-import Data.Char
-import Data.List (isPrefixOf, sort, intersperse)
-import Data.Maybe (fromMaybe, listToMaybe, catMaybes)
+import           Control.Applicative
+import           Control.Lens hiding ((-~), (+~), re, transform)
+import           Control.Monad
+import           Control.Monad.RWS.Strict (ask)
+import           Control.Monad.State hiding (forM, forM_, sequence_)
+import           Data.Char
+import           Data.List (isPrefixOf, sort, intersperse)
+import           Data.Maybe (fromMaybe, listToMaybe, catMaybes)
+import           Data.Rope (Rope)
 import qualified Data.Rope as R
-import Data.Rope (Rope)
-import Data.Time (UTCTime)
-import Data.Tuple (swap)
-
-import Yi.Buffer.Basic
-import Yi.Buffer.Misc
-import Yi.Buffer.Normal
-import Yi.Buffer.Region
-import {-# SOURCE #-} Yi.Keymap (YiM, withBuffer)
-import Yi.String
-import Yi.Window
-import Yi.Config.Misc (ScrollStyle(SingleLine))
-import Yi.Utils
+import           Data.Time (UTCTime)
+import           Data.Tuple (swap)
+import           Yi.Buffer.Basic
+import           Yi.Buffer.Misc
+import           Yi.Buffer.Normal
+import           Yi.Buffer.Region
+import           Yi.Config.Misc (ScrollStyle(SingleLine))
+import           Yi.String
+import           Yi.Utils
+import           Yi.Window
+import           {-# SOURCE #-} Yi.Keymap (YiM, withBuffer)
 
 -- ---------------------------------------------------------------------
 -- Movement operations
@@ -264,7 +262,32 @@ bkillWordB = deleteB unitWord Backward
 
 -- | Delete backward to the sof or the new line character
 bdeleteLineB :: BufferM ()
-bdeleteLineB = atSol >>= \ sol -> if sol then bdeleteB else deleteB Line Backward
+bdeleteLineB = atSol >>= \sol -> if sol then bdeleteB else deleteB Line Backward
+
+
+-- UnivArgument is in Yi.Keymap.Emacs.Utils but we can't import it due
+-- to cyclic imports.
+-- | emacs' @delete-horizontal-space@ with the optional argument.
+deleteHorizontalSpaceB :: Maybe Int -> BufferM ()
+deleteHorizontalSpaceB u = do
+  c <- curCol
+  reg <- regionOfB Line
+  text <- readRegionB reg
+  let r = deleteSpaces c text
+  modifyRegionClever (const r) reg
+  -- If we only deleted before point, move back that many characters
+  -- too or it feels weird.
+  case u of
+    Just _ -> moveToColB (c - (length text - length r))
+    Nothing -> return ()
+  where
+    sp x = x == ' ' || x == '\t'
+    withEnd f = reverse . f . reverse
+    deleteSpaces c l =
+      let (f, b) = splitAt c l
+      in case u of
+        Nothing -> withEnd (dropWhile sp) f ++ dropWhile sp b
+        Just _ -> withEnd (dropWhile sp) f ++ b
 
 ----------------------------------------
 -- Transform operations
