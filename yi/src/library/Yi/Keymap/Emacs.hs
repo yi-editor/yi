@@ -240,11 +240,11 @@ emacsKeys univArg =
   ctrlC = choice [ ctrlCh 'c' ?>>! withModeY modeToggleCommentSelection ]
 
 
-  rectangleFuntions = choice [char 'a' ?>>! alignRegionOn,
-                              char 'o' ?>>! openRectangle,
-                              char 't' ?>>! stringRectangle,
-                              char 'k' ?>>! killRectangle,
-                              char 'y' ?>>! yankRectangle
+  rectangleFunctions = choice [ char 'a' ?>>! alignRegionOn
+                              , char 'o' ?>>! openRectangle
+                              , char 't' ?>>! stringRectangle
+                              , char 'k' ?>>! killRectangle
+                              , char 'y' ?>>! yankRectangle
                               ]
 
   tabFunctions :: Keymap
@@ -278,7 +278,7 @@ emacsKeys univArg =
                    char 'e'      ?>>! evalRegionE
                  , char 'o'      ?>>! nextWinE
                  , char 'k'      ?>>! killBufferE
-                 , char 'r'      ?>>  rectangleFuntions
+                 , char 'r'      ?>>  rectangleFunctions
                  , char 'u'      ?>>! repeatingArg undoB
                  , char 'v'      ?>>! repeatingArg shrinkWinE
                  , optMod ctrl (char 't') >> tabFunctions
