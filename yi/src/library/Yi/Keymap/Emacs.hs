@@ -216,6 +216,7 @@ emacsKeys univArg =
          , metaCh '.'           ?>>! promptTag
          , metaCh '{'           ?>>! repeatingArg (prevNParagraphs 1)
          , metaCh '}'           ?>>! repeatingArg (nextNParagraphs 1)
+         , metaCh '='           ?>>! countWordsRegion
 
          -- Other meta key-bindings
          , meta (spec KBS)      ?>>! repeatingArg bkillWordB
