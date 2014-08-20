@@ -20,12 +20,11 @@ killRegion = deleteRegionB =<< getSelectRegionB
 
 -- | C-k
 killLineE :: Maybe Int -> YiM ()
-killLineE a = withBuffer $ case a of
-               Nothing -> killRestOfLine
-               Just n -> replicateM_ (2*n) killRestOfLine
+killLineE Nothing  = withBuffer killRestOfLine
+killLineE (Just n) = withBuffer $ replicateM_ (2*n) killRestOfLine
 
 killringPut :: Direction -> String -> EditorM ()
-killringPut dir s = (%=) killringA $ krPut dir s
+killringPut dir s = killringA %= krPut dir s
 
 -- | Kill the rest of line
 killRestOfLine :: BufferM ()
@@ -35,7 +34,7 @@ killRestOfLine =
 
 -- | C-y
 yankE :: EditorM ()
-yankE = do (text :| _) <- uses killringA krContents
+yankE = do (text :| _) <- uses killringA _krContents
            withBuffer0 $ do pointB >>= setSelectionMarkPointB
                             insertN text
 
@@ -45,7 +44,7 @@ killRingSaveE = do (r, text) <- withBuffer0 $ do
                             r <- getSelectRegionB
                             text <- readRegionB r
                             assign highlightSelectionA False
-                            return (r,text)
+                            return (r, text)
                    killringPut (regionDirection r) text
 -- | M-y
 
@@ -54,13 +53,13 @@ yankPopE :: EditorM ()
 yankPopE = do
   kr <- use killringA
   withBuffer0 (deleteRegionB =<< getRawestSelectRegionB)
-  killringA .= let x :| xs = krContents kr
-               in kr { krContents = case xs of
+  killringA .= let x :| xs = _krContents kr
+               in kr { _krContents = case xs of
                           [] -> x :| []
-                          y:ys -> y :| (ys ++ [x])
+                          y:ys -> y :| ys ++ [x]
                      }
   yankE
 
 -- | C-M-w
 appendNextKillE :: EditorM ()
-appendNextKillE = (%=) killringA (\kr -> kr {krKilled=True})
+appendNextKillE = killringA . krKilled .= True
