@@ -5,7 +5,9 @@ module Yi.Keymap.Vim.InsertMap
 import Control.Applicative
 import Control.Monad
 import Control.Lens
+import Data.List.NonEmpty hiding (drop, span, dropWhile)
 import Data.Char (isDigit)
+import Prelude hiding (head)
 
 import Yi.Buffer hiding (Insert)
 import Yi.Editor
@@ -131,8 +133,8 @@ printableAction evs = do
     saveInsertEventStringE evs
     currentCursor <- withBuffer0 pointB
     secondaryCursors <- fmap vsSecondaryCursors getDynamic
-    let allCursors = currentCursor:secondaryCursors
-    marks <- withBuffer0 $ forM allCursors $ \cursor -> do
+    let allCursors = currentCursor :| secondaryCursors
+    marks <- withBuffer0 $ forM' allCursors $ \cursor -> do
         moveTo cursor
         -- getMarkB $ Just $ "v_I" ++ show cursor
         getMarkB Nothing
@@ -165,21 +167,24 @@ printableAction evs = do
                         "<lt>" -> insertB '<'
                         evs' -> error $ "Unhandled event " ++ evs' ++ " in insert mode"
     updatedCursors <- withBuffer0 $ do
-        updatedCursors <- forM marks $ \mark -> do
+        updatedCursors <- forM' marks $ \mark -> do
             moveTo =<< use (markPointA mark)
             bufAction
             pointB
-        mapM_ deleteMarkB marks
+        mapM_ deleteMarkB $ toList marks
         moveTo $ head updatedCursors
-        return updatedCursors
+        return $ toList updatedCursors
     modifyStateE $ \s -> s { vsSecondaryCursors = drop 1 updatedCursors }
     return Continue
+  where
+    forM' :: Monad m => NonEmpty a -> (a -> m b) -> m (NonEmpty b)
+    forM' (x :| xs) f = liftM2 (:|) (f x) (forM xs f)
 
 completionBinding :: VimBinding
 completionBinding = VimBindingE f
     where f evs (VimState { vsMode = (Insert _) })
             | evs `elem` ["<C-n>", "<C-p>"]
-            = WholeMatch $ do 
+            = WholeMatch $ do
                   let _direction = if evs == "<C-n>" then Forward else Backward
                   completeWordB FromAllBuffers
                   return Continue

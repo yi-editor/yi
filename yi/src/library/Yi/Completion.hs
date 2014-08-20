@@ -77,12 +77,12 @@ completeInListCustomShow showFunction s match possibilities
       filtered = filterMatches match possibilities
 
 completeInList' :: String -> (String -> Maybe String) -> [String] -> EditorM String
-completeInList' s match l
-    | null filtered = printMsg "No match" >> return s
-    | isSingleton filtered && s == head filtered = printMsg "Sole completion" >> return s
-    | isSingleton filtered                       = return $ head filtered
-    | otherwise = printMsgs filtered >> return (bestMatch filtered s)
-    where
+completeInList' s match l = case filtered of
+  [] -> printMsg "No match" >> return s
+  [x] | s == x    -> printMsg "Sole completion" >> return s
+      | otherwise -> return x
+  _ -> printMsgs filtered >> return (bestMatch filtered s)
+  where
     filtered = filterMatches match l
 
 -- | This function attempts to provide a better tab completion result in
