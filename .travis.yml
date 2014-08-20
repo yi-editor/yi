@@ -52,3 +52,6 @@ script:
 
  - cd ../../yi-contrib
  - cabal-1.20 install
+
+notifications:
+  irc: "chat.freenode.net#yi"
