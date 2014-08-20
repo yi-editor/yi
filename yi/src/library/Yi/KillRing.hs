@@ -21,7 +21,6 @@ import GHC.Generics (Generic)
 #endif
 
 import Control.Lens
-import Control.Lens.TH
 import Data.List.NonEmpty hiding (length, drop)
 import Prelude hiding (head, tail, take)
 import Yi.Buffer.Basic
@@ -38,6 +37,7 @@ makeLenses ''Killring
 
 #if __GLASGOW_HASKELL__ < 708
 $(derive makeBinary ''Killring)
+$(derive makeBinary ''NonEmpty)
 #else
 deriving instance Generic Killring
 instance Binary a => Binary (NonEmpty a)
