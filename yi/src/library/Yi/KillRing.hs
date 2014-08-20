@@ -17,11 +17,15 @@ import Data.DeriveTH
 #else
 import GHC.Generics (Generic)
 #endif
+
+import Data.List.NonEmpty hiding (length, drop)
+import Prelude hiding (head, tail, take)
 import Yi.Buffer.Basic
+
 
 data Killring = Killring { krKilled :: Bool
                          , krAccumulate :: Bool
-                         , krContents :: [String]
+                         , krContents :: NonEmpty String
                          , krLastYank :: Bool
                          }
     deriving (Show)
@@ -30,6 +34,7 @@ data Killring = Killring { krKilled :: Bool
 $(derive makeBinary ''Killring)
 #else
 deriving instance Generic Killring
+instance Binary a => Binary (NonEmpty a)
 instance Binary Killring
 #endif
 
@@ -39,7 +44,7 @@ maxDepth = 10
 krEmpty :: Killring
 krEmpty = Killring { krKilled = False
                    , krAccumulate = False
-                   , krContents = [[]]
+                   , krContents = "" :| []
                    , krLastYank = False
                    }
 
@@ -51,26 +56,23 @@ krEndCmd kr@Killring {krKilled = killed} = kr {krKilled = False, krAccumulate = 
 -- | Put some text in the killring.
 -- It's accumulated if the last command was a kill too
 krPut :: Direction -> String -> Killring -> Killring
-krPut dir s kr@Killring {krContents = r@(x:xs), krAccumulate=acc}
+krPut dir s kr@Killring {krContents = r@(x :| xs), krAccumulate=acc}
     = kr {krKilled = True,
           krContents = if acc then (case dir of
                                       Forward  -> x++s
-                                      Backward -> s++x):xs
+                                      Backward -> s++x) :| xs
                               else push s r}
-krPut _ _ _ = error "killring invariant violated"
 
 -- | Push a string in the killring.
-push :: String -> [String] -> [String]
-push s [] = [s]
-push s r@(h:t) = s : if length h <= 1 then t else take maxDepth r
+push :: String -> NonEmpty String -> NonEmpty String
+--push s [] = [s]
+push s r@(h:|t) = s :| if length h <= 1 then t else take maxDepth r
 -- Don't save very small cutted text portions.
 
 -- | Set the top of the killring. Never accumulate the previous content.
 krSet :: String -> Killring -> Killring
-krSet s kr@Killring {krContents = _:xs} = kr {krContents = s:xs}
-krSet _ _ = error "killring invariant violated"
+krSet s kr@Killring {krContents = _ :| xs} = kr {krContents = s :| xs}
 
 -- | Get the top of the killring.
 krGet :: Killring -> String
 krGet = head . krContents
-

@@ -241,7 +241,8 @@ library
     unix-compat >=0.1 && <0.5,
     unordered-containers >= 0.1.3 && < 0.3,
     xdg-basedir >= 0.2.1 && < 0.3,
-    transformers-base
+    transformers-base,
+    semigroups
 
   build-tools: alex >= 3.0.3
   ghc-options: -Wall -fno-warn-orphans

@@ -4,6 +4,8 @@ module Yi.Keymap.Emacs.KillRing where
 
 import Control.Monad (replicateM_)
 import Control.Lens
+import Data.List.NonEmpty
+import Prelude hiding (tail, head)
 import Yi.Keymap
 import Yi.Buffer
 import Yi.Editor
@@ -33,7 +35,7 @@ killRestOfLine =
 
 -- | C-y
 yankE :: EditorM ()
-yankE = do (text:_) <- uses killringA krContents
+yankE = do (text :| _) <- uses killringA krContents
            withBuffer0 $ do pointB >>= setSelectionMarkPointB
                             insertN text
 
@@ -52,8 +54,11 @@ yankPopE :: EditorM ()
 yankPopE = do
   kr <- use killringA
   withBuffer0 (deleteRegionB =<< getRawestSelectRegionB)
-  assign killringA $ let ring = krContents kr
-                   in kr {krContents = tail ring ++ [head ring]}
+  killringA .= let x :| xs = krContents kr
+               in kr { krContents = case xs of
+                          [] -> x :| []
+                          y:ys -> y :| (ys ++ [x])
+                     }
   yankE
 
 -- | C-M-w
