@@ -16,7 +16,7 @@
 
 -- | Scan one token. Return (maybe) a token and a new state.
 alexScanToken :: (AlexState HlState, AlexInput) -> Maybe (Tok Token, (AlexState HlState, AlexInput))
-alexScanToken (AlexState state lookedOfs pos, inp@(_prevCh,str)) =
+alexScanToken (AlexState state lookedOfs pos, inp@(_prevCh,_bs,str)) =
     let (scn,lookahead) = alexScanUser' state inp (stateToInit state)
         lookedOfs' = max lookedOfs (posnOfs pos +~ Size lookahead) in
     case scn of
@@ -47,11 +47,11 @@ alexScan' input (I# (sc))
 alexScanUser' user input (I# (sc))
   = case alex_scan_tkn' user input 0# input sc AlexNone of
       (AlexNone, input', lookahead) ->
-        case alexGetChar input of
+        case alexGetByte input of
           Nothing -> (AlexEOF, lookahead)
           Just _  -> (AlexError input', lookahead)
-      (AlexLastSkip input len, _, lookahead) -> (AlexSkip input len, lookahead)
-      (AlexLastAcc k input len, _, lookahead) -> (AlexToken input len k, lookahead)
+      (AlexLastSkip input'' len, _, lookahead) -> (AlexSkip input'' len, lookahead)
+      (AlexLastAcc k input'' len, _, lookahead) -> (AlexToken input'' len k, lookahead)
 
 
 -- Same as alex_scan_tkn, but also return the length of lookahead.
@@ -59,18 +59,18 @@ alex_scan_tkn' user orig_input len input s last_acc =
   input `seq` -- strict in the input
   let new_acc = check_accs (alex_accept `quickIndex` IBOX(s)) in
   new_acc `seq`
-  case alexGetChar input of
+  case alexGetByte input of
      Nothing -> (new_acc, input, IBOX(len))
      Just (c, new_input) ->
       let base       = alexIndexInt32OffAddr alex_base s
-          ord_c = case ord c of (I# x) -> x
+          ord_c = case fromIntegral c of (I# x) -> x
           offset     = (base +# ord_c)
           check      = alexIndexInt16OffAddr alex_check offset
 
           new_s      = if GEQ_(offset, 0#) && EQ_(check, ord_c)
                        then alexIndexInt16OffAddr alex_table offset
                        else alexIndexInt16OffAddr alex_deflt s
-          new_len    = len +# 1#
+          new_len    = if c < 0x80 || c >= 0xC0 then len +# 1# else len
       in case new_s of
           -1# -> (new_acc, input, IBOX(new_len))
           -- on an error, we want to keep the input *before* the
@@ -95,8 +95,8 @@ alex_scan_tkn' user orig_input len input s last_acc =
        = check_accs rest
 #endif
 
+
 c = actionConst
 m = actionAndModify
 ms = actionStringAndModify
 cs = actionStringConst
-

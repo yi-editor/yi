@@ -33,9 +33,32 @@ import Data.Word (Word8)
 import Data.Char (ord)
 import Data.List (foldl')
 import Yi.Utils
+import qualified Data.Bits
+
+-- | Encode a Haskell String to a list of Word8 values, in UTF8 format.
+utf8Encode :: Char -> [Word8]
+utf8Encode = map fromIntegral . go . ord
+ where
+  go oc
+   | oc <= 0x7f       = [oc]
+
+   | oc <= 0x7ff      = [ 0xc0 + (oc `Data.Bits.shiftR` 6)
+                        , 0x80 + oc Data.Bits..&. 0x3f
+                        ]
+
+   | oc <= 0xffff     = [ 0xe0 + (oc `Data.Bits.shiftR` 12)
+                        , 0x80 + ((oc `Data.Bits.shiftR` 6) Data.Bits..&. 0x3f)
+                        , 0x80 + oc Data.Bits..&. 0x3f
+                        ]
+   | otherwise        = [ 0xf0 + (oc `Data.Bits.shiftR` 18)
+                        , 0x80 + ((oc `Data.Bits.shiftR` 12) Data.Bits..&. 0x3f)
+                        , 0x80 + ((oc `Data.Bits.shiftR` 6) Data.Bits..&. 0x3f)
+                        , 0x80 + oc Data.Bits..&. 0x3f
+                        ]
+type Byte = Word8
 
 type IndexedStr = [(Point, Char)]
-type AlexInput = (Char, IndexedStr)
+type AlexInput = (Char, [Byte],IndexedStr)
 type Action hlState token = IndexedStr -> hlState -> (hlState, token)
 
 -- | Lexer state
@@ -100,22 +123,29 @@ moveCh (Posn o l _) '\n' = Posn (o+1) (l+1)   0
 moveCh (Posn o l c) _    = Posn (o+1) l       (c+1)
 
 alexGetChar :: AlexInput -> Maybe (Char, AlexInput)
-alexGetChar (_,[]) = Nothing
-alexGetChar (_,(_,c):rest) = Just (c, (c,rest))
+alexGetChar (_,_,[]) = Nothing
+alexGetChar (_,b,(_,c):rest) = Just (c, (c,b,rest))
 
 first :: (a -> b) -> (a, c) -> (b, c)
 first f (a, c) = (f a, c)
 
-alexGetByte :: AlexInput -> Maybe (Word8, AlexInput)
-alexGetByte = fmap (first (fromIntegral . ord)) . alexGetChar
+-- alexGetByte :: AlexInput -> Maybe (Word8, AlexInput)
+-- alexGetByte = fmap (first (fromIntegral . ord)) . alexGetChar
+
+alexGetByte :: AlexInput -> Maybe (Word8,AlexInput)
+alexGetByte (c,(b:bs),s) = Just (b,(c,bs,s))
+alexGetByte (c,[],[])    = Nothing
+alexGetByte (_,[],(c:s)) = case utf8Encode (snd c) of
+                             (b:bs) -> Just (b, ((snd c), bs, s))
+                             [] -> Nothing
 
 {-# ANN alexCollectChar "HLint: ignore Use String" #-}
 alexCollectChar :: AlexInput -> [Char]
-alexCollectChar (_, []) = []
-alexCollectChar (_, (_,c):rest) = c : alexCollectChar (c,rest)
+alexCollectChar (_, _, []) = []
+alexCollectChar (_, b, (_,c):rest) = c : alexCollectChar (c,b,rest)
 
 alexInputPrevChar :: AlexInput -> Char
-alexInputPrevChar (prevChar,_) = prevChar
+alexInputPrevChar (prevChar,_,_) = prevChar
 
 -- | Return a constant token
 actionConst :: token -> Action lexState token
@@ -152,13 +182,13 @@ lexScanner l st0 src = Scanner
                   scanInit = AlexState st0 0 startPosn,
                   scanRun = \st ->
                      case posnOfs $ stPosn st of
-                         0 -> unfoldLexer l (st, ('\n', scanRun src 0))
+                         0 -> unfoldLexer l (st, ('\n', [], scanRun src 0))
                          ofs -> case scanRun src (ofs - 1) of
                              -- FIXME: if this is a non-ascii char the ofs. will be wrong.
                              -- However, since the only thing that matters (for now) is 'is the previous char a new line', we don't really care.
                              -- (this is to support ^,$ in regexes)
                              [] -> []
-                             ((_,ch):rest) -> unfoldLexer l (st, (ch, rest))
+                             ((_,ch):rest) -> unfoldLexer l (st, (ch, [], rest))
                   , scanEmpty = error "Yi.Lexer.Alex.lexScanner: scanEmpty"
                  }
 
