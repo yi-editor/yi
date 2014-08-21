@@ -11,7 +11,7 @@
 --
 
 -- Hours wasted attempting to unfuck
--- lexing/parsing/highlighting/modes/unicode: 36
+-- lexing/parsing/highlighting/modes/unicode: 41
 
 -- | This module defines a common interface for syntax-awareness.
 
