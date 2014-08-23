@@ -4,10 +4,10 @@
 {
 #define NO_ALEX_CONTEXTS
 {-# OPTIONS -w  #-} -- Alex generate warnings-ridden code.
-module Yi.Lexer.C ( initState, alexScanToken ) where
+module Yi.Lexer.C ( lexer ) where
 
 {- Standard Library Modules Imported -}
-import Yi.Lexer.Alex
+import Yi.Lexer.Alex hiding (tokenToStyle)
 
 {- External Library Modules Imported -}
 
@@ -158,6 +158,12 @@ c :-
 
 type HlState = Int
 type Token = StyleName
+
+lexer :: StyleLexerASI HlState Token
+lexer = StyleLexer
+  { _tokenToStyle = id
+  , _styleLexer = commonLexer alexScanToken initState
+  }
 
 stateToInit :: HlState -> Int
 stateToInit x | x < 0     = nestcomm

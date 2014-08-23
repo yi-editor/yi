@@ -1,20 +1,32 @@
 {-# OPTIONS_GHC -fno-warn-incomplete-patterns #-}
+{-# OPTIONS_HADDOCK show-extensions #-}
+
+-- |
+-- Module      :  Yi.Syntax.Strokes.Haskell
+-- License     :  GPL-2
+-- Maintainer  :  yi-devel@googlegroups.com
+-- Stability   :  experimental
+-- Portability :  portable
+--
+-- Produces 'Stroke's from a tree of tokens, used by some of the
+-- Haskell modes.
 
 module Yi.Syntax.Strokes.Haskell (getStrokes, tokenToAnnot) where
 
+import Data.Foldable hiding (elem)
+import Data.Monoid
+import Data.Traversable
 import Prelude hiding (error,any,exp)
-import Yi.Lexer.Alex
+import Yi.Debug
+import Yi.Lexer.Alex hiding (tokenToStyle)
 import Yi.Lexer.Haskell
 import Yi.Style
 import Yi.Syntax
-import Data.Monoid
-import Data.Foldable hiding (elem)
-import Data.Traversable
 import Yi.Syntax.Haskell
 import Yi.Syntax.Tree (subtrees)
-import Yi.Debug
 
--- TODO: (optimization) make sure we take in account the begin, so we don't return useless strokes
+-- TODO: (optimization) make sure we take in account the begin, so we
+-- don't return useless strokes
 getStrokes :: Point -> Point -> Point -> Tree TT -> [Stroke]
 getStrokes point begin _end t0 = trace (show t0) result
     where result = appEndo (getStr tkDConst point begin _end t0) []

@@ -8,8 +8,8 @@
 {
 #define NO_ALEX_CONTEXTS
 {-# OPTIONS -w  #-}
-module Yi.Lexer.OCaml ( initState, alexScanToken, tokenToStyle, Token(..) ) where
-import Yi.Lexer.Alex
+module Yi.Lexer.OCaml ( lexer, Token(..) ) where
+import Yi.Lexer.Alex hiding (tokenToStyle)
 import Yi.Style
 }
 
@@ -119,6 +119,12 @@ data Token = Number | CharTok | StringTok | VarIdent | ConsIdent
            | ConsOperator | Operator
            | Comment
              deriving (Eq, Show)
+
+lexer :: StyleLexerASI HlState Token
+lexer = StyleLexer
+  { _tokenToStyle = tokenToStyle
+  , _styleLexer = commonLexer alexScanToken initState
+  }
 
 tokenToStyle :: Token -> StyleName
 tokenToStyle tok = case tok of

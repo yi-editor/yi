@@ -6,9 +6,10 @@
 {
 #define NO_ALEX_CONTEXTS
 {-# OPTIONS -w  #-}
-module Yi.Lexer.Compilation (initState, alexScanToken, Token(..)) where
-import Yi.Lexer.Alex
+module Yi.Lexer.Compilation (lexer, Token(..)) where
+import Yi.Lexer.Alex hiding (tokenToStyle)
 import Yi.Regex
+import Yi.Style (commentStyle)
 }
 
 $digit  = 0-9
@@ -43,6 +44,12 @@ data Token
 
 stateToInit () = 0
 initState = ()
+
+lexer :: StyleLexerASI HlState Token
+lexer = StyleLexer
+  { _tokenToStyle = const commentStyle
+  , _styleLexer = commonLexer alexScanToken initState
+  }
 
 #include "common.hsinc"
 }

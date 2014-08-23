@@ -1,36 +1,49 @@
--- Copyright (c) 2009 Nicolas Pouillard
-{-# LANGUAGE GeneralizedNewtypeDeriving, DeriveDataTypeable #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE DeriveDataTypeable #-}
+{-# OPTIONS_HADDOCK show-extensions #-}
+
+-- |
+-- Module      :  Yi.Mode.Abella
+-- Copyright   :  (c) Nicolas Pouillard 2009
+-- License     :  GPL-2
+-- Maintainer  :  yi-devel@googlegroups.com
+-- Stability   :  experimental
+-- Portability :  portable
+--
+-- 'Mode's and utility function for working with the Abella
+-- interactive theorem prover.
+
 module Yi.Mode.Abella
   ( abellaModeEmacs, abella
   , abellaEval, abellaEvalFromProofPoint, abellaUndo, abellaGet, abellaSend)
 where
 
-import Control.Applicative
-import Control.Monad
-import Control.Lens
-import Data.Char (isSpace)
-import Data.Binary
-import Data.Maybe (isJust)
-import Data.List (isInfixOf)
-import Data.Default
-import Data.Typeable
-import Data.Traversable (sequenceA)
-import Yi.Core
-import qualified Yi.Mode.Interactive as Interactive
-import Yi.Modes (TokenBasedMode, linearSyntaxMode, anyExtension)
+import           Control.Applicative
+import           Control.Lens
+import           Control.Monad
+import           Data.Binary
+import           Data.Char (isSpace)
+import           Data.Default
+import           Data.List (isInfixOf)
+import           Data.Maybe (isJust)
+import           Data.Traversable (sequenceA)
+import           Data.Typeable
+import           Yi.Core
 import qualified Yi.Lexer.Abella as Abella
-import Yi.Syntax.Tree
-import Yi.MiniBuffer (CommandArguments(..))
-import Yi.Lexer.Alex
+import           Yi.Lexer.Alex
+import           Yi.MiniBuffer (CommandArguments(..))
+import qualified Yi.Mode.Interactive as Interactive
+import           Yi.Modes (TokenBasedMode, styleMode, anyExtension)
+import           Yi.Syntax (Span)
+import           Yi.Syntax.Tree
 
 abellaModeGen :: (Char -> [Event]) -> TokenBasedMode Abella.Token
-abellaModeGen abellaBinding =
-  (linearSyntaxMode Abella.initState Abella.alexScanToken Abella.tokenToStyle)
-  { modeName = "abella"
-  , modeApplies = anyExtension ["thm"]
-  , modeGetAnnotations = tokenBasedAnnots (sequenceA . tokToSpan . fmap Abella.tokenToText)
-  , modeToggleCommentSelection = toggleCommentSelectionB "% " "%"
-  , modeKeymap = topKeymapA %~ (<||)
+abellaModeGen abellaBinding = styleMode Abella.lexer
+  & modeNameA .~ "abella"
+  & modeAppliesA .~ anyExtension ["thm"]
+  & modeGetAnnotationsA .~ tokenBasedAnnots getAnnot
+  & modeToggleCommentSelectionA .~ toggleCommentSelectionB "% " "%"
+  & modeKeymapA .~ topKeymapA %~ (<||)
      (choice
       [ abellaBinding 'p' ?*>>! abellaUndo
       , abellaBinding 'e' ?*>>! abellaEval
@@ -38,7 +51,9 @@ abellaModeGen abellaBinding =
       , abellaBinding 'a' ?*>>! abellaAbort
       , abellaBinding '\r' ?*>>! abellaEvalFromProofPoint
       ])
-  }
+  where
+    getAnnot :: Tok Abella.Token -> Maybe (Span String)
+    getAnnot = sequenceA . tokToSpan . fmap Abella.tokenToText
 
 abellaModeEmacs :: TokenBasedMode Abella.Token
 abellaModeEmacs = abellaModeGen (\ch -> [ctrlCh 'c', ctrlCh ch])
@@ -54,11 +69,12 @@ getTheoremPointMark :: BufferM Mark
 getTheoremPointMark = getMarkB $ Just "t"
 
 abellaEval :: YiM ()
-abellaEval = do reg <- withBuffer . savingPointB $ do
-                          join (assign . markPointA <$> getProofPointMark <*> pointB)
-                          leftB
-                          readRegionB =<< regionOfNonEmptyB unitSentence
-                abellaSend reg
+abellaEval = do
+  reg <- withBuffer . savingPointB $ do
+    join (assign . markPointA <$> getProofPointMark <*> pointB)
+    leftB
+    readRegionB =<< regionOfNonEmptyB unitSentence
+  abellaSend reg
 
 abellaEvalFromProofPoint :: YiM ()
 abellaEvalFromProofPoint = abellaSend =<< withBuffer f
@@ -69,23 +85,29 @@ abellaEvalFromProofPoint = abellaSend =<< withBuffer f
                readRegionB $ mkRegion p cur
 
 abellaNext :: YiM ()
-abellaNext = do reg <- withBuffer $ rightB >> (readRegionB =<< regionOfNonEmptyB unitSentence)
-                abellaSend reg
-                withBuffer $ do moveB unitSentence Forward
-                                rightB
-                                untilB_ (not . isSpace <$> readB) rightB
-                                untilB_ ((/= '%') <$> readB) $ moveToEol >> rightB >> firstNonSpaceB
-                                join (assign . markPointA <$> getProofPointMark <*> pointB)
+abellaNext = do
+  reg <- withBuffer $ rightB >> (readRegionB =<< regionOfNonEmptyB unitSentence)
+  abellaSend reg
+  withBuffer $ do
+    moveB unitSentence Forward
+    rightB
+    untilB_ (not . isSpace <$> readB) rightB
+    untilB_ ((/= '%') <$> readB) $ moveToEol >> rightB >> firstNonSpaceB
+    join (assign . markPointA <$> getProofPointMark <*> pointB)
 
 abellaUndo :: YiM ()
-abellaUndo = do abellaSend "undo."
-                withBuffer $ do moveB unitSentence Backward
-                                join (assign . markPointA <$> getProofPointMark <*> pointB)
+abellaUndo = do
+  abellaSend "undo."
+  withBuffer $ do
+    moveB unitSentence Backward
+    join (assign . markPointA <$> getProofPointMark <*> pointB)
 
 abellaAbort :: YiM ()
-abellaAbort = do abellaSend "abort."
-                 withBuffer $ do moveTo =<< use . markPointA =<< getTheoremPointMark
-                                 join (assign . markPointA <$> getProofPointMark <*> pointB)
+abellaAbort = do
+  abellaSend "abort."
+  withBuffer $ do
+    moveTo =<< use . markPointA =<< getTheoremPointMark
+    join (assign . markPointA <$> getProofPointMark <*> pointB)
 
 -- | Start Abella in a buffer
 abella :: CommandArguments -> YiM BufferRef

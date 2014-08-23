@@ -1,8 +1,18 @@
-{-# LANGUAGE UndecidableInstances, GADTs, MultiParamTypeClasses, FunctionalDependencies, FlexibleInstances, FlexibleContexts, ScopedTypeVariables #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE FunctionalDependencies #-}
+{-# LANGUAGE GADTs #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE UndecidableInstances #-}
+{-# OPTIONS_HADDOCK show-extensions #-}
 
--- Copyright (c) Jean-Philippe Bernardy 2007-8
+{-|
+Module      :  Yi.Interact
+Copyright   :  (c) Jean-Philippe Bernardy 2007-2008
+License     :  GPL-2
+Maintainer  :  yi-devel@googlegroups.com
+Stability   :  experimental
+Portability :  portable
 
-{- |
 This is a library of interactive processes combinators, usable to
 define extensible keymaps.
 
@@ -55,13 +65,14 @@ module Yi.Interact
      accepted
     ) where
 
-import Control.Arrow (first)
-import Control.Monad.State hiding ( get, mapM )
-import Data.Monoid
 import Control.Applicative
-import Data.List (groupBy)
+import Control.Arrow (first)
+import Control.Lens
+import Control.Monad.State hiding ( get, mapM )
 import Data.Function (on)
-import Yi.Utils
+import Data.List (groupBy)
+import Data.Monoid
+
 ------------------------------------------------
 -- Classes
 
@@ -234,11 +245,13 @@ findWrites p (Chain a b) = case computeState a of
 
 computeState :: Eq w => P event w -> InteractState event  w
 computeState a = case findWrites 0 a of
-    Ambiguous actions -> let prior = minimum $ map fst3 actions
-                             bests = groupBy ((==) `on` snd3) $ filter ((prior ==) . fst3) actions
-                         in case bests of
-                              [(_,w,c):_] -> Running w c
-                              _ -> Ambiguous $ map head bests
+    Ambiguous actions ->
+      let prior = minimum $ map (view _1) actions
+          bests = groupBy ((==) `on` view _2) $
+                    filter ((prior ==) . view _1) actions
+      in case bests of
+        [(_,w,c):_] -> Running w c
+        _ -> Ambiguous $ map head bests
     s -> s
 
 
@@ -302,4 +315,3 @@ idAutomaton = Get Nothing Nothing $ \e -> Write e idAutomaton
 -- To witness:
 --    dist/build/yi/yi +RTS -hyI -hd
 -- Then type some characters. (Binds grows linearly)
-

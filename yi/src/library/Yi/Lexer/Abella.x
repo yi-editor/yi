@@ -8,10 +8,9 @@
 {
 #define NO_ALEX_CONTEXTS
 {-# OPTIONS -w  #-}
-module Yi.Lexer.Abella ( initState, alexScanToken, tokenToStyle,
-                         tokenToText, TT,
-                         isComment, Token(..), HlState, Reserved(..), ReservedOp(..) ) where
-import Yi.Lexer.Alex
+module Yi.Lexer.Abella ( lexer, tokenToText, TT, isComment, Token(..), HlState
+                       , Reserved(..), ReservedOp(..) ) where
+import Yi.Lexer.Alex hiding (tokenToStyle)
 import Yi.Style
 }
 
@@ -111,6 +110,12 @@ initState :: HlState
 initState = 0
 
 type TT = Tok Token
+
+lexer :: StyleLexerASI HlState Token
+lexer = StyleLexer
+  { _tokenToStyle = tokenToStyle
+  , _styleLexer = commonLexer alexScanToken initState
+  }
 
 #include "common.hsinc"
 }

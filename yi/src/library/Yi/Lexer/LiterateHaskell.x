@@ -11,7 +11,7 @@
 {
 {-# OPTIONS -w  #-}
 module Yi.Lexer.LiterateHaskell ( initState, alexScanToken, HlState ) where
-import Yi.Lexer.Alex
+import Yi.Lexer.Alex hiding (tokenToStyle)
 import Yi.Lexer.Haskell hiding (initState, alexScanToken, HlState)
 import Yi.Style
 }

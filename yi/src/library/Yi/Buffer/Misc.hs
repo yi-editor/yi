@@ -134,6 +134,9 @@ module Yi.Buffer.Misc
   , AnyMode (..)
   , IndentBehaviour (..)
   , IndentSettings (..)
+  , expandTabsA
+  , tabSizeA
+  , shiftWidthA
   , modeAlwaysApplies
   , modeNeverApplies
   , emptyMode
@@ -1163,4 +1166,5 @@ withEveryLineB action = savingPointB $ do
     void $ gotoLn l
     action
 
+makeLensesWithSuffix "A" ''IndentSettings
 makeLensesWithSuffix "A" ''Mode

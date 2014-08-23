@@ -33,7 +33,7 @@ module Yi.Lexer.JavaScript ( initState, alexScanToken, tokenToStyle,
                              postfixOperators ) where
 
 import Data.Monoid (Endo(..))
-import Yi.Lexer.Alex
+import Yi.Lexer.Alex hiding (tokenToStyle)
 import Yi.Style
 
 }

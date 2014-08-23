@@ -3,10 +3,8 @@
 {
 #define NO_ALEX_CONTEXTS
 {-# OPTIONS -w  #-}
-module Yi.Lexer.SVNCommit
-  ( initState, alexScanToken )
-where
-import Yi.Lexer.Alex
+module Yi.Lexer.SVNCommit ( lexer ) where
+import Yi.Lexer.Alex hiding (tokenToStyle)
 import Yi.Style
   ( Style             ( .. )
   , StyleName
@@ -51,6 +49,12 @@ initState :: HlState
 initState = HlCommitMessage
 
 type Token = StyleName
+
+lexer :: StyleLexerASI HlState Token
+lexer = StyleLexer
+  { _tokenToStyle = id
+  , _styleLexer = commonLexer alexScanToken initState
+  }
+
 #include "common.hsinc"
 }
-

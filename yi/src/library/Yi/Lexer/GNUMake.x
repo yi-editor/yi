@@ -5,10 +5,8 @@
 -- Maintainer: Corey O'Connor
 {
 {-# OPTIONS -w  #-}
-module Yi.Lexer.GNUMake
-  ( initState, alexScanToken )
-where
-import Yi.Lexer.Alex
+module Yi.Lexer.GNUMake ( lexer ) where
+import Yi.Lexer.Alex hiding (tokenToStyle)
 import Yi.Style
   ( Style             ( .. )
   , StyleName
@@ -203,6 +201,12 @@ initState :: HlState
 initState = TopLevel
 
 type Token = StyleName
+
+lexer :: StyleLexerASI HlState Token
+lexer = StyleLexer
+  { _tokenToStyle = id
+  , _styleLexer = commonLexer alexScanToken initState
+  }
+
 #include "common.hsinc"
 }
-

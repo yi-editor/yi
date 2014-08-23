@@ -1,25 +1,32 @@
-{-# LANGUAGE
-  FlexibleInstances,
-  TypeFamilies,
-  DeriveFoldable,
-  DeriveFunctor #-}
--- Copyright (c) JP Bernardy 2008
--- | Parser for haskell that takes in account only parenthesis and layout
+{-# LANGUAGE DeriveFoldable #-}
+{-# LANGUAGE DeriveFunctor #-}
+{-# OPTIONS_HADDOCK show-extensions #-}
+
+-- |
+-- Module      :  Yi.Syntax.Paren
+-- Copyright   :  (c) JP Bernardy 2008
+-- License     :  GPL-2
+-- Maintainer  :  yi-devel@googlegroups.com
+-- Stability   :  experimental
+-- Portability :  portable
+--
+-- Parser for Haskell that only cares about parenthesis and layout.
+
 module Yi.Syntax.Paren where
 
-import Prelude hiding (elem)
 import Control.Applicative
+import Data.Foldable
+import Data.Maybe
+import Data.Monoid
+import Data.Traversable
+import Prelude hiding (elem)
 import Yi.IncrementalParse
-import Yi.Lexer.Alex
+import Yi.Lexer.Alex hiding (tokenToStyle)
 import Yi.Lexer.Haskell
 import Yi.Style (hintStyle, errorStyle, StyleName)
+import Yi.Syntax
 import Yi.Syntax.Layout
 import Yi.Syntax.Tree
-import Yi.Syntax
-import Data.Foldable
-import Data.Traversable
-import Data.Monoid
-import Data.Maybe
 
 indentScanner :: Scanner (AlexState lexState) TT
               -> Scanner (Yi.Syntax.Layout.State Token lexState) TT
@@ -164,4 +171,3 @@ errTok = mkTok <$> curPos
          tB Nothing = maxBound
          tB (Just x) = tokBegin x
          mkTok p = Tok (Special '!') 0 (startPosn {posnOfs = p})
-

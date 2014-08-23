@@ -1,22 +1,30 @@
-{-# LANGUAGE
-  FlexibleInstances,
-  DeriveFunctor,
-  DeriveFoldable,
-  TypeFamilies #-}
+{-# LANGUAGE DeriveFunctor #-}
+{-# LANGUAGE DeriveFoldable #-}
 {-# OPTIONS_GHC -fno-warn-incomplete-patterns #-} -- uniplate patterns
--- Copyright (c) JP Bernardy 2008
+{-# OPTIONS_HADDOCK show-extensions #-}
+
+-- |
+-- Module      :  Yi.Syntax.Latex
+-- Copyright   :  (c) JP Bernardy 2008
+-- License     :  GPL-2
+-- Maintainer  :  yi-devel@googlegroups.com
+-- Stability   :  experimental
+-- Portability :  portable
+--
+-- Parser used by the LaTeX modes.
+
 module Yi.Syntax.Latex where
 
 import Control.Applicative
-import Yi.IncrementalParse
-import Yi.Lexer.Alex
-import Yi.Lexer.Latex
-import Yi.Style
-import Yi.Syntax.Tree
-import Yi.Syntax
+import Data.Foldable (Foldable, foldMap)
 import Data.Monoid
 import Data.Traversable
-import Data.Foldable (Foldable, foldMap)
+import Yi.IncrementalParse
+import Yi.Lexer.Alex hiding (tokenToStyle)
+import Yi.Lexer.Latex
+import Yi.Style
+import Yi.Syntax
+import Yi.Syntax.Tree
 
 isNoise :: Token -> Bool
 isNoise Text = True
@@ -146,5 +154,3 @@ isEnd _ = False
 
 isErrorTok :: Token -> Bool
 isErrorTok = isSpecial "!"
-
-

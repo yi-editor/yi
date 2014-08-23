@@ -2,11 +2,9 @@
 -- Maintainer: Andrew Myers
 {
 {-# OPTIONS -w  #-}
-module Yi.Lexer.GitCommit
-  ( initState, alexScanToken, Token(..) )
-where
+module Yi.Lexer.GitCommit  ( lexer, Token(..) ) where
 import Data.Monoid (mappend)
-import Yi.Lexer.Alex
+import Yi.Lexer.Alex hiding (tokenToStyle)
 import Yi.Style ( StyleName )
 import qualified Yi.Style as Style
 }
@@ -95,6 +93,12 @@ initState :: HlState
 initState = Digest
 
 type Token = StyleName
+
+lexer :: StyleLexerASI HlState Token
+lexer = StyleLexer
+  { _tokenToStyle = id
+  , _styleLexer = commonLexer alexScanToken initState
+  }
+
 #include "common.hsinc"
 }
-

@@ -4,7 +4,7 @@
 module Yi.Lexer.BasicTemplate
   ( initState, alexScanToken )
 where
-import Yi.Lexer.Alex
+import Yi.Lexer.Alex hiding (tokenToStyle)
 import Yi.Style
   ( Style             ( .. )
   , StyleName

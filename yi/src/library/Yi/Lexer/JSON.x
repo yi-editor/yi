@@ -6,8 +6,8 @@
 {
 #define NO_ALEX_CONTEXTS
 {-# OPTIONS -w  #-}
-module Yi.Lexer.JSON (initState, alexScanToken, Token(..)) where
-import Yi.Lexer.Alex
+module Yi.Lexer.JSON ( lexer, Token(..)) where
+import Yi.Lexer.Alex hiding (tokenToStyle)
 import Yi.Style
 }
 
@@ -72,6 +72,12 @@ stateToInit x = 0
 
 initState :: HlState
 initState = 0
+
+lexer :: StyleLexerASI HlState Token
+lexer = StyleLexer
+  { _tokenToStyle = id
+  , _styleLexer = commonLexer alexScanToken initState
+  }
 
 #include "common.hsinc"
 }

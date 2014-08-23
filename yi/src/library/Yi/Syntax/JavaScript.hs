@@ -5,7 +5,7 @@
 
 -- |
 -- Module      :  Yi.Syntax.JavaScript
--- Copyright   :  (c) Deniz Dogan       2009
+-- Copyright   :  (c) Deniz Dogan 2009
 -- License     :  GPL-2
 -- Maintainer  :  yi-devel@googlegroups.com
 -- Stability   :  experimental

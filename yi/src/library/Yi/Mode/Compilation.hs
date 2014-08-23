@@ -1,34 +1,36 @@
--- Copyright (c) Jean-Philippe Bernardy 2008
+{-# OPTIONS_HADDOCK show-extensions #-}
+
+-- |
+-- Module      :  Yi.Mode.Compilation
+-- Copyright   :  (c) Jean-Philippe Bernardy 2008
+-- License     :  GPL-2
+-- Maintainer  :  yi-devel@googlegroups.com
+-- Stability   :  experimental
+-- Portability :  portable
+--
+-- A 'Mode' for working with buffers showing the results of compilations.
 module Yi.Mode.Compilation where
 
-import Control.Monad
 import Control.Lens
 import Yi.Core
 import Yi.File (editFile)
 import Yi.Lexer.Alex (Tok(..), Posn(..))
-import Yi.Style
-import Yi.Modes (linearSyntaxMode)
+import Yi.Modes (styleMode, TokenBasedMode)
 import qualified Yi.Lexer.Compilation as Compilation
 import qualified Yi.Syntax.OnlineTree as OnlineTree
 
-mode :: Mode (OnlineTree.Tree (Tok Compilation.Token))
-mode = (linearSyntaxMode Compilation.initState Compilation.alexScanToken tokenToStyle)
-  {
-   modeApplies = modeNeverApplies,
-   modeName = "compilation",
-   modeKeymap = topKeymapA %~ ((spec KEnter ?>>! withSyntax modeFollow) <||),
-   modeFollow = YiA . follow
-  }
-    where tokenToStyle _ = commentStyle
-          follow errs = do
-              point <- withBuffer pointB
-              case OnlineTree.tokAtOrBefore point errs of
-                 Just (t@Tok {tokT = Compilation.Report filename line col _message}) -> do
-                     withBuffer $ moveTo $ posnOfs $ tokPosn t
-                     shiftOtherWindow
-                     void $ editFile filename
-                     withBuffer $ do
-                         void $ gotoLn line
-                         rightN col
-                 _ -> return ()
-
+mode :: TokenBasedMode Compilation.Token
+mode = styleMode Compilation.lexer
+  & modeAppliesA .~ modeNeverApplies
+  & modeNameA .~ "compilation"
+  & modeKeymapA .~ topKeymapA %~ ((spec KEnter ?>>! withSyntax modeFollow) <||)
+  & modeFollowA .~ YiA . follow
+  where
+    follow errs = withBuffer pointB >>= \point ->
+      case OnlineTree.tokAtOrBefore point errs of
+        Just t@Tok {tokT = Compilation.Report filename line col _} -> do
+          withBuffer . moveTo . posnOfs $ tokPosn t
+          shiftOtherWindow
+          _ <- editFile filename
+          withBuffer $ gotoLn line >> rightN col
+        _ -> return ()

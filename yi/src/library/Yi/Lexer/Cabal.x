@@ -9,10 +9,8 @@
 
 {
 {-# OPTIONS -w  #-}
-module Yi.Lexer.Cabal
-  ( initState, alexScanToken )
-where
-import Yi.Lexer.Alex
+module Yi.Lexer.Cabal ( lexer ) where
+import Yi.Lexer.Alex hiding (tokenToStyle)
 import Yi.Style
   ( Style             ( .. )
   , StyleName
@@ -186,6 +184,12 @@ stateToInit () = 0
 
 initState :: HlState
 initState = ()
+
+lexer :: StyleLexerASI HlState Token
+lexer = StyleLexer
+  { _tokenToStyle = id
+  , _styleLexer = commonLexer alexScanToken initState
+  }
 
 #include "common.hsinc"
 }

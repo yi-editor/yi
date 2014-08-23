@@ -4,9 +4,9 @@
 {
 #define NO_ALEX_CONTEXTS
 {-# OPTIONS -w  #-}
-module Yi.Lexer.Cplusplus ( initState, alexScanToken ) where
+module Yi.Lexer.Cplusplus ( lexer ) where
 {- Standard Library Modules Imported -}
-import Yi.Lexer.Alex
+import Yi.Lexer.Alex hiding (tokenToStyle)
 {- External Library Modules Imported -}
 {- Local Modules Imported -}
 import qualified Yi.Syntax
@@ -209,6 +209,12 @@ stateToInit x | x < 0     = nestcomm
 
 initState :: HlState
 initState = 0
+
+lexer :: StyleLexerASI HlState Token
+lexer = StyleLexer
+  { _tokenToStyle = id
+  , _styleLexer = commonLexer alexScanToken initState
+  }
 
 #include "common.hsinc"
 }

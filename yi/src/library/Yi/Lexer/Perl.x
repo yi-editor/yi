@@ -4,9 +4,9 @@
 -- Maintainer: Corey O'Connor
 {
 {-# OPTIONS -w  #-}
-module Yi.Lexer.Perl ( initState, alexScanToken ) where
+module Yi.Lexer.Perl ( lexer ) where
 {- Standard Library Modules Imported -}
-import Yi.Lexer.Alex
+import Yi.Lexer.Alex hiding (tokenToStyle)
 {- External Library Modules Imported -}
 {- Local Modules Imported -}
 import qualified Yi.Syntax
@@ -505,6 +505,12 @@ stateToInit (HlInVariable _ _) = variable
 
 initState :: HlState
 initState = HlInCode
+
+lexer :: StyleLexerASI HlState Token
+lexer = StyleLexer
+  { _tokenToStyle = id
+  , _styleLexer = commonLexer alexScanToken initState
+  }
 
 #include "common.hsinc"
 }

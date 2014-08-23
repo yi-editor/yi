@@ -1,19 +1,31 @@
-{-# LANGUAGE MultiParamTypeClasses, FunctionalDependencies, FlexibleContexts #-}
--- Unique code from Yi.Prelude
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE FunctionalDependencies #-}
+{-# OPTIONS_HADDOCK show-extensions #-}
+
+-- |
+-- Module      :  Yi.Utils
+-- License     :  GPL-2
+-- Maintainer  :  yi-devel@googlegroups.com
+-- Stability   :  experimental
+-- Portability :  portable
+--
+-- Various utility functions and instances used throughout Yi. Some of
+-- the functions from the now-removed Yi.Prelude found a new home
+-- here.
 
 module Yi.Utils where
 
-import Data.Binary
-import Data.Char (toLower)
-import Data.Foldable hiding (all,any)
+import           Control.Applicative
+import           Control.Lens hiding (cons)
+import           Control.Monad.Base
+import           Data.Binary
+import           Data.Char (toLower)
+import           Data.Foldable hiding (all,any)
 import qualified Data.HashMap.Strict as HashMap
-import Data.Hashable(Hashable)
-import Control.Monad.Base
-import Control.Applicative
-import Control.Lens hiding (cons)
-import qualified Data.Set as Set
-import qualified Data.Map as Map
+import           Data.Hashable(Hashable)
 import qualified Data.List.PointedList as PL
+import qualified Data.Map as Map
+import qualified Data.Set as Set
 import qualified Language.Haskell.TH.Syntax as THS
 
 io :: MonadBase IO m => IO a -> m a

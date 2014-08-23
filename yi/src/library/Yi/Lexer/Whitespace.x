@@ -1,3 +1,5 @@
+-- -*- haskell -*-
+
 -- Lexer for Whitespace
 -- (C) Copyright 2009 Deniz Dogan (mad credz)
 
@@ -5,9 +7,9 @@
 #define NO_ALEX_CONTEXTS
 {-# OPTIONS -w  #-}
 
-module Yi.Lexer.Whitespace ( initState, alexScanToken ) where
+module Yi.Lexer.Whitespace ( lexer ) where
 
-import Yi.Lexer.Alex
+import Yi.Lexer.Alex hiding (tokenToStyle)
 import Yi.Style (StyleName, withBg, red, green, commentStyle)
 
 }
@@ -40,6 +42,12 @@ stateToInit x = 0
 
 initState :: HlState
 initState = 0
+
+lexer :: StyleLexerASI HlState Token
+lexer = StyleLexer
+  { _tokenToStyle = id
+  , _styleLexer = commonLexer alexScanToken initState
+  }
 
 #include "common.hsinc"
 

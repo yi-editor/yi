@@ -5,10 +5,8 @@
 {- The Ott website: http://www.cl.cam.ac.uk/~pes20/ott -}
 
 {-# OPTIONS -w  #-}
-module Yi.Lexer.Ott
-  ( initState, alexScanToken )
-where
-import Yi.Lexer.Alex
+module Yi.Lexer.Ott  ( lexer ) where
+import Yi.Lexer.Alex hiding (tokenToStyle)
 import Yi.Style
   ( Style             ( .. )
   , StyleName
@@ -114,6 +112,12 @@ initState :: HlState
 initState = 0
 
 type Token = StyleName
+
+lexer :: StyleLexerASI HlState Token
+lexer = StyleLexer
+  { _tokenToStyle = id
+  , _styleLexer = commonLexer alexScanToken initState
+  }
+
 #include "common.hsinc"
 }
-

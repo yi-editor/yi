@@ -1,5 +1,6 @@
 {-# LANGUAGE DeriveFunctor #-}
 {-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE TemplateHaskell #-}
 {-# OPTIONS_HADDOCK show-extensions #-}
 
 -- |
@@ -14,34 +15,11 @@
 -- Some things are exported for use by lexers themselves through the
 -- use of @Yi/Lexers/common.hsinc@.
 
-module Yi.Lexer.Alex ( -- * Names expected by Alex code
-                       AlexInput,
-                       alexGetChar, alexInputPrevChar,
-
-                       -- * Other things closely associated with the lexer
-                       AlexState(..),
-                       unfoldLexer, lexScanner,
-                       alexCollectChar,
-                       commonLexer,
-                       Lexer(..),
-                       TokenLexer,
-                       CharScanner,
-
-                       -- * Lexer actions
-                       actionConst, actionAndModify,
-                       actionStringAndModify, actionStringConst,
-
-                       -- * Data produced by the scanner
-                       Tok(..), tokBegin, tokEnd, tokFromT, tokRegion,
-                       Posn(..), startPosn, moveStr,
-                       ASI,
-                       (+~), (~-), Size(..),
-                       Stroke,
-                       tokToSpan,
-                       alexGetByte
-                      ) where
+module Yi.Lexer.Alex ( module Yi.Lexer.Alex
+                     , (+~), (~-), Size(..), Stroke ) where
 
 import           Control.Lens (_1, view)
+import           Control.Lens.TH (makeLenses)
 import qualified Data.Bits
 import           Data.Char (ord)
 import           Data.Function (on)
@@ -50,6 +28,7 @@ import           Data.List (foldl')
 import           Data.Ord (comparing)
 import           Data.Word (Word8)
 import           Yi.Region
+import           Yi.Style (StyleName)
 import           Yi.Syntax hiding (mkHighlighter)
 import           Yi.Utils
 
@@ -186,27 +165,39 @@ type CharScanner = Scanner Point Char
 -- don't want to be cornered into the types we have predefined here
 -- and use in @common.hsinc@.
 data Lexer l s t i = Lexer
-  { step :: TokenLexer l s t i
-  , starting :: s -> Point -> Posn -> l s
-  , withChars :: Char -> [(Point, Char)] -> i
-  , looked :: l s -> Point
-  , statePosn :: l s -> Posn
-  , lexEmpty :: t
-  , startingState :: s
+  { _step :: TokenLexer l s t i
+  , _starting :: s -> Point -> Posn -> l s
+  , _withChars :: Char -> [(Point, Char)] -> i
+  , _looked :: l s -> Point
+  , _statePosn :: l s -> Posn
+  , _lexEmpty :: t
+  , _startingState :: s
   }
+
+-- | Just like 'Lexer' but also knows how to turn its tokens into
+-- 'StyleName's.
+data StyleLexer l s t i = StyleLexer
+  { _tokenToStyle :: t -> StyleName
+  , _styleLexer :: Lexer l s (Tok t) i
+  }
+
+-- | 'StyleLexer' over 'ASI'.
+type StyleLexerASI s t = StyleLexer AlexState s t AlexInput
 
 -- | Defines a 'Lexer' for 'ASI'. This exists to make using the new
 -- 'lexScanner' easier if you're using 'ASI' as all our lexers do
 -- today, 23-08-2014.
-commonLexer :: (ASI s -> Maybe (t, ASI s)) -> s -> Lexer AlexState s t AlexInput
+commonLexer :: (ASI s -> Maybe (Tok t, ASI s))
+            -> s
+            -> Lexer AlexState s (Tok t) AlexInput
 commonLexer l st0 = Lexer
-  { step = l
-  , starting = AlexState
-  , withChars = \c p -> (c, [], p)
-  , looked = lookedOffset
-  , statePosn = stPosn
-  , lexEmpty = error "Yi.Lexer.Alex.commonLexer: lexEmpty"
-  , startingState = st0
+  { _step = l
+  , _starting = AlexState
+  , _withChars = \c p -> (c, [], p)
+  , _looked = lookedOffset
+  , _statePosn = stPosn
+  , _lexEmpty = error "Yi.Lexer.Alex.commonLexer: lexEmpty"
+  , _startingState = st0
   }
 
 -- | Combine a character scanner with a lexer to produce a token
@@ -214,14 +205,14 @@ commonLexer l st0 = Lexer
 -- 'Highlighter', or with 'linearSyntaxMode' to produce a 'Mode'.
 lexScanner :: Lexer l s t i -> CharScanner -> Scanner (l s) t
 lexScanner Lexer {..} src = Scanner
-  { scanLooked = looked
-  , scanInit = starting startingState 0 startPosn
-  , scanRun = \st -> case posnOfs $ statePosn st of
-      0 -> unfoldLexer step (st, withChars '\n' $ scanRun src 0)
+  { scanLooked = _looked
+  , scanInit = _starting _startingState 0 startPosn
+  , scanRun = \st -> case posnOfs $ _statePosn st of
+      0 -> unfoldLexer _step (st, _withChars '\n' $ scanRun src 0)
       ofs -> case scanRun src (ofs -1) of
         [] -> []
-        (_, ch) : rest -> unfoldLexer step (st, withChars ch rest)
-  , scanEmpty = lexEmpty
+        (_, ch) : rest -> unfoldLexer _step (st, _withChars ch rest)
+  , scanEmpty = _lexEmpty
   }
 
 -- | unfold lexer into a function that returns a stream of (state, token)
@@ -230,3 +221,9 @@ unfoldLexer :: ((state, input) -> Maybe (token, (state, input)))
 unfoldLexer f b = case f b of
              Nothing -> []
              Just (t, b') -> (fst b, t) : unfoldLexer f b'
+
+-- * Lenses
+makeLensesWithSuffix "A" ''Posn
+makeLensesWithSuffix "A" ''Tok
+makeLenses ''Lexer
+makeLenses ''StyleLexer
