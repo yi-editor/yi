@@ -304,9 +304,6 @@ library
     Data.Prototype,
     Data.Rope,
     Data.Trie,
-    Shim.CabalInfo,
-    Shim.Utils,
-    Shim.ProjectContent,
     System.CanonicalizePath,
     System.FriendlyPath
 
