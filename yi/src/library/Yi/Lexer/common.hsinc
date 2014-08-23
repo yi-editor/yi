@@ -21,17 +21,7 @@ alexScanToken (AlexState state lookedOfs pos, inp@(_prevCh,_bs,str)) =
         lookedOfs' = max lookedOfs (posnOfs pos +~ Size lookahead) in
     case scn of
       AlexEOF -> Nothing
-
-      -- TODO: Get someone with sufficient understanding of Alex to look at this.
-      --
-      -- Currently we get here when buffer contains unicode char like umlauts or cyrillic.
-      -- Invoking error here made editor crash. So as a workaround we return Nothing.
-      -- This means that nothing after unicode char is highlighted,
-      -- but at least the editor remains working.
       AlexError inp' -> Nothing
-        -- let msg = "lexical error around " ++ take 10 (alexCollectChar inp')
-        -- in error msg
-
       AlexSkip  inp' len  ->
         let chunk = take (fromIntegral len) str
         in alexScanToken (AlexState state lookedOfs' (moveStr pos chunk), inp')

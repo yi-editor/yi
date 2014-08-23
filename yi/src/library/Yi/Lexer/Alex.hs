@@ -24,16 +24,17 @@ module Yi.Lexer.Alex (
                        alexGetByte
                       ) where
 
-import Yi.Syntax hiding (mkHighlighter)
+import           Yi.Syntax hiding (mkHighlighter)
 
-import Yi.Region
-import Data.Ord (comparing)
-import Data.Ix
-import Data.Word (Word8)
-import Data.Char (ord)
-import Data.List (foldl')
-import Yi.Utils
+import           Control.Lens (_1, view)
 import qualified Data.Bits
+import           Data.Char (ord)
+import           Data.Ix
+import           Data.List (foldl')
+import           Data.Ord (comparing)
+import           Data.Word (Word8)
+import           Yi.Region
+import           Yi.Utils
 
 -- | Encode a Haskell String to a list of Word8 values, in UTF8 format.
 utf8Encode :: Char -> [Word8]
@@ -126,26 +127,20 @@ alexGetChar :: AlexInput -> Maybe (Char, AlexInput)
 alexGetChar (_,_,[]) = Nothing
 alexGetChar (_,b,(_,c):rest) = Just (c, (c,b,rest))
 
-first :: (a -> b) -> (a, c) -> (b, c)
-first f (a, c) = (f a, c)
-
--- alexGetByte :: AlexInput -> Maybe (Word8, AlexInput)
--- alexGetByte = fmap (first (fromIntegral . ord)) . alexGetChar
-
 alexGetByte :: AlexInput -> Maybe (Word8,AlexInput)
-alexGetByte (c,(b:bs),s) = Just (b,(c,bs,s))
-alexGetByte (c,[],[])    = Nothing
-alexGetByte (_,[],(c:s)) = case utf8Encode (snd c) of
+alexGetByte (c, b:bs, s) = Just (b,(c,bs,s))
+alexGetByte (_, [], [])    = Nothing
+alexGetByte (_, [], c:s) = case utf8Encode (snd c) of
                              (b:bs) -> Just (b, ((snd c), bs, s))
                              [] -> Nothing
 
 {-# ANN alexCollectChar "HLint: ignore Use String" #-}
 alexCollectChar :: AlexInput -> [Char]
 alexCollectChar (_, _, []) = []
-alexCollectChar (_, b, (_,c):rest) = c : alexCollectChar (c,b,rest)
+alexCollectChar (_, b, (_, c):rest) = c : alexCollectChar (c, b, rest)
 
 alexInputPrevChar :: AlexInput -> Char
-alexInputPrevChar (prevChar,_,_) = prevChar
+alexInputPrevChar = view _1
 
 -- | Return a constant token
 actionConst :: token -> Action lexState token
@@ -169,28 +164,27 @@ type ASI s = (AlexState s, AlexInput)
 -- | Combine a character scanner with a lexer to produce a token scanner.
 --   May be used together with 'mkHighlighter' to produce a 'Highlighter',
 --   or with 'linearSyntaxMode' to produce a 'Mode'.
-lexScanner :: forall lexerState token.
-                                          ((AlexState lexerState, AlexInput)
-                                           -> Maybe (token, (AlexState lexerState, AlexInput))) -- ^ A lexer
-                                          -> lexerState -- ^ Initial user state for the lexer
-                                          -> Scanner Point Char
-                                          -> Scanner (AlexState lexerState) token
+lexScanner :: ((AlexState lexerState, AlexInput)
+               -> Maybe (token, (AlexState lexerState, AlexInput))) -- ^ A lexer
+           -> lexerState -- ^ Initial user state for the lexer
+           -> Scanner Point Char
+           -> Scanner (AlexState lexerState) token
 lexScanner l st0 src = Scanner
-                 {
-                  --stStart = posnOfs . stPosn,
-                  scanLooked = lookedOffset,
-                  scanInit = AlexState st0 0 startPosn,
-                  scanRun = \st ->
-                     case posnOfs $ stPosn st of
-                         0 -> unfoldLexer l (st, ('\n', [], scanRun src 0))
-                         ofs -> case scanRun src (ofs - 1) of
-                             -- FIXME: if this is a non-ascii char the ofs. will be wrong.
-                             -- However, since the only thing that matters (for now) is 'is the previous char a new line', we don't really care.
-                             -- (this is to support ^,$ in regexes)
-                             [] -> []
-                             ((_,ch):rest) -> unfoldLexer l (st, (ch, [], rest))
-                  , scanEmpty = error "Yi.Lexer.Alex.lexScanner: scanEmpty"
-                 }
+  {
+   --stStart = posnOfs . stPosn,
+   scanLooked = lookedOffset,
+   scanInit = AlexState st0 0 startPosn,
+   scanRun = \st -> case posnOfs $ stPosn st of
+     0 -> unfoldLexer l (st, ('\n', [], scanRun src 0))
+     ofs -> case scanRun src (ofs - 1) of
+     -- FIXME: if this is a non-ascii char the ofs. will be wrong.
+     -- However, since the only thing that matters (for now) is 'is
+     -- the previous char a new line', we don't really care. (this is
+     -- to support ^,$ in regexes)
+       [] -> []
+       ((_,ch):rest) -> unfoldLexer l (st, (ch, [], rest))
+   , scanEmpty = error "Yi.Lexer.Alex.lexScanner: scanEmpty"
+  }
 
 -- | unfold lexer function into a function that returns a stream of (state x token)
 unfoldLexer :: ((AlexState lexState, input) -> Maybe (token, (AlexState lexState, input)))

@@ -44,35 +44,42 @@ data Span a = Span {spanBegin :: !Point, spanContents :: !a, spanEnd :: !Point}
 -- the required functions, and is parametrized on the type of the internal
 -- state.
 
--- FIXME: this is actually completetly abstrcted from sytnax HL, so the names are silly.
+-- FIXME: this is actually completetly abstrcted from sytnax HL, so
+-- the names are silly.
 
 data Highlighter cache syntax =
   SynHL { hlStartState :: cache -- ^ The start state for the highlighter.
         , hlRun :: Scanner Point Char -> Point -> cache -> cache
         , hlGetTree :: cache -> WindowRef -> syntax
         , hlFocus :: M.Map WindowRef Region -> cache -> cache
-        -- ^ focus at a given point, and return the coresponding node. (hint -- the root can always be returned, at the cost of performance.)
+        -- ^ focus at a given point, and return the coresponding node.
+        -- (hint -- the root can always be returned, at the cost of
+        -- performance.)
         }
 
 data ExtHL syntax = forall cache. ExtHL (Highlighter cache syntax)
 
-data Scanner st a = Scanner {
-                             scanInit :: st, -- ^ Initial state
-                             scanLooked :: st -> Point,
-                             -- ^ How far did the scanner look to produce this intermediate state?
-                             -- The state can be reused as long as nothing changes before that point.
-                             scanEmpty :: a,      --  hack :/
-                             scanRun  :: st -> [(st,a)]
-                             -- ^ Running function returns a list of results and intermediate states.
-                             -- Note: the state is the state /before/ producing the result in the second component.
-                            }
+data Scanner st a = Scanner
+  { scanInit :: st -- ^ Initial state
+  , scanLooked :: st -> Point
+    -- ^ How far did the scanner look to produce this intermediate state?
+    -- The state can be reused as long as nothing changes before that point.
+  , scanEmpty :: a      --  hack :/
+  , scanRun  :: st -> [(st ,a)]
+    -- ^ Running function returns a list of results and intermediate
+    -- states. Note: the state is the state /before/ producing the
+    -- result in the second component.
+  }
 
 skipScanner :: Int -> Scanner st a -> Scanner st a
 skipScanner n (Scanner i l e r) = Scanner i l e (other 0 . r)
-    where other _ [] = []
-          other _ [x] = [x] -- we must return the final result (because if the list is empty mkHighlighter thinks it can reuse the previous result)
-          other 0 (x:xs) = x : other n xs
-          other m (_:xs) = other (m-1) xs
+    where
+      other _ [] = []
+      other _ [x] = [x] -- we must return the final result (because if
+                        -- the list is empty mkHighlighter thinks it
+                        -- can reuse the previous result)
+      other 0 (x:xs) = x : other n xs
+      other m (_:xs) = other (m-1) xs
 
 instance Functor (Scanner st) where
     fmap f (Scanner i l e r) = Scanner i l (f e) (fmap (second f) . r)
@@ -80,7 +87,12 @@ instance Functor (Scanner st) where
 data Cache state result = Cache [state] result
 
 emptyFileScan :: Scanner Point Char
-emptyFileScan = Scanner { scanInit = 0, scanRun = const [], scanLooked = id, scanEmpty = error "emptyFileScan: no scanEmpty" }
+emptyFileScan = Scanner
+  { scanInit = 0
+  , scanRun = const []
+  , scanLooked = id
+  , scanEmpty = error "emptyFileScan: no scanEmpty"
+  }
 
 -- | This takes as input a scanner that returns the "full" result at
 -- each element in the list; perhaps in a different form for the
@@ -112,8 +124,9 @@ mkHighlighter scanner =
                   newResult = if null recomputed then oldResult else snd $ head recomputed
 
 noHighlighter :: Highlighter () syntax
-noHighlighter = SynHL {hlStartState = (),
-                       hlRun = \_ _ a -> a,
-                       hlFocus = \_ c -> c,
-                       hlGetTree = \ _ -> error "noHighlighter: tried to use syntax"
-                      }
+noHighlighter = SynHL
+  { hlStartState = ()
+  , hlRun = \_ _ a -> a
+  , hlFocus = \_ c -> c
+  , hlGetTree = \ _ -> error "noHighlighter: tried to use syntax"
+  }
