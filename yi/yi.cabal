@@ -221,7 +221,7 @@ library
     cautious-file >= 1.0.1,
     concrete-typerep >= 0.1.0.2 && < 0.1.1,
     data-default,
-    lens >= 4.4,
+    lens >= 4.4.0.1,
     dlist >=0.4.1,
     dyre >=0.8.11,
     filepath>=1.1 && <1.4,
