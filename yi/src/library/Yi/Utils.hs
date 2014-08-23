@@ -129,4 +129,4 @@ addSuffix n s = [TopName $ THS.mkName $ THS.nameBase n ++ s]
 
 makeLensesWithSuffix :: String -> THS.Name -> THS.Q [THS.Dec]
 makeLensesWithSuffix s =
-  makeLensesWith (fieldRules & lensField .~ (\_ n -> addSuffix n s))
+  makeLensesWith (defaultFieldRules & lensField .~ (\_ n -> addSuffix n s))
