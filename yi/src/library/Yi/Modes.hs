@@ -1,4 +1,16 @@
 {-# LANGUAGE Rank2Types #-}
+{-# OPTIONS_HADDOCK show-extensions #-}
+
+-- |
+-- Module      :  Yi.Modes
+-- License     :  GPL-2
+--
+-- Maintainer  :  yi-devel@googlegroups.com
+-- Stability   :  experimental
+-- Portability :  portable
+--
+-- Definitions for the bulk of modes shipped with Yi.
+
 module Yi.Modes (TokenBasedMode, fundamentalMode,
                  cMode, objectiveCMode, cppMode, cabalMode,
                  srmcMode, ocamlMode, ottMode, gnuMakeMode,
@@ -9,49 +21,44 @@ module Yi.Modes (TokenBasedMode, fundamentalMode,
                  gitCommitMode, rubyMode
                 ) where
 
-import Control.Applicative
-import Data.List (isPrefixOf)
-import Data.Maybe
-import System.FilePath
-import Text.Regex.TDFA ((=~))
-
-import Yi.Buffer
-import Yi.Lexer.Alex (Tok(..), tokToSpan)
-import Yi.Style
-import Yi.Syntax
-import Yi.Syntax.Tree
+import           Control.Applicative
+import           Data.List (isPrefixOf)
+import           Data.Maybe
+import           System.FilePath
+import           Text.Regex.TDFA ((=~))
+import           Yi.Buffer
+import           Yi.Lexer.Alex (Tok(..), tokToSpan)
+import           Yi.Style
+import           Yi.Syntax
+import           Yi.Syntax.Tree
 import qualified Yi.Syntax.Driver as Driver
-import Yi.Keymap
-import Yi.MiniBuffer
-import qualified Yi.Lexer.Alex       as Alex
-import qualified Yi.Lexer.Cabal      as Cabal
+import           Yi.Keymap
+import           Yi.MiniBuffer
+import           Yi.Lexer.Alex (lexScanner, commonLexer, TokenLexer,
+                      Lexer(..), AlexState, AlexInput)
+import qualified Yi.IncrementalParse as IncrParser
 import qualified Yi.Lexer.C          as C
-import qualified Yi.Lexer.ObjectiveC as ObjectiveC
+import qualified Yi.Lexer.Cabal      as Cabal
 import qualified Yi.Lexer.Cplusplus  as Cplusplus
 import qualified Yi.Lexer.GNUMake    as GNUMake
+import qualified Yi.Lexer.GitCommit  as GitCommit
+import qualified Yi.Lexer.JSON       as JSON
+import qualified Yi.Lexer.Java       as Java
 import qualified Yi.Lexer.OCaml      as OCaml
+import qualified Yi.Lexer.ObjectiveC as ObjectiveC
 import qualified Yi.Lexer.Ott        as Ott
 import qualified Yi.Lexer.Perl       as Perl
 import qualified Yi.Lexer.Python     as Python
-import qualified Yi.Lexer.Java       as Java
-import qualified Yi.Lexer.JSON       as JSON
 import qualified Yi.Lexer.Ruby       as Ruby
-import qualified Yi.Lexer.Srmc       as Srmc
 import qualified Yi.Lexer.SVNCommit  as SVNCommit
-import qualified Yi.Lexer.GitCommit  as GitCommit
+import qualified Yi.Lexer.Srmc       as Srmc
 import qualified Yi.Lexer.Whitespace  as Whitespace
-import Yi.Syntax.OnlineTree as OnlineTree
-import qualified Yi.IncrementalParse as IncrParser
+import           Yi.Syntax.OnlineTree (manyToks, Tree)
 
 type TokenBasedMode tok = Mode (Tree (Tok tok))
 type StyleBasedMode = TokenBasedMode StyleName
 
 fundamentalMode :: Mode syntax
-svnCommitMode, cMode, objectiveCMode, cppMode, cabalMode,
-  srmcMode, ottMode, gnuMakeMode, perlMode, pythonMode,
-  javaMode, jsonMode, rubyMode :: StyleBasedMode
-ocamlMode :: TokenBasedMode OCaml.Token
-
 fundamentalMode = emptyMode
   {
    modeName = "fundamental",
@@ -60,46 +67,54 @@ fundamentalMode = emptyMode
    modePrettify = const fillParagraph
   }
 
-linearSyntaxMode :: forall lexerState t.
-                                                (Show lexerState) =>
-                                                lexerState
-                                                -> ((IncrParser.AlexState lexerState,
-                                                     Alex.AlexInput)
-                                                    -> Maybe
-                                                         (Tok t,
-                                                          (IncrParser.AlexState lexerState,
-                                                           Alex.AlexInput)))
-                                                -> (t -> StyleName)
-                                                -> Mode (Tree (Tok t))
-linearSyntaxMode initSt scanToken tokenToStyle
-    = fundamentalMode {
-                        modeHL = ExtHL $ Driver.mkHighlighter (IncrParser.scanner OnlineTree.manyToks . lexer),
-                        modeGetStrokes = tokenBasedStrokes tokenToStroke
-                      }
-    where tokenToStroke = fmap tokenToStyle . tokToSpan
-          lexer = Alex.lexScanner scanToken initSt
+-- | Creates a 'TokenBasedMode' from a 'Lexer' and a function that
+-- turns tokens into 'StyleName'.
+linearSyntaxMode' :: Show (l s)
+                  => Lexer l s (Tok t) i
+                  -> (t -> StyleName)
+                  -> TokenBasedMode t
+linearSyntaxMode' scanToken tokenToStyle = fundamentalMode
+  { modeHL = ExtHL $ Driver.mkHighlighter (IncrParser.scanner manyToks . lexer)
+  , modeGetStrokes = tokenBasedStrokes tokenToStroke
+  }
+  where
+    tokenToStroke = fmap tokenToStyle . tokToSpan
+    lexer = lexScanner scanToken
+
+-- | Specialised version of 'linearSyntaxMode'' for the common case,
+-- wrapping up into a 'Lexer' with 'commonLexer'.
+linearSyntaxMode :: Show s => s -- ^ Starting state
+                 -> TokenLexer AlexState s (Tok t) AlexInput
+                 -> (t -> StyleName)
+                 -> TokenBasedMode t
+linearSyntaxMode initSt scanToken tokenToStyle =
+  linearSyntaxMode' (commonLexer scanToken initSt) tokenToStyle
 
 removeAnnots :: Mode a -> Mode a
 removeAnnots m = m { modeName = modeName m ++ " no annots", modeGetAnnotations = modeGetAnnotations emptyMode }
 
+cMode :: StyleBasedMode
 cMode = (linearSyntaxMode C.initState C.alexScanToken id)
   {
     modeApplies = anyExtension ["c", "h"],
     modeName = "c"
   }
 
+objectiveCMode :: StyleBasedMode
 objectiveCMode = (linearSyntaxMode ObjectiveC.initState ObjectiveC.alexScanToken id)
   {
     modeApplies = anyExtension ["m", "mm"],
     modeName = "objective-c"
   }
 
+cppMode :: StyleBasedMode
 cppMode = (linearSyntaxMode Cplusplus.initState Cplusplus.alexScanToken id)
   {
     modeApplies = anyExtension ["cxx", "cpp", "hxx"],
     modeName = "c++"
   }
 
+cabalMode :: StyleBasedMode
 cabalMode = (linearSyntaxMode Cabal.initState Cabal.alexScanToken id)
   {
     modeName = "cabal",
@@ -108,6 +123,7 @@ cabalMode = (linearSyntaxMode Cabal.initState Cabal.alexScanToken id)
   }
 
 
+srmcMode :: StyleBasedMode
 srmcMode = (linearSyntaxMode Srmc.initState Srmc.alexScanToken id)
   {
     modeName = "srmc",
@@ -123,30 +139,35 @@ gitCommitMode = (linearSyntaxMode GitCommit.initState GitCommit.alexScanToken id
                              takeFileName (takeDirectory path) == ".git"
   }
 
+svnCommitMode :: StyleBasedMode
 svnCommitMode = (linearSyntaxMode SVNCommit.initState SVNCommit.alexScanToken id)
   {
     modeName = "svn-commit",
     modeApplies = \path _contents -> isPrefixOf "svn-commit" path && extensionMatches ["tmp"] path
   }
 
+ocamlMode :: TokenBasedMode OCaml.Token
 ocamlMode = (linearSyntaxMode OCaml.initState OCaml.alexScanToken OCaml.tokenToStyle)
   {
     modeName = "ocaml",
     modeApplies = anyExtension ["ml", "mli", "mly", "mll", "ml4", "mlp4"]
   }
 
+perlMode :: StyleBasedMode
 perlMode = (linearSyntaxMode Perl.initState Perl.alexScanToken id)
   {
     modeName = "perl",
     modeApplies = anyExtension ["t", "pl", "pm"]
   }
 
+rubyMode :: StyleBasedMode
 rubyMode = (linearSyntaxMode Ruby.initState Ruby.alexScanToken id)
   {
     modeName = "ruby",
     modeApplies = anyExtension ["rb", "ru"]
   }
 
+pythonMode :: StyleBasedMode
 pythonMode = base
   {
     modeName = "python",
@@ -160,12 +181,14 @@ pythonMode = base
   }
     where base = linearSyntaxMode Python.initState Python.alexScanToken id
 
+javaMode :: StyleBasedMode
 javaMode = (linearSyntaxMode Java.initState Java.alexScanToken id)
   {
     modeName = "java",
     modeApplies = anyExtension ["java"]
   }
 
+jsonMode :: StyleBasedMode
 jsonMode = (linearSyntaxMode JSON.initState JSON.alexScanToken id)
   {
     modeName = "json",
@@ -180,6 +203,7 @@ isMakefile path _contents = matches $ takeFileName path
           matches filename      = extensionMatches ["mk"] filename
           -- TODO: .mk is fairly standard but are there others?
 
+gnuMakeMode :: StyleBasedMode
 gnuMakeMode = base
   {
     modeName = "Makefile",
@@ -192,6 +216,7 @@ gnuMakeMode = base
   }
     where base = linearSyntaxMode GNUMake.initState GNUMake.alexScanToken id
 
+ottMode :: StyleBasedMode
 ottMode = (linearSyntaxMode Ott.initState Ott.alexScanToken id)
   {
     modeName = "ott",

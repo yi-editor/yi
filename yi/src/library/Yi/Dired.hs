@@ -1,30 +1,42 @@
-{-# LANGUAGE
-  DeriveDataTypeable,
-  TemplateHaskell,
-  CPP,
-  StandaloneDeriving,
-  DeriveGeneric,
-  OverloadedStrings #-}
+{-# LANGUAGE CPP #-}
+{-# LANGUAGE DeriveDataTypeable #-}
+{-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE StandaloneDeriving #-}
+{-# LANGUAGE TemplateHaskell #-}
+{-# OPTIONS_HADDOCK show-extensions #-}
 
--- Copyright (c) 2007, 2008, 2009 Ben Moseley, Wen Pu
+{-|
+Module      :  Yi.Dired
+Copyright   :  (c) Ben Moseley 2007-2009,
+                   Wen Pu      2007-2009
+License     :  GPL-2
+Maintainer  :  yi-devel@googlegroups.com
+Stability   :  experimental
+Portability :  portable
 
+A simple
+<https://www.gnu.org/software/emacs/manual/html_node/emacs/Dired.html dired>
+implementation for Yi.
 
--- | A Simple Dired Implementation for Yi
+= TODO
 
--- TODO
--------
--- add more comments
+* add more comments
+* Support symlinks
+* Mark operations
 
--- Support Symlinks
--- Mark operations
--- - search
--- Improve the colouring to show
--- - loaded buffers
--- - .hs files
--- - marked files
--- Fix old mod dates (> 6months) to show year
--- Fix the 'number of links' field to show actual values not just 1...
--- Automatic support for browsing .zip, .gz files etc...
+    * search
+
+* Improve the colouring to show
+
+    * loaded buffers
+    * .hs files
+    * marked files
+
+* Fix old mod dates (> 6months) to show year
+* Fix the 'number of links' field to show actual values not just 1...
+* Automatic support for browsing .zip, .gz files etc...
+-}
 
 module Yi.Dired
   ( dired
@@ -33,41 +45,40 @@ module Yi.Dired
   ) where
 
 import qualified Codec.Binary.UTF8.String as UTF8
-import Control.Monad.Reader hiding (mapM)
-import Control.Lens hiding (act, op, pre)
-import Data.Binary
-import Data.List hiding (find, maximum, concat)
-import Data.Char (toLower)
+import           Control.Exc
+import           Control.Lens hiding (act, op, pre)
+import           Control.Monad.Reader hiding (mapM)
+import           Data.Binary
+import           Data.Char (toLower)
+import           Data.Default
 #if __GLASGOW_HASKELL__ < 708
-import Data.DeriveTH
+import           Data.DeriveTH
 #else
-import GHC.Generics (Generic)
+import           GHC.Generics (Generic)
 #endif
-import Data.Default
-import Data.Typeable
-import Data.Maybe
-import Data.Foldable (find)
+import           Data.Foldable (find)
+import           Data.List hiding (find, maximum, concat)
 import qualified Data.Map as M
-import qualified Data.Rope as R
-import Data.Time
-import Data.Time.Clock.POSIX
-import System.Directory hiding (canonicalizePath)
-import System.FilePath
-import System.CanonicalizePath (canonicalizePath)
-import System.Locale
-import System.PosixCompat.Files
-import System.PosixCompat.Types
-import System.PosixCompat.User
-import Control.Exc
-import Text.Printf
-
-import Yi.Core
-import {-# source #-} Yi.File (editFile)
-import Yi.MiniBuffer (spawnMinibufferE, withMinibufferFree, noHint, withMinibuffer)
-import Yi.Misc (getFolder, promptFile)
-import Yi.Style
-import Yi.Utils
-import Yi.Monad
+import           Data.Maybe
+import           Data.Time
+import           Data.Time.Clock.POSIX
+import           Data.Typeable
+import           System.CanonicalizePath (canonicalizePath)
+import           System.Directory hiding (canonicalizePath)
+import           System.FilePath
+import           System.Locale
+import           System.PosixCompat.Files
+import           System.PosixCompat.Types
+import           System.PosixCompat.User
+import           Text.Printf
+import           Yi.Core
+import           Yi.MiniBuffer (spawnMinibufferE, withMinibufferFree,
+                                noHint, withMinibuffer)
+import           Yi.Misc (getFolder, promptFile)
+import           Yi.Monad
+import           Yi.Style
+import           Yi.Utils
+import           {-# source #-} Yi.File (editFile)
 
 data DiredFileInfo = DiredFileInfo {  permString :: String
                                     , numLinks :: Integer
@@ -752,7 +763,7 @@ diredLoad = do
                                         else sel ++ " no longer exists")
                             (DiredNamedPipe _dfi) -> do
                                     exists <- io $ doesFileExist sel
-                                    msgEditor (if exists 
+                                    msgEditor (if exists
                                         then "Can't open Pipe " ++ sel
                                         else sel ++ " no longer exists")
                             DiredNoInfo -> msgEditor $ "No File Info for:"++sel

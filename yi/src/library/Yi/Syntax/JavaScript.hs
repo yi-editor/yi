@@ -1,8 +1,20 @@
-{-# LANGUAGE
-  FlexibleInstances,
-  DeriveDataTypeable,
-  DeriveFoldable #-}
--- (C) Copyright 2009 Deniz Dogan
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE DeriveDataTypeable #-}
+{-# LANGUAGE DeriveFoldable #-}
+{-# OPTIONS_HADDOCK show-extensions #-}
+
+-- |
+-- Module      :  Yi.Syntax.JavaScript
+-- Copyright   :  (c) Deniz Dogan       2009
+-- License     :  GPL-2
+-- Maintainer  :  yi-devel@googlegroups.com
+-- Stability   :  experimental
+-- Portability :  portable
+--
+-- Parser for the JavaScript language as described at
+-- <http://publications.lib.chalmers.se/records/fulltext/112284.pdf Dogan 2009>.
+--
+-- The mode using this parser can be found at "Yi.Mode.JavaScript".
 
 module Yi.Syntax.JavaScript where
 

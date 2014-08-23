@@ -1,32 +1,40 @@
-{-# LANGUAGE Rank2Types #-}
+{-# OPTIONS_HADDOCK show-extensions #-}
+
+-- |
+-- Module      :  Yi.Mode.Latex
+-- License     :  GPL-2
+-- Maintainer  :  yi-devel@googlegroups.com
+-- Stability   :  experimental
+-- Portability :  portable
+--
+-- Collection of 'Mode's for working with LaTeX.
+
 module Yi.Mode.Latex (latexMode3, latexMode2, fastMode) where
 
-
-import Yi.Buffer
-
-import Yi.Syntax
-import Yi.Syntax.Tree
+import           Yi.Buffer
 import qualified Yi.IncrementalParse as IncrParser
-import qualified Yi.Lexer.Alex as Alex
-import qualified Yi.Syntax.Latex as Latex
-import Yi.Syntax.OnlineTree as OnlineTree
+import           Yi.Lexer.Alex (lexScanner, commonLexer,
+                                CharScanner, Tok, AlexState)
 import qualified Yi.Lexer.Latex               as Latex
-import Yi.Modes (anyExtension, fundamentalMode)
+import           Yi.Modes (anyExtension, fundamentalMode)
+import           Yi.Syntax
 import qualified Yi.Syntax.Driver as Driver
+import qualified Yi.Syntax.Latex as Latex
+import           Yi.Syntax.OnlineTree (manyToks, Tree)
+import           Yi.Syntax.Tree
 
-abstract :: forall syntax. Mode syntax
+abstract :: Mode syntax
 abstract = fundamentalMode
  {
    modeApplies = anyExtension ["tex", "sty", "ltx"],
    modeToggleCommentSelection = toggleCommentSelectionB "% " "%"
  }
 
-fastMode :: Mode (OnlineTree.Tree Latex.TT)
+fastMode :: Mode (Tree Latex.TT)
 fastMode = abstract
   {
     modeName = "fast latex",
-    modeHL = ExtHL $
-    mkHighlighter (IncrParser.scanner OnlineTree.manyToks . latexLexer),
+    modeHL = ExtHL $ mkHighlighter (IncrParser.scanner manyToks . latexLexer),
     modeGetStrokes = tokenBasedStrokes Latex.tokenToStroke,
     modeGetAnnotations = tokenBasedAnnots Latex.tokenToAnnot
  }
@@ -53,7 +61,5 @@ latexMode3 = abstract
     modeGetAnnotations = tokenBasedAnnots Latex.tokenToAnnot
   }
 
-
-latexLexer :: Scanner Point Char -> Scanner (Alex.AlexState Latex.HlState) (Alex.Tok Latex.Token)
-latexLexer = Alex.lexScanner Latex.alexScanToken Latex.initState
-
+latexLexer :: CharScanner -> Scanner (AlexState Latex.HlState) (Tok Latex.Token)
+latexLexer = lexScanner (commonLexer Latex.alexScanToken Latex.initState)

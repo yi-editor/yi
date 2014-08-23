@@ -1,7 +1,17 @@
-{-# LANGUAGE DeriveDataTypeable, GeneralizedNewtypeDeriving
-           , Rank2Types #-}
--- Copyright (c) 2008 Jean-Philippe Bernardy
--- | Haskell-specific modes and commands.
+{-# LANGUAGE DeriveDataTypeable #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# OPTIONS_HADDOCK show-extensions #-}
+
+-- |
+-- Module      :  Yi.Mode.Haskell
+-- Copyright   :  (c) Jean-Philippe Bernardy 2008
+-- License     :  GPL-2
+-- Maintainer  :  yi-devel@googlegroups.com
+-- Stability   :  experimental
+-- Portability :  portable
+--
+-- Collection of 'Mode's for working with Haskell.
+
 module Yi.Mode.Haskell
   (
    -- * Modes
@@ -18,36 +28,36 @@ module Yi.Mode.Haskell
    ghciInferType,
   ) where
 
-import Prelude hiding (and,error,elem,notElem,all,concatMap,exp)
-import Data.Maybe (listToMaybe, isJust, catMaybes)
-import Data.Default
-import Data.Foldable
-import Data.Typeable
-import Data.Binary
-import Control.Applicative
-import Control.Monad hiding (forM_)
-import Yi.Core
-import Yi.File
-import Yi.Lexer.Alex (Tok(..),Posn(..),tokBegin,tokEnd,tokRegion)
-import Yi.String
-import Yi.Syntax
-import qualified Yi.Syntax.Driver as Driver
-import Yi.Syntax.Haskell as Hask
-import Yi.Syntax.Strokes.Haskell as HS
-import Yi.Syntax.Paren as Paren
-import Yi.Syntax.Tree
-import Yi.Syntax.OnlineTree as OnlineTree
+import           Control.Applicative
+import           Control.Monad hiding (forM_)
+import           Data.Binary
+import           Data.Default
+import           Data.Foldable
+import           Data.Maybe (listToMaybe, isJust, catMaybes)
+import           Data.Typeable
+import           Prelude hiding (and,error,elem,notElem,all,concatMap,exp)
+import           Yi.Core
+import           Yi.Debug
+import           Yi.File
 import qualified Yi.IncrementalParse as IncrParser
-import qualified Yi.Lexer.Alex as Alex
+import           Yi.Lexer.Alex (Tok(..), Posn(..), tokBegin, tokEnd, tokRegion,
+                                commonLexer, AlexState, lexScanner, CharScanner)
+import           Yi.Lexer.Haskell as Haskell
 import qualified Yi.Lexer.LiterateHaskell as LiterateHaskell
-import Yi.Lexer.Haskell as Haskell
+import           Yi.MiniBuffer
 import qualified Yi.Mode.GHCi as GHCi
 import qualified Yi.Mode.Interactive as Interactive
-import Yi.Modes (anyExtension, extensionOrContentsMatch)
-import Yi.MiniBuffer
-import Yi.Debug
-import Yi.Monad
-import Yi.Utils
+import           Yi.Modes (anyExtension, extensionOrContentsMatch)
+import           Yi.Monad
+import           Yi.String
+import           Yi.Syntax
+import qualified Yi.Syntax.Driver as Driver
+import           Yi.Syntax.Haskell as Hask
+import           Yi.Syntax.OnlineTree as OnlineTree
+import           Yi.Syntax.Paren as Paren
+import           Yi.Syntax.Strokes.Haskell as HS
+import           Yi.Syntax.Tree
+import           Yi.Utils
 
 haskellAbstract :: Mode (tree TT)
 haskellAbstract = emptyMode
@@ -118,11 +128,11 @@ preciseMode = haskellAbstract
  }
 
 
-haskellLexer :: Scanner Point Char -> Scanner (Alex.AlexState Haskell.HlState) (Tok Token)
-haskellLexer = Alex.lexScanner Haskell.alexScanToken Haskell.initState
+haskellLexer :: CharScanner -> Scanner (AlexState Haskell.HlState) TT
+haskellLexer = lexScanner (commonLexer Haskell.alexScanToken Haskell.initState)
 
-literateHaskellLexer :: Scanner Point Char -> Scanner (Alex.AlexState LiterateHaskell.HlState) (Tok Token)
-literateHaskellLexer = Alex.lexScanner LiterateHaskell.alexScanToken LiterateHaskell.initState
+literateHaskellLexer :: CharScanner -> Scanner (AlexState LiterateHaskell.HlState) TT
+literateHaskellLexer = lexScanner (commonLexer LiterateHaskell.alexScanToken LiterateHaskell.initState)
 
 adjustBlock :: Paren.Tree (Tok Token) -> Int -> BufferM ()
 adjustBlock e len = do
@@ -297,7 +307,7 @@ tokText = readRegionB . tokRegion
 isLineComment :: TT -> Bool
 isLineComment = (Just Haskell.Line ==) . tokTyp . tokT
 
-contiguous :: forall t. Tok t -> Tok t -> Bool
+contiguous :: Tok t -> Tok t -> Bool
 contiguous a b = lb - la <= 1
     where [la,lb] = fmap (posnLine . tokPosn) [a,b]
 

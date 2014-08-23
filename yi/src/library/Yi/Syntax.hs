@@ -1,19 +1,23 @@
-{-# LANGUAGE
-  ScopedTypeVariables,
-  ExistentialQuantification,
-  DeriveFunctor,
-  DeriveFoldable,
-  DeriveTraversable,
-  MultiParamTypeClasses #-}
---
--- Copyright (C) 2007 Don Stewart - http://www.cse.unsw.edu.au/~dons
---
---
+{-# LANGUAGE DeriveFoldable #-}
+{-# LANGUAGE DeriveFunctor #-}
+{-# LANGUAGE DeriveTraversable #-}
+{-# LANGUAGE ExistentialQuantification #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# OPTIONS_HADDOCK show-extensions #-}
 
--- Hours wasted attempting to unfuck
--- lexing/parsing/highlighting/modes/unicode: 41
-
--- | This module defines a common interface for syntax-awareness.
+-- |
+-- Module      :  Yi.Syntax
+-- Copyright   :  (c) Don Stewart 2007
+-- License     :  GPL-2
+-- Maintainer  :  yi-devel@googlegroups.com
+-- Stability   :  experimental
+-- Portability :  portable
+--
+-- This module defines a common interface for syntax-awareness.
+--
+-- There have been many tens of wasted hours in this and lexer
+-- modules. This note is to commemorate those who have fallen in
+-- battle.
 
 module Yi.Syntax
   ( Highlighter  ( .. )
