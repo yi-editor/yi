@@ -27,6 +27,7 @@ import Yi.Keymap.Vim.Search
 import Yi.Keymap.Vim.StateUtils
 import Yi.Keymap.Vim.StyledRegion
 import Yi.Keymap.Vim.Utils
+import Yi.Keymap.Vim.Tag
 import Yi.MiniBuffer
 import Yi.Misc
 import Yi.Regex (seInput, makeSearchOptsM)
@@ -54,7 +55,16 @@ defNormalMap operators =
     nonrepeatableBindings ++
     jumpBindings ++
     fileEditBindings ++
-    [tabTraversalBinding]
+    [tabTraversalBinding] ++
+    [tagJumpBinding, tagPopBinding]
+
+tagJumpBinding :: VimBinding
+tagJumpBinding = mkBindingY Normal (Event (KASCII ']') [MCtrl], f, id)
+   where f = withBuffer readCurrentWordB >>= gotoTag
+
+tagPopBinding :: VimBinding
+tagPopBinding = mkBindingY Normal (Event (KASCII 't') [MCtrl], f, id)
+   where f = popTag
 
 motionBinding :: VimBinding
 motionBinding = mkMotionBinding Drop $

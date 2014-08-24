@@ -22,6 +22,7 @@ import qualified Yi.Keymap.Vim.Ex.Commands.Paste as Paste
 import qualified Yi.Keymap.Vim.Ex.Commands.Quit as Quit
 import qualified Yi.Keymap.Vim.Ex.Commands.Reload as Reload
 import qualified Yi.Keymap.Vim.Ex.Commands.Substitute as Substitute
+import qualified Yi.Keymap.Vim.Ex.Commands.Tag as Tag
 import qualified Yi.Keymap.Vim.Ex.Commands.Write as Write
 import qualified Yi.Keymap.Vim.Ex.Commands.Yi as Yi
 
@@ -40,6 +41,7 @@ defExCommandParsers =
     , Quit.parse
     , Reload.parse
     , Substitute.parse
+    , Tag.parse
     , Write.parse
     , Yi.parse
     ]
