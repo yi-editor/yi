@@ -246,7 +246,7 @@ library
     xdg-basedir >= 0.2.1 && < 0.3,
     transformers-base,
     semigroups,
-    word-trie >= 0.2.0.1
+    word-trie >= 0.2.0.2
 
   build-tools: alex >= 3.0.3
   ghc-options: -Wall -fno-warn-orphans
