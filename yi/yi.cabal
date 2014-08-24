@@ -245,7 +245,8 @@ library
     unordered-containers >= 0.1.3 && < 0.3,
     xdg-basedir >= 0.2.1 && < 0.3,
     transformers-base,
-    semigroups
+    semigroups,
+    word-trie >= 0.2.0.0
 
   build-tools: alex >= 3.0.3
   ghc-options: -Wall -fno-warn-orphans
@@ -305,7 +306,6 @@ library
     Data.DelayList,
     Data.Prototype,
     Data.Rope,
-    Data.Trie,
     System.CanonicalizePath,
     System.FriendlyPath
 
