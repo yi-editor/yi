@@ -128,7 +128,6 @@ module Yi.Buffer.Misc
   , modeToggleCommentSelectionA
   , modeGetStrokesA
   , modeGetAnnotationsA
-  , modePrintTreeA
   , modeOnLoadA
   , modeModeLineA
   , AnyMode (..)
@@ -401,7 +400,6 @@ data Mode syntax = Mode
      modeToggleCommentSelection :: YiM (),
      modeGetStrokes :: syntax -> Point -> Point -> Point -> [Stroke], -- ^ Strokes that should be applied when displaying a syntax element
      modeGetAnnotations :: syntax -> Point -> [Span String],
-     modePrintTree :: syntax -> BufferM (),
      -- should this be an Action instead?
      modeOnLoad :: BufferM (), -- ^ An action that is to be executed when this mode is set
      modeModeLine :: [String] -> BufferM String -- ^ buffer-local modeline formatting method
@@ -661,7 +659,6 @@ emptyMode = Mode
    modeToggleCommentSelection = promptCommentString,
    modeGetStrokes = \_ _ _ _ -> [],
    modeGetAnnotations = \_ _ -> [],
-   modePrintTree = \_ -> return (),
    modeOnLoad = return (),
    modeModeLine = defaultModeLine
   }
