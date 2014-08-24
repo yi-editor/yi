@@ -57,7 +57,7 @@ javaScriptAbstract :: Mode syntax
 javaScriptAbstract = emptyMode
   { modeApplies = anyExtension ["js"]
   , modeName = "javascript"
-  , modeToggleCommentSelection = toggleCommentSelectionB "// " "//"
+  , modeToggleCommentSelection = withBuffer (toggleCommentSelectionB "// " "//")
   }
 
 javaScriptMode :: Mode (Tree TT)

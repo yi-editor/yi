@@ -64,7 +64,7 @@ haskellAbstract = emptyMode
   {
      modeApplies = extensionOrContentsMatch extensions shebangPattern,
      modeName = "haskell",
-     modeToggleCommentSelection = toggleCommentSelectionB "-- " "--"
+     modeToggleCommentSelection = withBuffer (toggleCommentSelectionB "-- " "--")
   }
      {-
      Some of these are a little questionably haskell

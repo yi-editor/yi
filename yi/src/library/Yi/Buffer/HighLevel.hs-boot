@@ -1,6 +1,5 @@
 module Yi.Buffer.HighLevel where
 
-import {-# SOURCE #-} Yi.Keymap (YiM)
+import {-# SOURCE #-} Yi.Buffer.Misc (BufferM)
 
-
-toggleCommentSelectionB :: String -> String -> YiM ()
+toggleCommentSelectionB :: String -> String -> BufferM ()
