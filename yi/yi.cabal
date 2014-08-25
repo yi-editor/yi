@@ -216,7 +216,7 @@ library
     transformers-base,
     semigroups,
     word-trie >= 0.2.0.4,
-    yi-language,
+    yi-language >= 0.1.0.2,
     oo-prototypes
 
   build-tools: alex >= 3.0.3
@@ -234,8 +234,6 @@ library
   if os(windows)
     build-depends:
       Win32
-
-  include-dirs:   src/library/Yi/Lexer
 
   if flag(testing)
     cpp-options: -DTESTING
@@ -309,5 +307,5 @@ Test-Suite test-suite
     QuickCheck,
     filepath,
     directory,
-    yi-language,
+    yi-language >= 0.1.0.2,
     yi

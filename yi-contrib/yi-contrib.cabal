@@ -42,6 +42,8 @@ library
     yi == 0.9.1,
     time >= 1.0 && < 2.0,
     old-locale >= 1.0 && < 1.2,
-    transformers-base
+    transformers-base,
+    yi-language >= 0.1.0.2,
+    oo-prototypes
 
   ghc-options: -Wall
