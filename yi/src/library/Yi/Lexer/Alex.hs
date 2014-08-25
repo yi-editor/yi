@@ -27,7 +27,6 @@ import           Data.Ix
 import           Data.List (foldl')
 import           Data.Ord (comparing)
 import           Data.Word (Word8)
-import           Yi.Region
 import           Yi.Style (StyleName)
 import           Yi.Syntax hiding (mkHighlighter)
 import           Yi.Utils
@@ -84,10 +83,6 @@ tokBegin = posnOfs . tokPosn
 
 tokEnd :: Tok t -> Point
 tokEnd t = tokBegin t +~ tokLen t
-
-tokRegion :: Tok t -> Region
-tokRegion t = mkRegion (tokBegin t) (tokEnd t)
-
 
 instance Show t => Show (Tok t) where
     show tok = show (tokPosn tok) ++ ": " ++ show (tokT tok)

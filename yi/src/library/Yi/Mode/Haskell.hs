@@ -40,7 +40,7 @@ import           Yi.Core
 import           Yi.Debug
 import           Yi.File
 import qualified Yi.IncrementalParse as IncrParser
-import           Yi.Lexer.Alex (Tok(..), Posn(..), tokBegin, tokEnd, tokRegion,
+import           Yi.Lexer.Alex (Tok(..), Posn(..), tokBegin, tokEnd,
                                 commonLexer, AlexState, lexScanner, CharScanner)
 import           Yi.Lexer.Haskell as Haskell
 import qualified Yi.Lexer.LiterateHaskell as LiterateHaskell
@@ -58,6 +58,7 @@ import           Yi.Syntax.Paren as Paren
 import           Yi.Syntax.Strokes.Haskell as HS
 import           Yi.Syntax.Tree
 import           Yi.Utils
+import           Yi.Region (mkRegion, Region)
 
 haskellAbstract :: Mode (tree TT)
 haskellAbstract = emptyMode
@@ -303,6 +304,9 @@ nominalIndent _ = 1
 
 tokText :: Tok t -> BufferM String
 tokText = readRegionB . tokRegion
+
+tokRegion :: Tok t -> Region
+tokRegion t = mkRegion (tokBegin t) (tokEnd t)
 
 isLineComment :: TT -> Bool
 isLineComment = (Just Haskell.Line ==) . tokTyp . tokT
