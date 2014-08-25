@@ -19,6 +19,7 @@ import Data.Foldable (find)
 import Yi.Buffer hiding (Insert)
 import Yi.Editor
 import Yi.Keymap.Vim.Common
+import Yi.Keymap.Vim.EventUtils
 import Yi.Keymap.Vim.StateUtils
 import Yi.Keymap.Vim.StyledRegion
 import Yi.Keymap.Vim.TextObject
@@ -154,5 +155,7 @@ mkShiftOperator name countMod = VimOperator {
 }
 
 lastCharForOperator :: VimOperator -> String
-lastCharForOperator (VimOperator { operatorName = name }) =
-    if "<lt>" `isSuffixOf` name then "<lt>" else [last name]
+lastCharForOperator (VimOperator { operatorName = name })
+    = case parseEvents name of
+        [] -> error ("invalid operator name " ++ name)
+        evs -> eventToString (last evs)

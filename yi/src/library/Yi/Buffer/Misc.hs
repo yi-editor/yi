@@ -665,13 +665,12 @@ emptyMode = Mode
 
 promptCommentString :: YiM ()
 promptCommentString =
-  withMinibufferFree "No comment syntax is defined. Use: " $ \cString -> do
+  withMinibufferFree "No comment syntax is defined. Use: " $ \cString -> withBuffer $ do
     let c = cString ++ " "
     toggleCommentSelectionB c cString
-    withBuffer $ do
-      modifyMode (\x -> x { modeToggleCommentSelection =
-                               toggleCommentSelectionB c cString
-                          })
+    modifyMode (\x -> x { modeToggleCommentSelection =
+                             withBuffer (toggleCommentSelectionB c cString)
+                        })
 
 -- | Create buffer named @nm@ with contents @s@
 newB :: BufferRef -> BufferId -> Rope -> FBuffer

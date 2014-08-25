@@ -113,7 +113,7 @@ cabalMode :: StyleBasedMode
 cabalMode = styleMode Cabal.lexer
   & modeNameA .~ "cabal"
   & modeAppliesA .~ anyExtension [ "cabal" ]
-  & modeToggleCommentSelectionA .~ toggleCommentSelectionB "-- " "--"
+  & modeToggleCommentSelectionA .~ withBuffer (toggleCommentSelectionB "-- " "--")
 
 
 srmcMode :: StyleBasedMode
@@ -156,7 +156,7 @@ pythonMode :: StyleBasedMode
 pythonMode = base
   & modeNameA .~ "python"
   & modeAppliesA .~ anyExtension [ "py" ]
-  & modeToggleCommentSelectionA .~ toggleCommentSelectionB "# " "#"
+  & modeToggleCommentSelectionA .~ withBuffer (toggleCommentSelectionB "# " "#")
   & modeIndentSettingsA %~ (\x -> x { expandTabs = True, tabSize = 4 })
   where
     base = styleMode Python.lexer

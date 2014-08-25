@@ -13,6 +13,7 @@ module Yi.Mode.Latex (latexMode3, latexMode2, fastMode) where
 
 import           Yi.Buffer
 import qualified Yi.IncrementalParse as IncrParser
+import           Yi.Keymap (withBuffer)
 import           Yi.Lexer.Alex (lexScanner, commonLexer,
                                 CharScanner, Tok, AlexState)
 import qualified Yi.Lexer.Latex               as Latex
@@ -27,7 +28,7 @@ abstract :: Mode syntax
 abstract = fundamentalMode
  {
    modeApplies = anyExtension ["tex", "sty", "ltx"],
-   modeToggleCommentSelection = toggleCommentSelectionB "% " "%"
+   modeToggleCommentSelection = withBuffer (toggleCommentSelectionB "% " "%")
  }
 
 fastMode :: Mode (Tree Latex.TT)

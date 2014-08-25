@@ -42,7 +42,7 @@ abellaModeGen abellaBinding = styleMode Abella.lexer
   & modeNameA .~ "abella"
   & modeAppliesA .~ anyExtension ["thm"]
   & modeGetAnnotationsA .~ tokenBasedAnnots getAnnot
-  & modeToggleCommentSelectionA .~ toggleCommentSelectionB "% " "%"
+  & modeToggleCommentSelectionA .~ withBuffer (toggleCommentSelectionB "% " "%")
   & modeKeymapA .~ topKeymapA %~ (<||)
      (choice
       [ abellaBinding 'p' ?*>>! abellaUndo
