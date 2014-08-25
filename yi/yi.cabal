@@ -18,7 +18,6 @@ data-files:
   art/*.png
   art/*.pdf
   example-configs/*.hs
-extra-source-files: src/library/Yi/Lexer/common.hsinc
 
 source-repository head
   type:     git
@@ -53,7 +52,6 @@ library
     Yi
     Yi.Boot
     Yi.Buffer
-    Yi.Buffer.Basic
     Yi.Buffer.HighLevel
     Yi.Buffer.Indent
     Yi.Buffer.Normal
@@ -134,29 +132,6 @@ library
     Yi.Keymap.Vim.VisualMap
     Yi.KillRing
     Yi.Layout
-    Yi.Lexer.Abella
-    Yi.Lexer.Alex
-    Yi.Lexer.Cabal
-    Yi.Lexer.Compilation
-    Yi.Lexer.C
-    Yi.Lexer.ObjectiveC
-    Yi.Lexer.Cplusplus
-    Yi.Lexer.Haskell
-    Yi.Lexer.JavaScript
-    Yi.Lexer.Java
-    Yi.Lexer.JSON
-    Yi.Lexer.Latex
-    Yi.Lexer.LiterateHaskell
-    Yi.Lexer.GitCommit
-    Yi.Lexer.GNUMake
-    Yi.Lexer.OCaml
-    Yi.Lexer.Ott
-    Yi.Lexer.Perl
-    Yi.Lexer.Python
-    Yi.Lexer.Ruby
-    Yi.Lexer.Srmc
-    Yi.Lexer.SVNCommit
-    Yi.Lexer.Whitespace
     Yi.Main
     Yi.MiniBuffer
     Yi.Misc
@@ -176,15 +151,10 @@ library
     Yi.PersistentState
     Yi.Process
     Yi.Rectangle
-    Yi.Regex
-    Yi.Region
     Yi.Snippets
     Yi.Snippets.Haskell
     Yi.Search
     Yi.String
-    Yi.Style
-    Yi.Style.Library
-    Yi.Syntax
     Yi.Syntax.Driver
     Yi.Syntax.Haskell
     Yi.Syntax.JavaScript
@@ -197,7 +167,6 @@ library
     Yi.Tab
     Yi.Tag
     Yi.TextCompletion,
-    Yi.Utils
     Yi.UI.Common
     Yi.UI.Batch
     Yi.UI.Utils
@@ -246,7 +215,9 @@ library
     xdg-basedir >= 0.2.1 && < 0.3,
     transformers-base,
     semigroups,
-    word-trie >= 0.2.0.2
+    word-trie >= 0.2.0.4,
+    yi-language,
+    oo-prototypes
 
   build-tools: alex >= 3.0.3
   ghc-options: -Wall -fno-warn-orphans
@@ -304,7 +275,6 @@ library
     -- Should probably be split out to another package.
     Control.Exc,
     Data.DelayList,
-    Data.Prototype,
     Data.Rope,
     System.CanonicalizePath,
     System.FriendlyPath
@@ -339,4 +309,5 @@ Test-Suite test-suite
     QuickCheck,
     filepath,
     directory,
+    yi-language,
     yi
