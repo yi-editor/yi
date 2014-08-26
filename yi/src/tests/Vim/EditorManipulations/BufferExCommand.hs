@@ -3,14 +3,13 @@
 --
 module Vim.EditorManipulations.BufferExCommand (tests) where
 
-import Test.Tasty.HUnit
-import Test.Tasty (TestTree, testGroup)
-
-import Yi.Buffer
-import Yi.Editor
-import Yi.Config (Config)
-
-import Generic.TestUtils
+import qualified Data.List.NonEmpty as NE
+import           Generic.TestUtils
+import           Test.Tasty (TestTree, testGroup)
+import           Test.Tasty.HUnit
+import           Yi.Buffer
+import           Yi.Config (Config)
+import           Yi.Editor
 
 type BufferName = String
 
@@ -73,7 +72,7 @@ tests c ev =
                 preConditions editor buffers =
                     assertEqual "Unexpected buffer stack"
                         [nthBufferRef 2 buffers, nthBufferRef 1 buffers]
-                        (take 2 $ bufferStack editor)
+                        (take 2 . NE.toList $ bufferStack editor)
 
                 testActions _ =
                     ev $ ":buffer #<CR>"
@@ -81,7 +80,7 @@ tests c ev =
                 assertions editor buffers = do
                     assertEqual "Unexpected buffer stack"
                         [nthBufferRef 1 buffers, nthBufferRef 2 buffers]
-                        (take 2 $ bufferStack editor)
+                        (take 2 . NE.toList $ bufferStack editor)
 
             runTest setupActions preConditions testActions assertions c
 

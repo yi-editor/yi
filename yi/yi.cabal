@@ -300,6 +300,7 @@ Test-Suite test-suite
   build-depends:
     base,
     lens >= 4.0,
+    semigroups,
     tasty,
     tasty-hunit,
     tasty-quickcheck,
