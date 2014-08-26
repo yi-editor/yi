@@ -1,6 +1,26 @@
-{-# LANGUAGE FlexibleContexts, FlexibleInstances, TypeSynonymInstances, ExistentialQuantification, MultiParamTypeClasses, FunctionalDependencies, DeriveDataTypeable, StandaloneDeriving, GeneralizedNewtypeDeriving, Rank2Types, TemplateHaskell #-}
+{-# LANGUAGE DeriveDataTypeable #-}
+{-# LANGUAGE ExistentialQuantification #-}
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE FunctionalDependencies #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE Rank2Types #-}
+{-# LANGUAGE StandaloneDeriving #-}
+{-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE TypeSynonymInstances #-}
+{-# OPTIONS_HADDOCK show-extensions #-}
 
--- Copyright (c) Jean-Philippe Bernardy 2007,8.
+-- |
+-- Module      :  Yi.Keymap
+-- License     :  GPL-2
+-- Copyright   :  Jean-Philippe Bernardy 2007-2008
+-- Maintainer  :  yi-devel@googlegroups.com
+-- Stability   :  experimental
+-- Portability :  portable
+--
+-- 'Keymap', 'YiM' and 'Action's.
+
 
 module Yi.Keymap
     ( Action(..)
@@ -30,26 +50,37 @@ module Yi.Keymap
     , YiVar(..)
     , write
     , withModeY
+
+    -- * Lenses
+    , yiSubprocessesA
+    , threadsA
+    , yiEditorA
+    , yiSubprocessIdSupplyA
+    , yiConfigA
+    , yiInputA
+    , yiOutputA
+    , yiUiA
+    , yiVarA
     ) where
 
-import Control.Concurrent
-import Control.Applicative
-import Control.Monad.Reader hiding (mapM_)
-import Control.Monad.State hiding (mapM_)
-import Control.Monad.Base
-import Control.Exception
-import Data.Typeable
-import Yi.Buffer
-import Yi.Config
-import Yi.Editor (EditorM, Editor, runEditor, MonadEditor(..))
-import Yi.Event
-import Yi.Monad
-import Yi.Process (SubprocessInfo, SubprocessId)
-import Yi.UI.Common
-import Yi.Utils
+import           Control.Applicative
+import           Control.Concurrent
+import           Control.Exception
+import           Control.Monad.Base
+import           Control.Monad.Reader hiding (mapM_)
+import           Control.Monad.State hiding (mapM_)
 import qualified Data.Map as M
+import           Data.Typeable
+import           Yi.Buffer
+import           Yi.Config
+import           Yi.Editor (EditorM, Editor, runEditor, MonadEditor(..))
 import qualified Yi.Editor as Editor
+import           Yi.Event
 import qualified Yi.Interact as I
+import           Yi.Monad
+import           Yi.Process (SubprocessInfo, SubprocessId)
+import           Yi.UI.Common
+import           Yi.Utils
 
 -- TODO: refactor this!
 
@@ -79,22 +110,22 @@ type KeymapEndo = Keymap -> Keymap
 
 type KeymapProcess = I.P Event Action
 
-data Yi = Yi {yiUi          :: UI,
-              yiInput       :: Event -> IO (),      -- ^ input stream
-              yiOutput      :: [Action] -> IO (),   -- ^ output stream
-              yiConfig      :: Config,
-              -- TODO: this leads to anti-patterns and seems like one itself
-              -- too coarse for actual concurrency, otherwise pointless
-              -- And MVars can be empty so this causes soundness problems
-              -- Also makes code a bit opaque
-              yiVar         :: MVar YiVar           -- ^ The only mutable state in the program
+data Yi = Yi { yiUi          :: UI
+             , yiInput       :: Event -> IO ()      -- ^ input stream
+             , yiOutput      :: [Action] -> IO ()   -- ^ output stream
+             , yiConfig      :: Config
+               -- TODO: this leads to anti-patterns and seems like one itself
+               -- too coarse for actual concurrency, otherwise pointless
+               -- And MVars can be empty so this causes soundness problems
+               -- Also makes code a bit opaque
+             , yiVar         :: MVar YiVar           -- ^ The only mutable state in the program
              }
              deriving Typeable
 
-data YiVar = YiVar {yiEditor             :: !Editor,
-                    threads              :: ![ThreadId],           -- ^ all our threads
-                    yiSubprocessIdSupply :: !SubprocessId,
-                    yiSubprocesses       :: !(M.Map SubprocessId SubprocessInfo)
+data YiVar = YiVar { yiEditor             :: !Editor
+                   , threads              :: ![ThreadId] -- ^ all our threads
+                   , yiSubprocessIdSupply :: !SubprocessId
+                   , yiSubprocesses       :: !(M.Map SubprocessId SubprocessInfo)
                    }
 
 -- | The type of user-bindable functions
@@ -113,6 +144,7 @@ instance MonadEditor YiM where
       r <- asks yiVar
       cfg <- asks yiConfig
       liftBase $ unsafeWithEditor cfg r f
+
 
 -----------------------
 -- Keymap basics
@@ -216,3 +248,6 @@ withModeY f = do
    case mfbuf of
      Nothing -> return ()
      Just (FBuffer {bmode = m}) -> f m
+
+makeLensesWithSuffix "A" ''YiVar
+makeLensesWithSuffix "A" ''Yi

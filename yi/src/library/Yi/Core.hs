@@ -1,16 +1,23 @@
-{-# LANGUAGE
-  ScopedTypeVariables,
-  RecursiveDo,
-  Rank2Types,
-  OverloadedStrings #-}
+{-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE Rank2Types #-}
+{-# LANGUAGE RecursiveDo #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# OPTIONS_HADDOCK show-extensions #-}
 
--- Copyright (c) Tuomo Valkonen 2004.
--- Copyright (c) Don Stewart 2004-5. http://www.cse.unsw.edu.au/~dons
--- Copyright (c) Jean-Philippe Bernardy 2007-8
-
--- | The core actions of yi. This module is the link between the editor
--- and the UI. Key bindings, and libraries should manipulate Yi through
--- the interface defined here.
+-- |
+-- Module      :  Yi.Core
+-- License     :  GPL-2
+-- Copyright   :  Tuomo Valkonen         2004
+--                Don Stewart            2004-2005
+--                Jean-Philippe Bernardy 2007-2008
+-- Maintainer  :  yi-devel@googlegroups.com
+-- Stability   :  experimental
+-- Portability :  portable
+--
+-- The core actions of Yi. This module is the link between the editor
+-- and the UI. Key bindings, and libraries should manipulate Yi
+-- through the interface defined here.
 
 module Yi.Core
   ( module Yi.Dynamic
@@ -48,50 +55,52 @@ module Yi.Core
   )
 where
 
-import Prelude hiding (elem,or,mapM_)
-import Control.Concurrent
-import Control.Monad hiding (mapM_,forM_,forM)
-import Control.Monad.Error ()
-import Control.Monad.Reader hiding (mapM_,forM_,forM)
-import Control.Monad.Base
-import Control.Exception
-import Control.Exc
-import Control.Applicative
-import Control.Lens hiding (Action,act,acts)
-import Data.Foldable
-import Data.Traversable
+import           Control.Applicative
+import           Control.Concurrent
+import           Control.Exc
+import           Control.Exception
+import           Control.Lens hiding (Action,act,acts)
+import           Control.Monad hiding (mapM_,forM_,forM)
+import           Control.Monad.Base
+import           Control.Monad.Error ()
+import           Control.Monad.Reader hiding (mapM_,forM_,forM)
 import qualified Data.DelayList as DelayList
-import Data.List (partition)
-import Data.List.Split (splitOn)
+import           Data.Foldable
+import           Data.List (partition)
 import qualified Data.List.PointedList.Circular as PL
+import           Data.List.Split (splitOn)
 import qualified Data.Map as M
-import Data.Maybe
-import Data.Monoid
-import Data.Time
-import Data.Time.Clock.POSIX
+import           Data.Maybe
+import           Data.Monoid
 import qualified Data.Rope as R
-import System.Directory (doesFileExist)
-import System.Exit
-import System.IO (Handle, hWaitForInput, hPutStr)
-import System.PosixCompat.Files
-import System.Process (terminateProcess, getProcessExitCode, ProcessHandle, readProcessWithExitCode)
-
-import Yi.Buffer
-import Yi.Config
-import Yi.Dynamic
-import Yi.Editor
-import Yi.Keymap
-import Yi.Keymap.Keys
-import Yi.KillRing (krEndCmd)
-import Yi.Utils
-import Yi.Process (createSubprocess, readAvailable, SubprocessId, SubprocessInfo(..))
-import Yi.String
-import Yi.Style (errorStyle, strongHintStyle)
-import Yi.Monad
-import Yi.Debug
+import           Data.Time
+import           Data.Time.Clock.POSIX
+import           Data.Traversable
+import           Prelude hiding (elem,or,mapM_)
+import           System.Directory (doesFileExist)
+import           System.Exit
+import           System.IO (Handle, hWaitForInput, hPutStr)
+import           System.PosixCompat.Files
+import           System.Process (terminateProcess, getProcessExitCode,
+                                 ProcessHandle, readProcessWithExitCode)
+import           Yi.Buffer
+import           Yi.Config
+import           Yi.Debug
+import           Yi.Dynamic
+import           Yi.Editor
+import           Yi.Keymap
+import           Yi.Keymap.Keys
+import           Yi.KillRing (krEndCmd)
+import           Yi.Monad
+import           Yi.Process (createSubprocess, readAvailable,
+                             SubprocessId, SubprocessInfo(..))
+import           Yi.String
+import           Yi.Style (errorStyle, strongHintStyle)
 import qualified Yi.UI.Common as UI
-import Yi.Window (dummyWindow, bufkey, wkey, winRegion)
-import {-# source #-} Yi.PersistentState(loadPersistentState, savePersistentState)
+import           Yi.Utils
+import           Yi.Window (dummyWindow, bufkey, wkey, winRegion)
+import           {-# source #-} Yi.PersistentState(loadPersistentState,
+                                                   savePersistentState)
 
 -- | Make an action suitable for an interactive run.
 -- UI will be refreshed.
@@ -116,14 +125,17 @@ startEditor cfg st = do
 
     logPutStrLn "Starting Core"
 
-    -- Use an empty state unless resuming from an earlier session and one is already available
+    -- Use an empty state unless resuming from an earlier session and
+    -- one is already available
     let editor = fromMaybe emptyEditor st
     -- here to add load history etc?
 
-    -- Setting up the 1st window is a bit tricky because most functions assume there exists a "current window"
+    -- Setting up the 1st window is a bit tricky because most
+    -- functions assume there exists a "current window"
     newSt <- newMVar $ YiVar editor [] 1 M.empty
     (ui, runYi) <- mdo
-        let handler (exception :: SomeException) = runYi $ errorEditor (show exception) >> refreshEditor
+        let handler (exception :: SomeException) =
+              runYi $ errorEditor (show exception) >> refreshEditor
             inF ev    = handle handler $ runYi $ dispatch ev
             outF acts = handle handler $ runYi $ interactive acts
             runYi f   = runReaderT (runYiM f) yi
@@ -133,10 +145,13 @@ startEditor cfg st = do
 
     runYi loadPersistentState
 
-    runYi $ do if isNothing st
-                    then postActions $ startActions cfg -- process options if booting for the first time
-                    else withEditor $ (%=) buffersA (fmap (recoverMode (modeTable cfg))) -- otherwise: recover the mode of buffers
-               postActions $ initialActions cfg ++ [makeAction showErrors]
+    runYi $ do
+      if isNothing st
+        -- process options if booting for the first time
+        then postActions $ startActions cfg
+        -- otherwise: recover the mode of buffers
+        else withEditor $ buffersA.mapped %= recoverMode (modeTable cfg)
+      postActions $ initialActions cfg ++ [makeAction showErrors]
 
     runYi refreshEditor
 
@@ -216,7 +231,8 @@ quitEditor = do
 checkFileChanges :: Editor -> IO Editor
 checkFileChanges e0 = do
         now <- getCurrentTime
-        -- Find out if any file was modified "behind our back" by other processes.
+        -- Find out if any file was modified "behind our back" by
+        -- other processes.
         newBuffers <- forM (buffers e0) $ \b ->
           let nothing = return (b, Nothing)
           in if bkey b `elem` visibleBuffers
@@ -259,9 +275,11 @@ clearAllSyntaxAndHideSelection = buffersA %~ fmap (clearSyntax . clearHighlight)
 focusAllSyntax :: Editor -> Editor
 focusAllSyntax e6 = buffersA %~ fmap (\b -> focusSyntax (regions b) b) $ e6
     where regions b = M.fromList [(wkey w, winRegion w) | w <- toList $ windows e6, bufkey w == bkey b]
-          -- Why bother filtering the region list? After all the trees are lazily computed.
-          -- Answer: focusing is an incremental algorithm. Each "focused" path depends on the previous one.
-          -- If we left unforced focused paths, we'd create a long list of thunks: a memory leak.
+          -- Why bother filtering the region list? After all the trees
+          -- are lazily computed. Answer: focusing is an incremental
+          -- algorithm. Each "focused" path depends on the previous
+          -- one. If we left unforced focused paths, we'd create a
+          -- long list of thunks: a memory leak.
 
 -- | Redraw
 refreshEditor :: YiM ()
@@ -276,7 +294,9 @@ refreshEditor = onYiVar $ \yi var -> do
                 -- Do another layout pass if there was any scrolling;
                 (if or relayout then UI.layout (yiUi yi) else return) e4
 
-        e7 <- (if configCheckExternalChangesObsessively cfg then checkFileChanges else return) (yiEditor var) >>=
+        e7 <- (if configCheckExternalChangesObsessively cfg
+               then checkFileChanges
+               else return) (yiEditor var) >>=
              return . clearAllSyntaxAndHideSelection >>=
              -- Adjust window sizes according to UI info
              UI.layout (yiUi yi) >>=
@@ -315,7 +335,6 @@ runProcessWithInput cmd inp = do
     (_,out,_err) <- liftBase $ readProcessWithExitCode f args inp
     return (chomp "\n" out)
 
-
 ------------------------------------------------------------------------
 
 -- | Same as msgEditor, but do nothing instead of printing @()@
@@ -324,15 +343,9 @@ msgEditor' "()" = return ()
 msgEditor' s = msgEditor s
 
 runAction :: Action -> YiM ()
-runAction (YiA act) = do
-  act >>= msgEditor' . show
-  return ()
-runAction (EditorA act) = do
-  withEditor act >>= msgEditor' . show
-  return ()
-runAction (BufferA act) = do
-  withBuffer act >>= msgEditor' . show
-  return ()
+runAction (YiA act) = act >>= msgEditor' . show
+runAction (EditorA act) = withEditor act >>= msgEditor' . show
+runAction (BufferA act) = withBuffer act >>= msgEditor' . show
 
 msgEditor :: String -> YiM ()
 msgEditor = withEditor . printMsg
@@ -344,8 +357,10 @@ errorEditor s = do withEditor $ printStatus (["error: " ++ s], errorStyle)
 
 -- | Close the current window.
 -- If this is the last window open, quit the program.
--- CONSIDER: call quitEditor when there are no other window in the 'interactive' function.
--- (Not possible since the windowset type disallows it -- should it be relaxed?)
+--
+-- CONSIDER: call quitEditor when there are no other window in the
+-- 'interactive' function. (Not possible since the windowset type
+-- disallows it -- should it be relaxed?)
 closeWindow :: YiM ()
 closeWindow = do
     winCount <- withEditor $ uses windowsA PL.length
@@ -353,36 +368,44 @@ closeWindow = do
     when (winCount == 1 && tabCount == 1) quitEditor
     withEditor tryCloseE
 
-
 onYiVar :: (Yi -> YiVar -> IO (YiVar, a)) -> YiM a
 onYiVar f = do
-    yi <- ask
-    io $ modifyMVar (yiVar yi) (f yi)
+  yi <- ask
+  io $ modifyMVar (yiVar yi) (f yi)
 
 -- | Kill a given subprocess
 terminateSubprocesses :: (SubprocessInfo -> Bool) -> Yi -> YiVar -> IO (YiVar, ())
 terminateSubprocesses shouldTerminate _yi var = do
-        let (toKill, toKeep) = partition (shouldTerminate . snd) $ M.assocs $ yiSubprocesses var
-        void $ forM toKill $ terminateProcess . procHandle . snd
-        return (var {yiSubprocesses = M.fromList toKeep}, ())
+  let (toKill, toKeep) =
+        partition (shouldTerminate . snd) $ M.assocs $ yiSubprocesses var
+  void $ forM toKill $ terminateProcess . procHandle . snd
+  return (var & yiSubprocessesA .~ M.fromList toKeep, ())
 
 -- | Start a subprocess with the given command and arguments.
-startSubprocess :: FilePath -> [String] -> (Either SomeException ExitCode -> YiM x) -> YiM BufferRef
+startSubprocess :: FilePath
+                -> [String]
+                -> (Either SomeException ExitCode -> YiM x)
+                -> YiM BufferRef
 startSubprocess cmd args onExit = onYiVar $ \yi var -> do
         let (e', bufref) = runEditor
                               (yiConfig yi)
-                              (printMsg ("Launched process: " ++ cmd) >> newBufferE (Left bufferName) "")
+                              (printMsg ("Launched process: " ++ cmd)
+                               >> newBufferE (Left bufferName) "")
                               (yiEditor var)
             procid = yiSubprocessIdSupply var + 1
         procinfo <- createSubprocess cmd args bufref
         startSubprocessWatchers procid procinfo yi onExit
-        return (var {yiEditor = e',
-                     yiSubprocessIdSupply = procid,
-                     yiSubprocesses = M.insert procid procinfo (yiSubprocesses var)
-                    }, bufref)
+        return (var & yiEditorA .~ e'
+                    & yiSubprocessIdSupplyA .~ procid
+                    & yiSubprocessesA %~ M.insert procid procinfo
+               , bufref)
   where bufferName = "output from " ++ cmd ++ " " ++ show args
 
-startSubprocessWatchers :: SubprocessId -> SubprocessInfo -> Yi -> (Either SomeException ExitCode -> YiM x) -> IO ()
+startSubprocessWatchers :: SubprocessId
+                        -> SubprocessInfo
+                        -> Yi
+                        -> (Either SomeException ExitCode -> YiM x)
+                        -> IO ()
 startSubprocessWatchers procid procinfo yi onExit =
     mapM_ forkOS ([pipeToBuffer (hErr procinfo) (send . append True) | separateStdErr procinfo] ++
                   [pipeToBuffer (hOut procinfo) (send . append False),
@@ -395,7 +418,7 @@ startSubprocessWatchers procid procinfo yi onExit =
                                   void $ onExit ec
 
 removeSubprocess :: SubprocessId -> YiM ()
-removeSubprocess procid = modifiesRef yiVar (\v -> v {yiSubprocesses = M.delete procid $ yiSubprocesses v})
+removeSubprocess procid = modifiesRef yiVar (yiSubprocessesA %~ M.delete procid)
 
 appendToBuffer :: Bool -> BufferRef -> String -> EditorM ()
 appendToBuffer atErr bufref s = withGivenBuffer0 bufref $ do
@@ -404,16 +427,17 @@ appendToBuffer atErr bufref s = withGivenBuffer0 bufref $ do
     -- come after the error messages.
     me <- getMarkB (Just "StdERR")
     mo <- getMarkB (Just "StdOUT")
-    let mms = if atErr then [mo,me] else [mo]
-    forM_ mms (`modifyMarkB` (\ v -> v{markGravity = Forward}))
+    let mms = if atErr then [mo, me] else [mo]
+    forM_ mms (`modifyMarkB` (markGravityAA .~ Forward))
     insertNAt s =<< use (markPointA (if atErr then me else mo))
-    forM_ mms (`modifyMarkB` (\ v -> v{markGravity = Backward}))
+    forM_ mms (`modifyMarkB` (markGravityAA .~ Backward))
 
 sendToProcess :: BufferRef -> String -> YiM ()
 sendToProcess bufref s = do
     yi <- ask
-    Just subProcessInfo <- find ((== bufref) . bufRef) . yiSubprocesses <$> readRef (yiVar yi)
-    io $ hPutStr (hIn subProcessInfo) s
+    find ((== bufref) . bufRef) . yiSubprocesses <$> readRef (yiVar yi) >>= \case
+      Just subProcessInfo -> io $ hPutStr (hIn subProcessInfo) s
+      Nothing -> msgEditor "Could not get subProcessInfo in sendToProcess"
 
 pipeToBuffer :: Handle -> (String -> IO ()) -> IO ()
 pipeToBuffer h append =

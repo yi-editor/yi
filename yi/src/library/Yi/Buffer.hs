@@ -1,10 +1,17 @@
+{-# OPTIONS_HADDOCK show-extensions #-}
 
--- Copyright (C) 2008 JP Bernardy
-
--- | The 'Buffer' module defines monadic editing operations over one-dimensional
--- buffers, maintaining a current /point/.
+-- |
+-- Module      :  Yi.Buffer
+-- License     :  GPL-2
+-- Copyright   :  Jean-Philippe Bernardy 2008
+-- Maintainer  :  yi-devel@googlegroups.com
+-- Stability   :  experimental
+-- Portability :  portable
 --
--- This module acts as a Facade for the Buffer.* modules.
+-- The 'Buffer' module defines monadic editing operations over
+-- one-dimensional buffers, maintaining a current /point/.
+--
+-- This module acts as a facade for the Buffer.* modules.
 
 module Yi.Buffer
   ( module Yi.Buffer.Basic
@@ -19,6 +26,8 @@ module Yi.Buffer
   , UIUpdate (..)
   , Update (..)
   , updateIsDelete
+  , markGravityAA
+  , markPointAA
   )
 where
 

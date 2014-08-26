@@ -1,24 +1,30 @@
-{-# LANGUAGE
-  TemplateHaskell,
-  CPP,
-  GeneralizedNewtypeDeriving,
-  DeriveDataTypeable,
-  DeriveTraversable,
-  DeriveFoldable,
-  DeriveFunctor,
-  StandaloneDeriving,
-  ExistentialQuantification,
-  Rank2Types,
-  ImpredicativeTypes,
-  TypeSynonymInstances,
-  FlexibleContexts,
-  StandaloneDeriving,
-  DeriveGeneric #-}
+{-# LANGUAGE CPP #-}
+{-# LANGUAGE DeriveDataTypeable #-}
+{-# LANGUAGE DeriveFoldable #-}
+{-# LANGUAGE DeriveFunctor #-}
+{-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE DeriveTraversable #-}
+{-# LANGUAGE ExistentialQuantification #-}
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE ImpredicativeTypes #-}
+{-# LANGUAGE Rank2Types #-}
+{-# LANGUAGE StandaloneDeriving #-}
+{-# LANGUAGE StandaloneDeriving #-}
+{-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE TypeSynonymInstances #-}
+{-# OPTIONS_HADDOCK show-extensions #-}
 
--- Copyright (C) 2004, 2007 Don Stewart - http://www.cse.unsw.edu.au/~dons
--- Copyright (C) 2007, 2008 JP Bernardy
-
--- | The 'Buffer' module defines monadic editing operations over one-dimensional
+-- |
+-- Module      :  Yi.Buffer.Misc
+-- Copyright   :  (c) Don Stewart            2004, 2007
+--                    Jean-Philippe Bernardy 2007, 2008
+-- License     :  GPL-2
+-- Maintainer  :  yi-devel@googlegroups.com
+-- Stability   :  experimental
+-- Portability :  portable
+--
+-- The 'Buffer' module defines monadic editing operations over one-dimensional
 -- buffers, maintaining a current /point/.
 
 module Yi.Buffer.Misc

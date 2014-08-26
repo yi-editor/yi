@@ -1,18 +1,26 @@
-{-# LANGUAGE
-  PatternGuards,
-  ExistentialQuantification,
-  DeriveDataTypeable,
-  Rank2Types,
-  FlexibleContexts,
-  FlexibleInstances,
-  TemplateHaskell,
-  CPP,
-  StandaloneDeriving,
-  DeriveGeneric #-}
--- Copyright (c) 2004-5 Don Stewart - http://www.cse.unsw.edu.au/~dons
--- Copyright (c) 2007-8 JP Bernardy
+{-# LANGUAGE CPP #-}
+{-# LANGUAGE DeriveDataTypeable #-}
+{-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE ExistentialQuantification #-}
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE PatternGuards #-}
+{-# LANGUAGE Rank2Types #-}
+{-# LANGUAGE StandaloneDeriving #-}
+{-# LANGUAGE TemplateHaskell #-}
+{-# OPTIONS_HADDOCK show-extensions #-}
 
--- | 'Buffer' implementation, wrapping Rope
+-- |
+-- Module      :  Yi.Buffer.Implementation
+-- Copyright   :  (c) Don Stewart            2004, 2005
+--                    Jean-Philippe Bernardy 2007, 2008
+-- License     :  GPL-2
+-- Maintainer  :  yi-devel@googlegroups.com
+-- Stability   :  experimental
+-- Portability :  portable
+--
+-- 'Buffer' implementation, wrapping Rope
+
 module Yi.Buffer.Implementation
   ( UIUpdate (..)
   , Update (..)
@@ -52,6 +60,8 @@ module Yi.Buffer.Implementation
   , getIndexedStream
   , lineAt
   , SearchExp
+  , markPointAA
+  , markGravityAA
 )
 where
 
@@ -79,8 +89,11 @@ import Data.Rope (Rope)
 import qualified Data.Map as M
 import qualified Data.Set as Set
 
-data MarkValue = MarkValue {markPoint :: !Point, markGravity :: !Direction}
+data MarkValue = MarkValue { markPoint :: !Point
+                           , markGravity :: !Direction}
                deriving (Ord, Eq, Show, Typeable)
+
+makeLensesWithSuffix "AA" ''MarkValue
 
 #if __GLASGOW_HASKELL__ < 708
 $(derive makeBinary ''MarkValue)
