@@ -57,7 +57,7 @@ deriving instance Generic PersistentState
 instance Binary PersistentState
 #endif
 
-newtype MaxHistoryEntries = MaxHistoryEntries { unMaxHistoryEntries :: Int }
+newtype MaxHistoryEntries = MaxHistoryEntries { _unMaxHistoryEntries :: Int }
   deriving(Typeable, Binary)
 
 instance Default MaxHistoryEntries where
@@ -65,10 +65,10 @@ instance Default MaxHistoryEntries where
 
 instance YiConfigVariable MaxHistoryEntries
 
-makeLensesWithSuffix "A" ''MaxHistoryEntries
+makeLenses ''MaxHistoryEntries
 
 maxHistoryEntries :: Field Int
-maxHistoryEntries = customVariable . unMaxHistoryEntriesA
+maxHistoryEntries = customVariable . unMaxHistoryEntries
 
 -- | Trims per-command histories to contain at most N completions each.
 trimHistories :: Int -> Histories -> Histories
@@ -120,4 +120,3 @@ loadPersistentState = do
       Just pState -> do withEditor $ assign dynA                 $ histories     pState
                         withEditor $ assign killringA            $ aKillring     pState
                         withEditor $ maybe (return ()) setRegexE $ aCurrentRegex pState
-

@@ -29,6 +29,7 @@ module Yi.Mode.Haskell
   ) where
 
 import           Control.Applicative
+import           Control.Lens
 import           Control.Monad hiding (forM_)
 import           Data.Binary
 import           Data.Default
@@ -53,81 +54,90 @@ import           Yi.String
 import           Yi.Syntax
 import qualified Yi.Syntax.Driver as Driver
 import           Yi.Syntax.Haskell as Hask
+import           Yi.Syntax.Layout (State)
 import           Yi.Syntax.OnlineTree as OnlineTree
 import           Yi.Syntax.Paren as Paren
 import           Yi.Syntax.Strokes.Haskell as HS
 import           Yi.Syntax.Tree
 import           Yi.Utils
-import           Yi.Region (mkRegion, Region)
 
+-- | General ‘template’ for actual Haskell modes.
+--
+-- It applies over @extensions = ["hs", "x", "hsc", "hsinc"]@ which
+-- may be a little questionable but for now Yi is mostly used by
+-- Haskell hackers so it should be fine, at least for now.
 haskellAbstract :: Mode (tree TT)
 haskellAbstract = emptyMode
-  {
-     modeApplies = extensionOrContentsMatch extensions shebangPattern,
-     modeName = "haskell",
-     modeToggleCommentSelection = withBuffer (toggleCommentSelectionB "-- " "--")
-  }
-     {-
-     Some of these are a little questionably haskell
-     related. For example ".x" is an alex lexer specification
-     I dare say that there are other file types that use ".x"
-     as the file extension.
-     For now though this is probably okay given the users of
-     'yi' are mostly haskell hackers, as of yet. -}
-    where extensions = ["hs", "x", "hsc", "hsinc"]
-          shebangPattern = "^#![[:space:]]*/usr/bin/env[[:space:]]+runhaskell"
+  & modeAppliesA .~ extensionOrContentsMatch extensions shebangPattern
+  & modeNameA .~ "haskell"
+  & modeToggleCommentSelectionA .~ withBuffer (toggleCommentB "--")
+  where extensions = ["hs", "x", "hsc", "hsinc"]
+        shebangPattern = "^#![[:space:]]*/usr/bin/env[[:space:]]+runhaskell"
 
 -- | "Clever" haskell mode, using the paren-matching syntax.
 cleverMode :: Mode (Paren.Tree (Tok Haskell.Token))
 cleverMode = haskellAbstract
-  {
-    modeIndent = cleverAutoIndentHaskellB,
-    modeGetStrokes = \t point begin end -> Paren.getStrokes point begin end t,
-    modeHL = ExtHL $
-    Driver.mkHighlighter (skipScanner 50 . IncrParser.scanner Paren.parse . Paren.indentScanner . haskellLexer)
-
-  , modeAdjustBlock = adjustBlock
-  , modePrettify = cleverPrettify . allToks
-  , modeGetAnnotations = tokenBasedAnnots Paren.tokenToAnnot
-
- }
+  & modeIndentA .~ cleverAutoIndentHaskellB
+  & modeGetStrokesA .~ strokesOfParenTree
+  & modeHLA .~ mkParenModeHL (skipScanner 50) haskellLexer
+  & modeAdjustBlockA .~ adjustBlock
+  & modePrettifyA .~ cleverPrettify . allToks
+  & modeGetAnnotationsA .~ tokenBasedAnnots Paren.tokenToAnnot
 
 fastMode :: Mode (OnlineTree.Tree TT)
 fastMode = haskellAbstract
-  {
-    modeName = "fast haskell",
-    modeHL = ExtHL $
-    Driver.mkHighlighter (IncrParser.scanner OnlineTree.manyToks . haskellLexer),
-    modeGetStrokes = tokenBasedStrokes Paren.tokenToStroke,
-    modeGetAnnotations = tokenBasedAnnots Paren.tokenToAnnot
- }
+  & modeNameA .~ "fast haskell"
+  & modeHLA .~ mkOnlineModeHL haskellLexer
+  & modeGetStrokesA .~ tokenBasedStrokes Paren.tokenToStroke
+  & modeGetAnnotationsA .~ tokenBasedAnnots Paren.tokenToAnnot
 
 literateMode :: Mode (Paren.Tree TT)
 literateMode = haskellAbstract
-  { modeName = "literate haskell"
-  , modeApplies = anyExtension ["lhs"]
-  , modeHL = ExtHL $
-    Driver.mkHighlighter (IncrParser.scanner Paren.parse . Paren.indentScanner . literateHaskellLexer)
-  , modeGetStrokes = \t point begin end -> Paren.getStrokes point begin end t
-  , modeGetAnnotations = \t _begin -> catMaybes $ fmap Paren.tokenToAnnot $ allToks t -- FIXME I think that 'begin' should not be ignored
-  , modeAdjustBlock = adjustBlock
-  , modeIndent = cleverAutoIndentHaskellB
-  , modePrettify = cleverPrettify . allToks }
+  & modeNameA .~ "literate haskell"
+  & modeAppliesA .~ anyExtension ["lhs"]
+  & modeHLA .~ mkParenModeHL id literateHaskellLexer
+  & modeGetStrokesA .~ strokesOfParenTree
+    -- FIXME I think that 'begin' should not be ignored
+  & modeGetAnnotationsA .~ (\t _begin -> catMaybes $ fmap Paren.tokenToAnnot $ allToks t)
+  & modeAdjustBlockA .~ adjustBlock
+  & modeIndentA .~ cleverAutoIndentHaskellB
+  & modePrettifyA .~ cleverPrettify . allToks
 
 -- | Experimental Haskell mode, using a rather precise parser for the syntax.
 preciseMode :: Mode (Hask.Tree TT)
 preciseMode = haskellAbstract
-  {
-    modeName = "precise haskell"
-  , modeIndent = cleverAutoIndentHaskellC
-  , modeGetStrokes = \ast point begin end -> HS.getStrokes point begin end ast
-  , modeHL = ExtHL $
-      Driver.mkHighlighter (IncrParser.scanner Hask.parse . Hask.indentScanner . haskellLexer)
-  , modePrettify = cleverPrettify . allToks
+  & modeNameA .~ "precise haskell"
+  & modeIndentA .~ cleverAutoIndentHaskellC
+  & modeGetStrokesA .~ (\ast point begin end -> HS.getStrokes point begin end ast)
+  & modeHLA .~ mkHaskModeHL haskellLexer
+  & modePrettifyA .~ cleverPrettify . allToks
+--
+strokesOfParenTree :: Paren.Tree TT -> Point -> Point -> Point -> [Stroke]
+strokesOfParenTree t p b e = Paren.getStrokes p b e t
 
---   , modeGetAnnotations = (tokenBasedAnnots Hask.tokenToAnnot) . getExprs
- }
+type CharToTTScanner s = CharScanner -> Scanner (AlexState s) TT
 
+mkParenModeHL :: (IsTree tree, Show state)
+              => (Scanner
+                  (IncrParser.State (State Token lexState) TT (Paren.Tree TT))
+                  (Paren.Tree TT)
+                  -> Scanner state (tree (Tok tt)))
+              -> CharToTTScanner lexState
+              -> ExtHL (tree (Tok tt))
+mkParenModeHL f l = ExtHL $ Driver.mkHighlighter scnr
+  where
+    scnr = f . IncrParser.scanner Paren.parse . Paren.indentScanner . l
+
+mkHaskModeHL :: Show st => CharToTTScanner st -> ExtHL (Exp (Tok Token))
+mkHaskModeHL l = ExtHL $ Driver.mkHighlighter scnr
+  where
+    scnr = IncrParser.scanner Hask.parse . Hask.indentScanner . l
+
+mkOnlineModeHL :: Show st => (CharScanner -> Scanner st (Tok tt))
+               -> ExtHL (OnlineTree.Tree (Tok tt))
+mkOnlineModeHL l = ExtHL $ Driver.mkHighlighter scnr
+  where
+    scnr = IncrParser.scanner OnlineTree.manyToks . l
 
 haskellLexer :: CharScanner -> Scanner (AlexState Haskell.HlState) TT
 haskellLexer = lexScanner (commonLexer Haskell.alexScanToken Haskell.initState)
@@ -246,7 +256,7 @@ cleverAutoIndentHaskellC e behaviour = do
                                            : stopsOf ts' --FIXME!
       stopsOf (Hask.RHS (Hask.PAtom{}) exp:ts')
           = [case firstTokOnLine of
-              Just (Operator op) -> opLength op (colOf' exp) -- Usually operators are aligned against the '=' sign
+              Just (Operator op') -> opLength op' (colOf' exp) -- Usually operators are aligned against the '=' sign
               -- case of an operator should check so that value always is at least 1
               _ -> colOf' exp | lineIsExpression ] ++ stopsOf ts'
                    -- offer to continue the RHS if this looks like an expression.
@@ -300,7 +310,6 @@ tokCol = posnCol . tokPosn
 nominalIndent :: Char -> Int
 nominalIndent '{' = 2
 nominalIndent _ = 1
-
 
 tokText :: Tok t -> BufferM String
 tokText = readRegionB . tokRegion

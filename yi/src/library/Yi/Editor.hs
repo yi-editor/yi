@@ -1,85 +1,97 @@
-{-# LANGUAGE
-  TemplateHaskell,
-  GeneralizedNewtypeDeriving,
-  DeriveDataTypeable,
-  FlexibleContexts,
-  StandaloneDeriving,
-  ScopedTypeVariables,
-  CPP,
-  DeriveGeneric,
-  OverloadedStrings #-}
+{-# LANGUAGE CPP #-}
+{-# LANGUAGE DeriveDataTypeable #-}
+{-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE StandaloneDeriving #-}
+{-# LANGUAGE TemplateHaskell #-}
+{-# OPTIONS_HADDOCK show-extensions #-}
 
--- Copyright (c) 2004-5, Don Stewart - http://www.cse.unsw.edu.au/~dons
--- Copyright (c) 2007-8, JP Bernardy
-
--- | The top level editor state, and operations on it.
+-- |
+-- Module      :  Yi.Editor
+-- Copyright   :  (c) Don Stewart            2004-2005
+--                    Jean-Philippe Bernardy 2008
+-- License     :  GPL-2
+-- Maintainer  :  yi-devel@googlegroups.com
+-- Stability   :  experimental
+-- Portability :  portable
+--
+-- The top level editor state, and operations on it.
 
 module Yi.Editor where
 
-import Prelude hiding (foldl,concatMap,foldr,all)
-import Control.Monad.State hiding (get, put, mapM, forM_)
-import Control.Monad.Reader hiding (mapM, forM_ )
-import Control.Applicative
-import Control.Monad
-import Control.Lens
-import Data.Binary
-#if __GLASGOW_HASKELL__ < 708
-import Data.DeriveTH
-#else
-import GHC.Generics (Generic)
-#endif
-import Data.Either (rights)
-import Data.List (nub, delete, (\\))
-import Data.Maybe
-import Data.Typeable
-import Data.Default
-import Data.Foldable hiding (forM_)
-import System.FilePath (splitPath)
-import Yi.Buffer
-import Yi.Config
-import Yi.Dynamic
-import Yi.Event (Event)
-import Yi.Interact as I
-import Yi.JumpList
-import Yi.KillRing
-import Yi.Layout
-import Yi.Style (StyleName, defaultStyle)
-import Yi.Tab
-import Yi.Window
-import Yi.Monad
-import Yi.Utils
-import Data.Rope (Rope)
-import qualified Data.Rope as R
+import           Control.Applicative
+import           Control.Lens
+import           Control.Monad
+import           Control.Monad.Reader hiding (mapM, forM_ )
+import           Control.Monad.State hiding (get, put, mapM, forM_)
+import           Data.Binary
+import           Data.Default
 import qualified Data.DelayList as DelayList
+#if __GLASGOW_HASKELL__ < 708
+import           Data.DeriveTH
+#else
+import           GHC.Generics (Generic)
+#endif
+import           Data.Either (rights)
+import           Data.Foldable hiding (forM_)
+import           Data.List (nub, delete, (\\))
 import qualified Data.List.PointedList as PL (atEnd, moveTo)
 import qualified Data.List.PointedList.Circular as PL
 import qualified Data.Map as M
-import {-# source #-} Yi.Keymap (extractTopKeymap)
+import           Data.Maybe
+import           Data.Rope (Rope)
+import qualified Data.Rope as R
+import           Data.Typeable
+import           Prelude hiding (foldl,concatMap,foldr,all)
+import           System.FilePath (splitPath)
+import           Yi.Buffer
+import           Yi.Config
+import           Yi.Dynamic
+import           Yi.Event (Event)
+import           Yi.Interact as I
+import           Yi.JumpList
+import           Yi.KillRing
+import           Yi.Layout
+import           Yi.Monad
+import           Yi.Style (StyleName, defaultStyle)
+import           Yi.Tab
+import           Yi.Utils
+import           Yi.Window
+import           {-# source #-} Yi.Keymap (extractTopKeymap)
 
 type Status = ([String],StyleName)
 type Statuses = DelayList.DelayList Status
 
 -- | The Editor state
-data Editor = Editor {
-        bufferStack     :: ![BufferRef]               -- ^ Stack of all the buffers.
-                                                      -- Invariant: never empty
-                                                      -- Invariant: first buffer is the current one.
-       ,buffers         :: !(M.Map BufferRef FBuffer)
-       ,refSupply       :: !Int  -- ^ Supply for buffer, window and tab ids.
-       ,tabs_           :: !(PL.PointedList Tab) -- ^ current tab contains the visible windows pointed list.
-       ,dynamic         :: !DynamicValues              -- ^ dynamic components
-       ,statusLines     :: !Statuses
-       ,maxStatusHeight :: !Int
-       ,killring        :: !Killring
-       ,currentRegex    :: !(Maybe SearchExp) -- ^ currently highlighted regex (also most recent regex for use in vim bindings)
-       ,searchDirection :: !Direction
-       ,pendingEvents   :: ![Event]                   -- ^ Processed events that didn't yield any action yet.
-       ,onCloseActions  :: !(M.Map BufferRef (EditorM ())) -- ^ Actions to be run when the buffer is closed; should be scrapped.
-    }
-    deriving Typeable
+data Editor = Editor
+  { bufferStack     :: ![BufferRef]
+    -- ^ Stack of all the buffers.
+    -- Invariant: never empty
+    -- Invariant: first buffer is the current one.
+  , buffers         :: !(M.Map BufferRef FBuffer)
+  , refSupply       :: !Int  -- ^ Supply for buffer, window and tab ids.
+  , tabs_           :: !(PL.PointedList Tab)
+    -- ^ current tab contains the visible windows pointed list.
+  , dynamic         :: !DynamicValues -- ^ dynamic components
+  , statusLines     :: !Statuses
+  , maxStatusHeight :: !Int
+  , killring        :: !Killring
+  , currentRegex    :: !(Maybe SearchExp)
+    -- ^ currently highlighted regex (also most recent regex for use
+    -- in vim bindings)
+  , searchDirection :: !Direction
+  , pendingEvents   :: ![Event]
+    -- ^ Processed events that didn't yield any action yet.
+  , onCloseActions  :: !(M.Map BufferRef (EditorM ()))
+    -- ^ Actions to be run when the buffer is closed; should be scrapped.
+  } deriving Typeable
 
 instance Binary Editor where
-    put (Editor bss bs supply ts dv _sl msh kr _re _dir _ev _cwa ) = put bss >> put bs >> put supply >> put ts >> put dv >> put msh >> put kr
+    put (Editor bss bs supply ts dv _sl msh kr _re _dir _ev _cwa ) =
+      put bss >> put bs >> put supply >> put ts >> put dv >> put msh >> put kr
     get = do
         bss <- get
         bs <- get
@@ -137,13 +149,16 @@ emptyEditor = Editor {
        ,onCloseActions = M.empty
        }
         where buf = newB 0 (Left "console") ""
-              win = (dummyWindow (bkey buf)) {wkey = WindowRef 1, isMini = False}
+              win = (dummyWindow (bkey buf)) { wkey = WindowRef 1
+                                             , isMini = False
+                                             }
               tab = makeTab1 2 win
 
 -- ---------------------------------------------------------------------
 
 runEditor :: Config -> EditorM a -> Editor -> (Editor, a)
-runEditor cfg f e = let (a, e') = runState (runReaderT (fromEditorM f) cfg) e in (e',a)
+runEditor cfg f e = let (a, e') = runState (runReaderT (fromEditorM f) cfg) e
+                    in (e',a)
 
 makeLensesWithSuffix "A" ''Editor
 
@@ -194,8 +209,8 @@ stringToNewBuffer nm cs = do
 
 insertBuffer :: FBuffer -> EditorM ()
 insertBuffer b = modify $
-                 \e -> -- insert buffers at the end, so that "background" buffers
-                        -- do not interfere.
+                 \e -> -- insert buffers at the end, so that
+                       -- "background" buffers do not interfere.
                         e {bufferStack = nub (bufferStack e ++ [bkey b]),
                            buffers = M.insert (bkey b) b (buffers e)}
 
@@ -210,18 +225,21 @@ forceFoldTabs x = foldr (seq . forceTab) x x
 -- | Delete a buffer (and release resources associated with it).
 deleteBuffer :: BufferRef -> EditorM ()
 deleteBuffer k = do
-  -- If the buffer has an associated close action execute that now. Unless the buffer is the last
-  -- buffer in the editor. In which case it cannot be closed and, I think, the close action should
-  -- not be applied.
+  -- If the buffer has an associated close action execute that now.
+  -- Unless the buffer is the last buffer in the editor. In which case
+  -- it cannot be closed and, I think, the close action should not be
+  -- applied.
   --
-  -- The close actions seem dangerous, but I know of no other simple way to resolve issues related
-  -- to what buffer receives actions after the minibuffer closes.
+  -- The close actions seem dangerous, but I know of no other simple
+  -- way to resolve issues related to what buffer receives actions
+  -- after the minibuffer closes.
   length <$> gets bufferStack
     >>= \l -> case l of
         1 -> return ()
         _ -> M.lookup k <$> gets onCloseActions
                 >>= \m_action -> fromMaybe (return ()) m_action
-  -- Now try deleting the buffer. Checking, once again, that it is not the last buffer.
+  -- Now try deleting the buffer. Checking, once again, that it is not
+  -- the last buffer.
   bs <- gets bufferStack
   ws <- use windowsA
   case bs of
@@ -230,13 +248,15 @@ deleteBuffer k = do
               visibleBuffers = bufkey <$> toList ws
               other = head $ (bs \\ visibleBuffers) ++ delete k bs
           when (b0 == k) $
-              -- we delete the currently selected buffer: the next buffer will become active in
-              -- the main window, therefore it must be assigned a new window.
+              -- we delete the currently selected buffer: the next
+              -- buffer will become active in the main window,
+              -- therefore it must be assigned a new window.
               switchToBufferE nextB
           modify $ \e -> e {bufferStack = forceFold1 $ filter (k /=) $ bufferStack e,
                             buffers = M.delete k (buffers e),
                             tabs_ = forceFoldTabs $ fmap (mapWindows pickOther) (tabs_ e)
-                            -- all windows open on that buffer must switch to another buffer.
+                            -- all windows open on that buffer must
+                            -- switch to another buffer.
                            }
           (%=) windowsA (fmap (\w -> w { bufAccessList = forceFold1 . filter (k/=) $ bufAccessList w }))
       _ -> return () -- Don't delete the last buffer.
@@ -431,9 +451,12 @@ newBufferE f s = do
 
 -- | Creates an in-memory buffer with a unique name.
 --
--- A hint for the buffer naming scheme can be specified in the dynamic variable TempBufferNameHint
--- The new buffer always has a buffer ID that did not exist before newTempBufferE.
--- TODO: this probably a lot more complicated than it should be: why not count from zero every time?
+-- A hint for the buffer naming scheme can be specified in the dynamic
+-- variable TempBufferNameHint. The new buffer always has a buffer ID
+-- that did not exist before newTempBufferE.
+--
+-- TODO: this probably a lot more complicated than it should be: why
+-- not count from zero every time?
 newTempBufferE :: EditorM BufferRef
 newTempBufferE = do
     hint :: TempBufferNameHint <- getDynamic
@@ -504,11 +527,13 @@ getBufferWithNameOrCurrent nm = if null nm then gets currentBuffer else getBuffe
 -- | Close current buffer and window, unless it's the last one.
 closeBufferAndWindowE :: EditorM ()
 closeBufferAndWindowE = do
-  -- Fetch the current buffer *before* closing the window.
-  -- Required for the onCloseBufferE actions to work as expected by the minibuffer.
-  -- The tryCloseE, since it uses tabsA, will have the current buffer "fixed" to the buffer of the
-  -- window that is brought into focus. If the current buffer is accessed after the tryCloseE then
-  -- the current buffer may not be the same as the buffer before tryCloseE. This would be bad.
+  -- Fetch the current buffer *before* closing the window. Required
+  -- for the onCloseBufferE actions to work as expected by the
+  -- minibuffer. The tryCloseE, since it uses tabsA, will have the
+  -- current buffer "fixed" to the buffer of the window that is
+  -- brought into focus. If the current buffer is accessed after the
+  -- tryCloseE then the current buffer may not be the same as the
+  -- buffer before tryCloseE. This would be bad.
   b <- gets currentBuffer
   tryCloseE
   deleteBuffer b
@@ -521,11 +546,14 @@ nextWinE = (%=) windowsA PL.next
 prevWinE :: EditorM ()
 prevWinE = (%=) windowsA PL.previous
 
--- | Swaps the focused window with the first window. Useful for layouts such as 'HPairOneStack', for which the first window is the largest.
+-- | Swaps the focused window with the first window. Useful for
+-- layouts such as 'HPairOneStack', for which the first window is the
+-- largest.
 swapWinWithFirstE :: EditorM ()
 swapWinWithFirstE = (%=) windowsA (swapFocus (fromJust . PL.moveTo 0))
 
--- | Moves the focused window to the first window, and moves all other windows down the stack.
+-- | Moves the focused window to the first window, and moves all other
+-- windows down the stack.
 pushWinToFirstE :: EditorM ()
 pushWinToFirstE = (%=) windowsA pushToFirst
   where
@@ -604,11 +632,13 @@ splitE = do
   w <- newWindowE False b
   (%=) windowsA (PL.insertRight w)
 
--- | Cycle to the next layout manager, or the first one if the current one is nonstandard.
+-- | Cycle to the next layout manager, or the first one if the current
+-- one is nonstandard.
 layoutManagersNextE :: EditorM ()
 layoutManagersNextE = withLMStack PL.next
 
--- | Cycle to the previous layout manager, or the first one if the current one is nonstandard.
+-- | Cycle to the previous layout manager, or the first one if the
+-- current one is nonstandard.
 layoutManagersPreviousE :: EditorM ()
 layoutManagersPreviousE = withLMStack PL.previous
 
@@ -626,7 +656,8 @@ withLMStack f = askCfg >>= \cfg -> (%=) (currentTabA . tabLayoutManagerA) (go (l
 layoutManagerNextVariantE :: EditorM ()
 layoutManagerNextVariantE = (%=) (currentTabA . tabLayoutManagerA) nextVariant
 
--- | Previous variant of the current layout manager, as given by 'previousVariant'
+-- | Previous variant of the current layout manager, as given by
+-- 'previousVariant'
 layoutManagerPreviousVariantE :: EditorM ()
 layoutManagerPreviousVariantE = (%=) (currentTabA . tabLayoutManagerA) previousVariant
 
@@ -658,7 +689,8 @@ nextTabE = (%=) tabsA PL.next
 previousTabE :: EditorM ()
 previousTabE = (%=) tabsA PL.previous
 
--- | Moves the focused tab to the given index, or to the end if the index is not specified.
+-- | Moves the focused tab to the given index, or to the end if the
+-- index is not specified.
 moveTab :: Maybe Int -> EditorM ()
 moveTab Nothing  = do count <- uses tabsA PL.length
                       (%=) tabsA $ fromJust . PL.moveTo (pred count)
@@ -731,9 +763,12 @@ acceptedInputsOtherWindow = do
 --
 -- todo: These actions are not restored on reload.
 --
--- todo: These actions should probably be very careful at what they do.
--- TODO: All in all, this is a very ugly way to achieve the purpose. The nice way to proceed
--- is to somehow attach the miniwindow to the window that has spawned it.
+-- todo: These actions should probably be very careful at what they
+-- do.
+--
+-- TODO: All in all, this is a very ugly way to achieve the purpose.
+-- The nice way to proceed is to somehow attach the miniwindow to the
+-- window that has spawned it.
 onCloseBufferE :: BufferRef -> EditorM () -> EditorM ()
 onCloseBufferE b a = (%=) onCloseActionsA $ M.insertWith' (\_ old_a -> old_a >> a) b a
 
@@ -744,10 +779,6 @@ deriving instance Generic TempBufferNameHint
 instance Binary TempBufferNameHint
 #endif
 
--- For GHC 7.0 with template-haskell 2.5 (at least on my computer - coconnor) the Binary instance
--- needs to be defined before the YiVariable instance.
---
--- GHC 7.1 does not appear to have this issue.
 instance Default TempBufferNameHint where
     def = TempBufferNameHint "tmp" 0
 

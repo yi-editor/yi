@@ -49,6 +49,7 @@ module Yi.Interact
      InteractState (..),
      MonadInteract (..),
      deprioritize,
+     important,
      (<||),
      (||>),
      option,
@@ -145,6 +146,11 @@ deprioritize = adjustPriority 1
 a <|| b = a <|> (deprioritize >> b)
 
 (||>) = flip (<||)
+
+-- | Just like '(<||)' but in prefix form. It 'deprioritize's the
+-- second argument.
+important :: MonadInteract f w e => f a -> f a -> f a
+important a b = a <|| b
 
 -- | Convert a process description to an "executable" process.
 mkProcess :: Eq w => I ev w a -> (a -> P ev w) -> P ev w

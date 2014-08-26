@@ -1,5 +1,15 @@
 {-# LANGUAGE OverloadedStrings #-}
--- Copyright (C) 2008 JP Bernardy
+{-# OPTIONS_HADDOCK show-extensions #-}
+
+-- |
+-- Module      :  Yi.Buffer.HighLevel
+-- Copyright   :  (c) Jean-Philippe Bernardy 2008
+-- License     :  GPL-2
+-- Maintainer  :  yi-devel@googlegroups.com
+-- Stability   :  experimental
+-- Portability :  portable
+--
+-- High level operations on buffers.
 module Yi.Buffer.HighLevel where
 
 import           Control.Applicative
@@ -664,8 +674,15 @@ unLineCommentSelectionB s1 s2 =
     | s2 `isPrefixOf` line = drop (length s2) line
     | otherwise            = line
 
--- | Toggle line comments in the selection by adding or removing a prefix to each
--- line.
+-- | Just like 'toggleCommentSelectionB' but automatically inserts a
+-- whitespace suffix to the inserted comment string. In fact:
+--
+-- @toggleCommentB c = toggleCommentSelectionB (c ++ " ") foo@
+toggleCommentB :: String -> BufferM ()
+toggleCommentB c = toggleCommentSelectionB (c ++ " ") c
+
+-- | Toggle line comments in the selection by adding or removing a
+-- prefix to each line.
 toggleCommentSelectionB :: String -> String -> BufferM ()
 toggleCommentSelectionB insPrefix delPrefix = do
   l <- readUnitB Line
