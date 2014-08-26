@@ -41,5 +41,5 @@ import Yi.Search
 import Yi.Style
 import Yi.Style.Library
 import Yi.Misc
-import Yi.Mode.Haskell (ghciGet, ghciLoadBuffer)
+import Yi.Mode.Haskell (ghciGet, ghciLoadBuffer, ghciSetProcessName)
 import Yi.Mode.IReader (ireaderMode, ireadMode)

@@ -26,6 +26,7 @@ module Yi.Mode.Haskell
    ghciSend,
    ghciLoadBuffer,
    ghciInferType,
+   ghciSetProcessName
   ) where
 
 import           Control.Applicative
@@ -418,7 +419,8 @@ ghciLoadBuffer = do
       Nothing -> error "Couldn't get buffer filename in ghciLoadBuffer"
       Just filename -> ghciSend $ ":load " ++ show filename
 
--- Tells ghci to infer the type of the identifier at point. Doesn't check for errors (yet)
+-- Tells ghci to infer the type of the identifier at point. Doesn't
+-- check for errors (yet)
 ghciInferType :: YiM ()
 ghciInferType = do
     nm <- withBuffer $ readUnitB unitWord
@@ -433,3 +435,8 @@ ghciInferTypeOf nm = do
     let successful = (not . null) nm &&and (zipWith (==) nm result)
     when successful $
          withBuffer $ moveToSol *> insertB '\n' *> leftB *> insertN result *> rightB
+
+ghciSetProcessName :: YiM ()
+ghciSetProcessName =
+  let prompt = "Command to call for GHCi: "
+  in withMinibufferFree prompt $ setDynamic . GHCi.GhciProcessName
