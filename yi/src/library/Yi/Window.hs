@@ -1,9 +1,16 @@
 {-# LANGUAGE DeriveDataTypeable #-}
+{-# LANGUAGE TemplateHaskell #-}
+{-# OPTIONS_HADDOCK show-extensions #-}
 
+-- |
+-- Module      :  Yi.Window
+-- Copyright   :  (c) Jean-Philippe Bernardy 2008
+-- License     :  GPL-2
+-- Maintainer  :  yi-devel@googlegroups.com
+-- Stability   :  experimental
+-- Portability :  portable
 --
--- Copyright (c) 2008 JP Bernardy
---
---
+-- Operations on 'Window's, in the emacs sense of the word.
 
 module Yi.Window where
 
@@ -14,6 +21,7 @@ import Control.Applicative
 import Yi.Buffer.Basic (BufferRef, WindowRef)
 import Yi.Region (Region,emptyRegion)
 import Yi.JumpList
+import Yi.Utils (makeLensesWithSuffix)
 
 ------------------------------------------------------------------------
 -- | A window onto a buffer.
@@ -21,20 +29,26 @@ import Yi.JumpList
 data Window = Window
     { isMini    :: !Bool -- ^ regular or mini window?
     , bufkey    :: !BufferRef -- ^ the buffer this window opens to
-    , bufAccessList :: ![BufferRef] -- ^ list of last accessed buffers (former bufKeys).
-                                    -- Last accessed one is first element
-    , height    :: Int -- ^ height of the window (in number of screen lines displayed)
-    , winRegion    :: Region -- ^ view area.
-                             -- note that the top point is also available as a buffer mark.
+    , bufAccessList :: ![BufferRef]
+      -- ^ list of last accessed buffers (former bufKeys). Last
+      -- accessed one is first element
+    , height    :: Int -- ^ height of the window (in number of screen
+                       -- lines displayed)
+    , winRegion :: Region -- ^ view area. note that the top point is
+                          -- also available as a buffer mark.
     , wkey      :: !WindowRef -- ^ identifier for the window (for UI sync)
     -- This is required for accurate scrolling.
     -- Scrolling depends on the actual number of buffer
     -- lines displayed. Line wrapping changes that number
     -- relative to the height so we can't use height for that
     -- purpose.
-    , actualLines :: Int -- ^ The actual number of buffer lines displayed. Taking into account line wrapping
+    , actualLines :: Int
+      -- ^ The actual number of buffer lines displayed. Taking into
+      -- account line wrapping
     , jumpList :: JumpList
     } deriving (Typeable)
+
+makeLensesWithSuffix "A" ''Window
 
 instance Binary Window where
     put (Window mini bk bl _h _rgn key lns jl) =
@@ -65,4 +79,3 @@ pointInWindow point win = tospnt win <= point && point <= bospnt win
 -- | Return a "fake" window onto a buffer.
 dummyWindow :: BufferRef -> Window
 dummyWindow b = Window False b [] 0 emptyRegion def 0 Nothing
-

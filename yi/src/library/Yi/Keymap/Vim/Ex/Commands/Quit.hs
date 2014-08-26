@@ -1,24 +1,34 @@
+{-# LANGUAGE TupleSections #-}
+{-# OPTIONS_HADDOCK show-extensions #-}
+
+-- |
+-- Module      :  Yi.Keymap.Vim.Ex.Commands.Quit
+-- License     :  GPL-2
+-- Maintainer  :  yi-devel@googlegroups.com
+-- Stability   :  experimental
+-- Portability :  portable
+--
+-- Implements quit commands.
+
 module Yi.Keymap.Vim.Ex.Commands.Quit
     ( parse
     ) where
 
-import Control.Applicative
-import Control.Monad
-import Control.Lens
-
-import Data.Foldable (find)
-
+import           Control.Applicative
+import           Control.Lens
+import           Control.Monad
+import           Data.Foldable (find)
+import           Data.List.NonEmpty (NonEmpty(..))
 import qualified Text.ParserCombinators.Parsec as P
-
-import Yi.Core (quitEditor, errorEditor, closeWindow)
-import Yi.Buffer
-import Yi.Editor
-import Yi.File
-import Yi.Keymap
-import Yi.Keymap.Vim.Ex.Types
+import           Yi.Buffer
+import           Yi.Core (quitEditor, errorEditor, closeWindow)
+import           Yi.Editor
+import           Yi.File
+import           Yi.Keymap
 import qualified Yi.Keymap.Vim.Ex.Commands.Common as Common
-import Yi.Monad
-import Yi.Window (bufkey)
+import           Yi.Keymap.Vim.Ex.Types
+import           Yi.Monad
+import           Yi.Window (bufkey)
 
 parse :: String -> Maybe ExCommand
 parse = Common.parse $ do
@@ -59,15 +69,17 @@ quitWindowE = do
 
 quitAllE :: YiM ()
 quitAllE = do
-    bs <- mapM (\b -> (,) b <$> withEditor (withGivenBuffer0 b needsAWindowB)) =<< readEditor bufferStack
-    -- Vim only shows the first modified buffer in the error.
-    case find snd bs of
-        Nothing -> quitEditor
-        Just (b, _) -> do
-            bufferName <- withEditor $ withGivenBuffer0 b $ gets file
-            errorEditor $ "No write since last change for buffer "
-                        ++ show bufferName
-                        ++ " (add ! to override)"
+  a :| as <- readEditor bufferStack
+  let needsWindow b = (b,) <$> withEditor (withGivenBuffer0 b needsAWindowB)
+  bs <- mapM needsWindow (a:as)
+  -- Vim only shows the first modified buffer in the error.
+  case find snd bs of
+      Nothing -> quitEditor
+      Just (b, _) -> do
+          bufferName <- withEditor $ withGivenBuffer0 b $ gets file
+          errorEditor $ "No write since last change for buffer "
+                      ++ show bufferName
+                      ++ " (add ! to override)"
 
 saveAndQuitAllE :: YiM ()
 saveAndQuitAllE = Common.forAllBuffers fwriteBufferE >> quitEditor

@@ -1,6 +1,16 @@
-{-# LANGUAGE DeriveDataTypeable, GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE DeriveDataTypeable #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# OPTIONS_HADDOCK show-extensions #-}
 
--- Copyright (C) 2008 JP Bernardy
+-- |
+-- Module      :  Yi.TextCompletion
+-- Copyright   :  (c) Jean-Philippe Bernardy 2008
+-- License     :  GPL-2
+-- Maintainer  :  yi-devel@googlegroups.com
+-- Stability   :  experimental
+-- Portability :  portable
+--
+-- Module providing text completion functions.
 
 module Yi.TextCompletion (
         -- * Word completion
@@ -24,6 +34,7 @@ import Data.Default
 import Data.Function (on)
 import Data.Typeable
 import Data.Binary
+import Data.List.NonEmpty (NonEmpty(..))
 
 import Yi.Core
 import Yi.Utils
@@ -38,7 +49,8 @@ import Yi.Utils
 newtype Completion = Completion
 --       Point    -- beginning of the thing we try to complete
       [String] -- the list of all possible things we can complete to.
-               -- (this seems very inefficient; but we use lazyness to our advantage)
+               -- (this seems very inefficient; but we use laziness to
+               -- our advantage)
     deriving (Typeable, Binary)
 
 -- TODO: put this in keymap state instead
@@ -53,7 +65,11 @@ resetComplete = setDynamic (Completion [])
 
 -- | Try to complete the current word with occurences found elsewhere in the
 -- editor. Further calls try other options.
-mkWordComplete :: YiM String -> (String -> YiM [String]) -> ([String] -> YiM () ) -> (String -> String -> Bool) -> YiM String
+mkWordComplete :: YiM String -- ^ Extract function
+               -> (String -> YiM [String]) -- ^ Source function
+               -> ([String] -> YiM ()) -- ^ Message function
+               -> (String -> String -> Bool) -- ^ Predicate matcher
+               -> YiM String
 mkWordComplete extractFn sourceFn msgFn predMatch = do
   Completion complList <- withEditor getDynamic
   case complList of
@@ -64,19 +80,22 @@ mkWordComplete extractFn sourceFn msgFn predMatch = do
     [] -> do -- no alternatives, build them.
       w <- extractFn
       ws <- sourceFn w
-      withEditor $ setDynamic (Completion $ nubSet (filter (matches w) ws) ++ [w])
+      setDynamic (Completion $ nubSet (filter (matches w) ws) ++ [w])
       -- We put 'w' back at the end so we go back to it after seeing
       -- all possibilities.
-      mkWordComplete extractFn sourceFn msgFn predMatch -- to pick the 1st possibility.
+
+      -- to pick the 1st possibility.
+      mkWordComplete extractFn sourceFn msgFn predMatch
 
   where matches x y = x `predMatch` y && x/=y
 
 wordCompleteString' :: Bool -> YiM String
-wordCompleteString' caseSensitive = mkWordComplete
-                                      (withEditor $ withBuffer0 $ readRegionB =<< regionOfPartB unitWord Backward)
-                                      (\_ -> withEditor wordsForCompletion)
-                                      (\_ -> return ())
-                                      (mkIsPrefixOf caseSensitive)
+wordCompleteString' caseSensitive =
+  mkWordComplete (withEditor $ withBuffer0 $
+                   readRegionB =<< regionOfPartB unitWord Backward)
+                 (\_ -> withEditor wordsForCompletion)
+                 (\_ -> return ())
+                 (mkIsPrefixOf caseSensitive)
 
 wordCompleteString :: YiM String
 wordCompleteString = wordCompleteString' True
@@ -84,7 +103,8 @@ wordCompleteString = wordCompleteString' True
 wordComplete' :: Bool -> YiM ()
 wordComplete' caseSensitive = do
   x <- wordCompleteString' caseSensitive
-  withEditor $ withBuffer0 $ flip replaceRegionB x =<< regionOfPartB unitWord Backward
+  withEditor $ withBuffer0 $
+    flip replaceRegionB x =<< regionOfPartB unitWord Backward
 
 wordComplete :: YiM ()
 wordComplete = wordComplete' True
@@ -128,8 +148,12 @@ veryQuickCompleteWord scope =
   do (curWord, curWords) <- withBuffer0 wordsAndCurrentWord
      allWords <- fmap concat $ withEveryBufferE $ fmap words' elemsB
      let match :: String -> Maybe String
-         match x = if (curWord `isPrefixOf` x) && (x /= curWord) then Just x else Nothing
-         wordsToChooseFrom = if scope == FromCurrentBuffer then curWords else allWords
+         match x = if (curWord `isPrefixOf` x) && (x /= curWord)
+                   then Just x
+                   else Nothing
+         wordsToChooseFrom = if scope == FromCurrentBuffer
+                             then curWords
+                             else allWords
      preText             <- completeInList curWord match wordsToChooseFrom
      if curWord == ""
         then printMsg "No word to complete"
@@ -149,7 +173,7 @@ wordsForCompletionInBuffer = do
 
 wordsForCompletion :: EditorM [String]
 wordsForCompletion = do
-    (_b:bs) <- fmap bkey <$> getBufferStack
+    _ :| bs <- fmap bkey <$> getBufferStack
     w0 <- withBuffer0 wordsForCompletionInBuffer
     contents <- forM bs $ \b->withGivenBuffer0 b elemsB
     return $ w0 ++ concatMap words' contents
@@ -159,10 +183,13 @@ words' = filter (isJust . charClass . head) . groupBy ((==) `on` charClass)
 
 charClass :: Char -> Maybe Int
 charClass c = findIndex (generalCategory c `elem`)
-                [[UppercaseLetter, LowercaseLetter, TitlecaseLetter, ModifierLetter, OtherLetter,
-                  ConnectorPunctuation,
-                  NonSpacingMark, SpacingCombiningMark, EnclosingMark, DecimalNumber, LetterNumber, OtherNumber],
-                 [MathSymbol, CurrencySymbol, ModifierSymbol, OtherSymbol]
+                [ [ UppercaseLetter, LowercaseLetter, TitlecaseLetter
+                  , ModifierLetter, OtherLetter
+                  , ConnectorPunctuation
+                  , NonSpacingMark, SpacingCombiningMark, EnclosingMark
+                  , DecimalNumber, LetterNumber, OtherNumber
+                  ]
+                , [ MathSymbol, CurrencySymbol, ModifierSymbol, OtherSymbol ]
                 ]
 
 {-
@@ -170,4 +197,3 @@ charClass c = findIndex (generalCategory c `elem`)
   One which spawns a mini-buffer and allows searching in Hoogle databases
   or in other files etc.
 -}
-

@@ -1,3 +1,15 @@
+{-# LANGUAGE LambdaCase #-}
+{-# OPTIONS_HADDOCK show-extensions #-}
+
+-- |
+-- Module      :  Yi.Keymap.Vim.Ex.Commands.Common
+-- License     :  GPL-2
+-- Maintainer  :  yi-devel@googlegroups.com
+-- Stability   :  experimental
+-- Portability :  portable
+--
+-- Implements common 'ExCommand's for the Vim keymap.
+
 module Yi.Keymap.Vim.Ex.Commands.Common
     ( parse
     , parseWithBang
@@ -12,21 +24,21 @@ module Yi.Keymap.Vim.Ex.Commands.Common
     , errorNoWrite
     ) where
 
-import Control.Applicative
-import Control.Monad
-import Data.List (isPrefixOf)
-import System.Directory
+import           Control.Applicative
+import           Control.Monad
+import           Data.List (isPrefixOf)
+import           Data.List.NonEmpty (NonEmpty(..))
+import           System.Directory
 import qualified Text.ParserCombinators.Parsec as P
-import Text.Read (readMaybe)
-
-import Yi.Buffer
-import Yi.Editor
-import Yi.Keymap
-import Yi.Keymap.Vim.Ex.Types
-import Yi.Misc
-import Yi.Utils
-import Yi.Monad
-import Yi.Style (errorStyle)
+import           Text.Read (readMaybe)
+import           Yi.Buffer
+import           Yi.Editor
+import           Yi.Keymap
+import           Yi.Keymap.Vim.Ex.Types
+import           Yi.Misc
+import           Yi.Monad
+import           Yi.Style (errorStyle)
+import           Yi.Utils
 
 parse :: P.GenParser Char () ExCommand -> String -> Maybe ExCommand
 parse parser s = either (const Nothing) Just (P.parse parser "" s)
@@ -34,7 +46,9 @@ parse parser s = either (const Nothing) Just (P.parse parser "" s)
 
 parseWithBangAndCount :: P.GenParser Char () a
                       -- ^ The command name parser.
-                      -> (a -> Bool -> (Maybe Int) -> P.GenParser Char () ExCommand)
+                      -> (a -> Bool
+                          -> (Maybe Int)
+                          -> P.GenParser Char () ExCommand)
                       -- ^ A parser for the remaining command arguments.
                       -> String
                       -- ^ The string to parse.
@@ -105,15 +119,20 @@ filenameComplete :: FilePath -> YiM [FilePath]
 filenameComplete "%" = do
     -- current buffer is minibuffer
     -- actual file is in the second buffer in bufferStack
-    bufferRef <- withEditor $ gets (head . drop 1 . bufferStack)
-    currentFileName <- withGivenBuffer bufferRef $
-        fmap bufInfoFileName bufInfoB
+    gets bufferStack >>= \case
+      _ :| [] -> do
+        withEditor $ printMsg "filenameComplete: Expected to see minibuffer!"
+        return []
+      _ :| bufferRef : _ -> do
+        currentFileName <- withGivenBuffer bufferRef $
+            fmap bufInfoFileName bufInfoB
 
-    let sanitizedFileName = case currentFileName of
-                            ('/':'/':f') -> '/':f'
-                            _ -> currentFileName
+        let sanitizedFileName = case currentFileName of
+                                ('/':'/':f') -> '/':f'
+                                _ -> currentFileName
 
-    fmap (:[]) $ removePwd sanitizedFileName
+        fmap (:[]) $ removePwd sanitizedFileName
+
 
 filenameComplete f = do
     files <- matchingFileNames Nothing f
@@ -124,7 +143,7 @@ filenameComplete f = do
         xs -> sequence $ fmap removePwd xs
 
 forAllBuffers :: MonadEditor m => (BufferRef -> m ()) -> m ()
-forAllBuffers f = mapM_ f =<< readEditor bufferStack
+forAllBuffers f = readEditor bufferStack >>= \(b :| bs) -> f b >> mapM_ f bs
 
 pureExCommand :: ExCommand
 pureExCommand = ExCommand {

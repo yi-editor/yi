@@ -261,7 +261,6 @@ emacsKeys univArg =
   -- These keybindings are all preceded by a 'C-x' so for example to
   -- quit the editor we do a 'C-x C-c'
   ctrlX = choice [ ctrlCh 'o'    ?>>! deleteBlankLinesB
-                 , char '^'      ?>>! repeatingArg enlargeWinE
                  , char '0'      ?>>! closeWindow
                  , char '1'      ?>>! closeOtherE
                  , char '2'      ?>>! splitE
@@ -283,6 +282,5 @@ emacsKeys univArg =
                  , char 'k'      ?>>! killBufferE
                  , char 'r'      ?>>  rectangleFunctions
                  , char 'u'      ?>>! repeatingArg undoB
-                 , char 'v'      ?>>! repeatingArg shrinkWinE
                  , optMod ctrl (char 't') >> tabFunctions
                  ]

@@ -1,3 +1,14 @@
+{-# OPTIONS_HADDOCK show-extensions #-}
+
+-- |
+-- Module      :  Yi.Keymap.Vim.Operator
+-- License     :  GPL-2
+-- Maintainer  :  yi-devel@googlegroups.com
+-- Stability   :  experimental
+-- Portability :  portable
+--
+-- Implements some operators for the Vim keymap.
+
 module Yi.Keymap.Vim.Operator
     ( VimOperator(..)
     , defOperators
@@ -13,9 +24,7 @@ module Yi.Keymap.Vim.Operator
 
 import Control.Monad
 import Data.Char (toLower, toUpper)
-import Data.List (isSuffixOf)
 import Data.Foldable (find)
-
 import Yi.Buffer hiding (Insert)
 import Yi.Editor
 import Yi.Keymap.Vim.Common

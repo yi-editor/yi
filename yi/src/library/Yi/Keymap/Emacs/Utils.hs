@@ -1,15 +1,23 @@
-{-# LANGUAGE ScopedTypeVariables, FlexibleInstances, MultiParamTypeClasses,
-             UndecidableInstances, TypeOperators, LambdaCase, FlexibleContexts #-}
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TypeOperators #-}
+{-# LANGUAGE UndecidableInstances #-}
+{-# OPTIONS_HADDOCK show-extensions #-}
 
-{- |
-Module      :  Yi.UI.Pango
-Copyright   :  (c) 2005,2007,2008 Jean-Philippe Bernardy
-License     :  GPL
-
-This module is aimed at being a helper for the Emacs keybindings. In
-particular this should be useful for anyone that has a custom keymap
-derived from or based on the Emacs one.
--}
+-- |
+-- Module      :  Yi.Keymap.Emacs.Utils
+-- Copyright   :  (c) Jean-Philippe Bernardy 2005, 2007-2008
+-- License     :  GPL-2
+-- Maintainer  :  yi-devel@googlegroups.com
+-- Stability   :  experimental
+-- Portability :  portable
+--
+-- This module is aimed at being a helper for the Emacs keybindings.
+-- In particular this should be useful for anyone that has a custom
+-- keymap derived from or based on the Emacs one.
 
 module Yi.Keymap.Emacs.Utils
   ( UnivArgument
@@ -41,35 +49,29 @@ module Yi.Keymap.Emacs.Utils
   )
 where
 
-{- Standard Library Module Imports -}
 import Control.Applicative
-import Control.Monad
 import Control.Lens hiding (re,act)
+import Control.Monad
+import Control.Monad.Base
 import Data.Foldable (toList)
 import Data.List ((\\))
 import Data.Maybe (fromMaybe)
-import System.FriendlyPath ()
+import System.Directory (doesDirectoryExist)
 import System.FilePath (takeDirectory, takeFileName, (</>))
-import System.Directory
-  ( doesDirectoryExist
-  )
-import Control.Monad.Base
-{- External Library Module Imports -}
-{- Local (yi) module imports -}
+import System.FriendlyPath ()
 import Yi.Command (cabalConfigureE, cabalBuildE, reloadProjectE)
 import Yi.Core
 import Yi.Eval
 import Yi.File
 import Yi.MiniBuffer
 import Yi.Misc (promptFile)
+import Yi.Monad
 import Yi.Rectangle
 import Yi.Regex
-import Yi.Tag
 import Yi.Search
-import Yi.Window
+import Yi.Tag
 import Yi.Utils
-import Yi.Monad
-{- End of Module Imports -}
+import Yi.Window
 
 type UnivArgument = Maybe Int
 
@@ -279,7 +281,7 @@ switchBufferE :: YiM ()
 switchBufferE = do
     openBufs <- fmap bufkey . toList <$> use windowsA
     names <- withEditor $ do
-      bs <- fmap bkey <$> getBufferStack
+      bs <- toList . fmap bkey <$> getBufferStack
 
       -- put the open buffers at the end.
       let choices = (bs \\ openBufs) ++ openBufs
