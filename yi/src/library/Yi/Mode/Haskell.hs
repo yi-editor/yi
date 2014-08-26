@@ -364,17 +364,20 @@ tokTyp _ = Nothing
 ---------------------------
 -- * Interaction with GHCi
 
-
+-- | Variable storing the possibe buffer reference where GHCi is
+-- currently running.
 newtype GhciBuffer = GhciBuffer {_ghciBuffer :: Maybe BufferRef}
     deriving (Default, Typeable, Binary)
 
 instance YiVariable GhciBuffer
+
 -- | Start GHCi in a buffer
 ghci :: YiM BufferRef
 ghci = do
-    b <- GHCi.spawnProcess "ghci" []
-    withEditor $ setDynamic $ GhciBuffer $ Just b
-    return b
+  p <- GHCi._ghciProcessName <$> getDynamic
+  b <- GHCi.spawnProcess p []
+  withEditor . setDynamic . GhciBuffer $ Just b
+  return b
 
 -- | Return GHCi's buffer; create it if necessary.
 -- Show it in another window.

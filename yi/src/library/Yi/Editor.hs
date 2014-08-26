@@ -402,11 +402,11 @@ getRegE = uses killringA krGet
 --
 
 -- | Retrieve a value from the extensible state
-getDynamic :: YiVariable a => EditorM a
+getDynamic :: (MonadEditor m, YiVariable a) => m a
 getDynamic = use (dynamicA . dynamicValueA)
 
 -- | Insert a value into the extensible state, keyed by its type
-setDynamic :: YiVariable a => a -> EditorM ()
+setDynamic :: (MonadEditor m, YiVariable a) => a -> m ()
 setDynamic = assign (dynamicA . dynamicValueA)
 
 -- | Attach the next buffer in the buffer stack to the current window.
