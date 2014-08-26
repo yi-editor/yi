@@ -26,7 +26,8 @@ module Yi.Mode.Haskell
    ghciSend,
    ghciLoadBuffer,
    ghciInferType,
-   ghciSetProcessName
+   ghciSetProcessName,
+   ghciSetProcessArgs
   ) where
 
 import           Control.Applicative
@@ -38,6 +39,7 @@ import           Data.Foldable
 import           Data.Maybe (listToMaybe, isJust, catMaybes)
 import           Data.Typeable
 import           Prelude hiding (and,error,elem,notElem,all,concatMap,exp)
+import           Text.Read (readMaybe)
 import           Yi.Core
 import           Yi.Debug
 import           Yi.File
@@ -384,8 +386,8 @@ instance YiVariable GhciBuffer
 -- | Start GHCi in a buffer
 ghci :: YiM BufferRef
 ghci = do
-  p <- GHCi._ghciProcessName <$> getDynamic
-  b <- GHCi.spawnProcess p []
+  g <- getDynamic
+  b <- GHCi.spawnProcess (g ^. GHCi.ghciProcessName) (g ^. GHCi.ghciProcessArgs)
   withEditor . setDynamic . GhciBuffer $ Just b
   return b
 
@@ -437,6 +439,24 @@ ghciInferTypeOf nm = do
          withBuffer $ moveToSol *> insertB '\n' *> leftB *> insertN result *> rightB
 
 ghciSetProcessName :: YiM ()
-ghciSetProcessName =
-  let prompt = "Command to call for GHCi: "
-  in withMinibufferFree prompt $ setDynamic . GHCi.GhciProcessName
+ghciSetProcessName = do
+  g <- getDynamic
+  let nm = g ^. GHCi.ghciProcessName
+      prompt = "Command to call for GHCi, currently ‘" ++ nm ++ "’: "
+  withMinibufferFree prompt $ \s -> setDynamic $ g & GHCi.ghciProcessName .~ s
+
+ghciSetProcessArgs :: YiM ()
+ghciSetProcessArgs = do
+  g <- getDynamic
+  let nm = g ^. GHCi.ghciProcessName
+      args = g ^. GHCi.ghciProcessArgs
+      prompt = unwords $ [ "List of args to call "
+                         , nm
+                         , "with, currently"
+                         , show args
+                         , ":"
+                         ]
+  withMinibufferFree prompt $ \arg ->
+    case readMaybe arg of
+      Nothing -> msgEditor "Could not parse as [String], keep old args."
+      Just arg' -> setDynamic $ g & GHCi.ghciProcessArgs .~ arg'
