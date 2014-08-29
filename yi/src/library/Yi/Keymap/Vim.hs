@@ -114,12 +114,12 @@ genericHandleEvent getBindings pick config unconvertedEvent = do
         NoMatch -> withEditor dropBindingAccumulatorE
         PartialMatch -> withEditor $ do
             accumulateBindingEventE event
-            accumulateEventE event
+            accumulateEventE unconvertedEvent
         WholeMatch action -> do
             repeatToken <- action
             withEditor $ do
                 dropBindingAccumulatorE
-                accumulateEventE event
+                accumulateEventE unconvertedEvent
                 case repeatToken of
                     Drop -> do
                         resetActiveRegisterE
