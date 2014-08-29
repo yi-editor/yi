@@ -76,7 +76,7 @@ defVimConfig = Proto $ \this -> VimConfig {
 defVimKeymap :: VimConfig -> KeymapM ()
 defVimKeymap config = do
     e <- anyEvent
-    write $ impureHandleEvent config e
+    write $ impureHandleEvent config e True
 
 -- This is not in Yi.Keymap.Vim.Eval to avoid circular dependency:
 -- eval needs to know about bindings, which contains normal bindings,
@@ -85,16 +85,17 @@ defVimKeymap config = do
 -- and the actual evaluation happens in impureHandleEvent
 pureEval :: VimConfig -> String -> EditorM ()
 pureEval config s = sequence_ actions
-        where actions = map (pureHandleEvent config) $ parseEvents s
+        where actions = map (pureHandleEvent config) (parseEvents s)
 
-impureEval :: VimConfig -> String -> YiM ()
-impureEval config s = sequence_ actions
-        where actions = map (impureHandleEvent config) $ parseEvents s
+impureEval :: VimConfig -> String -> Bool -> YiM ()
+impureEval config s needsToConvertEvents = sequence_ actions
+        where actions = map (\e -> impureHandleEvent config e needsToConvertEvents) $ parseEvents s
 
 pureHandleEvent :: VimConfig -> Event -> EditorM ()
-pureHandleEvent = genericHandleEvent allPureBindings selectPureBinding
+pureHandleEvent config ev
+    = genericHandleEvent allPureBindings selectPureBinding config ev False
 
-impureHandleEvent :: VimConfig -> Event -> YiM ()
+impureHandleEvent :: VimConfig -> Event -> Bool -> YiM ()
 impureHandleEvent = genericHandleEvent vimBindings selectBinding
 
 genericHandleEvent :: MonadEditor m
@@ -102,10 +103,13 @@ genericHandleEvent :: MonadEditor m
     -> (EventString -> VimState -> [VimBinding] -> MatchResult (m RepeatToken))
     -> VimConfig
     -> Event
+    -> Bool
     -> m ()
-genericHandleEvent getBindings pick config unconvertedEvent = do
+genericHandleEvent getBindings pick config unconvertedEvent needsToConvertEvents = do
     currentState <- withEditor getDynamic
-    let event = convertEvent (vsMode currentState) (vimRelayout config) unconvertedEvent
+    let event = if needsToConvertEvents
+                then convertEvent (vsMode currentState) (vimRelayout config) unconvertedEvent
+                else unconvertedEvent
         evs = vsBindingAccumulator currentState ++ eventToString event
         bindingMatch = pick evs currentState (getBindings config)
         prevMode = vsMode currentState
@@ -114,12 +118,12 @@ genericHandleEvent getBindings pick config unconvertedEvent = do
         NoMatch -> withEditor dropBindingAccumulatorE
         PartialMatch -> withEditor $ do
             accumulateBindingEventE event
-            accumulateEventE unconvertedEvent
+            accumulateEventE event
         WholeMatch action -> do
             repeatToken <- action
             withEditor $ do
                 dropBindingAccumulatorE
-                accumulateEventE unconvertedEvent
+                accumulateEventE event
                 case repeatToken of
                     Drop -> do
                         resetActiveRegisterE
@@ -148,7 +152,7 @@ performEvalIfNecessary config = do
 
     -- see comment for 'pureEval'
     modifyStateE $ \s -> s { vsStringToEval = "" }
-    pureEval config $ vsStringToEval stateAfterAction
+    pureEval config (vsStringToEval stateAfterAction)
 
 allPureBindings :: VimConfig -> [VimBinding]
 allPureBindings config = filter isPure $ vimBindings config
@@ -171,5 +175,7 @@ convertEvent _ _ e = e
 relayoutFromTo :: String -> String -> (Char -> Char)
 relayoutFromTo keysFrom keysTo = \c ->
     maybe c fst (find ((== c) . snd)
-                      (zip (keysTo ++ fmap toUpper keysTo)
-                           (keysFrom ++ fmap toUpper keysFrom)))
+                      (zip (keysTo ++ fmap toUpper' keysTo)
+                           (keysFrom ++ fmap toUpper' keysFrom)))
+    where toUpper' ';' = ':'
+          toUpper' a = toUpper a
