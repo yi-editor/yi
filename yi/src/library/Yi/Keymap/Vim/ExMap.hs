@@ -33,7 +33,7 @@ defExMap cmdParsers =
 completionBinding :: [String -> Maybe ExCommand] -> VimBinding
 completionBinding commandParsers = VimBindingY f
     where f "<Tab>" (VimState { vsMode = Ex }) = WholeMatch $ do
-              commandString <- withEditor . withBuffer0 $ elemsB
+              commandString <- withBuffer elemsB
               case stringToExCommand commandParsers commandString of
                   Just cmd -> complete cmd
                   Nothing -> return ()

@@ -19,7 +19,9 @@ parse = Common.parse $ do
     t <- P.optionMaybe $ do
         void $ P.many1 P.space
         P.many1 P.anyChar
-    return $! tag t
+    case t of
+        Nothing -> P.eof >> return (tag Nothing)
+        t -> return $! tag t
 
 tag :: Maybe Tag -> ExCommand
 tag Nothing = Common.impureExCommand {
