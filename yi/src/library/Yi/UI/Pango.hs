@@ -1,66 +1,69 @@
-{-# LANGUAGE CPP, ExistentialQuantification, TupleSections, NamedFieldPuns
-           , ViewPatterns, ScopedTypeVariables, LambdaCase #-}
+{-# LANGUAGE CPP #-}
+{-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE NamedFieldPuns #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TupleSections #-}
+{-# LANGUAGE ViewPatterns #-}
 {-# OPTIONS_GHC -funbox-strict-fields #-}
+{-# OPTIONS_HADDOCK show-extensions #-}
 
 -- |
 -- Module      :  Yi.UI.Pango
--- Copyright   :  (c) 2007, 2008 Jean-Philippe Bernardy
--- License     :  GPL
+-- License     :  GPL-2
+-- Copyright   :  Jean-Philippe Bernardy 2007-2008
+-- Maintainer  :  yi-devel@googlegroups.com
+-- Stability   :  experimental
+-- Portability :  portable
 --
 -- This module defines a user interface implemented using gtk2hs and
 -- pango for direct text rendering.
 
 module Yi.UI.Pango (start, startGtkHook) where
 
-import Prelude hiding (error, elem, mapM_, foldl, concat, mapM)
-import Control.Exception (catch, SomeException)
-import Control.Concurrent
-import Control.Monad hiding (forM_, mapM_, forM, mapM)
-import Control.Applicative
-import Control.Lens hiding (set, Action, from)
-import Data.Prototype
-import Data.Text (unpack, Text)
-import Data.IORef
-import Data.List (intercalate)
+import           Prelude hiding (error, elem, mapM_, foldl, concat, mapM)
+import           Control.Exception (catch, SomeException)
+import           Control.Concurrent
+import           Control.Monad hiding (forM_, mapM_, forM, mapM)
+import           Control.Applicative
+import           Control.Lens hiding (set, Action, from)
+import           Data.Text (unpack, Text)
+import           Data.IORef
+import           Data.List (intercalate)
 import qualified Data.List.PointedList as PL (moveTo)
 import qualified Data.List.PointedList.Circular as PL
-import Data.Maybe
-import Data.Foldable
-import Data.Traversable
+import           Data.Maybe
+import           Data.Foldable
+import           Data.Traversable
 import qualified Data.Map as M
 import qualified Data.Rope as Rope
-
-import Graphics.UI.Gtk hiding (Region, Window, Action , Point,
+import           Graphics.UI.Gtk hiding (Region, Window, Action , Point,
                                Style, Modifier, on)
-import Graphics.UI.Gtk.Gdk.GC hiding (foreground)
-import qualified Graphics.UI.Gtk.Gdk.EventM as EventM
 import qualified Graphics.UI.Gtk as Gtk
+import qualified Graphics.UI.Gtk.Gdk.EventM as EventM
 import qualified Graphics.UI.Gtk.Gdk.GC as Gtk
-import System.Glib.GError
-
-import Yi.Buffer
-import Yi.Config
-import Yi.Editor
-import Yi.Event
-import Yi.Keymap
-import Yi.Layout(DividerPosition, DividerRef)
-import Yi.Style
-import Yi.Tab
-import Yi.Window
-import Yi.Utils
-import Yi.Monad
-import Yi.Debug
-
+import           Graphics.UI.Gtk.Gdk.GC hiding (foreground)
+import           System.Glib.GError
+import           Yi.Buffer
+import           Yi.Config
+import           Yi.Debug
+import           Yi.Editor
+import           Yi.Event
+import           Yi.Keymap
+import           Yi.Layout(DividerPosition, DividerRef)
+import           Yi.Monad
+import           Yi.Style
+import           Yi.Tab
 import qualified Yi.UI.Common as Common
-import Yi.UI.Pango.Layouts
-import Yi.UI.Pango.Utils
-import Yi.UI.Pango.Control (keyTable)
-import Yi.UI.TabBar
-import Yi.UI.Utils
-
+import           Yi.UI.Pango.Control (keyTable)
 #ifdef GNOME_ENABLED
-import Yi.UI.Pango.Gnome(watchSystemFont)
+import           Yi.UI.Pango.Gnome(watchSystemFont)
 #endif
+import           Yi.UI.Pango.Layouts
+import           Yi.UI.Pango.Utils
+import           Yi.UI.TabBar
+import           Yi.UI.Utils
+import           Yi.Utils
+import           Yi.Window
 
 -- We use IORefs in all of these datatypes for all fields which could
 -- possibly change over time.  This ensures that no 'UI', 'TabInfo',
@@ -307,7 +310,8 @@ updateWindow :: Editor -> UI -> Window -> WinInfo -> IO ()
 updateWindow e _ui win wInfo = do
     writeIORef (inFocus wInfo) False -- see also 'setWindowFocus'
     writeIORef (coreWin wInfo) win
-    writeIORef (insertingMode wInfo) (askBuffer win (findBufferWith (bufkey win) e) $ use insertingA)
+    writeIORef (insertingMode wInfo)
+      (askBuffer win (findBufferWith (bufkey win) e) $ use insertingA)
 
 setWindowFocus :: Editor -> UI -> TabInfo -> WinInfo -> IO ()
 setWindowFocus e ui t w = do
@@ -602,9 +606,8 @@ shownRegion ui f w b = modifyMVar (winLayoutInfo w) $ \wli -> do
 -- during scrolling, cur might not lie between tos and bos,
 -- so we clamp it to avoid Pango errors
 
-{-
-Note [PangoLayout width]
-~~~~~~~~~~~~~~~~~~~~~~~~
+{-|
+== Note [PangoLayout width]
 
 We start rendering the PangoLayout one pixel from the left of the
 rendering area, which means a few +/-1 offsets in Pango rendering and
