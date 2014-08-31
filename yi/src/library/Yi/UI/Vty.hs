@@ -25,6 +25,7 @@ import Data.Foldable
 import Data.Traversable
 import Data.Maybe
 import Data.Monoid
+import GHC.Conc (labelThread)
 import System.Exit
 import System.Posix.Signals (raiseSignal, sigTSTP)
 import System.Posix.Terminal
@@ -87,6 +88,7 @@ start cfg ch outCh editor =
           -- fork input-reading thread. important to block *thread* on getKey
           -- otherwise all threads will block waiting for input
           tid <- myThreadId
+          labelThread tid "UI"
           endInput <- newEmptyMVar
           endRender <- newEmptyMVar
           editorRef <- newIORef editor
@@ -124,8 +126,10 @@ start cfg ch outCh editor =
                                    (readIORef editorRef >>= refresh ui >> renderLoop))
                         (const $ return ())
 
-          void $ forkIO inputLoop
-          void $ forkIO renderLoop
+          inputThreadId <- forkIO inputLoop
+          labelThread inputThreadId "VtyInput"
+          renderThreadId <- forkIO renderLoop
+          labelThread renderThreadId "VtyRender"
 
           return (mkUI ui)
 

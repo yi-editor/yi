@@ -13,6 +13,7 @@ module Yi.Debug (
 import Control.Concurrent
 import Control.Monad.Base
 import Data.IORef
+import GHC.Conc (labelThread)
 import System.IO
 import System.IO.Unsafe ( unsafePerformIO )
 import Data.Time
@@ -69,8 +70,8 @@ logError s = logPutStrLn $ "error: " ++ s
 logStream :: Show a => String -> Chan a -> IO ()
 logStream msg ch = do
   logPutStrLn $ "Logging stream " ++ msg
-  _ <- forkIO $ logStreamThread msg  ch
-  return ()
+  logThreadId <- forkIO $ logStreamThread msg ch
+  labelThread logThreadId "LogStream"
 
 logStreamThread :: Show a => String -> Chan a -> IO ()
 logStreamThread msg ch = do

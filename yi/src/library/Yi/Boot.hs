@@ -57,6 +57,9 @@ yiDriver cfg = do
                             , Dyre.configDir    = Just $ userConfigDir cfgcon
                             , Dyre.ghcOpts      = ["-threaded", "-O2"] ++
                                                   ["-i" ++ modules] ++
+#ifdef EVENTLOG
+                                                  ["-eventlog", "-rtsopts"] ++
+#endif
 #ifdef PROFILING
                                                   ["-prof", "-auto-all", "-rtsopts", "-osuf=p_o", "-hisuf=p_hi"] ++
 #endif

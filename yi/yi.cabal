@@ -38,6 +38,12 @@ flag profiling
     Runtime binary will be compiled with profiling and RTS
     options enabled.
 
+flag eventlog
+  Default: False
+  Description:
+    Runtime binary will be compiled with eventlog and RTS
+    options enabled.
+
 flag testing
   Description: bake-in the self-checks
 
@@ -47,6 +53,9 @@ library
 
   if flag(profiling)
     CPP-options: -DPROFILING
+
+  if flag(eventlog)
+    CPP-options: -DEVENTLOG
 
   exposed-modules:
     Yi
@@ -220,10 +229,14 @@ library
     oo-prototypes
 
   build-tools: alex >= 3.0.3
-  ghc-options: -Wall -fno-warn-orphans
+  ghc-options: -Wall -fno-warn-orphans -eventlog
   ghc-prof-options: -prof -auto-all -rtsopts
+
   if flag(profiling)
     cpp-options: -DPROFILING
+
+  if flag(eventlog)
+    CPP-options: -DEVENTLOG
 
   default-extensions: NondecreasingIndentation
 

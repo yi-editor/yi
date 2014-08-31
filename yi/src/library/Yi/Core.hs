@@ -76,6 +76,7 @@ import qualified Data.Rope as R
 import           Data.Time
 import           Data.Time.Clock.POSIX
 import           Data.Traversable
+import           GHC.Conc (labelThread)
 import           Prelude hiding (elem,or,mapM_)
 import           System.Directory (doesFileExist)
 import           System.Exit
@@ -407,9 +408,12 @@ startSubprocessWatchers :: SubprocessId
                         -> (Either SomeException ExitCode -> YiM x)
                         -> IO ()
 startSubprocessWatchers procid procinfo yi onExit =
-    mapM_ forkOS ([pipeToBuffer (hErr procinfo) (send . append True) | separateStdErr procinfo] ++
-                  [pipeToBuffer (hOut procinfo) (send . append False),
-                   waitForExit (procHandle procinfo) >>= reportExit])
+    mapM_ (\(labelSuffix, run) -> do
+              threadId <- forkOS run
+              labelThread threadId (procCmd procinfo ++ labelSuffix))
+          ([("Err", pipeToBuffer (hErr procinfo) (send . append True)) | separateStdErr procinfo] ++
+           [("Out", pipeToBuffer (hOut procinfo) (send . append False)),
+            ("Exit", waitForExit (procHandle procinfo) >>= reportExit)])
   where send a = yiOutput yi [makeAction a]
         append :: Bool -> String -> YiM ()
         append atMark s = withEditor $ appendToBuffer atMark (bufRef procinfo) s
