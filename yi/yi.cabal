@@ -229,7 +229,7 @@ library
     oo-prototypes
 
   build-tools: alex >= 3.0.3
-  ghc-options: -Wall -fno-warn-orphans -eventlog
+  ghc-options: -Wall -fno-warn-orphans
   ghc-prof-options: -prof -auto-all -rtsopts
 
   if flag(profiling)
@@ -237,6 +237,7 @@ library
 
   if flag(eventlog)
     CPP-options: -DEVENTLOG
+    ghc-options: -Wall -fno-warn-orphans -eventlog
 
   default-extensions: NondecreasingIndentation
 
