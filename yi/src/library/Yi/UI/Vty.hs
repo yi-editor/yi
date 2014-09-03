@@ -136,7 +136,10 @@ start cfg ch outCh editor =
 -- Is there something else to do here?
 -- Previous version said "block on MVar forever" in rather obfuscated way
 main :: UI -> IO ()
-main _ui = forever $ threadDelay maxBound
+main _ui = forever $ threadDelay longTime
+    -- Can't just use maxBound because of
+    -- https://ghc.haskell.org/trac/ghc/ticket/5544
+    where longTime = 12 * 3600 * 1000
 
 -- | Clean up and go home
 end :: UI -> Bool -> IO ()
