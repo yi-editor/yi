@@ -15,9 +15,12 @@ import qualified Data.HashMap.Strict as HM
 import qualified Data.Rope as R
 
 import Yi.Buffer hiding (Insert)
+import Yi.Core (quitEditor, closeWindow)
 import Yi.Editor
 import Yi.Event
+import Yi.File (editFile, fwriteE)
 import Yi.History
+import Yi.Keymap
 import Yi.Keymap.Keys
 import Yi.Keymap.Vim.Common
 import Yi.Keymap.Vim.Eval
@@ -30,11 +33,9 @@ import Yi.Keymap.Vim.Utils
 import Yi.Keymap.Vim.Tag
 import Yi.MiniBuffer
 import Yi.Misc
+import Yi.Monad
 import Yi.Regex (seInput, makeSearchOptsM)
 import Yi.Search (getRegexE, isearchInitE, setRegexE, makeSimpleSearch)
-import Yi.Monad
-import Yi.Keymap
-import Yi.File (editFile)
 import Yi.Utils (io)
 
 mkDigitBinding :: Char -> VimBinding
@@ -283,7 +284,54 @@ nonrepeatableBindings = fmap (mkBindingE Normal Drop)
     , ("<C-w><C-w>", nextWinE, resetCount)
     , ("<C-w>W", prevWinE, resetCount)
     , ("<C-w>p", prevWinE, resetCount)
+
+    -- z commands
+    -- TODO Add prefix count
+    , ("zt", withBuffer0 scrollCursorToTopB, resetCount)
+    , ("zb", withBuffer0 scrollCursorToBottomB, resetCount)
+    , ("zz", withBuffer0 scrollToCursorB, resetCount)
+    {- -- TODO Horizantal scrolling
+    , ("ze", withBuffer0 .., resetCount)
+    , ("zs", withBuffer0 .., resetCount)
+    , ("zH", withBuffer0 .., resetCount)
+    , ("zL", withBuffer0 .., resetCount)
+    , ("zh", withBuffer0 .., resetCount)
+    , ("zl", withBuffer0 .., resetCount)
+    -}
+    , ("z.", withBuffer0 $ scrollToCursorB >> moveToSol, resetCount)
+    , ("z+", withBuffer0 scrollToLineBelowWindow, resetCount)
+    , ("z-", withBuffer0 $ scrollCursorToBottomB >> moveToSol, resetCount)
+    , ("z^", withBuffer0 scrollToLineAboveWindow, resetCount)
+    {- -- TODO Code folding
+    , ("zf", .., resetCount)
+    , ("zc", .., resetCount)
+    , ("zo", .., resetCount)
+    , ("za", .., resetCount)
+    , ("zC", .., resetCount)
+    , ("zO", .., resetCount)
+    , ("zA", .., resetCount)
+    , ("zr", .., resetCount)
+    , ("zR", .., resetCount)
+    , ("zm", .., resetCount)
+    , ("zM", .., resetCount)
+    -}
+
+    -- Z commands
+    ] ++ fmap (mkStringBindingY Normal)
+    [ ("ZQ", quitEditor, id)
+    -- TODO ZZ should replicate :x not :wq
+    , ("ZZ", fwriteE >> closeWindow, id)
     ]
+
+scrollToLineAboveWindow :: BufferM ()
+scrollToLineAboveWindow = do downFromTosB 0
+                             replicateM_ 1 lineUp
+                             scrollCursorToBottomB
+
+scrollToLineBelowWindow :: BufferM ()
+scrollToLineBelowWindow = do upFromBosB 0
+                             replicateM_ 1 lineDown
+                             scrollCursorToTopB
 
 fileEditBindings :: [VimBinding]
 fileEditBindings =  fmap (mkStringBindingY Normal)
