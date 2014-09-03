@@ -138,7 +138,7 @@ start cfg ch outCh editor =
 main :: UI -> IO ()
 main _ui = forever $ threadDelay longTime
     -- Can't just use maxBound because of
-    -- https://ghc.haskell.org/trac/ghc/ticket/5544
+    -- https://ghc.haskell.org/trac/ghc/ticket/7325
     where longTime = 12 * 3600 * 1000
 
 -- | Clean up and go home
