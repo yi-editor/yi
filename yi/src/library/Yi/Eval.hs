@@ -1,4 +1,18 @@
-{-# LANGUAGE CPP, ScopedTypeVariables, TypeOperators, DeriveDataTypeable, GeneralizedNewtypeDeriving, TemplateHaskell, RecordWildCards #-}
+{-# LANGUAGE DeriveDataTypeable #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE TemplateHaskell #-}
+{-# OPTIONS_HADDOCK show-extensions #-}
+
+-- |
+-- Module      :  Yi.Eval
+-- License     :  GPL-2
+-- Maintainer  :  yi-devel@googlegroups.com
+-- Stability   :  experimental
+-- Portability :  portable
+--
+-- Evaluator for actions ('Action', 'YiAction'). Uses a @GHCi@ session
+-- under the hood.
 
 module Yi.Eval (
         -- * Main (generic) evaluation interface
@@ -11,120 +25,137 @@ module Yi.Eval (
         publishedActionsEvaluator,
         publishedActions,
         publishAction,
-        -- * Eval\/Interpretation
+        -- * Eval/Interpretation
         jumpToErrorE,
         jumpToE,
-        consoleKeymap,
+        consoleKeymap
 ) where
 
-import Prelude hiding (error)
-import Control.Applicative
-import Control.Monad
-import Control.Lens hiding (Action)
-import Data.Array
-import Data.List
-import Data.Monoid
-import Data.Typeable
-import Data.Binary
-import Data.Default
-import qualified Language.Haskell.Interpreter as LHI
-import System.Directory(doesFileExist)
+import           Control.Applicative ((<$>), (<*>))
+import           Control.Lens hiding (Action)
+import           Control.Monad hiding (mapM_)
+import           Data.Array
+import           Data.Binary
+import           Data.Default
+import           Data.Foldable (mapM_)
 import qualified Data.HashMap.Strict as M
-
-import {-# source #-} Yi.Boot (reload)
-import Yi.Config.Simple.Types
-import Yi.Core
-import Yi.File
-import Yi.Hooks
-import Yi.Regex
-import qualified Yi.Paths(getEvaluatorContextFilename)
-import Yi.Utils
-import Yi.Debug
+import           Data.List
+import           Data.List.Lens
+import           Data.Maybe (fromMaybe)
+import           Data.Monoid
+import           Data.Typeable
+import qualified Language.Haskell.Interpreter as LHI
+import           Prelude hiding (error, mapM_)
+import           System.Directory (doesFileExist)
+import           Text.Read (readMaybe)
+import           Yi.Config.Simple.Types
+import           Yi.Core
+import           Yi.Debug
+import           Yi.File
+import           Yi.Hooks
+import qualified Yi.Paths (getEvaluatorContextFilename)
+import           Yi.Regex
+import           Yi.Utils
+import           {-# source #-} Yi.Boot (reload)
 
 -- | Runs the action, as written by the user.
 --
--- The behaviour of this function can be customised by modifying the 'Evaluator' variable.
+-- The behaviour of this function can be customised by modifying the
+-- 'Evaluator' variable.
 execEditorAction :: String -> YiM ()
 execEditorAction = runHook execEditorActionImpl
 
 -- | Lists the action names in scope, for use by 'execEditorAction'.
 --
--- The behaviour of this function can be customised by modifying the 'Evaluator' variable.
+-- The behaviour of this function can be customised by modifying the
+-- 'Evaluator' variable.
 getAllNamesInScope :: YiM [String]
 getAllNamesInScope = runHook getAllNamesInScopeImpl
 
-{- | Config variable for customising the behaviour of 'execEditorAction' and 'getAllNamesInScope'.
+-- | Config variable for customising the behaviour of
+-- 'execEditorAction' and 'getAllNamesInScope'.
+--
+-- Set this variable using 'evaluator'. See 'ghciEvaluator' and
+-- 'finiteListEvaluator' for two implementation.
+data Evaluator = Evaluator
+  { execEditorActionImpl :: String -> YiM ()
+    -- ^ implementation of 'execEditorAction'
+  , getAllNamesInScopeImpl :: YiM [String]
+    -- ^ implementation of 'getAllNamesInScope'
+  } deriving (Typeable)
 
-Set this variable using 'evaluator'. See 'ghciEvaluator' and 'finiteListEvaluator' for two implementation.
--}
-data Evaluator = Evaluator {
-  execEditorActionImpl :: String -> YiM (), -- ^ implementation of 'execEditorAction'
-  getAllNamesInScopeImpl :: YiM [String] -- ^ implementation of 'getAllNamesInScope'
- }
- deriving(Typeable)
-
--- | The evaluator to use for 'execEditorAction' and 'getAllNamesInScope'.
+-- | The evaluator to use for 'execEditorAction' and
+-- 'getAllNamesInScope'.
 evaluator :: Field Evaluator
 evaluator = customVariable
 
 instance Default Evaluator where def = ghciEvaluator
 instance YiConfigVariable Evaluator
 
-------------------------- Evaluator based on GHCi
+-- * Evaluator based on GHCi
+
 newtype NamesCache = NamesCache [String] deriving (Typeable, Binary)
+
 instance Default NamesCache where
     def = NamesCache []
 instance YiVariable NamesCache
 
-{- | Evaluator implemented by calling GHCi. This evaluator can run arbitrary expressions in the class 'YiAction'.
-
-The following two imports are always present:
-
-> import Yi
-> import qualified Yi.Keymap as Yi.Keymap
-
-Also, if the file
-
-> $HOME/.config/yi/local/Env.hs
-
-exists, it is imported unqualified.
--}
+-- Evaluator implemented by calling GHCi. This evaluator can run
+-- arbitrary expressions in the class 'YiAction'.
+--
+-- The following two imports are always present:
+--
+-- > import Yi
+-- > import qualified Yi.Keymap as Yi.Keymap
+--
+-- Also, if the file
+--
+-- > $HOME/.config/yi/local/Env.hs
+--
+-- exists, it is imported unqualified.
 ghciEvaluator :: Evaluator
-ghciEvaluator = Evaluator{..} where
-    execEditorActionImpl :: String -> YiM ()
-    execEditorActionImpl "reload" = reload
-    execEditorActionImpl s = do
-       contextFile <- Yi.Paths.getEvaluatorContextFilename
-       haveUserContext <- io $ doesFileExist contextFile
-       res <- io $ LHI.runInterpreter $ do
-           LHI.set [LHI.searchPath LHI.:= []]
-           LHI.set [LHI.languageExtensions LHI.:= [LHI.OverloadedStrings,
-                                                   LHI.NoImplicitPrelude -- use Yi prelude instead.
-                                                  ]]
-           when haveUserContext $ do
-              LHI.loadModules [contextFile]
-              LHI.setTopLevelModules ["Env"]
+ghciEvaluator = Evaluator { execEditorActionImpl = execAction
+                          , getAllNamesInScopeImpl = getNames
+                          }
+  where
+    execAction :: String -> YiM ()
+    execAction "reload" = reload
+    execAction s = do
+      contextFile <- Yi.Paths.getEvaluatorContextFilename
+      haveUserContext <- io $ doesFileExist contextFile
+      res <- io $ LHI.runInterpreter $ do
+        LHI.set [LHI.searchPath LHI.:= []]
 
-           LHI.setImportsQ [("Yi", Nothing), ("Yi.Keymap",Just "Yi.Keymap")] -- Yi.Keymap: Action lives there
-           LHI.interpret ("Yi.makeAction ("++s++")") (error "as" :: Action)
-       case res of
-           Left err -> errorEditor (show err)
-           Right action -> runAction action
+        -- We no longer have Yi.Prelude, perhaps we should remove
+        -- NoImplicitPrelude?
+        LHI.set [LHI.languageExtensions LHI.:= [ LHI.OverloadedStrings
+                                               , LHI.NoImplicitPrelude
+                                               ]]
+        when haveUserContext $ do
+          LHI.loadModules [contextFile]
+          LHI.setTopLevelModules ["Env"]
 
-    getAllNamesInScopeImpl :: YiM [String]
-    getAllNamesInScopeImpl = do
-       NamesCache cache <- withEditor $ use dynA
-       result <-if null cache then do
-            res <-io $ LHI.runInterpreter $ do
-                LHI.set [LHI.searchPath LHI.:= []]
-                LHI.getModuleExports "Yi"
-            return $ case res of
-               Left err ->[show err]
-               Right exports -> flattenExports exports
-          else return $ sort cache
-       withEditor $ assign dynA (NamesCache result)
-       return result
+        -- Yi.Keymap: Action lives there
+        LHI.setImportsQ [("Yi", Nothing), ("Yi.Keymap",Just "Yi.Keymap")]
+        LHI.interpret ("Yi.makeAction (" ++ s ++ ")") (error "as" :: Action)
+      case res of
+        Left err -> errorEditor (show err)
+        Right action -> runAction action
 
+    getNames :: YiM [String]
+    getNames = do
+      NamesCache cache <- withEditor $ use dynA
+      result <- if null cache
+                then do
+                  res <- io $ LHI.runInterpreter $ do
+                    LHI.set [LHI.searchPath LHI.:= []]
+                    LHI.getModuleExports "Yi"
+                  return $ case res of
+                    Left err ->[show err]
+                    Right exports -> flattenExports exports
+                else return $ sort cache
+      withEditor $ assign dynA (NamesCache result)
+      return result
 
     flattenExports :: [LHI.ModuleElem] -> [String]
     flattenExports = concatMap flattenExport
@@ -134,89 +165,105 @@ ghciEvaluator = Evaluator{..} where
     flattenExport (LHI.Class _ xs) = xs
     flattenExport (LHI.Data _ xs) = xs
 
-------------------- PublishedActions evaluator
+-- * 'PublishedActions' evaluator
+
 newtype PublishedActions = PublishedActions {
-    publishedActions_ :: M.HashMap String Action
+    _publishedActions :: M.HashMap String Action
   } deriving(Typeable, Monoid)
+
 instance Default PublishedActions where def = mempty
+
 makeLensesWithSuffix "A" ''PublishedActions
 instance YiConfigVariable PublishedActions
 
--- | Accessor for the published actions. Consider using 'publishAction'.
+-- | Accessor for the published actions. Consider using
+-- 'publishAction'.
 publishedActions :: Field (M.HashMap String Action)
-publishedActions = customVariable . publishedActions_A
+publishedActions = customVariable . _publishedActionsA
 
--- | Publish the given action, by the given name. This will overwrite any existing actions by the same name.
+-- | Publish the given action, by the given name. This will overwrite
+-- any existing actions by the same name.
 publishAction :: (YiAction a x, Show x) => String -> a -> ConfigM ()
-publishAction s a = (%=) publishedActions (M.insert s (makeAction a))
+publishAction s a = publishedActions %= M.insert s (makeAction a)
 
-{- | Evaluator based on a fixed list of published actions. Has a few differences from 'ghciEvaluator':
-
-  * expressions can't be evaluated
-
-  * all suggested actions are actually valued
-
-  * (related to the above) doesn't contain junk actions from Prelude
-
-  * doesn't require GHCi backend, so uses less memory
--}
+-- Evaluator based on a fixed list of published actions. Has a few
+-- differences from 'ghciEvaluator':
+--
+-- * expressions can't be evaluated
+--
+-- * all suggested actions are actually valued
+--
+-- * (related to the above) doesn't contain junk actions from Prelude
+--
+-- * doesn't require GHCi backend, so uses less memory
 publishedActionsEvaluator :: Evaluator
-publishedActionsEvaluator = Evaluator{..} where
-    getAllNamesInScopeImpl = (M.keys . (^. publishedActions)) <$> askCfg
-    execEditorActionImpl s =
-        ((M.lookup s . (^. publishedActions)) <$> askCfg) >>=
-        maybe (return ()) runAction
+publishedActionsEvaluator = Evaluator
+  { getAllNamesInScopeImpl = askCfg <&> M.keys . (^. publishedActions)
+  , execEditorActionImpl = \s ->
+      askCfg <&> M.lookup s . (^. publishedActions) >>= mapM_ runAction
+  }
 
+-- * Miscellaneous interpreter
 
-------------------- Miscellaneous interpreter
-
-jumpToE :: String -> Int -> Int -> YiM ()
+-- | Jumps to specified position in a given file.
+jumpToE :: FilePath -- ^ Filename to make the jump in.
+        -> Int -- ^ Line to jump to.
+        -> Int -- ^ Column to jump to.
+        -> YiM ()
 jumpToE filename line column = do
-  void $ editFile filename
-  withBuffer $ do _ <- gotoLn line
-                  moveXorEol column
+  _ <- editFile filename
+  withBuffer $ gotoLn line >> moveXorEol column
 
+-- | Regex parsing the error message format.
 errorRegex :: Regex
 errorRegex = makeRegex "^(.+):([0-9]+):([0-9]+):.*$"
 
+-- | Parses an error message. Fails if it can't parse out the needed
+-- information, namely filename, line number and column number.
 parseErrorMessage :: String -> Maybe (String, Int, Int)
 parseErrorMessage ln = do
-  (_,result,_) <- matchOnceText errorRegex ln
-  let [_,filename,line,col] = take 3 $ map fst $ elems result
-  return (filename, read line, read col)
+  (_ ,result, _) <- matchOnceText errorRegex ln
+  case take 3 $ map fst $ elems result of
+    [_, fname, l, c] -> (,,) <$> return fname <*> readMaybe l <*> readMaybe c
+    _                        -> Nothing
 
-parseErrorMessageB :: BufferM (String, Int, Int)
-parseErrorMessageB = do
-  ln <- readLnB
-  let Just location = parseErrorMessage ln
-  return location
+-- | Tries to parse an error message at current line using
+-- 'parseErrorMessage'.
+parseErrorMessageB :: BufferM (Maybe (String, Int, Int))
+parseErrorMessageB = parseErrorMessage <$> readLnB
 
+-- | Tries to jump to error at the current line. See
+-- 'parseErrorMessageB'.
 jumpToErrorE :: YiM ()
-jumpToErrorE = do
-  (f,l,c) <- withBuffer parseErrorMessageB
-  jumpToE f l c
+jumpToErrorE = withBuffer parseErrorMessageB >>= \case
+  Nothing -> msgEditor "Couldn't parse out an error message."
+  Just (f, l, c) -> jumpToE f l c
 
 prompt :: String
 prompt = "Yi> "
 
+-- | Tries to strip the 'prompt' from the front of the given 'String'.
+-- If the prompt is not found, returns the input command as-is.
 takeCommand :: String -> String
-takeCommand x | prompt `isPrefixOf` x = drop (length prompt) x
-              | otherwise = x
+takeCommand = fromMaybe <*> (^? prefixed prompt)
 
 consoleKeymap :: Keymap
-consoleKeymap = do _ <- event (Event KEnter [])
-                   write $ do x <- withBuffer readLnB
-                              case parseErrorMessage x of
-                                Just (f,l,c) -> jumpToE f l c
-                                Nothing -> do withBuffer $ do
-                                                p <- pointB
-                                                botB
-                                                p' <- pointB
-                                                when (p /= p') $
-                                                   insertN ("\n" ++ prompt ++ takeCommand x)
-                                                insertN "\n"
-                                                pt <- pointB
-                                                insertN prompt
-                                                bm <- getBookmarkB "errorInsert"
-                                                markPointA bm .= pt
-                                              execEditorAction $ takeCommand x
+consoleKeymap = do
+  _ <- event (Event KEnter [])
+  write $ do
+    x <- withBuffer readLnB
+    case parseErrorMessage x of
+      Just (f,l,c) -> jumpToE f l c
+      Nothing -> do
+        withBuffer $ do
+          p <- pointB
+          botB
+          p' <- pointB
+          when (p /= p') $
+             insertN ("\n" ++ prompt ++ takeCommand x)
+          insertN "\n"
+          pt <- pointB
+          insertN prompt
+          bm <- getBookmarkB "errorInsert"
+          markPointA bm .= pt
+        execEditorAction $ takeCommand x
