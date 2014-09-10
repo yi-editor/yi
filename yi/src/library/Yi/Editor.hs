@@ -45,8 +45,8 @@ import qualified Data.List.PointedList as PL (atEnd, moveTo)
 import qualified Data.List.PointedList.Circular as PL
 import qualified Data.Map as M
 import           Data.Maybe
-import           Yi.OldRope (Rope)
-import qualified Yi.OldRope as R
+import           Data.Rope (Rope)
+import qualified Data.Rope as R
 import           Data.Semigroup
 import           Data.Typeable
 import           Prelude hiding (foldl,concatMap,foldr,all)

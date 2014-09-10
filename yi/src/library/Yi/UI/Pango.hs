@@ -35,7 +35,7 @@ import           Data.Maybe
 import           Data.Foldable
 import           Data.Traversable
 import qualified Data.Map as M
-import qualified Yi.OldRope as Rope
+import qualified Data.Rope as Rope
 import           Graphics.UI.Gtk hiding (Region, Window, Action , Point,
                                Style, Modifier, on)
 import qualified Graphics.UI.Gtk as Gtk

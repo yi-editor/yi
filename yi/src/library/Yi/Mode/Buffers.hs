@@ -16,7 +16,7 @@ import Control.Applicative ((<$>))
 import Control.Lens
 import Data.List (intercalate)
 import Data.List.NonEmpty (toList)
-import Yi.OldRope (fromString)
+import Data.Rope (fromString)
 import System.FilePath (takeFileName)
 import Yi.Core
 

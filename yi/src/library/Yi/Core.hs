@@ -72,7 +72,7 @@ import           Data.List.Split (splitOn)
 import qualified Data.Map as M
 import           Data.Maybe
 import           Data.Monoid
-import qualified Yi.OldRope as R
+import qualified Data.Rope as R
 import           Data.Time
 import           Data.Time.Clock.POSIX
 import           Data.Traversable

@@ -12,7 +12,7 @@ import Data.List (group, isPrefixOf)
 import Data.Maybe (fromMaybe)
 import Data.Monoid
 import qualified Data.HashMap.Strict as HM
-import qualified Yi.OldRope as R
+import qualified Data.Rope as R
 
 import Yi.Buffer hiding (Insert)
 import Yi.Core (quitEditor, closeWindow)
@@ -444,7 +444,7 @@ openFileUnderCursor editorAction = do
         withEditor . fail $ "Can't find file \"" ++ fileName ++ "\""
     else do
         maybeM withEditor editorAction
-        void . editFile $ fileName
+        void . editFile $ fileName 
 
 recordMacroBinding :: VimBinding
 recordMacroBinding = VimBindingE f
@@ -494,3 +494,4 @@ withCount action = flip replicateM_ action =<< getCountE
 
 withCountOnBuffer0 :: BufferM () -> EditorM ()
 withCountOnBuffer0 action = withCount $ withBuffer0 action
+

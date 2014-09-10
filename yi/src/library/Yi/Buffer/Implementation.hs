@@ -84,8 +84,8 @@ import Yi.Region
 import Yi.Style
 import Yi.Syntax
 import Yi.Utils
-import qualified Yi.OldRope as F
-import Yi.OldRope (Rope)
+import qualified Data.Rope as F
+import Data.Rope (Rope)
 import qualified Data.Map as M
 import qualified Data.Set as Set
 
