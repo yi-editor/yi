@@ -25,7 +25,7 @@ import Data.Foldable (find)
 import System.Directory
 import System.FilePath
 import System.FriendlyPath
-import qualified Data.Rope as R
+import qualified Yi.OldRope as R
 
 import Yi.Config
 import Yi.Core
@@ -129,7 +129,7 @@ viWriteTo f = do
     bufInfo <- withBuffer bufInfoB
     let s   = bufInfoFileName bufInfo
     fwriteToE f
-    let message = (show f ++) (if f == s 
+    let message = (show f ++) (if f == s
                       then " written"
                       else " " ++ show s ++ " written")
     msgEditor message
@@ -181,4 +181,3 @@ setFileName :: BufferRef -> FilePath -> YiM ()
 setFileName b filename = do
   cfn <- liftBase $ userToCanonPath filename
   withGivenBuffer b $ assign identA $ Right cfn
-

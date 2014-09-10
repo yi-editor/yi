@@ -20,8 +20,8 @@ import           Control.Monad.State hiding (forM, forM_, sequence_)
 import           Data.Char
 import           Data.List (isPrefixOf, sort, intersperse)
 import           Data.Maybe (fromMaybe, listToMaybe, catMaybes)
-import           Data.Rope (Rope)
-import qualified Data.Rope as R
+import           Yi.OldRope (Rope)
+import qualified Yi.OldRope as R
 import           Data.Time (UTCTime)
 import           Data.Tuple (swap)
 import           Yi.Buffer.Basic

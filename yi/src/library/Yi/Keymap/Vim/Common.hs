@@ -24,7 +24,7 @@ import GHC.Generics (Generic)
 #endif
 import qualified Data.HashMap.Strict as HM
 import Data.Monoid
-import qualified Data.Rope as R
+import qualified Yi.OldRope as R
 import Data.Default
 import Data.Typeable
 
@@ -152,4 +152,3 @@ data RepeatToken = Finish
 data VimBinding
     = VimBindingY (EventString -> VimState -> MatchResult (YiM RepeatToken))
     | VimBindingE (EventString -> VimState -> MatchResult (EditorM RepeatToken))
-

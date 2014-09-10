@@ -21,7 +21,7 @@ import qualified Yi.Mode.Compilation as Compilation
 import Yi.Process
 import Yi.UI.Common
 import qualified Yi.Mode.Interactive as Interactive
-import qualified Data.Rope as R
+import qualified Yi.OldRope as R
 import Data.Default
 import Data.Typeable
 import Yi.Utils

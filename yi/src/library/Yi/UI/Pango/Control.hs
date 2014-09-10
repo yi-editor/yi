@@ -43,7 +43,7 @@ import Data.Maybe (maybe, fromJust, fromMaybe)
 import Data.IORef
 import Data.List (nub, filter, drop, zip, take, length)
 import Data.Prototype
-import qualified Data.Rope as Rope
+import qualified Yi.OldRope as Rope
 import qualified Data.Map as Map
 import Yi.Core (startEditor, focusAllSyntax)
 import Yi.Buffer

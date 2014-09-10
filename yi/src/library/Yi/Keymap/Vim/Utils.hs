@@ -23,7 +23,7 @@ import Data.Char (isSpace)
 import Data.Foldable (asum)
 import Data.List (group)
 import Data.Maybe (maybe)
-import qualified Data.Rope as R
+import qualified Yi.OldRope as R
 import Safe (headDef)
 
 import Yi.Buffer hiding (Insert)

@@ -30,7 +30,7 @@ import Control.Monad
 import qualified Data.HashMap.Strict as HM
 import Data.Maybe (fromMaybe)
 import Data.Monoid
-import qualified Data.Rope as R
+import qualified Yi.OldRope as R
 
 import Yi.Buffer.Normal
 import Yi.Editor

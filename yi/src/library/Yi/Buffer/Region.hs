@@ -30,7 +30,7 @@ import Control.Lens hiding (transform)
 import Data.Algorithm.Diff
 import Data.Char (isSpace)
 import Data.List (sort)
-import Data.Rope (Rope)
+import Yi.OldRope (Rope)
 
 import Yi.Buffer.Misc
 import Yi.Region

@@ -34,7 +34,7 @@ import qualified Yi.Mode.Haskell as Haskell
 import qualified Yi.Mode.JavaScript as JS
 import qualified Yi.Mode.Latex as Latex
 import qualified Yi.Interact as I
-import qualified Data.Rope as R
+import qualified Yi.OldRope as R
 
 #ifdef FRONTEND_VTY
 import qualified Yi.UI.Vty
@@ -108,7 +108,7 @@ defaultPublishedActions = HM.fromList
 
 
 defaultConfig :: Config
-defaultConfig = 
+defaultConfig =
   publishedActions .~ defaultPublishedActions $
   Config { startFrontEnd    = case availableFrontends of
              [] -> error "panic: no frontend compiled in! (configure with -fvty or another frontend.)"

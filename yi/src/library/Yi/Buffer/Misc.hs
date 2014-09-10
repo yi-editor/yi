@@ -202,8 +202,8 @@ import Data.Foldable
 import Data.Traversable
 import Data.Typeable
 import Data.Function hiding ((.), id)
-import Data.Rope (Rope)
-import qualified Data.Rope as R
+import Yi.OldRope (Rope)
+import qualified Yi.OldRope as R
 import qualified Data.Map as M
 import Data.Maybe
 import {-# source #-} Yi.Keymap

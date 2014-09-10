@@ -20,7 +20,7 @@ import           Config.Dyre.Relaunch
 import           Control.Monad.Base
 import           Control.Monad.State
 import           Control.Lens
-import qualified Data.Rope as R
+import qualified Yi.OldRope as R
 import           System.Environment
 import           System.Exit
 import           Yi.Config
