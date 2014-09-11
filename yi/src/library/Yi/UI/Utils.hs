@@ -92,6 +92,7 @@ attributesPictureAndSelB sty mexp region = do
 
 -- | Arrange a list of items in columns over maximum @maxNumberOfLines@ lines
 arrangeItems :: [String] -> Int -> Int -> [String]
+arrangeItems items _ _ | all null items = []
 arrangeItems items maxWidth maxNumberOfLines = take maxNumberOfLines $ snd choice
     where choice = maximumBy (compare `on` fst) arrangements
           arrangements = fmap (arrangeItems' items maxWidth) (reverse [1..maxNumberOfLines])

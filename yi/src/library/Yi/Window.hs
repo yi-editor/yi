@@ -32,9 +32,9 @@ data Window = Window
     , bufAccessList :: ![BufferRef]
       -- ^ list of last accessed buffers (former bufKeys). Last
       -- accessed one is first element
-    , height    :: Int -- ^ height of the window (in number of screen
+    , height    :: !Int -- ^ height of the window (in number of screen
                        -- lines displayed)
-    , winRegion :: Region -- ^ view area. note that the top point is
+    , winRegion :: !Region -- ^ view area. note that the top point is
                           -- also available as a buffer mark.
     , wkey      :: !WindowRef -- ^ identifier for the window (for UI sync)
     -- This is required for accurate scrolling.
@@ -42,10 +42,10 @@ data Window = Window
     -- lines displayed. Line wrapping changes that number
     -- relative to the height so we can't use height for that
     -- purpose.
-    , actualLines :: Int
+    , actualLines :: !Int
       -- ^ The actual number of buffer lines displayed. Taking into
       -- account line wrapping
-    , jumpList :: JumpList
+    , jumpList :: !JumpList
     } deriving (Typeable)
 
 makeLensesWithSuffix "A" ''Window
