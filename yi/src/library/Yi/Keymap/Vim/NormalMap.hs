@@ -234,10 +234,13 @@ nonrepeatableBindings = fmap (mkBindingE Normal Drop)
     , (char 'R', return (), switchMode Replace)
 
     -- Yanking
-    , (char 'Y',
-        do region <- withBuffer0 $ regionWithTwoMovesB (return ()) moveToEol
-           void $ operatorApplyToRegionE opYank 1 $ StyledRegion Exclusive region
-        , id)
+    , ( char 'Y'
+      , do start <- withBuffer0 $ pointB
+           region <- withBuffer0 $ regionWithTwoMovesB moveToSol moveToEol
+           void $ operatorApplyToRegionE opYank 1 $ StyledRegion LineWise region
+           withBuffer0 $ moveTo start
+      , id
+      )
 
     -- Search
     , (char '*', addVimJumpHereE >> searchWordE True Forward, resetCount)

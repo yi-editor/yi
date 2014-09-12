@@ -4,8 +4,9 @@ Lorem ipsum dolor sit amet
 abc def ghi
 qwe rty uiop
 -- Output
-(1,27)
-Lorem ipsuum dolor sit ametm dolor sit amet
+(2,1)
+Lorem ipsum dolor sit amet
+Lorem ipsum dolor sit amet
 abc def ghi
 qwe rty uiop
 -- Events
