@@ -82,11 +82,12 @@ zeroBinding = VimBindingE f
               currentState <- getDynamic
               case vsCount currentState of
                   Just c -> do
-                      setDynamic $ currentState { vsCount = Just (10 * c) }
+                      setCountE (10 * c)
                       return Continue
                   Nothing -> do
                       withBuffer0 moveToSol
-                      setDynamic $ resetCount currentState
+                      resetCountE
+                      setStickyEolE False
                       return Drop
           f _ _ = NoMatch
 
