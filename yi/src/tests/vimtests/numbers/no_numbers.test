@@ -1,0 +1,12 @@
+-- Input
+(1,1)
+Test case if numbers are not present on the line.
+This should not cause yi to freeze.
+This should not cause the cursor to move.
+-- Output
+(3,1)
+Test case if numbers are not present on the line.
+This should not cause yi to freeze.
+This should not cause the cursor to move.
+-- Events
+<C-a><C-x>j<C-a><C-x>$<C-a><C-x>^11<C-x>j

@@ -1,0 +1,14 @@
+-- Input
+(1,1)
+Test decreasing 0o1 to 0o0
+Test decreasing 0o10 to 0o7
+Test decreasing 0o20 to 0o17
+Test decreasing 0o100 to 0o77
+-- Output
+(4,20)
+Test decreasing 0o0 to 0o0
+Test decreasing 0o7 to 0o7
+Test decreasing 0o17 to 0o17
+Test decreasing 0o77 to 0o77
+-- Events
+<C-x>j<C-x>j<C-x>j<C-x>

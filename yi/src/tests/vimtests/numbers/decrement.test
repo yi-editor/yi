@@ -1,0 +1,20 @@
+-- Input
+(1,1)
+Test decreasing 101 to 99
+Test decreasing 11 to 9
+Test decreasing 9 to 1
+Test decreasing 1 to 0
+Test decreasing 0 to -1
+Test decreasing -1 to -11
+Test decreasing -99 to -101
+-- Output
+(7,20)
+Test decreasing 99 to 99
+Test decreasing 9 to 9
+Test decreasing 1 to 1
+Test decreasing 0 to 0
+Test decreasing -1 to -1
+Test decreasing -11 to -11
+Test decreasing -101 to -101
+-- Events
+2<C-x>j2<C-x>j8<C-x>j<C-x>j<C-x>j10<C-x>j2<C-x>
