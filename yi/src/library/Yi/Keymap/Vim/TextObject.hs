@@ -9,7 +9,7 @@ module Yi.Keymap.Vim.TextObject
 
 import Control.Monad
 
-import Yi.Buffer
+import Yi.Buffer.Adjusted
 import Yi.Keymap.Vim.StyledRegion
 
 data TextObject = TextObject !RegionStyle !TextUnit

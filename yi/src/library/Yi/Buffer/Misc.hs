@@ -177,6 +177,7 @@ module Yi.Buffer.Misc
   , withEveryLineB
   , startUpdateTransactionB
   , commitUpdateTransactionB
+  , applyUpdate
   )
 where
 
@@ -758,7 +759,7 @@ applyUpdate :: Update -> BufferM ()
 applyUpdate update = do
    ro    <- checkRO
    valid <- queryBuffer (isValidUpdate update)
-   when  ( not ro && valid)  $ do
+   when (not ro && valid)  $ do
         forgetPreferCol
         let reversed = reverseUpdateI update
         modifyBuffer (applyUpdateI update)

@@ -4,7 +4,7 @@ module Yi.Keymap.Vim.Ex.Commands.GotoLine
 
 import Data.Char (isDigit)
 
-import Yi.Buffer
+import Yi.Buffer.Adjusted
 import Yi.Keymap
 import Yi.Keymap.Vim.Ex.Types
 import Yi.Keymap.Vim.Ex.Commands.Common (pureExCommand)

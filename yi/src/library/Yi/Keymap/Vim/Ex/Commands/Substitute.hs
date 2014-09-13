@@ -7,7 +7,7 @@ import Control.Monad
 
 import qualified Text.ParserCombinators.Parsec as P
 
-import Yi.Buffer hiding (Delete)
+import Yi.Buffer.Adjusted hiding (Delete)
 import Yi.Keymap
 import Yi.Keymap.Vim.Ex.Types
 import qualified Yi.Keymap.Vim.Ex.Commands.Common as Common

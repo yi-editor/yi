@@ -25,7 +25,7 @@ module Yi.Keymap.Vim.Operator
 import Control.Monad
 import Data.Char (toLower, toUpper)
 import Data.Foldable (find)
-import Yi.Buffer hiding (Insert)
+import Yi.Buffer.Adjusted hiding (Insert)
 import Yi.Editor
 import Yi.Keymap.Vim.Common
 import Yi.Keymap.Vim.EventUtils

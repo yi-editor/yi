@@ -7,7 +7,7 @@ import Control.Applicative
 import Control.Monad
 import Data.Maybe (fromMaybe)
 
-import Yi.Buffer
+import Yi.Buffer.Adjusted
 import Yi.Editor
 import Yi.History
 import Yi.Keymap.Vim.Common

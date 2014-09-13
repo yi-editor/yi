@@ -10,7 +10,7 @@ import Data.Char (ord)
 import Data.List (group)
 import Data.Maybe (fromJust)
 
-import Yi.Buffer hiding (Insert)
+import Yi.Buffer.Adjusted hiding (Insert)
 import Yi.Editor
 import Yi.Keymap.Vim.Common
 import Yi.Keymap.Vim.Operator

@@ -28,7 +28,7 @@ import qualified Data.Rope as R
 import Data.Default
 import Data.Typeable
 
-import Yi.Buffer hiding (Insert)
+import Yi.Buffer.Adjusted hiding (Insert)
 import Yi.Dynamic
 import Yi.Editor
 import Yi.Keymap

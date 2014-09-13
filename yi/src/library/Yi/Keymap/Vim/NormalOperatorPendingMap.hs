@@ -8,7 +8,7 @@ import Data.Char (isDigit)
 import Data.List (isPrefixOf)
 import Data.Maybe (fromMaybe, fromJust)
 
-import Yi.Buffer hiding (Insert)
+import Yi.Buffer.Adjusted hiding (Insert)
 import Yi.Editor
 import Yi.Keymap.Keys
 import Yi.Keymap.Vim.Common

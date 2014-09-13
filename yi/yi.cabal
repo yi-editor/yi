@@ -61,6 +61,7 @@ library
     Yi
     Yi.Boot
     Yi.Buffer
+    Yi.Buffer.Adjusted
     Yi.Buffer.HighLevel
     Yi.Buffer.Indent
     Yi.Buffer.Normal

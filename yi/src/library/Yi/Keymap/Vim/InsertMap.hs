@@ -9,7 +9,7 @@ import Data.List.NonEmpty hiding (drop, span, dropWhile)
 import Data.Char (isDigit)
 import Prelude hiding (head)
 
-import Yi.Buffer hiding (Insert)
+import Yi.Buffer.Adjusted hiding (Insert)
 import Yi.Editor
 import Yi.Event
 import Yi.Keymap.Vim.Common
