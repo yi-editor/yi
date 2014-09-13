@@ -155,8 +155,8 @@ printableAction evs = do
                             firstNonSpaceB
                         -- For testing purposes assume noexpandtab, tw=4
                         "<Tab>" -> insertN $ replicate 4 ' '
-                        "<C-t>" -> shiftIndentOfRegion 1 =<< regionOfB Line
-                        "<C-d>" -> shiftIndentOfRegion (-1) =<< regionOfB Line
+                        "<C-t>" -> shiftIndentOfRegionB 1 =<< regionOfB Line
+                        "<C-d>" -> shiftIndentOfRegionB (-1) =<< regionOfB Line
                         "<C-e>" -> insertCharWithBelowB
                         "<C-y>" -> insertCharWithAboveB
                         "<BS>"  -> bdeleteB

@@ -158,7 +158,7 @@ mkShiftOperator name countMod = VimOperator {
             then indentBlockRegionB (countMod count) reg
             else do
                 reg' <- convertRegionToStyleB reg style
-                shiftIndentOfRegion (countMod count) reg'
+                shiftIndentOfRegionB (countMod count) reg'
         switchModeE Normal
         return Finish
 }
