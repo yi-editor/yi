@@ -17,13 +17,14 @@ import           Control.Lens hiding ((-~), (+~), re, transform)
 import           Control.Monad
 import           Control.Monad.RWS.Strict (ask)
 import           Control.Monad.State hiding (forM, forM_, sequence_)
-import           Data.Char
+import           Data.Char (isDigit, ord, isHexDigit, isOctDigit, toUpper, isUpper, toLower, isSpace)
 import           Data.List (isPrefixOf, sort, intersperse)
 import           Data.Maybe (fromMaybe, listToMaybe, catMaybes)
 import           Data.Rope (Rope)
 import qualified Data.Rope as R
 import           Data.Time (UTCTime)
 import           Data.Tuple (swap)
+import           Numeric (showOct, showHex, readOct, readHex)
 import           Yi.Buffer.Basic
 import           Yi.Buffer.Misc
 import           Yi.Buffer.Normal
@@ -470,6 +471,19 @@ scrollB n = do
     (markPointA fr .=) =<< pointB
   w <- askWindow wkey
   (%=) pointFollowsWindowA (\old w' -> ((w == w') || old w'))
+
+
+-- Scroll line above window to the bottom.
+scrollToLineAboveWindowB :: BufferM ()
+scrollToLineAboveWindowB = do downFromTosB 0
+                              replicateM_ 1 lineUp
+                              scrollCursorToBottomB
+
+-- Scroll line below window to the top.
+scrollToLineBelowWindowB :: BufferM ()
+scrollToLineBelowWindowB = do upFromBosB 0
+                              replicateM_ 1 lineDown
+                              scrollCursorToTopB
 
 -- | Move the point to inside the viewable region
 snapInsB :: BufferM ()
@@ -964,3 +978,62 @@ findMatchingPairB = do
     p <- pointB
     foundMatch <- goToMatch
     unless foundMatch $ moveTo p
+
+-- Vim numbers
+
+-- | Increase (or decrease if negative) next number on line by n.
+incrementNextNumberByB :: Int -> BufferM ()
+incrementNextNumberByB n = do
+    start <- pointB
+    untilB_ (not <$> isNumberB) (moveXorSol 1)
+    untilB_ (isNumberB) (moveXorEol 1)
+    begin <- pointB
+    beginIsEol <- atEol
+    untilB_ (not <$> isNumberB) (moveXorEol 1)
+    end <- pointB
+    if beginIsEol then moveTo start
+    else do modifyRegionB (increment n) (mkRegion begin end)
+            moveXorSol 1
+
+-- | Increment number in string by n.
+increment :: Int -> String -> String
+increment n ('0':'x':xs) = ((\ys -> '0':'x':ys) . (flip showHex "") . (+ n) . (fst . head . readHex)) xs
+increment n ('0':'o':xs) = ((\ys -> '0':'o':ys) . (flip showOct "") . (+ n) . (fst . head . readOct)) xs
+increment n s            = (show . (+ n) . (\x -> read x :: Int)) s
+
+-- | Is character under cursor a number.
+isNumberB :: BufferM Bool
+isNumberB = do
+    eol <- atEol
+    sol <- atSol
+    if sol then isDigit <$> readB
+    else if eol then return False
+         else do moveXorSol 1
+                 leftChar <- readB
+                 moveXorEol 2
+                 rightChar <- readB
+                 moveXorSol 1
+                 currentChar <- readB
+                 test3CharB (leftChar, currentChar, rightChar)
+
+-- | Used by isNumber to test if current character under cursor is a number.
+test3CharB :: (Char, Char, Char) -> BufferM Bool
+test3CharB (previous, current, next)
+    | previous == '0' && current == 'o' && isOctDigit next = return True  -- octal format
+    | previous == '0' && current == 'x' && isHexDigit next = return True  -- hex format
+    |                    current == '-' && isDigit next    = return True  -- negative numbers
+    |                    isDigit current                   = return True  -- all decimal digits
+    |                    isHexDigit current                = testHexB     -- ['a'..'f'] for hex
+    | otherwise                                            = return False
+
+-- | Characters ['a'..'f'] are part of a hex number only if preceded by 0x.
+-- Test if the current occurence of ['a'..'f'] is part of a hex number.
+testHexB :: BufferM Bool
+testHexB = savingPointB $ do
+    untilB_ (not . isHexDigit <$> readB) (moveXorSol 1)
+    leftChar <- readB
+    moveXorSol 1
+    leftToLeftChar <- readB
+    if leftChar == 'x' && leftToLeftChar == '0'
+    then return True
+    else return False

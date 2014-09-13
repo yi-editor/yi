@@ -7,7 +7,7 @@ import Control.Applicative
 import Control.Lens hiding (re)
 import System.Directory (doesFileExist)
 
-import Data.Char
+import Data.Char (ord)
 import Data.List (group, isPrefixOf)
 import Data.Maybe (fromMaybe)
 import Data.Monoid
@@ -288,6 +288,8 @@ nonrepeatableBindings = fmap (mkBindingE Normal Drop)
     , ("<C-w><C-w>", nextWinE, resetCount)
     , ("<C-w>W", prevWinE, resetCount)
     , ("<C-w>p", prevWinE, resetCount)
+    , ("<C-a>", getCountE >>= withBuffer0 . incrementNextNumberByB, resetCount)
+    , ("<C-x>", getCountE >>= withBuffer0 . incrementNextNumberByB . negate, resetCount)
 
     -- z commands
     -- TODO Add prefix count
@@ -303,9 +305,9 @@ nonrepeatableBindings = fmap (mkBindingE Normal Drop)
     , ("zl", withBuffer0 .., resetCount)
     -}
     , ("z.", withBuffer0 $ scrollToCursorB >> moveToSol, resetCount)
-    , ("z+", withBuffer0 scrollToLineBelowWindow, resetCount)
+    , ("z+", withBuffer0 scrollToLineBelowWindowB, resetCount)
     , ("z-", withBuffer0 $ scrollCursorToBottomB >> moveToSol, resetCount)
-    , ("z^", withBuffer0 scrollToLineAboveWindow, resetCount)
+    , ("z^", withBuffer0 scrollToLineAboveWindowB, resetCount)
     {- -- TODO Code folding
     , ("zf", .., resetCount)
     , ("zc", .., resetCount)
@@ -326,16 +328,6 @@ nonrepeatableBindings = fmap (mkBindingE Normal Drop)
     -- TODO ZZ should replicate :x not :wq
     , ("ZZ", fwriteE >> closeWindow, id)
     ]
-
-scrollToLineAboveWindow :: BufferM ()
-scrollToLineAboveWindow = do downFromTosB 0
-                             replicateM_ 1 lineUp
-                             scrollCursorToBottomB
-
-scrollToLineBelowWindow :: BufferM ()
-scrollToLineBelowWindow = do upFromBosB 0
-                             replicateM_ 1 lineDown
-                             scrollCursorToTopB
 
 fileEditBindings :: [VimBinding]
 fileEditBindings =  fmap (mkStringBindingY Normal)
