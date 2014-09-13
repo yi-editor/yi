@@ -31,12 +31,18 @@ import           Yi.Monad
 import           Yi.Window (bufkey)
 
 parse :: String -> Maybe ExCommand
-parse = Common.parse $ do
-    ws <- P.many (P.char 'w')
-    void $ P.try ( P.string "quit") <|> P.string "q"
-    as <- P.many (P.try ( P.string "all") <|> P.string "a")
-    bangs <- P.many (P.char '!')
-    return $! quit (not $ null ws) (not $ null bangs) (not $ null as)
+parse = Common.parse $ P.choice
+    [ do
+        (P.try ( P.string "xit") <|> P.string "x")
+        bangs <- P.many (P.char '!')
+        return (quit True (not $ null bangs) False)
+    , do
+        ws <- P.many (P.char 'w')
+        void $ P.try ( P.string "quit") <|> P.string "q"
+        as <- P.many (P.try ( P.string "all") <|> P.string "a")
+        bangs <- P.many (P.char '!')
+        return $! quit (not $ null ws) (not $ null bangs) (not $ null as)
+    ]
 
 quit :: Bool -> Bool -> Bool -> ExCommand
 quit w f a = Common.impureExCommand {
