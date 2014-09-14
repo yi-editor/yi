@@ -132,9 +132,6 @@ maybeMult Nothing  b       = b
 setStickyEolE :: Bool -> EditorM ()
 setStickyEolE b = modifyStateE $ \s -> s { vsStickyEol = b }
 
-foo bar baz = do bar
-                 baz
-
 updateModeIndicatorE :: VimMode -> EditorM ()
 updateModeIndicatorE prevMode = do
     currentState <- getDynamic
