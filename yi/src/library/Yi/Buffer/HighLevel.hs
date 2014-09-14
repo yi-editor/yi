@@ -1,5 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# OPTIONS_HADDOCK show-extensions #-}
+{-# LANGUAGE MultiWayIf #-}
 
 -- |
 -- Module      :  Yi.Buffer.HighLevel
@@ -1008,23 +1009,23 @@ isNumberB = do
     sol <- atSol
     if sol then isDigit <$> readB
     else if eol then return False
-         else do moveXorSol 1
-                 leftChar <- readB
-                 moveXorEol 2
-                 rightChar <- readB
-                 moveXorSol 1
-                 currentChar <- readB
-                 test3CharB (leftChar, currentChar, rightChar)
+         else test3CharB
 
 -- | Used by isNumber to test if current character under cursor is a number.
-test3CharB :: (Char, Char, Char) -> BufferM Bool
-test3CharB (previous, current, next)
-    | previous == '0' && current == 'o' && isOctDigit next = return True  -- octal format
-    | previous == '0' && current == 'x' && isHexDigit next = return True  -- hex format
-    |                    current == '-' && isDigit next    = return True  -- negative numbers
-    |                    isDigit current                   = return True  -- all decimal digits
-    |                    isHexDigit current                = testHexB     -- ['a'..'f'] for hex
-    | otherwise                                            = return False
+test3CharB :: BufferM Bool
+test3CharB = do
+    moveXorSol 1
+    previous <- readB
+    moveXorEol 2
+    next <- readB
+    moveXorSol 1
+    current <- readB
+    if | previous == '0' && current == 'o' && isOctDigit next -> return True  -- octal format
+       | previous == '0' && current == 'x' && isHexDigit next -> return True  -- hex format
+       |                    current == '-' && isDigit next    -> return True  -- negative numbers
+       |                    isDigit current                   -> return True  -- all decimal digits
+       |                    isHexDigit current                -> testHexB     -- ['a'..'f'] for hex
+       | otherwise                                            -> return False
 
 -- | Characters ['a'..'f'] are part of a hex number only if preceded by 0x.
 -- Test if the current occurence of ['a'..'f'] is part of a hex number.
