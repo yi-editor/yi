@@ -1,7 +1,8 @@
 -- This module is expected to be imported qualified
 
 module Yi.Buffer.Adjusted
-    ( insertB
+    ( bdeleteB
+    , insertB
     , insertN
     , insertN'
     , insertNAt
@@ -17,7 +18,8 @@ import Control.Monad
 import qualified Data.Rope as R
 
 import Yi.Buffer hiding
-    ( insertB
+    ( bdeleteB
+    , insertB
     , insertN
     , insertN'
     , insertNAt
@@ -63,6 +65,9 @@ deleteN n = pointB >>= deleteNAt Forward n
 
 deleteB :: TextUnit -> Direction -> BufferM ()
 deleteB unit dir = deleteRegionB =<< regionOfPartNonEmptyB unit dir
+
+bdeleteB :: BufferM ()
+bdeleteB = deleteB Character Backward
 
 deleteRegionB :: Region -> BufferM ()
 deleteRegionB r =
