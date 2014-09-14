@@ -1,4 +1,6 @@
--- This module is expected to be imported qualified
+-- This module re-exports Yi.Buffer overriding insert* and delete* functions
+-- with their more indent-aware variants. It is intended to be imported
+-- instead of Yi.Buffer or qualified to avoid name clashes.
 
 module Yi.Buffer.Adjusted
     ( bdeleteB
