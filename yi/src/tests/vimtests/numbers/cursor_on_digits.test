@@ -1,0 +1,14 @@
+-- Input
+(1,1)
+Test increasing 109 to 110 when cursor is on 9.
+Test increasing 109 to 110 when cursor is on 0.
+Test increasing 109 to 110 when cursor is on 1.
+Test increasing 109 to 110 when cursor is on space before 1.
+-- Output
+(4,19)
+Test increasing 110 to 110 when cursor is on 9.
+Test increasing 110 to 110 when cursor is on 0.
+Test increasing 110 to 110 when cursor is on 1.
+Test increasing 110 to 110 when cursor is on space before 1.
+-- Events
+3e<C-a>jh<C-a>j2h<C-a>j3h<C-a>

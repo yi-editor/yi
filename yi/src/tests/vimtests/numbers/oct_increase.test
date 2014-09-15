@@ -1,0 +1,14 @@
+-- Input
+(1,1)
+Test increasing 0o1 to 0o2
+Test increasing 0o7 to 0o10
+Test increasing 0o17 to 0o20
+Test increasing 0o77 to 0o100
+-- Output
+(4,21)
+Test increasing 0o2 to 0o2
+Test increasing 0o10 to 0o10
+Test increasing 0o20 to 0o20
+Test increasing 0o100 to 0o100
+-- Events
+<C-a>j<C-a>j<C-a>j<C-a>

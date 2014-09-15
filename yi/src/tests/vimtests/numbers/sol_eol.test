@@ -1,0 +1,12 @@
+-- Input
+(1,1)
+0x1
+0o1
+1
+-- Output
+(3,1)
+0x5
+0o4
+3
+-- Events
+4<C-a>j3<C-a>j2<C-a>
