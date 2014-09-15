@@ -178,8 +178,9 @@ library
     Yi.TextCompletion,
     Yi.UI.Common
     Yi.UI.Batch
-    Yi.UI.Utils
+    Yi.UI.SimpleLayout
     Yi.UI.TabBar
+    Yi.UI.Utils
     Yi.Verifier.JavaScript
     Yi.Window
     Yi.Char.Unicode
