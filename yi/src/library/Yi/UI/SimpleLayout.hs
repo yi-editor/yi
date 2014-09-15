@@ -7,7 +7,7 @@ import Prelude hiding (concatMap)
 import Control.Lens
 import Data.Char
 import Data.Foldable
-import Data.List (nub, partition, sort)
+import Data.List (partition)
 import qualified Data.List.PointedList.Circular as PL
 import Data.Monoid
 

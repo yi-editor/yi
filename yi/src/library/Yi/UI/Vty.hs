@@ -221,7 +221,7 @@ renderWindow cfg e w (win, focused) = Rendered pict cur
         fromMarkPoint = if notMini
                             then fst $ runBuffer win b $ use $ markPointA fromM
                             else Point 0
-        (text, _)    = runBuffer win b (indexedAnnotatedStreamB fromMarkPoint) -- read chars from the buffer, lazily
+        (text, _) = runBuffer win b (indexedAnnotatedStreamB fromMarkPoint) -- read chars from the buffer, lazily
 
         (attributes, _) = runBuffer win b $ attributesPictureAndSelB sty (currentRegex e) region
         -- TODO: I suspect that this costs quite a lot of CPU in the "dry run" which determines the window size;
@@ -233,9 +233,8 @@ renderWindow cfg e w (win, focused) = Rendered pict cur
         tabWidth = tabSize . fst $ runBuffer win b indentSettingsB
         prompt = if isMini win then miniIdentString b else ""
 
-        (rendered, toMarkPoint', cur) =
+        (rendered, cur) =
             drawText h' w
-                     fromMarkPoint
                      point
                      tabWidth
                      ([(c,(wsty, -1)) | c <- prompt] ++ bufData ++ [(' ',(wsty, eofPoint))])
@@ -272,14 +271,13 @@ stys sty ((endPos,sty'):xs) cs = [ sty | _ <- previous ] ++ stys sty' xs later
 
 drawText :: Int    -- ^ The height of the part of the window we are in
          -> Int    -- ^ The width of the part of the window we are in
-         -> Point  -- ^ The position of the first character to draw
          -> Point  -- ^ The position of the cursor
          -> Int    -- ^ The number of spaces to represent a tab character with.
-         -> [(Char,(Vty.Attr,Point))]  -- ^ The data to draw.
-         -> ([Vty.Image], Point, Maybe (Int,Int))
-drawText h w topPoint point tabWidth bufData
-    | h == 0 || w == 0 = ([], topPoint, Nothing)
-    | otherwise        = (renderedLines, bottomPoint, pntpos)
+         -> [(Char, (Vty.Attr, Point))]  -- ^ The data to draw.
+         -> ([Vty.Image], Maybe (Int, Int))
+drawText h w point tabWidth bufData
+    | h == 0 || w == 0 = ([], Nothing)
+    | otherwise        = (renderedLines, pntpos)
     where
 
     -- the number of lines that taking wrapping into account,
@@ -287,11 +285,11 @@ drawText h w topPoint point tabWidth bufData
     wrapped = concatMap (wrapLine w) $ map (concatMap expandGraphic) $ take h $ lines' bufData
     lns0 = take h wrapped
 
-    bottomPoint = case lns0 of
-                   [] -> topPoint
-                   _ -> snd $ snd $ last $ last lns0
-
-    pntpos = listToMaybe [(y,x) | (y,l) <- zip [0..] lns0, (x,(_char,(_attr,p))) <- zip [0..] l, p == point]
+    pntpos = listToMaybe
+        [ (y, x)
+        | (y, l) <- zip [0..] lns0
+        , (x, (_char, (_attr, p))) <- zip [0..] l
+        , p == point]
 
     -- fill lines with blanks, so the selection looks ok.
     renderedLines = map fillColorLine lns0
