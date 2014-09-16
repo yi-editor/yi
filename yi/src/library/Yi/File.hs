@@ -66,9 +66,13 @@ editFile filename = do
     fileToNewBuffer f = do
       now <- io getCurrentTime
       contents <- io $ R.readFile f
+      permissions <- io $ getPermissions f
 
       b <- withEditor $ stringToNewBuffer (Right f) contents
       withGivenBuffer b $ markSavedB now
+
+      if (writable permissions) then return ()
+      else withGivenBuffer b $ assign readOnlyA True
 
       return b
 
