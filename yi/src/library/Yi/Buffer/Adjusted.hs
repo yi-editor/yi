@@ -12,6 +12,7 @@ module Yi.Buffer.Adjusted
     , deleteB
     , deleteN
     , deleteRegionB
+    , deleteRegionWithStyleB
     , module Yi.Buffer
     ) where
 
@@ -30,6 +31,7 @@ import Yi.Buffer hiding
     , deleteN
     , deleteNAt
     , deleteRegionB
+    , deleteRegionWithStyleB
     )
 import qualified Yi.Buffer as B
 import Yi.Misc
@@ -76,3 +78,21 @@ deleteRegionB r =
     deleteNAt (regionDirection r)
               (fromIntegral (regionEnd r ~- regionStart r))
               (regionStart r)
+
+deleteRegionWithStyleB :: Region -> RegionStyle -> BufferM Point
+deleteRegionWithStyleB reg Block = savingPointB $ do
+    (start, lengths) <- shapeOfBlockRegionB reg
+    moveTo start
+    forM_ (zip [1..] lengths) $ \(i, l) -> do
+        deleteN l
+        moveTo start
+        lineMoveRel i
+    case lengths of
+        [l] -> adjBlock (-l)
+        _ -> return ()
+    return start
+
+deleteRegionWithStyleB reg style = savingPointB $ do
+    effectiveRegion <- convertRegionToStyleB reg style
+    deleteRegionB effectiveRegion
+    return $! regionStart effectiveRegion
