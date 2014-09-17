@@ -6,8 +6,10 @@ import Yi
 -- import Yi.UI.Vty (start)
 -- import Yi.UI.Pango (start)
 
+myConfig :: Config
 myConfig = defaultCuaConfig -- replace with defaultVimConfig or defaultCuaConfig
 
+defaultUIConfig :: UIConfig
 defaultUIConfig = configUI myConfig
 
 -- Change the below to your needs, following the explanation in comments. See
