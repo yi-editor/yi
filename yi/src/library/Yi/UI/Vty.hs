@@ -105,7 +105,10 @@ start config submitEvent submitActions editor = do
         }
 
 main :: FrontendState -> IO ()
-main = takeMVar . fsEndMain
+main fs = do
+    tid <- myThreadId
+    labelThread tid "VtyMain"
+    takeMVar (fsEndMain fs)
 
 layout :: FrontendState -> Editor -> IO Editor
 layout fs e = do
