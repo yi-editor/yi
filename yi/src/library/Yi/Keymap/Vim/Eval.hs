@@ -1,13 +1,20 @@
-module Yi.Keymap.Vim.Eval
-    ( scheduleActionStringForEval
-    ) where
+{-# OPTIONS_HADDOCK show-extensions #-}
 
--- This module doesn't contains actual eval, see Yi.Keymap.Vim.vimEval comment
+-- |
+-- Module      :  Yi.Keymap.Vim.Eval
+-- License     :  GPL-2
+-- Maintainer  :  yi-devel@googlegroups.com
+-- Stability   :  experimental
+-- Portability :  portable
+--
+-- This module doesn't contains actual eval, see
+-- 'Yi.Keymap.Vim.vimEval' comment.
+
+module Yi.Keymap.Vim.Eval (scheduleActionStringForEval) where
 
 import Yi.Editor
 import Yi.Keymap.Vim.Common
 import Yi.Keymap.Vim.StateUtils
 
-scheduleActionStringForEval :: String -> EditorM ()
-scheduleActionStringForEval s = modifyStateE $
-    \state -> state { vsStringToEval = s }
+scheduleActionStringForEval :: EventString -> EditorM ()
+scheduleActionStringForEval s = modifyStateE $ \st -> st { vsStringToEval = s }

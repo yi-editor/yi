@@ -32,6 +32,7 @@ module Yi.UI.Pango.Control (
 ) where
 
 import Data.Text (unpack, pack, Text)
+import qualified Data.Text as T
 import Prelude hiding (concatMap, concat, foldl, elem, mapM_)
 import Control.Exception (catch)
 import Control.Monad        hiding (mapM_, forM_)
@@ -40,10 +41,12 @@ import Control.Applicative
 import Control.Lens hiding (views, Action)
 import Data.Foldable
 import Data.Maybe (maybe, fromJust, fromMaybe)
+import Data.Monoid
 import Data.IORef
 import Data.List (nub, filter, drop, zip, take, length)
 import Data.Prototype
-import qualified Data.Rope as Rope
+import Yi.Rope (toText, splitAtLine, YiString)
+import qualified Yi.Rope as R
 import qualified Data.Map as Map
 import Yi.Core (startEditor, focusAllSyntax)
 import Yi.Buffer
@@ -90,8 +93,10 @@ import Data.Typeable
 import qualified Data.List.PointedList as PL (insertRight, withFocus,
                                               PointedList(..), singleton)
 import Yi.Regex
+import Yi.String (showT)
 import System.FilePath
 import qualified Yi.UI.Common as Common
+import qualified Yi.Rope as R
 
 data Control = Control
     { controlYi :: Yi
@@ -256,7 +261,7 @@ getHeightsInTab e tab = do
                 let b0 = findBufferWith (viewFBufRef v) e
                 rgn <- shownRegion e v b0
                 let ret= (windowRef v, round $ fromIntegral h / lineHeight, rgn)
-                return $ a ++ [ret]
+                return $ a <> [ret]
             Nothing -> return a)
       [] (coreTab tab ^. tabWindowsA)
 
@@ -288,12 +293,12 @@ updatePango e v b layout = do
                               from <- (use . markPointA) =<< fromMark <$> askMarks
                               rope <- streamB Forward from
                               p    <- pointB
-                              let content = fst $ Rope.splitAtLine winh rope
+                              let content = fst $ splitAtLine winh rope
                               -- allow BOS offset to be just after the last line
-                              let addNL = if Rope.countNewLines content == winh
-                                              then id
-                                              else (++"\n")
-                              return (from, p, addNL $ Rope.toString content)
+                              let addNL = if R.countNewLines content == winh
+                                          then id
+                                          else (`R.snoc` '\n')
+                              return (from, p, R.toText $ addNL content)
 
   config   <- liftYi askCfg
   if configLineWrap $ configUI config
@@ -360,12 +365,12 @@ setWindowFocus e t v = do
                    findBufferWith (viewFBufRef v) e
       window = findWindowWith (windowRef v) e
       ml = askBuffer window (findBufferWith (viewFBufRef v) e) $
-           getModeLine (commonNamePrefix e)
+           getModeLine (T.pack <$> commonNamePrefix e)
 
 -- TODO
 --  update (textview w) widgetIsFocus True
 --  update (modeline w) labelText ml
---  update (uiWindow ui) windowTitle $ bufferName ++ " - Yi"
+--  update (uiWindow ui) windowTitle $ bufferName <> " - Yi"
 --  update (uiNotebook ui) (notebookChildTabLabel (page t))
 --    (tabAbbrevTitle bufferName)
   return ()
@@ -469,9 +474,9 @@ data Iter = Iter
     , point       :: Point
     }
 
-newBuffer :: BufferId -> String -> ControlM Buffer
+newBuffer :: BufferId -> R.YiString -> ControlM Buffer
 newBuffer id text = do
-    fBufRef <- liftYi $ withEditor $ newBufferE id $ Rope.fromString text
+    fBufRef <- liftYi . withEditor . newBufferE id $ text
     return Buffer{..}
 
 newView :: Buffer -> FontDescription -> ControlM View
@@ -485,7 +490,7 @@ newView buffer font = do
                     }) $ liftYi $ withEditor $ newWindowE False viewFBufRef
     let windowRef = wkey newWindow
     liftYi $ withEditor $ do
-        (%=) windowsA (PL.insertRight newWindow)
+        windowsA %= PL.insertRight newWindow
         e <- get
         put $ focusAllSyntax e
     drawArea <- liftBase drawingAreaNew
@@ -515,7 +520,7 @@ newView buffer font = do
     liftBase $ Gtk.set drawArea [Gtk.widgetCanFocus := True]
 
     liftBase $ drawArea `Gtk.onKeyPress` \event -> do
-        putStrLn $ "Yi Control Key Press = " ++ show event
+        putStrLn $ "Yi Control Key Press = " <> show event
         runControl (runAction $ makeAction $ do
             focusWindowE windowRef
             switchToBufferE viewFBufRef) control
@@ -555,23 +560,23 @@ newView buffer font = do
     --                        from     <- getMarkPointB =<< fromMark <$> askMarks
     --                        rope     <- streamB Forward from
     --                        p        <- pointB
-                let content = fst $ Rope.splitAtLine winh rope
+                let content = fst $ splitAtLine winh rope
                 -- allow BOS offset to be just after the last line
-                let addNL = if Rope.countNewLines content == winh
+                let addNL = if R.countNewLines content == winh
                               then id
-                              else (++"\n")
+                              else (`R.snoc` '\n')
                     sty = configStyle $ configUI config
                           -- attributesPictureAndSelB sty (currentRegex e)
                           --   (mkRegion tos bos)
                           -- return (from, p, addNL $ Rope.toString content,
                           --         picture)
-                let text = addNL $ Rope.toString content
+                let text = R.toText $ addNL content
 
                 picture <- attributesPictureAndSelB sty Nothing
                            (mkRegion tos bos)
 
                 -- add color attributes.
-                let picZip = zip picture $ drop 1 (fst <$> picture) ++ [bos]
+                let picZip = zip picture $ drop 1 (fst <$> picture) <> [bos]
                     strokes = [ (start',s,end') | ((start', s), end') <- picZip
                                                 , s /= emptyAttributes ]
 
@@ -593,7 +598,7 @@ newView buffer font = do
                                          window, tos, bos, winh),
                         tos, rel, point, inserting)) control
 
-        -- putStrLn $ "Setting Layout Attributes " ++ show debug
+        -- putStrLn $ "Setting Layout Attributes " <> show debug
         layoutSetAttributes layout allAttrs
         -- putStrLn "Done Stting Layout Attributes"
         dw      <- widgetGetDrawWindow drawArea
@@ -647,9 +652,9 @@ setBufferMode f buffer = do
     -- adjust the mode
     tbl <- liftYi $ asks (modeTable . yiConfig)
     contents <- liftYi $ withEditor $ withGivenBuffer0 bufRef elemsB
-    let header = take 1024 contents
+    let header = R.toString $ R.take 1024 contents
         hmode = case header =~ ("\\-\\*\\- *([^ ]*) *\\-\\*\\-" :: String) of
-            AllTextSubmatches [_,m] -> m
+            AllTextSubmatches [_,m] -> T.pack m
             _ -> ""
         Just mode = find (\(AnyMode m)-> modeName m == hmode) tbl <|>
                     find (\(AnyMode m)-> modeApplies m f contents) tbl <|>
@@ -670,15 +675,14 @@ withBuffer Buffer{fBufRef = b} f = liftYi $ withEditor $ withGivenBuffer0 b f
 getBuffer :: View -> Buffer
 getBuffer view = Buffer {fBufRef = viewFBufRef view}
 
-setText :: Buffer -> String -> ControlM ()
+setText :: Buffer -> YiString -> ControlM ()
 setText b text = withBuffer b $ do
     r <- regionOfB Document
-
     replaceRegionClever r text
 
-getText :: Buffer -> Iter -> Iter -> ControlM String
+getText :: Buffer -> Iter -> Iter -> ControlM Text
 getText b Iter{point = p1} Iter{point = p2} =
-  withBuffer b . readRegionB $ mkRegion p1 p2
+  fmap toText . withBuffer b . readRegionB $ mkRegion p1 p2
 
 mkCol :: Bool -- ^ is foreground?
       -> Yi.Style.Color -> Gtk.Color
@@ -693,9 +697,9 @@ handleClick view event = do
   control  <- ask
   -- (_tabIdx,winIdx,w) <- getWinInfo ref <$> readIORef (tabCache ui)
 
-  logPutStrLn $ "Click: " ++ show (Gdk.Events.eventX event,
-                                   Gdk.Events.eventY event,
-                                   Gdk.Events.eventClick event)
+  logPutStrLn $ "Click: " <> showT (Gdk.Events.eventX event,
+                                    Gdk.Events.eventY event,
+                                    Gdk.Events.eventClick event)
 
   -- retrieve the clicked offset.
   (_,layoutIndex,_) <- io $ layoutXYToIndex (layout view)
@@ -706,7 +710,7 @@ handleClick view event = do
   let winRef = windowRef view
 
   -- maybe focus the window
-  -- logPutStrLn $ "Clicked inside window: " ++ show view
+  -- logPutStrLn $ "Clicked inside window: " <> show view
 
 --  let focusWindow = do
       -- TODO: check that tabIdx is the focus?
@@ -735,14 +739,15 @@ handleClick view event = do
     (Gdk.Events.ReleaseClick, Gdk.Events.MiddleButton) -> do
         disp <- liftBase $ widgetGetDisplay (drawArea view)
         cb <- liftBase $ clipboardGetForDisplay disp selectionPrimary
-        let cbHandler Nothing = return ()
+        let cbHandler :: Maybe R.YiString -> IO ()
+            cbHandler Nothing = return ()
             cbHandler (Just txt) = runControl (runAction . makeAction $ do
                 window <- findWindowWith winRef <$> get
                 withGivenBufferAndWindow0 window (viewFBufRef view) $ do
                     pointB >>= setSelectionMarkPointB
                     moveTo p1
                     insertN txt) control
-        liftBase $ clipboardRequestText cb cbHandler
+        liftBase $ clipboardRequestText cb (cbHandler . fmap R.fromText)
     _ -> return ()
 
   liftBase $ widgetQueueDraw (drawArea view)
@@ -762,8 +767,8 @@ handleScroll view event = do
 
 handleMove :: View -> Point -> Gdk.Events.Event -> ControlM Bool
 handleMove view p0 event = do
-  logPutStrLn $ "Motion: " ++ show (Gdk.Events.eventX event,
-                                    Gdk.Events.eventY event)
+  logPutStrLn $ "Motion: " <> showT (Gdk.Events.eventX event,
+                                     Gdk.Events.eventY event)
 
   -- retrieve the clicked offset.
   (_,layoutIndex,_) <-
@@ -792,7 +797,7 @@ handleMove view p0 event = do
   selection <- liftBase $ newIORef ""
   let yiAction = do
       txt <- withEditor (withBuffer0 (readRegionB =<< getSelectRegionB))
-             :: YiM String
+             :: YiM R.YiString
       liftBase $ writeIORef selection txt
   runAction $ makeAction yiAction
   txt <- liftBase $ readIORef selection
@@ -800,17 +805,17 @@ handleMove view p0 event = do
   disp <- liftBase $ widgetGetDisplay (drawArea view)
   cb <- liftBase $ clipboardGetForDisplay disp selectionPrimary
   liftBase $ clipboardSetWithData cb [(targetString,0)]
-      (\0 -> void (selectionDataSetText txt)) (return ())
+      (\0 -> void (selectionDataSetText $ R.toText txt)) (return ())
 
   liftBase $ widgetQueueDraw (drawArea view)
   return True
 
 processEvent :: (Event -> IO ()) -> Gdk.Events.Event -> IO Bool
 processEvent ch ev = do
-  -- logPutStrLn $ "Gtk.Event: " ++ show ev
-  -- logPutStrLn $ "Event: " ++ show (gtkToYiEvent ev)
+  -- logPutStrLn $ "Gtk.Event: " <> show ev
+  -- logPutStrLn $ "Event: " <> show (gtkToYiEvent ev)
   case gtkToYiEvent ev of
-    Nothing -> logPutStrLn $ "Event not translatable: " ++ show ev
+    Nothing -> logPutStrLn $ "Event not translatable: " <> showT ev
     Just e -> ch e
   return True
 

@@ -1,10 +1,21 @@
+
+{-# OPTIONS_HADDOCK show-extensions #-}
+
+-- |
+-- Module      :  Yi.Snippets.Haskell
+-- License     :  GPL-2
+-- Maintainer  :  yi-devel@googlegroups.com
+-- Stability   :  experimental
+-- Portability :  portable
+
 module Yi.Snippets.Haskell where
 
-import Yi.Snippets
+import qualified Yi.Rope as R
+import           Yi.Snippets
 
 hsFunction :: SnippetCmd ()
 hsFunction = snippet $
-  cursorWith 1 "f" & " :: " & cursor 2 & "\n" &
+  cursorWith 1 (R.singleton 'f') & " :: " & cursor 2 & "\n" &
   cursor 3 & " = " & cursor 4 & "\n"
 
 hsClass :: SnippetCmd ()

@@ -1,6 +1,15 @@
 {-# LANGUAGE CPP #-}
+{-# LANGUAGE OverloadedStrings #-}
+{-# OPTIONS_HADDOCK show-extensions #-}
 
--- | System.Directory.canonicalizePath replacement
+-- |
+-- Module      :  System.CanonicalizePath
+-- License     :  GPL-2
+-- Maintainer  :  yi-devel@googlegroups.com
+-- Stability   :  experimental
+-- Portability :  portable
+--
+-- System.Directory.canonicalizePath replacement
 module System.CanonicalizePath
   ( canonicalizePath
   , normalisePath
@@ -9,17 +18,17 @@ module System.CanonicalizePath
 
 #ifdef mingw32_HOST_OS
 import qualified System.Win32 as Win32
-import System.FilePath (normalise)
+import           System.FilePath (normalise)
 #endif
-
-import Control.Applicative
-import Control.Monad
-import Data.List.Split     (splitOn, splitOneOf)
-import System.FilePath     ((</>), isDrive, isAbsolute, takeDirectory, pathSeparator, pathSeparators)
-import System.Directory    (getCurrentDirectory)
-import System.PosixCompat.Files  (readSymbolicLink)
-import Control.Exc          (ignoringException)
-
+import           Control.Applicative
+import           Control.Exc          (ignoringException)
+import           Control.Monad
+import           Data.List.Split     (splitOneOf)
+import           Data.Monoid
+import qualified Data.Text as T
+import           System.Directory    (getCurrentDirectory)
+import           System.FilePath     ((</>), isDrive, isAbsolute, takeDirectory, pathSeparator, pathSeparators)
+import           System.PosixCompat.Files  (readSymbolicLink)
 
 -- | Removes `/./` `//` and `/../` sequences from path,
 -- doesn't follow symlinks
@@ -66,19 +75,27 @@ combinePath x y
     | isDrive x = (x ++ [pathSeparator]) </> y -- "C:" </> "bin" = "C:bin"
     | otherwise = x </> y
 
-replaceUpTo :: Eq a => [a] -> [a] -> [a] -> [a]
-replaceUpTo srch rep as =
-  case splitOn srch as of
-    []      -> []
-    [a]     -> a
-    (_:as') -> rep ++ last as'
-
--- replace utility shorthands, similar to Emacs
---   somepath//someotherpath is equivalent to /someotherpath
---   somepath/~/someotherpath is equivalent to ~/someotherpath
-replaceShorthands :: FilePath -> FilePath
-replaceShorthands = replaceUpTo "/~" "~/" . replaceUpTo "//" "/"
+-- Replace utility shorthands, similar to Emacs
+--
+-- @
+-- somepath//someotherpath  ≅ /someotherpath
+-- somepath/~/someotherpath ≅ ~/someotherpath
+-- @
+replaceShorthands :: T.Text -> T.Text
+replaceShorthands = r "/~" "~/" . r "//" "/"
+  where
+    r :: T.Text -> T.Text -> T.Text -> T.Text
+    r s r' a = case T.splitOn s a of
+      []     -> T.empty
+      [a']   -> a'
+      _ : as -> r' <> last as
 
 -- | Splits path into parts by path separator
+--
+-- Text version would look like
+--
+-- @'T.filter' (not . T.null) . T.split (`elem` pathSeparators)@
+--
+-- But we should move to @system-filepath@ package anyway.
 splitPath :: FilePath -> [String]
 splitPath = filter (not . null) . splitOneOf pathSeparators

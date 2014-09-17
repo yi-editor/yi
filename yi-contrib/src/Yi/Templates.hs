@@ -1,26 +1,29 @@
--- | Templates for inserting into documents
-module Yi.Templates
-  ( templates
-  , templateNames
-  , lookupTemplate
-  , addTemplate
-  )
-where
+{-# LANGUAGE OverloadedStrings #-}
+{-# OPTIONS_HADDOCK show-extensions #-}
+
+-- |
+-- Module      :  Yi.Templates
+-- License     :  GPL-2
+-- Maintainer  :  yi-devel@googlegroups.com
+-- Stability   :  experimental
+-- Portability :  portable
+--
+-- Templates for inserting into documents
+
+module Yi.Templates ( templates
+                    , templateNames
+                    , lookupTemplate
+                    , addTemplate
+                    ) where
 
 import qualified Data.Map as Map
-
-import Yi.Buffer (BufferM, insertN)
-import Yi.Keymap (YiM)
-import Yi.Editor (EditorM, withEditor, withBuffer0, printMsg)
-import Yi.MiniBuffer (withMinibuffer)
+import           Yi.Buffer (BufferM, insertN)
+import           Yi.Editor (EditorM, withBuffer0, printMsg)
+import qualified Yi.Rope as R
 
 type Template       = String
 type TemplateName   = String
 type TemplateLookup = Map.Map TemplateName Template
-
--- | Inserting a template from the templates defined in Yi.Templates
-insertTemplate :: YiM ()
-insertTemplate = withMinibuffer "template-name:" (const $ return templateNames) $ withEditor . addTemplate
 
 addTemplate :: String -> EditorM ()
 addTemplate tName =
@@ -29,7 +32,7 @@ addTemplate tName =
     Just t  -> withBuffer0 $ addTemplateBuffer t
   where
   addTemplateBuffer :: Template -> BufferM ()
-  addTemplateBuffer t = insertN t
+  addTemplateBuffer = insertN . R.fromString
 
 templates :: TemplateLookup
 templates =
@@ -78,7 +81,7 @@ haskellTemplates =
               ]
     )
   , ( "GPL-2"
-    , unlines 
+    , unlines
       [ "--"
       , "-- This program is free software; you can redistribute it and/or"
       , "-- modify it under the terms of the GNU General Public License as"

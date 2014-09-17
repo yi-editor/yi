@@ -4,7 +4,6 @@
 
 -- |
 -- Module      :  Yi.Syntax.Paren
--- Copyright   :  (c) JP Bernardy 2008
 -- License     :  GPL-2
 -- Maintainer  :  yi-devel@googlegroups.com
 -- Stability   :  experimental
@@ -45,7 +44,7 @@ ignoredToken :: TT -> Bool
 ignoredToken (Tok t _ _) = isComment t || t == CppDirective
 
 isNoise :: Token -> Bool
-isNoise (Special c) = c `elem` ";,`"
+isNoise (Special c) = c `elem` (";,`" :: String)
 isNoise _ = True
 
 type Expr t = [Tree t]
@@ -107,7 +106,7 @@ parse = Expr <$> parse' tokT tokFromT
 parse' :: (TT -> Token) -> (Token -> TT) -> P TT [Tree TT]
 parse' toTok _ = pExpr <* eof
     where
-      -- | parse a special symbol
+      -- parse a special symbol
       sym c = symbol (isSpecial [c] . toTok)
 
       pleaseSym c = recoverWith errTok <|> sym c

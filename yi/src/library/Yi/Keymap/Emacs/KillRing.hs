@@ -1,15 +1,23 @@
--- Copyright (c) 2005,8 Jean-Philippe Bernardy
+{-# OPTIONS_HADDOCK show-extensions #-}
+
+-- |
+-- Module      :  Yi.Keymap.Emacs.KillRing
+-- License     :  GPL-2
+-- Maintainer  :  yi-devel@googlegroups.com
+-- Stability   :  experimental
+-- Portability :  portable
 
 module Yi.Keymap.Emacs.KillRing where
 
-import Control.Monad (replicateM_)
-import Control.Lens
-import Data.List.NonEmpty
-import Prelude hiding (tail, head)
-import Yi.Keymap
-import Yi.Buffer
-import Yi.Editor
-import Yi.KillRing
+import           Control.Lens
+import           Control.Monad (replicateM_)
+import           Data.List.NonEmpty
+import           Prelude hiding (tail, head)
+import           Yi.Buffer
+import           Yi.Editor
+import           Yi.Keymap
+import           Yi.KillRing
+import qualified Yi.Rope as R
 
 -- * Killring actions
 
@@ -23,7 +31,7 @@ killLineE :: Maybe Int -> YiM ()
 killLineE Nothing  = withBuffer killRestOfLine
 killLineE (Just n) = withBuffer $ replicateM_ (2*n) killRestOfLine
 
-killringPut :: Direction -> String -> EditorM ()
+killringPut :: Direction -> R.YiString -> EditorM ()
 killringPut dir s = killringA %= krPut dir s
 
 -- | Kill the rest of line
@@ -34,18 +42,19 @@ killRestOfLine =
 
 -- | C-y
 yankE :: EditorM ()
-yankE = do (text :| _) <- uses killringA _krContents
-           withBuffer0 $ do pointB >>= setSelectionMarkPointB
-                            insertN text
+yankE = do
+  text :| _ <- uses killringA _krContents
+  withBuffer0 $ pointB >>= setSelectionMarkPointB >> insertN text
 
 -- | M-w
 killRingSaveE :: EditorM ()
-killRingSaveE = do (r, text) <- withBuffer0 $ do
-                            r <- getSelectRegionB
-                            text <- readRegionB r
-                            assign highlightSelectionA False
-                            return (r, text)
-                   killringPut (regionDirection r) text
+killRingSaveE = do
+  (r, text) <- withBuffer0 $ do
+    r <- getSelectRegionB
+    text <- readRegionB r
+    assign highlightSelectionA False
+    return (r, text)
+  killringPut (regionDirection r) text
 -- | M-y
 
 -- TODO: Handle argument, verify last command was a yank

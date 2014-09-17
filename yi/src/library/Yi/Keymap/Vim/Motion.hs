@@ -1,11 +1,13 @@
-module Yi.Keymap.Vim.Motion
-    ( Move(..)
-    , CountedMove(..)
-    , stringToMove
-    , regionOfMoveB
-    , changeMoveStyle
-    ) where
+{-# LANGUAGE OverloadedStrings #-}
+{-# OPTIONS_HADDOCK show-extensions #-}
 
+-- |
+-- Module      :  Yi.Keymap.Vim.Operator
+-- License     :  GPL-2
+-- Maintainer  :  yi-devel@googlegroups.com
+-- Stability   :  experimental
+-- Portability :  portable
+--
 -- TODO:
 --
 -- respecting wrap in gj, g0, etc
@@ -39,17 +41,25 @@ module Yi.Keymap.Vim.Motion
 -- same, which is more logical.  However, this causes a small incompatibility
 -- between Vi and Vim.
 
-import Prelude hiding (repeat)
+module Yi.Keymap.Vim.Motion
+    ( Move(..)
+    , CountedMove(..)
+    , stringToMove
+    , regionOfMoveB
+    , changeMoveStyle
+    ) where
 
-import Control.Applicative
-import Control.Monad
-import Control.Lens
+import           Prelude hiding (repeat)
 
-import Data.Maybe (fromMaybe)
-
-import Yi.Buffer
-import Yi.Keymap.Vim.Common
-import Yi.Keymap.Vim.StyledRegion
+import           Control.Applicative
+import           Control.Lens
+import           Control.Monad
+import           Data.Maybe (fromMaybe)
+import           Data.Monoid
+import qualified Data.Text as T
+import           Yi.Buffer
+import           Yi.Keymap.Vim.Common
+import           Yi.Keymap.Vim.StyledRegion
 
 data Move = Move {
     moveStyle :: !RegionStyle
@@ -59,18 +69,19 @@ data Move = Move {
 
 data CountedMove = CountedMove !(Maybe Int) !Move
 
-stringToMove :: String -> MatchResult Move
+stringToMove :: EventString -> MatchResult Move
 stringToMove s = lookupMove s
-                 <|> matchGotoCharMove s
-                 <|> matchGotoMarkMove s
+                 -- TODO: get rid of unpack
+                 <|> matchGotoCharMove (T.unpack . _unEv $ s)
+                 <|> matchGotoMarkMove (T.unpack . _unEv $ s)
 
-lookupMove :: String -> MatchResult Move
+lookupMove :: EventString -> MatchResult Move
 lookupMove s = findMoveWithStyle Exclusive exclusiveMotions
            <|> findMoveWithStyle Inclusive inclusiveMotions
            <|> findMoveWithStyle LineWise linewiseMotions
-    where findMoveWithStyle style choices = fmap (uncurry (Move style))
-                                            (lookupBestMatch s (fmap regroup choices))
-          regroup (a, b, c) = (a, (b, c))
+  where findMoveWithStyle style choices =
+          fmap (uncurry (Move style)) (lookupBestMatch s (fmap regroup choices))
+        regroup (a, b, c) = (a, (b, c))
 
 changeMoveStyle :: (RegionStyle -> RegionStyle) -> Move -> Move
 changeMoveStyle smod (Move s j m) = Move (smod s) j m
@@ -79,7 +90,7 @@ instance Functor ((,,) a b) where
     fmap f (a, b, c) = (a, b, f c)
 
 -- Linewise motions which treat no count as being the same as a count of 1.
-linewiseMotions :: [(String, Bool, Maybe Int -> BufferM ())]
+linewiseMotions :: [(EventString, Bool, Maybe Int -> BufferM ())]
 linewiseMotions = fmap withDefaultCount
     [ ("j", False, void . lineMoveRel)
     , ("k", False, void . lineMoveRel . negate)
@@ -99,11 +110,11 @@ linewiseMotions = fmap withDefaultCount
     , ("M", True, const middleB)
     , ("L", True, upFromBosB . pred)
     ]
-    ++ [ ("G", True, gotoXOrEOF) ]
+    <> [ ("G", True, gotoXOrEOF) ]
 
 
 -- Exclusive motions which treat no count as being the same as a count of 1.
-exclusiveMotions :: [(String, Bool, Maybe Int -> BufferM ())]
+exclusiveMotions :: [(EventString, Bool, Maybe Int -> BufferM ())]
 exclusiveMotions = fmap withDefaultCount
     [ ("h", False, moveXorSol)
     , ("l", False, moveXorEol)
@@ -126,7 +137,7 @@ exclusiveMotions = fmap withDefaultCount
     ]
 
 -- Inclusive motions which treat no count as being the same as a count of 1.
-inclusiveMotions :: [(String, Bool, Maybe Int -> BufferM ())]
+inclusiveMotions :: [(EventString, Bool, Maybe Int -> BufferM ())]
 inclusiveMotions = fmap (\(key, action) -> (key, False, action . fromMaybe 1))
     [
     -- Word motions
@@ -148,7 +159,7 @@ inclusiveMotions = fmap (\(key, action) -> (key, False, action . fromMaybe 1))
                 when (n > 1) $ void $ lineMoveRel (n - 1)
                 lastNonSpaceB)
     ]
-    ++
+    <>
     [("%", True,
         \maybeCount -> case maybeCount of
             Nothing -> findMatchingPairB
@@ -176,7 +187,7 @@ gotoXOrEOF n = case n of
     Nothing -> botB >> moveToSol
     Just n' -> gotoLn n' >> moveToSol
 
-withDefaultCount :: (String, Bool, Int -> BufferM ()) -> (String, Bool, Maybe Int -> BufferM ())
+withDefaultCount :: (EventString, Bool, Int -> BufferM ()) -> (EventString, Bool, Maybe Int -> BufferM ())
 withDefaultCount = fmap (. fromMaybe 1)
 
 matchGotoMarkMove :: String -> MatchResult Move
@@ -187,7 +198,7 @@ matchGotoMarkMove (m:c:[]) = WholeMatch $ Move style True action
           action _mcount = do
               mmark <- mayGetMarkB [c]
               case mmark of
-                  Nothing -> fail $ "Mark " ++ show c ++ " not set"
+                  Nothing -> fail $ "Mark " <> show c <> " not set"
                   Just mark -> moveTo =<< use (markPointA mark)
 matchGotoMarkMove _ = NoMatch
 

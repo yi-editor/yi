@@ -1,25 +1,34 @@
--- Copyright (c) 2008 Jean-Philippe Bernardy
+{-# OPTIONS_HADDOCK show-extensions #-}
 
-module Yi.Keymap.Cua (
-      keymap
-    , portableKeymap
-    , customizedCuaKeymapSet
-    , cut
-    , paste
-    , copy
-    , del
-    ) where
+-- |
+-- Module      :  Yi.Keymap.Cua
+-- License     :  GPL-2
+-- Maintainer  :  yi-devel@googlegroups.com
+-- Stability   :  experimental
+-- Portability :  portable
+--
+-- Cua keymap.
 
-import Control.Applicative
-import Control.Monad
-import Control.Lens hiding (act)
+module Yi.Keymap.Cua ( keymap
+                     , portableKeymap
+                     , customizedCuaKeymapSet
+                     , cut
+                     , paste
+                     , copy
+                     , del
+                     ) where
 
-import Yi.Core
-import Yi.File
-import Yi.Keymap.Emacs.Utils
-import Yi.Misc (adjBlock)
-import Yi.Rectangle
-import Yi.String
+import           Control.Applicative
+import           Control.Lens hiding (act)
+import           Control.Monad
+import qualified Data.Text as T
+import           Yi.Core
+import           Yi.File
+import           Yi.Keymap.Emacs.Utils
+import           Yi.Misc (adjBlock)
+import           Yi.Rectangle
+import qualified Yi.Rope as R
+import           Yi.String
 
 customizedCuaKeymapSet :: Keymap -> KeymapSet
 customizedCuaKeymapSet userKeymap =
@@ -41,7 +50,7 @@ portableKeymap cmd = modelessKeymapSet $ selfInsertKeymap <|> move <|> select <|
 selfInsertKeymap :: Keymap
 selfInsertKeymap = do
   c <- printableChar
-  write (withBuffer0 $ replaceSel [c])
+  write (withBuffer0 . replaceSel $ R.singleton c)
 
 setMark :: Bool -> BufferM ()
 setMark b = do
@@ -54,13 +63,13 @@ setMark b = do
 unsetMark :: BufferM ()
 unsetMark = assign highlightSelectionA False
 
-replaceSel :: String -> BufferM ()
+replaceSel :: R.YiString -> BufferM ()
 replaceSel s = do
   hasSel <- use highlightSelectionA
   if hasSel
     then getSelectRegionB >>= flip replaceRegionB s
     else do
-      when (length s == 1) (adjBlock 1)
+      when (R.length s == 1) (adjBlock 1)
       insertN s
 
 deleteSel :: BufferM () -> YiM ()
@@ -70,21 +79,28 @@ deleteSel act = do
     then withEditor del
     else withBuffer (adjBlock (-1) >> act)
 
-cut, del, copy, paste :: EditorM ()
+cut :: EditorM ()
 cut = copy >> del
+
+del :: EditorM ()
 del = do
   asRect <- withBuffer0 $ use rectangleSelectionA
   if asRect
     then killRectangle
     else withBuffer0 $ deleteRegionB =<< getSelectRegionB
+
+copy :: EditorM ()
 copy =
   (setRegE =<<) $ withBuffer0 $ do
     asRect <- use rectangleSelectionA
     if not asRect
-      then readRegionB =<< getSelectRegionB
+      then getSelectRegionB >>= readRegionB
       else do
         (reg, l, r) <- getRectangle
-        unlines' <$> fmap (take (r-l) . drop l) <$> lines' <$> readRegionB reg
+        let dropOutside = fmap (T.take (r - l) . T.drop l)
+        R.withText (unlines' . dropOutside . lines') <$> readRegionB reg
+
+paste :: EditorM ()
 paste = do
   asRect <- withBuffer0 (use rectangleSelectionA)
   if asRect
@@ -119,7 +135,7 @@ rect   = choice [meta (shift k) ?>>!   setMark True  >> a | (k,a) <- moveKeys]
 other  cmd = choice [
  spec KBS         ?>>! deleteSel bdeleteB,
  spec KDel        ?>>! deleteSel (deleteN 1),
- spec KEnter      ?>>! replaceSel "\n",
+ spec KEnter      ?>>! replaceSel $ R.singleton '\n',
  cmd (char 'q')   ?>>! askQuitEditor,
  cmd (char 'f')   ?>>  isearchKeymap Forward,
  cmd (char 'x')   ?>>! cut,

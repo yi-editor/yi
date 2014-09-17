@@ -1,3 +1,4 @@
+{-# LANGUAGE OverloadedStrings #-}
 {-# OPTIONS_HADDOCK show-extensions #-}
 
 -- |
@@ -23,18 +24,13 @@ import           Control.Applicative
 import           Control.Lens
 import           Data.List (isPrefixOf)
 import           Data.Maybe
+import qualified Data.Text as T
 import           System.FilePath
 import           Text.Regex.TDFA ((=~))
 import           Yi.Buffer
-import           Yi.Lexer.Alex (Tok(..), tokToSpan)
-import           Yi.Style
-import           Yi.Syntax hiding (mkHighlighter)
-import           Yi.Syntax.Tree
-import           Yi.Syntax.Driver (mkHighlighter)
-import           Yi.Keymap
-import           Yi.MiniBuffer
-import           Yi.Lexer.Alex
 import qualified Yi.IncrementalParse as IncrParser
+import           Yi.Keymap
+import           Yi.Lexer.Alex
 import qualified Yi.Lexer.C          as C
 import qualified Yi.Lexer.Cabal      as Cabal
 import qualified Yi.Lexer.Cplusplus  as Cplusplus
@@ -50,8 +46,14 @@ import qualified Yi.Lexer.Python     as Python
 import qualified Yi.Lexer.Ruby       as Ruby
 import qualified Yi.Lexer.SVNCommit  as SVNCommit
 import qualified Yi.Lexer.Srmc       as Srmc
-import qualified Yi.Lexer.Whitespace  as Whitespace
+import qualified Yi.Lexer.Whitespace as Whitespace
+import           Yi.MiniBuffer
+import qualified Yi.Rope as R
+import           Yi.Style
+import           Yi.Syntax hiding (mkHighlighter)
+import           Yi.Syntax.Driver (mkHighlighter)
 import           Yi.Syntax.OnlineTree (manyToks, Tree)
+import           Yi.Syntax.Tree
 
 type TokenBasedMode tok = Mode (Tree (Tok tok))
 type StyleBasedMode = TokenBasedMode StyleName
@@ -92,7 +94,8 @@ styleMode :: Show (l s) => StyleLexer l s t i
 styleMode l = linearSyntaxMode' (l ^. styleLexer) (l ^. tokenToStyle)
 
 removeAnnots :: Mode a -> Mode a
-removeAnnots m = m { modeName = modeName m ++ " no annots", modeGetAnnotations = modeGetAnnotations emptyMode }
+removeAnnots m = m { modeName = modeName m `T.append` " no annots"
+                   , modeGetAnnotations = modeGetAnnotations emptyMode }
 
 cMode :: StyleBasedMode
 cMode = styleMode C.lexer
@@ -171,19 +174,19 @@ jsonMode = styleMode JSON.lexer
   & modeNameA .~ "json"
   & modeAppliesA .~ anyExtension [ "json" ]
 
-isMakefile :: FilePath -> String -> Bool
-isMakefile path _contents = matches $ takeFileName path
-    where matches "Makefile"    = True
-          matches "makefile"    = True
-          matches "GNUmakefile" = True
-          matches filename      = extensionMatches [ "mk" ] filename
-          -- TODO: .mk is fairly standard but are there others?
-
 gnuMakeMode :: StyleBasedMode
 gnuMakeMode = styleMode GNUMake.lexer
   & modeNameA .~ "Makefile"
   & modeAppliesA .~ isMakefile
   & modeIndentSettingsA %~ (\x -> x { expandTabs = False, shiftWidth = 8 })
+  where
+    isMakefile :: FilePath -> a -> Bool
+    isMakefile path _contents = matches $ takeFileName path
+        where matches "Makefile"    = True
+              matches "makefile"    = True
+              matches "GNUmakefile" = True
+              matches filename      = extensionMatches [ "mk" ] filename
+              -- TODO: .mk is fairly standard but are there others?
 
 ottMode :: StyleBasedMode
 ottMode = styleMode Ott.lexer
@@ -196,24 +199,29 @@ whitespaceMode = styleMode Whitespace.lexer
   & modeAppliesA .~ anyExtension [ "ws" ]
   & modeIndentA .~ (\_ _ -> insertB '\t')
 
-
 -- | Determines if the file's extension is one of the extensions in the list.
-extensionMatches :: [String] -> FilePath -> Bool
+extensionMatches :: [String]
+                 -> FilePath
+                 -> Bool
 extensionMatches extensions fileName = extension `elem` extensions'
     where extension = takeExtension fileName
           extensions' = ['.' : ext | ext <- extensions]
 
 -- | When applied to an extensions list, creates a 'Mode.modeApplies' function.
-anyExtension :: [String] -> FilePath -> String -> Bool
+anyExtension :: [String] -- ^ List of extensions
+             -> FilePath -- ^ Path to compare against
+             -> a        -- ^ File contents. Currently unused but see
+                         -- 'extensionOrContentsMatch'.
+             -> Bool
 anyExtension extensions fileName _contents
     = extensionMatches extensions fileName
 
 -- | When applied to an extensions list and regular expression pattern, creates
 -- a 'Mode.modeApplies' function.
-extensionOrContentsMatch :: [String] -> String -> FilePath -> String -> Bool
+extensionOrContentsMatch :: [String] -> String -> FilePath -> R.YiString -> Bool
 extensionOrContentsMatch extensions pattern fileName contents
     = extensionMatches extensions fileName || contentsMatch
-    where contentsMatch = contents =~ pattern :: Bool
+    where contentsMatch = R.toString contents =~ pattern :: Bool
 
 -- | Adds a hook to all matching hooks in a list
 hookModes :: (AnyMode -> Bool) -> BufferM () -> [AnyMode] -> [AnyMode]

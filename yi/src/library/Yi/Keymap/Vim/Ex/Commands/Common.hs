@@ -1,4 +1,5 @@
 {-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE OverloadedStrings #-}
 {-# OPTIONS_HADDOCK show-extensions #-}
 
 -- |
@@ -26,22 +27,25 @@ module Yi.Keymap.Vim.Ex.Commands.Common
 
 import           Control.Applicative
 import           Control.Monad
-import           Data.List (isPrefixOf)
 import           Data.List.NonEmpty (NonEmpty(..))
+import           Data.Monoid
+import qualified Data.Text as T
 import           System.Directory
 import qualified Text.ParserCombinators.Parsec as P
 import           Text.Read (readMaybe)
 import           Yi.Buffer
 import           Yi.Editor
 import           Yi.Keymap
+import           Yi.Keymap.Vim.Common
 import           Yi.Keymap.Vim.Ex.Types
 import           Yi.Misc
 import           Yi.Monad
 import           Yi.Style (errorStyle)
 import           Yi.Utils
 
-parse :: P.GenParser Char () ExCommand -> String -> Maybe ExCommand
-parse parser s = either (const Nothing) Just (P.parse parser "" s)
+parse :: P.GenParser Char () ExCommand -> EventString -> Maybe ExCommand
+parse parser (Ev s) =
+  either (const Nothing) Just (P.parse parser "" $ T.unpack s)
 
 
 parseWithBangAndCount :: P.GenParser Char () a
@@ -50,11 +54,11 @@ parseWithBangAndCount :: P.GenParser Char () a
                           -> (Maybe Int)
                           -> P.GenParser Char () ExCommand)
                       -- ^ A parser for the remaining command arguments.
-                      -> String
+                      -> EventString
                       -- ^ The string to parse.
                       -> Maybe ExCommand
-parseWithBangAndCount nameParser argumentParser s = do
-    either (const Nothing) Just (P.parse parser "" s)
+parseWithBangAndCount nameParser argumentParser (Ev s) = do
+    either (const Nothing) Just (P.parse parser "" $ T.unpack s)
   where
     parser = do
         mcount <- parseCount
@@ -66,11 +70,11 @@ parseWithBang :: P.GenParser Char () a
               -- ^ The command name parser.
               -> (a -> Bool -> P.GenParser Char () ExCommand)
               -- ^ A parser for the remaining command arguments.
-              -> String
+              -> EventString
               -- ^ The string to parse.
               -> Maybe ExCommand
-parseWithBang nameParser argumentParser s = do
-    either (const Nothing) Just (P.parse parser "" s)
+parseWithBang nameParser argumentParser (Ev s) = do
+    either (const Nothing) Just (P.parse parser "" $ T.unpack s)
   where
     parser = do
         a    <- nameParser
@@ -89,7 +93,7 @@ parseCount = do
 
 data OptionAction = Set !Bool | Invert | Ask
 
-parseOption :: String -> (OptionAction -> Action) -> String -> Maybe ExCommand
+parseOption :: String -> (OptionAction -> Action) -> EventString -> Maybe ExCommand
 parseOption name action = parse $ do
     void $ P.string "set "
     nos <- P.many (P.string "no")
@@ -98,7 +102,11 @@ parseOption name action = parse $ do
     bangs <- P.many (P.string "!")
     qs <- P.many (P.string "?")
     return $ pureExCommand {
-        cmdShow = "set " ++ concat nos ++ name ++ concat bangs ++ concat qs
+        cmdShow = T.concat [ "set "
+                           , T.pack $ concat nos
+                           , T.pack name
+                           , T.pack $ concat bangs
+                           , T.pack $ concat qs ]
       , cmdAction = action $
           case fmap (not . null) [qs, bangs, invs, nos] of
               [True, _, _, _] -> Ask
@@ -108,15 +116,16 @@ parseOption name action = parse $ do
               _ -> Set True
       }
 
-removePwd :: FilePath -> YiM FilePath
+removePwd :: T.Text -> YiM T.Text
 removePwd path = do
-    pwd <- io getCurrentDirectory
-    return $! if (pwd ++ "/") `isPrefixOf` path
-              then drop (1 + length pwd) path
-              else path
+  pwd <- T.pack <$> io getCurrentDirectory
+  return $! if pwd `T.snoc` '/' `T.isPrefixOf` path
+            then T.drop (1 + T.length pwd) path
+            else path
 
-filenameComplete :: FilePath -> YiM [FilePath]
-filenameComplete "%" = do
+filenameComplete :: T.Text -> YiM [T.Text]
+filenameComplete f = case f == "%" of
+  True -> do
     -- current buffer is minibuffer
     -- actual file is in the second buffer in bufferStack
     gets bufferStack >>= \case
@@ -124,22 +133,20 @@ filenameComplete "%" = do
         withEditor $ printMsg "filenameComplete: Expected to see minibuffer!"
         return []
       _ :| bufferRef : _ -> do
-        currentFileName <- withGivenBuffer bufferRef $
+        currentFileName <- fmap T.pack . withGivenBuffer bufferRef $
             fmap bufInfoFileName bufInfoB
 
-        let sanitizedFileName = case currentFileName of
-                                ('/':'/':f') -> '/':f'
-                                _ -> currentFileName
+        let sanitizedFileName = if "//" `T.isPrefixOf` currentFileName
+                                then '/' `T.cons` currentFileName
+                                else currentFileName
 
-        fmap (:[]) $ removePwd sanitizedFileName
+        return <$> removePwd sanitizedFileName
 
-
-filenameComplete f = do
+  False -> do
     files <- matchingFileNames Nothing f
-
     case files of
         [] -> return []
-        [x] -> fmap (:[]) $ removePwd x
+        [x] -> return <$> removePwd x
         xs -> sequence $ fmap removePwd xs
 
 forAllBuffers :: MonadEditor m => (BufferRef -> m ()) -> m ()
@@ -159,8 +166,8 @@ impureExCommand = pureExCommand { cmdIsPure = False }
 
 
 -- | Show an error on the status line.
-errorEditor :: String -> EditorM ()
-errorEditor s = printStatus (["error: " ++ s], errorStyle)
+errorEditor :: T.Text -> EditorM ()
+errorEditor s = printStatus (["error: " <> s], errorStyle)
 
 
 -- | Show the common error message about an unsaved file on the status line.

@@ -10,6 +10,7 @@ import           Test.Tasty.HUnit
 import           Yi.Buffer
 import           Yi.Config (Config)
 import           Yi.Editor
+import           Yi.Rope ()
 
 type BufferName = String
 
@@ -17,10 +18,10 @@ type BufferName = String
 -- each.
 createInitialBuffers :: EditorM [(BufferRef, BufferName)]
 createInitialBuffers = do
-    one   <- newBufferE (Right "one")   "Buffer one"
-    two   <- newBufferE (Right "two")   "Buffer two"
-    three <- newBufferE (Right "three") "Buffer three"
-    return [(one, "one"), (two, "two"), (three, "three")]
+  one   <- newBufferE (FileBuffer "one")   "Buffer one"
+  two   <- newBufferE (FileBuffer "two")   "Buffer two"
+  three <- newBufferE (FileBuffer "three") "Buffer three"
+  return [(one, "one"), (two, "two"), (three, "three")]
 
 
 nthBufferRef :: Int -> [(BufferRef, BufferName)] -> BufferRef

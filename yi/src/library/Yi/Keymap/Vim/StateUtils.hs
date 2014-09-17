@@ -1,3 +1,13 @@
+{-# LANGUAGE OverloadedStrings #-}
+{-# OPTIONS_HADDOCK show-extensions #-}
+
+-- |
+-- Module      :  Yi.Keymap.Vim.StateUtils
+-- License     :  GPL-2
+-- Maintainer  :  yi-devel@googlegroups.com
+-- Stability   :  experimental
+-- Portability :  portable
+
 module Yi.Keymap.Vim.StateUtils
     ( switchMode
     , switchModeE
@@ -24,20 +34,20 @@ module Yi.Keymap.Vim.StateUtils
     , resetActiveRegisterE
     ) where
 
-import Control.Applicative
-import Control.Monad
-
+import           Control.Applicative
+import           Control.Monad
 import qualified Data.HashMap.Strict as HM
-import Data.Maybe (fromMaybe)
-import Data.Monoid
-import qualified Data.Rope as R
-
-import Yi.Buffer.Normal
-import Yi.Editor
-import Yi.Event
-import Yi.Keymap.Vim.Common
-import Yi.Keymap.Vim.EventUtils
-import Yi.Style (defaultStyle)
+import           Data.Maybe (fromMaybe)
+import           Data.Monoid
+import qualified Data.Text as T
+import           Yi.Buffer.Normal
+import           Yi.Editor
+import           Yi.Event
+import           Yi.Keymap.Vim.Common
+import           Yi.Keymap.Vim.EventUtils
+import           Yi.Rope (YiString)
+import           Yi.String (showT)
+import           Yi.Style (defaultStyle)
 
 switchMode :: VimMode -> VimState -> VimState
 switchMode mode state = state { vsMode = mode }
@@ -69,15 +79,15 @@ setCountE n = modifyStateE $ \s -> s { vsCount = Just n }
 
 accumulateBindingEventE :: Event -> EditorM ()
 accumulateBindingEventE e = modifyStateE $
-    \s -> s { vsBindingAccumulator = vsBindingAccumulator s ++ eventToString e }
+    \s -> s { vsBindingAccumulator = vsBindingAccumulator s <> eventToEventString e }
 
 accumulateEventE :: Event -> EditorM ()
 accumulateEventE e = modifyStateE $
-    \s -> s { vsAccumulator = vsAccumulator s ++ eventToString e }
+    \s -> s { vsAccumulator = vsAccumulator s <> eventToEventString e }
 
 accumulateTextObjectEventE :: EventString -> EditorM ()
 accumulateTextObjectEventE evs = modifyStateE $
-    \s -> s { vsTextObjectAccumulator = vsTextObjectAccumulator s ++ evs }
+    \s -> s { vsTextObjectAccumulator = vsTextObjectAccumulator s <> evs }
 
 flushAccumulatorE :: EditorM ()
 flushAccumulatorE = do
@@ -85,7 +95,7 @@ flushAccumulatorE = do
     let repeatableAction = stringToRepeatableAction accum
     modifyStateE $ \s ->
         s { vsRepeatableAction = Just repeatableAction
-          , vsAccumulator = []
+          , vsAccumulator = mempty
           , vsCurrentMacroRecording = fmap (fmap (<> accum))
                                            (vsCurrentMacroRecording s)
           }
@@ -94,21 +104,23 @@ dropAccumulatorE :: EditorM ()
 dropAccumulatorE =
     modifyStateE $ \s ->
         let accum = vsAccumulator s
-        in s { vsAccumulator = []
+        in s { vsAccumulator = mempty
              , vsCurrentMacroRecording = fmap (fmap (<> accum))
                                               (vsCurrentMacroRecording s)
              }
 
 dropBindingAccumulatorE :: EditorM ()
-dropBindingAccumulatorE = modifyStateE $ \s -> s { vsBindingAccumulator = [] }
+dropBindingAccumulatorE =
+  modifyStateE $ \s -> s { vsBindingAccumulator = mempty }
 
 dropTextObjectAccumulatorE :: EditorM ()
-dropTextObjectAccumulatorE = modifyStateE $ \s -> s { vsTextObjectAccumulator = [] }
+dropTextObjectAccumulatorE =
+  modifyStateE $ \s -> s { vsTextObjectAccumulator = mempty }
 
 getRegisterE :: RegisterName -> EditorM (Maybe Register)
 getRegisterE name = fmap (HM.lookup name . vsRegisterMap) getDynamic
 
-setRegisterE :: RegisterName -> RegionStyle -> R.Rope -> EditorM ()
+setRegisterE :: RegisterName -> RegionStyle -> YiString -> EditorM ()
 setRegisterE name style rope = do
     rmap <- fmap vsRegisterMap getDynamic
     let rmap' = HM.insert name (Register style rope) rmap
@@ -118,10 +130,10 @@ normalizeCountE :: Maybe Int -> EditorM ()
 normalizeCountE n = do
     mcount <- getMaybeCountE
     modifyStateE $ \s -> s {
-                       vsCount = maybeMult mcount n
-                     , vsAccumulator = show (fromMaybe 1 (maybeMult mcount n))
-                           ++ snd (splitCountedCommand (normalizeCount (vsAccumulator s)))
-                   }
+      vsCount = maybeMult mcount n
+      , vsAccumulator = Ev (showT . fromMaybe 1 $ maybeMult mcount n)
+          <> snd (splitCountedCommand . normalizeCount $ vsAccumulator s)
+      }
 
 maybeMult :: Num a => Maybe a -> Maybe a -> Maybe a
 maybeMult (Just a) (Just b) = Just (a * b)
@@ -134,25 +146,27 @@ setStickyEolE b = modifyStateE $ \s -> s { vsStickyEol = b }
 
 updateModeIndicatorE :: VimMode -> EditorM ()
 updateModeIndicatorE prevMode = do
-    currentState <- getDynamic
-    let mode = vsMode currentState
-        paste = vsPaste currentState
-    when (mode /= prevMode) $ do
-        let modeName = case mode of
-                        Insert _ -> "INSERT" ++ if paste then " (paste) " else ""
-                        InsertNormal -> "(insert)"
-                        InsertVisual -> "(insert) VISUAL"
-                        Replace -> "REPLACE"
-                        Visual Block -> "VISUAL BLOCK"
-                        Visual LineWise -> "VISUAL LINE"
-                        Visual _ -> "VISUAL"
-                        _ -> ""
-            decoratedModeName = if null modeName then "" else "-- " ++ modeName ++ " --"
-        setStatus ([decoratedModeName], defaultStyle)
+  currentState <- getDynamic
+  let mode = vsMode currentState
+      paste = vsPaste currentState
+  when (mode /= prevMode) $ do
+      let modeName = case mode of
+            Insert _ -> "INSERT" <> if paste then " (paste) " else ""
+            InsertNormal -> "(insert)"
+            InsertVisual -> "(insert) VISUAL"
+            Replace -> "REPLACE"
+            Visual Block -> "VISUAL BLOCK"
+            Visual LineWise -> "VISUAL LINE"
+            Visual _ -> "VISUAL"
+            _ -> ""
+          decoratedModeName = if T.null modeName
+                              then mempty
+                              else "-- " <> modeName <> " --"
+      setStatus ([decoratedModeName], defaultStyle)
 
 saveInsertEventStringE :: EventString -> EditorM ()
-saveInsertEventStringE evs =
-    modifyStateE $ \s -> s { vsOngoingInsertEvents = vsOngoingInsertEvents s ++ evs }
+saveInsertEventStringE evs = modifyStateE $ \s ->
+  s { vsOngoingInsertEvents = vsOngoingInsertEvents s <> evs }
 
 resetActiveRegisterE :: EditorM ()
 resetActiveRegisterE = modifyStateE $ \s -> s { vsActiveRegister = '\0' }

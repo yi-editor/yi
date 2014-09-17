@@ -1,17 +1,25 @@
-{-# LANGUAGE
-  FlexibleInstances,
-  TypeFamilies,
-  DeriveFoldable #-}
-{-# OPTIONS_GHC -fno-warn-missing-signatures -fno-warn-incomplete-patterns
-                -fno-warn-name-shadowing #-}
+{-# LANGUAGE DeriveFoldable #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE TypeFamilies #-}
+
 -- we have lots of parsers which don't want signatures; and we have
 -- uniplate patterns
+{-# OPTIONS_GHC -fno-warn-missing-signatures
+                -fno-warn-incomplete-patterns
+                -fno-warn-name-shadowing #-}
+{-# OPTIONS_HADDOCK show-extensions #-}
 
--- Copyright (c) Anders Karlsson 2009
--- Copyright (c) JP Bernardy 2009
+-- |
+-- Module      :  Yi.Syntax.Haskell
+-- License     :  GPL-2
+-- Maintainer  :  yi-devel@googlegroups.com
+-- Stability   :  experimental
+-- Portability :  portable
+--
 -- NOTES:
 -- Note if the layout of the first line (not comments)
 -- is wrong the parser will only parse what is in the blocks given by Layout.hs
+
 module Yi.Syntax.Haskell ( PModule
                          , PModuleDecl
                          , PImport

@@ -1,3 +1,4 @@
+{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 
 -- | Tests for pure manipulations of a single buffer in the Vim Keymap.
@@ -16,12 +17,14 @@
 --
 module Vim.TestPureBufferManipulations (getTests) where
 
+import qualified Data.Text as T
 import qualified Generic.TestPureBufferManipulations as GT
 import           Test.Tasty (TestTree)
 import           Yi (extractValue)
 import           Yi.Config.Default (defaultVimConfig)
 import           Yi.Keymap.Vim
+import           Yi.Keymap.Vim.Common
 
 getTests :: IO TestTree
 getTests = GT.getTests defaultVimConfig "src/tests/vimtests"
-           "Vim" (pureEval $ extractValue defVimConfig)
+           "Vim" (pureEval (extractValue defVimConfig) . Ev . T.pack)

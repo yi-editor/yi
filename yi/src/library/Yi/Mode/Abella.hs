@@ -1,5 +1,6 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE DeriveDataTypeable #-}
+{-# LANGUAGE OverloadedStrings #-}
 {-# OPTIONS_HADDOCK show-extensions #-}
 
 -- |
@@ -24,8 +25,8 @@ import           Control.Monad
 import           Data.Binary
 import           Data.Char (isSpace)
 import           Data.Default
-import           Data.List (isInfixOf)
 import           Data.Maybe (isJust)
+import qualified Data.Text as T
 import           Data.Traversable (sequenceA)
 import           Data.Typeable
 import           Yi.Core
@@ -34,6 +35,7 @@ import           Yi.Lexer.Alex
 import           Yi.MiniBuffer (CommandArguments(..))
 import qualified Yi.Mode.Interactive as Interactive
 import           Yi.Modes (TokenBasedMode, styleMode, anyExtension)
+import qualified Yi.Rope as R
 import           Yi.Syntax (Span)
 import           Yi.Syntax.Tree
 
@@ -112,7 +114,7 @@ abellaAbort = do
 -- | Start Abella in a buffer
 abella :: CommandArguments -> YiM BufferRef
 abella (CommandArguments args) = do
-    b <- Interactive.spawnProcess "abella" args
+    b <- Interactive.spawnProcess "abella" (T.unpack <$> args)
     withEditor . setDynamic . AbellaBuffer $ Just b
     return b
 
@@ -131,10 +133,11 @@ abellaGet = withOtherWindow $ do
                 else abella (CommandArguments [])
 
 -- | Send a command to Abella
-abellaSend :: String -> YiM ()
-abellaSend cmd = do
-    when ("Theorem" `isInfixOf` cmd) $
-      withBuffer $ join (assign . markPointA <$> getTheoremPointMark <*> pointB)
-    b <- abellaGet
-    withGivenBuffer b botB
-    sendToProcess b (cmd ++ "\n")
+abellaSend :: R.YiString -> YiM ()
+abellaSend cmd' = do
+  let cmd = R.toText cmd'
+  when ("Theorem" `T.isInfixOf` cmd) $
+    withBuffer $ join (assign . markPointA <$> getTheoremPointMark <*> pointB)
+  b <- abellaGet
+  withGivenBuffer b botB
+  sendToProcess b . T.unpack $ cmd `T.snoc` '\n'

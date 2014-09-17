@@ -1,60 +1,86 @@
--- | Provides functions for calling Hoogle on the commandline, and processing results
--- into a form useful for completion or insertion.
+{-# LANGUAGE OverloadedStrings #-}
+{-# OPTIONS_HADDOCK show-extensions #-}
+
+-- |
+-- Module      :  Yi.Hoogle
+-- License     :  GPL-2
+-- Maintainer  :  yi-devel@googlegroups.com
+-- Stability   :  experimental
+-- Portability :  portable
+--
+-- Provides functions for calling Hoogle on the commandline, and
+-- processing results into a form useful for completion or insertion.
+
 module Yi.Hoogle where
 
-import Control.Applicative
-import Control.Arrow ((&&&))
-import Data.Char (isUpper)
-import Data.List (isInfixOf, nub)
-import System.Exit (ExitCode(ExitFailure))
+import           Control.Applicative
+import           Control.Arrow ((&&&))
+import           Data.Char (isUpper)
+import           Data.List (nub)
+import qualified Data.Text as T
+import           System.Exit (ExitCode(ExitFailure))
+import           Yi.Core
+import           Yi.Process (runProgCommand)
+import qualified Yi.Rope as R
+import           Yi.String (showT)
+import           Yi.Utils
 
-import Yi.Core
-import Yi.Process (runProgCommand)
-import Yi.Utils
+-- | Remove anything starting with uppercase letter. These denote
+-- either module names or types.
+caseSensitize :: [R.YiString] -> [R.YiString]
+caseSensitize = filter p
+  where
+    p :: R.YiString -> Bool
+    p t = case R.head t of
+      Nothing -> False
+      Just c  -> not $ isUpper c
 
--- | Remove anything starting with uppercase letter. These denote either module names or types.
-caseSensitize :: [String] -> [String]
-caseSensitize = filter (not . isUpper . head)
-
--- | Hoogle's output includes a sort of type keyword, telling whether a hit is a package name, syntax,
--- a module name, etc. But we care primarily about the function names, so we filter out anything containing
--- the keywords.
-gv :: [String] -> [String]
+-- | Hoogle's output includes a sort of type keyword, telling whether
+-- a hit is a package name, syntax, a module name, etc. But we care
+-- primarily about the function names, so we filter out anything
+-- containing the keywords.
+gv :: [R.YiString] -> [R.YiString]
 gv = filter f
-  where f x = not $ any (`isInfixOf` x) ["module ", " type ", "package ", " data ", " keyword "]
+  where
+    ks = ["module ", " type ", "package ", " data ", " keyword "]
+    f x = not $ any (`T.isInfixOf` R.toText x) ks
 
 -- | Query Hoogle, with given search and options. This errors out on no
 -- results or if the hoogle command is not on path.
-hoogleRaw :: String -> String -> IO [String]
+hoogleRaw :: R.YiString -> R.YiString -> IO [R.YiString]
 hoogleRaw srch opts = do
-  let options = filter (not . null) [opts, srch]
-  outp@(_status, out, _err) <- runProgCommand "hoogle" options
+  let options = filter (not . R.null) [opts, srch]
+  outp@(_status, out, _err) <- runProgCommand "hoogle" (R.toString <$> options)
   case outp of
     (ExitFailure 1, "", "") -> -- no output, probably failed to run binary
       fail "Error running hoogle command.  Is hoogle on path?"
     (ExitFailure 1, xs, _) -> fail $ "hoogle failed with: " ++ xs
     _ -> return ()
-  let results = lines out
+  -- TODO: bench ‘R.fromText . T.lines . T.pack’ vs ‘R.lines . R.fromString’
+  let results = fmap R.fromText . T.lines $ T.pack out
   if results == ["No results found"]
     then fail "No Hoogle results"
     else return results
 
 -- | Filter the output of 'hoogleRaw' to leave just functions.
-hoogleFunctions :: String -> IO [String]
-hoogleFunctions a = caseSensitize . gv . nub . map ((!!1) . words) <$> hoogleRaw a ""
+hoogleFunctions :: R.YiString -> IO [R.YiString]
+hoogleFunctions a =
+  caseSensitize . gv . nub . map ((!!1) . R.words) <$> hoogleRaw a ""
 
 -- | Return module-function pairs.
-hoogleFunModule :: String -> IO [(String, String)]
-hoogleFunModule a = map ((head &&& (!! 1)) . words) . gv  <$> hoogleRaw a ""
+hoogleFunModule :: R.YiString -> IO [(R.YiString, R.YiString)]
+hoogleFunModule a = map ((head &&& (!! 1)) . R.words) . gv <$> hoogleRaw a ""
 
 -- | Call out to 'hoogleFunModule', and overwrite the word at point with
 -- the first returned function.
-hoogle :: YiM String
+hoogle :: YiM R.YiString
 hoogle = do
-    (wordRegion,word) <- withBuffer $ do wordRegion <- regionOfB unitWord
-                                         word <- readRegionB wordRegion
-                                         return (wordRegion, word)
+    (wordRegion,word) <- withBuffer $ do
+      wordRegion <- regionOfB unitWord
+      word <- readRegionB wordRegion
+      return (wordRegion, word)
     ((modl,fun):_) <- io $ hoogleFunModule word
+
     withBuffer $ replaceRegionB wordRegion fun
     return modl
 
@@ -62,9 +88,10 @@ hoogle = do
 -- searching Hoogle with the word at point.
 hoogleSearch :: YiM ()
 hoogleSearch = do
-  word <- withBuffer $ do wordRegion <- regionOfB unitWord
-                          readRegionB wordRegion
+  word <- withBuffer $ do
+    wordRegion <- regionOfB unitWord
+    readRegionB wordRegion
   results <- io $ hoogleRaw word ""
 
   -- The quotes help legibility between closely-packed results
-  withEditor $ printMsgs $ map show results
+  withEditor $ printMsgs $ map showT results

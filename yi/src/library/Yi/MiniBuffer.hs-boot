@@ -2,6 +2,7 @@
 
 module Yi.MiniBuffer where
 
-import {-# SOURCE #-} Yi.Keymap (YiM)
+import qualified Data.Text as T
+import           {-# SOURCE #-} Yi.Keymap (YiM)
 
-withMinibufferFree :: String -> (String -> YiM ()) -> YiM ()
+withMinibufferFree :: T.Text -> (T.Text -> YiM ()) -> YiM ()

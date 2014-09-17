@@ -1,3 +1,4 @@
+{-# LANGUAGE OverloadedStrings #-}
 {-# OPTIONS_GHC -fno-warn-incomplete-patterns #-}
 {-# OPTIONS_HADDOCK show-extensions #-}
 
@@ -24,11 +25,12 @@ import Yi.Style
 import Yi.Syntax
 import Yi.Syntax.Haskell
 import Yi.Syntax.Tree (subtrees)
+import Yi.String (showT)
 
 -- TODO: (optimization) make sure we take in account the begin, so we
 -- don't return useless strokes
 getStrokes :: Point -> Point -> Point -> Tree TT -> [Stroke]
-getStrokes point begin _end t0 = trace (show t0) result
+getStrokes point begin _end t0 = trace (showT t0) result
     where result = appEndo (getStr tkDConst point begin _end t0) []
 
 -- | Get strokes Module for module
@@ -120,7 +122,6 @@ paintAtom _ _ = error "wrong usage of paintAtom"
 isErr :: TT -> Bool
 isErr = isErrorTok . tokT
 
-{-# ANN isErrN "HLint: ignore Eta reduce" #-}
 isErrN :: (Foldable v) => v TT -> Bool
 isErrN t = any isErr t
 --         || not $ null $ isError' t

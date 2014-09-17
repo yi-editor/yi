@@ -1,4 +1,15 @@
 {-# LANGUAGE OverloadedStrings #-}
+{-# OPTIONS_HADDOCK show-extensions #-}
+
+-- |
+-- Module      :  Yi.Keymap.Vim.Utils
+-- License     :  GPL-2
+-- Maintainer  :  yi-devel@googlegroups.com
+-- Stability   :  experimental
+-- Portability :  portable
+--
+-- Utils for the Vim keymap.
+
 module Yi.Keymap.Vim.Utils
   ( mkBindingE
   , mkBindingY
@@ -16,39 +27,39 @@ module Yi.Keymap.Vim.Utils
   , addVimJumpHereE
   ) where
 
-import Control.Applicative
-import Control.Monad
-import Control.Lens
-import Data.Char (isSpace)
-import Data.Foldable (asum)
-import Data.List (group)
-import Data.Maybe (maybe)
-import qualified Data.Rope as R
-import Safe (headDef)
-
-import Yi.Buffer hiding (Insert)
-import Yi.Editor
-import Yi.Event
-import Yi.Keymap
-import Yi.Keymap.Vim.Common
-import Yi.Keymap.Vim.Motion
-import Yi.Keymap.Vim.StateUtils
-import Yi.Keymap.Vim.EventUtils
-import Yi.Monad
+import           Control.Applicative
+import           Control.Lens hiding (snoc)
+import           Control.Monad
+import           Data.Char (isSpace)
+import           Data.Foldable (asum)
+import           Data.List (group)
+import qualified Data.Text as T
+import           Safe (headDef)
+import           Yi.Buffer hiding (Insert)
+import           Yi.Editor
+import           Yi.Event
+import           Yi.Keymap
+import           Yi.Keymap.Vim.Common
+import           Yi.Keymap.Vim.EventUtils
+import           Yi.Keymap.Vim.Motion
+import           Yi.Keymap.Vim.StateUtils
+import           Yi.Monad
+import           Yi.Rope (YiString, last, countNewLines)
+import qualified Yi.Rope as R
 
 -- 'mkBindingE' and 'mkBindingY' are helper functions for bindings
 -- where VimState mutation is not dependent on action performed
 -- and prerequisite has form (mode == ... && event == ...)
 
 mkStringBindingE :: VimMode -> RepeatToken
-    -> (String, EditorM (), VimState -> VimState) -> VimBinding
+    -> (EventString, EditorM (), VimState -> VimState) -> VimBinding
 mkStringBindingE mode rtoken (eventString, action, mutate) = VimBindingE f
     where f _ vs | vsMode vs /= mode = NoMatch
           f evs _ = combineAction action mutate rtoken <$
                     evs `matchesString` eventString
 
 mkStringBindingY :: VimMode
-    -> (String, YiM (), VimState -> VimState) -> VimBinding
+    -> (EventString, YiM (), VimState -> VimState) -> VimBinding
 mkStringBindingY mode (eventString, action, mutate) = VimBindingY f
     where f _ vs | vsMode vs /= mode = NoMatch
           f evs _ = combineAction action mutate Drop <$
@@ -57,12 +68,12 @@ mkStringBindingY mode (eventString, action, mutate) = VimBindingY f
 mkBindingE :: VimMode -> RepeatToken -> (Event, EditorM (), VimState -> VimState) -> VimBinding
 mkBindingE mode rtoken (event, action, mutate) = VimBindingE f
     where f evs vs = combineAction action mutate rtoken <$
-                     matchFromBool (vsMode vs == mode && evs == eventToString event)
+                     matchFromBool (vsMode vs == mode && evs == eventToEventString event)
 
 mkBindingY :: VimMode -> (Event, YiM (), VimState -> VimState) -> VimBinding
 mkBindingY mode (event, action, mutate) = VimBindingY f
     where f evs vs = combineAction action mutate Drop <$
-                     matchFromBool (vsMode vs == mode && evs == eventToString event)
+                     matchFromBool (vsMode vs == mode && evs == eventToEventString event)
 
 combineAction :: MonadEditor m => m () -> (VimState -> VimState) -> RepeatToken -> m RepeatToken
 combineAction action mutateState rtoken = do
@@ -76,7 +87,7 @@ selectPureBinding evs state = asum . fmap try
     where try (VimBindingE matcher) = matcher evs state
           try (VimBindingY _) = NoMatch
 
-selectBinding :: String -> VimState -> [VimBinding] -> MatchResult (YiM RepeatToken)
+selectBinding :: EventString -> VimState -> [VimBinding] -> MatchResult (YiM RepeatToken)
 selectBinding input state = asum . fmap try
     where try (VimBindingY matcher) = matcher input state
           try (VimBindingE matcher) = fmap withEditor $ matcher input state
@@ -105,78 +116,88 @@ addVimJumpHereE = do
 
 mkMotionBinding :: RepeatToken -> (VimMode -> Bool) -> VimBinding
 mkMotionBinding token condition = VimBindingE f
-    where f evs state | condition (vsMode state) = fmap (go evs) (stringToMove evs)
-          f _ _ = NoMatch
-          go evs (Move _style isJump move) = do
-              state <- getDynamic
-              count <- getMaybeCountE
-              prevPoint <- withBuffer0 $ do
-                  p <- pointB
-                  move count
-                  leftOnEol
-                  return p
-              when isJump $ addVimJumpAtE prevPoint
-              resetCountE
+  where
+    -- TODO: stringToMove and go both to EventString
+    f :: EventString -> VimState -> MatchResult (EditorM RepeatToken)
+    f evs state | condition (vsMode state) =
+        fmap (go . T.unpack . _unEv $ evs) (stringToMove evs)
+    f _ _ = NoMatch
 
-              -- moving with j/k after $ sticks cursor to the right edge
-              when (evs == "$") $ setStickyEolE True
-              when (evs `elem` group "jk" && vsStickyEol state) $
-                  withBuffer0 $ moveToEol >> moveXorSol 1
-              when (evs `notElem` group "jk$") $ setStickyEolE False
+    go :: String -> Move -> EditorM RepeatToken
+    go evs (Move _style isJump move) = do
+        state <- getDynamic
+        count <- getMaybeCountE
+        prevPoint <- withBuffer0 $ do
+            p <- pointB
+            move count
+            leftOnEol
+            return p
+        when isJump $ addVimJumpAtE prevPoint
+        resetCountE
 
-              let m = head evs
-              when (m `elem` "fFtT") $ do
-                  let c = last evs
-                      (dir, style) =
-                          case m of
-                              'f' -> (Forward, Inclusive)
-                              't' -> (Forward, Exclusive)
-                              'F' -> (Backward, Inclusive)
-                              'T' -> (Backward, Exclusive)
-                              _ -> error "can't happen"
-                      command = GotoCharCommand c dir style
-                  modifyStateE $ \s -> s { vsLastGotoCharCommand = Just command}
+        -- moving with j/k after $ sticks cursor to the right edge
+        when (evs == "$") $ setStickyEolE True
+        when (evs `elem` group "jk" && vsStickyEol state) $
+            withBuffer0 $ moveToEol >> moveXorSol 1
+        when (evs `notElem` group "jk$") $ setStickyEolE False
 
-              return token
+        let m = head evs
+        when (m `elem` "fFtT") $ do
+            let c = Prelude.last evs
+                (dir, style) =
+                    case m of
+                        'f' -> (Forward, Inclusive)
+                        't' -> (Forward, Exclusive)
+                        'F' -> (Backward, Inclusive)
+                        'T' -> (Backward, Exclusive)
+                        _ -> error "can't happen"
+                command = GotoCharCommand c dir style
+            modifyStateE $ \s -> s { vsLastGotoCharCommand = Just command}
+
+        return token
 
 mkChooseRegisterBinding :: (VimState -> Bool) -> VimBinding
-mkChooseRegisterBinding statePredicate = VimBindingE f
+mkChooseRegisterBinding statePredicate = VimBindingE (f . T.unpack . _unEv)
     where f "\"" s | statePredicate s = PartialMatch
           f ['"', c] s | statePredicate s = WholeMatch $ do
-              modifyStateE $ \s -> s { vsActiveRegister = c }
+              modifyStateE $ \s' -> s' { vsActiveRegister = c }
               return Continue
           f _ _ = NoMatch
 
 indentBlockRegionB :: Int -> Region -> BufferM ()
 indentBlockRegionB count reg = do
-    indentSettings <- indentSettingsB
-    (start, lengths) <- shapeOfBlockRegionB reg
-    moveTo start
-    forM_ (zip [1..] lengths) $ \(i, _) ->
-        whenM (not <$> atEol) $ do
-            if count > 0
-            then insertN $ replicate (count * shiftWidth indentSettings) ' '
-            else do
-                let go 0 = return ()
-                    go n = do
-                        c <- readB
-                        when (c == ' ') $
-                            deleteN 1 >> go (n - 1)
-                go (abs count * shiftWidth indentSettings)
-            moveTo start
-            void $ lineMoveRel i
-    moveTo start
+  indentSettings <- indentSettingsB
+  (start, lengths) <- shapeOfBlockRegionB reg
+  moveTo start
+  forM_ (zip [1..] lengths) $ \(i, _) ->
+      whenM (not <$> atEol) $ do
+        let w = shiftWidth indentSettings
+        if count > 0
+        then insertN . R.fromText $ T.replicate (count * w) (T.singleton ' ')
+        else do
+            let go 0 = return ()
+                go n = do
+                    c <- readB
+                    when (c == ' ') $
+                        deleteN 1 >> go (n - 1)
+            go (abs count * w)
+        moveTo start
+        void $ lineMoveRel i
+  moveTo start
 
-pasteInclusiveB :: R.Rope -> RegionStyle -> BufferM ()
+pasteInclusiveB :: YiString -> RegionStyle -> BufferM ()
 pasteInclusiveB rope style = do
-    p0 <- pointB
-    insertRopeWithStyleB rope style
-    if R.countNewLines rope == 0 && style `elem` [Exclusive, Inclusive]
+  p0 <- pointB
+  insertRopeWithStyleB rope style
+  if countNewLines rope == 0 && style `elem` [ Exclusive, Inclusive ]
     then leftB
     else moveTo p0
 
-addNewLineIfNecessary :: R.Rope -> R.Rope
-addNewLineIfNecessary rope = if lastChar == '\n'
-                             then rope
-                             else R.append rope "\n"
-    where lastChar = head $ R.toString $ R.drop (R.length rope - 1) rope
+trailingNewline :: YiString -> Bool
+trailingNewline t = case Yi.Rope.last t of
+  Just '\n' -> True
+  _         -> False
+
+addNewLineIfNecessary :: YiString -> YiString
+addNewLineIfNecessary rope =
+  if trailingNewline rope then rope else rope `R.snoc` '\n'

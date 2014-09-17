@@ -1,10 +1,10 @@
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE OverloadedStrings #-}
 {-# OPTIONS_HADDOCK show-extensions #-}
 
 -- |
 -- Module      :  Yi.TextCompletion
--- Copyright   :  (c) Jean-Philippe Bernardy 2008
 -- License     :  GPL-2
 -- Maintainer  :  yi-devel@googlegroups.com
 -- Stability   :  experimental
@@ -24,20 +24,22 @@ module Yi.TextCompletion (
         CompletionScope(..)
 ) where
 
-import Yi.Completion
-import Control.Applicative
-import Control.Monad
-import Data.Char
-import Data.List (isPrefixOf, findIndex, groupBy)
-import Data.Maybe
-import Data.Default
-import Data.Function (on)
-import Data.Typeable
-import Data.Binary
-import Data.List.NonEmpty (NonEmpty(..))
-
-import Yi.Core
-import Yi.Utils
+import           Control.Applicative
+import           Control.Monad
+import           Data.Binary
+import           Data.Char
+import           Data.Default
+import           Data.Function (on)
+import           Data.List (findIndex)
+import           Data.List.NonEmpty (NonEmpty(..))
+import           Data.Maybe
+import qualified Data.Text as T
+import qualified Data.Text.Encoding as E
+import           Data.Typeable
+import           Yi.Completion
+import           Yi.Core
+import qualified Yi.Rope as R
+import           Yi.Utils
 
 -- ---------------------------------------------------------------------
 -- | Word completion
@@ -47,11 +49,14 @@ import Yi.Utils
 
 
 newtype Completion = Completion
---       Point    -- beginning of the thing we try to complete
-      [String] -- the list of all possible things we can complete to.
+      [T.Text] -- the list of all possible things we can complete to.
                -- (this seems very inefficient; but we use laziness to
                -- our advantage)
-    deriving (Typeable, Binary)
+    deriving (Typeable, Show, Eq)
+
+instance Binary Completion where
+  put (Completion ts) = put (E.encodeUtf8 <$> ts)
+  get = Completion . map E.decodeUtf8 <$> get
 
 -- TODO: put this in keymap state instead
 instance Default Completion where
@@ -65,22 +70,23 @@ resetComplete = setDynamic (Completion [])
 
 -- | Try to complete the current word with occurences found elsewhere in the
 -- editor. Further calls try other options.
-mkWordComplete :: YiM String -- ^ Extract function
-               -> (String -> YiM [String]) -- ^ Source function
-               -> ([String] -> YiM ()) -- ^ Message function
-               -> (String -> String -> Bool) -- ^ Predicate matcher
-               -> YiM String
+mkWordComplete :: YiM T.Text -- ^ Extract function
+               -> (T.Text -> YiM [T.Text]) -- ^ Source function
+               -> ([T.Text] -> YiM ()) -- ^ Message function
+               -> (T.Text -> T.Text -> Bool) -- ^ Predicate matcher
+               -> YiM T.Text
 mkWordComplete extractFn sourceFn msgFn predMatch = do
   Completion complList <- withEditor getDynamic
   case complList of
     (x:xs) -> do -- more alternatives, use them.
        msgFn (x:xs)
-       withEditor $ setDynamic (Completion xs)
+       withEditor . setDynamic $ Completion xs
        return x
     [] -> do -- no alternatives, build them.
       w <- extractFn
       ws <- sourceFn w
-      setDynamic (Completion $ nubSet (filter (matches w) ws) ++ [w])
+      let comps = nubSet (filter (matches w) ws) ++ [w]
+      setDynamic $ Completion comps
       -- We put 'w' back at the end so we go back to it after seeing
       -- all possibilities.
 
@@ -89,20 +95,22 @@ mkWordComplete extractFn sourceFn msgFn predMatch = do
 
   where matches x y = x `predMatch` y && x/=y
 
-wordCompleteString' :: Bool -> YiM String
+wordCompleteString' :: Bool -> YiM T.Text
 wordCompleteString' caseSensitive =
   mkWordComplete (withEditor $ withBuffer0 $
-                   readRegionB =<< regionOfPartB unitWord Backward)
+                   textRegion =<< regionOfPartB unitWord Backward)
                  (\_ -> withEditor wordsForCompletion)
                  (\_ -> return ())
                  (mkIsPrefixOf caseSensitive)
+  where
+    textRegion = fmap R.toText . readRegionB
 
-wordCompleteString :: YiM String
+wordCompleteString :: YiM T.Text
 wordCompleteString = wordCompleteString' True
 
 wordComplete' :: Bool -> YiM ()
 wordComplete' caseSensitive = do
-  x <- wordCompleteString' caseSensitive
+  x <- R.fromText <$> wordCompleteString' caseSensitive
   withEditor $ withBuffer0 $
     flip replaceRegionB x =<< regionOfPartB unitWord Backward
 
@@ -144,42 +152,44 @@ data CompletionScope = FromCurrentBuffer | FromAllBuffers
   It is by no means perfect but it's also not bad, pretty usable.
 -}
 veryQuickCompleteWord :: CompletionScope -> EditorM ()
-veryQuickCompleteWord scope =
-  do (curWord, curWords) <- withBuffer0 wordsAndCurrentWord
-     allWords <- fmap concat $ withEveryBufferE $ fmap words' elemsB
-     let match :: String -> Maybe String
-         match x = if (curWord `isPrefixOf` x) && (x /= curWord)
-                   then Just x
-                   else Nothing
-         wordsToChooseFrom = if scope == FromCurrentBuffer
-                             then curWords
-                             else allWords
-     preText             <- completeInList curWord match wordsToChooseFrom
-     if curWord == ""
-        then printMsg "No word to complete"
-        else withBuffer0 $ insertN $ drop (length curWord) preText
+veryQuickCompleteWord scope = do
+  (curWord, curWords) <- withBuffer0 wordsAndCurrentWord
+  allWords <- fmap concat $ withEveryBufferE $ words' <$> (R.toText <$> elemsB)
+  let match :: T.Text -> Maybe T.Text
+      match x = if (curWord `T.isPrefixOf` x) && (x /= curWord)
+                then Just x
+                else Nothing
+      wordsToChooseFrom = if scope == FromCurrentBuffer
+                          then curWords
+                          else allWords
+  preText             <- completeInList curWord match wordsToChooseFrom
+  if T.null curWord
+    then printMsg "No word to complete"
+    else withBuffer0 . insertN . R.fromText $ T.drop (T.length curWord) preText
 
-wordsAndCurrentWord :: BufferM (String, [String])
+wordsAndCurrentWord :: BufferM (T.Text, [T.Text])
 wordsAndCurrentWord =
-  do curText          <- elemsB
-     curWord          <- readRegionB =<< regionOfPartB unitWord Backward
+  do curText          <- R.toText <$> elemsB
+     curWord          <-
+       fmap R.toText $ readRegionB =<< regionOfPartB unitWord Backward
      return (curWord, words' curText)
 
-wordsForCompletionInBuffer :: BufferM [String]
+wordsForCompletionInBuffer :: BufferM [T.Text]
 wordsForCompletionInBuffer = do
-  above <- readRegionB =<< regionOfPartB Document Backward
-  below <- readRegionB =<< regionOfPartB Document Forward
-  return (reverse (words' above) ++ words' below)
+  let readTextRegion = fmap R.toText . readRegionB
+  above <- readTextRegion =<< regionOfPartB Document Backward
+  below <- readTextRegion =<< regionOfPartB Document Forward
+  return $ reverse (words' above) ++ words' below
 
-wordsForCompletion :: EditorM [String]
+wordsForCompletion :: EditorM [T.Text]
 wordsForCompletion = do
     _ :| bs <- fmap bkey <$> getBufferStack
     w0 <- withBuffer0 wordsForCompletionInBuffer
-    contents <- forM bs $ \b->withGivenBuffer0 b elemsB
+    contents <- forM bs $ \b -> withGivenBuffer0 b (R.toText <$> elemsB)
     return $ w0 ++ concatMap words' contents
 
-words' :: String -> [String]
-words' = filter (isJust . charClass . head) . groupBy ((==) `on` charClass)
+words' :: T.Text -> [T.Text]
+words' = filter (isJust . charClass . T.head) . T.groupBy ((==) `on` charClass)
 
 charClass :: Char -> Maybe Int
 charClass c = findIndex (generalCategory c `elem`)

@@ -1,24 +1,34 @@
--- Copyright (C) 2008 JP Bernardy
--- | Utilities shared by various UIs
+{-# OPTIONS_HADDOCK show-extensions #-}
+
+-- |
+-- Module      :  Yi.UI.Utils
+-- License     :  GPL-2
+-- Maintainer  :  yi-devel@googlegroups.com
+-- Stability   :  experimental
+-- Portability :  portable
+--
+-- Utilities shared by various UIs
+
 module Yi.UI.Utils where
 
-import Prelude hiding (mapM)
-import Yi.Buffer
-import Yi.Window
-import Control.Arrow (second)
-import Control.Applicative
-import Control.Lens
-import Data.Function (on)
-import Data.Monoid
-import Data.Traversable (mapM)
-import Data.Foldable (maximumBy)
-import Yi.Style
-import Data.List (transpose)
-import Yi.Syntax (Span(..))
-import Data.List.Split (chunksOf)
-import Yi.String (padLeft)
-import Control.Monad.State (evalState,modify)
-import Control.Monad.State.Class (gets)
+import           Control.Applicative
+import           Control.Arrow (second)
+import           Control.Lens
+import           Control.Monad.State (evalState,modify)
+import           Control.Monad.State.Class (gets)
+import           Data.Foldable (maximumBy)
+import           Data.Function (on)
+import           Data.List (transpose)
+import           Data.List.Split (chunksOf)
+import           Data.Monoid
+import qualified Data.Text as T
+import           Data.Traversable (mapM)
+import           Prelude hiding (mapM)
+import           Yi.Buffer
+import           Yi.String (padLeft)
+import           Yi.Style
+import           Yi.Syntax (Span(..))
+import           Yi.Window
 
 indexedAnnotatedStreamB :: Point -> BufferM [(Point, Char)]
 indexedAnnotatedStreamB p = do
@@ -28,13 +38,12 @@ indexedAnnotatedStreamB p = do
 
 applyHeights :: Traversable t => [Int] -> t Window -> t Window
 applyHeights heights ws = evalState (mapM distribute ws) heights
-    where 
-      distribute win = if isMini win 
+    where
+      distribute win = if isMini win
           then return win{height = 1}
           else (do h <- gets head
                    modify tail
                    return win{height = h})
-
 
 spliceAnnots :: [(Point,Char)] -> [Span String] -> [(Point,Char)]
 spliceAnnots text [] = text
@@ -91,17 +100,20 @@ attributesPictureAndSelB sty mexp region = do
 
 
 -- | Arrange a list of items in columns over maximum @maxNumberOfLines@ lines
-arrangeItems :: [String] -> Int -> Int -> [String]
+arrangeItems :: [T.Text] -> Int -> Int -> [T.Text]
 arrangeItems items maxWidth maxNumberOfLines = take maxNumberOfLines $ snd choice
     where choice = maximumBy (compare `on` fst) arrangements
           arrangements = fmap (arrangeItems' items maxWidth) (reverse [1..maxNumberOfLines])
 
 -- | Arrange a list of items in columns over @numberOfLines@ lines.
-arrangeItems' :: [String] -> Int -> Int -> (Int, [String])
-arrangeItems' items maxWidth numberOfLines = (fittedItems,theLines)
-    where columns = chunksOf numberOfLines items
+--
+-- TODO: proper Text/YiString implementation
+arrangeItems' :: [T.Text] -> Int -> Int -> (Int, [T.Text])
+arrangeItems' items' maxWidth numberOfLines = (fittedItems,theLines)
+    where items = T.unpack <$> items'
+          columns = chunksOf numberOfLines items
           columnsWidth = fmap (maximum . fmap length) columns
           totalWidths = scanl (\x y -> 1 + x + y) 0 columnsWidth
           shownItems = scanl (+) 0 (fmap length columns)
           fittedItems = snd $ last $ takeWhile ((<= maxWidth) . fst) $ zip totalWidths shownItems
-          theLines = fmap (unwords . zipWith padLeft columnsWidth) $ transpose columns
+          theLines = fmap (T.pack . unwords . zipWith padLeft columnsWidth) $ transpose columns

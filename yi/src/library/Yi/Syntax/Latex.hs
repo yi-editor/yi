@@ -57,14 +57,14 @@ instance IsTree Tree where
 parse :: P TT (Tree TT)
 parse = pExpr True <* eof
     where
-      -- | Create a special character symbol
+      -- Create a special character symbol
       newT c = tokFromT (Special c)
       -- errT = (\next -> case next of
       --     Nothing -> newT '!'
       --     Just (Tok {tokPosn = posn}) -> Tok { tokT = Special '!', tokPosn = posn-1, tokSize = 1 -- FIXME: size should be 1 char, not one byte!
       --                      }) <$> lookNext
       errT = pure (newT '!')
-      -- | parse a special symbol
+      -- parse a special symbol
       sym' p = symbol (p . tokT)
       sym t = sym' (== t)
 
@@ -141,7 +141,6 @@ tokenToStyle t =
     End _ -> keywordStyle
     NewCommand -> keywordStyle
 
-{-# ANN isSpecial "HLint: ignore Use String" #-}
 isSpecial :: [Char] -> Token -> Bool
 isSpecial cs (Special c) = c `elem` cs
 isSpecial _  _ = False

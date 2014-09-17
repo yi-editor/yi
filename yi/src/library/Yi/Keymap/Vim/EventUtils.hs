@@ -1,20 +1,32 @@
+{-# LANGUAGE OverloadedStrings #-}
+{-# OPTIONS_HADDOCK show-extensions #-}
+
+-- |
+-- Module      :  Yi.Keymap.Vim.EventUtils
+-- License     :  GPL-2
+-- Maintainer  :  yi-devel@googlegroups.com
+-- Stability   :  experimental
+-- Portability :  portable
+
 module Yi.Keymap.Vim.EventUtils
   ( stringToEvent
-  , eventToString
+  , eventToEventString
   , parseEvents
   , stringToRepeatableAction
   , normalizeCount
   , splitCountedCommand
   ) where
 
-import Data.Char (toUpper, isDigit)
-import Data.List (foldl')
+import           Data.Char (toUpper, isDigit)
+import           Data.List (foldl')
 import qualified Data.Map as M
-import Data.Tuple (swap)
-
-import Yi.Event
-import Yi.Keymap.Keys (char, spec, ctrl, meta)
-import Yi.Keymap.Vim.Common
+import           Data.Monoid
+import qualified Data.Text as T
+import           Data.Tuple (swap)
+import           Yi.Event
+import           Yi.Keymap.Keys (char, spec, ctrl, meta)
+import           Yi.Keymap.Vim.Common
+import           Yi.String
 
 specMap :: M.Map EventString Key
 specMap = M.fromList specList
@@ -22,22 +34,22 @@ specMap = M.fromList specList
 invSpecMap :: M.Map Key EventString
 invSpecMap = M.fromList $ fmap swap specList
 
-specList :: [(String, Key)]
+specList :: [(EventString, Key)]
 specList =
-    [ ("Esc", KEsc)
-    , ("CR", KEnter)
-    , ("BS", KBS)
-    , ("Tab", KTab)
-    , ("Down", KDown)
-    , ("Up", KUp)
-    , ("Left", KLeft)
-    , ("Right", KRight)
-    , ("PageUp", KPageUp)
-    , ("PageDown", KPageDown)
-    , ("Home", KHome)
-    , ("End", KEnd)
-    , ("Ins", KIns)
-    , ("Del", KDel)
+    [ (Ev "Esc", KEsc)
+    , (Ev "CR", KEnter)
+    , (Ev "BS", KBS)
+    , (Ev "Tab", KTab)
+    , (Ev "Down", KDown)
+    , (Ev "Up", KUp)
+    , (Ev "Left", KLeft)
+    , (Ev "Right", KRight)
+    , (Ev "PageUp", KPageUp)
+    , (Ev "PageDown", KPageDown)
+    , (Ev "Home", KHome)
+    , (Ev "End", KEnd)
+    , (Ev "Ins", KIns)
+    , (Ev "Del", KDel)
     ]
 
 stringToEvent :: String -> Event
@@ -54,57 +66,68 @@ stringToEvent s = error ("Invalid event string " ++ show s)
 
 stringToEvent' :: Int -> String -> (Event -> Event) -> Event
 stringToEvent' toDrop inputString modifier =
-    let analyzedString = drop toDrop inputString
-    in  case analyzedString of
-            [c,'>'] -> modifier (char c)
-            _ -> if last analyzedString /= '>'
-                     then error ("Invalid event string " ++ show inputString)
-                     else case M.lookup (init analyzedString) specMap of
-                              Just k -> modifier (Event k [])
-                              Nothing -> error $ "Couldn't convert string " ++ show inputString ++ " to event"
+  let analyzedString = drop toDrop inputString
+  in case analyzedString of
+    [c,'>'] -> modifier (char c)
+    _ -> if last analyzedString /= '>'
+         then error ("Invalid event string " ++ show inputString)
+         else case M.lookup (Ev . T.pack $ init analyzedString) specMap of
+           Just k -> modifier (Event k [])
+           Nothing -> error $ "Couldn't convert string " ++ show inputString ++ " to event"
 
-eventToString :: Event -> String
-eventToString (Event (KASCII '<') []) = "<lt>"
-eventToString (Event (KASCII c) []) = [c]
-eventToString (Event (KASCII c) [MCtrl]) = ['<', 'C', '-', c, '>']
-eventToString (Event (KASCII c) [MMeta]) = ['<', 'M', '-', c, '>']
-eventToString (Event (KASCII c) [MShift]) = [toUpper c]
-eventToString (Event (KFun x) []) = "<F" ++ show x ++ ">"
-eventToString e@(Event k mods) =
-    case M.lookup k invSpecMap of
-        Just s -> case mods of
-                      [] -> '<' : s ++ ">"
-                      [MCtrl] -> '<' : 'C' : '-' : s ++ ">"
-                      [MMeta] -> '<' : 'M' : '-' : s ++ ">"
-                      _ -> error $ "Couldn't convert event <" ++ show e ++ "> to string, because of unknown modifiers"
-        Nothing -> error $ "Couldn't convert event <" ++ show e ++ "> to string"
+eventToEventString :: Event -> EventString
+eventToEventString e = case e of
+  Event (KASCII '<') []       -> Ev "<lt>"
+  Event (KASCII c)   []       -> Ev $ T.singleton c
+  Event (KASCII c)   [MCtrl]  -> Ev $ mkMod MCtrl c
+  Event (KASCII c)   [MMeta]  -> Ev $ mkMod MMeta c
+  Event (KASCII c)   [MShift] -> Ev . T.singleton $ toUpper c
+  Event (KFun x)     []       -> Ev $ "<F" <> showT x `T.snoc` '>'
+  v@(Event      k    mods)    -> case M.lookup k invSpecMap of
+    Just (Ev s) -> case mods of
+      []      -> Ev $ '<' `T.cons` s `T.snoc` '>'
+      [MCtrl] -> Ev $ "<C-" <> s `T.snoc` '>'
+      [MMeta] -> Ev $ "<M-" <> s `T.snoc` '>'
+      _ -> error $ "Couldn't convert event <" ++ show v
+                   ++ "> to string, because of unknown modifiers"
+    Nothing -> error $ "Couldn't convert event <" ++ show v ++ "> to string"
 
-parseEvents :: String -> [Event]
-parseEvents = fst . foldl' go ([], [])
+  where
+    f MCtrl = 'C'
+    f MMeta = 'M'
+    f _     = '×'
+    mkMod m c = '<' `T.cons` f m `T.cons` '-'
+                `T.cons` c `T.cons` T.singleton '>'
+
+
+
+parseEvents :: EventString -> [Event]
+parseEvents (Ev x) = fst . foldl' go ([], []) $ T.unpack x
     where go (evs, s) '\n' = (evs, s)
           go (evs, []) '<' = (evs, "<")
           go (evs, []) c = (evs ++ [char c], [])
           go (evs, s) '>' = (evs ++ [stringToEvent (s ++ ">")], [])
           go (evs, s) c = (evs, s ++ [c])
 
-stringToRepeatableAction :: String -> RepeatableAction
+stringToRepeatableAction :: EventString -> RepeatableAction
 stringToRepeatableAction s = RepeatableAction count command
     where (count, command) = splitCountedCommand s
 
-splitCountedCommand :: String -> (Int, String)
-splitCountedCommand s = (count, commandString)
-    where (countString, commandString) = span isDigit s
-          count = case countString of
-                   [] -> 1
-                   _ -> read countString
+splitCountedCommand :: EventString -> (Int, EventString)
+splitCountedCommand (Ev s) = (count, Ev commandString)
+  where (countString, commandString) = T.span isDigit s
+        count = case countString of
+          "" -> 1
+          x  -> read $ T.unpack x
 
 -- 2d3w -> 6dw
 -- 6dw -> 6dw
 -- dw -> dw
-normalizeCount :: String -> String
-normalizeCount s = if null countedObject
-                   then s
-                   else show (operatorCount * objectCount) ++ operator ++ object
-    where (operatorCount, rest1) = splitCountedCommand s
-          (operator, countedObject) = break isDigit rest1
-          (objectCount, object) = splitCountedCommand countedObject
+normalizeCount :: EventString -> EventString
+normalizeCount s =
+  if T.null countedObject
+  then s
+  else Ev $ showT (operatorCount * objectCount) <> operator <> object
+    where (operatorCount, Ev rest1) = splitCountedCommand s
+          (operator, countedObject) = T.break isDigit rest1
+          (objectCount, Ev object) = splitCountedCommand (Ev countedObject)

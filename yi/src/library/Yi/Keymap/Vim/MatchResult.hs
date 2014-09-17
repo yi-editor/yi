@@ -1,23 +1,21 @@
 {-# LANGUAGE DeriveFunctor #-}
+{-# OPTIONS_HADDOCK show-extensions #-}
+
+-- |
+-- Module      :  Yi.Keymap.Vim.MatchResult
+-- License     :  GPL-2
+-- Maintainer  :  yi-devel@googlegroups.com
+-- Stability   :  experimental
+-- Portability :  portable
+
 module Yi.Keymap.Vim.MatchResult where
 
 import Control.Applicative
-import Data.List (isPrefixOf)
 
 data MatchResult a = NoMatch
                    | PartialMatch
                    | WholeMatch a
                    deriving Functor
-
--- like Data.List.lookup, but with MatchResult instead of Maybe
-lookupBestMatch :: String -> [(String, a)] -> MatchResult a
-lookupBestMatch key = foldl go NoMatch
-    where go m (k, x) = m <|> fmap (const x) (key `matchesString` k)
-
-matchesString :: String -> String -> MatchResult ()
-matchesString got expected | expected == got = WholeMatch ()
-                           | got `isPrefixOf` expected = PartialMatch
-                           | otherwise = NoMatch
 
 instance Applicative MatchResult where
     pure = WholeMatch

@@ -1,6 +1,15 @@
+{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedStrings #-}
-module Yi.File
- (
+{-# OPTIONS_HADDOCK show-extensions #-}
+
+-- |
+-- Module      :  Yi.File
+-- License     :  GPL-2
+-- Maintainer  :  yi-devel@googlegroups.com
+-- Stability   :  experimental
+-- Portability :  portable
+
+module Yi.File (
   -- * File-based actions
   editFile,       -- :: YiM BufferRef
 
@@ -13,26 +22,29 @@ module Yi.File
   revertE,        -- :: YiM ()
 
   -- * Helper functions
-  setFileName,
+  setFileName
  ) where
 
-import Control.Applicative
-import Control.Monad.Reader (asks)
-import Control.Monad.Base
-import Control.Lens
-import Data.Time
-import Data.Foldable (find)
-import System.Directory
-import System.FilePath
-import System.FriendlyPath
-import qualified Data.Rope as R
 
-import Yi.Config
-import Yi.Core
-import Yi.Dired
-import Yi.Regex
-import Yi.Utils
-import Yi.Monad
+import           Control.Applicative
+import           Control.Lens
+import           Control.Monad.Base
+import           Control.Monad.Reader (asks)
+import           Data.Foldable (find)
+import           Data.Monoid
+import qualified Data.Text as T
+import           Data.Time
+import           System.Directory
+import           System.FilePath
+import           System.FriendlyPath
+import           Yi.Config
+import           Yi.Core
+import           Yi.Dired
+import           Yi.Monad
+import           Yi.Regex
+import qualified Yi.Rope as R
+import           Yi.String
+import           Yi.Utils
 
 -- | If file exists, read contents of file into a new buffer, otherwise
 -- creating a new empty buffer. Replace the current window with a new
@@ -67,23 +79,24 @@ editFile filename = do
       now <- io getCurrentTime
       contents <- io $ R.readFile f
 
-      b <- withEditor $ stringToNewBuffer (Right f) contents
+      b <- withEditor $ stringToNewBuffer (FileBuffer f) contents
       withGivenBuffer b $ markSavedB now
 
       return b
 
     newEmptyBuffer :: FilePath -> YiM BufferRef
     newEmptyBuffer f =
-      withEditor $ stringToNewBuffer (Right f) ""
+      withEditor $ stringToNewBuffer (FileBuffer f) mempty
 
     setupMode :: FilePath -> BufferRef -> YiM BufferRef
     setupMode f b = do
       tbl <- asks (modeTable . yiConfig)
       content <- withGivenBuffer b elemsB
 
-      let header = take 1024 content
-          hmode = case header =~ ("\\-\\*\\- *([^ ]*) *\\-\\*\\-"::String) of
-              AllTextSubmatches [_,m] ->m
+      let header = R.take 1024 content
+          rx = "\\-\\*\\- *([^ ]*) *\\-\\*\\-" :: String
+          hmode = case R.toString header =~ rx of
+              AllTextSubmatches [_,m] -> T.pack m
               _ -> ""
           Just mode = find (\(AnyMode m) -> modeName m == hmode) tbl <|>
                       find (\(AnyMode m) -> modeApplies m f header) tbl <|>
@@ -96,51 +109,48 @@ editFile filename = do
 -- | Revert to the contents of the file on disk
 revertE :: YiM ()
 revertE = do
-            mfp <- withBuffer $ gets file
-            case mfp of
-                     Just fp -> do
-                             now <- io getCurrentTime
-                             s <- liftBase $ R.readFile fp
-                             withBuffer $ revertB s now
-                             msgEditor ("Reverted from " ++ show fp)
-                     Nothing -> do
-                                msgEditor "Can't revert, no file associated with buffer."
-                                return ()
+  withBuffer (gets file) >>= \case
+    Just fp -> do
+      now <- io getCurrentTime
+      s <- liftBase $ R.readFile fp
+      withBuffer $ revertB s now
+      msgEditor ("Reverted from " <> showT fp)
+    Nothing -> msgEditor "Can't revert, no file associated with buffer."
+
 
 -- | Try to write a file in the manner of vi\/vim
 -- Need to catch any exception to avoid losing bindings
 viWrite :: YiM ()
 viWrite = do
-    mf <- withBuffer $ gets file
-    case mf of
-        Nothing -> errorEditor "no file name associate with buffer"
-        Just f  -> do
-            bufInfo <- withBuffer bufInfoB
-            let s   = bufInfoFileName bufInfo
-            fwriteE
-            let message = (show f ++) (if f == s
-                              then " written"
-                              else " " ++ show s ++ " written")
-            msgEditor message
+  withBuffer (gets file) >>= \case
+   Nothing -> errorEditor "no file name associate with buffer"
+   Just f  -> do
+       bufInfo <- withBuffer bufInfoB
+       let s   = bufInfoFileName bufInfo
+       fwriteE
+       let message = (showT f <>) (if f == s
+                         then " written"
+                         else " " <> showT s <> " written")
+       msgEditor message
 
--- | Try to write to a named file in the manner of vi\/vim
-viWriteTo :: String -> YiM ()
+-- | Try to write to a named file in the manner of vi/vim
+viWriteTo :: T.Text -> YiM ()
 viWriteTo f = do
-    bufInfo <- withBuffer bufInfoB
-    let s   = bufInfoFileName bufInfo
-    fwriteToE f
-    let message = (show f ++) (if f == s 
-                      then " written"
-                      else " " ++ show s ++ " written")
-    msgEditor message
+  bufInfo <- withBuffer bufInfoB
+  let s   = T.pack $ bufInfoFileName bufInfo
+  fwriteToE f
+  let message = f `T.append` if f == s
+                             then " written"
+                             else ' ' `T.cons` s `T.append` " written"
+  msgEditor message
 
 -- | Try to write to a named file if it doesn't exist. Error out if it does.
-viSafeWriteTo :: String -> YiM ()
+viSafeWriteTo :: T.Text -> YiM ()
 viSafeWriteTo f = do
-    existsF <- liftBase $ doesFileExist f
-    if existsF
-       then errorEditor $ f ++ ": File exists (add '!' to override)"
-       else viWriteTo f
+  existsF <- liftBase $ doesFileExist (T.unpack f)
+  if existsF
+    then errorEditor $ f <> ": File exists (add '!' to override)"
+    else viWriteTo f
 
 -- | Write current buffer to disk, if this buffer is associated with a file
 fwriteE :: YiM ()
@@ -148,21 +158,21 @@ fwriteE = fwriteBufferE =<< gets currentBuffer
 
 -- | Write a given buffer to disk if it is associated with a file.
 fwriteBufferE :: BufferRef -> YiM ()
-fwriteBufferE bufferKey =
-  do nameContents <- withGivenBuffer bufferKey ((,) <$> gets file <*> streamB Forward 0)
-     case nameContents of
-       (Just f, contents) -> do liftBase $ R.writeFile f contents
-                                now <- io getCurrentTime
-                                withGivenBuffer bufferKey (markSavedB now)
-       (Nothing, _c)      -> msgEditor "Buffer not associated with a file"
+fwriteBufferE bufferKey = do
+  nameContents <- withGivenBuffer bufferKey ((,) <$> gets file
+                                                 <*> streamB Forward 0)
+  case nameContents of
+    (Just f, contents) -> do liftBase $ R.writeFile f contents
+                             now <- io getCurrentTime
+                             withGivenBuffer bufferKey (markSavedB now)
+    (Nothing, _c)      -> msgEditor "Buffer not associated with a file"
 
--- | Write current buffer to disk as @f@. The file is also set to @f@
-fwriteToE :: String -> YiM ()
+-- | Write current buffer to disk as @f@. The file is also set to @f@.
+fwriteToE :: T.Text -> YiM ()
 fwriteToE f = do
-    b <- gets currentBuffer
-    setFileName b f
-    fwriteBufferE b
-
+  b <- gets currentBuffer
+  setFileName b (T.unpack f)
+  fwriteBufferE b
 
 -- | Write all open buffers
 fwriteAllE :: YiM ()
@@ -180,5 +190,4 @@ backupE = error "backupE not implemented"
 setFileName :: BufferRef -> FilePath -> YiM ()
 setFileName b filename = do
   cfn <- liftBase $ userToCanonPath filename
-  withGivenBuffer b $ assign identA $ Right cfn
-
+  withGivenBuffer b $ assign identA $ FileBuffer cfn

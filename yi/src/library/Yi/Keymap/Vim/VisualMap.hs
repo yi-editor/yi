@@ -1,25 +1,34 @@
-module Yi.Keymap.Vim.VisualMap
-  ( defVisualMap
-  ) where
+{-# LANGUAGE OverloadedStrings #-}
+{-# OPTIONS_HADDOCK show-extensions #-}
 
-import Control.Applicative
-import Control.Monad
-import Control.Lens hiding ((-~), op)
+-- |
+-- Module      :  Yi.Keymap.Vim.VisualMap
+-- License     :  GPL-2
+-- Maintainer  :  yi-devel@googlegroups.com
+-- Stability   :  experimental
+-- Portability :  portable
+--
+-- I'm a module waiting for some kind soul to give me a commentary!
 
-import Data.Char (ord)
-import Data.List (group)
-import Data.Maybe (fromJust)
+module Yi.Keymap.Vim.VisualMap ( defVisualMap ) where
 
-import Yi.Buffer hiding (Insert)
-import Yi.Editor
-import Yi.Keymap.Vim.Common
-import Yi.Keymap.Vim.Operator
-import Yi.Keymap.Vim.StateUtils
-import Yi.Keymap.Vim.StyledRegion
-import Yi.Keymap.Vim.Utils
-import Yi.MiniBuffer
-import Yi.Utils
-import Yi.Monad
+import           Control.Applicative
+import           Control.Lens hiding ((-~), op)
+import           Control.Monad
+import           Data.Char (ord)
+import           Data.List (group)
+import           Data.Maybe (fromJust)
+import qualified Data.Text as T
+import           Yi.Buffer hiding (Insert)
+import           Yi.Editor
+import           Yi.Keymap.Vim.Common
+import           Yi.Keymap.Vim.Operator
+import           Yi.Keymap.Vim.StateUtils
+import           Yi.Keymap.Vim.StyledRegion
+import           Yi.Keymap.Vim.Utils
+import           Yi.MiniBuffer
+import           Yi.Monad
+import           Yi.Utils
 
 defVisualMap :: [VimOperator] -> [VimBinding]
 defVisualMap operators =
@@ -47,7 +56,7 @@ escBinding = VimBindingE f
 exBinding :: VimBinding
 exBinding = VimBindingE f
     where f ":" (VimState { vsMode = (Visual _) }) = WholeMatch $ do
-              void $ spawnMinibufferE ":'<,'>" id
+              void $ spawnMinibufferE (T.pack ":'<,'>") id
               switchModeE Ex
               return Finish
           f _ _ = NoMatch
@@ -71,7 +80,7 @@ zeroBinding = VimBindingE f
           f _ _ = NoMatch
 
 setMarkBinding :: VimBinding
-setMarkBinding = VimBindingE f
+setMarkBinding = VimBindingE (f . T.unpack . _unEv)
     where f "m" (VimState { vsMode = (Visual _) }) = PartialMatch
           f ('m':c:[]) (VimState { vsMode = (Visual _) }) = WholeMatch $ do
               withBuffer0 $ setNamedMarkHereB [c]
@@ -102,7 +111,7 @@ changeVisualStyleBinding = VimBindingE f
           f _ _ = NoMatch
 
 mkDigitBinding :: Char -> VimBinding
-mkDigitBinding c = VimBindingE f
+mkDigitBinding c = VimBindingE (f . T.unpack . _unEv)
     where f [c'] (VimState { vsMode = (Visual _) }) | c == c'
             = WholeMatch $ do
                   modifyStateE mutate
@@ -144,7 +153,7 @@ chooseRegisterBinding = mkChooseRegisterBinding $
         _ -> False
 
 shiftDBinding :: VimBinding
-shiftDBinding = VimBindingE f
+shiftDBinding = VimBindingE (f . T.unpack . _unEv)
     where f "D" (VimState { vsMode = (Visual _) }) = WholeMatch $ do
               (Visual style) <- vsMode <$> getDynamic
               reg <- withBuffer0 regionOfSelectionB
@@ -171,22 +180,24 @@ shiftDBinding = VimBindingE f
 
 mkOperatorBinding :: VimOperator -> VimBinding
 mkOperatorBinding op = VimBindingE f
-    where f evs (VimState { vsMode = (Visual _) }) = action <$ evs `matchesString` operatorName op
-          f _ _ = NoMatch
-          action = do
-              (Visual style) <- vsMode <$> getDynamic
-              region <- withBuffer0 regionOfSelectionB
-              count <- getCountE
-              token <- operatorApplyToRegionE op count $ StyledRegion style region
-              resetCountE
-              clrStatus
-              withBuffer0 $ do
-                  setVisibleSelection False
-                  assign regionStyleA Inclusive
-              return token
+  where
+    f evs (VimState { vsMode = (Visual _) }) =
+      action <$ evs `matchesString` Ev (_unOp $ operatorName op)
+    f _ _ = NoMatch
+    action = do
+        (Visual style) <- vsMode <$> getDynamic
+        region <- withBuffer0 regionOfSelectionB
+        count <- getCountE
+        token <- operatorApplyToRegionE op count $ StyledRegion style region
+        resetCountE
+        clrStatus
+        withBuffer0 $ do
+            setVisibleSelection False
+            assign regionStyleA Inclusive
+        return token
 
 replaceBinding :: VimBinding
-replaceBinding = VimBindingE f
+replaceBinding = VimBindingE (f . T.unpack . _unEv)
     where f evs (VimState { vsMode = (Visual _) }) =
               case evs of
                 "r" -> PartialMatch
@@ -201,7 +212,7 @@ replaceBinding = VimBindingE f
           f _ _ = NoMatch
 
 switchEdgeBinding :: VimBinding
-switchEdgeBinding = VimBindingE f
+switchEdgeBinding = VimBindingE (f . T.unpack . _unEv)
     where f [c] (VimState { vsMode = (Visual _) }) | c `elem` "oO"
               = WholeMatch $ do
                   (Visual style) <- vsMode <$> getDynamic
@@ -217,7 +228,7 @@ switchEdgeBinding = VimBindingE f
           f _ _ = NoMatch
 
 insertBinding :: VimBinding
-insertBinding = VimBindingE f
+insertBinding = VimBindingE (f . T.unpack . _unEv)
     where f evs (VimState { vsMode = (Visual _) }) | evs `elem` group "IA"
             = WholeMatch $ do
                   (Visual style) <- vsMode <$> getDynamic

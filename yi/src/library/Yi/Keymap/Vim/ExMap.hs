@@ -1,25 +1,38 @@
+{-# LANGUAGE OverloadedStrings #-}
+{-# OPTIONS_HADDOCK show-extensions #-}
+
+-- |
+-- Module      :  Yi.Keymap.Vim.ExMap
+-- License     :  GPL-2
+-- Maintainer  :  yi-devel@googlegroups.com
+-- Stability   :  experimental
+-- Portability :  portable
+--
+-- I'm a module waiting for some kind soul to give me a commentary!
+
 module Yi.Keymap.Vim.ExMap
     ( defExMap
     ) where
 
-import Control.Applicative
-import Control.Monad (when)
-import Data.Char (isSpace)
-import Data.Maybe (fromJust)
-import Data.List.Split (splitWhen)
-import System.FilePath (isPathSeparator)
+import           Control.Applicative
+import           Control.Monad (when)
+import           Data.Char (isSpace)
+import           Data.Maybe (fromJust)
+import           Data.Monoid
+import qualified Data.Text as T
+import           System.FilePath (isPathSeparator)
+import           Yi.Buffer hiding (Insert)
+import           Yi.Editor
+import           Yi.History
+import           Yi.Keymap
+import           Yi.Keymap.Vim.Common
+import           Yi.Keymap.Vim.Ex
+import           Yi.Keymap.Vim.StateUtils
+import           Yi.Keymap.Vim.Utils
+import qualified Yi.Rope as R
+import           Yi.String
 
-import Yi.Buffer hiding (Insert)
-import Yi.Editor
-import Yi.History
-import Yi.Keymap
-import Yi.Keymap.Vim.Common
-import Yi.Keymap.Vim.StateUtils
-import Yi.Keymap.Vim.Utils
-import Yi.Keymap.Vim.Ex
-import Yi.Utils
-
-defExMap :: [String -> Maybe ExCommand] -> [VimBinding]
+defExMap :: [EventString -> Maybe ExCommand] -> [VimBinding]
 defExMap cmdParsers =
     [ exitBinding
     , completionBinding cmdParsers
@@ -30,47 +43,47 @@ defExMap cmdParsers =
     , printable
     ]
 
-completionBinding :: [String -> Maybe ExCommand] -> VimBinding
+completionBinding :: [EventString -> Maybe ExCommand] -> VimBinding
 completionBinding commandParsers = VimBindingY f
-    where f "<Tab>" (VimState { vsMode = Ex }) = WholeMatch $ do
-              commandString <- withBuffer elemsB
-              case stringToExCommand commandParsers commandString of
-                  Just cmd -> complete cmd
-                  Nothing -> return ()
-              return Drop
-          f _ _ = NoMatch
-          complete :: ExCommand -> YiM ()
-          complete cmd = do
-              possibilities <- cmdComplete cmd
-              case possibilities of
-                [] -> return ()
-                (s:[]) -> updateCommand s
-                ss -> do
-                    let s = commonPrefix ss
-                    updateCommand s
-                    withEditor
-                        . printMsg
-                        . unwords
-                        . fmap (dropToLastWordOf s)
-                        $ ss
-          updateCommand :: String -> YiM ()
-          updateCommand s = do
-              withBuffer $ replaceBufferContent s
-              withEditor $ do
-                  historyPrefixSet s
-                  modifyStateE $ \state -> state {
-                      vsOngoingInsertEvents = s
-                  }
+  where
+    f "<Tab>" (VimState { vsMode = Ex }) = WholeMatch $ do
+        commandString <- Ev . R.toText <$> withBuffer elemsB
+        case evStringToExCommand commandParsers commandString of
+          Just cmd -> complete cmd
+          Nothing -> return ()
+        return Drop
+    f _ _ = NoMatch
+    complete :: ExCommand -> YiM ()
+    complete cmd = do
+        possibilities <- cmdComplete cmd
+        case possibilities of
+          [] -> return ()
+          (s:[]) -> updateCommand s
+          ss -> do
+              let s = commonTPrefix' ss
+              updateCommand s
+              withEditor . printMsg . T.unwords . fmap (dropToLastWordOf s) $ ss
 
-dropToLastWordOf :: String -> String -> String
-dropToLastWordOf s =
-    case reverse . splitWhen isWordSep $ s of
-        [] -> id
-        (_w:[]) -> id
-        (_w:ws) -> drop . (+1) . length . unwords $ ws
-    where
-        isWordSep :: Char -> Bool
-        isWordSep c = isPathSeparator c || isSpace c
+    updateCommand :: T.Text -> YiM ()
+    updateCommand s = do
+        withBuffer $ replaceBufferContent (R.fromText s)
+        withEditor $ do
+            historyPrefixSet s
+            modifyStateE $ \state -> state {
+                vsOngoingInsertEvents = Ev s
+            }
+
+-- | TODO: verify whether 'T.split' works fine here in place of
+-- @split@'s 'splitWhen'. If something breaks then you should use
+-- 'splitWhen' + 'T.pack'/'T.unpack'.
+dropToLastWordOf :: T.Text -> T.Text -> T.Text
+dropToLastWordOf s = case reverse . T.split isWordSep $ s of
+  []     -> id
+  [_]    -> id
+  _ : ws -> T.drop . succ . T.length . T.unwords $ ws
+  where
+    isWordSep :: Char -> Bool
+    isWordSep c = isPathSeparator c || isSpace c
 
 exitEx :: Bool -> EditorM ()
 exitEx success = do
@@ -81,51 +94,52 @@ exitEx success = do
 
 exitBinding :: VimBinding
 exitBinding = VimBindingE f
-    where f "<CR>" (VimState { vsMode = Ex, vsOngoingInsertEvents = [] })
-              = WholeMatch action
-          f evs (VimState { vsMode = Ex })
-              = action <$ matchFromBool (evs `elem` ["<Esc>", "<C-c>"])
-          f _ _ = NoMatch
-          action = exitEx False >> return Drop
+    where
+      f "<CR>" (VimState { vsMode = Ex, vsOngoingInsertEvents = Ev "" })
+          = WholeMatch action
+      f evs (VimState { vsMode = Ex })
+          = action <$ matchFromBool (evs `elem` ["<Esc>", "<C-c>"])
+      f _ _ = NoMatch
+      action = exitEx False >> return Drop
 
-finishBindingY :: [String -> Maybe ExCommand] -> VimBinding
+finishBindingY :: [EventString -> Maybe ExCommand] -> VimBinding
 finishBindingY commandParsers = VimBindingY f
     where f evs state = finishAction commandParsers exEvalY
                       <$ finishPrereq commandParsers (not . cmdIsPure) evs state
-    
 
-finishBindingE :: [String -> Maybe ExCommand] -> VimBinding
+
+finishBindingE :: [EventString -> Maybe ExCommand] -> VimBinding
 finishBindingE commandParsers = VimBindingE f
     where f evs state = finishAction commandParsers exEvalE
                       <$ finishPrereq commandParsers cmdIsPure evs state
 
-finishPrereq :: [String -> Maybe ExCommand] -> (ExCommand -> Bool)
+finishPrereq :: [EventString -> Maybe ExCommand] -> (ExCommand -> Bool)
     -> EventString -> VimState -> MatchResult ()
 finishPrereq commandParsers cmdPred evs s =
     matchFromBool . and $
         [ vsMode s == Ex
         , evs == "<CR>"
-        , case stringToExCommand commandParsers (vsOngoingInsertEvents s) of
+        , case evStringToExCommand commandParsers (vsOngoingInsertEvents s) of
             Just cmd -> cmdPred cmd
             _ -> False
         ]
 
-finishAction :: MonadEditor m => [String -> Maybe ExCommand] ->
-    ([String -> Maybe ExCommand] -> String -> m ()) -> m RepeatToken
+finishAction :: MonadEditor m => [EventString -> Maybe ExCommand] ->
+    ([EventString -> Maybe ExCommand] -> EventString -> m ()) -> m RepeatToken
 finishAction commandParsers execute = do
-    s <- withEditor $ withBuffer0 elemsB
-    withEditor $ exitEx True
-    execute commandParsers s
-    return Drop
+  s <- withEditor $ withBuffer0 elemsB
+  withEditor $ exitEx True
+  execute commandParsers (Ev $ R.toText s) -- TODO
+  return Drop
 
 failBindingE :: VimBinding
 failBindingE = VimBindingE f
     where f evs s | vsMode s == Ex && evs == "<CR>"
             = WholeMatch $ do
-                  exitEx False
-                  state <- getDynamic
-                  printMsg $ "Not an editor command: " ++ vsOngoingInsertEvents state
-                  return Drop
+                exitEx False
+                state <- getDynamic
+                printMsg . _unEv $ "Not an editor command: " <> vsOngoingInsertEvents state
+                return Drop
           f _ _ = NoMatch
 
 printable :: VimBinding
@@ -140,7 +154,7 @@ historyBinding = VimBindingE f
               fromJust $ lookup evs binds
               command <- withBuffer0 elemsB
               modifyStateE $ \state -> state {
-                  vsOngoingInsertEvents = command
+                  vsOngoingInsertEvents = Ev $ R.toText command
               }
               return Drop
           f _ _ = NoMatch
@@ -152,31 +166,32 @@ historyBinding = VimBindingE f
               ]
 
 editAction :: EventString -> EditorM RepeatToken
-editAction evs = do
-    withBuffer0 $ case evs of
-        (c:[]) -> insertB c
-        "<BS>"  -> bdeleteB
-        "<C-h>" -> bdeleteB
-        "<C-w>" -> do
-            r <- regionOfPartNonEmptyB unitViWordOnLine Backward
-            deleteRegionB r
-        "<C-r>" -> return () -- TODO
-        "<lt>" -> insertB '<'
-        "<Del>" -> deleteB Character Forward
-        "<Left>" -> moveXorSol 1
-        "<C-b>" -> moveXorSol 1
-        "<Right>" -> moveXorEol 1
-        "<C-f>" -> moveXorEol 1
-        "<Home>" -> moveToSol
-        "<C-a>" -> moveToSol
-        "<End>" -> moveToEol
-        "<C-e>" -> moveToEol
-        "<C-u>" -> moveToSol >> deleteToEol
-        "<C-k>" -> deleteToEol
-        evs' -> error $ "Unhandled event " ++ evs' ++ " in ex mode"
-    command <- withBuffer0 elemsB
-    historyPrefixSet command
-    modifyStateE $ \state -> state {
-        vsOngoingInsertEvents = command
-    }
-    return Drop
+editAction (Ev evs) = do
+  withBuffer0 $ case evs of
+      "<BS>"  -> bdeleteB
+      "<C-h>" -> bdeleteB
+      "<C-w>" -> do
+          r <- regionOfPartNonEmptyB unitViWordOnLine Backward
+          deleteRegionB r
+      "<C-r>" -> return () -- TODO
+      "<lt>" -> insertB '<'
+      "<Del>" -> deleteB Character Forward
+      "<Left>" -> moveXorSol 1
+      "<C-b>" -> moveXorSol 1
+      "<Right>" -> moveXorEol 1
+      "<C-f>" -> moveXorEol 1
+      "<Home>" -> moveToSol
+      "<C-a>" -> moveToSol
+      "<End>" -> moveToEol
+      "<C-e>" -> moveToEol
+      "<C-u>" -> moveToSol >> deleteToEol
+      "<C-k>" -> deleteToEol
+      evs' -> case T.length evs' of
+        1 -> insertB $ T.head evs'
+        _ -> error $ "Unhandled event " ++ show evs' ++ " in ex mode"
+  command <- R.toText <$> withBuffer0 elemsB
+  historyPrefixSet command
+  modifyStateE $ \state -> state {
+    vsOngoingInsertEvents = Ev command
+  }
+  return Drop

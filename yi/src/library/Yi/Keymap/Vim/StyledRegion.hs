@@ -1,3 +1,14 @@
+{-# OPTIONS_HADDOCK show-extensions #-}
+
+-- |
+-- Module      :  Yi.Keymap.Vim.StyledRegion
+-- License     :  GPL-2
+-- Maintainer  :  yi-devel@googlegroups.com
+-- Stability   :  experimental
+-- Portability :  portable
+--
+-- I'm a module waiting for some kind soul to give me a commentary!
+
 module Yi.Keymap.Vim.StyledRegion
     ( StyledRegion(..)
     , normalizeRegion
@@ -5,29 +16,34 @@ module Yi.Keymap.Vim.StyledRegion
     , transformCharactersInLineN
     ) where
 
-import Control.Monad
-import Yi.Buffer
-import Yi.Utils
+import           Control.Monad
+import qualified Data.Text as T
+import           Yi.Buffer
+import qualified Yi.Rope as R
+import           Yi.Utils
 
 data StyledRegion = StyledRegion !RegionStyle !Region
 
+-- | from vim help:
+--
+-- 1. If the motion is exclusive and the end of the motion is in
+--    column 1, the end of the motion is moved to the end of the
+--    previous line and the motion becomes inclusive. Example: "}"
+--    moves to the first line after a paragraph, but "d}" will not
+--    include that line.
+--
+-- 2. If the motion is exclusive, the end of the motion is in column 1
+--    and the start of the motion was at or before the first non-blank
+--    in the line, the motion becomes linewise. Example: If a
+--    paragraph begins with some blanks and you do "d}" while standing
+--    on the first non-blank, all the lines of the paragraph are
+--    deleted, including the blanks. If you do a put now, the deleted
+--    lines will be inserted below the cursor position.
+--
+-- TODO: case 2
 normalizeRegion :: StyledRegion -> BufferM StyledRegion
 normalizeRegion sr@(StyledRegion style reg) =
-    -- from vim help:
-    --
-    -- 1. If the motion is exclusive and the end of the motion is in column 1, the
-    --    end of the motion is moved to the end of the previous line and the motion
-    --    becomes inclusive.  Example: "}" moves to the first line after a paragraph,
-    --    but "d}" will not include that line.
-    -- 						*exclusive-linewise*
-    -- 2. If the motion is exclusive, the end of the motion is in column 1 and the
-    --    start of the motion was at or before the first non-blank in the line, the
-    --    motion becomes linewise.  Example: If a paragraph begins with some blanks
-    --    and you do "d}" while standing on the first non-blank, all the lines of
-    --    the paragraph are deleted, including the blanks.  If you do a put now, the
-    --    deleted lines will be inserted below the cursor position.
-    --
-    -- TODO: case 2
+
     if style == Exclusive
     then do
         let end = regionEnd reg
@@ -48,7 +64,7 @@ transformCharactersInRegionB (StyledRegion Block reg) f = do
 transformCharactersInRegionB (StyledRegion style reg) f = do
     reg' <- convertRegionToStyleB reg style
     s <- readRegionB reg'
-    replaceRegionB reg' (fmap f s)
+    replaceRegionB reg' (R.withText (T.map f) s)
     moveTo (regionStart reg')
 
 transformCharactersInLineN :: Int -> (Char -> Char) -> BufferM ()

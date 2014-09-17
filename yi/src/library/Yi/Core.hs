@@ -72,7 +72,7 @@ import           Data.List.Split (splitOn)
 import qualified Data.Map as M
 import           Data.Maybe
 import           Data.Monoid
-import qualified Data.Rope as R
+import qualified Data.Text as T
 import           Data.Time
 import           Data.Time.Clock.POSIX
 import           Data.Traversable
@@ -95,6 +95,7 @@ import           Yi.KillRing (krEndCmd)
 import           Yi.Monad
 import           Yi.Process (createSubprocess, readAvailable,
                              SubprocessId, SubprocessInfo(..))
+import qualified Yi.Rope as R
 import           Yi.String
 import           Yi.Style (errorStyle, strongHintStyle)
 import qualified Yi.UI.Common as UI
@@ -108,7 +109,7 @@ import           {-# source #-} Yi.PersistentState(loadPersistentState,
 interactive :: [Action] -> YiM ()
 interactive action = do
   evs <- withEditor $ use pendingEventsA
-  logPutStrLn $ ">>> interactively" ++ showEvs evs
+  logPutStrLn $ ">>> interactively" <> showEvs evs
   withEditor $ (%=) buffersA (fmap $  undosA %~ addChangeU InteractivePoint)
   mapM_ runAction action
   withEditor $ (%=) killringA krEndCmd
@@ -136,7 +137,7 @@ startEditor cfg st = do
     newSt <- newMVar $ YiVar editor 1 M.empty
     (ui, runYi) <- mdo
         let handler (exception :: SomeException) =
-              runYi $ errorEditor (show exception) >> refreshEditor
+              runYi $ errorEditor (showT exception) >> refreshEditor
             inF ev    = handle handler $ runYi $ dispatch ev
             outF acts = handle handler $ runYi $ interactive acts
             runYi f   = runReaderT (runYiM f) yi
@@ -178,44 +179,45 @@ showErrors = withEditor $ do
 -- | Process an event by advancing the current keymap automaton an
 -- execing the generated actions.
 dispatch :: Event -> YiM ()
-dispatch ev =
-    do yi <- ask
-       entryEvs <- withEditor $ use pendingEventsA
-       logPutStrLn $ "pending events: " ++ showEvs entryEvs
-       (userActions,_p') <- withBuffer $ do
-         keymap <- gets (withMode0 modeKeymap)
-         p0 <- use keymapProcessA
-         let km = extractTopKeymap $ keymap $ defaultKm $ yiConfig yi
-         let freshP = Chain (configInputPreprocess $ yiConfig yi) (mkAutomaton km)
-             p = case computeState p0 of
-                   Dead  -> freshP
-                   _     -> p0
-             (actions, p') = processOneEvent p ev
-             state = computeState p'
-             ambiguous = case state of
-                 Ambiguous _ -> True
-                 _ -> False
-         assign keymapProcessA (if ambiguous then freshP else p')
-         let actions0 = case state of
-                          Dead -> [makeAction $ do
-                                         evs <- use pendingEventsA
-                                         printMsg ("Unrecognized input: " ++ showEvs (evs ++ [ev]))]
-                          _ -> actions
-             actions1 = [makeAction $ printMsg "Keymap was in an ambiguous state! Resetting it." | ambiguous]
-         return (actions0 ++ actions1,p')
-       -- logPutStrLn $ "Processing: " ++ show ev
-       -- logPutStrLn $ "Actions posted:" ++ show userActions
-       -- logPutStrLn $ "New automation: " ++ show _p'
-       let decay, pendingFeedback :: EditorM ()
-           decay = (%=) statusLinesA (DelayList.decrease 1)
-           pendingFeedback = do (%=) pendingEventsA (++ [ev])
-                                if null userActions
-                                    then printMsg . showEvs =<< use pendingEventsA
-                                    else assign pendingEventsA []
-       postActions $ [makeAction decay] ++ userActions ++ [makeAction pendingFeedback]
+dispatch ev = do
+  yi <- ask
+  entryEvs <- withEditor $ use pendingEventsA
+  logPutStrLn $ "pending events: " <> showEvs entryEvs
+  (userActions,_p') <- withBuffer $ do
+    keymap <- gets (withMode0 modeKeymap)
+    p0 <- use keymapProcessA
+    let km = extractTopKeymap $ keymap $ defaultKm $ yiConfig yi
+    let freshP = Chain (configInputPreprocess $ yiConfig yi) (mkAutomaton km)
+        p = case computeState p0 of
+              Dead  -> freshP
+              _     -> p0
+        (actions, p') = processOneEvent p ev
+        state = computeState p'
+        ambiguous = case state of
+            Ambiguous _ -> True
+            _ -> False
+    assign keymapProcessA (if ambiguous then freshP else p')
+    let actions0 = case state of
+          Dead -> [makeAction $ do
+                      evs <- use pendingEventsA
+                      printMsg ("Unrecognized input: " <> showEvs (evs ++ [ev]))]
+          _ -> actions
 
-showEvs = unwords . fmap prettyEvent
-showEvs :: [Event] -> String
+        actions1 = [makeAction $ printMsg "Keymap was in an ambiguous state! Resetting it." | ambiguous]
+
+    return (actions0 ++ actions1,p')
+
+  let decay, pendingFeedback :: EditorM ()
+      decay = statusLinesA %= DelayList.decrease 1
+      pendingFeedback = do pendingEventsA %= (++ [ev])
+                           if null userActions
+                               then printMsg . showEvs =<< use pendingEventsA
+                               else assign pendingEventsA []
+  postActions $ [makeAction decay] ++ userActions ++ [makeAction pendingFeedback]
+
+
+showEvs :: [Event] -> T.Text
+showEvs = T.unwords . fmap (T.pack . prettyEvent)
 
 -- ---------------------------------------------------------------------
 -- Meta operations
@@ -239,7 +241,7 @@ checkFileChanges e0 = do
           in if bkey b `elem` visibleBuffers
           then
             case b ^.identA of
-               Right fname -> do
+               FileBuffer fname -> do
                   fe <- doesFileExist fname
                   if not fe then nothing else do
                   modTime <- fileModTime fname
@@ -259,7 +261,6 @@ checkFileChanges e0 = do
           msg2 = (1, (["Disk version changed by a concurrent process"], strongHintStyle))
           visibleBuffers = fmap bufkey $ windows e0
           fileModTime f = posixSecondsToUTCTime . realToFrac . modificationTime <$> getFileStatus f
-
 
 -- | Hide selection, clear "syntax dirty" flag (as appropriate).
 clearAllSyntaxAndHideSelection :: Editor -> Editor
@@ -314,7 +315,7 @@ refreshEditor = onYiVar $ \yi var -> do
   where
     clearUpdates = pendingUpdatesA .~ []
     clearFollow = pointFollowsWindowA .~ const False
-    -- | Is this process stale? (associated with a deleted buffer)
+    -- Is this process stale? (associated with a deleted buffer)
     staleProcess bs p = not (bufRef p `M.member` bs)
 
 
@@ -338,23 +339,24 @@ runProcessWithInput cmd inp = do
 
 ------------------------------------------------------------------------
 
--- | Same as msgEditor, but do nothing instead of printing @()@
-msgEditor' :: String -> YiM ()
+-- | Same as 'msgEditor', but do nothing instead of printing @()@
+msgEditor' :: T.Text -> YiM ()
 msgEditor' "()" = return ()
 msgEditor' s = msgEditor s
 
 runAction :: Action -> YiM ()
-runAction (YiA act) = act >>= msgEditor' . show
-runAction (EditorA act) = withEditor act >>= msgEditor' . show
-runAction (BufferA act) = withBuffer act >>= msgEditor' . show
+runAction (YiA act) = act >>= msgEditor' . showT
+runAction (EditorA act) = withEditor act >>= msgEditor' . showT
+runAction (BufferA act) = withBuffer act >>= msgEditor' . showT
 
-msgEditor :: String -> YiM ()
+msgEditor :: T.Text -> YiM ()
 msgEditor = withEditor . printMsg
 
 -- | Show an error on the status line and log it.
-errorEditor :: String -> YiM ()
-errorEditor s = do withEditor $ printStatus (["error: " ++ s], errorStyle)
-                   logPutStrLn $ "errorEditor: " ++ s
+errorEditor :: T.Text -> YiM ()
+errorEditor s = do
+  withEditor $ printStatus (["error: " <> s], errorStyle)
+  logPutStrLn $ "errorEditor: " <> s
 
 -- | Close the current window.
 -- If this is the last window open, quit the program.
@@ -390,8 +392,8 @@ startSubprocess :: FilePath
 startSubprocess cmd args onExit = onYiVar $ \yi var -> do
         let (e', bufref) = runEditor
                               (yiConfig yi)
-                              (printMsg ("Launched process: " ++ cmd)
-                               >> newBufferE (Left bufferName) "")
+                              (printMsg ("Launched process: " <> T.pack cmd)
+                               >> newEmptyBufferE (MemBuffer bufferName))
                               (yiEditor var)
             procid = yiSubprocessIdSupply var + 1
         procinfo <- createSubprocess cmd args bufref
@@ -400,7 +402,8 @@ startSubprocess cmd args onExit = onYiVar $ \yi var -> do
                     & yiSubprocessIdSupplyA .~ procid
                     & yiSubprocessesA %~ M.insert procid procinfo
                , bufref)
-  where bufferName = "output from " ++ cmd ++ " " ++ show args
+  where
+    bufferName = T.unwords [ "output from", T.pack cmd, showT args ]
 
 startSubprocessWatchers :: SubprocessId
                         -> SubprocessInfo
@@ -414,21 +417,39 @@ startSubprocessWatchers procid procinfo yi onExit =
           ([("Err", pipeToBuffer (hErr procinfo) (send . append True)) | separateStdErr procinfo] ++
            [("Out", pipeToBuffer (hOut procinfo) (send . append False)),
             ("Exit", waitForExit (procHandle procinfo) >>= reportExit)])
-  where send a = yiOutput yi [makeAction a]
-        append :: Bool -> String -> YiM ()
-        append atMark s = withEditor $ appendToBuffer atMark (bufRef procinfo) s
-        reportExit ec = send $ do append True ("Process exited with " ++ show ec)
-                                  removeSubprocess procid
-                                  void $ onExit ec
+  where
+    send :: YiM () -> IO ()
+    send a = yiOutput yi [makeAction a]
+
+    -- TODO: This 'String' here is due to 'pipeToBuffer' but I don't
+    -- know how viable it would be to read from a process as Text.
+    -- Probably not worse than String but needs benchmarking.
+    append :: Bool -> String -> YiM ()
+    append atMark =
+      withEditor . appendToBuffer atMark (bufRef procinfo) . R.fromString
+
+    reportExit :: Either SomeException ExitCode -> IO ()
+    reportExit ec = send $ do
+      append True $ "Process exited with " <> show ec
+      removeSubprocess procid
+      void $ onExit ec
 
 removeSubprocess :: SubprocessId -> YiM ()
 removeSubprocess procid = modifiesRef yiVar (yiSubprocessesA %~ M.delete procid)
 
-appendToBuffer :: Bool -> BufferRef -> String -> EditorM ()
+-- | Appends a 'R.YiString' to the given buffer.
+--
+-- TODO: Figure out and document the Bool here. Probably to do with
+-- 'startSubprocessWatchers'.
+appendToBuffer :: Bool      -- Something to do with stdout/stderr?
+               -> BufferRef -- ^ Buffer to append to
+               -> R.YiString  -- ^ Text to append
+               -> EditorM ()
 appendToBuffer atErr bufref s = withGivenBuffer0 bufref $ do
-    -- We make sure stdout is always after stderr. This ensures that the output of the
-    -- two pipe do not get interleaved. More importantly, GHCi prompt should always
-    -- come after the error messages.
+    -- We make sure stdout is always after stderr. This ensures that
+    -- the output of the two pipe do not get interleaved. More
+    -- importantly, GHCi prompt should always come after the error
+    -- messages.
     me <- getMarkB (Just "StdERR")
     mo <- getMarkB (Just "StdOUT")
     let mms = if atErr then [mo, me] else [mo]
@@ -444,14 +465,10 @@ sendToProcess bufref s = do
       Nothing -> msgEditor "Could not get subProcessInfo in sendToProcess"
 
 pipeToBuffer :: Handle -> (String -> IO ()) -> IO ()
-pipeToBuffer h append =
-  do _ <- ignoringException $ forever (do _ <- hWaitForInput h (-1)
-                                          r <- readAvailable h
-                                          _ <- append r
-                                          return ())
-     return ()
-
-
+pipeToBuffer h append = void . ignoringException . forever $ do
+  _ <- hWaitForInput h (-1)
+  r <- readAvailable h
+  append r
 
 waitForExit :: ProcessHandle -> IO (Either SomeException ExitCode)
 waitForExit ph =

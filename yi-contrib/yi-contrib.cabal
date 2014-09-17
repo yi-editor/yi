@@ -1,5 +1,5 @@
 name:           yi-contrib
-version:        0.9.0
+version:        0.9.1
 category:       Development, Editor
 synopsis:       Add-ons to Yi, the Haskell-Scriptable Editor
 description:
@@ -42,8 +42,10 @@ library
     yi == 0.9.1,
     time >= 1.0 && < 2.0,
     old-locale >= 1.0 && < 1.2,
+    text,
     transformers-base,
-    yi-language >= 0.1.0.2,
+    yi-language >= 0.1.0.3,
+    yi-rope,
     oo-prototypes
 
   ghc-options: -Wall

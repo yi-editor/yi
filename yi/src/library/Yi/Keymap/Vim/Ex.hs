@@ -1,17 +1,24 @@
+{-# OPTIONS_HADDOCK show-extensions #-}
+
+-- |
+-- Module      :  Yi.Keymap.Vim.Ex
+-- License     :  GPL-2
+-- Maintainer  :  yi-devel@googlegroups.com
+-- Stability   :  experimental
+-- Portability :  portable
+
 module Yi.Keymap.Vim.Ex
     ( exEvalE
     , exEvalY
-    , stringToExCommand
+    , evStringToExCommand
     , ExCommand(..)
     , defExCommandParsers
     ) where
 
-import Yi.Keymap.Vim.Ex.Types
-import Yi.Keymap.Vim.Ex.Eval
-
+import           Yi.Keymap.Vim.Common
 import qualified Yi.Keymap.Vim.Ex.Commands.Buffer as Buffer
-import qualified Yi.Keymap.Vim.Ex.Commands.Buffers as Buffers
 import qualified Yi.Keymap.Vim.Ex.Commands.BufferDelete as BufferDelete
+import qualified Yi.Keymap.Vim.Ex.Commands.Buffers as Buffers
 import qualified Yi.Keymap.Vim.Ex.Commands.Cabal as Cabal
 import qualified Yi.Keymap.Vim.Ex.Commands.Delete as Delete
 import qualified Yi.Keymap.Vim.Ex.Commands.Edit as Edit
@@ -25,8 +32,10 @@ import qualified Yi.Keymap.Vim.Ex.Commands.Substitute as Substitute
 import qualified Yi.Keymap.Vim.Ex.Commands.Tag as Tag
 import qualified Yi.Keymap.Vim.Ex.Commands.Write as Write
 import qualified Yi.Keymap.Vim.Ex.Commands.Yi as Yi
+import           Yi.Keymap.Vim.Ex.Eval
+import           Yi.Keymap.Vim.Ex.Types
 
-defExCommandParsers :: [String -> Maybe ExCommand]
+defExCommandParsers :: [EventString -> Maybe ExCommand]
 defExCommandParsers =
     [ Buffer.parse
     , Buffers.parse

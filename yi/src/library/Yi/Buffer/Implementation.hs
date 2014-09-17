@@ -57,37 +57,38 @@ module Yi.Buffer.Implementation
   , getAst, focusAst
   , strokesRangesBI
   , getStream
+  , getStream'
   , getIndexedStream
   , lineAt
   , SearchExp
   , markPointAA
   , markGravityAA
-)
-where
+  , mem
+  ) where
 
-import Control.Applicative
-import Data.Array
-import Data.Binary
+import           Control.Applicative
+import           Data.Array
+import           Data.Binary
 #if __GLASGOW_HASKELL__ < 708
-import Data.DeriveTH
+import           Data.DeriveTH
 #else
-import GHC.Generics (Generic)
+import           GHC.Generics (Generic)
 #endif
-import Data.List (groupBy)
-import Data.Maybe
-import Data.Monoid
-import Data.Typeable
-import Data.Function
-import Yi.Buffer.Basic
-import Yi.Regex
-import Yi.Region
-import Yi.Style
-import Yi.Syntax
-import Yi.Utils
-import qualified Data.Rope as F
-import Data.Rope (Rope)
+import           Data.Function
+import           Data.List (groupBy)
 import qualified Data.Map as M
+import           Data.Maybe
+import           Data.Monoid
+import           Yi.Rope (YiString)
+import qualified Yi.Rope as R
 import qualified Data.Set as Set
+import           Data.Typeable
+import           Yi.Buffer.Basic
+import           Yi.Regex
+import           Yi.Region
+import           Yi.Style
+import           Yi.Syntax
+import           Yi.Utils
 
 data MarkValue = MarkValue { markPoint :: !Point
                            , markGravity :: !Direction}
@@ -124,7 +125,7 @@ instance Ord Overlay where
 
 
 data BufferImpl syntax =
-        FBufferData { mem        :: !Rope          -- ^ buffer text
+        FBufferData { mem        :: !YiString          -- ^ buffer text
                     , marks      :: !Marks                 -- ^ Marks for this buffer
                     , markNames  :: !(M.Map String Mark)
                     , hlCache    :: !(HLState syntax)       -- ^ syntax highlighting state
@@ -153,8 +154,8 @@ instance Binary (BufferImpl ()) where
 -- Note that the update direction is only a hint for moving the cursor
 -- (mainly for undo purposes); the insertions and deletions are always
 -- applied Forward.
-data Update = Insert {updatePoint :: !Point, updateDirection :: !Direction, insertUpdateString :: !Rope}
-            | Delete {updatePoint :: !Point, updateDirection :: !Direction, deleteUpdateString :: !Rope}
+data Update = Insert {updatePoint :: !Point, updateDirection :: !Direction, insertUpdateString :: !YiString}
+            | Delete {updatePoint :: !Point, updateDirection :: !Direction, deleteUpdateString :: !YiString}
               -- Note that keeping the text does not cost much: we keep the updates in the undo list;
               -- if it's a "Delete" it means we have just inserted the text in the buffer, so the update shares
               -- the data with the buffer. If it's an "Insert" we have to keep the data any way.
@@ -172,12 +173,12 @@ updateIsDelete :: Update -> Bool
 updateIsDelete Delete {} = True
 updateIsDelete Insert {} = False
 
-updateString :: Update -> Rope
+updateString :: Update -> YiString
 updateString (Insert _ _ s) = s
 updateString (Delete _ _ s) = s
 
 updateSize :: Update -> Size
-updateSize = Size . fromIntegral . F.length . updateString
+updateSize = Size . fromIntegral . R.length . updateString
 
 data UIUpdate = TextUpdate !Update
               | StyleUpdate !Point !Size
@@ -192,25 +193,20 @@ instance Binary UIUpdate
 -- Low-level primitives.
 
 -- | New FBuffer filled from string.
-newBI :: Rope -> BufferImpl ()
+newBI :: YiString -> BufferImpl ()
 newBI s = FBufferData s M.empty M.empty dummyHlState Set.empty 0
 
--- | read @n@ bytes from buffer @b@, starting at @i@
-readChunk :: Rope -> Size -> Point -> Rope
-readChunk p (Size n) (Point i) = F.take n $ F.drop i p
-
 -- | Write string into buffer.
-insertChars :: Rope -> Rope -> Point -> Rope
-insertChars p cs (Point i) = left `F.append` cs `F.append` right
-    where (left,right) = F.splitAt i p
+insertChars :: YiString -> YiString -> Point -> YiString
+insertChars p cs (Point i) = left `R.append` cs `R.append` right
+    where (left, right) = R.splitAt i p
 {-# INLINE insertChars #-}
 
-
 -- | Write string into buffer.
-deleteChars :: Rope -> Point -> Size -> Rope
-deleteChars p (Point i) (Size n) = left `F.append` right
-    where (left,rest) = F.splitAt i p
-          right = F.drop n rest
+deleteChars :: YiString -> Point -> Size -> YiString
+deleteChars p (Point i) (Size n) = left `R.append` right
+    where (left, rest) = R.splitAt i p
+          right = R.drop n rest
 {-# INLINE deleteChars #-}
 
 ------------------------------------------------------------------------
@@ -235,20 +231,33 @@ mapOvlMarks f (Overlay l s e v) = Overlay l (f s) (f e) v
 
 -- | Point of EOF
 sizeBI :: BufferImpl syntax -> Point
-sizeBI = Point . F.length . mem
+sizeBI = Point . R.length . mem
 
--- | Return @n@ Chars starting at @i@ of the buffer as a list
-nelemsBI :: Int -> Point -> BufferImpl syntax -> String
-nelemsBI n i fb = F.toString $ readChunk (mem fb) (Size n) i
+-- | Return @n@ Chars starting at @i@ of the buffer.
+nelemsBI :: Int -> Point -> BufferImpl syntax -> YiString
+nelemsBI n (Point i) = R.take n . R.drop i . mem
 
-getStream :: Direction -> Point -> BufferImpl syntax -> Rope
-getStream Forward  (Point i) fb =             F.drop i $ mem fb
-getStream Backward (Point i) fb = F.reverse $ F.take i $ mem fb
+getStream :: Direction -> Point -> BufferImpl syntax -> YiString
+getStream Forward  (Point i) = R.drop i . mem
+getStream Backward (Point i) = R.reverse . R.take i . mem
 
+-- | 'String' version of 'getStream. TODO: Remove me after porting
+-- things using "Yi.Buffer.TextUnit" to work over 'YiString' or at
+-- least 'Text'.
+getStream' :: Direction -> Point -> BufferImpl syntax -> String
+getStream' Forward  (Point i) = R.toString . R.drop i . mem
+getStream' Backward (Point i) = R.toReverseString . R.take i . mem
+
+-- | TODO: This guy is a pretty big bottleneck and only one function
+-- uses it which in turn is only seldom used and most of the output is
+-- thrown away anyway. We could probably get away with never
+-- converting this to String here. The old implementation did so
+-- because it worked over ByteString but we don't have to.
 getIndexedStream :: Direction -> Point -> BufferImpl syntax -> [(Point,Char)]
-getIndexedStream Forward  (Point p) fb = zip [Point p..]           $ F.toString        $ F.drop p $ mem fb
-getIndexedStream Backward (Point p) fb = zip (dF (pred (Point p))) $ F.toReverseString $ F.take p $ mem fb
-    where dF n = n : dF (pred n)
+getIndexedStream Forward  (Point p) = zip [Point p..] . R.toString . R.drop p . mem
+getIndexedStream Backward (Point p) = zip (dF (pred (Point p))) . R.toReverseString . R.take p . mem
+    where
+      dF n = n : dF (pred n)
 
 -- | Create an "overlay" for the style @sty@ between points @s@ and @e@
 mkOverlay :: OvlLayer -> Region -> StyleName -> Overlay
@@ -308,8 +317,7 @@ isValidUpdate :: Update -> BufferImpl syntax -> Bool
 isValidUpdate u b = case u of
                     (Delete p _ _)   -> check p && check (p +~ updateSize u)
                     (Insert p _ _)   -> check p
-    where check (Point x) = x >= 0 && x <= F.length (mem b)
-
+    where check (Point x) = x >= 0 && x <= R.length (mem b)
 
 -- | Apply a /valid/ update
 applyUpdateI :: Update -> BufferImpl syntax -> BufferImpl syntax
@@ -337,26 +345,25 @@ reverseUpdateI (Insert p dir cs) = Delete p (reverseDir dir) cs
 
 -- | Line at the given point. (Lines are indexed from 1)
 lineAt :: Point -> BufferImpl syntax -> Int
-lineAt (Point point) fb = 1 + F.countNewLines (F.take point (mem fb))
+lineAt (Point p) fb = 1 + R.countNewLines (R.take p $ mem fb)
 
 -- | Point that starts the given line (Lines are indexed from 1)
 solPoint :: Int -> BufferImpl syntax -> Point
-solPoint line fb = Point $ F.length $ fst $ F.splitAtLine (line - 1) (mem fb)
+solPoint line fb = Point $ R.length $ fst $ R.splitAtLine (line - 1) (mem fb)
 
 -- | Get begin of the line relatively to @point@.
 solPoint' :: Point -> BufferImpl syntax -> Point
 solPoint' point fb = solPoint (lineAt point fb) fb
 
-
-charsFromSolBI :: Point -> BufferImpl syntax -> String
+charsFromSolBI :: Point -> BufferImpl syntax -> YiString
 charsFromSolBI pnt fb = nelemsBI (fromIntegral $ pnt - sol) sol fb
     where sol = solPoint' pnt fb
 
 -- | Return indices of all strings in buffer matching regex, inside the given region.
 regexRegionBI :: SearchExp -> Region -> forall syntax. BufferImpl syntax -> [Region]
 regexRegionBI se r fb = case dir of
-     Forward  -> fmap (fmapRegion addPoint . matchedRegion) $ matchAll' $ F.toString        bufReg
-     Backward -> fmap (fmapRegion subPoint . matchedRegion) $ matchAll' $ F.toReverseString bufReg
+     Forward  -> fmap (fmapRegion addPoint . matchedRegion) $ matchAll' $ R.toString        bufReg
+     Backward -> fmap (fmapRegion subPoint . matchedRegion) $ matchAll' $ R.toReverseString bufReg
     where matchedRegion arr = let (off,len) = arr!0 in mkRegion (Point off) (Point (off+len))
           addPoint (Point x) = Point (p + x)
           subPoint (Point x) = Point (q - x)
@@ -365,7 +372,7 @@ regexRegionBI se r fb = case dir of
           Point p = regionStart r
           Point q = regionEnd r
           Size s = regionSize r
-          bufReg = F.take s $ F.drop p $ mem fb
+          bufReg = R.take s . R.drop p $ mem fb
 
 newMarkBI :: MarkValue -> BufferImpl syntax -> (BufferImpl syntax, Mark)
 newMarkBI initialValue fb =
