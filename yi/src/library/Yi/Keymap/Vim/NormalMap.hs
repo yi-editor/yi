@@ -235,10 +235,8 @@ nonrepeatableBindings = fmap (mkBindingE Normal Drop)
 
     -- Yanking
     , ( char 'Y'
-      , do start <- withBuffer0 $ pointB
-           region <- withBuffer0 $ regionWithTwoMovesB moveToSol moveToEol
-           void $ operatorApplyToRegionE opYank 1 $ StyledRegion LineWise region
-           withBuffer0 $ moveTo start
+      , do region <- withBuffer0 $ regionWithTwoMovesB (return ()) moveToEol
+           void $ operatorApplyToRegionE opYank 1 $ StyledRegion Exclusive region
       , id
       )
 
