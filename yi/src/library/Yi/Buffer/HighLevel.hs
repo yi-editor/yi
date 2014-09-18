@@ -683,11 +683,11 @@ linePrefixSelectionB s =
     -- Makes sure to not leave a comment in case we have a trailing
     -- newline from 'mapLines'.
     --
-    -- TODO: if comments fuck up, it's probably here
+    -- TODO: yi-rope init
     skippingLast :: (R.YiString -> R.YiString) -> R.YiString -> R.YiString
-    skippingLast f xs = case R.last xs of
+    skippingLast f xs = let l = R.length xs in case R.last xs of
       Nothing -> xs
-      Just x  -> f (R.drop 1 xs) `R.snoc` x
+      Just x  -> f (R.take (l - 1) xs) `R.snoc` x
 
 -- | Uncomments the selection using the given line comment
 -- starting string. This only works for the comments which
