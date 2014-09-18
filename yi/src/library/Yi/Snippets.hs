@@ -8,6 +8,7 @@
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE StandaloneDeriving #-}
+{-# LANGUAGE TemplateHaskell #-}
 {-# OPTIONS_HADDOCK show-extensions #-}
 
 -- |
