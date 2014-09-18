@@ -17,6 +17,7 @@ module Yi.File
  ) where
 
 import Control.Applicative
+import Control.Monad (unless)
 import Control.Monad.Reader (asks)
 import Control.Monad.Base
 import Control.Lens
@@ -66,9 +67,12 @@ editFile filename = do
     fileToNewBuffer f = do
       now <- io getCurrentTime
       contents <- io $ R.readFile f
+      permissions <- io $ getPermissions f
 
       b <- withEditor $ stringToNewBuffer (Right f) contents
       withGivenBuffer b $ markSavedB now
+
+      unless (writable permissions) (withGivenBuffer b $ assign readOnlyA True)
 
       return b
 
