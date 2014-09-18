@@ -351,16 +351,24 @@ swapB = do eol <- atEol
            transposeB Character Forward
 
 -- | Delete trailing whitespace from all lines
---
--- TODO: implement dropWhileEnd in yi-rope for this
 deleteTrailingSpaceB :: BufferM ()
 deleteTrailingSpaceB =
-  regionOfB Document >>= modifyRegionClever (mapLines stripEnd)
+  regionOfB Document >>= modifyRegionB (tru . mapLines stripEnd)
   where
-    dropWhileEnd :: (Char -> Bool) -> R.YiString -> R.YiString
-    dropWhileEnd p = R.reverse . R.dropWhile p . R.reverse
+    -- Strips the space from the end of each line, preserving
+    -- newlines.
+    stripEnd :: R.YiString -> R.YiString
+    stripEnd x = case R.last x of
+      Nothing -> x
+      Just '\n' -> (`R.snoc` '\n') $ R.dropWhileEnd isSpace x
+      _ -> R.dropWhileEnd isSpace x
 
-    stripEnd = dropWhileEnd isSpace
+    -- | Cut off trailing newlines, making sure to preserve one.
+    tru :: R.YiString -> R.YiString
+    tru x = if R.length x == 0
+            then x
+            else (`R.snoc` '\n') $ R.dropWhileEnd (== '\n') x
+
 -- ----------------------------------------------------
 -- | Marks
 
