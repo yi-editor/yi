@@ -18,8 +18,9 @@ import Yi.Keymap.Vim.EventUtils
 import Yi.Keymap.Vim.Motion
 import Yi.Keymap.Vim.Utils
 import Yi.Keymap.Vim.StateUtils
-import Yi.TextCompletion (completeWordB, CompletionScope(..))
+import Yi.Misc
 import Yi.Monad
+import Yi.TextCompletion (completeWordB, CompletionScope(..))
 
 defInsertMap :: [(String, Char)] -> [VimBinding]
 defInsertMap digraphs =
@@ -154,7 +155,11 @@ printableAction evs = do
                                 indentAsPreviousB
                             firstNonSpaceB
                         -- For testing purposes assume noexpandtab, tw=4
-                        "<Tab>" -> insertN $ replicate 4 ' '
+                        "<Tab>" -> do
+                            IndentSettings et _ts sw <- indentSettingsB
+                            if et
+                            then insertN (replicate sw ' ')
+                            else insertB '\t'
                         "<C-t>" -> shiftIndentOfRegionB 1 =<< regionOfB Line
                         "<C-d>" -> shiftIndentOfRegionB (-1) =<< regionOfB Line
                         "<C-e>" -> insertCharWithBelowB
