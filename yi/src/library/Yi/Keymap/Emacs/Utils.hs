@@ -407,15 +407,17 @@ visitTagTable act = do
         act tagTable
 
 -- TODO: use TextUnit to count things inside region for better experience
--- TODO2: implement R.words
 -- | Counts the number of lines, words and characters inside selected
 -- region. Coresponds to emacs' @count-words-region@.
 countWordsRegion :: YiM ()
 countWordsRegion = do
   (l, w, c) <- withEditor $ do
     t <- withBuffer0 $ getRectangle >>= \(reg, _, _) -> readRegionB reg
-    return (R.countNewLines t, length . T.words $ R.toText t, R.length t)
-  msgEditor $ T.unwords [ "Region has", showT l, "line,"
-                        , showT w, "words, and"
-                        , showT c, "characters."
+    let nls = R.countNewLines t
+    return (if nls == 0 then 1 else nls, length $ R.words t, R.length t)
+  msgEditor $ T.unwords [ "Region has", showT l, p l "line" <> ","
+                        , showT w, p w "word" <> ", and"
+                        , showT c, p w "character" <> "."
                         ]
+  where
+    p x w = if x == 1 then w else w <> "s"
