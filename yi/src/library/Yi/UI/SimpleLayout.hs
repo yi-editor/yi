@@ -1,15 +1,18 @@
 module Yi.UI.SimpleLayout
     ( layout
+    , verticalOffsetsForWindows
     ) where
 
-import Prelude hiding (concatMap)
+import Prelude hiding (concatMap, mapM)
 
 import Control.Lens
+import Control.Monad.State (evalState, get, put)
 import Data.Char
 import Data.Foldable
 import Data.List (partition)
 import qualified Data.List.PointedList.Circular as PL
 import Data.Monoid
+import Data.Traversable (mapM)
 
 import Yi.Buffer
 import Yi.Editor
@@ -115,3 +118,16 @@ layoutText h w tabWidth topPoint bufData
     expandGraphic (p, c)
         | ord c < 32 = [(p, '^'),(p, chr (ord c + 64))]
         | otherwise = [(p, c)]
+
+
+verticalOffsetsForWindows :: Int -> PL.PointedList Window -> PL.PointedList Int
+verticalOffsetsForWindows startY windows =
+    scanrT (+) startY (fmap (\w -> if isMini w then 0 else height w) windows)
+
+-- As scanr, but generalized to a traversable (TODO)
+scanrT :: (Int -> Int -> Int) -> Int -> PL.PointedList Int -> PL.PointedList Int
+scanrT (+*+) k t = evalState (mapM f t) k
+    where f x = do s <- get
+                   let s' = s +*+ x
+                   put s'
+                   return s

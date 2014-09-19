@@ -7,13 +7,12 @@ module Yi.UI.Vty
     ( start
     ) where
 
-import Prelude hiding (error, mapM, foldr1, concatMap, reverse)
+import Prelude hiding (error, foldr1, concatMap, reverse)
 import Control.Applicative hiding ((<|>))
 import Control.Concurrent
 import Control.Exception
 import Control.Lens
-import Control.Monad hiding (mapM)
-import Control.Monad.State (evalState, get, put)
+import Control.Monad
 import Data.Char
 import Data.Foldable (toList, foldr1, concatMap)
 import Data.IORef
@@ -21,7 +20,6 @@ import Data.List (nub, sort)
 import qualified Data.List.PointedList.Circular as PL
 import Data.Maybe
 import Data.Monoid
-import Data.Traversable
 import qualified Graphics.Vty as Vty
 import GHC.Conc (labelThread)
 
@@ -177,11 +175,11 @@ refresh fs e = do
         windowsAndImages = fmap (\(w, f) -> (w, winImage (w, f))) (PL.withFocus ws)
         bigImages = map (picture . snd) (filter (not . isMini . fst) (toList windowsAndImages))
         miniImages = map (picture . snd) (filter (isMini . fst) (toList windowsAndImages))
-        startXs = scanrT (+) windowStartY (fmap (\w -> if isMini w then 0 else height w) ws)
         statusBarStyle = ((appEndo <$> cmdSty) <*> baseAttributes) $ configStyle $ configUI $ fsConfig fs
         tabBarImages = renderTabBar e fs colCount
+        windowOffsets = SL.verticalOffsetsForWindows windowStartY ws
     logPutStrLn "refreshing screen."
-    logPutStrLn $ "startXs: " ++ show startXs
+    logPutStrLn $ "windowOffsets: " ++ show windowOffsets
     Vty.update (fsVty fs)
         ( Vty.picForImage ( Vty.vertCat tabBarImages
                             Vty.<->
@@ -193,7 +191,7 @@ refresh fs e = do
                           ))
         { Vty.picCursor =
             case (\(w, r) -> (isMini w, cursor r)) (PL._focus windowsAndImages) of
-                (False, Just (y, x)) -> Vty.Cursor (toEnum x) (toEnum $ y + PL._focus startXs)
+                (False, Just (y, x)) -> Vty.Cursor (toEnum x) (toEnum $ y + PL._focus windowOffsets)
                 (True, Just (_, x)) -> Vty.Cursor (toEnum x) (toEnum $ rowCount - 1)
                 -- Add the position of the window to the position of the cursor
                 (_, Nothing) -> Vty.NoCursor
@@ -361,11 +359,3 @@ renderTabBar e fs xss = [tabImages Vty.<|> extraImage]
         baseAttr True  sty = attributesToAttr (appEndo (tabInFocusStyle uiStyle) sty) Vty.defAttr
         baseAttr False sty = attributesToAttr (appEndo (tabNotFocusedStyle uiStyle) sty) Vty.defAttr `Vty.withStyle` Vty.underline
         tabToVtyImage _tab@(TabDescr text inFocus) = Vty.string (tabAttr inFocus) (tabTitle text)
-
--- As scanr, but generalized to a traversable (TODO)
-scanrT :: (Int -> Int -> Int) -> Int -> PL.PointedList Int -> PL.PointedList Int
-scanrT (+*+) k t = evalState (mapM f t) k
-    where f x = do s <- get
-                   let s' = s +*+ x
-                   put s'
-                   return s
