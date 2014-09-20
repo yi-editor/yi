@@ -1,4 +1,14 @@
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# OPTIONS_HADDOCK show-extensions #-}
+
+-- |
+-- Module      :  Yi.Keymap.Vim
+-- License     :  GPL-2
+-- Maintainer  :  yi-devel@googlegroups.com
+-- Stability   :  experimental
+-- Portability :  portable
+--
+-- The vim keymap.
 
 module Yi.Keymap.Vim
     ( keymapSet
@@ -15,14 +25,13 @@ module Yi.Keymap.Vim
 import Control.Applicative
 import Data.Char (toUpper)
 import Data.List (find)
+import Data.Monoid
 import Data.Prototype
-
 import Yi.Buffer.Adjusted hiding (Insert)
 import Yi.Editor
 import Yi.Event
 import Yi.Keymap
 import Yi.Keymap.Keys (anyEvent)
-
 import Yi.Keymap.Vim.Common
 import Yi.Keymap.Vim.Digraph
 import Yi.Keymap.Vim.EventUtils
@@ -43,7 +52,7 @@ data VimConfig = VimConfig {
     vimKeymap :: Keymap
   , vimBindings :: [VimBinding]
   , vimOperators :: [VimOperator]
-  , vimExCommandParsers :: [String -> Maybe ExCommand]
+  , vimExCommandParsers :: [EventString -> Maybe ExCommand]
   , vimDigraphs :: [(String, Char)]
   , vimRelayout :: Char -> Char
   }
@@ -75,21 +84,23 @@ defVimConfig = Proto $ \this -> VimConfig {
 
 defVimKeymap :: VimConfig -> KeymapM ()
 defVimKeymap config = do
-    e <- anyEvent
-    write $ impureHandleEvent config e True
+  e <- anyEvent
+  write $ impureHandleEvent config e True
 
 -- This is not in Yi.Keymap.Vim.Eval to avoid circular dependency:
 -- eval needs to know about bindings, which contains normal bindings,
 -- which contains '.', which needs to eval things
 -- So as a workaround '.' just saves a string that needs eval in VimState
 -- and the actual evaluation happens in impureHandleEvent
-pureEval :: VimConfig -> String -> EditorM ()
-pureEval config s = sequence_ actions
-        where actions = map (pureHandleEvent config) (parseEvents s)
+--
+-- TODO: pass through untouched 'EventString' to 'parseEvents' instead
+-- of converting to 'String'.
+pureEval :: VimConfig -> EventString -> EditorM ()
+pureEval config = sequence_ . map (pureHandleEvent config) . parseEvents
 
-impureEval :: VimConfig -> String -> Bool -> YiM ()
+impureEval :: VimConfig -> EventString -> Bool -> YiM ()
 impureEval config s needsToConvertEvents = sequence_ actions
-        where actions = map (\e -> impureHandleEvent config e needsToConvertEvents) $ parseEvents s
+  where actions = map (\e -> impureHandleEvent config e needsToConvertEvents) $ parseEvents s
 
 pureHandleEvent :: VimConfig -> Event -> EditorM ()
 pureHandleEvent config ev
@@ -98,19 +109,19 @@ pureHandleEvent config ev
 impureHandleEvent :: VimConfig -> Event -> Bool -> YiM ()
 impureHandleEvent = genericHandleEvent vimBindings selectBinding
 
-genericHandleEvent :: MonadEditor m
-    => (VimConfig -> [VimBinding])
-    -> (EventString -> VimState -> [VimBinding] -> MatchResult (m RepeatToken))
-    -> VimConfig
-    -> Event
-    -> Bool
-    -> m ()
+genericHandleEvent :: MonadEditor m => (VimConfig -> [VimBinding])
+                   -> (EventString -> VimState -> [VimBinding]
+                       -> MatchResult (m RepeatToken))
+                   -> VimConfig
+                   -> Event
+                   -> Bool
+                   -> m ()
 genericHandleEvent getBindings pick config unconvertedEvent needsToConvertEvents = do
     currentState <- withEditor getDynamic
     let event = if needsToConvertEvents
                 then convertEvent (vsMode currentState) (vimRelayout config) unconvertedEvent
                 else unconvertedEvent
-        evs = vsBindingAccumulator currentState ++ eventToString event
+        evs = vsBindingAccumulator currentState <> eventToEventString event
         bindingMatch = pick evs currentState (getBindings config)
         prevMode = vsMode currentState
 
@@ -151,7 +162,7 @@ performEvalIfNecessary config = do
     stateAfterAction <- getDynamic
 
     -- see comment for 'pureEval'
-    modifyStateE $ \s -> s { vsStringToEval = "" }
+    modifyStateE $ \s -> s { vsStringToEval = mempty }
     pureEval config (vsStringToEval stateAfterAction)
 
 allPureBindings :: VimConfig -> [VimBinding]

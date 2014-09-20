@@ -1,5 +1,6 @@
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE OverloadedStrings #-}
 {-# OPTIONS_HADDOCK show-extensions #-}
 
 -- |
@@ -37,6 +38,8 @@ import           Data.Binary
 import           Data.Default
 import           Data.Foldable
 import           Data.Maybe (listToMaybe, isJust, catMaybes)
+import           Data.Monoid
+import qualified Data.Text as T
 import           Data.Typeable
 import           Prelude hiding (and,error,elem,notElem,all,concatMap,exp)
 import           Text.Read (readMaybe)
@@ -53,6 +56,7 @@ import qualified Yi.Mode.GHCi as GHCi
 import qualified Yi.Mode.Interactive as Interactive
 import           Yi.Modes (anyExtension, extensionOrContentsMatch)
 import           Yi.Monad
+import qualified Yi.Rope as R
 import           Yi.String
 import           Yi.Syntax
 import qualified Yi.Syntax.Driver as Driver
@@ -155,24 +159,25 @@ adjustBlock e len = do
   let t = Paren.getIndentingSubtree e p l
   case t of
     Nothing -> return ()
-    Just it ->
-           savingExcursionB $ do
-                   let (_startOfs, height) = Paren.getSubtreeSpan it
-                   col <- curCol
-                   forM_ [1..height] $ const $ do
-                               lineDown
-                               indent <- indentOfB =<< readLnB
-                               -- it might be that we have 1st column comments in the block,
-                               -- which should not be changed.
-                               when (indent > col) $
-                                if len >= 0
-                                 then do insertN (replicate len ' ')
-                                         leftN len
-                                 else deleteN (negate len)
+    Just it -> savingExcursionB $ do
+      let (_startOfs, height) = Paren.getSubtreeSpan it
+      col <- curCol
+      forM_ [1..height] $ const $ do
+        lineDown
+        indent <- indentOfB =<< readLnB
+        -- it might be that we have 1st column comments in the block,
+        -- which should not be changed.
+        when (indent > col) $
+         if len >= 0
+          then do
+           insertN (R.fromText . T.replicate len $ T.singleton ' ')
+           leftN len
+          else deleteN (negate len)
 
--- | Returns true if the token should be indented to look as "inside" the group.
+-- | Returns true if the token should be indented to look as "inside"
+-- the group.
 insideGroup :: Token -> Bool
-insideGroup (Special c) = c `notElem` "',;})]"
+insideGroup (Special c) = T.any (== c) "',;})]"
 insideGroup _ = True
 
 cleverAutoIndentHaskellB :: Paren.Tree TT -> IndentBehaviour -> BufferM ()
@@ -221,8 +226,8 @@ cleverAutoIndentHaskellB e behaviour = do
   case getLastPath [e] solPnt of
     Nothing -> return ()
     Just path -> let stops = stopsOf path
-                 in trace ("Stops = " ++ show stops) $
-                    trace ("firstTokOnLine = " ++ show firstTokOnLine) $
+                 in trace ("Stops = " <> showT stops) $
+                    trace ("firstTokOnLine = " <> showT firstTokOnLine) $
                     cycleIndentsB behaviour stops
 
 cleverAutoIndentHaskellC :: Exp TT -> IndentBehaviour -> BufferM ()
@@ -249,11 +254,11 @@ cleverAutoIndentHaskellC e behaviour = do
         -- of; where; etc. ends the previous line. We want to start the block here.
         -- Also use the next line's indent:
         -- maybe we are putting a new 1st statement in the block here.
-      stopsOf (l@(Hask.PLet _ (Hask.Block _) _):ts') = [colOf' l | lineStartsWith (Reserved Haskell.In)] ++ stopsOf ts'
+      stopsOf (l@(Hask.PLet _ (Hask.Block _) _):ts') = [colOf' l | lineStartsWith (Reserved Haskell.In)] <> stopsOf ts'
                                                        -- offer to align with let only if this is an "in"
       stopsOf (t@(Hask.Block _):ts') = (shiftBlock + colOf' t) : stopsOf ts'
                                        -- offer add another statement in the block
-      stopsOf (Hask.PGuard' (PAtom pipe _) _ _:ts') = [tokCol pipe | lineStartsWith (ReservedOp Haskell.Pipe)] ++ stopsOf ts'
+      stopsOf (Hask.PGuard' (PAtom pipe _) _ _:ts') = [tokCol pipe | lineStartsWith (ReservedOp Haskell.Pipe)] <> stopsOf ts'
                                                                  -- offer to align against another guard
       stopsOf (d@(Hask.PData {}):ts') = colOf' d + indentLevel
                                            : stopsOf ts' --FIXME!
@@ -261,7 +266,7 @@ cleverAutoIndentHaskellC e behaviour = do
           = [case firstTokOnLine of
               Just (Operator op') -> opLength op' (colOf' exp) -- Usually operators are aligned against the '=' sign
               -- case of an operator should check so that value always is at least 1
-              _ -> colOf' exp | lineIsExpression ] ++ stopsOf ts'
+              _ -> colOf' exp | lineIsExpression ] <> stopsOf ts'
                    -- offer to continue the RHS if this looks like an expression.
       stopsOf [] = [0] -- maybe it's new declaration in the module
       stopsOf (_:ts) = stopsOf ts -- by default, there is no reason to indent against an expression.
@@ -296,11 +301,11 @@ cleverAutoIndentHaskellC e behaviour = do
   case getLastPath [e] solPnt of
     Nothing -> return ()
     Just path ->let stops = stopsOf path
-                in trace ("Path = " ++ show path) $
-                   trace ("Stops = " ++ show stops) $
-                   trace ("Previous indent = " ++ show previousIndent) $
-                   trace ("Next indent = " ++ show nextIndent) $
-                   trace ("firstTokOnLine = " ++ show firstTokOnLine) $
+                in trace ("Path = " <> showT path) $
+                   trace ("Stops = " <> showT stops) $
+                   trace ("Previous indent = " <> showT previousIndent) $
+                   trace ("Next indent = " <> showT nextIndent) $
+                   trace ("firstTokOnLine = " <> showT firstTokOnLine) $
                    cycleIndentsB behaviour stops
 
 colOf' :: Foldable t => t TT -> Int
@@ -314,7 +319,7 @@ nominalIndent :: Char -> Int
 nominalIndent '{' = 2
 nominalIndent _ = 1
 
-tokText :: Tok t -> BufferM String
+tokText :: Tok t -> BufferM R.YiString
 tokText = readRegionB . tokRegion
 
 tokRegion :: Tok t -> Region
@@ -339,16 +344,18 @@ cleverPrettify toks = do
                          -- FIXME: laziness
   case thisCommentGroup of
     Nothing -> return ()
-    Just g -> do let region = mkRegion (tokBegin . head $ g) (tokEnd . last $ g)
-                 text <- unwords . fmap (drop 2) <$> mapM tokText g
-                 modifyRegionClever (const $ unlines' $ fmap ("-- " ++) $ fillText 80 text) region
+    Just g -> do
+      text <- T.unwords . fmap (T.drop 2 . R.toText) <$> mapM tokText g
+      let region = mkRegion (tokBegin . head $ g) (tokEnd . last $ g)
+          mkGrp = const . R.unlines $ R.append "-- " <$> fillText 80 (R.fromText text)
+      modifyRegionClever mkGrp region
 
 tokTyp :: Token -> Maybe Haskell.CommentType
 tokTyp (Comment t) = Just t
 tokTyp _ = Nothing
 
 -- TODO: export or remove
--- -- | Keyword-based auto-indenter for haskell.
+-- -- Keyword-based auto-indenter for haskell.
 -- autoIndentHaskellB :: IndentBehaviour -> BufferM ()
 -- autoIndentHaskellB =
 --   autoIndentWithKeywordsB [ "if"
@@ -410,7 +417,7 @@ ghciSend :: String -> YiM ()
 ghciSend cmd = do
     b <- ghciGet
     withGivenBuffer b botB
-    sendToProcess b (cmd ++ "\n")
+    sendToProcess b (cmd <> "\n")
 
 -- | Load current buffer in GHCi
 ghciLoadBuffer :: YiM ()
@@ -419,44 +426,47 @@ ghciLoadBuffer = do
     f <- withBuffer (gets file)
     case f of
       Nothing -> error "Couldn't get buffer filename in ghciLoadBuffer"
-      Just filename -> ghciSend $ ":load " ++ show filename
+      Just filename -> ghciSend $ ":load " <> show filename
 
 -- Tells ghci to infer the type of the identifier at point. Doesn't
 -- check for errors (yet)
 ghciInferType :: YiM ()
 ghciInferType = do
-    nm <- withBuffer $ readUnitB unitWord
-    unless (null nm) $
-        withMinibufferGen nm noHint "Insert type of which identifier?"
-        return (const $ return ()) ghciInferTypeOf
+    nm <- withBuffer (readUnitB unitWord)
+    unless (R.null nm) $
+      withMinibufferGen (R.toText nm) noHint "Insert type of which identifier?"
+      return (const $ return ()) (ghciInferTypeOf . R.fromText)
 
-ghciInferTypeOf :: String -> YiM ()
+ghciInferTypeOf :: R.YiString -> YiM ()
 ghciInferTypeOf nm = do
     buf <- ghciGet
-    result <- Interactive.queryReply buf (":t " ++ nm)
-    let successful = (not . null) nm &&and (zipWith (==) nm result)
-    when successful $
-         withBuffer $ moveToSol *> insertB '\n' *> leftB *> insertN result *> rightB
+    result <- Interactive.queryReply buf (":t " <> R.toString nm)
+    let successful = (not . R.null) nm && nm == result
+    when successful . withBuffer $
+      moveToSol *> insertB '\n' *> leftB
+      *> insertN result *> rightB
 
 ghciSetProcessName :: YiM ()
 ghciSetProcessName = do
   g <- getDynamic
   let nm = g ^. GHCi.ghciProcessName
-      prompt = "Command to call for GHCi, currently ‘" ++ nm ++ "’: "
-  withMinibufferFree prompt $ \s -> setDynamic $ g & GHCi.ghciProcessName .~ s
+      prompt = T.concat [ "Command to call for GHCi, currently ‘"
+                        , T.pack nm, "’: " ]
+  withMinibufferFree prompt $ \s ->
+    setDynamic $ g & GHCi.ghciProcessName .~ T.unpack s
 
 ghciSetProcessArgs :: YiM ()
 ghciSetProcessArgs = do
   g <- getDynamic
   let nm = g ^. GHCi.ghciProcessName
       args = g ^. GHCi.ghciProcessArgs
-      prompt = unwords $ [ "List of args to call "
-                         , nm
-                         , "with, currently"
-                         , show args
-                         , ":"
-                         ]
+      prompt = T.unwords $ [ "List of args to call "
+                           , T.pack nm
+                           , "with, currently"
+                           , T.pack $ show args
+                           , ":"
+                           ]
   withMinibufferFree prompt $ \arg ->
-    case readMaybe arg of
+    case readMaybe $ T.unpack arg of
       Nothing -> msgEditor "Could not parse as [String], keep old args."
       Just arg' -> setDynamic $ g & GHCi.ghciProcessArgs .~ arg'

@@ -1,10 +1,20 @@
+{-# OPTIONS_HADDOCK show-extensions #-}
+
+-- |
+-- Module      :  Yi.Style.Misc
+-- License     :  GPL-2
+-- Maintainer  :  yi-devel@googlegroups.com
+-- Stability   :  experimental
+-- Portability :  portable
+--
+-- A couple of themes.
+
 module Yi.Style.Misc (happyDeluxe,  textExMachina) where
 
 import Data.Monoid
-
--- Have to import global Yi space to get access to Data.Prototype. That should
--- be split into a separate package.
-import Yi
+import Yi.Style
+import Yi.Style.Library
+import Data.Prototype
 
 -- TextMate themes are available on the TM wiki:
 -- http://wiki.macromates.com/Themes/UserSubmittedThemes

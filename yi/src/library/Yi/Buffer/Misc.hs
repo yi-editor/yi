@@ -5,20 +5,17 @@
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE DeriveTraversable #-}
 {-# LANGUAGE ExistentialQuantification #-}
-{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE ImpredicativeTypes #-}
-{-# LANGUAGE Rank2Types #-}
-{-# LANGUAGE StandaloneDeriving #-}
+{-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE TemplateHaskell #-}
-{-# LANGUAGE TypeSynonymInstances #-}
 {-# OPTIONS_HADDOCK show-extensions #-}
 
 -- |
 -- Module      :  Yi.Buffer.Misc
--- Copyright   :  (c) Don Stewart            2004, 2007
---                    Jean-Philippe Bernardy 2007, 2008
 -- License     :  GPL-2
 -- Maintainer  :  yi-devel@googlegroups.com
 -- Stability   :  experimental
@@ -63,14 +60,11 @@ module Yi.Buffer.Misc
   , moveN
   , leftN
   , rightN
-  , insertN'
   , insertN
-  , insertNAt'
   , insertNAt
   , insertB
   , deleteN
   , nelemsB
-  , nelemsB'
   , writeB
   , writeN
   , newlineB
@@ -153,6 +147,7 @@ module Yi.Buffer.Misc
   , keymapProcessA
   , strokesRangesB
   , streamB
+  , streamB'
   , indexedStreamB
   , askMarks
   , pointAt
@@ -164,7 +159,7 @@ module Yi.Buffer.Misc
   , miniIdentString
   , identA
   , directoryContentA
-  , BufferId
+  , BufferId(..)
   , file
   , lastSyncTimeA
   , replaceCharB
@@ -178,45 +173,47 @@ module Yi.Buffer.Misc
   , startUpdateTransactionB
   , commitUpdateTransactionB
   , applyUpdate
-  )
-where
+  , betweenB
+  ) where
 
-import Prelude hiding (foldr, mapM, notElem)
-import Yi.Region
-import System.FilePath
-import Yi.Buffer.Implementation
-import Yi.Syntax
-import Yi.Buffer.Undo
-import Yi.Dynamic
-import Yi.Window
-import Control.Monad.RWS.Strict hiding (mapM_, mapM, get, put, forM_, forM)
-import Control.Applicative
-import Control.Lens hiding ((+~), Action, reversed, at, act)
-import Data.Binary
-import Data.Default
+import           Control.Applicative
+import           Control.Lens hiding ((+~), Action, reversed, at, act)
+import           Control.Monad.RWS.Strict hiding (mapM_, mapM, get, put, forM_, forM)
+import           Data.Binary
+import           Data.Char(ord)
+import           Data.Default
 #if __GLASGOW_HASKELL__ < 708
-import Data.DeriveTH
+import           Data.DeriveTH
 #else
-import GHC.Generics (Generic)
+import           GHC.Generics (Generic)
 #endif
-import Data.Foldable
-import Data.Traversable
-import Data.Typeable
-import Data.Function hiding ((.), id)
-import Data.Rope (Rope)
-import qualified Data.Rope as R
+import           Data.Foldable
+import           Data.Function hiding ((.), id)
 import qualified Data.Map as M
-import Data.Maybe
-import {-# source #-} Yi.Keymap
-import Yi.Interact as I
-import Yi.Buffer.Basic
-import {-# SOURCE #-} Yi.Buffer.HighLevel
-import {-# SOURCE #-} Yi.MiniBuffer (withMinibufferFree)
-import Yi.Monad
-import Yi.Utils
-import Data.Time
-import Numeric(showHex)
-import Data.Char(ord)
+import           Data.Maybe
+import qualified Data.Text as T
+import qualified Data.Text.Encoding as E
+import           Data.Time
+import           Data.Traversable
+import           Data.Typeable
+import           Numeric(showHex)
+import           Prelude hiding (foldr, mapM, notElem)
+import           System.FilePath
+import           Yi.Buffer.Basic
+import           Yi.Buffer.Implementation
+import           Yi.Buffer.Undo
+import           Yi.Dynamic
+import           Yi.Interact as I
+import           Yi.Monad
+import           Yi.Region
+import           Yi.Rope (YiString)
+import qualified Yi.Rope as R
+import           Yi.Syntax
+import           Yi.Utils
+import           Yi.Window
+import           {-# SOURCE #-} Yi.Buffer.HighLevel
+import           {-# SOURCE #-} Yi.MiniBuffer (withMinibufferFree)
+import           {-# source #-} Yi.Keymap
 
 #ifdef TESTING
 -- TODO: make this compile.
@@ -257,8 +254,17 @@ data SelectionStyle = SelectionStyle
   }
   deriving Typeable
 
-type BufferId = Either String FilePath
--- ^ maybe a filename associated with this buffer. Filename is canonicalized.
+data BufferId = MemBuffer T.Text
+              | FileBuffer FilePath
+              deriving (Show, Eq)
+
+instance Binary BufferId where
+  get = get >>= \case
+    (0 :: Word8) -> MemBuffer . E.decodeUtf8 <$> get
+    1 -> FileBuffer <$> get
+    x -> fail $ "Binary failed on BufferId, tag: " ++ show x
+  put (MemBuffer t) = put (0 :: Word8) >> put (E.encodeUtf8 t)
+  put (FileBuffer t) = put (1 :: Word8) >> put t
 
 -- TODO:
 -- data BufferIdent
@@ -311,20 +317,20 @@ data FBuffer = forall syntax.
 instance HasAttributes FBuffer where
     attributesA = lens attributes (\(FBuffer f1 f2 _) a -> FBuffer f1 f2 a)
 
-shortIdentString :: [a] -> FBuffer -> String
+shortIdentString :: [a] -> FBuffer -> T.Text
 shortIdentString prefix b = case b ^. identA of
-    Left bName -> "*" ++ bName ++ "*"
-    Right fName -> joinPath $ drop (length prefix) $ splitPath fName
+  MemBuffer bName -> "*" `T.append` bName `T.append` "*"
+  FileBuffer fName -> T.pack . joinPath . drop (length prefix) $ splitPath fName
 
-identString :: FBuffer -> String
+identString :: FBuffer -> T.Text
 identString b = case b ^. identA of
-    Left bName -> "*" ++ bName ++ "*"
-    Right fName -> fName
+  MemBuffer bName -> "*" `T.append` bName `T.append` "*"
+  FileBuffer fName -> T.pack fName
 
-miniIdentString :: FBuffer -> String
+miniIdentString :: FBuffer -> T.Text
 miniIdentString b = case b ^. identA of
-    Right _ -> "MINIFILE:"
-    Left bufName -> bufName
+  MemBuffer bufName -> bufName
+  FileBuffer _ -> "MINIFILE:"
 
 -- unfortunately the dynamic stuff can't be read.
 instance Binary FBuffer where
@@ -362,8 +368,8 @@ queryAndModifyRawbuf f (FBuffer f1 f5 f3) =
 
 file :: FBuffer -> Maybe FilePath
 file b = case b ^. identA of
-    Right f -> Just f
-    _ -> Nothing
+  FileBuffer f -> Just f
+  MemBuffer _ -> Nothing
 
 highlightSelectionA :: Lens' FBuffer Bool
 highlightSelectionA = selectionStyleA .
@@ -373,49 +379,58 @@ rectangleSelectionA :: Lens' FBuffer Bool
 rectangleSelectionA = selectionStyleA .
   lens rectangleSelection (\e x -> e { rectangleSelection = x })
 
-{- | Currently duplicates some of Vim's indent settings. Allowing a buffer to
- - specify settings that are more dynamic, perhaps via closures, could be
- - useful.
- -}
-data IndentSettings = IndentSettings { expandTabs :: Bool -- ^ Insert spaces instead of tabs as possible
-                                     , tabSize    :: Int  -- ^ Size of a Tab
-                                     , shiftWidth :: Int  -- ^ Indent by so many columns
-                                     }
-                      deriving (Eq, Show, Typeable)
-
+-- | Currently duplicates some of Vim's indent settings. Allowing a
+-- buffer to specify settings that are more dynamic, perhaps via
+-- closures, could be useful.
+data IndentSettings = IndentSettings
+  { expandTabs :: Bool -- ^ Insert spaces instead of tabs as possible
+  , tabSize    :: Int  -- ^ Size of a Tab
+  , shiftWidth :: Int  -- ^ Indent by so many columns
+  } deriving (Eq, Show, Typeable)
 
 
 data AnyMode = forall syntax. AnyMode (Mode syntax)
   deriving Typeable
 
-{- | A Mode customizes the Yi interface for editing a particular data
-   format.  It specifies when the mode should be used and
-   controls file-specific syntax highlighting and command input, among
-   other things.
--}
+-- | A Mode customizes the Yi interface for editing a particular data
+-- format. It specifies when the mode should be used and controls
+-- file-specific syntax highlighting and command input, among other
+-- things.
 data Mode syntax = Mode
-    {
-     modeName :: String,              -- ^ so this can be serialized, debugged.
-     modeApplies :: FilePath -> String -> Bool, -- ^ What type of files does this mode apply to?
-     modeHL :: ExtHL syntax,          -- ^ Syntax highlighter
-     modePrettify :: syntax -> BufferM (), -- ^ Prettify current \"paragraph\"
-     modeKeymap :: KeymapSet -> KeymapSet, -- ^ Buffer-local keymap modification
-     modeIndent :: syntax -> IndentBehaviour -> BufferM (), -- ^ emacs-style auto-indent line
-     modeAdjustBlock :: syntax -> Int -> BufferM (), -- ^ adjust the indentation after modification
-     modeFollow :: syntax -> Action, -- ^ Follow a \"link\" in the file. (eg. go to location of error message)
-     modeIndentSettings :: IndentSettings,
-     modeToggleCommentSelection :: YiM (),
-     modeGetStrokes :: syntax -> Point -> Point -> Point -> [Stroke], -- ^ Strokes that should be applied when displaying a syntax element
-     modeGetAnnotations :: syntax -> Point -> [Span String],
-     -- should this be an Action instead?
-     modeOnLoad :: BufferM (), -- ^ An action that is to be executed when this mode is set
-     modeModeLine :: [String] -> BufferM String -- ^ buffer-local modeline formatting method
-    }
+  { modeName :: T.Text
+    -- ^ so this can be serialized, debugged.
+  , modeApplies :: FilePath -> R.YiString -> Bool
+    -- ^ What type of files does this mode apply to?
+  , modeHL :: ExtHL syntax
+    -- ^ Syntax highlighter
+  , modePrettify :: syntax -> BufferM ()
+    -- ^ Prettify current \"paragraph\"
+  , modeKeymap :: KeymapSet -> KeymapSet
+    -- ^ Buffer-local keymap modification
+  , modeIndent :: syntax -> IndentBehaviour -> BufferM ()
+    -- ^ emacs-style auto-indent line
+  , modeAdjustBlock :: syntax -> Int -> BufferM ()
+    -- ^ adjust the indentation after modification
+  , modeFollow :: syntax -> Action
+    -- ^ Follow a \"link\" in the file. (eg. go to location of error message)
+  , modeIndentSettings :: IndentSettings
+  , modeToggleCommentSelection :: YiM ()
+  , modeGetStrokes :: syntax -> Point -> Point -> Point -> [Stroke]
+    -- ^ Strokes that should be applied when displaying a syntax element
+  , modeGetAnnotations :: syntax -> Point -> [Span String]
+    -- should this be an Action instead?
+  , modeOnLoad :: BufferM ()
+    -- ^ An action that is to be executed when this mode is set
+  , modeModeLine :: [T.Text] -> BufferM T.Text
+    -- ^ buffer-local modeline formatting method
+  }
 
+-- | Just stores the mode name.
 instance Binary (Mode syntax) where
-    put = put . modeName -- we just store the modename.
-    get = do n <- get
-             return (emptyMode {modeName = n})
+    put = put . E.encodeUtf8 . modeName
+    get = do
+      n <- E.decodeUtf8 <$> get
+      return (emptyMode {modeName = n})
 
 -- | Used to specify the behaviour of the automatic indent command.
 data IndentBehaviour =
@@ -446,7 +461,8 @@ instance Eq FBuffer where
     (==) = (==) `on` bkey
 
 instance Show FBuffer where
-    show b = "Buffer #" ++ show (bkey b) ++ " (" ++ identString b ++ ")"
+    show b = Prelude.concat [ "Buffer #", show (bkey b)
+                            , " (",  T.unpack (identString b), ")" ]
 
 -- | Given a buffer, and some information update the modeline
 --
@@ -454,17 +470,17 @@ instance Show FBuffer where
 -- not hardcoded.
 --
 
-getModeLine :: [String] -> BufferM String
+getModeLine :: [T.Text] -> BufferM T.Text
 getModeLine prefix = withModeB (`modeModeLine` prefix)
 
-defaultModeLine :: [String] -> BufferM String
+defaultModeLine :: [T.Text] -> BufferM T.Text
 defaultModeLine prefix = do
     col <- curCol
     pos <- pointB
     ln <- curLn
     p <- pointB
     s <- sizeB
-    curChar <-readB
+    curChar <- readB
     ro <-use readOnlyA
     modeNm <- gets (withMode0 modeName)
     unchanged <- gets isUnchangedBuffer
@@ -472,29 +488,24 @@ defaultModeLine prefix = do
           | pos == 0 || s == 0 = " Top"
           | pos == s = " Bot"
           | otherwise = getPercent p s
-        chg = if unchanged then "-" else "*"
-        roStr = if ro  then "%" else chg
-        hexChar = "0x" ++ padString 2 '0' (Numeric.showHex (Data.Char.ord curChar) "")
+        changed = if unchanged then "-" else "*"
+        readOnly' = if ro then "%" else changed
+        hexxed = T.pack $ showHex (ord curChar) ""
+        hexChar = "0x" `T.append` T.justifyRight 2 '0' hexxed
+        toT = T.pack . show
 
     nm <- gets $ shortIdentString prefix
-    return $
-           roStr ++ chg ++ " "
-           ++ nm ++
-           replicate 5 ' ' ++
-           hexChar ++ "  " ++
-           "L" ++ padString 5 ' ' (show ln) ++ "  " ++ "C" ++ padString 3 ' ' (show col) ++
-           "  " ++ pct ++
-           "  " ++ modeNm ++
-           "  " ++ show (fromPoint p)
-
-padString :: Int -> Char -> String -> String
-padString n c s = replicate k c ++ s
-  where
-    k = max 0 $ n - length s
+    return $ T.concat [ readOnly', changed, " ", nm
+                      , "     ", hexChar, "  "
+                      , "L", T.justifyRight 5 ' ' (toT ln)
+                      , "  "
+                      , "C", T.justifyRight 3 ' ' (toT col)
+                      , "  ", pct , "  ", modeNm , "  ", toT $ fromPoint p
+                      ]
 
 -- | Given a point, and the file size, gives us a percent string
-getPercent :: Point -> Point -> String
-getPercent a b = padString 3 ' ' (show p) ++ "%"
+getPercent :: Point -> Point -> T.Text
+getPercent a b = T.justifyRight 3 ' ' (T.pack $ show p) `T.snoc` '%'
     where p = ceiling (aa / bb * 100.0 :: Double) :: Int
           aa = fromIntegral a :: Double
           bb = fromIntegral b :: Double
@@ -611,7 +622,9 @@ commitUpdateTransactionB = do
     (%=) undosA $ addChangeU InteractivePoint
 
 
-undoRedo :: (forall syntax. Mark -> URList -> BufferImpl syntax -> (BufferImpl syntax, (URList, [Update])) ) -> BufferM ()
+undoRedo :: (forall syntax. Mark -> URList -> BufferImpl syntax
+             -> (BufferImpl syntax, (URList, [Update])))
+         -> BufferM ()
 undoRedo f = do
   m <- getInsMark
   ur <- use undosA
@@ -640,11 +653,11 @@ const2 :: t -> t1 -> t2 -> t
 const2 x _ _ = x
 
 -- | Mode applies function that always returns True.
-modeAlwaysApplies :: FilePath -> String -> Bool
+modeAlwaysApplies :: a -> b -> Bool
 modeAlwaysApplies = const2 True
 
 -- | Mode applies function that always returns False.
-modeNeverApplies :: FilePath -> String -> Bool
+modeNeverApplies :: a -> b -> Bool
 modeNeverApplies = const2 False
 
 emptyMode :: Mode syntax
@@ -670,17 +683,17 @@ emptyMode = Mode
    modeModeLine = defaultModeLine
   }
 
+
+-- | Prompts the user for comment syntax to use for the current mode.
 promptCommentString :: YiM ()
 promptCommentString =
   withMinibufferFree "No comment syntax is defined. Use: " $ \cString -> withBuffer $ do
-    let c = cString ++ " "
-    toggleCommentSelectionB c cString
-    modifyMode (\x -> x { modeToggleCommentSelection =
-                             withBuffer (toggleCommentSelectionB c cString)
-                        })
+    let toggle = toggleCommentB (R.fromText cString)
+    _ <- toggle
+    modifyMode $ (\x -> x { modeToggleCommentSelection = withBuffer toggle })
 
 -- | Create buffer named @nm@ with contents @s@
-newB :: BufferRef -> BufferId -> Rope -> FBuffer
+newB :: BufferRef -> BufferId -> YiString -> FBuffer
 newB unique nm s =
  FBuffer { bmode  = emptyMode
          , rawbuf = newBI s
@@ -715,25 +728,24 @@ sizeB = queryBuffer sizeBI
 pointB :: BufferM Point
 pointB = use . markPointA =<< getInsMark
 
+nelemsB :: Int -> Point -> BufferM YiString
+nelemsB n i = R.take n <$> streamB Forward i
 
--- | Return @n@ elems starting at @i@ of the buffer as a list
-nelemsB :: Int -> Point -> BufferM String
-nelemsB n i = queryBuffer $ nelemsBI n i
+streamB :: Direction -> Point -> BufferM YiString
+streamB dir i = queryBuffer $ getStream dir i
 
-nelemsB' :: Int -> Point -> BufferM Rope
-nelemsB' n i = fmap (R.take n) (streamB Forward i)
-
-streamB :: Direction -> Point -> BufferM Rope
-streamB dir i = queryBuffer (getStream dir i)
+-- | 'String' version of 'streamB'. See comment on 'getStream''.
+streamB' :: Direction -> Point -> BufferM String
+streamB' dir i = queryBuffer $ getStream' dir i
 
 indexedStreamB :: Direction -> Point -> BufferM [(Point,Char)]
-indexedStreamB dir i = queryBuffer (getIndexedStream dir i)
+indexedStreamB dir i = queryBuffer $ getIndexedStream dir i
 
 strokesRangesB :: Maybe SearchExp -> Region -> BufferM [[Stroke]]
 strokesRangesB regex r = do
-    p <- pointB
-    getStrokes <- withSyntaxB modeGetStrokes
-    queryBuffer $ strokesRangesBI getStrokes regex r p
+  p <- pointB
+  getStrokes <- withSyntaxB modeGetStrokes
+  queryBuffer $ strokesRangesBI getStrokes regex r p
 
 ------------------------------------------------------------------------
 -- Point based operations
@@ -750,26 +762,26 @@ setInserting :: Bool -> BufferM ()
 setInserting = assign insertingA
 
 checkRO :: BufferM Bool
-checkRO =  do
-   ro <- use readOnlyA
-   when  ro (fail "Read Only Buffer")
-   return ro
+checkRO = do
+  ro <- use readOnlyA
+  when ro (fail "Read Only Buffer")
+  return ro
 
 applyUpdate :: Update -> BufferM ()
 applyUpdate update = do
-   ro    <- checkRO
-   valid <- queryBuffer (isValidUpdate update)
-   when (not ro && valid)  $ do
-        forgetPreferCol
-        let reversed = reverseUpdateI update
-        modifyBuffer (applyUpdateI update)
+  ro    <- checkRO
+  valid <- queryBuffer (isValidUpdate update)
+  when (not ro && valid) $ do
+    forgetPreferCol
+    let reversed = reverseUpdateI update
+    modifyBuffer (applyUpdateI update)
 
-        isTransacPresent <- use updateTransactionInFlightA
-        if isTransacPresent
-        then (%=) updateTransactionAccumA (reversed:)
-        else (%=) undosA $ addChangeU $ AtomicChange reversed
+    isTransacPresent <- use updateTransactionInFlightA
+    if isTransacPresent
+    then updateTransactionAccumA %= (reversed:)
+    else undosA %= addChangeU (AtomicChange reversed)
 
-        tell [update]
+    tell [update]
    -- otherwise, just ignore.
 
 -- | Revert all the pending updates; don't touch the point.
@@ -785,10 +797,10 @@ writeB c = do
   insertB c
 
 -- | Write the list into the buffer at current point.
-writeN :: String -> BufferM ()
+writeN :: YiString -> BufferM ()
 writeN cs = do
   off <- pointB
-  deleteNAt Forward (length cs) off
+  deleteNAt Forward (R.length cs) off
   insertNAt cs off
 
 -- | Insert newline at current point.
@@ -796,23 +808,24 @@ newlineB :: BufferM ()
 newlineB = insertB '\n'
 
 ------------------------------------------------------------------------
-insertNAt' :: Rope -> Point -> BufferM ()
-insertNAt' rope pnt = applyUpdate (Insert pnt Forward rope)
 
--- | Insert the list at specified point, extending size of buffer
-insertNAt :: String -> Point -> BufferM ()
-insertNAt cs = insertNAt' (R.fromString cs)
+-- | Insert given 'YiString' at specified point, etxending size of the
+-- buffer.
+insertNAt :: YiString -> Point -> BufferM ()
+insertNAt rope pnt = applyUpdate (Insert pnt Forward rope)
 
--- | Insert the list at current point, extending size of buffer
-insertN :: String -> BufferM ()
-insertN cs = insertNAt cs =<< pointB
-
-insertN' :: Rope -> BufferM ()
-insertN' rope = insertNAt' rope =<< pointB
+-- | Insert the 'YiString' at current point, extending size of buffer
+insertN :: YiString -> BufferM ()
+insertN cs = pointB >>= insertNAt cs
 
 -- | Insert the char at current point, extending size of buffer
+--
+-- TODO: seems very inefficient and we end up with a lot af chunk size
+-- 1 chunks when typing, perhaps we should snoc onto the end of our
+-- existing 'YiString' directly. Need to benchmark this, maybe it's
+-- optimised away.
 insertB :: Char -> BufferM ()
-insertB = insertN . return
+insertB = insertN . R.singleton
 
 ------------------------------------------------------------------------
 
@@ -820,7 +833,7 @@ insertB = insertN . return
 deleteNAt :: Direction -> Int -> Point -> BufferM ()
 deleteNAt dir n pos = do
   els <- R.take n <$> streamB Forward pos
-  applyUpdate (Delete pos dir els)
+  applyUpdate $ Delete pos dir els
 
 
 ------------------------------------------------------------------------
@@ -842,8 +855,9 @@ markLines = mapM getLn =<< askMarks
 -- actual line we went to (which may be not be the requested line,
 -- if it was out of range)
 gotoLn :: Int -> BufferM Int
-gotoLn x = do moveTo 0
-              (1 +) <$> gotoLnFrom (x - 1)
+gotoLn x = do
+  moveTo 0
+  succ <$> gotoLnFrom (x - 1)
 
 ---------------------------------------------------------------------
 
@@ -988,7 +1002,7 @@ movingToPrefCol f = do
 moveToColB :: Int -> BufferM ()
 moveToColB targetCol = do
   solPnt <- solPointB =<< pointB
-  chrs <- nelemsB maxBound solPnt -- get all chars in the buffer, lazily.
+  chrs <- R.toString <$> nelemsB targetCol solPnt
   let cols = scanl colMove 0 chrs    -- columns corresponding to the char
       toSkip = takeWhile (\(char,col) -> char /= '\n' && col < targetCol) (zip chrs cols)
   moveTo $ solPnt +~ fromIntegral (length toSkip)
@@ -1017,9 +1031,23 @@ lineUp = void (lineMoveRel (-1))
 lineDown :: BufferM ()
 lineDown = void (lineMoveRel 1)
 
--- | Return the contents of the buffer as a list
-elemsB :: BufferM String
-elemsB = nelemsB maxBound 0
+-- | Return the contents of the buffer.
+elemsB :: BufferM YiString
+elemsB = queryBuffer mem
+
+-- | Returns the contents of the buffer between the two points.
+--
+-- If the @startPoint >= endPoint@, empty string is returned. If the
+-- points are out of bounds, as much of the content as possible is
+-- taken: you're not guaranteed to get @endPoint - startPoint@
+-- characters.
+betweenB :: Point -- ^ Point to start at
+         -> Point -- ^ Point to stop at
+         -> YiM YiString
+betweenB (Point s) (Point e) =
+  if e >= s
+  then return mempty
+  else withBuffer $ snd . R.splitAt s . fst . R.splitAt e <$> elemsB
 
 -- | Read the character at the current point
 readB :: BufferM Char
@@ -1028,11 +1056,9 @@ readB = pointB >>= readAtB
 -- | Read the character at the given index
 -- This is an unsafe operation: character NUL is returned when out of bounds
 readAtB :: Point -> BufferM Char
-readAtB i = do
-    s <- nelemsB 1 i
-    return $ case s of
-               [c] -> c
-               _ -> '\0'
+readAtB i = R.head <$> nelemsB 1 i >>= return . \case
+  Nothing -> '\0'
+  Just c  -> c
 
 replaceCharB :: Char -> BufferM ()
 replaceCharB c = do
@@ -1069,9 +1095,11 @@ maybeCharWithVerticalOffset offset = savingPointB $ do
     l1 <- curLn
     c1 <- curCol
     curChar <- readB
-    return (if c0 == c1 && l0 + offset == l1 && curChar `notElem` "\n\0"
-      then Just curChar
-      else Nothing)
+    return $ if c0 == c1
+                && l0 + offset == l1
+                && curChar `notElem` ("\n\0" :: String)
+             then Just curChar
+             else Nothing
 
 -- | Delete @n@ characters forward from the current point
 deleteN :: Int -> BufferM ()
@@ -1086,8 +1114,9 @@ deleteN n = pointB >>= deleteNAt Forward n
 curCol :: BufferM Int
 curCol = colOf =<< pointB
 
+-- | TODO: foldl for yi-rope
 colOf :: Point -> BufferM Int
-colOf p = foldl' colMove 0 <$> queryBuffer (charsFromSolBI p)
+colOf p = T.foldl' colMove 0 . R.toText <$> queryBuffer (charsFromSolBI p)
 
 lineOf :: Point -> BufferM Int
 lineOf p = queryBuffer $ lineAt p
@@ -1095,6 +1124,8 @@ lineOf p = queryBuffer $ lineAt p
 lineCountB :: BufferM Int
 lineCountB = lineOf =<< sizeB
 
+-- | TODO: assumes tab to be 8 but other places check width, perhaps
+-- this needs fixing?
 colMove :: Int -> Char -> Int
 colMove col '\t' = (col + 7) `mod` 8
 colMove col _    = col + 1
@@ -1143,7 +1174,7 @@ savingPointB f = savingPrefCol $ do
   moveTo p
   return res
 
-pointAt :: forall a. BufferM a -> BufferM Point
+pointAt :: BufferM a -> BufferM Point
 pointAt f = savingPointB (f *> pointB)
 
 pointAfterCursorB :: Point -> BufferM Point

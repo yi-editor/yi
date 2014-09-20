@@ -1,3 +1,12 @@
+{-# OPTIONS_HADDOCK show-extensions #-}
+
+-- |
+-- Module      :  Yi.Buffer.Adjusted
+-- License     :  GPL-2
+-- Maintainer  :  yi-devel@googlegroups.com
+-- Stability   :  experimental
+-- Portability :  portable
+--
 -- This module re-exports Yi.Buffer overriding insert* and delete* functions
 -- with their more indent-aware variants. It is intended to be imported
 -- instead of Yi.Buffer or qualified to avoid name clashes.
@@ -6,9 +15,7 @@ module Yi.Buffer.Adjusted
     ( bdeleteB
     , insertB
     , insertN
-    , insertN'
     , insertNAt
-    , insertNAt'
     , deleteB
     , deleteN
     , deleteRegionB
@@ -18,15 +25,12 @@ module Yi.Buffer.Adjusted
 
 import Control.Applicative
 import Control.Monad
-import qualified Data.Rope as R
 
 import Yi.Buffer hiding
     ( bdeleteB
     , insertB
     , insertN
-    , insertN'
     , insertNAt
-    , insertNAt'
     , deleteB
     , deleteN
     , deleteNAt
@@ -36,21 +40,15 @@ import Yi.Buffer hiding
 import qualified Yi.Buffer as B
 import Yi.Misc
 import Yi.Utils
+import qualified Yi.Rope as R
 
-insertNAt' :: R.Rope -> Point -> BufferM ()
-insertNAt' rope point | R.countNewLines rope > 0 = B.insertNAt' rope point
-insertNAt' rope point = B.insertNAt' rope point >> adjBlock (R.length rope) 
-
--- | Insert the list at specified point, extending size of buffer
-insertNAt :: String -> Point -> BufferM ()
-insertNAt cs = insertNAt' (R.fromString cs)
+insertNAt :: R.YiString -> Point -> BufferM ()
+insertNAt rope point | R.countNewLines rope > 0 = B.insertNAt rope point
+insertNAt rope point = B.insertNAt rope point >> adjBlock (R.length rope)
 
 -- | Insert the list at current point, extending size of buffer
-insertN :: String -> BufferM ()
-insertN cs = insertNAt cs =<< pointB
-
-insertN' :: R.Rope -> BufferM ()
-insertN' rope = insertNAt' rope =<< pointB
+insertN :: R.YiString -> BufferM ()
+insertN rope = insertNAt rope =<< pointB
 
 -- | Insert the char at current point, extending size of buffer
 insertB :: Char -> BufferM ()

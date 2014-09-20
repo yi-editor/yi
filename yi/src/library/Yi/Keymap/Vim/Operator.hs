@@ -1,3 +1,4 @@
+{-# LANGUAGE OverloadedStrings #-}
 {-# OPTIONS_HADDOCK show-extensions #-}
 
 -- |
@@ -22,18 +23,20 @@ module Yi.Keymap.Vim.Operator
     , lastCharForOperator
     ) where
 
-import Control.Monad
-import Data.Char (toLower, toUpper)
-import Data.Foldable (find)
-import Yi.Buffer.Adjusted hiding (Insert)
-import Yi.Editor
-import Yi.Keymap.Vim.Common
-import Yi.Keymap.Vim.EventUtils
-import Yi.Keymap.Vim.StateUtils
-import Yi.Keymap.Vim.StyledRegion
-import Yi.Keymap.Vim.TextObject
-import Yi.Keymap.Vim.Utils
-import Yi.Misc
+import           Control.Monad
+import           Data.Char (toLower, toUpper)
+import           Data.Foldable (find)
+import           Data.Monoid
+import qualified Data.Text as T
+import           Yi.Buffer.Adjusted hiding (Insert)
+import           Yi.Editor
+import           Yi.Keymap.Vim.Common
+import           Yi.Keymap.Vim.EventUtils
+import           Yi.Keymap.Vim.StateUtils
+import           Yi.Keymap.Vim.StyledRegion
+import           Yi.Keymap.Vim.TextObject
+import           Yi.Keymap.Vim.Utils
+import           Yi.Misc
 
 data VimOperator = VimOperator {
     operatorName :: !OperatorName
@@ -165,6 +168,8 @@ mkShiftOperator name countMod = VimOperator {
 
 lastCharForOperator :: VimOperator -> String
 lastCharForOperator (VimOperator { operatorName = name })
-    = case parseEvents name of
-        [] -> error ("invalid operator name " ++ name)
-        evs -> eventToString (last evs)
+    -- This cast here seems stupid, maybe we should only have one
+    -- type?
+    = case parseEvents (Ev . _unOp $ name) of
+        [] -> error $ "invalid operator name " <> T.unpack (_unOp name)
+        evs -> T.unpack . _unEv . eventToEventString $ last evs

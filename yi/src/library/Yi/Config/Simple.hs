@@ -1,9 +1,49 @@
-{-# LANGUAGE Rank2Types, CPP #-}
-{-# OPTIONS_GHC -fno-warn-duplicate-exports #-} -- for good documentation, we want control over our export list, which occasionally gives us duplicate exports
+{-# LANGUAGE CPP #-}
+{-# LANGUAGE Rank2Types #-}
+{-# OPTIONS_GHC -fno-warn-duplicate-exports #-}
+{-# OPTIONS_HADDOCK show-extensions #-}
 
-{- | A simplified configuration interface for Yi. -}
+-- |
+-- Module      :  Yi.Config.Simple
+-- License     :  GPL-2
+-- Maintainer  :  yi-devel@googlegroups.com
+-- Stability   :  experimental
+-- Portability :  portable
+--
+-- A simplified configuration interface for Yi.
+--
+-- This module provides a simple configuration API, allowing users to
+-- start with an initial configuration and imperatively (monadically)
+-- modify it. Some common actions (keybindings, selecting modes,
+-- choosing the frontend) have been given special commands
+-- ('globalBindKeys', 'setFrontendPreferences', 'addMode', and so on).
+--
+-- A simple configuration might look like the following:
+--
+-- @
+-- import Yi.Config.Simple
+-- import qualified Yi.Mode.Haskell as Haskell
+-- -- note: don't import "Yi", or else there will be name clashes
+--
+-- main = 'configMain' 'defaultEmacsConfig' $ do
+--   'setFrontendPreferences' ["pango", "vty"]
+--   'fontSize' '%=' 'Just' 10
+--   'modeBindKeys' Haskell.cleverMode ('metaCh' \'q\' '?>>!' 'reload')
+--   'globalBindKeys' ('metaCh' \'r\' '?>>!' 'reload')
+-- @
+--
+-- A lot of the fields here are specified with the 'Field' type. To write
+-- a field, use ('%='). To read, use 'get'. For modification, use
+-- ('modify'). For example, the functions @foo@ and @bar@ are equivalent:
+--
+-- @
+-- foo = 'modify' 'layoutManagers' 'reverse'
+-- bar = do
+--  lms <- 'get' 'layoutManagers'
+--  'layoutManagers' '%=' 'reverse' lms
+-- @
+
 module Yi.Config.Simple (
-  -- $overview
   -- * The main interface
   ConfigM,
   configMain,
@@ -57,9 +97,10 @@ module Yi.Config.Simple (
   killringAccumulate,
   bufferUpdateHandler,
   -- * Module exports
-  -- we can't just export 'module Yi', because then we would get clashes with Yi.Config
+
+  -- we can't just export 'module Yi', because then we would get
+  -- clashes with Yi.Config
   module Yi.Boot,
---  module Yi.Buffer.Misc,
   module Yi.Core,
   module Yi.Dired,
   module Yi.File,
@@ -73,82 +114,60 @@ module Yi.Config.Simple (
   module Yi.Mode.Haskell,
  ) where
 
-import Yi.Boot
-import Yi.Core hiding(modifyMode)
-import Yi.Config.Default
-import Yi.Config.Misc
-import Yi.Config.Simple.Types
-import Yi.Dired
-import Yi.Eval
-import Yi.File
-import Yi.Layout
-import Yi.Search
-import Yi.Style
-import Yi.Style.Library
-import Yi.Misc
-import Yi.Mode.Haskell
-import Yi.Utils
-
-import Text.Printf(printf)
-
-import Control.Lens hiding (Action)
-import Control.Applicative
-import Control.Monad.State hiding (modify, get)
+import           Control.Applicative
+import           Control.Lens hiding (Action)
+import           Control.Monad.State hiding (modify, get)
+import           Data.Maybe(mapMaybe)
+import qualified Data.Text as T
+import           Text.Printf(printf)
+import           Yi.Boot
+import           Yi.Config.Default
+import           Yi.Config.Misc
+import           Yi.Config.Simple.Types
+import           Yi.Core hiding(modifyMode)
+import           Yi.Dired
+import           Yi.Eval
+import           Yi.File
+import           Yi.Layout
+import           Yi.Misc
+import           Yi.Mode.Haskell
+import           Yi.Search
+import           Yi.Style
+import           Yi.Style.Library
+import           Yi.Utils
 
 -- we do explicit imports because we reuse a lot of the names
-import Yi.Config(Config, UIConfig,
-                 startFrontEndA, configUIA, startActionsA, initialActionsA, defaultKmA,
-                 configInputPreprocessA, modeTableA, debugModeA,
-                 configRegionStyleA, configKillringAccumulateA, bufferUpdateHandlerA,
-                 configFontNameA, configFontSizeA, configScrollWheelAmountA,
-                 configScrollStyleA, configCursorStyleA, CursorStyle(..),
-                 configLeftSideScrollBarA, configAutoHideScrollBarA, configAutoHideTabBarA,
-                 configLineWrapA, configWindowFillA, configThemeA, layoutManagersA, configVarsA,
+import           Yi.Config(Config, UIConfig, startFrontEndA, configUIA,
+                           startActionsA, initialActionsA, defaultKmA,
+                           configInputPreprocessA, modeTableA, debugModeA,
+                           configRegionStyleA, configKillringAccumulateA,
+                           bufferUpdateHandlerA, configFontNameA,
+                           configFontSizeA, configScrollWheelAmountA,
+                           configScrollStyleA, configCursorStyleA,
+                           CursorStyle(..), configLeftSideScrollBarA,
+                           configAutoHideScrollBarA, configAutoHideTabBarA,
+                           configLineWrapA, configWindowFillA, configThemeA,
+                           layoutManagersA, configVarsA,
 #ifdef FRONTEND_VTY
-                 configVtyA
+                           configVtyA
 #endif
-                )
-import Data.Maybe(mapMaybe)
-
-{- $overview
-This module provides a simple configuration API, allowing users to start with an initial
-configuration and imperatively (monadically) modify it. Some common actions (keybindings,
-selecting modes, choosing the frontend) have been given special commands ('globalBindKeys',
-'setFrontendPreferences', 'addMode', and so on).
-
-A simple configuration might look like the following:
-
-@import Yi.Config.Simple
-import qualified Yi.Mode.Haskell as Haskell
--- note: don't import "Yi", or else there will be name clashes
-
-main = 'configMain' 'defaultEmacsConfig' $ do
-  'setFrontendPreferences' ["pango", "vty"]
-  'fontSize' '%=' 'Just' 10
-  'modeBindKeys' Haskell.cleverMode ('metaCh' \'q\' '?>>!' 'reload')
-  'globalBindKeys' ('metaCh' \'r\' '?>>!' 'reload')@
-
-A lot of the fields here are specified with the 'Field' type. To write a field, use ('%='). To read, use 'get'. For modification, use ('modify'). For example, the functions @foo@ and @bar@ are equivalent:
-
-@foo = 'modify' 'layoutManagers' 'reverse'
-bar = do
- lms <- 'get' 'layoutManagers'
- 'layoutManagers' '%=' 'reverse' lms@
--}
-
+                           )
 
 
 --------------- Main interface
 -- newtype ConfigM a   (imported)
 
--- | Starts with the given initial config, makes the described modifications, then starts yi.
+-- | Starts with the given initial config, makes the described
+-- modifications, then starts yi.
 configMain :: Config -> ConfigM () -> IO ()
 configMain c m = yi =<< execStateT (runConfigM m) c
 
 ---------------------------------- Frontend
--- | Sets the frontend to the first frontend from the list which is installed.
+-- | Sets the frontend to the first frontend from the list which is
+-- installed.
 --
--- Available frontends are a subset of: \"vty\", \"pango\", and \"batch\".
+-- Available frontends are a subset of: \"vty\", \"pango\", and
+-- \"batch\".
 setFrontendPreferences :: [String] -> ConfigM ()
 setFrontendPreferences fs =
    case mapMaybe (`lookup` availableFrontends) fs of
@@ -157,43 +176,66 @@ setFrontendPreferences fs =
 
 -- | Sets the frontend, if it is available.
 setFrontend :: String -> ConfigM ()
-setFrontend f = maybe (return ()) (startFrontEndA .=) (lookup f availableFrontends)
+setFrontend f = case lookup f availableFrontends of
+  Nothing -> return ()
+  Just x  -> startFrontEndA .= x
 
 ------------------------- Modes, commands, and keybindings
--- | Adds the given key bindings to the `global keymap'. The bindings will override existing bindings in the case of a clash.
+-- | Adds the given key bindings to the `global keymap'. The bindings
+-- will override existing bindings in the case of a clash.
 globalBindKeys :: Keymap -> ConfigM ()
 globalBindKeys a = (defaultKmA . topKeymapA) %= (||> a)
 
--- | @modeBindKeys mode keys@ adds the keybindings in @keys@ to all modes with the same name as @mode@.
+-- | @modeBindKeys mode keys@ adds the keybindings in @keys@ to all
+-- modes with the same name as @mode@.
 --
--- As with 'modifyMode', a mode by the given name must already be registered, or the function will
--- have no effect, and issue a command-line warning.
+-- As with 'modifyMode', a mode by the given name must already be
+-- registered, or the function will have no effect, and issue a
+-- command-line warning.
 modeBindKeys :: Mode syntax -> Keymap -> ConfigM ()
-modeBindKeys mode keys = ensureModeRegistered "modeBindKeys" (modeName mode) $ modeBindKeysByName (modeName mode) keys
+modeBindKeys mode keys =
+  ensureModeRegistered "modeBindKeys" (modeName mode) boundKeys
+  where
+    boundKeys = modeBindKeysByName (modeName mode) keys
 
--- | @modeBindKeysByName name keys@ adds the keybindings in @keys@ to all modes with name @name@ (if it is registered). Consider using 'modeBindKeys' instead.
-modeBindKeysByName :: String -> Keymap -> ConfigM ()
-modeBindKeysByName name k = ensureModeRegistered "modeBindKeysByName" name $ modifyModeByName name (modeKeymapA %~ f)
- where
-  f :: (KeymapSet -> KeymapSet) -> KeymapSet -> KeymapSet
-  f mkm km = topKeymapA %~ (||> k) $ mkm km
--- (modeKeymapA %~ ((topKeymap %~ (||> k)) .))
+-- | @modeBindKeysByName name keys@ adds the keybindings in @keys@ to
+-- all modes with name @name@ (if it is registered). Consider using
+-- 'modeBindKeys' instead.
+modeBindKeysByName :: T.Text -> Keymap -> ConfigM ()
+modeBindKeysByName name k =
+  ensureModeRegistered "modeBindKeysByName" name modMode
+  where
+    f :: (KeymapSet -> KeymapSet) -> KeymapSet -> KeymapSet
+    f mkm km = topKeymapA %~ (||> k) $ mkm km
 
--- | Register the given mode. It will be preferred over any modes already defined.
+    modMode = modifyModeByName name (modeKeymapA %~ f)
+
+-- | Register the given mode. It will be preferred over any modes
+-- already defined.
 addMode :: Mode syntax -> ConfigM ()
 addMode m = modeTableA %= (AnyMode m :)
 
--- | @modifyMode mode f@ modifies all modes with the same name as @mode@, using the function @f@.
+-- | @modifyMode mode f@ modifies all modes with the same name as
+-- @mode@, using the function @f@.
 --
--- Note that the @mode@ argument is only used by its 'modeName'. In particular, a mode by the given name
--- must already be registered, or this function will have no effect, and issue a command-line warning.
+-- Note that the @mode@ argument is only used by its 'modeName'. In
+-- particular, a mode by the given name must already be registered, or
+-- this function will have no effect, and issue a command-line
+-- warning.
 --
 -- @'modifyMode' mode f = 'modifyModeByName' ('modeName' mode) f@
-modifyMode :: Mode syntax -> (forall syntax'. Mode syntax' -> Mode syntax') -> ConfigM ()
-modifyMode mode f = ensureModeRegistered "modifyMode" (modeName mode) $ modifyModeByName (modeName mode) f
+modifyMode :: Mode syntax
+           -> (forall syntax'. Mode syntax' -> Mode syntax')
+           -> ConfigM ()
+modifyMode mode f = ensureModeRegistered "modifyMode" (modeName mode) modMode
+  where
+    modMode = modifyModeByName (modeName mode) f
 
--- | @modifyModeByName name f@ modifies the mode with name @name@ using the function @f@. Consider using 'modifyMode' instead.
-modifyModeByName :: String -> (forall syntax. Mode syntax -> Mode syntax) -> ConfigM ()
+-- | @modifyModeByName name f@ modifies the mode with name @name@
+-- using the function @f@. Consider using 'modifyMode' instead.
+modifyModeByName :: T.Text
+                 -> (forall syntax. Mode syntax -> Mode syntax)
+                 -> ConfigM ()
 modifyModeByName name f =
     ensureModeRegistered "modifyModeByName" name $ modeTableA %= fmap (onMode g)
         where
@@ -204,18 +246,20 @@ modifyModeByName name f =
 -- helper functions
 warn :: String -> String -> ConfigM ()
 warn caller msg = io $ putStrLn $ printf "Warning: %s: %s" caller msg
--- the putStrLn shouldn't be necessary, but it doesn't print anything if it's not there...
+-- the putStrLn shouldn't be necessary, but it doesn't print anything
+-- if it's not there...
 
-isModeRegistered :: String -> ConfigM Bool
-isModeRegistered name = any (\(AnyMode mode) -> modeName mode == name) <$> use modeTableA
+isModeRegistered :: T.Text -> ConfigM Bool
+isModeRegistered name =
+  any (\(AnyMode mode) -> modeName mode == name) <$> use modeTableA
 
 -- ensure the given mode is registered, and if it is, then run the given action.
-ensureModeRegistered :: String -> String -> ConfigM () -> ConfigM ()
+ensureModeRegistered :: String -> T.Text -> ConfigM () -> ConfigM ()
 ensureModeRegistered caller name m = do
   isRegistered <- isModeRegistered name
   if isRegistered
    then m
-   else warn caller (printf "mode \"%s\" is not registered." name)
+   else warn caller (printf "mode \"%s\" is not registered." (T.unpack name))
 
 --------------------- Appearance
 -- | 'Just' the font name, or 'Nothing' for default.
@@ -244,8 +288,9 @@ data Side = LeftSide | RightSide
 scrollBarSide :: Field Side
 scrollBarSide = configUIA . configLeftSideScrollBarA . fromBool
   where
-      fromBool :: Lens' Bool Side
-      fromBool = lens (\b -> if b then LeftSide else RightSide) (\_ s -> case s of { LeftSide -> True; RightSide -> False })
+    fromBool :: Lens' Bool Side
+    fromBool = lens (\b -> if b then LeftSide else RightSide)
+                    (\_ s -> case s of { LeftSide -> True; RightSide -> False })
 
 -- | Should the scroll bar autohide?
 autoHideScrollBar :: Field Bool
@@ -259,7 +304,8 @@ autoHideTabBar = configUIA . configAutoHideTabBarA
 lineWrap :: Field Bool
 lineWrap = configUIA . configLineWrapA
 
--- | The character with which to fill empty window space. Usually \'~\' for vi-like editors, \' \' for everything else.
+-- | The character with which to fill empty window space. Usually
+-- \'~\' for vi-like editors, \' \' for everything else.
 windowFill :: Field Char
 windowFill = configUIA . configWindowFillA
 
@@ -268,7 +314,8 @@ theme :: Field Theme
 theme = configUIA . configThemeA
 
 ---------- Layout
--- | List of registered layout managers. When cycling through layouts, this list will be consulted.
+-- | List of registered layout managers. When cycling through layouts,
+-- this list will be consulted.
 layoutManagers :: Field [AnyLayoutManager]
 layoutManagers = layoutManagersA
 
@@ -278,7 +325,8 @@ debug :: Field Bool
 debug = debugModeA
 
 ----------- Startup hooks
--- | Run when the editor is started (this is run after all actions which have already been registered)
+-- | Run when the editor is started (this is run after all actions
+-- which have already been registered)
 runOnStartup :: Action -> ConfigM ()
 runOnStartup action = runManyOnStartup [action]
 
@@ -286,7 +334,8 @@ runOnStartup action = runManyOnStartup [action]
 runManyOnStartup :: [Action] -> ConfigM ()
 runManyOnStartup actions = startActions %= (++ actions)
 
--- | Run after the startup actions have completed, or on reload (this is run after all actions which have already been registered)
+-- | Run after the startup actions have completed, or on reload (this
+-- is run after all actions which have already been registered)
 runAfterStartup :: Action -> ConfigM ()
 runAfterStartup action = runManyAfterStartup [action]
 
@@ -297,18 +346,21 @@ runManyAfterStartup actions = initialActions %= (++ actions)
 ------------------------ Advanced
 {- $advanced
 
-These fields are here for completeness -- that is, to expose all the functionality
-of the "Yi.Config" module. However, most users probably need not use these fields,
-typically because they provide advanced functinality, or because a simpler interface
-for the common case is available above.
+These fields are here for completeness -- that is, to expose all the
+functionality of the "Yi.Config" module. However, most users probably
+need not use these fields, typically because they provide advanced
+functinality, or because a simpler interface for the common case is
+available above.
 
 -}
 
--- | Actions to run when the editor is started. Consider using 'runOnStartup' or 'runManyOnStartup' instead.
+-- | Actions to run when the editor is started. Consider using
+-- 'runOnStartup' or 'runManyOnStartup' instead.
 startActions :: Field [Action]
 startActions = startActionsA
 
--- | Actions to run after startup or reload. Consider using 'runAfterStartup' or 'runManyAfterStartup' instead.
+-- | Actions to run after startup or reload. Consider using
+-- 'runAfterStartup' or 'runManyAfterStartup' instead.
 initialActions :: Field [Action]
 initialActions = initialActionsA
 
@@ -320,19 +372,24 @@ defaultKm = defaultKmA
 inputPreprocess :: Field (P Event Event)
 inputPreprocess = configInputPreprocessA
 
--- | List of modes by order of preference. Consider using 'addMode', 'modeBindKeys', or 'modifyMode' instead.
+-- | List of modes by order of preference. Consider using 'addMode',
+-- 'modeBindKeys', or 'modifyMode' instead.
 modes :: Field [AnyMode]
 modes = modeTableA
 
--- | Set to 'Exclusive' for an emacs-like behaviour. Consider starting with 'defaultEmacsConfig', 'defaultVimConfig', or 'defaultCuaConfig' to instead.
+-- | Set to 'Exclusive' for an emacs-like behaviour. Consider starting
+-- with 'defaultEmacsConfig', 'defaultVimConfig', or
+-- 'defaultCuaConfig' to instead.
 regionStyle :: Field RegionStyle
 regionStyle = configRegionStyleA
 
--- | Set to 'True' for an emacs-like behaviour, where all deleted text is accumulated in a killring. Consider starting with 'defaultEmacsConfig', 'defaultVimConfig', or 'defaultCuaConfig' instead.
+-- | Set to 'True' for an emacs-like behaviour, where all deleted text
+-- is accumulated in a killring. Consider starting with
+-- 'defaultEmacsConfig', 'defaultVimConfig', or 'defaultCuaConfig'
+-- instead.
 killringAccumulate :: Field Bool
 killringAccumulate = configKillringAccumulateA
 
 -- | ?
 bufferUpdateHandler :: Field [[Update] -> BufferM ()]
 bufferUpdateHandler = bufferUpdateHandlerA
-

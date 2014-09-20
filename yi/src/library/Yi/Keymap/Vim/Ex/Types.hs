@@ -1,24 +1,34 @@
+{-# OPTIONS_HADDOCK show-extensions #-}
+
+-- |
+-- Module      :  Yi.Keymap.Vim.Ex.Types
+-- License     :  GPL-2
+-- Maintainer  :  yi-devel@googlegroups.com
+-- Stability   :  experimental
+-- Portability :  portable
+
 module Yi.Keymap.Vim.Ex.Types where
 
 import Data.Maybe
-
+import Data.Text (Text, unpack)
 import Yi.Keymap
+import Yi.Keymap.Vim.Common
 
 data ExCommand = ExCommand {
-    cmdComplete :: YiM [String]
+    cmdComplete :: YiM [Text]
   , cmdIsPure :: Bool
   , cmdAction :: Action
   , cmdAcceptsRange :: Bool
-  , cmdShow :: String
+  , cmdShow :: Text
 }
 
 instance Show ExCommand where
-    show = cmdShow
+    show = unpack . cmdShow
 
 data LineRange
     = MarkRange String String -- ^ 'a,'b
     | FullRange               -- ^ %
     | CurrentLineRange
 
-stringToExCommand :: [String -> Maybe ExCommand] -> String -> Maybe ExCommand
-stringToExCommand parsers s = listToMaybe . mapMaybe ($ s) $ parsers
+evStringToExCommand :: [EventString -> Maybe ExCommand] -> EventString -> Maybe ExCommand
+evStringToExCommand parsers s = listToMaybe . mapMaybe ($ s) $ parsers

@@ -1,8 +1,8 @@
+{-# LANGUAGE OverloadedStrings #-}
 {-# OPTIONS_HADDOCK show-extensions #-}
 
 -- |
 -- Module      :  Yi.Mode.Buffers
--- Copyright   :  (c) Stéphane "cognominal" Payrard 2007-2008
 -- License     :  GPL-2
 -- Maintainer  :  yi-devel@googlegroups.com
 -- Stability   :  experimental
@@ -12,13 +12,14 @@
 
 module Yi.Mode.Buffers (listBuffers) where
 
-import Control.Applicative ((<$>))
-import Control.Lens
-import Data.List (intercalate)
-import Data.List.NonEmpty (toList)
-import Data.Rope (fromString)
-import System.FilePath (takeFileName)
-import Yi.Core
+import           Control.Applicative ((<$>))
+import           Control.Category ((>>>))
+import           Control.Lens
+import           Data.List.NonEmpty (toList)
+import qualified Data.Text as T
+import           System.FilePath (takeFileName)
+import           Yi.Core
+import qualified Yi.Rope as R
 
 -- | Retrieve buffer list and open a them in buffer mode using the
 -- 'bufferKeymap'.
@@ -26,20 +27,21 @@ listBuffers :: YiM  ()
 listBuffers = do
   withEditor $  do
     bs <- toList <$> getBufferStack
-    let bufferList = fromString . intercalate "\n" $ map identString bs
-    bufRef <- stringToNewBuffer (Left "Buffer List") bufferList
+    let bufferList = R.fromText . T.intercalate "\n" $ map identString bs
+    bufRef <- stringToNewBuffer (MemBuffer "Buffer List") bufferList
     switchToBufferE bufRef
   withBuffer $ do
-    modifyMode $ \m -> m & modeKeymapA .~ topKeymapA %~ bufferKeymap
-                         & modeNameA .~ "buffers"
+    modifyMode $ modeKeymapA .~ topKeymapA %~ bufferKeymap
+                 >>> modeNameA .~ "buffers"
     assign readOnlyA True
 
 -- | Switch to the buffer with name at current name. If it it starts
 -- with a @/@ then assume it's a file and try to open it that way.
 switch :: YiM ()
 switch = do
-  s <- withBuffer readLnB
-  let short =  if take 1 s == "/"  then takeFileName s else s
+  -- the YiString -> FilePath -> Text conversion sucks
+  s <- R.toString <$> withBuffer readLnB
+  let short = T.pack $ if take 1 s == "/" then takeFileName s else s
   withEditor $ switchToBufferWithNameE short
 
 -- | Keymap for the buffer mode.
@@ -53,7 +55,7 @@ switch = do
 bufferKeymap :: Keymap -> Keymap
 bufferKeymap = important $ choice
   [ char 'p'                        ?>>! lineUp
-  , oneOf [char 'n', char ' ']      >>! lineDown
+  , oneOf [ char 'n', char ' ' ]    >>! lineDown
   , oneOf [ spec KEnter, char 'f' ] >>! (switch >> setReadOnly False)
   , char 'v'                        ?>>! (switch >> setReadOnly True)
   ]

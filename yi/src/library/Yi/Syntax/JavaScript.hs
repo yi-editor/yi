@@ -5,7 +5,6 @@
 
 -- |
 -- Module      :  Yi.Syntax.JavaScript
--- Copyright   :  (c) Deniz Dogan 2009
 -- License     :  GPL-2
 -- Maintainer  :  yi-devel@googlegroups.com
 -- Stability   :  experimental
@@ -18,21 +17,23 @@
 
 module Yi.Syntax.JavaScript where
 
-import Prelude hiding (elem,error,any,exp)
-import Control.Applicative hiding (Const)
-import Data.Data (Data)
-import Data.Monoid
-import Data.Foldable
-import Data.Typeable
-import Yi.Buffer.Basic (Point(..))
-import Yi.IncrementalParse (P, eof, symbol, recoverWith)
-import Yi.Lexer.Alex (Stroke, Tok(..), tokToSpan, tokFromT)
-import Yi.Lexer.JavaScript ( TT, Token(..), Reserved(..), Operator(..)
-                           , tokenToStyle, prefixOperators, infixOperators
-                           , postfixOperators )
-import Yi.Style (errorStyle, StyleName)
-import Yi.Syntax.Tree (IsTree(..), sepBy1, sepBy)
-import Yi.Debug hiding (error)
+import           Prelude hiding (elem,error,any,exp)
+import           Control.Applicative hiding (Const)
+import           Data.Data (Data)
+import           Data.Monoid
+import           Data.Foldable
+import           Data.Typeable
+import           Yi.Buffer.Basic (Point(..))
+import           Yi.IncrementalParse (P, eof, symbol, recoverWith)
+import           Yi.Lexer.Alex (Stroke, Tok(..), tokToSpan, tokFromT)
+import           Yi.Lexer.JavaScript (TT, Token(..), Reserved(..), Operator(..),
+                                      tokenToStyle, prefixOperators,
+                                      infixOperators, postfixOperators )
+import qualified Data.Text as T
+import           Yi.Debug hiding (error)
+import           Yi.String
+import           Yi.Style (errorStyle, StyleName)
+import           Yi.Syntax.Tree (IsTree(..), sepBy1, sepBy)
 
 -- * Data types, classes and instances
 
@@ -122,7 +123,7 @@ instance IsTree Statement where
     subtrees (While _ _ x) = fromBlock x
     subtrees (DoWhile _ x _ _ _) = fromBlock x
     subtrees (For _ _ _ _ _ x) = fromBlock x
-    subtrees (If _ _ x mb) = fromBlock x ++ maybe [] subtrees mb
+    subtrees (If _ _ x mb) = fromBlock x <> maybe [] subtrees mb
     subtrees (Else _ x) = fromBlock x
     subtrees (With _ _ x) = fromBlock x
     subtrees _ = []
@@ -325,7 +326,7 @@ tokenToStroke = fmap tokenToStyle . tokToSpan
 
 -- | The main stroking function.
 getStrokes :: Tree TT -> Point -> Point -> Point -> [Stroke]
-getStrokes t0 _point _begin _end = trace ('\n' : show t0) result
+getStrokes t0 _point _begin _end = trace ('\n' `T.cons` showT t0) result
     where
       result = appEndo (foldMap toStrokes t0) []
 

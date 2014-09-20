@@ -1,67 +1,81 @@
-module Yi.Keymap.Vim.NormalMap
-    ( defNormalMap
-    ) where
+{-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE OverloadedStrings #-}
+{-# OPTIONS_HADDOCK show-extensions #-}
 
-import Control.Monad
-import Control.Applicative
-import Control.Lens hiding (re)
-import System.Directory (doesFileExist)
+-- |
+-- Module      :  Yi.Keymap.Vim.NormalMap
+-- License     :  GPL-2
+-- Maintainer  :  yi-devel@googlegroups.com
+-- Stability   :  experimental
+-- Portability :  portable
 
-import Data.Char
-import Data.List (group)
-import Data.Maybe (fromMaybe)
-import Data.Monoid
-import qualified Data.HashMap.Strict as HM
-import qualified Data.Rope as R
+module Yi.Keymap.Vim.NormalMap (defNormalMap) where
 
-import Yi.Buffer.Adjusted hiding (Insert)
-import Yi.Core (quitEditor, closeWindow)
-import Yi.Editor
-import Yi.Event
-import Yi.File (editFile, fwriteE)
-import Yi.History
-import Yi.Keymap
-import Yi.Keymap.Keys
-import Yi.Keymap.Vim.Common
-import Yi.Keymap.Vim.Eval
-import Yi.Keymap.Vim.Motion
-import Yi.Keymap.Vim.Operator
-import Yi.Keymap.Vim.Search
-import Yi.Keymap.Vim.StateUtils
-import Yi.Keymap.Vim.StyledRegion
-import Yi.Keymap.Vim.Utils
-import Yi.Keymap.Vim.Tag
-import Yi.MiniBuffer
-import Yi.Misc
-import Yi.Monad
-import Yi.Regex (seInput, makeSearchOptsM)
-import Yi.Search (getRegexE, isearchInitE, setRegexE, makeSimpleSearch)
-import Yi.Utils (io)
+import           Control.Applicative
+import           Control.Lens hiding (re)
+import           Control.Monad
+import           Data.Char
+import           Data.HashMap.Strict (singleton, lookup)
+import           Data.List (group)
+import           Data.Maybe (fromMaybe)
+import           Data.Monoid
+import qualified Data.Text as T
+import           Prelude hiding (null, lookup)
+import           System.Directory (doesFileExist)
+import           Yi.Buffer.Adjusted hiding (Insert)
+import           Yi.Core (quitEditor, closeWindow)
+import           Yi.Editor
+import           Yi.Event
+import           Yi.File (editFile, fwriteE)
+import           Yi.History
+import           Yi.Keymap
+import           Yi.Keymap.Keys
+import           Yi.Keymap.Vim.Common
+import           Yi.Keymap.Vim.Eval
+import           Yi.Keymap.Vim.Motion
+import           Yi.Keymap.Vim.Operator
+import           Yi.Keymap.Vim.Search
+import           Yi.Keymap.Vim.StateUtils
+import           Yi.Keymap.Vim.StyledRegion
+import           Yi.Keymap.Vim.Tag
+import           Yi.Keymap.Vim.Utils
+import           Yi.MiniBuffer
+import           Yi.Misc
+import           Yi.Monad
+import           Yi.Regex (seInput, makeSearchOptsM)
+import qualified Yi.Rope as R
+import           Yi.Search (getRegexE, isearchInitE,
+                            setRegexE, makeSimpleSearch)
+import           Yi.String
+import           Yi.Tag (Tag(..))
+import           Yi.Utils (io)
 
 mkDigitBinding :: Char -> VimBinding
 mkDigitBinding c = mkBindingE Normal Continue (char c, return (), mutate)
-    where mutate vs@(VimState {vsCount = Nothing}) = vs { vsCount = Just d }
-          mutate vs@(VimState {vsCount = Just count}) = vs { vsCount = Just $ count * 10 + d }
-          d = ord c - ord '0'
+  where
+    mutate vs@(VimState {vsCount = Nothing}) = vs { vsCount = Just d }
+    mutate vs@(VimState {vsCount = Just count}) =
+      vs { vsCount = Just $ count * 10 + d }
+    d = ord c - ord '0'
 
 defNormalMap :: [VimOperator] -> [VimBinding]
 defNormalMap operators =
-    [recordMacroBinding, finishRecordingMacroBinding, playMacroBinding] ++
-    [zeroBinding, repeatBinding, motionBinding, searchBinding] ++
-    [chooseRegisterBinding, setMarkBinding] ++
-    fmap mkDigitBinding ['1' .. '9'] ++
-    operatorBindings operators ++
-    finishingBingings ++
-    continuingBindings ++
-    nonrepeatableBindings ++
-    jumpBindings ++
-    fileEditBindings ++
-    [tabTraversalBinding] ++
+    [recordMacroBinding, finishRecordingMacroBinding, playMacroBinding] <>
+    [zeroBinding, repeatBinding, motionBinding, searchBinding] <>
+    [chooseRegisterBinding, setMarkBinding] <>
+    fmap mkDigitBinding ['1' .. '9'] <>
+    operatorBindings operators <>
+    finishingBingings <>
+    continuingBindings <>
+    nonrepeatableBindings <>
+    jumpBindings <>
+    fileEditBindings <>
+    [tabTraversalBinding] <>
     [tagJumpBinding, tagPopBinding]
 
 tagJumpBinding :: VimBinding
 tagJumpBinding = mkBindingY Normal (Event (KASCII ']') [MCtrl], f, id)
-   where f = withBuffer readCurrentWordB >>= gotoTag
+   where f = withBuffer readCurrentWordB >>= gotoTag . Tag . R.toText
 
 tagPopBinding :: VimBinding
 tagPopBinding = mkBindingY Normal (Event (KASCII 't') [MCtrl], f, id)
@@ -92,17 +106,18 @@ zeroBinding = VimBindingE f
           f _ _ = NoMatch
 
 repeatBinding :: VimBinding
-repeatBinding = VimBindingE f
-    where f "." (VimState {vsMode = Normal}) = WholeMatch $ do
-                currentState <- getDynamic
-                case vsRepeatableAction currentState of
-                    Nothing -> return ()
-                    Just (RepeatableAction prevCount actionString) -> do
-                        let count = fromMaybe prevCount (vsCount currentState)
-                        scheduleActionStringForEval $ show count ++ actionString
-                        resetCountE
-                return Drop
-          f _ _ = NoMatch
+repeatBinding = VimBindingE (f . T.unpack . _unEv)
+  where
+    f "." (VimState {vsMode = Normal}) = WholeMatch $ do
+      currentState <- getDynamic
+      case vsRepeatableAction currentState of
+          Nothing -> return ()
+          Just (RepeatableAction prevCount (Ev actionString)) -> do
+              let count = showT $ fromMaybe prevCount (vsCount currentState)
+              scheduleActionStringForEval . Ev $ count <> actionString
+              resetCountE
+      return Drop
+    f _ _ = NoMatch
 
 jumpBindings :: [VimBinding]
 jumpBindings = fmap (mkBindingE Normal Drop)
@@ -183,9 +198,10 @@ pasteAfter = do
 
 operatorBindings :: [VimOperator] -> [VimBinding]
 operatorBindings = fmap mkOperatorBinding
-    where mkOperatorBinding (VimOperator {operatorName = opName}) =
-              mkStringBindingE Normal Continue
-                  (opName, return (), switchMode (NormalOperatorPending opName))
+  where
+    mkT (Op o) = (Ev o, return (), switchMode . NormalOperatorPending $ Op o)
+    mkOperatorBinding (VimOperator {operatorName = opName}) =
+      mkStringBindingE Normal Continue $ mkT opName
 
 continuingBindings :: [VimBinding]
 continuingBindings = fmap (mkStringBindingE Normal Continue)
@@ -198,8 +214,8 @@ continuingBindings = fmap (mkStringBindingE Normal Continue)
     , ("a", withBuffer0 rightB, switchMode $ Insert 'a')
     , ("A", withBuffer0 moveToEol, switchMode $ Insert 'A')
     , ("o", withBuffer0 $ do
-                     moveToEol
-                     newlineAndIndentB
+          moveToEol
+          newlineAndIndentB
         , switchMode $ Insert 'o')
     , ("O", withBuffer0 $ do
                      moveToSol
@@ -275,7 +291,7 @@ nonrepeatableBindings = fmap (mkBindingE Normal Drop)
     , (char '-', return (), id)
     , (char '+', return (), id)
     , (spec KEnter, return (), id)
-    ] ++ fmap (mkStringBindingE Normal Drop)
+    ] <> fmap (mkStringBindingE Normal Drop)
     [ ("g*", searchWordE False Forward, resetCount)
     , ("g#", searchWordE False Backward, resetCount)
     , ("<C-g>", printFileInfoE, resetCount)
@@ -321,7 +337,7 @@ nonrepeatableBindings = fmap (mkBindingE Normal Drop)
     -}
 
     -- Z commands
-    ] ++ fmap (mkStringBindingY Normal)
+    ] <> fmap (mkStringBindingY Normal)
     [ ("ZQ", quitEditor, id)
     -- TODO ZZ should replicate :x not :wq
     , ("ZZ", fwriteE >> closeWindow, id)
@@ -335,7 +351,7 @@ fileEditBindings =  fmap (mkStringBindingY Normal)
     ]
 
 setMarkBinding :: VimBinding
-setMarkBinding = VimBindingE f
+setMarkBinding = VimBindingE (f . T.unpack . _unEv)
     where f _ s | vsMode s /= Normal = NoMatch
           f "m" _ = PartialMatch
           f ('m':c:[]) _ = WholeMatch $ do
@@ -345,21 +361,21 @@ setMarkBinding = VimBindingE f
 
 searchWordE :: Bool -> Direction -> EditorM ()
 searchWordE wholeWord dir = do
-    word <- withBuffer0 readCurrentWordB
+  word <- withBuffer0 readCurrentWordB
 
-    let search re = do
-            setRegexE re
-            assign searchDirectionA dir
-            withCount $ continueSearching (const dir)
+  let search re = do
+        setRegexE re
+        assign searchDirectionA dir
+        withCount $ continueSearching (const dir)
 
-    if wholeWord
-    then case makeSearchOptsM [] $ "\\<" ++ word ++ "\\>" of
-            Right re -> search re
-            Left _ -> return ()
-    else search $ makeSimpleSearch word
+  if wholeWord
+  then case makeSearchOptsM [] $ "\\<" <> R.toString word <> "\\>" of
+          Right re -> search re
+          Left _ -> return ()
+  else search $ makeSimpleSearch word
 
 searchBinding :: VimBinding
-searchBinding = VimBindingE f
+searchBinding = VimBindingE (f . T.unpack . _unEv)
     where f evs (VimState { vsMode = Normal }) | evs `elem` group "/?"
             = WholeMatch $ do
                   state <- fmap vsMode getDynamic
@@ -367,19 +383,18 @@ searchBinding = VimBindingE f
                   switchModeE $ Search state dir
                   isearchInitE dir
                   historyStart
-                  historyPrefixSet ""
+                  historyPrefixSet T.empty
                   return Continue
           f _ _ = NoMatch
 
 continueSearching :: (Direction -> Direction) -> EditorM ()
 continueSearching fdir = do
-    mbRegex <- getRegexE
-    case mbRegex of
-        Just regex -> do
-            dir <- fdir <$> use searchDirectionA
-            printMsg $ (if dir == Forward then '/' else '?') : seInput regex
-            void $ doVimSearch Nothing [] dir
-        Nothing -> printMsg "No previous search pattern"
+  getRegexE >>= \case
+    Just regex -> do
+      dir <- fdir <$> use searchDirectionA
+      printMsg . T.pack $ (if dir == Forward then '/' else '?') : seInput regex
+      void $ doVimSearch Nothing [] dir
+    Nothing -> printMsg "No previous search pattern"
 
 repeatGotoCharE :: (Direction -> Direction) -> EditorM ()
 repeatGotoCharE mutateDir = do
@@ -413,7 +428,7 @@ cutCharE dir count = do
         (if dir == Forward then moveXorEol else moveXorSol) count
         p1 <- pointB
         let region = mkRegion p0 p1
-        rope <- readRegionB' region
+        rope <- readRegionB region
         deleteRegionB $ mkRegion p0 p1
         leftOnEol
         return rope
@@ -421,7 +436,7 @@ cutCharE dir count = do
     setRegisterE regName Inclusive r
 
 tabTraversalBinding :: VimBinding
-tabTraversalBinding = VimBindingE f
+tabTraversalBinding = VimBindingE (f . T.unpack . _unEv)
     where f "g" (VimState { vsMode = Normal }) = PartialMatch
           f ('g':c:[]) (VimState { vsMode = Normal }) | c `elem` "tT" = WholeMatch $ do
               count <- getCountE
@@ -432,16 +447,16 @@ tabTraversalBinding = VimBindingE f
 
 openFileUnderCursor :: Maybe (EditorM ()) -> YiM ()
 openFileUnderCursor editorAction = do
-    fileName   <- withEditor . withBuffer0 $ readUnitB unitViWORD
-    fileExists <- io $ doesFileExist fileName
-    if (not fileExists) then
-        withEditor . fail $ "Can't find file \"" ++ fileName ++ "\""
-    else do
-        maybeM withEditor editorAction
-        void . editFile $ fileName 
+  fileName <- fmap R.toString . withEditor . withBuffer0 $ readUnitB unitViWORD
+  fileExists <- io $ doesFileExist fileName
+  if (not fileExists) then
+      withEditor . fail $ "Can't find file \"" <> fileName <> "\""
+  else do
+      maybeM withEditor editorAction
+      void . editFile $ fileName
 
 recordMacroBinding :: VimBinding
-recordMacroBinding = VimBindingE f
+recordMacroBinding = VimBindingE (f . T.unpack . _unEv)
     where f "q" (VimState { vsMode = Normal
                           , vsCurrentMacroRecording = Nothing })
                 = PartialMatch
@@ -453,30 +468,31 @@ recordMacroBinding = VimBindingE f
           f _ _ = NoMatch
 
 finishRecordingMacroBinding :: VimBinding
-finishRecordingMacroBinding = VimBindingE f
+finishRecordingMacroBinding = VimBindingE (f . T.unpack . _unEv)
     where f "q" (VimState { vsMode = Normal
-                          , vsCurrentMacroRecording = Just (macroName, macroBody) })
+                          , vsCurrentMacroRecording = Just (macroName, Ev macroBody) })
                 = WholeMatch $ do
-                      let reg = Register Exclusive (R.fromString (drop 2 macroBody))
+                      let reg = Register Exclusive (R.fromText (T.drop 2 macroBody))
                       modifyStateE $ \s ->
                           s { vsCurrentMacroRecording = Nothing
-                              , vsRegisterMap = HM.singleton macroName reg
+                              , vsRegisterMap = singleton macroName reg
                                               <> vsRegisterMap s
                               }
                       return Finish
           f _ _ = NoMatch
 
 playMacroBinding :: VimBinding
-playMacroBinding = VimBindingE f
+playMacroBinding = VimBindingE (f . T.unpack . _unEv)
     where f "@" (VimState { vsMode = Normal }) = PartialMatch
           f ['@', c] (VimState { vsMode = Normal
                                , vsRegisterMap = registers
                                , vsCount = mbCount }) = WholeMatch $ do
               resetCountE
-              case HM.lookup c registers of
+              case lookup c registers of
                   Just (Register _ evs) -> do
                       let count = fromMaybe 1 mbCount
-                      scheduleActionStringForEval (concat (replicate count (R.toString evs)))
+                          mkAct = Ev . T.replicate count . R.toText
+                      scheduleActionStringForEval . mkAct $ evs
                       return Finish
                   Nothing -> return Drop
           f _ _ = NoMatch
@@ -488,4 +504,3 @@ withCount action = flip replicateM_ action =<< getCountE
 
 withCountOnBuffer0 :: BufferM () -> EditorM ()
 withCountOnBuffer0 action = withCount $ withBuffer0 action
-

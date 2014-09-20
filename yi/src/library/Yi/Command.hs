@@ -1,66 +1,72 @@
-{-# LANGUAGE DeriveDataTypeable, GeneralizedNewtypeDeriving, TypeOperators #-}
--- Copyright (c) 2008 Jean-Philippe Bernardy
--- | Various high-level functions to further classify.
+{-# LANGUAGE DeriveDataTypeable #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE TypeOperators #-}
+{-# OPTIONS_HADDOCK show-extensions #-}
+
+-- |
+-- Module      :  Yi.Command
+-- License     :  GPL-2
+-- Maintainer  :  yi-devel@googlegroups.com
+-- Stability   :  experimental
+-- Portability :  portable
+--
+-- Various high-level functions to further classify.
+
 module Yi.Command where
 
-{- Standard Library Module Imports -}
-import Data.Binary
-import System.Exit
-  ( ExitCode( ExitSuccess,ExitFailure ) )
-import Control.Exception(SomeException)
-import Control.Monad.Base
-{- External Library Module Imports -}
-{- Local (yi) module imports -}
-
-import Control.Applicative
-import Control.Monad
-import Control.Lens
-import Yi.Core
-import Yi.MiniBuffer
+import           Control.Applicative
+import           Control.Exception(SomeException)
+import           Control.Lens
+import           Control.Monad
+import           Control.Monad.Base
+import           Data.Binary
+import           Data.Default
+import qualified Data.Text as T
+import           Data.Typeable
+import           System.Exit (ExitCode(..))
+import           Yi.Core
+import           Yi.MiniBuffer
 import qualified Yi.Mode.Compilation as Compilation
-import Yi.Process
-import Yi.UI.Common
 import qualified Yi.Mode.Interactive as Interactive
-import qualified Data.Rope as R
-import Data.Default
-import Data.Typeable
-import Yi.Utils
-import Yi.Monad
+import           Yi.Monad
+import           Yi.Process
+import qualified Yi.Rope as R
+import           Yi.UI.Common
+import           Yi.Utils
 
 ---------------------------
 -- | Changing the buffer name quite useful if you have
 -- several the same. This also breaks the relation with the file.
 
 changeBufferNameE :: YiM ()
-changeBufferNameE =
-  withMinibufferFree "New buffer name:" strFun
+changeBufferNameE = withMinibufferFree "New buffer name:" strFun
   where
-  strFun :: String -> YiM ()
-  strFun = withBuffer . assign identA . Left
+    strFun :: T.Text -> YiM ()
+    strFun = withBuffer . assign identA . MemBuffer
 
 ----------------------------
 -- | shell-command with argument prompt
 shellCommandE :: YiM ()
-shellCommandE =
-    withMinibufferFree "Shell command:" shellCommandV
+shellCommandE = withMinibufferFree "Shell command:" shellCommandV
 
 ----------------------------
 -- | shell-command with a known argument
-shellCommandV :: String -> YiM ()
+shellCommandV :: T.Text -> YiM ()
 shellCommandV cmd = do
-      (exitCode,cmdOut,cmdErr) <- liftBase $ runShellCommand cmd
-      case exitCode of
-        ExitSuccess -> if length (filter (== '\n') cmdOut) > 17
-                       then withEditor . void $ -- see GitHub issue #477
-                              newBufferE (Left "Shell Command Output")
-                                         (R.fromString cmdOut)
-                       else msgEditor $ case cmdOut of
-                         "" -> "(Shell command with no output)"
-                         -- Drop trailing newline from output
-                         xs -> if last xs == '\n' then init xs else xs
-        -- FIXME: here we get a string and convert it back to utf8;
-        -- this indicates a possible bug.
-        ExitFailure _ -> msgEditor cmdErr
+  (exitCode,cmdOut,cmdErr) <- liftBase $ runShellCommand (T.unpack cmd)
+  case exitCode of
+    ExitSuccess -> if length (filter (== '\n') cmdOut) > 17
+                   then withEditor . void $ -- see GitHub issue #477
+                          newBufferE (MemBuffer "Shell Command Output")
+                                     (R.fromString cmdOut)
+                   else msgEditor $ case T.pack cmdOut of
+                     "" -> "(Shell command with no output)"
+                     -- Drop trailing newline from output
+                     xs -> if T.last xs == '\n' then T.init xs else xs
+    -- FIXME: here we get a string and convert it back to utf8;
+    -- this indicates a possible bug.
+    ExitFailure _ -> msgEditor $ T.pack cmdErr
 
 ----------------------------
 -- Cabal-related commands
@@ -85,9 +91,9 @@ reloadProjectE s = withUI $ \ui -> reloadProject ui s
 
 -- | Run the given commands with args and pipe the ouput into the build buffer,
 -- which is shown in an other window.
-buildRun :: String -> [String] -> (Either SomeException ExitCode -> YiM x) -> YiM ()
+buildRun :: T.Text -> [T.Text] -> (Either SomeException ExitCode -> YiM x) -> YiM ()
 buildRun cmd args onExit = withOtherWindow $ do
-   b <- startSubprocess cmd args onExit
+   b <- startSubprocess (T.unpack cmd) (T.unpack <$> args) onExit
    withEditor $ do
        maybeM deleteBuffer =<< cabalBuffer <$> getDynamic
        setDynamic $ CabalBuffer $ Just b
@@ -97,7 +103,7 @@ buildRun cmd args onExit = withOtherWindow $ do
 makeBuild :: CommandArguments -> YiM ()
 makeBuild (CommandArguments args) = buildRun "make" args (const $ return ())
 
-cabalRun :: String -> (Either SomeException ExitCode -> YiM x) -> CommandArguments -> YiM ()
+cabalRun :: T.Text -> (Either SomeException ExitCode -> YiM x) -> CommandArguments -> YiM ()
 cabalRun cmd onExit (CommandArguments args) = buildRun "cabal" (cmd:args) onExit
 
 -----------------------

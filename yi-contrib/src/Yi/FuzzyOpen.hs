@@ -1,45 +1,53 @@
+{-# LANGUAGE OverloadedStrings #-}
+{-# OPTIONS_HADDOCK show-extensions #-}
 
-{- This file aims to provide (the essential subset of) the same functionality
-   that vim plugins ctrlp and command-t provide.
+-- |
+-- Module      :  Yi.FuzzyOpen
+-- License     :  GPL-2
+-- Maintainer  :  yi-devel@googlegroups.com
+-- Stability   :  experimental
+-- Portability :  portable
+--
+-- This file aims to provide (the essential subset of) the same functionality
+-- that vim plugins ctrlp and command-t provide.
+--
+-- Setup:
+--
+--   Add something like this to your config:
+--
+--     (ctrlCh 'p' ?>>! fuzzyOpen)
+--
+-- Usage:
+--
+--   <C-p> (or whatever mapping user chooses) starts fuzzy open dialog.
+--
+--   Typing something filters filelist.
+--
+--   <Enter> opens currently selected file
+--   in current (the one that fuzzyOpen was initited from) window.
+--
+--   <C-t> opens currently selected file in a new tab.
+--   <C-s> opens currently selected file in a split.
+--
+--   <KUp> and <C-p> moves selection up
+--   <KDown> and <C-n> moves selection down
+--
+--   Readline shortcuts <C-a> , <C-e>, <C-u> and <C-k> work as usual.
 
-   Setup:
+module Yi.FuzzyOpen (fuzzyOpen) where
 
-     Add something like this to your config:
-
-       (ctrlCh 'p' ?>>! fuzzyOpen)
-
-   Usage:
-
-     <C-p> (or whatever mapping user chooses) starts fuzzy open dialog.
-
-     Typing something filters filelist.
-
-     <Enter> opens currently selected file
-     in current (the one that fuzzyOpen was initited from) window.
-
-     <C-t> opens currently selected file in a new tab.
-     <C-s> opens currently selected file in a split.
-
-     <KUp> and <C-p> moves selection up
-     <KDown> and <C-n> moves selection down
-
-     Readline shortcuts <C-a> , <C-e>, <C-u> and <C-k> work as usual.
--}
-
-module Yi.FuzzyOpen
-    ( fuzzyOpen
-    ) where
-
-import Yi
-import Yi.MiniBuffer
-import Yi.Completion
-import Yi.Utils() -- instance MonadBase YiM IO
-
-import Control.Monad (replicateM, replicateM_, forM, void)
-import Control.Monad.Base
-import System.Directory (doesDirectoryExist, getDirectoryContents)
-import System.FilePath ((</>))
-import Data.List (intercalate)
+import           Control.Applicative
+import           Control.Monad (replicateM, replicateM_, forM, void)
+import           Control.Monad.Base
+import           Data.Monoid
+import qualified Data.Text as T
+import           System.Directory (doesDirectoryExist, getDirectoryContents)
+import           System.FilePath ((</>))
+import           Yi
+import           Yi.Completion
+import           Yi.MiniBuffer
+import qualified Yi.Rope as R
+import           Yi.Utils ()
 
 fuzzyOpen :: YiM ()
 fuzzyOpen = do
@@ -51,7 +59,7 @@ fuzzyOpen = do
 
 -- shamelessly stolen from Chapter 9 of Real World Haskell
 -- takes about 3 seconds to traverse linux kernel, which is not too outrageous
--- TODO: check if it works at all with cyclic links 
+-- TODO: check if it works at all with cyclic links
 -- TODO: perform in background, limit file count or directory depth
 getRecursiveContents :: FilePath -> IO [FilePath]
 getRecursiveContents topdir = do
@@ -90,8 +98,8 @@ localKeymap bufRef fileList =
     where update = updateMatchList bufRef fileList
           updatingB bufAction = withBuffer bufAction >> update
 
-showFileList :: [FilePath] -> String
-showFileList = intercalate "\n" . map ("  " ++)
+showFileList :: [FilePath] -> R.YiString
+showFileList = R.fromText . T.intercalate "\n" . map (mappend "  " . T.pack)
 
 {- Implementation detail:
    The index of selected file is stored as vertical cursor position.
@@ -102,7 +110,7 @@ showFileList = intercalate "\n" . map ("  " ++)
 
 updateMatchList :: BufferRef -> [FilePath] -> YiM ()
 updateMatchList bufRef fileList = do
-    needle <- withBuffer elemsB
+    needle <- R.toString <$> withBuffer elemsB
     let filteredFiles = filter (subsequenceMatch needle) fileList
     withEditor $ withGivenBuffer0 bufRef $ do
         replaceBufferContent $ showFileList filteredFiles
@@ -121,11 +129,11 @@ openInNewTab = openRoutine newTabE
 
 openRoutine :: EditorM () -> BufferRef -> YiM ()
 openRoutine preOpenAction bufRef = do
-    chosenFile <- fmap (drop 2) $ withEditor $ withGivenBuffer0 bufRef readLnB
-    withEditor $ do
-        replicateM_ 2 closeBufferAndWindowE
-        preOpenAction
-    void $ editFile chosenFile
+  chosenFile <- withEditor $ withGivenBuffer0 bufRef readLnB
+  withEditor $ do
+      replicateM_ 2 closeBufferAndWindowE
+      preOpenAction
+  void . editFile . drop 2 . R.toString $ chosenFile
 
 insertChar :: Keymap
 insertChar = textChar >>= write . insertB

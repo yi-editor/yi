@@ -1,43 +1,65 @@
-{-# LANGUAGE DeriveDataTypeable, FlexibleContexts, FlexibleInstances,
-    FunctionalDependencies, GeneralizedNewtypeDeriving, MultiParamTypeClasses,
-    NoMonomorphismRestriction, TypeSynonymInstances, TemplateHaskell, CPP,
-    StandaloneDeriving, DeriveGeneric #-}
-{-# OPTIONS_GHC -fno-warn-missing-signatures -fno-warn-incomplete-patterns -fno-warn-name-shadowing #-}
+{-# LANGUAGE CPP #-}
+{-# LANGUAGE DeriveDataTypeable #-}
+{-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE FunctionalDependencies #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE StandaloneDeriving #-}
+{-# LANGUAGE TemplateHaskell #-}
+{-# OPTIONS_HADDOCK show-extensions #-}
+
+-- |
+-- Module      :  Yi.Snippets
+-- License     :  GPL-2
+-- Maintainer  :  yi-devel@googlegroups.com
+-- Stability   :  experimental
+-- Portability :  portable
+
 module Yi.Snippets where
 
-import Control.Arrow
-import Control.Applicative
-import Control.Monad
-import Control.Monad.RWS hiding (mapM, mapM_, sequence, get, put)
-import Control.Lens hiding (Action)
-import Data.Binary
-import Data.Typeable
-import Data.Foldable (find)
+import           Control.Applicative
+import           Control.Arrow
+import           Control.Lens hiding (Action)
+import           Control.Monad
+import           Control.Monad.RWS hiding (mapM, mapM_, sequence, get, put)
+import           Data.Binary
+import           Data.Char (isSpace)
+import           Data.Default
 #if __GLASGOW_HASKELL__ < 708
-import Data.DeriveTH
+import           Data.DeriveTH
 #else
-import GHC.Generics (Generic)
+import           GHC.Generics (Generic)
 #endif
-import Data.List hiding (find, elem, concat, concatMap)
-import Data.Char (isSpace)
-import Data.Maybe (catMaybes)
-import Data.Default
-
-import Yi.Buffer
-import Yi.Dynamic
-import Yi.Keymap
-import Yi.Keymap.Keys
-import Yi.TextCompletion
+import           Data.Foldable (find)
+import           Data.List hiding (find, elem, concat, concatMap)
+import           Data.Maybe (catMaybes)
+import qualified Data.Text as T
+import           Data.Typeable
+import           Yi.Buffer
+import           Yi.Dynamic
+import           Yi.Keymap
+import           Yi.Keymap.Keys
+import qualified Yi.Rope as R
+import           Yi.TextCompletion
 
 type SnippetCmd = RWST (Int, Int) [MarkInfo] () BufferM
 
 data SnippetMark = SimpleMark !Int
-                 | ValuedMark !Int String
+                 | ValuedMark !Int R.YiString
                  | DependentMark !Int
 
-data MarkInfo = SimpleMarkInfo { userIndex :: !Int, startMark :: !Mark }
-              | ValuedMarkInfo { userIndex :: !Int, startMark :: !Mark, endMark :: !Mark }
-              | DependentMarkInfo { userIndex :: !Int, startMark :: !Mark, endMark :: !Mark }
+
+data MarkInfo = SimpleMarkInfo { userIndex :: !Int
+                               , startMark :: !Mark }
+              | ValuedMarkInfo { userIndex :: !Int
+                               , startMark :: !Mark
+                               , endMark :: !Mark }
+              | DependentMarkInfo { userIndex :: !Int
+                                  , startMark :: !Mark
+                                  , endMark :: !Mark }
   deriving (Eq, Show)
 
 #if __GLASGOW_HASKELL__ < 708
@@ -65,14 +87,21 @@ instance YiVariable DependentMarks
 instance Ord MarkInfo where
   a `compare` b = userIndex a `compare` userIndex b
 
+cursor :: Int -> SnippetMark
 cursor = SimpleMark
+
+cursorWith :: Int -> R.YiString -> SnippetMark
 cursorWith = ValuedMark
+
+dep :: Int -> SnippetMark
 dep = DependentMark
 
+isDependentMark :: MarkInfo -> Bool
 isDependentMark (SimpleMarkInfo{})    = False
 isDependentMark (ValuedMarkInfo{})    = False
 isDependentMark (DependentMarkInfo{}) = True
 
+bufferMarkers :: MarkInfo -> [Mark]
 bufferMarkers (SimpleMarkInfo _ s) = [s]
 bufferMarkers m = [startMark m, endMark m]
 
@@ -82,7 +111,13 @@ class MkSnippetCmd a b | a -> b where
   mkSnippetCmd :: a -> SnippetCmd b
 
 instance MkSnippetCmd String () where
+  mkSnippetCmd = text . R.fromString
+
+instance MkSnippetCmd R.YiString () where
   mkSnippetCmd = text
+
+instance MkSnippetCmd T.Text () where
+  mkSnippetCmd = text . R.fromText
 
 instance MkSnippetCmd (SnippetCmd a) a where
   mkSnippetCmd = id
@@ -105,32 +140,35 @@ instance MkSnippetCmd SnippetMark () where
       tell [DependentMarkInfo i start end]
 
 -- create a mark at current position
+mkMark :: MonadTrans t => t BufferM Mark
 mkMark = lift $ do p <- pointB
                    newMarkB $ MarkValue p Backward
 
 -- Indentation support has been temporarily removed
-text :: String -> SnippetCmd ()
+text :: R.YiString -> SnippetCmd ()
 text txt = do
-    (_, indent) <- ask
-    indentSettings <- lift indentSettingsB
-    lift . foldl' (>>) (return ()) .
-        intersperse (newlineB >> indentToB indent) .
-        map (if expandTabs indentSettings
-             then insertN . expand indentSettings ""
-             else insertN) $ lines' txt
+  (_, indent) <- ask
+  indentSettings <- lift indentSettingsB
+  lift . foldl' (>>) (return ()) .
+      intersperse (newlineB >> indentToB indent) .
+      map (if expandTabs indentSettings
+           then insertN . expand indentSettings ""
+           else insertN) $ lines' txt
   where
-    lines' txt = if last txt == '\n' -- TODO: not very efficient yet
-                  then lines txt ++ [""]
-                  else lines txt
+    lines' txt' = case R.last txt' of
+      Just '\n' -> R.lines txt' <> [mempty]
+      _         -> R.lines txt
 
-    expand _ str [] = reverse str
-    expand indentSettings str (s:rst)
-        | s == '\t' = expand indentSettings (replicate (tabSize indentSettings) ' ' ++ str) rst
-        | otherwise = expand indentSettings (s:str) rst
+    expand :: IndentSettings -> R.YiString -> R.YiString -> R.YiString
+    expand is str rst = case R.head rst of
+      Nothing -> R.reverse str
+      Just '\t' -> let t = R.fromText (T.replicate (tabSize is) " ") <> str
+                   in expand is t (R.drop 1 rst)
+      Just s -> expand is (s `R.cons` str) rst
 
--- unfortunatelly data converted to snippets are no monads,
--- but & is very similar to >> abd &> is similar to >>=,
--- since SnippetCmd's can be used monadic
+-- unfortunatelly data converted to snippets are no monads, but '&' is
+-- very similar to '>>' and '&>' is similar to '>>=', since
+-- SnippetCmd's can be used monadically
 infixr 5 &
 (&) :: (MkSnippetCmd a any , MkSnippetCmd b c) => a -> b -> SnippetCmd c
 str & rst = mkSnippetCmd str >> mkSnippetCmd rst
@@ -148,9 +186,9 @@ runSnippet deleteLast s = do
         let newDepMarks = filter (not . len1) $
                             groupBy belongTogether $
                               sort markInfo
-        (%=) bufferDynamicValueA (BufferMarks newMarks `mappend`)
+        bufferDynamicValueA %= (BufferMarks newMarks `mappend`)
         unless (null newDepMarks) $
-            (%=) bufferDynamicValueA (DependentMarks newDepMarks `mappend`)
+            bufferDynamicValueA %= (DependentMarks newDepMarks `mappend`)
         moveToNextBufferMark deleteLast
     return a
   where
@@ -170,13 +208,13 @@ findEditedMarks upds = liftM (nub . concat) (mapM findEditedMarks' upds)
     findEditedMarks' upd = do
         let p = updatePoint upd
         ms <- return . nub . concat . marks =<< use bufferDynamicValueA
-        ms <- forM ms $ \m ->do
-                r <- adjMarkRegion m
-                return $ if (updateIsDelete upd && p `nearRegion` r)
-                            || p `inRegion` r
-                         then Just m
-                         else Nothing
-        return . catMaybes $ ms
+        ms' <- forM ms $ \m ->do
+                 r <- adjMarkRegion m
+                 return $ if (updateIsDelete upd && p `nearRegion` r)
+                             || p `inRegion` r
+                          then Just m
+                          else Nothing
+        return . catMaybes $ ms'
 
 dependentSiblings :: MarkInfo -> [[MarkInfo]] -> [MarkInfo]
 dependentSiblings mark deps =
@@ -189,26 +227,26 @@ updateDependents m = use bufferDynamicValueA >>= updateDependents' m . marks
 
 updateDependents' :: MarkInfo -> [[MarkInfo]] -> BufferM ()
 updateDependents' mark deps =
-    case dependentSiblings mark deps of
-      []   -> return ()
-      deps -> do
-          txt <- markText mark
-          forM_ deps $ \d -> do
-              dTxt <- markText d
-              when (txt /= dTxt) $
-                  setMarkText txt d
+  case dependentSiblings mark deps of
+    []   -> return ()
+    deps' -> do
+      txt <- markText mark
+      forM_ deps' $ \d -> do
+        dTxt <- markText d
+        when (txt /= dTxt) $ setMarkText txt d
 
-markText :: MarkInfo -> BufferM String
+markText :: MarkInfo -> BufferM R.YiString
 markText m = markRegion m >>= readRegionB
 
-setMarkText :: String -> MarkInfo -> BufferM ()
+setMarkText :: R.YiString -> MarkInfo -> BufferM ()
 setMarkText txt (SimpleMarkInfo _ start) = do
-    p <- use $ markPointA start
-    c <- readAtB p
-    if isSpace c
-      then insertNAt txt p
-      else do  r <- regionOfPartNonEmptyAtB unitViWordOnLine Forward p
-               modifyRegionClever (const txt) r
+  p <- use $ markPointA start
+  c <- readAtB p
+  if isSpace c
+    then insertNAt txt p
+    else do
+      r <- regionOfPartNonEmptyAtB unitViWordOnLine Forward p
+      modifyRegionClever (const txt) r
 
 setMarkText txt mi = do
     start <- use $ markPointA $ startMark mi
@@ -216,15 +254,18 @@ setMarkText txt mi = do
     let r = mkRegion start end
     modifyRegionClever (const txt) r
     when (start == end) $
-        markPointA (endMark mi) .= (end + (Point $ length txt))
+      markPointA (endMark mi) .= end + Point (R.length txt)
 
+withSimpleRegion :: MarkInfo -> (Region -> BufferM Region) -> BufferM Region
 withSimpleRegion (SimpleMarkInfo _ s) f = do
     p <- use $ markPointA s
     c <- readAtB p
     if isSpace c
       then return $ mkRegion p p  -- return empty region
       else f =<< regionOfPartNonEmptyAtB unitViWordOnLine Forward p
+withSimpleRegion r _ = error $ "withSimpleRegion: " <> show r
 
+markRegion :: MarkInfo -> BufferM Region
 markRegion m@SimpleMarkInfo{} = withSimpleRegion m $ \r -> do
     os <- findOverlappingMarksWith safeMarkRegion concat True r m
     rOs <- mapM safeMarkRegion os
@@ -238,9 +279,11 @@ markRegion m = liftM2 mkRegion
                    (use $ markPointA $ startMark m)
                    (use $ markPointA $ endMark m)
 
+safeMarkRegion :: MarkInfo -> BufferM Region
 safeMarkRegion m@(SimpleMarkInfo _ _) = withSimpleRegion m return
 safeMarkRegion m = markRegion m
 
+adjMarkRegion :: MarkInfo -> BufferM Region
 adjMarkRegion s@(SimpleMarkInfo _ _) = markRegion s
 
 adjMarkRegion m = do
@@ -249,9 +292,9 @@ adjMarkRegion m = do
     c <- readAtB e
     when (isWordChar c) $ do adjustEnding e
                              repairOverlappings e
-    e <- use $ markPointA $ endMark m
-    s <- adjustStart s e
-    return $ mkRegion s e
+    e' <- use $ markPointA $ endMark m
+    s' <- adjustStart s e'
+    return $ mkRegion s' e'
   where
     adjustEnding end = do
         r' <- regionOfPartNonEmptyAtB unitViWordOnLine Forward end
@@ -259,7 +302,7 @@ adjMarkRegion m = do
 
     adjustStart s e = do
         txt <- readRegionB (mkRegion s e)
-        let sP = s + (Point . length $ takeWhile isSpace txt)
+        let sP = s + (Point . R.length $ R.takeWhile isSpace txt)
         when (sP > s) $
             markPointA (startMark m) .= sP
         return sP
@@ -269,12 +312,13 @@ adjMarkRegion m = do
                                     unless (null overlappings) $
                                         markPointA (endMark m) .= origEnd
 
-findOverlappingMarksWith :: (MarkInfo -> BufferM Region) ->
-                            ([[MarkInfo]] -> [MarkInfo]) -> Bool -> Region ->
-                            MarkInfo -> BufferM [MarkInfo]
+findOverlappingMarksWith :: (MarkInfo -> BufferM Region)
+                         -> ([[MarkInfo]] -> [MarkInfo])
+                         -> Bool -> Region -> MarkInfo -> BufferM [MarkInfo]
 findOverlappingMarksWith fMarkRegion flattenMarks border r m =
-    liftM (filter (not . (m ==)) . flattenMarks . marks) (use bufferDynamicValueA) >>=
-    filterM (liftM (regionsOverlap border r) . fMarkRegion)
+  let markFilter = filter (m /=) . flattenMarks . marks
+      regOverlap = liftM (regionsOverlap border r) . fMarkRegion
+  in liftM markFilter (use bufferDynamicValueA) >>= filterM regOverlap
 
 findOverlappingMarks :: ([[MarkInfo]] -> [MarkInfo]) -> Bool -> Region ->
                         MarkInfo -> BufferM [MarkInfo]
@@ -301,26 +345,28 @@ dependentOverlappingMarks border = overlappingMarks border True
 
 nextBufferMark :: Bool -> BufferM (Maybe MarkInfo)
 nextBufferMark deleteLast = do
-    BufferMarks ms <- use bufferDynamicValueA
-    if null ms
-      then return Nothing
-      else do assign bufferDynamicValueA . BufferMarks . (if deleteLast then const $ tail ms else (tail ms ++)) $ [head ms]
-              return . Just $ head ms
+  BufferMarks ms <- use bufferDynamicValueA
+  if null ms
+    then return Nothing
+    else do
+      let mks = if deleteLast then const $ tail ms else (tail ms <>)
+      assign bufferDynamicValueA . BufferMarks . mks $ [head ms]
+      return . Just $ head ms
 
+isDependentMarker :: MonadState FBuffer m => Mark -> m Bool
 isDependentMarker bMark = do
     DependentMarks ms <- use bufferDynamicValueA
     return . elem bMark . concatMap bufferMarkers . concat $ ms
 
+safeDeleteMarkB :: Mark -> BufferM ()
 safeDeleteMarkB m = do
     b <- isDependentMarker m
     unless b (deleteMarkB m)
 
 moveToNextBufferMark :: Bool -> BufferM ()
-moveToNextBufferMark deleteLast = do
-    p <- nextBufferMark deleteLast
-    case p of
-      Just p  -> mv p
-      Nothing -> return ()
+moveToNextBufferMark deleteLast = nextBufferMark deleteLast >>= \case
+  Just p  -> mv p
+  Nothing -> return ()
   where
     mv (SimpleMarkInfo _ m)   = do
         moveTo =<< use (markPointA m)
@@ -335,9 +381,11 @@ moveToNextBufferMark deleteLast = do
             safeDeleteMarkB s
             safeDeleteMarkB e
 
+    mv r = error $ "moveToNextBufferMark.mv: " <> show r
+
 -- Keymap support
 
-newtype SupertabExt = Supertab (String -> Maybe (BufferM ()))
+newtype SupertabExt = Supertab (R.YiString -> Maybe (BufferM ()))
 
 instance Monoid SupertabExt where
   mempty = Supertab $ const Nothing
@@ -365,11 +413,12 @@ superTab caseSensitive (Supertab expander) =
                         _        -> autoComplete
 
     autoComplete = wordCompleteString' caseSensitive >>=
-                   withBuffer . (bkillWordB >>) . insertN
+                   withBuffer . (bkillWordB >>) . (insertN . R.fromText)
 
 -- | Convert snippet description list into a SuperTab extension
-fromSnippets :: Bool -> [(String, SnippetCmd ())] -> SupertabExt
+fromSnippets :: Bool -> [(R.YiString, SnippetCmd ())] -> SupertabExt
 fromSnippets deleteLast snippets =
   Supertab $ \str -> lookup str $ map (second $ runSnippet deleteLast) snippets
 
+snippet :: MkSnippetCmd a b => a -> SnippetCmd b
 snippet = mkSnippetCmd

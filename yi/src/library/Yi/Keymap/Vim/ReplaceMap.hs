@@ -1,19 +1,28 @@
-module Yi.Keymap.Vim.ReplaceMap
-    ( defReplaceMap
-    ) where
+{-# LANGUAGE OverloadedStrings #-}
+{-# OPTIONS_HADDOCK show-extensions #-}
 
-import Control.Monad
+-- |
+-- Module      :  Yi.Keymap.Vim.ReplaceMap
+-- License     :  GPL-2
+-- Maintainer  :  yi-devel@googlegroups.com
+-- Stability   :  experimental
+-- Portability :  portable
 
-import Yi.Buffer.Adjusted
-import Yi.Editor
-import Yi.Keymap.Keys
-import Yi.Keymap.Vim.Common
-import Yi.Keymap.Vim.EventUtils
-import Yi.Keymap.Vim.StateUtils
-import Yi.Keymap.Vim.Utils
+module Yi.Keymap.Vim.ReplaceMap (defReplaceMap) where
+
+import           Control.Monad
+import           Data.Monoid
+import qualified Data.Text as T
+import           Yi.Buffer.Adjusted
+import           Yi.Editor
+import           Yi.Keymap.Keys
+import           Yi.Keymap.Vim.Common
+import           Yi.Keymap.Vim.EventUtils
+import           Yi.Keymap.Vim.StateUtils
+import           Yi.Keymap.Vim.Utils
 
 defReplaceMap :: [VimBinding]
-defReplaceMap = specials ++ [printable]
+defReplaceMap = specials <> [printable]
 
 specials :: [VimBinding]
 specials = fmap (mkBindingE Replace Finish)
@@ -23,12 +32,12 @@ specials = fmap (mkBindingE Replace Finish)
 
 exitReplaceMode :: EditorM ()
 exitReplaceMode = do
-    count <- getCountE
-    when (count > 1) $ do
-        inputEvents <- fmap (parseEvents . vsOngoingInsertEvents) getDynamic
-        replicateM_ (count - 1) $ mapM_ (printableAction . eventToString) inputEvents
-    modifyStateE $ \s -> s { vsOngoingInsertEvents = "" }
-    withBuffer0 $ moveXorSol 1
+  count <- getCountE
+  when (count > 1) $ do
+      inputEvents <- fmap (parseEvents . vsOngoingInsertEvents) getDynamic
+      replicateM_ (count - 1) $ mapM_ (printableAction . eventToEventString) inputEvents
+  modifyStateE $ \s -> s { vsOngoingInsertEvents = mempty }
+  withBuffer0 $ moveXorSol 1
 
 printable :: VimBinding
 printable = VimBindingE f
@@ -38,8 +47,8 @@ printable = VimBindingE f
 printableAction :: EventString -> EditorM RepeatToken
 printableAction evs = do
     saveInsertEventStringE evs
-    withBuffer0 $ case evs of
-        (c:[]) -> insertOrReplaceB c
+    withBuffer0 $ case T.unpack . _unEv $ evs of
+        [c]    -> insertOrReplaceB c
         "<CR>" -> insertOrReplaceB '\n'
         -- For testing purposes assume noexpandtab, tw=4
         "<Esc>" -> replicateM_ 4 $ insertOrReplaceB ' '
@@ -53,7 +62,7 @@ printableAction evs = do
         "<C-w>" -> return () -- TODO
         "<C-r>" -> return () -- TODO
         "<C-k>" -> return () -- TODO
-        evs' -> error $ "Unhandled event " ++ evs' ++ " in replace mode"
+        evs' -> error $ "Unhandled event " <> evs' <> " in replace mode"
     return Continue
 
 insertOrReplaceB :: Char -> BufferM ()

@@ -1,7 +1,15 @@
 {-# LANGUAGE FlexibleContexts #-}
--- Copyright (c) 2008 Jean-Philippe Bernardy
+{-# LANGUAGE OverloadedStrings #-}
+{-# OPTIONS_HADDOCK show-extensions #-}
 
--- | Combinators for building keymaps.
+-- |
+-- Module      :  Yi.Keymap.Keys
+-- License     :  GPL-2
+-- Maintainer  :  yi-devel@googlegroups.com
+-- Stability   :  experimental
+-- Portability :  portable
+--
+-- Combinators for building keymaps.
 
 module Yi.Keymap.Keys
     (
@@ -48,7 +56,7 @@ charOf modifier l h =
 
 shift,ctrl,meta,super,hyper :: Event -> Event
 shift (Event (KASCII c) ms) | isAlpha c = Event (KASCII (toUpper c)) ms
-                           | otherwise = error "shift: unhandled event"
+                            | otherwise = error "shift: unhandled event"
 shift (Event k ms) = Event k $ nub $ sort (MShift:ms)
 
 ctrl (Event k ms) = Event k $ nub $ sort (MCtrl:ms)

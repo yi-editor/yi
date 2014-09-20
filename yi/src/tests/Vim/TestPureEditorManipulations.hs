@@ -1,3 +1,4 @@
+{-# LANGUAGE OverloadedStrings #-}
 -- | Tests for pure manipulations of the editor in the Vim Keymap.
 --
 -- Pure manipulations of the editor refers to such things as changing layout,
@@ -11,17 +12,17 @@
 --
 module Vim.TestPureEditorManipulations (tests) where
 
-import Test.Tasty (TestTree, testGroup)
-
+import qualified Data.Text as T
+import           Test.Tasty (TestTree, testGroup)
 import qualified Vim.EditorManipulations.BufferExCommand as BufferExCommand
-
 import           Yi (extractValue)
 import           Yi.Config.Default (defaultVimConfig)
 import           Yi.Keymap.Vim
+import           Yi.Keymap.Vim.Common
 
 tests :: TestTree
 tests =
     testGroup "Vim pure editor manipulation tests"
         [ BufferExCommand.tests defaultVimConfig
-            (pureEval $ extractValue defVimConfig)
+            (pureEval (extractValue defVimConfig) . Ev . T.pack)
         ]

@@ -5,7 +5,6 @@
 
 -- |
 -- Module      :  Yi.Mode.JavaScript
--- Copyright   :  (c) Deniz Dogan 2009
 -- License     :  GPL-2
 -- Maintainer  :  yi-devel@googlegroups.com
 -- Stability   :  experimental
@@ -16,42 +15,49 @@
 
 module Yi.Mode.JavaScript (javaScriptMode, hooks) where
 
-import Control.Applicative
-import Control.Lens
-import Control.Monad.Writer.Lazy (execWriter)
-import Data.Binary
-import Data.Default
-import Data.Foldable as F (toList)
-import Data.List (nub)
-import Data.Maybe (isJust)
-import Data.Typeable
-import System.FilePath.Posix (takeBaseName)
-import Yi.Buffer.Basic (BufferRef, Direction(..))
-import Yi.Buffer.HighLevel (replaceBufferContent,
-                            getNextNonBlankLineB, moveToSol)
-import Yi.Buffer.Indent (indentSettingsB, indentOfB,
-                         cycleIndentsB, newlineAndIndentB)
-import Yi.Buffer.Misc (Mode(..), BufferM, IndentBehaviour, file,
-                       pointAt, shiftWidth)
-import Yi.Core (emptyMode, toggleCommentSelectionB, withSyntax)
-import Yi.Dynamic
-import Yi.Editor (withEditor, withOtherWindow, getDynamic, stringToNewBuffer
-                 , findBuffer, switchToBufferE)
-import Yi.Event (Key(..), Event(..))
-import Yi.File (fwriteE)
-import Yi.IncrementalParse (scanner)
-import Yi.Interact (choice)
-import Yi.Keymap (YiM, Action(..), withBuffer, withGivenBuffer, topKeymapA)
-import Yi.Keymap.Keys (ctrlCh, (?>>), (?>>!), (<||))
-import Yi.Lexer.Alex (AlexState, Tok, lexScanner, commonLexer, CharScanner)
-import Yi.Lexer.JavaScript (alexScanToken, TT, initState, HlState, Token)
-import Yi.Modes (anyExtension)
-import Yi.Syntax (ExtHL(..), mkHighlighter, Scanner)
-import Yi.Syntax.JavaScript (Tree, parse, getStrokes)
-import Yi.Syntax.Tree (getLastPath)
-import Yi.Verifier.JavaScript (verify)
-import Yi.Monad
-import Data.DList as D (toList)
+import           Control.Applicative
+import           Control.Lens
+import           Control.Monad.Writer.Lazy (execWriter)
+import           Data.Binary
+import           Data.DList as D (toList)
+import           Data.Default
+import           Data.Foldable as F (toList)
+import           Data.List (nub)
+import           Data.Maybe (isJust)
+import           Data.Monoid
+import qualified Data.Text as T
+import           Data.Typeable
+import           System.FilePath.Posix (takeBaseName)
+import           Yi.Buffer.Basic (BufferRef, Direction(..))
+import           Yi.Buffer.HighLevel (replaceBufferContent,
+                                      getNextNonBlankLineB, moveToSol)
+import           Yi.Buffer.Indent (indentSettingsB, indentOfB,
+                                   cycleIndentsB, newlineAndIndentB)
+import           Yi.Buffer.Misc (Mode(..), BufferM, IndentBehaviour, file,
+                                 pointAt, shiftWidth, BufferId(..))
+import           Yi.Core (emptyMode, toggleCommentSelectionB, withSyntax)
+import           Yi.Dynamic
+import           Yi.Editor (withEditor, withOtherWindow, getDynamic,
+                            stringToNewBuffer , findBuffer, switchToBufferE)
+import           Yi.Event (Key(..), Event(..))
+import           Yi.File (fwriteE)
+import           Yi.IncrementalParse (scanner)
+import           Yi.Interact (choice)
+import           Yi.Keymap (YiM, Action(..), withBuffer,
+                            withGivenBuffer, topKeymapA)
+import           Yi.Keymap.Keys (ctrlCh, (?>>), (?>>!), important)
+import           Yi.Lexer.Alex (AlexState, Tok, lexScanner,
+                                commonLexer, CharScanner)
+import           Yi.Lexer.JavaScript (alexScanToken, TT, initState,
+                                      HlState, Token)
+import           Yi.Modes (anyExtension)
+import           Yi.Monad
+import qualified Yi.Rope as R
+import           Yi.String
+import           Yi.Syntax (ExtHL(..), mkHighlighter, Scanner)
+import           Yi.Syntax.JavaScript (Tree, parse, getStrokes)
+import           Yi.Syntax.Tree (getLastPath)
+import           Yi.Verifier.JavaScript (verify)
 
 javaScriptAbstract :: Mode syntax
 javaScriptAbstract = emptyMode
@@ -79,8 +85,9 @@ jsSimpleIndent t behave = do
                          prevInd + indLevel,
                          prevInd - indLevel]
   where
-    -- | Given a list of possible columns to indent to, removes any duplicates
-    --   from it and cycles between the resulting indentations.
+    -- Given a list of possible columns to indent to, removes any
+    -- duplicates from it and cycles between the resulting
+    -- indentations.
     indentTo :: [Int] -> BufferM ()
     indentTo = cycleIndentsB behave . nub
 
@@ -95,12 +102,13 @@ jsLexer = lexScanner (commonLexer alexScanToken initState)
 -- | Hooks for the JavaScript mode.
 hooks :: Mode (Tree TT) -> Mode (Tree TT)
 hooks mode = mode
-  { -- modeGetAnnotations = tokenBasedAnnots tta
-    modeKeymap = topKeymapA %~ (choice [ctrlCh 'c' ?>> ctrlCh 'l' ?>>! withSyntax modeFollow,
-                                        Event KEnter []           ?>>! newlineAndIndentB]
-                                <||)
+  { modeKeymap = topKeymapA %~ important (choice m)
   , modeFollow = YiA . jsCompile
   }
+  where
+    m = [ ctrlCh 'c' ?>> ctrlCh 'l' ?>>! withSyntax modeFollow
+        , Event KEnter []           ?>>! newlineAndIndentB
+        ]
 
 newtype JSBuffer = JSBuffer (Maybe BufferRef)
     deriving (Default, Typeable, Binary)
@@ -129,15 +137,17 @@ getJSBuffer = withOtherWindow $ do
 
 -- | Creates a new empty buffer and returns it.
 mkJSBuffer :: YiM BufferRef
-mkJSBuffer = withEditor $ stringToNewBuffer (Left "js") ""
+mkJSBuffer = withEditor $ stringToNewBuffer (MemBuffer "js") mempty
 
--- | Given a filename, a BufferRef and a list of errors, prints the errors in
---   that buffer.
+-- | Given a filename, a BufferRef and a list of errors, prints the
+-- errors in that buffer.
 jsErrors :: Show a => String -> BufferRef -> [a] -> YiM ()
 jsErrors fname buf errs =
-  let problems = unlines $ map item errs
-      item x = ("* " ++ show x)
+  let problems = T.unlines $ map item errs
+      item x = "* " <> showT x
       str = if null errs
-              then "No problems found!"
-              else "Problems in " ++ takeBaseName fname ++ ":\n" ++ problems
+            then "No problems found!"
+            else "Problems in "
+                 <> R.fromString (takeBaseName fname)
+                 <> ":\n" <> R.fromText problems
   in withGivenBuffer buf (replaceBufferContent str)

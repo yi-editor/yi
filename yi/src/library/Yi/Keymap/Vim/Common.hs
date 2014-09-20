@@ -1,5 +1,18 @@
-{-# LANGUAGE DeriveDataTypeable, TemplateHaskell,
-  CPP, StandaloneDeriving, DeriveGeneric #-}
+{-# LANGUAGE CPP #-}
+{-# LANGUAGE DeriveDataTypeable #-}
+{-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE StandaloneDeriving #-}
+{-# LANGUAGE TemplateHaskell #-}
+{-# OPTIONS_HADDOCK show-extensions #-}
+
+-- |
+-- Module      :  Yi.Keymap.Vim.Common
+-- License     :  GPL-2
+-- Maintainer  :  yi-devel@googlegroups.com
+-- Stability   :  experimental
+-- Portability :  portable
+--
+-- Common types used by the vim keymap.
 
 module Yi.Keymap.Vim.Common
     ( VimMode(..)
@@ -10,33 +23,75 @@ module Yi.Keymap.Vim.Common
     , RepeatToken(..)
     , RepeatableAction(..)
     , MatchResult(..)
-    , EventString
-    , OperatorName
+    , EventString(..), unEv
+    , OperatorName(..), unOp
     , RegisterName
     , module Yi.Keymap.Vim.MatchResult
+    , lookupBestMatch, matchesString
     ) where
 
-import Data.Binary
+import           Control.Applicative
+import           Control.Lens
+import           Data.Binary
 #if __GLASGOW_HASKELL__ < 708
-import Data.DeriveTH
+import           Data.DeriveTH
 #else
-import GHC.Generics (Generic)
+import           GHC.Generics (Generic)
 #endif
+import           Data.Default
 import qualified Data.HashMap.Strict as HM
-import Data.Monoid
-import qualified Data.Rope as R
-import Data.Default
-import Data.Typeable
+import           Data.Monoid
+import           Data.String (IsString(..))
+import qualified Data.Text as T
+import qualified Data.Text.Encoding as E
+import           Data.Typeable
+import           Yi.Buffer.Adjusted hiding (Insert)
+import           Yi.Dynamic
+import           Yi.Editor
+import           Yi.Keymap
+import           Yi.Keymap.Vim.MatchResult
+import           Yi.Rope (YiString)
 
-import Yi.Buffer.Adjusted hiding (Insert)
-import Yi.Dynamic
-import Yi.Editor
-import Yi.Keymap
-import Yi.Keymap.Vim.MatchResult
+newtype EventString = Ev { _unEv :: T.Text } deriving (Show, Eq, Ord)
 
-type EventString = String
+instance IsString EventString where
+  fromString = Ev . T.pack
 
-type OperatorName = String
+newtype OperatorName = Op { _unOp :: T.Text } deriving (Show, Eq)
+
+instance IsString OperatorName where
+  fromString = Op . T.pack
+
+instance Monoid EventString where
+  mempty = Ev mempty
+  Ev t `mappend` Ev t' = Ev $ t <> t'
+
+instance Monoid OperatorName where
+  mempty = Op mempty
+  Op t `mappend` Op t' = Op $ t <> t'
+
+instance Binary EventString where
+  get = Ev . E.decodeUtf8 <$> get
+  put (Ev t) = put $ E.encodeUtf8 t
+
+instance Binary OperatorName where
+  get = Op . E.decodeUtf8 <$> get
+  put (Op t) = put $ E.encodeUtf8 t
+
+makeLenses ''EventString
+makeLenses ''OperatorName
+
+-- 'lookupBestMatch' and 'matchesString' pulled out of MatchResult
+-- module to prevent cyclic dependencies. Screw more bootfiles.
+lookupBestMatch :: EventString -> [(EventString, a)] -> MatchResult a
+lookupBestMatch key = foldl go NoMatch
+    where go m (k, x) = m <|> fmap (const x) (key `matchesString` k)
+
+matchesString :: EventString -> EventString -> MatchResult ()
+matchesString (Ev got) (Ev expected)
+  | expected == got = WholeMatch ()
+  | got `T.isPrefixOf` expected = PartialMatch
+  | otherwise = NoMatch
 
 type RegisterName = Char
 type MacroName = Char
@@ -49,7 +104,7 @@ data RepeatableAction = RepeatableAction {
 
 data Register = Register {
           regRegionStyle :: RegionStyle
-        , regContent :: R.Rope
+        , regContent :: YiString
     }
 
 data VimMode = Normal
@@ -118,10 +173,10 @@ instance Default VimState where
             Nothing -- repeatable action
             mempty -- string to eval
             False -- sticky eol
-            [] -- ongoing insert events
+            mempty -- ongoing insert events
             Nothing -- last goto char command
-            [] -- binding accumulator
-            [] -- secondary cursors
+            mempty -- binding accumulator
+            mempty -- secondary cursors
             False -- :set paste
             Nothing -- current macro recording
 
@@ -152,4 +207,3 @@ data RepeatToken = Finish
 data VimBinding
     = VimBindingY (EventString -> VimState -> MatchResult (YiM RepeatToken))
     | VimBindingE (EventString -> VimState -> MatchResult (EditorM RepeatToken))
-

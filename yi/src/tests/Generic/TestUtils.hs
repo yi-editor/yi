@@ -1,12 +1,11 @@
 module Generic.TestUtils where
 
-import Control.Monad (unless)
-
-import Test.Tasty.HUnit
-
-import Yi.Buffer
-import Yi.Config (Config)
-import Yi.Editor
+import           Control.Monad (unless)
+import           Test.Tasty.HUnit
+import           Yi.Buffer
+import           Yi.Config (Config)
+import           Yi.Editor
+import qualified Yi.Rope as R
 
 
 type KeyEval = String -> EditorM ()
@@ -45,7 +44,7 @@ runTest setupActions preConditions testActions assertions c = do
 -- Return the contents of the current buffer as a string.
 extractBufferString :: Config -> Editor -> String
 extractBufferString c editor =
-    snd (runEditor c (withBuffer0 elemsB) editor)
+  R.toString $ snd (runEditor c (withBuffer0 elemsB) editor)
 
 
 --------------------------------------------------
@@ -56,7 +55,7 @@ insertText :: String -> EditorM ()
 insertText text =
     withBuffer0 $ do
         startUpdateTransactionB
-        insertN text
+        insertN (R.fromString text)
         commitUpdateTransactionB
 
 

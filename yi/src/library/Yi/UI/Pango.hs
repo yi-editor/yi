@@ -1,6 +1,7 @@
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE NamedFieldPuns #-}
+{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TupleSections #-}
 {-# LANGUAGE ViewPatterns #-}
@@ -10,7 +11,6 @@
 -- |
 -- Module      :  Yi.UI.Pango
 -- License     :  GPL-2
--- Copyright   :  Jean-Philippe Bernardy 2007-2008
 -- Maintainer  :  yi-devel@googlegroups.com
 -- Stability   :  experimental
 -- Portability :  portable
@@ -20,28 +20,28 @@
 
 module Yi.UI.Pango (start, startGtkHook) where
 
-import           Prelude hiding (error, elem, mapM_, foldl, concat, mapM)
-import           Control.Exception (catch, SomeException)
-import           Control.Concurrent
-import           Control.Monad hiding (forM_, mapM_, forM, mapM)
 import           Control.Applicative
+import           Control.Concurrent
+import           Control.Exception (catch, SomeException)
 import           Control.Lens hiding (set, Action, from)
-import           Data.Text (unpack, Text)
+import           Control.Monad hiding (forM_, mapM_, forM, mapM)
+import           Data.Foldable
 import           Data.IORef
-import           Data.List (intercalate)
 import qualified Data.List.PointedList as PL (moveTo)
 import qualified Data.List.PointedList.Circular as PL
-import           Data.Maybe
-import           Data.Foldable
-import           Data.Traversable
 import qualified Data.Map as M
-import qualified Data.Rope as Rope
-import           Graphics.UI.Gtk hiding (Region, Window, Action , Point,
-                               Style, Modifier, on)
+import           Data.Maybe
+import           Data.Monoid
+import           Data.Text (unpack, Text)
+import qualified Data.Text as T
+import           Data.Traversable
 import qualified Graphics.UI.Gtk as Gtk
+import           Graphics.UI.Gtk hiding (Region, Window, Action , Point,
+                                         Style, Modifier, on)
 import qualified Graphics.UI.Gtk.Gdk.EventM as EventM
 import qualified Graphics.UI.Gtk.Gdk.GC as Gtk
 import           Graphics.UI.Gtk.Gdk.GC hiding (foreground)
+import           Prelude hiding (error, elem, mapM_, foldl, concat, mapM)
 import           System.Glib.GError
 import           Yi.Buffer
 import           Yi.Config
@@ -51,6 +51,7 @@ import           Yi.Event
 import           Yi.Keymap
 import           Yi.Layout(DividerPosition, DividerRef)
 import           Yi.Monad
+import qualified Yi.Rope as R
 import           Yi.Style
 import           Yi.Tab
 import qualified Yi.UI.Common as Common
@@ -60,6 +61,7 @@ import           Yi.UI.Pango.Gnome(watchSystemFont)
 #endif
 import           Yi.UI.Pango.Layouts
 import           Yi.UI.Pango.Utils
+import           Yi.String (showT)
 import           Yi.UI.TabBar
 import           Yi.UI.Utils
 import           Yi.Utils
@@ -92,8 +94,8 @@ data TabInfo = TabInfo
     , miniwindowPage  :: MiniwindowDisplay
     , tabWidget       :: Widget
     , windowCache     :: IORef WindowCache
-    , fullTitle       :: IORef String
-    , abbrevTitle     :: IORef String
+    , fullTitle       :: IORef Text
+    , abbrevTitle     :: IORef Text
     }
 
 instance Show TabInfo where
@@ -194,10 +196,11 @@ startNoMsgGtkHook userHook cfg ch outCh ed = do
 
   set win [ windowDefaultWidth  := 700
           , windowDefaultHeight := 900
-          , windowTitle         := "Yi"
+          , windowTitle         := ("Yi" :: T.Text)
           , windowIcon          := Just ico
           , containerChild      := vb
           ]
+
   win `on` deleteEvent $ io $ mainQuit >> return True
   win `on` keyPressEvent $ handleKeypress ch im
 
@@ -227,7 +230,7 @@ startNoMsgGtkHook userHook cfg ch outCh ed = do
 #ifdef GNOME_ENABLED
   let watchFont = watchSystemFont
 #else
-  let watchFont = (fontDescriptionFromString "Monospace 10" >>=)
+  let watchFont = (fontDescriptionFromString ("Monospace 10" :: T.Text) >>=)
 #endif
   watchFont $ updateFont (configUI cfg) fontRef tc status
 
@@ -319,7 +322,7 @@ setWindowFocus e ui t w = do
   let bufferName = shortIdentString (commonNamePrefix e) $
                    findBufferWith (bufkey win) e
       ml = askBuffer win (findBufferWith (bufkey win) e) $
-           getModeLine (commonNamePrefix e)
+           getModeLine (T.pack <$> commonNamePrefix e)
       im = uiInput ui
 
   writeIORef (inFocus w) True -- see also 'updateWindow'
@@ -430,7 +433,7 @@ newWindow e ui w = do
     layoutSetFontDescription layout (Just f)
 
     -- stops layoutGetText crashing (as of gtk2hs 0.10.1)
-    layoutSetText layout ""
+    layoutSetText layout T.empty
 
     let ref = wkey w
         win = WinInfo { coreWinKey = ref
@@ -466,9 +469,9 @@ newWindow e ui w = do
 refresh :: UI -> Editor -> IO ()
 refresh ui e = do
     postGUIAsync $ do
-       contextId <- statusbarGetContextId (uiStatusbar ui) "global"
+       contextId <- statusbarGetContextId (uiStatusbar ui) ("global" :: T.Text)
        statusbarPop  (uiStatusbar ui) contextId
-       void $ statusbarPush (uiStatusbar ui) contextId $ intercalate "  " $
+       void $ statusbarPush (uiStatusbar ui) contextId $ T.intercalate "  " $
          statusLine e
 
     updateCache ui e -- The cursor may have changed since doLayout
@@ -502,7 +505,7 @@ render ui w _event =
                   (mkRegion tos bos)
         sty = configStyle $ uiConfig ui
 
-        picZip = zip picture $ drop 1 (fst <$> picture) ++ [bos]
+        picZip = zip picture $ drop 1 (fst <$> picture) <> [bos]
         strokes = [ (start',s,end') | ((start', s), end') <- picZip
                                     , s /= emptyAttributes ]
 
@@ -652,12 +655,12 @@ updatePango ui font w b layout = do
         rope     <- streamB Forward from
         p        <- pointB
         bufEnd     <- sizeB
-        let content = fst $ Rope.splitAtLine winh rope
+        let content = fst $ R.splitAtLine winh rope
         -- allow BOS offset to be just after the last line
-        let addNL = if Rope.countNewLines content == winh
+        let addNL = if R.countNewLines content == winh
                         then id
-                        else (++"\n")
-        return (from, bufEnd, p, addNL $ Rope.toString content)
+                        else (`R.snoc` '\n')
+        return (from, bufEnd, p, R.toText $ addNL content)
 
   if configLineWrap $ uiConfig ui
     then do oldWidth <- layoutGetWidth layout
@@ -690,8 +693,8 @@ mkCol _ (RGB x y z) = Color (fromIntegral x * 256)
 
 -- | Process GTK keypress if IM fails
 handleKeypress :: (Event -> IO ()) -- ^ Event dispatcher (Yi.Core.dispatch)
-                  -> IMContext
-                  -> EventM EKey Bool
+               -> IMContext
+               -> EventM EKey Bool
 handleKeypress ch im = do
   gtkMods <- eventModifier
   gtkKey  <- eventKeyVal
@@ -706,7 +709,7 @@ handleKeypress ch im = do
 
   case (ifIM, key) of
     (True, _   ) -> return ()
-    (_, Nothing) -> logPutStrLn $ "Event not translatable: " ++ show key
+    (_, Nothing) -> logPutStrLn $ "Event not translatable: " <> showT key
     (_, Just k ) -> io $ ch $ Event k mods
   return True
 
@@ -826,25 +829,26 @@ selectArea ui w (x,y) = do
 pasteSelectionClipboard :: UI -> WinInfo -> Point -> Clipboard -> IO ()
 pasteSelectionClipboard ui w p cb = do
   win <- io $ readIORef (coreWin w)
-  let cbHandler Nothing    = return ()
+  let cbHandler :: Maybe R.YiString -> IO ()
+      cbHandler Nothing    = return ()
       cbHandler (Just txt) = uiActionCh ui $ makeAction $ do
         b <- gets $ bkey . findBufferWith (bufkey win)
         withGivenBufferAndWindow0 win b $ do
           pointB >>= setSelectionMarkPointB
           moveTo p
           insertN txt
-  clipboardRequestText cb cbHandler
+  clipboardRequestText cb (cbHandler . fmap R.fromText)
 
 -- | Set selection clipboard contents to current selection
 setSelectionClipboard :: UI -> WinInfo -> Clipboard -> IO ()
 setSelectionClipboard ui _w cb = do
   -- Why uiActionCh doesn't allow returning values?
-  selection <- newIORef ""
+  selection <- newIORef mempty
   let yiAction = do
         txt <- withEditor $ withBuffer0 $
-               readRegionB =<< getSelectRegionB :: YiM String
+               fmap R.toText . readRegionB =<< getSelectRegionB :: YiM T.Text
         io $ writeIORef selection txt
   uiActionCh ui $ makeAction yiAction
   txt <- readIORef selection
 
-  unless (null txt) $ clipboardSetText cb txt
+  unless (T.null txt) $ clipboardSetText cb txt

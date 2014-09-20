@@ -1,51 +1,54 @@
 {-# LANGUAGE CPP #-}
+{-# LANGUAGE OverloadedStrings #-}
 -- Copyright (c) Jean-Philippe Bernardy 2006,2007,2008.
 
-module Yi.Config.Default (defaultConfig, availableFrontends,
-                          defaultEmacsConfig, defaultVimConfig, defaultCuaConfig,
-                          toVimStyleConfig, toEmacsStyleConfig, toCuaStyleConfig) where
+module Yi.Config.Default ( defaultConfig, availableFrontends, defaultEmacsConfig
+                         , defaultVimConfig, defaultCuaConfig, toVimStyleConfig
+                         , toEmacsStyleConfig, toCuaStyleConfig) where
 
-import Control.Applicative
-import Control.Monad
-import Control.Lens hiding (Action)
-import Data.Default
-import Paths_yi
-import System.FilePath
-import Yi.Command (cabalBuildE, cabalConfigureE, grepFind, makeBuild, reloadProjectE, searchSources, shell)
-import Yi.Config
-import Yi.Config.Misc
-import Yi.Core
-import Yi.Utils
-import Yi.Eval(publishedActions)
-import Yi.File
-import Yi.IReader (saveAsNewArticle)
-import Yi.Mode.IReader (ireaderMode, ireadMode)
-import Yi.Layout
-import Yi.Modes
-import Yi.Search
-import Yi.Style.Library
-import qualified Data.Map as M
+import           Control.Applicative
+import           Control.Lens hiding (Action)
+import           Control.Monad
+import           Data.Default
 import qualified Data.HashMap.Strict as HM
+import qualified Data.Map as M
+import qualified Data.Text as T
+import           Paths_yi
+import           System.FilePath
+import           Yi.Command (cabalBuildE, cabalConfigureE, grepFind, makeBuild,
+                             reloadProjectE, searchSources, shell)
+import           Yi.Config
+import           Yi.Config.Misc
+import           Yi.Core
+import           Yi.Eval(publishedActions)
+import           Yi.File
+import           Yi.IReader (saveAsNewArticle)
+import qualified Yi.Interact as I
 import qualified Yi.Keymap.Cua  as Cua
 import qualified Yi.Keymap.Emacs  as Emacs
 import qualified Yi.Keymap.Vim  as Vim
+import           Yi.Layout
 import qualified Yi.Mode.Abella as Abella
 import qualified Yi.Mode.Haskell as Haskell
+import           Yi.Mode.IReader (ireaderMode, ireadMode)
 import qualified Yi.Mode.JavaScript as JS
 import qualified Yi.Mode.Latex as Latex
-import qualified Yi.Interact as I
-import qualified Data.Rope as R
+import           Yi.Modes
+import qualified Yi.Rope as R
+import           Yi.Search
+import           Yi.Style.Library
+import qualified Yi.UI.Batch
+import           Yi.Utils
 
 #ifdef FRONTEND_VTY
-import qualified Yi.UI.Vty
 import qualified Graphics.Vty.Config as Vty
+import qualified Yi.UI.Vty
 #endif
 #ifdef FRONTEND_PANGO
 import qualified Yi.UI.Pango
 #endif
-import qualified Yi.UI.Batch
 
-{-# ANN availableFrontends "HLint: ignore Use list literal" #-}
+
 availableFrontends :: [(String, UIBoot)]
 availableFrontends =
 #ifdef FRONTEND_VTY
@@ -63,7 +66,8 @@ availableFrontends =
 -- ("symbol", box symbol")
 -- ... so we can hope getting rid of this someday.
 -- Failing to conform to this rule exposes the code to instant deletion.
-
+--
+-- TODO: String → Text/YiString
 defaultPublishedActions :: HM.HashMap String Action
 defaultPublishedActions = HM.fromList
     [
@@ -108,7 +112,7 @@ defaultPublishedActions = HM.fromList
 
 
 defaultConfig :: Config
-defaultConfig = 
+defaultConfig =
   publishedActions .~ defaultPublishedActions $
   Config { startFrontEnd    = case availableFrontends of
              [] -> error "panic: no frontend compiled in! (configure with -fvty or another frontend.)"
@@ -208,15 +212,18 @@ toCuaStyleConfig cfg = cfg {defaultKm = Cua.keymap}
 -- | Open an emacs-like scratch buffer if no file is open.
 openScratchBuffer :: YiM ()
 openScratchBuffer = withEditor $ do
-      fileBufOpen <- any isFileOrDir . M.elems <$> use buffersA
-      unless fileBufOpen $
-           void $ newBufferE (Left "scratch") $ R.fromString $ unlines
-                   ["This buffer is for notes you don't want to save.", --, and for haskell evaluation" -- maybe someday?
-                    "If you want to create a file, open that file,",
-                    "then enter the text in that file's own buffer."]
-      where
-        isFileOrDir :: FBuffer -> Bool
-        isFileOrDir attrs = either (const $ view directoryContentA attrs) (const True) (view identA attrs)
+  fileBufOpen <- any isFileOrDir . M.elems <$> use buffersA
+  unless fileBufOpen $
+    void . newBufferE (MemBuffer "scratch") . R.fromText $ T.unlines
+            [ "This buffer is for notes you don't want to save."
+            , "If you want to create a file, open that file,"
+            , "then enter the text in that file's own buffer."
+            ]
+  where
+    isFileOrDir :: FBuffer -> Bool
+    isFileOrDir attrs = case attrs ^. identA of
+      MemBuffer  _ -> attrs ^. directoryContentA
+      FileBuffer _ -> True
 
 nilKeymap :: Keymap
 nilKeymap = choice [
@@ -224,16 +231,19 @@ nilKeymap = choice [
              char 'h' ?>>! configHelp
             ]
             <|| (anyEvent >>! errorEditor "Keymap not defined, 'q' to quit, 'h' for help.")
-    where configHelp :: YiM ()
-          configHelp = do
-            dataDir <- io getDataDir
-            let welcomeText = unlines
-                         ["This instance of Yi is not configured.",
-                          "",
-                          "To get a standard reasonable keymap, you can run yi with",
-                          "either --as=cua, --as=vim or --as=emacs.",
-                          "",
-                          "You should however create your own ~/.config/yi/yi.hs file.",
-                          "As a starting point it's recommended to use one of the configs",
-                          "from " ++ dataDir </> "example-configs/"]
-            withEditor (void (newBufferE (Left "configuration help") (R.fromString welcomeText)))
+    where
+      configHelp :: YiM ()
+      configHelp = do
+        dataDir <- io getDataDir
+        let x <//> y = T.pack (x </> T.unpack y)
+            welcomeText = R.fromText $ T.unlines
+              [ "This instance of Yi is not configured."
+              , ""
+              , "To get a standard reasonable keymap, you can run yi with"
+              , "either --as=cua, --as=vim or --as=emacs."
+              , ""
+              , "You should however create your own ~/.config/yi/yi.hs file."
+              , "As a starting point it's recommended to use one of the configs"
+              , "from " `T.append` (dataDir <//> "example-configs/")
+              ]
+        withEditor_ $ newBufferE (MemBuffer "configuration help") welcomeText

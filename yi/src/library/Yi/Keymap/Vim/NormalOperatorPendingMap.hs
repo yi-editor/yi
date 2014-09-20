@@ -1,86 +1,97 @@
+{-# LANGUAGE OverloadedStrings #-}
+{-# OPTIONS_HADDOCK show-extensions #-}
+
+-- |
+-- Module      :  Yi.Keymap.Vim.NormalOperatorPendingMap
+-- License     :  GPL-2
+-- Maintainer  :  yi-devel@googlegroups.com
+-- Stability   :  experimental
+-- Portability :  portable
+
 module Yi.Keymap.Vim.NormalOperatorPendingMap
-  ( defNormalOperatorPendingMap
-  ) where
+       (defNormalOperatorPendingMap) where
 
-import Control.Monad
-import Control.Applicative
-import Data.Char (isDigit)
-import Data.List (isPrefixOf)
-import Data.Maybe (fromMaybe, fromJust)
-
-import Yi.Buffer.Adjusted hiding (Insert)
-import Yi.Editor
-import Yi.Keymap.Keys
-import Yi.Keymap.Vim.Common
-import Yi.Keymap.Vim.Motion
-import Yi.Keymap.Vim.Operator
-import Yi.Keymap.Vim.StateUtils
-import Yi.Keymap.Vim.StyledRegion
-import Yi.Keymap.Vim.TextObject
-import Yi.Keymap.Vim.Utils
+import           Control.Applicative
+import           Control.Monad
+import           Data.Char (isDigit)
+import           Data.List (isPrefixOf)
+import           Data.Maybe (fromMaybe, fromJust)
+import           Data.Monoid
+import qualified Data.Text as T
+import           Yi.Buffer.Adjusted hiding (Insert)
+import           Yi.Editor
+import           Yi.Keymap.Keys
+import           Yi.Keymap.Vim.Common
+import           Yi.Keymap.Vim.Motion
+import           Yi.Keymap.Vim.Operator
+import           Yi.Keymap.Vim.StateUtils
+import           Yi.Keymap.Vim.StyledRegion
+import           Yi.Keymap.Vim.TextObject
+import           Yi.Keymap.Vim.Utils
 
 defNormalOperatorPendingMap :: [VimOperator] -> [VimBinding]
 defNormalOperatorPendingMap operators = [textObject operators, escBinding]
 
 textObject :: [VimOperator] -> VimBinding
 textObject operators = VimBindingE f
-    where
-        f evs vs = case vsMode vs of
-                            NormalOperatorPending _ -> WholeMatch $ action evs
-                            _ -> NoMatch
-        action evs = do
-            currentState <- getDynamic
+  where
+    f evs vs = case vsMode vs of
+                        NormalOperatorPending _ -> WholeMatch $ action evs
+                        _ -> NoMatch
+    action (Ev evs) = do
+        currentState <- getDynamic
 
-            let partial = vsTextObjectAccumulator currentState
-                opChar = lastCharForOperator op
-                op = fromJust $ stringToOperator operators opname
-                (NormalOperatorPending opname) = vsMode currentState
+        let partial = vsTextObjectAccumulator currentState
+            opChar = Ev . T.pack $ lastCharForOperator op
+            op = fromJust $ stringToOperator operators opname
+            (NormalOperatorPending opname) = vsMode currentState
 
-            -- vim treats cw as ce
-            let evs' = if opname == "c" &&
-                           last evs == 'w' &&
-                           (case parseOperand opChar (partial ++ evs) of
-                               JustMove _ -> True
-                               _ -> False)
-                       then init evs ++ "e"
-                       else evs
-                operand = parseOperand opChar (partial ++ evs')
+        -- vim treats cw as ce
+        let evs' = if opname == Op "c" && T.last evs == 'w' &&
+                       (case parseOperand opChar (evr evs) of
+                           JustMove _ -> True
+                           _ -> False)
+                   then T.init evs `T.snoc` 'e'
+                   else evs
+            -- TODO: fix parseOperand to take EventString as second arg
+            evr x = T.unpack . _unEv $ partial <> Ev x
+            operand = parseOperand opChar (evr evs')
 
-            case operand of
-                NoOperand -> do
-                    dropTextObjectAccumulatorE
-                    resetCountE
-                    switchModeE Normal
-                    return Drop
-                PartialOperand -> do
-                    accumulateTextObjectEventE evs
-                    return Continue
-                _ -> do
-                    count <- getCountE
-                    dropTextObjectAccumulatorE
-                    token <- case operand of
-                        JustTextObject cto@(CountedTextObject n _) -> do
-                            normalizeCountE (Just n)
-                            operatorApplyToTextObjectE op 1 $
-                                changeTextObjectCount (count * n) cto
-                        JustMove (CountedMove n m) -> do
-                            mcount <- getMaybeCountE
-                            normalizeCountE n
-                            region <- withBuffer0 $ regionOfMoveB $ CountedMove (maybeMult mcount n) m
-                            operatorApplyToRegionE op 1 region
-                        JustOperator n style -> do
-                            normalizeCountE (Just n)
-                            normalizedCount <- getCountE
-                            region <- withBuffer0 $ regionForOperatorLineB normalizedCount style
-                            curPoint <- withBuffer0 pointB
-                            token <- operatorApplyToRegionE op 1 region
-                            when (opname == "y") $
-                                withBuffer0 $ moveTo curPoint
-                            return token
+        case operand of
+            NoOperand -> do
+                dropTextObjectAccumulatorE
+                resetCountE
+                switchModeE Normal
+                return Drop
+            PartialOperand -> do
+                accumulateTextObjectEventE (Ev evs)
+                return Continue
+            _ -> do
+                count <- getCountE
+                dropTextObjectAccumulatorE
+                token <- case operand of
+                    JustTextObject cto@(CountedTextObject n _) -> do
+                        normalizeCountE (Just n)
+                        operatorApplyToTextObjectE op 1 $
+                            changeTextObjectCount (count * n) cto
+                    JustMove (CountedMove n m) -> do
+                        mcount <- getMaybeCountE
+                        normalizeCountE n
+                        region <- withBuffer0 $ regionOfMoveB $ CountedMove (maybeMult mcount n) m
+                        operatorApplyToRegionE op 1 region
+                    JustOperator n style -> do
+                        normalizeCountE (Just n)
+                        normalizedCount <- getCountE
+                        region <- withBuffer0 $ regionForOperatorLineB normalizedCount style
+                        curPoint <- withBuffer0 pointB
+                        token <- operatorApplyToRegionE op 1 region
+                        when (opname == Op "y") $
+                            withBuffer0 $ moveTo curPoint
+                        return token
 
-                        _ -> error "can't happen"
-                    resetCountE
-                    return token
+                    _ -> error "can't happen"
+                resetCountE
+                return token
 
 regionForOperatorLineB :: Int -> RegionStyle -> BufferM StyledRegion
 regionForOperatorLineB n style = normalizeRegion =<< StyledRegion style <$> savingPointB (do
@@ -111,29 +122,30 @@ parseOperand :: EventString -> String -> OperandParseResult
 parseOperand opChar s = parseCommand mcount styleMod opChar commandString
     where (mcount, styleModString, commandString) = splitCountModifierCommand s
           styleMod = case styleModString of
-                        "" -> id
-                        "V" -> const LineWise
-                        "<C-v>" -> const Block
-                        "v" -> \style -> case style of
-                                            Exclusive -> Inclusive
-                                            _ -> Exclusive
-                        _ -> error "Can't happen"
+            "" -> id
+            "V" -> const LineWise
+            "<C-v>" -> const Block
+            "v" -> \style -> case style of
+              Exclusive -> Inclusive
+              _ -> Exclusive
+            _ -> error "Can't happen"
 
+-- | TODO: should this String be EventString?
 parseCommand :: Maybe Int -> (RegionStyle -> RegionStyle)
              -> EventString -> String -> OperandParseResult
 parseCommand _ _ _ "" = PartialOperand
 parseCommand _ _ _ "i" = PartialOperand
 parseCommand _ _ _ "a" = PartialOperand
 parseCommand _ _ _ "g" = PartialOperand
-parseCommand n sm o s | o == s = JustOperator (fromMaybe 1 n) (sm LineWise)
-parseCommand n sm _ s =
-    case stringToMove s of
-        WholeMatch m -> JustMove $ CountedMove n $ changeMoveStyle sm m
-        PartialMatch -> PartialOperand
-        NoMatch -> case stringToTextObject s of
-            Just to -> JustTextObject $ CountedTextObject (fromMaybe 1 n)
-                                      $ changeTextObjectStyle sm to
-            Nothing -> NoOperand
+parseCommand n sm o s | o' == s = JustOperator (fromMaybe 1 n) (sm LineWise)
+  where o' = T.unpack . _unEv $ o
+parseCommand n sm _ s = case stringToMove . Ev $ T.pack s of
+  WholeMatch m -> JustMove $ CountedMove n $ changeMoveStyle sm m
+  PartialMatch -> PartialOperand
+  NoMatch -> case stringToTextObject s of
+    Just to -> JustTextObject $ CountedTextObject (fromMaybe 1 n)
+               $ changeTextObjectStyle sm to
+    Nothing -> NoOperand
 
 
 -- Parse event string that can go after operator
@@ -144,7 +156,7 @@ parseCommand n sm _ s =
 -- vvvvvvvvvvvvvw -> (Nothing, "v", "w")
 splitCountModifierCommand :: String -> (Maybe Int, String, String)
 splitCountModifierCommand = go "" Nothing [""]
-    where go ds count mods (h:t) | isDigit h = go (ds ++ [h]) count mods t
+    where go ds count mods (h:t) | isDigit h = go (ds <> [h]) count mods t
           go ds@(_:_) count mods s@(h:_) | not (isDigit h) = go [] (maybeMult count (Just (read ds))) mods s
           go [] count mods (h:t) | h `elem` "vV" = go [] count ([h]:mods) t
           go [] count mods s | "<C-v>" `isPrefixOf` s = go [] count ("<C-v>":mods) (drop 5 s)

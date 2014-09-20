@@ -1,26 +1,38 @@
+{-# LANGUAGE OverloadedStrings #-}
+{-# OPTIONS_HADDOCK show-extensions #-}
+
+-- |
+-- Module      :  Yi.Keymap.Vim.Ex.Eval
+-- License     :  GPL-2
+-- Maintainer  :  yi-devel@googlegroups.com
+-- Stability   :  experimental
+-- Portability :  portable
+
 module Yi.Keymap.Vim.Ex.Eval
     ( exEvalE
     , exEvalY
     ) where
 
-import Control.Monad
+import           Control.Monad
+import           Data.Monoid
+import qualified Data.Text as T
+import           Yi.Editor
+import           Yi.Keymap
+import           Yi.Keymap.Vim.Common
+import           Yi.Keymap.Vim.Ex.Types
 
-import Yi.Editor
-import Yi.Keymap
-import Yi.Keymap.Vim.Ex.Types
-
-exEvalE :: [String -> Maybe ExCommand] -> String -> EditorM ()
+exEvalE :: [EventString -> Maybe ExCommand] -> EventString -> EditorM ()
 exEvalE cmds cmdString = evalHelper id (const $ error msg) cmds cmdString
-    where msg = "exEvalE got impure command" ++ cmdString
+    where msg = T.unpack . _unEv $ "exEvalE got impure command" <> cmdString
 
-exEvalY :: [String -> Maybe ExCommand] -> String -> YiM ()
+exEvalY :: [EventString -> Maybe ExCommand] -> EventString -> YiM ()
 exEvalY = evalHelper withEditor id
 
 evalHelper :: MonadEditor m =>
     (EditorM () -> m ()) -> (YiM () -> m ()) ->
-    [String -> Maybe ExCommand] -> String -> m ()
+    [EventString -> Maybe ExCommand] -> EventString -> m ()
 evalHelper pureHandler impureHandler cmds cmdString =
-    case stringToExCommand cmds cmdString of
+    case evStringToExCommand cmds cmdString of
         Just cmd -> case cmdAction cmd of
             BufferA actionB -> pureHandler $ withBuffer0 (void actionB)
             EditorA actionE -> pureHandler (void actionE)

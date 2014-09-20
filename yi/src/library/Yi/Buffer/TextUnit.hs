@@ -1,4 +1,18 @@
 {-# LANGUAGE DeriveDataTypeable #-}
+{-# OPTIONS_HADDOCK show-extensions #-}
+
+-- |
+-- Module      :  Yi.Buffer.TextUnit
+-- License     :  GPL-2
+-- Maintainer  :  yi-devel@googlegroups.com
+-- Stability   :  experimental
+-- Portability :  portable
+--
+-- Working with blocks (units) of text.
+--
+-- TODO: Functions here kill performance, notably 'genBoundary'. This
+-- needs porting to YiString or Text and use of 'streamB''
+-- eliminated.
 
 module Yi.Buffer.TextUnit
     ( TextUnit(..)
@@ -32,12 +46,12 @@ module Yi.Buffer.TextUnit
 
 import Control.Applicative
 import Control.Monad
-import Data.Typeable
 import Data.Char
-
+import Data.Typeable
 import Yi.Buffer.Basic
 import Yi.Buffer.Misc
 import Yi.Buffer.Region
+import Yi.Rope (YiString)
 
 -- | Designate a given "unit" of text.
 data TextUnit = Character -- ^ a single character
@@ -58,16 +72,18 @@ outsideUnit :: TextUnit -> TextUnit
 outsideUnit (GenUnit enclosing boundary) = GenUnit enclosing (boundary . reverseDir)
 outsideUnit x = x -- for a lack of better definition
 
--- | Common boundary checking function: run the condition on @siz@ characters in specified direction
--- shifted by specified offset.
+-- | Common boundary checking function: run the condition on @siz@
+-- characters in specified direction shifted by specified offset.
 genBoundary :: Int -> (String -> Bool) -> Direction -> BufferM Bool
 genBoundary ofs condition dir = condition <$> peekB
-  where -- | read some characters in the specified direction
-        peekB = savingPointB $
-          do moveN $ mayNegate ofs
-             fmap snd <$> (indexedStreamB dir =<< pointB)
-        mayNegate = case dir of Forward -> id
-                                Backward -> negate
+  where -- read some characters in the specified direction
+    peekB = savingPointB $ do
+      moveN $ mayNegate ofs
+      pointB >>= streamB' dir
+
+    mayNegate = case dir of
+      Forward -> id
+      Backward -> negate
 
 -- | a word as in use in Emacs (fundamental mode)
 unitWord :: TextUnit
@@ -236,25 +252,25 @@ numberOfB unit containingUnit = savingPointB $ do
 whileB :: BufferM Bool -> BufferM a -> BufferM [a]
 whileB cond = untilB (not <$> cond)
 
--- | Repeat an action until the condition is fulfilled or the cursor stops moving.
--- The Action may be performed zero times.
+-- | Repeat an action until the condition is fulfilled or the cursor
+-- stops moving. The Action may be performed zero times.
 untilB :: BufferM Bool -> BufferM a -> BufferM [a]
 untilB cond f = do
   stop <- cond
   if stop then return [] else doUntilB cond f
 
--- | Repeat an action until the condition is fulfilled or the cursor stops moving.
--- The Action is performed at least once.
+-- | Repeat an action until the condition is fulfilled or the cursor
+-- stops moving. The Action is performed at least once.
 doUntilB :: BufferM Bool -> BufferM a -> BufferM [a]
 doUntilB cond f = loop
-      where loop = do
-              p <- pointB
-              x <- f
-              p' <- pointB
-              stop <- cond
-              (x:) <$> if p /= p' && not stop
-                then loop
-                else return []
+  where loop = do
+          p <- pointB
+          x <- f
+          p' <- pointB
+          stop <- cond
+          (x:) <$> if p /= p' && not stop
+            then loop
+            else return []
 
 doUntilB_ :: BufferM Bool -> BufferM a -> BufferM ()
 doUntilB_ cond f = void (doUntilB cond f) -- maybe do an optimized version?
@@ -325,7 +341,9 @@ transposeB unit direction = do
   swapRegionsB (mkRegion w0 w0') (mkRegion w1 w1')
   moveTo w1'
 
-transformB :: (String -> String) -> TextUnit -> Direction -> BufferM ()
+-- | Transforms the region given by 'TextUnit' in the 'Direction' with
+-- user-supplied function.
+transformB :: (YiString -> YiString) -> TextUnit -> Direction -> BufferM ()
 transformB f unit direction = do
   p <- pointB
   moveB unit direction
@@ -374,10 +392,10 @@ regionOfPartNonEmptyAtB unit dir p = do
     moveTo oldP
     return r
 
-readPrevUnitB :: TextUnit -> BufferM String
+readPrevUnitB :: TextUnit -> BufferM YiString
 readPrevUnitB unit = readRegionB =<< regionOfPartNonEmptyB unit Backward
 
-readUnitB :: TextUnit -> BufferM String
+readUnitB :: TextUnit -> BufferM YiString
 readUnitB = readRegionB <=< regionOfB
 
 halfUnit :: Direction -> TextUnit -> TextUnit
@@ -387,4 +405,3 @@ halfUnit _dir tu = tu
 
 deleteUnitB :: TextUnit -> Direction -> BufferM ()
 deleteUnitB unit dir = deleteRegionB =<< regionOfPartNonEmptyB unit dir
-

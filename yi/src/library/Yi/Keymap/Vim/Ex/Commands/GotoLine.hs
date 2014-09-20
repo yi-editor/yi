@@ -1,17 +1,25 @@
-module Yi.Keymap.Vim.Ex.Commands.GotoLine
-    ( parse
-    ) where
+{-# OPTIONS_HADDOCK show-extensions #-}
 
-import Data.Char (isDigit)
+-- |
+-- Module      :  Yi.Keymap.Vim.Ex.Commands.GotoLine
+-- License     :  GPL-2
+-- Maintainer  :  yi-devel@googlegroups.com
+-- Stability   :  experimental
+-- Portability :  portable
 
-import Yi.Buffer.Adjusted
-import Yi.Keymap
-import Yi.Keymap.Vim.Ex.Types
-import Yi.Keymap.Vim.Ex.Commands.Common (pureExCommand)
+module Yi.Keymap.Vim.Ex.Commands.GotoLine (parse) where
 
-parse :: String -> Maybe ExCommand
-parse s = if and $ not (null s): fmap isDigit s
-    then let l = read s in
+import           Data.Char (isDigit)
+import qualified Data.Text as T
+import           Yi.Buffer.Adjusted
+import           Yi.Keymap
+import           Yi.Keymap.Vim.Common
+import           Yi.Keymap.Vim.Ex.Commands.Common (pureExCommand)
+import           Yi.Keymap.Vim.Ex.Types
+
+parse :: EventString -> Maybe ExCommand
+parse (Ev s) = if not (T.null s) && T.all isDigit s
+    then let l = read $ T.unpack s in
          Just $ pureExCommand {
              cmdAction = BufferA $ gotoLn l >> firstNonSpaceB
            , cmdShow = s

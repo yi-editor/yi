@@ -1,26 +1,36 @@
-module Yi.Keymap.Vim.Ex.Commands.Substitute
-    ( parse
-    ) where
+{-# LANGUAGE OverloadedStrings #-}
+{-# OPTIONS_HADDOCK show-extensions #-}
 
-import Control.Applicative
-import Control.Monad
+-- |
+-- Module      :  Yi.Keymap.Vim.Ex.Commands.Substitute
+-- License     :  GPL-2
+-- Maintainer  :  yi-devel@googlegroups.com
+-- Stability   :  experimental
+-- Portability :  portable
 
+module Yi.Keymap.Vim.Ex.Commands.Substitute (parse) where
+
+import           Control.Applicative
+import           Control.Monad
+import           Data.Monoid
+import qualified Data.Text as T
 import qualified Text.ParserCombinators.Parsec as P
-
-import Yi.Buffer.Adjusted hiding (Delete)
-import Yi.Keymap
-import Yi.Keymap.Vim.Ex.Types
+import           Yi.Buffer.Adjusted hiding (Delete)
+import           Yi.Keymap
+import           Yi.Keymap.Vim.Common
 import qualified Yi.Keymap.Vim.Ex.Commands.Common as Common
-import Yi.Search
+import           Yi.Keymap.Vim.Ex.Types
+import qualified Yi.Rope as R
+import           Yi.Search
 
-parse :: String -> Maybe ExCommand
+parse :: EventString -> Maybe ExCommand
 parse = Common.parse $ do
     percents <- P.many (P.char '%')
     void $ P.try (P.string "substitute") <|> P.string "s"
     delimiter <- P.oneOf "!@#$%^&*()[]{}<>/.,~';:?-="
-    from <- P.many (P.noneOf [delimiter])
+    from <- R.fromString <$> P.many (P.noneOf [delimiter])
     void $ P.char delimiter
-    to <- P.many (P.noneOf [delimiter])
+    to <- R.fromString <$> P.many (P.noneOf [delimiter])
     void $ P.char delimiter
     flagChars <- P.many (P.oneOf "gi")
     return $! substitute from to delimiter
@@ -28,14 +38,15 @@ parse = Common.parse $ do
         ('i' `elem` flagChars)
         (not $ null percents)
 
-substitute :: String -> String -> Char -> Bool -> Bool -> Bool -> ExCommand
+substitute :: R.YiString -> R.YiString -> Char -> Bool -> Bool -> Bool -> ExCommand
 substitute from to delimiter global caseInsensitive allLines = Common.pureExCommand {
-    cmdShow = concat
-        [ if allLines then "%" else ""
-        , "substitute" , delimiter : from , delimiter : to , [delimiter]
-        , if caseInsensitive then "i" else ""
-        , if global then "g" else ""
-        ]
+    cmdShow = (if allLines then "%" else "")
+              <>       "substitute"
+              <>       (delimiter `T.cons` R.toText from)
+              <>       (delimiter `T.cons` R.toText to)
+              `T.snoc` delimiter
+              <>       (if caseInsensitive then "i" else "")
+              <>       (if global then "g" else "")
   , cmdAction = BufferA $ do
         let regex = makeSimpleSearch from
             replace = do

@@ -1,14 +1,15 @@
+{-# LANGUAGE OverloadedStrings #-}
 module Vim.TestExCommandParsers (tests) where
 
-import Control.Applicative
-import Data.List (intercalate)
-import Data.Maybe
-
-import Test.QuickCheck
-import Test.Tasty.QuickCheck
-import Test.Tasty (TestTree, testGroup)
-
-import Yi.Keymap.Vim.Ex
+import           Control.Applicative
+import           Data.Maybe
+import           Data.Monoid
+import qualified Data.Text as T
+import           Test.QuickCheck
+import           Test.Tasty (TestTree, testGroup)
+import           Test.Tasty.QuickCheck
+import           Yi.Keymap.Vim.Common
+import           Yi.Keymap.Vim.Ex
 import qualified Yi.Keymap.Vim.Ex.Commands.Buffer as Buffer
 import qualified Yi.Keymap.Vim.Ex.Commands.BufferDelete as BufferDelete
 import qualified Yi.Keymap.Vim.Ex.Commands.Delete as Delete
@@ -23,7 +24,7 @@ data CommandParser = CommandParser
     }
 
 addingSpace :: Gen String -> Gen String
-addingSpace = fmap (" " ++)
+addingSpace = fmap (" " <>)
 
 numberString :: Gen String
 numberString = (\(NonNegative n) -> show n) <$> (arbitrary :: Gen (NonNegative Int))
@@ -68,7 +69,7 @@ commandParsers :: [CommandParser]
 commandParsers =
     [ CommandParser
           "Buffer.parse"
-          Buffer.parse
+          (Buffer.parse . Ev . T.pack)
           ["buffer", "buf", "bu", "b"]
           True
           True
@@ -76,7 +77,7 @@ commandParsers =
 
     , CommandParser
           "BufferDelete.parse"
-          BufferDelete.parse
+          (BufferDelete.parse . Ev . T.pack)
           ["bdelete", "bdel", "bd"]
           True
           False
@@ -84,7 +85,7 @@ commandParsers =
 
     , CommandParser
           "Delete.parse"
-          Delete.parse
+          (Delete.parse . Ev . T.pack)
           ["delete", "del", "de", "d"]
           -- XXX TODO support these weird abbreviations too?
           -- :dl, :dell, :delel, :deletl, :deletel
@@ -94,7 +95,7 @@ commandParsers =
           (oneof [ pure ""
                  , addingSpace registerName
                  , addingSpace count
-                 , (++) <$> addingSpace registerName <*> addingSpace count
+                 , (<>) <$> addingSpace registerName <*> addingSpace count
                  ])
     ]
 
@@ -114,7 +115,7 @@ commandString cp = do
 
 expectedParserParses :: CommandParser -> TestTree
 expectedParserParses commandParser =
-    testProperty (cpDescription commandParser ++ " parses expected input") $
+    testProperty (cpDescription commandParser <> " parses expected input") $
         forAll (commandString commandParser)
                (isJust . cpParser commandParser)
 
@@ -123,19 +124,20 @@ expectedParserSelected :: CommandParser -> TestTree
 expectedParserSelected expectedCommandParser =
     testProperty testName $
         forAll (commandString expectedCommandParser) $ \s ->
-            let expectedName = expectedCommandName s
-                actualName   = actualCommandName s
-            in printTestCase (errorMessage s actualName)
-                             (expectedName == actualName)
+            let expectedName = expectedCommandName (Ev $ T.pack s)
+                actualName   = actualCommandName (Ev $ T.pack s)
+            in counterexample (errorMessage s actualName)
+                              (expectedName == actualName)
   where
-    expectedCommandName = commandNameFor [cpParser expectedCommandParser]
+    unE = T.unpack . _unEv
+    expectedCommandName = commandNameFor [cpParser expectedCommandParser . unE]
     actualCommandName   = commandNameFor defExCommandParsers
     commandNameFor parsers s =
-        cmdShow <$> stringToExCommand parsers s
+        cmdShow <$> evStringToExCommand parsers s
     errorMessage s actualName =
-        "Parsed " ++ show s ++ " to " ++ show actualName ++ " command"
+        "Parsed " <> show s <> " to " <> show actualName <> " command"
     testName =
-       cpDescription expectedCommandParser ++ " selected for expected input"
+       cpDescription expectedCommandParser <> " selected for expected input"
 
 
 

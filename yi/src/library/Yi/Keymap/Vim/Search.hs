@@ -1,10 +1,17 @@
-module Yi.Keymap.Vim.Search
-    ( doVimSearch
-    , continueVimSearch
-    ) where
+{-# LANGUAGE OverloadedStrings #-}
+{-# OPTIONS_HADDOCK show-extensions #-}
+
+-- |
+-- Module      :  Yi.Keymap.Vim.Search
+-- License     :  GPL-2
+-- Maintainer  :  yi-devel@googlegroups.com
+-- Stability   :  experimental
+-- Portability :  portable
+
+module Yi.Keymap.Vim.Search (doVimSearch, continueVimSearch) where
 
 import Data.Maybe (listToMaybe)
-
+import Data.Text ()
 import Yi.Buffer.Adjusted
 import Yi.Editor
 import Yi.Search

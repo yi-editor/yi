@@ -1,60 +1,54 @@
-{-# LANGUAGE FlexibleContexts, TypeOperators, TemplateHaskell, UnicodeSyntax #-}
--- Copyright (c) 2005,2007,2008 Jean-Philippe Bernardy
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE TypeOperators #-}
+{-# LANGUAGE UnicodeSyntax #-}
+{-# OPTIONS_HADDOCK show-extensions #-}
 
--- | This module aims at a mode that should be (mostly) intuitive to
--- emacs users, but mapping things into the Yi world when
--- convenient. Hence, do not go into the trouble of trying 100%
--- emulation. For example, M-x gives access to Yi (Haskell) functions,
--- with their native names.
+-- |
+-- Module      :  Yi.Keymap.Emacs
+-- License     :  GPL-2
+-- Maintainer  :  yi-devel@googlegroups.com
+-- Stability   :  experimental
+-- Portability :  portable
+--
+-- This module aims at a mode that should be (mostly) intuitive to
+-- emacs users, but mapping things into the Yi world when convenient.
+-- Hence, do not go into the trouble of trying 100% emulation. For
+-- example, @M-x@ gives access to Yi (Haskell) functions, with their
+-- native names.
 
-module Yi.Keymap.Emacs (keymap,
-                        mkKeymap,
-                        defKeymap,
-                        ModeMap(..),
-                        eKeymap,
-                        completionCaseSensitive
-                        ) where
+module Yi.Keymap.Emacs ( keymap
+                       , mkKeymap
+                       , defKeymap
+                       , ModeMap(..)
+                       , eKeymap
+                       , completionCaseSensitive
+                       ) where
 
 import Control.Applicative
 import Control.Lens
+import Control.Monad
+import Data.Char
+import Data.Maybe
 import Data.Prototype
+import Data.Text ()
 import Yi.Command (shellCommandE)
 import Yi.Core
 import Yi.Dired
 import Yi.File
+import Yi.Keymap.Emacs.KillRing
+import Yi.Keymap.Emacs.Utils
+  (askQuitEditor, evalRegionE, executeExtendedCommandE, findFile,
+   findFileNewTab, promptFile, insertNextC, isearchKeymap, killBufferE,
+   queryReplaceE, readUniversalArg, scrollDownE, scrollUpE, switchBufferE,
+   askSaveEditor, argToInt, promptTag, justOneSep, joinLinesE, countWordsRegion)
 import Yi.MiniBuffer
 import Yi.Misc (adjBlock, adjIndent)
+import Yi.Mode.Buffers ( listBuffers )
 import Yi.Rectangle
 import Yi.Search (isearchFinishWithE, resetRegexE)
 import Yi.TextCompletion
-import Yi.Keymap.Emacs.KillRing
-import Yi.Mode.Buffers ( listBuffers )
-import Yi.Keymap.Emacs.Utils
-  ( askQuitEditor
-  , evalRegionE
-  , executeExtendedCommandE
-  , findFile
-  , findFileNewTab
-  , promptFile
-  , insertNextC
-  , isearchKeymap
-  , killBufferE
-  , queryReplaceE
-  , readUniversalArg
-  , scrollDownE
-  , scrollUpE
-  , switchBufferE
-  , askSaveEditor
-  , argToInt
-  , promptTag
-  , justOneSep
-  , joinLinesE
-  , countWordsRegion
-  )
-import Data.Maybe
-import Data.Char
-
-import Control.Monad
 
 data ModeMap = ModeMap { _eKeymap :: Keymap
                        , _completionCaseSensitive :: Bool
@@ -269,7 +263,7 @@ emacsKeys univArg =
                  , ctrlCh 'b'    ?>>! listBuffers
                  , ctrlCh 'c'    ?>>! askQuitEditor
                  , ctrlCh 'f'    ?>>! findFile
-                 , ctrlCh 'q'    ?>>! withBuffer0 ((%=) readOnlyA not)
+                 , ctrlCh 'q'    ?>>! withBuffer0 (readOnlyA %= not)
                  , ctrlCh 's'    ?>>! fwriteE
                  , ctrlCh 'w'    ?>>! promptFile "Write file:" fwriteToE
                  , ctrlCh 'x'    ?>>! (exchangePointAndMarkB >>

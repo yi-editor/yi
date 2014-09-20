@@ -1,15 +1,21 @@
 {-# LANGUAGE CPP #-}
--- Copyright (c) 2007,8 JP Bernardy
--- Copyright (c) 2004 Don Stewart - http://www.cse.unsw.edu.au/~dons
+{-# OPTIONS_HADDOCK show-extensions #-}
 
 -- |
--- Facade of the Yi library, for use by confguration file. Just re-exports
--- a bunch of modules.
+-- Module      :  Yi
+-- License     :  GPL-2
+-- Maintainer  :  yi-devel@googlegroups.com
+-- Stability   :  experimental
+-- Portability :  portable
+--
+-- Facade of the Yi library, for use by confguration file. Just
+-- re-exports a bunch of modules.
 --
 -- You should therefore:
---      import Yi
--- in your ~/.config/yi/ scripts
 --
+-- @     import Yi@
+--
+-- in your @~/.config/yi/yi.hs@.
 
 module Yi
   (

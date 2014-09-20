@@ -1,20 +1,29 @@
 {-# LANGUAGE LambdaCase #-}
-module Yi.Keymap.Vim.SearchMotionMap
-    ( defSearchMotionMap
-    ) where
+{-# LANGUAGE OverloadedStrings #-}
+{-# OPTIONS_HADDOCK show-extensions #-}
 
-import Control.Applicative
-import Control.Monad
-import Data.Maybe (fromMaybe)
+-- |
+-- Module      :  Yi.Keymap.Vim.SearchMotionMap
+-- License     :  GPL-2
+-- Maintainer  :  yi-devel@googlegroups.com
+-- Stability   :  experimental
+-- Portability :  portable
 
-import Yi.Buffer.Adjusted
-import Yi.Editor
-import Yi.History
-import Yi.Keymap.Vim.Common
-import Yi.Keymap.Vim.Search
-import Yi.Keymap.Vim.StateUtils
-import Yi.Keymap.Vim.Utils
-import Yi.Search
+module Yi.Keymap.Vim.SearchMotionMap (defSearchMotionMap) where
+
+import           Control.Applicative
+import           Control.Monad
+import           Data.Maybe (fromMaybe)
+import qualified Data.Text as T
+import           Yi.Buffer.Adjusted
+import           Yi.Editor
+import           Yi.History
+import           Yi.Keymap.Vim.Common
+import           Yi.Keymap.Vim.Search
+import           Yi.Keymap.Vim.StateUtils
+import           Yi.Keymap.Vim.Utils
+import qualified Yi.Rope as R
+import           Yi.Search
 
 defSearchMotionMap :: [VimBinding]
 defSearchMotionMap = [enterBinding, editBinding, exitBinding]
@@ -44,23 +53,27 @@ enterBinding = VimBindingE f
           f _ _ = NoMatch
 
 editBinding :: VimBinding
-editBinding = VimBindingE f
-    where f evs (VimState { vsMode = Search {}} )
-            = action evs <$
-              matchFromBool (evs `elem` fmap fst binds || null (drop 1 evs))
-          f _ _ = NoMatch
-          action evs = do
-              fromMaybe (isearchAddE evs) (lookup evs binds)
-              withBuffer0 elemsB >>= historyPrefixSet
-              return Continue
-          binds = [ ("<BS>", isearchDelE)
-                  , ("<C-h>", isearchDelE)
-                  , ("<C-p>", isearchHistory 1)
-                  , ("<Up>", isearchHistory 1)
-                  , ("<C-n>", isearchHistory (-1))
-                  , ("<Down>", isearchHistory (-1))
-                  , ("<lt>", isearchAddE "<")
-                  ]
+editBinding = VimBindingE (f . T.unpack . _unEv)
+  where
+    f evs (VimState { vsMode = Search {}} )
+      = action evs <$
+        matchFromBool (evs `elem` fmap (T.unpack . fst) binds
+                       || null (drop 1 evs))
+    f _ _ = NoMatch
+    action evs = do
+      let evs' = T.pack evs
+      fromMaybe (isearchAddE evs') (lookup evs' binds)
+      withBuffer0 elemsB >>= historyPrefixSet . R.toText
+      return Continue
+
+    binds = [ ("<BS>", isearchDelE)
+            , ("<C-h>", isearchDelE)
+            , ("<C-p>", isearchHistory 1)
+            , ("<Up>", isearchHistory 1)
+            , ("<C-n>", isearchHistory (-1))
+            , ("<Down>", isearchHistory (-1))
+            , ("<lt>", isearchAddE "<")
+            ]
 
 exitBinding :: VimBinding
 exitBinding = VimBindingE f
