@@ -9,7 +9,7 @@ import Control.Lens
 import Data.List (isInfixOf)
 import qualified Text.ParserCombinators.Parsec as P
 
-import Yi.Buffer
+import Yi.Buffer.Adjusted
 import Yi.Editor
 import Yi.Keymap
 import Yi.Keymap.Vim.Ex.Types

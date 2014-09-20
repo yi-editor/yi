@@ -3,7 +3,19 @@
 --  * Tab-expansion
 --  * Shifting of the indentation for a region of text
 
-module Yi.Buffer.Indent where
+module Yi.Buffer.Indent
+    ( autoIndentB
+    , cycleIndentsB
+    , indentAsNextB
+    , indentAsPreviousB
+    , indentOfB
+    , indentOfCurrentPosB
+    , indentSettingsB
+    , indentToB
+    , newlineAndIndentB
+    , shiftIndentOfRegionB
+    , tabB
+    ) where
 
 import Control.Applicative
 import Yi.Buffer.Basic
@@ -415,8 +427,8 @@ indentString indentSettings numOfShifts input = rePadString indentSettings newCo
           newCount = sum (fmap countSpace indents) + (shiftWidth indentSettings * numOfShifts)
 
 -- | Increases the indentation on the region by the given amount of shiftWidth
-shiftIndentOfRegion :: Int -> Region -> BufferM ()
-shiftIndentOfRegion shiftCount region = do
+shiftIndentOfRegionB :: Int -> Region -> BufferM ()
+shiftIndentOfRegionB shiftCount region = do
     indentSettings <- indentSettingsB
     modifyRegionB (mapLines (indentString indentSettings shiftCount `unless` null)) region
     moveTo $ regionStart region

@@ -9,7 +9,7 @@ import Data.Maybe (fromJust)
 import Data.List.Split (splitWhen)
 import System.FilePath (isPathSeparator)
 
-import Yi.Buffer hiding (Insert)
+import Yi.Buffer.Adjusted hiding (Insert)
 import Yi.Editor
 import Yi.History
 import Yi.Keymap

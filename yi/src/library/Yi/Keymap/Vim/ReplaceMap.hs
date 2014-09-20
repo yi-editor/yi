@@ -4,7 +4,7 @@ module Yi.Keymap.Vim.ReplaceMap
 
 import Control.Monad
 
-import Yi.Buffer
+import Yi.Buffer.Adjusted
 import Yi.Editor
 import Yi.Keymap.Keys
 import Yi.Keymap.Vim.Common

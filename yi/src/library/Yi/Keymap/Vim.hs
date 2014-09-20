@@ -17,7 +17,7 @@ import Data.Char (toUpper)
 import Data.List (find)
 import Data.Prototype
 
-import Yi.Buffer hiding (Insert)
+import Yi.Buffer.Adjusted hiding (Insert)
 import Yi.Editor
 import Yi.Event
 import Yi.Keymap

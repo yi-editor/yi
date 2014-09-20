@@ -7,14 +7,14 @@ import Control.Applicative
 import Control.Lens hiding (re)
 import System.Directory (doesFileExist)
 
-import Data.Char (ord)
-import Data.List (group, isPrefixOf)
+import Data.Char
+import Data.List (group)
 import Data.Maybe (fromMaybe)
 import Data.Monoid
 import qualified Data.HashMap.Strict as HM
 import qualified Data.Rope as R
 
-import Yi.Buffer hiding (Insert)
+import Yi.Buffer.Adjusted hiding (Insert)
 import Yi.Core (quitEditor, closeWindow)
 import Yi.Editor
 import Yi.Event

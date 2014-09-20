@@ -9,7 +9,7 @@ import Data.List.NonEmpty hiding (drop, span, dropWhile)
 import Data.Char (isDigit)
 import Prelude hiding (head)
 
-import Yi.Buffer hiding (Insert)
+import Yi.Buffer.Adjusted hiding (Insert)
 import Yi.Editor
 import Yi.Event
 import Yi.Keymap.Vim.Common
@@ -18,8 +18,9 @@ import Yi.Keymap.Vim.EventUtils
 import Yi.Keymap.Vim.Motion
 import Yi.Keymap.Vim.Utils
 import Yi.Keymap.Vim.StateUtils
-import Yi.TextCompletion (completeWordB, CompletionScope(..))
+import Yi.Misc
 import Yi.Monad
+import Yi.TextCompletion (completeWordB, CompletionScope(..))
 
 defInsertMap :: [(String, Char)] -> [VimBinding]
 defInsertMap digraphs =
@@ -154,9 +155,13 @@ printableAction evs = do
                                 indentAsPreviousB
                             firstNonSpaceB
                         -- For testing purposes assume noexpandtab, tw=4
-                        "<Tab>" -> insertN $ replicate 4 ' '
-                        "<C-t>" -> shiftIndentOfRegion 1 =<< regionOfB Line
-                        "<C-d>" -> shiftIndentOfRegion (-1) =<< regionOfB Line
+                        "<Tab>" -> do
+                            IndentSettings et _ts sw <- indentSettingsB
+                            if et
+                            then insertN (replicate sw ' ')
+                            else insertB '\t'
+                        "<C-t>" -> shiftIndentOfRegionB 1 =<< regionOfB Line
+                        "<C-d>" -> shiftIndentOfRegionB (-1) =<< regionOfB Line
                         "<C-e>" -> insertCharWithBelowB
                         "<C-y>" -> insertCharWithAboveB
                         "<BS>"  -> bdeleteB

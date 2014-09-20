@@ -5,7 +5,7 @@ module Yi.Keymap.Vim.Search
 
 import Data.Maybe (listToMaybe)
 
-import Yi.Buffer
+import Yi.Buffer.Adjusted
 import Yi.Editor
 import Yi.Search
 

@@ -26,7 +26,7 @@ import Data.Maybe (maybe)
 import qualified Data.Rope as R
 import Safe (headDef)
 
-import Yi.Buffer hiding (Insert)
+import Yi.Buffer.Adjusted hiding (Insert)
 import Yi.Editor
 import Yi.Event
 import Yi.Keymap

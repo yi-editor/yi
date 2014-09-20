@@ -47,7 +47,7 @@ import Control.Lens
 
 import Data.Maybe (fromMaybe)
 
-import Yi.Buffer
+import Yi.Buffer.Adjusted
 import Yi.Keymap.Vim.Common
 import Yi.Keymap.Vim.StyledRegion
 

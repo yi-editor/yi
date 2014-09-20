@@ -6,7 +6,7 @@ module Yi.Keymap.Vim.StyledRegion
     ) where
 
 import Control.Monad
-import Yi.Buffer
+import Yi.Buffer.Adjusted
 import Yi.Utils
 
 data StyledRegion = StyledRegion !RegionStyle !Region
