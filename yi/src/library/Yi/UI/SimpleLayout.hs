@@ -1,5 +1,7 @@
 module Yi.UI.SimpleLayout
-    ( layout
+    ( Rect (..)
+    , Layout (..)
+    , layout
     , verticalOffsetsForWindows
     ) where
 
@@ -11,6 +13,7 @@ import Data.Char
 import Data.Foldable
 import Data.List (partition)
 import qualified Data.List.PointedList.Circular as PL
+import qualified Data.Map.Strict as M
 import Data.Monoid
 import Data.Traversable (mapM)
 
@@ -19,12 +22,29 @@ import Yi.Editor
 import Yi.UI.Utils
 import Yi.Window
 
-layout :: Int -> Int -> Editor -> Editor
-layout colCount rowCount e = ((windowsA .~ newWindows) e)
+data Layout = Layout
+    { tabbarRect :: !Rect
+    , windowRects :: !(M.Map WindowRef Rect)
+    , promptRect :: !Rect
+    }
+
+data Rect = Rect
+    { offsetX :: !Int
+    , offsetY :: !Int
+    , sizeX :: !Int
+    , sizeY :: !Int
+    }
+
+layout :: Int -> Int -> Editor -> (Editor, Layout)
+layout colCount rowCount e =
+    ( ((windowsA .~ newWindows) e)
+    , Layout (Rect 0 0 colCount 1) windowRects cmdRect
+    )
     where
         (miniWs, ws) = partition isMini (toList (windows e))
         (cmd, _) = statusLineInfo e
         niceCmd = arrangeItems cmd colCount (maxStatusHeight e)
+        cmdRect = Rect 0 (rowCount - cmdHeight - if null miniWs then 0 else 1) colCount cmdHeight
         cmdHeight = length niceCmd
         tabbarHeight = 1
         (heightQuot, heightRem) =
@@ -32,6 +52,7 @@ layout colCount rowCount e = ((windowsA .~ newWindows) e)
                 (rowCount - tabbarHeight - if null miniWs then max 1 cmdHeight else 1 + cmdHeight)
                 (length ws)
         heights = heightQuot + heightRem : repeat heightQuot
+        offsets = scanl (+) 0 heights
         bigWindowsWithHeights =
             zipWith (\win h -> layoutWindow win e colCount h)
                     ws
@@ -39,6 +60,14 @@ layout colCount rowCount e = ((windowsA .~ newWindows) e)
         miniWindowsWithHeights =
             fmap (\win -> layoutWindow win e colCount 1) miniWs
         Just newWindows = PL.fromList (miniWindowsWithHeights <> bigWindowsWithHeights)
+        windowRects = M.fromList (bigWindowsWithRects <> miniWindowsWithRects)
+        bigWindowsWithRects =
+            zipWith (\w offset -> (wkey w, Rect 0 (offset + tabbarHeight) colCount (height w)))
+                    bigWindowsWithHeights
+                    offsets
+        miniWindowsWithRects =
+            map (\w -> (wkey w, Rect 0 (rowCount - 1) colCount 1))
+                miniWindowsWithHeights
 
 layoutWindow :: Window -> Editor -> Int -> Int -> Window
 layoutWindow win e w h = win

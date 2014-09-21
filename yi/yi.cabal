@@ -273,6 +273,7 @@ library
   if flag(vty)
     exposed-modules:
       Yi.UI.Vty
+      Yi.UI.Vty.Conversions
     build-depends:
       unix-compat >=0.1 && <0.5,
       vty >= 5.1.0 && < 6

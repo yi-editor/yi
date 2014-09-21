@@ -18,6 +18,7 @@ import Data.Foldable (toList, foldr1, concatMap)
 import Data.IORef
 import Data.List (nub, sort)
 import qualified Data.List.PointedList.Circular as PL
+import qualified Data.Map.Strict as M
 import Data.Maybe
 import Data.Monoid
 import qualified Graphics.Vty as Vty
@@ -32,6 +33,7 @@ import Yi.Keymap
 import Yi.Style
 import qualified Yi.UI.Common as Common
 import qualified Yi.UI.SimpleLayout as SL
+import Yi.UI.Vty.Conversions
 import Yi.UI.TabBar
 import Yi.UI.Utils
 import Yi.Window
@@ -111,7 +113,8 @@ main fs = do
 layout :: FrontendState -> Editor -> IO Editor
 layout fs e = do
     (colCount, rowCount) <- Vty.displayBounds (Vty.outputIface (fsVty fs))
-    return (SL.layout colCount rowCount e)
+    let (e', _layout) = SL.layout colCount rowCount e
+    return e'
 
 end :: FrontendState -> Bool -> IO ()
 end fs mustQuit = do
@@ -127,82 +130,53 @@ requestRefresh fs e = do
     writeIORef (fsEditorRef fs) e
     void $ tryPutMVar (fsDirty fs) ()
 
-fromVtyEvent :: Vty.Event -> Yi.Event.Event
-fromVtyEvent (Vty.EvKey Vty.KBackTab mods) = Event Yi.Event.KTab (sort $ nub $ Yi.Event.MShift : map fromVtyMod mods)
-fromVtyEvent (Vty.EvKey k mods) = Event (fromVtyKey k) (sort $ map fromVtyMod mods)
-fromVtyEvent _ = error "fromVtyEvent: unsupported event encountered."
-
-fromVtyKey :: Vty.Key -> Yi.Event.Key
-fromVtyKey (Vty.KEsc      ) = Yi.Event.KEsc
-fromVtyKey (Vty.KFun x    ) = Yi.Event.KFun x
-fromVtyKey (Vty.KPrtScr   ) = Yi.Event.KPrtScr
-fromVtyKey (Vty.KPause    ) = Yi.Event.KPause
-fromVtyKey (Vty.KChar '\t') = Yi.Event.KTab
-fromVtyKey (Vty.KChar c   ) = Yi.Event.KASCII c
-fromVtyKey (Vty.KBS       ) = Yi.Event.KBS
-fromVtyKey (Vty.KIns      ) = Yi.Event.KIns
-fromVtyKey (Vty.KHome     ) = Yi.Event.KHome
-fromVtyKey (Vty.KPageUp   ) = Yi.Event.KPageUp
-fromVtyKey (Vty.KDel      ) = Yi.Event.KDel
-fromVtyKey (Vty.KEnd      ) = Yi.Event.KEnd
-fromVtyKey (Vty.KPageDown ) = Yi.Event.KPageDown
-fromVtyKey (Vty.KCenter   ) = Yi.Event.KNP5
-fromVtyKey (Vty.KUp       ) = Yi.Event.KUp
-fromVtyKey (Vty.KMenu     ) = Yi.Event.KMenu
-fromVtyKey (Vty.KLeft     ) = Yi.Event.KLeft
-fromVtyKey (Vty.KDown     ) = Yi.Event.KDown
-fromVtyKey (Vty.KRight    ) = Yi.Event.KRight
-fromVtyKey (Vty.KEnter    ) = Yi.Event.KEnter
-fromVtyKey (Vty.KBackTab  ) = error "This should be handled in fromVtyEvent"
-fromVtyKey (Vty.KBegin    ) = error "Yi.UI.Vty.fromVtyKey: can't handle KBegin"
-
-fromVtyMod :: Vty.Modifier -> Yi.Event.Modifier
-fromVtyMod Vty.MShift = Yi.Event.MShift
-fromVtyMod Vty.MCtrl  = Yi.Event.MCtrl
-fromVtyMod Vty.MMeta  = Yi.Event.MMeta
-fromVtyMod Vty.MAlt   = Yi.Event.MMeta
-
 refresh :: FrontendState -> Editor -> IO ()
 refresh fs e = do
     (colCount, rowCount) <- Vty.displayBounds (Vty.outputIface (fsVty fs))
-    let ws = windows e
+    let (_e, SL.Layout tabbarRect winRects promptRect) = SL.layout colCount rowCount e
+        ws = windows e
         windowStartY = 1
         (cmd, cmdSty) = statusLineInfo e
-        niceCmd = arrangeItems cmd colCount (maxStatusHeight e)
-        formatCmdLine text = withAttributes statusBarStyle (take colCount $ text ++ repeat ' ')
+        niceCmd = arrangeItems cmd (SL.sizeX promptRect) (maxStatusHeight e)
+        formatCmdLine text =
+            withAttributes statusBarStyle (take (SL.sizeX promptRect) $ text ++ repeat ' ')
         winImage (win, hasFocus) =
-            renderWindow (configUI $ fsConfig fs) e colCount (win, hasFocus)
-        windowsAndImages = fmap (\(w, f) -> (w, winImage (w, f))) (PL.withFocus ws)
-        bigImages = map (picture . snd) (filter (not . isMini . fst) (toList windowsAndImages))
-        miniImages = map (picture . snd) (filter (isMini . fst) (toList windowsAndImages))
-        statusBarStyle = ((appEndo <$> cmdSty) <*> baseAttributes) $ configStyle $ configUI $ fsConfig fs
-        tabBarImages = renderTabBar e fs colCount
-        windowOffsets = SL.verticalOffsetsForWindows windowStartY ws
-    logPutStrLn "refreshing screen."
-    logPutStrLn $ "windowOffsets: " ++ show windowOffsets
-    Vty.update (fsVty fs)
-        ( Vty.picForImage ( Vty.vertCat tabBarImages
-                            Vty.<->
-                            Vty.vertCat bigImages
-                            Vty.<->
-                            (if null cmd then Vty.emptyImage else Vty.vertCat (fmap formatCmdLine niceCmd))
-                            Vty.<->
-                            Vty.vertCat miniImages
-                          ))
-        { Vty.picCursor =
+            let rect = winRects M.! (wkey win)
+            in renderWindow (configUI $ fsConfig fs) e rect (win, hasFocus)
+        windowsAndImages =
+            fmap (\(w, f) -> (w, winImage (w, f))) (PL.withFocus ws)
+        bigImages =
+            map (picture . snd)
+                (filter (not . isMini . fst) (toList windowsAndImages))
+        miniImages =
+            map (picture . snd)
+                (filter (isMini . fst) (toList windowsAndImages))
+        statusBarStyle =
+            ((appEndo <$> cmdSty) <*> baseAttributes)
+                (configStyle (configUI (fsConfig fs)))
+        tabBarImages = renderTabBar e fs (SL.sizeX tabbarRect)
+        cmdImage = if null cmd
+                   then Vty.emptyImage
+                   else (Vty.translate
+                           (SL.offsetX promptRect)
+                           (SL.offsetY promptRect)
+                           (Vty.vertCat (fmap formatCmdLine niceCmd)))
+        tabBarImage = Vty.vertCat tabBarImages
+        cursorPos =
             case (\(w, r) -> (isMini w, cursor r)) (PL._focus windowsAndImages) of
-                (False, Just (y, x)) -> Vty.Cursor (toEnum x) (toEnum $ y + PL._focus windowOffsets)
-                (True, Just (_, x)) -> Vty.Cursor (toEnum x) (toEnum $ rowCount - 1)
-                -- Add the position of the window to the position of the cursor
+                (False, Just (y, x)) -> Vty.Cursor (toEnum x) (toEnum y)
+                (True, Just (_, x)) -> Vty.Cursor (toEnum x) (toEnum (rowCount - 1))
                 (_, Nothing) -> Vty.NoCursor
-                -- This case can occur if the user resizes the window.
-                -- Not really nice, but upon the next refresh the cursor will show.
-        }
+    logPutStrLn "refreshing screen."
+    Vty.update (fsVty fs)
+        (Vty.picForLayers ([tabBarImage, cmdImage] ++ bigImages ++ miniImages))
+        { Vty.picCursor = cursorPos }
 
-renderWindow :: UIConfig -> Editor -> Int -> (Window, Bool) -> Rendered
-renderWindow cfg e w (win, focused) = Rendered pict cur
+renderWindow :: UIConfig -> Editor -> SL.Rect -> (Window, Bool) -> Rendered
+renderWindow cfg e (SL.Rect x y w h) (win, focused) =
+    Rendered (Vty.translate x y pict)
+             (fmap (\(i, j) -> (i + y, j + x)) cur)
     where
-        h = height win
         b = findBufferWith (bufkey win) e
         sty = configStyle cfg
 
@@ -323,29 +297,6 @@ drawText h w point tabWidth bufData
     expandGraphic (c,p)
         | ord c < 32 = [('^',p),(chr (ord c + 64),p)]
         | otherwise = [(c,p)]
-
--- | Convert a Yi Attr into a Vty attribute change.
-colorToAttr :: (Vty.Color -> Vty.Attr -> Vty.Attr) -> Yi.Style.Color -> Vty.Attr -> Vty.Attr
-colorToAttr set c =
-  case c of
-    RGB 0 0 0         -> set Vty.black
-    RGB 128 128 128   -> set Vty.brightBlack
-    RGB 139 0 0       -> set Vty.red
-    RGB 255 0 0       -> set Vty.brightRed
-    RGB 0 100 0       -> set Vty.green
-    RGB 0 128 0       -> set Vty.brightGreen
-    RGB 165 42 42     -> set Vty.yellow
-    RGB 255 255 0     -> set Vty.brightYellow
-    RGB 0 0 139       -> set Vty.blue
-    RGB 0 0 255       -> set Vty.brightBlue
-    RGB 128 0 128     -> set Vty.magenta
-    RGB 255 0 255     -> set Vty.brightMagenta
-    RGB 0 139 139     -> set Vty.cyan
-    RGB 0 255 255     -> set Vty.brightCyan
-    RGB 165 165 165   -> set Vty.white
-    RGB 255 255 255   -> set Vty.brightWhite
-    Default           -> id
-    RGB r g b         -> set (Vty.rgbColor r g b)
 
 -- | Construct images for the tabbar if at least one tab exists.
 renderTabBar :: Editor -> FrontendState -> Int -> [Vty.Image]

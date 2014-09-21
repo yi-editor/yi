@@ -475,7 +475,7 @@ alternateBufferE n = do
       else switchToBufferE $ lst!!n
 
 -- | Create a new zero size window on a given buffer
-newZeroSizeWindow ::Bool -> BufferRef -> WindowRef -> Window
+newZeroSizeWindow :: Bool -> BufferRef -> WindowRef -> Window
 newZeroSizeWindow mini bk ref = Window mini bk [] 0 emptyRegion ref 0 Nothing
 
 -- | Create a new window onto the given buffer.
