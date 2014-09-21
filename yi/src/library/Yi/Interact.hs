@@ -1,6 +1,7 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE FunctionalDependencies #-}
 {-# LANGUAGE GADTs #-}
+{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE UndecidableInstances #-}
 {-# OPTIONS_HADDOCK show-extensions #-}
@@ -66,13 +67,14 @@ module Yi.Interact
      accepted
     ) where
 
-import Control.Applicative
-import Control.Arrow (first)
-import Control.Lens
-import Control.Monad.State hiding ( get, mapM )
-import Data.Function (on)
-import Data.List (groupBy)
-import Data.Monoid
+import           Control.Applicative
+import           Control.Arrow (first)
+import           Control.Lens
+import           Control.Monad.State hiding ( get, mapM )
+import           Data.Function (on)
+import           Data.List (groupBy)
+import           Data.Monoid
+import qualified Data.Text as T
 
 ------------------------------------------------
 -- Classes
@@ -176,21 +178,27 @@ data P event w
     | End
     | forall mid. (Show mid, Eq mid) => Chain (P event mid) (P mid w)
 
-accepted :: (Show ev) => Int -> P ev w -> [[String]]
+accepted :: (Show ev) => Int -> P ev w -> [[T.Text]]
 accepted 0 _ = [[]]
 accepted d (Get (Just low) (Just high) k) = do
     t <- accepted (d - 1) (k low)
-    let h = if low == high then show low else show low ++ ".." ++ show high
+    let h = if low == high
+            then showT low
+            else showT low `T.append` ".." `T.append` showT high
     return (h : t)
 accepted _ (Get Nothing Nothing _) = [["<any>"]]
-accepted _ (Get Nothing (Just e) _) = [[".." ++ show e]]
-accepted _ (Get (Just e) Nothing _) = [[show e ++ ".."]]
+accepted _ (Get Nothing (Just e) _) = [[".." `T.append` showT e]]
+accepted _ (Get (Just e) Nothing _) = [[showT e `T.append` ".."]]
 accepted _ Fail = []
 accepted _ (Write _ _) = [[]] -- this should show what action we get...
 accepted d (Prior _ p) = accepted d p
 accepted d (Best p q) = accepted d p ++ accepted d q
-accepted _ (End) = []
+accepted _ End = []
 accepted _ (Chain _ _) = error "accepted: chain not supported"
+
+-- Utility function
+showT :: Show a => a -> T.Text
+showT = T.pack . show
 
 -- ---------------------------------------------------------------------------
 -- Operations over P

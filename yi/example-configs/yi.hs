@@ -1,9 +1,9 @@
 import Yi
 
 -- Import the desired keymap "template":
-import Yi.Keymap.Emacs (keymap)
-import Yi.Keymap.Cua (keymap)
-import Yi.Keymap.Vim (keymapSet)
+-- import Yi.Keymap.Emacs (keymap)
+-- import Yi.Keymap.Cua (keymap)
+-- import Yi.Keymap.Vim (keymapSet)
 
 -- Import the desired UI as needed.
 -- Some are not complied in, so we import none here.
@@ -11,8 +11,10 @@ import Yi.Keymap.Vim (keymapSet)
 -- import Yi.UI.Vty (start)
 -- import Yi.UI.Pango (start)
 
+myConfig :: Config
 myConfig = defaultEmacsConfig -- replace with defaultVimConfig or defaultCuaConfig
 
+defaultUIConfig :: UIConfig
 defaultUIConfig = configUI myConfig
 
 -- Change the below to your needs, following the explanation in comments. See

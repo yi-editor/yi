@@ -1,9 +1,18 @@
-{-# LANGUAGE
-  CPP,
-  DeriveDataTypeable,
-  DeriveGeneric,
-  StandaloneDeriving,
-  TemplateHaskell #-}
+{-# LANGUAGE CPP #-}
+{-# LANGUAGE DeriveDataTypeable #-}
+{-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE StandaloneDeriving #-}
+{-# LANGUAGE TemplateHaskell #-}
+{-# OPTIONS_HADDOCK show-extensions #-}
+
+-- |
+-- Module      :  Yi.Keymap.Vim.Tag
+-- License     :  GPL-2
+-- Maintainer  :  yi-devel@googlegroups.com
+-- Stability   :  experimental
+-- Portability :  portable
+
 module Yi.Keymap.Vim.Tag
     ( completeVimTag
     , gotoTag
@@ -11,26 +20,25 @@ module Yi.Keymap.Vim.Tag
     , unpopTag
     ) where
 
-import Data.Binary
-import Data.Default
-import Data.Maybe
-import Data.Typeable
-import Control.Applicative
-import Control.Monad
-import System.Directory (doesFileExist)
-import System.FilePath
-import System.FriendlyPath
-
+import           Control.Applicative
+import           Control.Monad
+import           Data.Binary
+import           Data.Default
 #if __GLASGOW_HASKELL__ < 708
-import Data.DeriveTH
+import           Data.DeriveTH
 #else
-import GHC.Generics (Generic)
+import           GHC.Generics (Generic)
 #endif
-
-import Yi.Core
-import Yi.File
-import Yi.Tag
-import Yi.Utils
+import           Data.Maybe
+import qualified Data.Text as T
+import           Data.Typeable
+import           System.Directory (doesFileExist)
+import           System.FilePath
+import           System.FriendlyPath
+import           Yi.Core
+import           Yi.File
+import           Yi.Tag
+import           Yi.Utils
 
 -- | List of tags and the file/line/char that they originate from.
 -- (the location that :tag or Ctrl-[ was called from).
@@ -97,7 +105,7 @@ gotoTag :: Tag -> YiM ()
 gotoTag tag =
     void . visitTagTable $ \tagTable ->
         case lookupTag tag tagTable of
-          Nothing -> errorEditor $ "tag not found: " ++ tag
+          Nothing -> errorEditor $ "tag not found: " `T.append` _unTag tag
           Just (filename, line) -> do
             bufinf <- withBuffer bufInfoB
             let ln = bufInfoLineNo bufinf
@@ -125,29 +133,30 @@ popTag = do
 -- specified tag.
 unpopTag :: YiM ()
 unpopTag = do
-    tl <- withEditor getTagList
-    ti <- withEditor getTagIndex
-    if ti >= length tl
-        then case tl of
-                [] -> errorEditor "at top of tag stack"
-                _ -> errorEditor "tag stack empty"
-        else let (tag, _, _, _) = tl !! ti
-             in void . visitTagTable $ \tagTable ->
-                 case lookupTag tag tagTable of
-                     Nothing -> errorEditor $ "tag not found: " ++ tag
-                     Just (filename, line) -> do
-                         bufinf <- withBuffer bufInfoB
-                         let ln = bufInfoLineNo bufinf
-                             cn = bufInfoColNo bufinf
-                             fn = bufInfoFileName bufinf
-                             tl' = take ti tl
-                                     ++ (tag, fn, ln, cn):(drop (ti + 1) tl)
-                         withEditor $ setTagList tl'
-                         void $ editFile filename
-                         void . withBuffer $ gotoLn line
+  tl <- withEditor getTagList
+  ti <- withEditor getTagIndex
+  if ti >= length tl
+    then case tl of
+            [] -> errorEditor "at top of tag stack"
+            _ -> errorEditor "tag stack empty"
+    else let (tag, _, _, _) = tl !! ti
+         in void . visitTagTable $ \tagTable ->
+             case lookupTag tag tagTable of
+               Nothing -> errorEditor $ "tag not found: " `T.append` _unTag tag
+               Just (filename, line) -> do
+                   bufinf <- withBuffer bufInfoB
+                   let ln = bufInfoLineNo bufinf
+                       cn = bufInfoColNo bufinf
+                       fn = bufInfoFileName bufinf
+                       tl' = take ti tl
+                               ++ (tag, fn, ln, cn):(drop (ti + 1) tl)
+                   withEditor $ setTagList tl'
+                   void $ editFile filename
+                   void . withBuffer $ gotoLn line
 
-completeVimTag :: String -> YiM [String]
-completeVimTag s = fmap maybeToList . visitTagTable $ return . flip completeTag s
+completeVimTag :: T.Text -> YiM [T.Text]
+completeVimTag s =
+  fmap maybeToList . visitTagTable $ return . flip completeTag s
 
 -- | Gets the first valid tags file in @TagsFileList@, if such a valid
 -- file exists.

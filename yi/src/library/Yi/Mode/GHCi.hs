@@ -2,6 +2,7 @@
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE TemplateHaskell #-}
 {-# OPTIONS_HADDOCK show-extensions #-}
@@ -25,14 +26,15 @@ import           Data.DeriveTH
 #else
 import           GHC.Generics (Generic)
 #endif
-import           Data.List (elemIndex)
+import           Data.Text ()
+import qualified Data.Text as T
 import           Data.Typeable
 import           Yi.Core
 import           Yi.Lexer.Alex (Tok)
 import           Yi.Lexer.Compilation (Token())
 import qualified Yi.Mode.Interactive as I
+import qualified Yi.Rope as R
 import           Yi.Syntax.OnlineTree (Tree)
-
 
 -- | The process name to use to spawn GHCi.
 data GhciProcessName = GhciProcessName
@@ -73,13 +75,13 @@ mode = I.mode
 -- beginning of the line. (If at the beginning of the line, this
 -- pushes you forward to it.)
 homeKey :: BufferM ()
-homeKey = do l <- readLnB
-             let epos = elemIndex '>' l
-             case epos of
-                 Nothing -> moveToSol
-                 Just pos -> do (_,mypos) <- getLineAndCol
-                                if mypos == (pos+2) then moveToSol
-                                 else moveToSol >> moveXorEol (pos+2)
+homeKey = readLnB >>= \l -> case T.findIndex ('>' ==) (R.toText l) of
+  Nothing -> moveToSol
+  Just pos -> do
+    (_,mypos) <- getLineAndCol
+    moveToSol >> if mypos == (pos + 2)
+                 then return ()
+                 else moveXorEol (pos + 2)
 
 -- | Spawns an interactive process ("Yi.Mode.Interactive") with GHCi
 -- 'mode' over it.

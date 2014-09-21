@@ -1,4 +1,5 @@
 {-# LANGUAGE CPP #-}
+{-# LANGUAGE OverloadedStrings #-}
 {-# OPTIONS_HADDOCK show-extensions #-}
 
 -- |
@@ -17,17 +18,19 @@ module Yi.Boot (yi, yiDriver, reload) where
 import qualified Config.Dyre as Dyre
 import qualified Config.Dyre.Options as Dyre
 import           Config.Dyre.Relaunch
+import           Control.Lens
 import           Control.Monad.Base
 import           Control.Monad.State
-import           Control.Lens
-import qualified Data.Rope as R
+import           Data.Text ()
 import           System.Environment
 import           System.Exit
+import           Yi.Buffer.Misc (BufferId(..))
 import           Yi.Config
 import           Yi.Editor
 import           Yi.Keymap
 import           Yi.Main
 import           Yi.Paths (getCustomConfigPath)
+import           Yi.Rope (fromString)
 import qualified Yi.UI.Common as UI
 
 -- | Once the custom yi is compiled this restores the editor state (if
@@ -43,7 +46,7 @@ realMain configs = restoreBinaryState Nothing >>= main configs
 showErrorsInConf :: (Config, ConsoleConfig) -> String -> (Config, ConsoleConfig)
 showErrorsInConf c errs = c & _1 . initialActionsA %~ (makeAction openErrBuf :)
   where
-    openErrBuf = splitE >> newBufferE (Left "*errors*") (R.fromString errs)
+    openErrBuf = splitE >> newBufferE (MemBuffer "*errors*") (fromString errs)
 
 -- | Handy alias for 'yiDriver'.
 yi :: Config -> IO ()

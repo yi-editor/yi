@@ -1,16 +1,25 @@
-{-# LANGUAGE
-  CPP,
-  TypeFamilies,
-  NoMonomorphismRestriction,
-  DeriveFoldable,
-  FlexibleInstances,
-  ScopedTypeVariables #-}
-{-# OPTIONS_GHC -fno-warn-unused-binds -fno-warn-incomplete-patterns #-} -- the CPP seems to confuse GHC; we have uniplate patterns
-{- Copyright JP Bernardy 2008 -}
+{-# LANGUAGE CPP #-}
+{-# LANGUAGE DeriveFoldable #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE NoMonomorphismRestriction #-}
+{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TypeFamilies #-}
 
--- | Generic syntax tree handling functions
-module Yi.Syntax.Tree (IsTree(..), toksAfter, allToks, tokAtOrBefore, toksInRegion,
-                       sepBy, sepBy1,
+ -- the CPP seems to confuse GHC; we have uniplate patterns
+{-# OPTIONS_GHC -fno-warn-unused-binds -fno-warn-incomplete-patterns #-}
+{-# OPTIONS_HADDOCK show-extensions #-}
+
+-- |
+-- Module      :  Yi.Syntax.Tree
+-- License     :  GPL-2
+-- Maintainer  :  yi-devel@googlegroups.com
+-- Stability   :  experimental
+-- Portability :  portable
+
+-- Generic syntax tree handling functions
+module Yi.Syntax.Tree (IsTree(..), toksAfter, allToks, tokAtOrBefore,
+                       toksInRegion, sepBy, sepBy1,
                        getLastOffset, getFirstOffset,
                        getFirstElement, getLastElement,
                        getLastPath,
@@ -27,17 +36,17 @@ import Prelude hiding (concatMap, error)
 import Control.Applicative
 import Control.Arrow (first)
 import Data.Maybe
-import Data.Monoid (First(..), Last(..), getFirst, getLast)
+import Data.Monoid
 import Data.Foldable
 #ifdef TESTING
 import Test.QuickCheck
 import Test.QuickCheck.Property (unProperty)
 #endif
-
 import Yi.Buffer.Basic
+import Yi.Debug
 import Yi.Lexer.Alex
 import Yi.Region
-import Yi.Debug
+import Yi.String
 
 -- Fundamental types
 type Path = [Int]
@@ -72,9 +81,9 @@ tokenBasedStrokes tts t _point begin _end = tts <$> toksAfter begin t
 -- The path is used to know which nodes we can force or not.
 pruneNodesBefore :: IsTree tree => Point -> Path -> tree (Tok a) -> tree (Tok a)
 pruneNodesBefore _ [] t = t
-pruneNodesBefore p (x:xs) t = rebuild (left' ++ pruneNodesBefore p xs c : rights)
+pruneNodesBefore p (x:xs) t = rebuild $ left' <> (pruneNodesBefore p xs c : rs)
     where (children,rebuild) = uniplate t
-          (left,c:rights) = splitAt x children
+          (left,c:rs) = splitAt x children
           left' = fmap replaceEmpty left
           replaceEmpty s = if getLastOffset s < p then emptyNode else s
 
@@ -82,10 +91,10 @@ pruneNodesBefore p (x:xs) t = rebuild (left' ++ pruneNodesBefore p xs c : rights
 -- (path to leaf at the end of the region,path from focused node to the leaf, small node encompassing the region)
 fromNodeToFinal :: IsTree tree => Region -> Node (tree (Tok a)) -> Node (tree (Tok a))
 fromNodeToFinal r (xs,root) =
-    trace ("r = " ++ show r) $
-    trace ("focused ~ " ++ show (subtreeRegion focused) ) $
-    trace ("pathFromFocusedToLeaf = " ++ show focusedToLeaf) $
-    trace ("pruned ~ " ++ show (subtreeRegion focused)) (xs', pruned)
+    trace ("r = " <> showT r) $
+    trace ("focused ~ " <> showT (subtreeRegion focused) ) $
+    trace ("pathFromFocusedToLeaf = " <> showT focusedToLeaf) $
+    trace ("pruned ~ " <> showT (subtreeRegion focused)) (xs', pruned)
 
     where n@(xs',_) = fromLeafToLeafAfter (regionEnd r) (xs,root)
           (_,(focusedToLeaf,focused)) = fromLeafAfterToFinal p0 n
@@ -111,7 +120,7 @@ lastThat p (x:xs) = if p x then work x xs else x
 -- node that encompasses the given node + a point before it.
 fromLeafAfterToFinal :: IsTree tree => Point -> Node (tree (Tok a)) -> (Path, Node (tree (Tok a)))
 fromLeafAfterToFinal p n =
-    -- trace ("reg = " ++ show (fmap (subtreeRegion . snd) nsPth)) $
+    -- trace ("reg = " <> showT (fmap (subtreeRegion . snd) nsPth)) $
       firstThat (\(_,(_,s)) -> getFirstOffset s <= p) ns
     where ns = reverse (nodesOnPath n)
 
@@ -119,14 +128,14 @@ fromLeafAfterToFinal p n =
 -- or after the given point. An effort is also made to return a leaf as close as possible to @p@.
 -- TODO: rename to fromLeafToLeafAt
 fromLeafToLeafAfter :: IsTree tree => Point -> Node (tree (Tok a)) -> Node (tree (Tok a))
-fromLeafToLeafAfter p (xs,root) =
+fromLeafToLeafAfter p (xs, root) =
     trace "fromLeafToLeafAfter:" $
-    trace ("xs = " ++ show xs) $
-    trace ("xsValid = " ++ show xsValid) $
-    trace ("p = " ++ show p) $
-    trace ("leafBeforeP = " ++ show leafBeforeP) $
-    trace ("leaf ~ " ++ show (subtreeRegion leaf)) $
-    trace ("xs' = " ++ show xs') result
+    trace ("xs = " <> showT xs) $
+    trace ("xsValid = " <> showT xsValid) $
+    trace ("p = " <> showT p) $
+    trace ("leafBeforeP = " <> showT leafBeforeP) $
+    trace ("leaf ~ " <> showT (subtreeRegion leaf)) $
+    trace ("xs' = " <> showT xs') result
     where xs' = if null candidateLeaves
                       then []
                       else fst $ firstOrLastThat (\(_,s) -> getFirstOffset s >= p) candidateLeaves
@@ -147,7 +156,7 @@ allLeavesRelative select
 -- in this node after the said child).
 allLeavesRelative' :: IsTree tree => (Int -> [(Int, tree a)] -> [(Int, tree a)]) -> [(Node (tree a), Int)] -> [Node (tree a)]
 allLeavesRelative' select l
-  = [(xs ++ xs', t') | ((xs,t),c) <- l, (xs',t') <- allLeavesRelativeChild select c t]
+  = [(xs <> xs', t') | ((xs,t),c) <- l, (xs',t') <- allLeavesRelativeChild select c t]
 
 -- | Given a root, return all the nodes encountered along it, their
 -- paths, and the index of the child which comes next.
@@ -187,7 +196,7 @@ allLeavesIn select = allLeavesRelativeChild select (-1)
 -- | Return all subtrees in a tree; each element of the return list
 -- contains paths to nodes. (Root is at the start of each path)
 getAllPaths :: IsTree tree => tree t -> [[tree t]]
-getAllPaths t = fmap (++[t]) ([] : concatMap getAllPaths (subtrees t))
+getAllPaths t = fmap (<>[t]) ([] : concatMap getAllPaths (subtrees t))
 
 goDown :: IsTree tree => Int -> tree t -> Maybe (tree t)
 goDown i = index i . subtrees
@@ -284,7 +293,7 @@ instance Arbitrary (Test TT) where
     arbitrary = sized $ \size -> do
       arbitraryFromList [1..size+1]
     shrink (Leaf _) = []
-    shrink (Bin l r) = [l,r] ++  (Bin <$> shrink l <*> pure r) ++  (Bin <$> pure l <*> shrink r)
+    shrink (Bin l r) = [l,r] <>  (Bin <$> shrink l <*> pure r) <>  (Bin <$> pure l <*> shrink r)
 
 tAt :: Point -> TT
 tAt idx =  Tok () 1 (Posn (idx * 2) 0 0)
@@ -331,10 +340,10 @@ prop_fromLeafAfterToFinal (N n) = let
        finalRegion = subtreeRegion finalSubtree
        initialRegion = nodeRegion n
 
-   whenFail (do putStrLn $ "final = " ++ show final
-                putStrLn $ "final reg = " ++ show finalRegion
-                putStrLn $ "initialReg = " ++ show initialRegion
-                putStrLn $ "p = " ++ show p
+   whenFail (do putStrLn $ "final = " <> show final
+                putStrLn $ "final reg = " <> show finalRegion
+                putStrLn $ "initialReg = " <> show initialRegion
+                putStrLn $ "p = " <> show p
             )
      ((regionStart finalRegion <= p) && (initialRegion `includedRegion` finalRegion))
 
@@ -344,9 +353,9 @@ prop_allLeavesAfter (N n@(xs,t)) = property $ do
   (xs',t') <- elements after
   let t'' = walkDown (xs',t)
   unProperty $ whenFail (do
-      putStrLn $ "t' = " ++ show t'
-      putStrLn $ "t'' = " ++ show t''
-      putStrLn $ "xs' = " ++ show xs'
+      putStrLn $ "t' = " <> show t'
+      putStrLn $ "t'' = " <> show t''
+      putStrLn $ "xs' = " <> show xs'
     ) (Just t' == t'' && xs <= xs')
 
 prop_allLeavesBefore :: NTTT -> Property
@@ -355,17 +364,17 @@ prop_allLeavesBefore (N n@(xs,t)) = property $ do
   (xs',t') <- elements after
   let t'' = walkDown (xs',t)
   unProperty $ whenFail (do
-      putStrLn $ "t' = " ++ show t'
-      putStrLn $ "t'' = " ++ show t''
-      putStrLn $ "xs' = " ++ show xs'
+      putStrLn $ "t' = " <> show t'
+      putStrLn $ "t'' = " <> show t''
+      putStrLn $ "xs' = " <> show xs'
     ) (Just t' == t'' && xs' <= xs)
 
 prop_fromNodeToLeafAfter :: NTTT -> Property
 prop_fromNodeToLeafAfter (N n) = forAll (pointInside (subtreeRegion $ snd n)) $ \p -> do
    let after = fromLeafToLeafAfter p n
        afterRegion = nodeRegion after
-   whenFail (do putStrLn $ "after = " ++ show after
-                putStrLn $ "after reg = " ++ show afterRegion
+   whenFail (do putStrLn $ "after = " <> show after
+                putStrLn $ "after reg = " <> show afterRegion
             )
      (regionStart afterRegion >= p)
 
@@ -373,11 +382,10 @@ prop_fromNodeToFinal :: NTTT -> Property
 prop_fromNodeToFinal  (N t) = forAll (regionInside (subtreeRegion $ snd t)) $ \r -> do
    let final@(_, finalSubtree) = fromNodeToFinal r t
        finalRegion = subtreeRegion finalSubtree
-   whenFail (do putStrLn $ "final = " ++ show final
-                putStrLn $ "final reg = " ++ show finalRegion
-                putStrLn $ "leaf after = " ++ show (fromLeafToLeafAfter (regionEnd r) t)
+   whenFail (do putStrLn $ "final = " <> show final
+                putStrLn $ "final reg = " <> show finalRegion
+                putStrLn $ "leaf after = " <> show (fromLeafToLeafAfter (regionEnd r) t)
             ) $ do
      r `includedRegion` finalRegion
 
 #endif
-

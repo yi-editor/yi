@@ -1,5 +1,7 @@
 module Yi.Buffer.HighLevel where
 
+import Yi.Rope (YiString)
 import {-# SOURCE #-} Yi.Buffer.Misc (BufferM)
 
-toggleCommentSelectionB :: String -> String -> BufferM ()
+toggleCommentSelectionB :: YiString -> YiString -> BufferM ()
+toggleCommentB :: YiString -> BufferM ()

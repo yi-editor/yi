@@ -1,6 +1,15 @@
 {-# LANGUAGE ScopedTypeVariables #-}
--- Copyright (C) 2007-8 JP Bernardy
--- Copyright (C) 2004-5 Don Stewart - http://www.cse.unsw.edu.au/~dons
+{-# LANGUAGE OverloadedStrings #-}
+
+-- |
+-- Module      :  Yi.UI.Vty
+-- License     :  GPL-2
+-- Maintainer  :  yi-devel@googlegroups.com
+-- Stability   :  experimental
+-- Portability :  portable
+--
+-- This module defines a user interface implemented using vty.
+--
 -- Originally derived from: riot/UI.hs Copyright (c) Tuomo Valkonen 2004.
 
 module Yi.UI.Vty
@@ -21,6 +30,7 @@ import qualified Data.List.PointedList.Circular as PL
 import qualified Data.Map.Strict as M
 import Data.Maybe
 import Data.Monoid
+import qualified Data.Text as T
 import qualified Graphics.Vty as Vty
 import GHC.Conc (labelThread)
 
@@ -85,7 +95,7 @@ start config submitEvent submitActions editor = do
           tryTakeMVar endRender >>=
             maybe (handle (\(except :: IOException) -> do
                               logPutStrLn "refresh crashed with IO Error"
-                              logError $ show except)
+                              logError (T.pack (show except)))
                           (readIORef editorRef >>= refresh fs >> renderLoop))
                   (const $ return ())
 
@@ -138,8 +148,8 @@ refresh fs e = do
         windowStartY = 1
         (cmd, cmdSty) = statusLineInfo e
         niceCmd = arrangeItems cmd (SL.sizeX promptRect) (maxStatusHeight e)
-        formatCmdLine text =
-            withAttributes statusBarStyle (take (SL.sizeX promptRect) $ text ++ repeat ' ')
+        mkLine = T.justifyLeft colCount ' ' . T.take colCount
+        formatCmdLine text = withAttributes statusBarStyle (mkLine text)
         winImage (win, hasFocus) =
             let rect = winRects M.! (wkey win)
             in renderWindow (configUI $ fsConfig fs) e rect (win, hasFocus)
@@ -212,18 +222,24 @@ renderWindow cfg e (SL.Rect x y w h) (win, focused) =
             drawText h' w
                      point
                      tabWidth
-                     ([(c,(wsty, -1)) | c <- prompt] ++ bufData ++ [(' ',(wsty, eofPoint))])
+                     ([(c,(wsty, -1)) | c <- T.unpack prompt] ++ bufData ++ [(' ',(wsty, eofPoint))])
                      -- we always add one character which can be used to position the cursor at the end of file
-        (modeLine0, _) = runBuffer win b $ getModeLine (commonNamePrefix e)
+        commonPref = T.pack <$> commonNamePrefix e
+        (modeLine0, _) = runBuffer win b $ getModeLine commonPref
         modeLine = if notMini then Just modeLine0 else Nothing
-        modeLines = map (withAttributes modeStyle . take w . (++ repeat ' ')) $ maybeToList modeLine
+        prepare = withAttributes modeStyle . T.justifyLeft w ' ' . T.take w
+        modeLines = map prepare $ maybeToList modeLine
         modeStyle = (if focused then appEndo (modelineFocusStyle sty) else id) (modelineAttributes sty)
-        filler = take w (configWindowFill cfg : repeat ' ')
 
-        pict = Vty.vertCat (take h' (rendered ++ repeat (withAttributes eofsty filler)) ++ modeLines)
+        filler :: T.Text
+        filler = if w == 0 -- justify would return a single char at w = 0
+                 then T.empty
+                 else T.justifyLeft w ' ' $ T.singleton (configWindowFill cfg)
 
-withAttributes :: Attributes -> String -> Vty.Image
-withAttributes sty = Vty.string (attributesToAttr sty Vty.defAttr)
+        pict = Vty.vertCat (take h' (rendered <> repeat (withAttributes eofsty filler)) <> modeLines)
+
+withAttributes :: Attributes -> T.Text -> Vty.Image
+withAttributes sty = Vty.text' (attributesToAttr sty Vty.defAttr)
 
 attributesToAttr :: Attributes -> Vty.Attr -> Vty.Attr
 attributesToAttr (Attributes fg bg reverse bd _itlc underline') =
@@ -241,7 +257,7 @@ paintChars sty changes cs = [(c,(s,p)) | ((p,c),s) <- zip cs attrs]
 
 stys :: a -> [(Point,a)] -> [(Point,Char)] -> [a]
 stys sty [] cs = [ sty | _ <- cs ]
-stys sty ((endPos,sty'):xs) cs = [ sty | _ <- previous ] ++ stys sty' xs later
+stys sty ((endPos,sty'):xs) cs = [ sty | _ <- previous ] <> stys sty' xs later
     where (previous, later) = break ((endPos <=) . fst) cs
 
 drawText :: Int    -- ^ The height of the part of the window we are in
@@ -302,11 +318,12 @@ drawText h w point tabWidth bufData
 renderTabBar :: Editor -> FrontendState -> Int -> [Vty.Image]
 renderTabBar e fs xss = [tabImages Vty.<|> extraImage]
   where tabImages       = foldr1 (Vty.<|>) $ fmap tabToVtyImage $ tabBarDescr e
-        extraImage      = withAttributes (tabBarAttributes uiStyle) (replicate (xss - fromEnum totalTabWidth) ' ')
+        imagePad = T.replicate (xss - fromEnum totalTabWidth) $ T.singleton ' '
+        extraImage      = withAttributes (tabBarAttributes uiStyle) imagePad
         totalTabWidth   = Vty.imageWidth tabImages
         uiStyle         = configStyle $ configUI $ fsConfig fs
-        tabTitle text   = " " ++ text ++ " "
+        tabTitle text   = ' ' `T.cons` text `T.snoc` ' '
         tabAttr b       = baseAttr b $ tabBarAttributes uiStyle
         baseAttr True  sty = attributesToAttr (appEndo (tabInFocusStyle uiStyle) sty) Vty.defAttr
         baseAttr False sty = attributesToAttr (appEndo (tabNotFocusedStyle uiStyle) sty) Vty.defAttr `Vty.withStyle` Vty.underline
-        tabToVtyImage _tab@(TabDescr text inFocus) = Vty.string (tabAttr inFocus) (tabTitle text)
+        tabToVtyImage _tab@(TabDescr text inFocus) = Vty.text' (tabAttr inFocus) (tabTitle text)

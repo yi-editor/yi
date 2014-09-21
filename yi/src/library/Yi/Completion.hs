@@ -1,5 +1,14 @@
--- Copyright (C) 2008 JP Bernardy
+{-# LANGUAGE OverloadedStrings #-}
+{-# OPTIONS_HADDOCK show-extensions #-}
 
+-- |
+-- Module      :  Yi.Completion
+-- License     :  GPL-2
+-- Maintainer  :  yi-devel@googlegroups.com
+-- Stability   :  experimental
+-- Portability :  portable
+--
+-- Collection of functions for completion and matching.
 
 module Yi.Completion
   ( completeInList, completeInList'
@@ -12,30 +21,36 @@ module Yi.Completion
   )
 where
 
-import Yi.Editor
-import Yi.Utils
-import Data.List
-import Data.Maybe
-import Data.Char (toLower)
+import           Control.Applicative
+import           Data.List
+import           Data.Maybe
+import           Data.Monoid
+import qualified Data.Text as T
+import           Yi.Editor
+import           Yi.String (commonTPrefix', showT)
+import           Yi.Utils
 
 -------------------------------------------
 -- General completion
 
-mkIsPrefixOf :: Bool -> String -> String -> Bool
-mkIsPrefixOf caseSensitive = if caseSensitive
-                             then isPrefixOf
-                             else isPrefixOfIC
-  where isPrefixOfIC x y = map toLower x `isPrefixOf` map toLower y
+-- | Like usual 'T.isPrefixOf' but user can specify case sensitivity.
+-- See 'T.toCaseFold' for exotic unicode gotchas.
+mkIsPrefixOf :: Bool -- ^ Is case-sensitive?
+             -> T.Text
+             -> T.Text
+             -> Bool
+mkIsPrefixOf True = T.isPrefixOf
+mkIsPrefixOf False = \x y -> T.toCaseFold x `T.isPrefixOf` T.toCaseFold y
 
 -- | Prefix matching function, for use with 'completeInList'
-prefixMatch :: String -> String -> Maybe String
-prefixMatch prefix s = if prefix `isPrefixOf` s then Just s else Nothing
+prefixMatch :: T.Text -> T.Text -> Maybe T.Text
+prefixMatch prefix s = if prefix `T.isPrefixOf` s then Just s else Nothing
 
 -- | Infix matching function, for use with 'completeInList'
-infixMatch :: String -> String -> Maybe String
-infixMatch needle haystack = fmap (`drop` haystack) $ findIndex (needle `isPrefixOf`) (tails haystack)
+infixMatch :: T.Text -> T.Text -> Maybe T.Text
+infixMatch needle haystack = case T.breakOn needle haystack of
+  (_, t) -> if T.null t then Nothing else Just t
 
-{-# ANN subsequenceMatch "HLint: ignore Eta reduce" #-}
 -- | Example: "abc" matches "a1b2c"
 subsequenceMatch :: String -> String -> Bool
 subsequenceMatch needle haystack = go needle haystack
@@ -43,40 +58,55 @@ subsequenceMatch needle haystack = go needle haystack
         go (n:ns) (h:hs) | n /= h = go (n:ns) hs
         go [] _ = True
         go _ [] = False
-        go _ _  = False -- NOTE: to satisfy broken GHC analyzer, which doesn't know that n==h or n/=h. After all one can make Eq so that it doesn't work ;->.
+        go _ _  = False
 
-containsMatch' :: Bool -> String -> String -> Maybe String
-containsMatch' caseSensitive pattern str = fmap (const str) $ find (pattern `tstPrefix`) (tails str)
-  where tstPrefix = mkIsPrefixOf caseSensitive
+-- | TODO: this is a terrible function, isn't this just
+-- case-insensitive infix? – Fūzetsu
+containsMatch' :: Bool -> T.Text -> T.Text -> Maybe T.Text
+containsMatch' caseSensitive pattern str =
+  const str <$> find (pattern `tstPrefix`) (T.tails str)
+  where
+    tstPrefix = mkIsPrefixOf caseSensitive
 
-containsMatch :: String -> String -> Maybe String
+containsMatch :: T.Text -> T.Text -> Maybe T.Text
 containsMatch = containsMatch' True
 
-containsMatchCaseInsensitive :: String -> String -> Maybe String
+containsMatchCaseInsensitive :: T.Text -> T.Text -> Maybe T.Text
 containsMatchCaseInsensitive = containsMatch' False
 
 
 -- | Complete a string given a user input string, a matching function
--- and a list of possibilites.  Matching function should return the
+-- and a list of possibilites. Matching function should return the
 -- part of the string that matches the user string.
-completeInList :: String -> (String -> Maybe String) -> [String] -> EditorM String
+completeInList :: T.Text -- ^ Input to match on
+               -> (T.Text -> Maybe T.Text) -- ^ matcher function
+               -> [T.Text] -- ^ items to match against
+               -> EditorM T.Text
 completeInList = completeInListCustomShow id
 
--- | Same as 'completeInList', but maps @showFunction@ on possible matches when printing
-completeInListCustomShow :: (String -> String) -> String -> (String -> Maybe String) ->
-                            [String] -> EditorM String
+-- | Same as 'completeInList', but maps @showFunction@ on possible
+-- matches when printing
+completeInListCustomShow :: (T.Text -> T.Text) -- ^ Show function
+                         -> T.Text -- ^ Input to match on
+                         -> (T.Text -> Maybe T.Text) -- ^ matcher function
+                         -> [T.Text] -- ^ items to match against
+                         -> EditorM T.Text
 completeInListCustomShow showFunction s match possibilities
     | null filtered = printMsg "No match" >> return s
     | prefix /= s = return prefix
     | isSingleton filtered = printMsg "Sole completion" >> return s
-    | prefix `elem` filtered = printMsg ("Complete, but not unique: " ++ show filtered) >> return s
+    | prefix `elem` filtered =
+        printMsg ("Complete, but not unique: " <> showT filtered) >> return s
     | otherwise = printMsgs (map showFunction filtered)
                   >> return (bestMatch filtered s)
     where
-      prefix   = commonPrefix filtered
+      prefix   = commonTPrefix' filtered
       filtered = filterMatches match possibilities
 
-completeInList' :: String -> (String -> Maybe String) -> [String] -> EditorM String
+completeInList' :: T.Text
+                -> (T.Text -> Maybe T.Text)
+                -> [T.Text]
+                -> EditorM T.Text
 completeInList' s match l = case filtered of
   [] -> printMsg "No match" >> return s
   [x] | s == x    -> printMsg "Sole completion" >> return s
@@ -97,9 +127,9 @@ completeInList' s match l = case filtered of
 -- This is extremely tedious when trying to complete filenames in directories
 -- with many files so here we try to catch common prefixes of filtered files and
 -- if the result is longer than what we have, we use it instead.
-bestMatch :: [String] -> String -> String
-bestMatch fs s = let p = commonPrefix fs
-                 in if length p > length s then p else s
+bestMatch :: [T.Text] -> T.Text -> T.Text
+bestMatch fs s = let p = commonTPrefix' fs
+                 in if T.length p > T.length s then p else s
 
 filterMatches :: Eq a => (b -> Maybe a) -> [b] -> [a]
 filterMatches match = nub . catMaybes . fmap match

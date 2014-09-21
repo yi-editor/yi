@@ -1,45 +1,58 @@
-{-# LANGUAGE FlexibleContexts, DeriveDataTypeable, TemplateHaskell,
-  CPP, StandaloneDeriving, DeriveGeneric #-}
+{-# LANGUAGE CPP #-}
+{-# LANGUAGE DeriveDataTypeable #-}
+{-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE StandaloneDeriving #-}
+{-# LANGUAGE TemplateHaskell #-}
+{-# OPTIONS_HADDOCK show-extensions #-}
 
--- | A module for CTags integration
+-- |
+-- Module      :  Yi.Tag
+-- License     :  GPL-2
+-- Maintainer  :  yi-devel@googlegroups.com
+-- Stability   :  experimental
+-- Portability :  portable
+--
+-- A module for CTags integration
 
-module Yi.Tag
-  (
-   lookupTag,
-   importTagTable,
-   hintTags,
-   completeTag,
-   Tag,
-   TagTable(..),
-   getTags,
-   setTags,
-   resetTags,
-   getTagsFileList,
-   setTagsFileList
-  )
-where
+module Yi.Tag ( lookupTag
+              , importTagTable
+              , hintTags
+              , completeTag
+              , Tag(..)
+              , mkTag
+              , unTag'
+              , TagTable(..)
+              , getTags
+              , setTags
+              , resetTags
+              , getTagsFileList
+              , setTagsFileList
+              ) where
 
-import Yi.Editor
-import Yi.Dynamic
-
+import           Control.Applicative
+import           Data.Binary
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.UTF8 as BS8
-import Data.Maybe (mapMaybe)
-import Data.List (isPrefixOf)
-import System.FilePath (takeFileName, takeDirectory, (</>))
-import System.FriendlyPath
-import Data.Map (Map, fromList, lookup, keys)
-import Data.List.Split (splitOn)
-
-import qualified Data.Trie as Trie
-import Data.Binary
 #if __GLASGOW_HASKELL__ < 708
-import Data.DeriveTH
+import           Data.DeriveTH
 #else
-import GHC.Generics (Generic)
+import           GHC.Generics (Generic)
 #endif
-import Data.Default
-import Data.Typeable
+import           Data.Default
+import           Data.List (isPrefixOf)
+import           Data.List.Split (splitOn)
+import           Data.Map (Map, fromList, lookup, keys)
+import           Data.Maybe (mapMaybe)
+import qualified Data.Text as T
+import qualified Data.Text.Encoding as E
+import qualified Data.Trie as Trie
+import           Data.Typeable
+import           System.FilePath (takeFileName, takeDirectory, (</>))
+import           System.FriendlyPath
+import           Yi.Dynamic
+import           Yi.Editor
+
 
 newtype Tags  = Tags (Maybe TagTable) deriving Typeable
 instance Default Tags where
@@ -49,7 +62,18 @@ newtype TagsFileList  = TagsFileList [FilePath] deriving Typeable
 instance Default TagsFileList where
     def = TagsFileList ["tags"]
 
-type Tag = String
+newtype Tag = Tag { _unTag :: T.Text } deriving (Show, Eq, Ord)
+
+-- | Helper
+mkTag :: String -> Tag
+mkTag = Tag . T.pack
+
+unTag' :: Tag -> String
+unTag' = T.unpack . _unTag
+
+instance Binary Tag where
+  put (Tag t) = put (E.encodeUtf8 t)
+  get = Tag . E.decodeUtf8 <$> get
 
 data TagTable = TagTable { tagFileName :: FilePath
                            -- ^ local name of the tag file
@@ -78,7 +102,7 @@ readCTags =
     where parseTagLine (tag:tagfile:lineno:_) =
               -- remove ctag control lines
               if "!_TAG_" `isPrefixOf` tag then Nothing
-              else Just (tag, (tagfile, fst . head . reads $ lineno))
+              else Just (mkTag tag, (tagfile, fst . head . reads $ lineno))
           parseTagLine _ = Nothing
 
 -- | Read in a tag file from the system
@@ -86,20 +110,25 @@ importTagTable :: FilePath -> IO TagTable
 importTagTable filename = do
   friendlyName <-  expandTilda filename
   tagStr <- fmap BS8.toString $ BS.readFile friendlyName
-  let ctags = readCTags tagStr
-  return TagTable { tagFileName = takeFileName filename,
-                    tagBaseDir  = takeDirectory filename,
-                    tagFileMap  = ctags,
-                    tagTrie     = Trie.fromList $ keys ctags
+  let cts = readCTags tagStr
+  return TagTable { tagFileName = takeFileName filename
+                  , tagBaseDir  = takeDirectory filename
+                  , tagFileMap  = cts
+                    -- TODO either change word-trie to use Text or
+                    -- figure out a better way all together for this
+                  , tagTrie = Trie.fromList . map (T.unpack . _unTag) $ keys cts
                   }
 
 -- | Gives all the possible expanded tags that could match a given @prefix@
-hintTags :: TagTable -> String -> [String]
-hintTags tags prefix = map (prefix ++) $ Trie.possibleSuffixes prefix $ tagTrie tags
+hintTags :: TagTable -> T.Text -> [T.Text]
+hintTags tags prefix = map (T.append prefix . T.pack) sufs
+  where
+    sufs = Trie.possibleSuffixes (T.unpack prefix) $ tagTrie tags
 
 -- | Extends the string to the longest certain length
-completeTag :: TagTable -> String -> String
-completeTag tags prefix = prefix ++ Trie.certainSuffix prefix (tagTrie tags)
+completeTag :: TagTable -> T.Text -> T.Text
+completeTag tags prefix =
+  prefix `T.append` T.pack (Trie.certainSuffix (T.unpack prefix) (tagTrie tags))
 
 
 -- ---------------------------------------------------------------------
@@ -145,4 +174,3 @@ instance Binary TagsFileList
 instance YiVariable Tags
 
 instance YiVariable TagsFileList
-

@@ -101,7 +101,7 @@ forceTab t = foldr seq t (t ^. tabWindowsA)
 tabFoldl :: (a -> Window -> a) -> a -> Tab -> a
 tabFoldl f z t = foldl f z (t ^. tabWindowsA)
 
--- -- | Run the layout on the given tab, for the given aspect ratio
+-- | Run the layout on the given tab, for the given aspect ratio
 buildLayout :: PL.PointedList Window -> AnyLayoutManager -> Layout WindowRef -> Layout WindowRef
 buildLayout ws m l = pureLayout m l . fmap wkey . Prelude.filter (not . isMini) . toList $ ws
 

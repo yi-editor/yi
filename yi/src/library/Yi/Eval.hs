@@ -2,6 +2,7 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE OverloadedStrings #-}
 {-# OPTIONS_HADDOCK show-extensions #-}
 
 -- |
@@ -40,8 +41,6 @@ import           Data.Default
 import           Data.Foldable (mapM_)
 import qualified Data.HashMap.Strict as M
 import           Data.List
-import           Data.List.Lens
-import           Data.Maybe (fromMaybe)
 import           Data.Monoid
 import           Data.Typeable
 import qualified Language.Haskell.Interpreter as LHI
@@ -55,8 +54,12 @@ import           Yi.File
 import           Yi.Hooks
 import qualified Yi.Paths (getEvaluatorContextFilename)
 import           Yi.Regex
+import qualified Yi.Rope as R
+import           Yi.String
 import           Yi.Utils
 import           {-# source #-} Yi.Boot (reload)
+
+-- TODO: should we be sticking Text here?
 
 -- | Runs the action, as written by the user.
 --
@@ -139,7 +142,7 @@ ghciEvaluator = Evaluator { execEditorActionImpl = execAction
         LHI.setImportsQ [("Yi", Nothing), ("Yi.Keymap",Just "Yi.Keymap")]
         LHI.interpret ("Yi.makeAction (" ++ s ++ ")") (error "as" :: Action)
       case res of
-        Left err -> errorEditor (show err)
+        Left err -> errorEditor (showT err)
         Right action -> runAction action
 
     getNames :: YiM [String]
@@ -216,13 +219,13 @@ jumpToE filename line column = do
 
 -- | Regex parsing the error message format.
 errorRegex :: Regex
-errorRegex = makeRegex "^(.+):([0-9]+):([0-9]+):.*$"
+errorRegex = makeRegex ("^(.+):([0-9]+):([0-9]+):.*$" :: String)
 
 -- | Parses an error message. Fails if it can't parse out the needed
 -- information, namely filename, line number and column number.
-parseErrorMessage :: String -> Maybe (String, Int, Int)
+parseErrorMessage :: R.YiString -> Maybe (String, Int, Int)
 parseErrorMessage ln = do
-  (_ ,result, _) <- matchOnceText errorRegex ln
+  (_ ,result, _) <- matchOnceText errorRegex (R.toString ln)
   case take 3 $ map fst $ elems result of
     [_, fname, l, c] -> (,,) <$> return fname <*> readMaybe l <*> readMaybe c
     _                        -> Nothing
@@ -239,31 +242,29 @@ jumpToErrorE = withBuffer parseErrorMessageB >>= \case
   Nothing -> msgEditor "Couldn't parse out an error message."
   Just (f, l, c) -> jumpToE f l c
 
-prompt :: String
+prompt :: R.YiString
 prompt = "Yi> "
 
 -- | Tries to strip the 'prompt' from the front of the given 'String'.
 -- If the prompt is not found, returns the input command as-is.
-takeCommand :: String -> String
-takeCommand = fromMaybe <*> (^? prefixed prompt)
+takeCommand :: R.YiString -> R.YiString
+takeCommand t = case R.splitAt (R.length prompt) t of
+  (f, s) -> if f == prompt then s else t
 
 consoleKeymap :: Keymap
 consoleKeymap = do
   _ <- event (Event KEnter [])
-  write $ do
-    x <- withBuffer readLnB
-    case parseErrorMessage x of
-      Just (f,l,c) -> jumpToE f l c
-      Nothing -> do
-        withBuffer $ do
-          p <- pointB
-          botB
-          p' <- pointB
-          when (p /= p') $
-             insertN ("\n" ++ prompt ++ takeCommand x)
-          insertN "\n"
-          pt <- pointB
-          insertN prompt
-          bm <- getBookmarkB "errorInsert"
-          markPointA bm .= pt
-        execEditorAction $ takeCommand x
+  write $ withBuffer readLnB >>= \x -> case parseErrorMessage x of
+    Just (f,l,c) -> jumpToE f l c
+    Nothing -> do
+      withBuffer $ do
+        p <- pointB
+        botB
+        p' <- pointB
+        when (p /= p') $ insertN ("\n" <> prompt <> takeCommand x)
+        insertN "\n"
+        pt <- pointB
+        insertN prompt
+        bm <- getBookmarkB "errorInsert"
+        markPointA bm .= pt
+      execEditorAction . R.toString $ takeCommand x

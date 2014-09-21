@@ -1,0 +1,14 @@
+-- Input
+(1,1)
+Test increasing 0 to 11
+Test increasing -11 to 11
+Test increasing -101 to -99
+Test increasing 99 to 101
+-- Output
+(4,19)
+Test increasing 11 to 11
+Test increasing 11 to 11
+Test increasing -99 to -99
+Test increasing 101 to 101
+-- Events
+11<C-a>j22<C-a>j2<C-a>jh2<C-a>

@@ -1,3 +1,4 @@
+{-# LANGUAGE OverloadedStrings #-}
 {-# OPTIONS_HADDOCK show-extensions #-}
 
 -- |
@@ -11,12 +12,13 @@
 -- A 'Mode' for working with buffers showing the results of compilations.
 module Yi.Mode.Compilation where
 
-import Control.Lens
-import Yi.Core
-import Yi.File (editFile)
-import Yi.Lexer.Alex (Tok(..), Posn(..))
-import Yi.Modes (styleMode, TokenBasedMode)
+import           Control.Lens
+import           Data.Text ()
+import           Yi.Core
+import           Yi.File (editFile)
+import           Yi.Lexer.Alex (Tok(..), Posn(..))
 import qualified Yi.Lexer.Compilation as Compilation
+import           Yi.Modes (styleMode, TokenBasedMode)
 import qualified Yi.Syntax.OnlineTree as OnlineTree
 
 mode :: TokenBasedMode Compilation.Token

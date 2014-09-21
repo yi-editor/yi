@@ -1,15 +1,17 @@
+{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# OPTIONS_HADDOCK show-extensions #-}
+{-# LANGUAGE MultiWayIf #-}
 
 -- |
 -- Module      :  Yi.Buffer.HighLevel
--- Copyright   :  (c) Jean-Philippe Bernardy 2008
 -- License     :  GPL-2
 -- Maintainer  :  yi-devel@googlegroups.com
 -- Stability   :  experimental
 -- Portability :  portable
 --
 -- High level operations on buffers.
+
 module Yi.Buffer.HighLevel where
 
 import           Control.Applicative
@@ -17,18 +19,22 @@ import           Control.Lens hiding ((-~), (+~), re, transform)
 import           Control.Monad
 import           Control.Monad.RWS.Strict (ask)
 import           Control.Monad.State hiding (forM, forM_, sequence_)
-import           Data.Char
-import           Data.List (isPrefixOf, sort, intersperse)
+import           Data.Char (isDigit, isHexDigit, isOctDigit,
+                            toUpper, isUpper, toLower, isSpace)
+import           Data.List (sort, intersperse)
 import           Data.Maybe (fromMaybe, listToMaybe, catMaybes)
-import           Data.Rope (Rope)
-import qualified Data.Rope as R
+import           Data.Monoid
+import qualified Data.Text as T
 import           Data.Time (UTCTime)
 import           Data.Tuple (swap)
+import           Numeric (showOct, showHex, readOct, readHex)
 import           Yi.Buffer.Basic
 import           Yi.Buffer.Misc
 import           Yi.Buffer.Normal
 import           Yi.Buffer.Region
 import           Yi.Config.Misc (ScrollStyle(SingleLine))
+import           Yi.Rope (YiString)
+import qualified Yi.Rope as R
 import           Yi.String
 import           Yi.Utils
 import           Yi.Window
@@ -120,19 +126,22 @@ prevCInLineExc c = gotoCharacterB c Backward Exclusive True
 
 -- | Move to first non-space character in this line
 firstNonSpaceB :: BufferM ()
-firstNonSpaceB = do moveToSol
-                    untilB_ ((||) <$> atEol <*> ((not . isSpace) <$> readB)) rightB
+firstNonSpaceB = do
+  moveToSol
+  untilB_ ((||) <$> atEol <*> ((not . isSpace) <$> readB)) rightB
 
 -- | Move to the last non-space character in this line
 lastNonSpaceB :: BufferM ()
-lastNonSpaceB = do moveToEol
-                   untilB_ ((||) <$> atSol <*> ((not . isSpace) <$> readB)) leftB
+lastNonSpaceB = do
+  moveToEol
+  untilB_ ((||) <$> atSol <*> ((not . isSpace) <$> readB)) leftB
 
 -- | Go to the first non space character in the line;
 -- if already there, then go to the beginning of the line.
 moveNonspaceOrSol :: BufferM ()
-moveNonspaceOrSol = do prev <- readPreviousOfLnB
-                       if all isSpace prev then moveToSol else firstNonSpaceB
+moveNonspaceOrSol = do
+  prev <- readPreviousOfLnB
+  if R.all isSpace prev then moveToSol else firstNonSpaceB
 
 -- | True if current line consists of just a newline (no whitespace)
 isCurrentLineEmptyB :: BufferM Bool
@@ -214,18 +223,18 @@ getLineAndColOfPoint :: Point -> BufferM (Int, Int)
 getLineAndColOfPoint p = savingPointB $ moveTo p >> getLineAndCol
 
 -- | Read the line the point is on
-readLnB :: BufferM String
+readLnB :: BufferM YiString
 readLnB = readUnitB Line
 
 readCharB :: BufferM (Maybe Char)
-readCharB = fmap listToMaybe (readUnitB Character)
+readCharB = fmap R.head (readUnitB Character)
 
 -- | Read from point to end of line
-readRestOfLnB :: BufferM String
+readRestOfLnB :: BufferM YiString
 readRestOfLnB = readRegionB =<< regionOfPartB Line Forward
 
 -- | Read from point to beginning of line
-readPreviousOfLnB :: BufferM String
+readPreviousOfLnB :: BufferM YiString
 readPreviousOfLnB = readRegionB =<< regionOfPartB Line Backward
 
 hasWhiteSpaceBefore :: BufferM Bool
@@ -247,10 +256,12 @@ nextPointB = do
          else do p <- pointB
                  return $ Point (fromPoint p + 1)
 
-readCurrentWordB :: BufferM String
+-- | Reads in word at point.
+readCurrentWordB :: BufferM YiString
 readCurrentWordB = readUnitB unitWord
 
-readPrevWordB :: BufferM String
+-- | Reads in word before point.
+readPrevWordB :: BufferM YiString
 readPrevWordB = readPrevUnitB unitViWordOnLine
 
 -------------------------
@@ -288,27 +299,26 @@ deleteHorizontalSpaceB u = do
   -- If we only deleted before point, move back that many characters
   -- too or it feels weird.
   case u of
-    Just _ -> moveToColB (c - (length text - length r))
+    Just _ -> moveToColB (c - (R.length text - R.length r))
     Nothing -> return ()
   where
-    sp x = x == ' ' || x == '\t'
-    withEnd f = reverse . f . reverse
+    deleteSpaces :: Int -> R.YiString -> R.YiString
     deleteSpaces c l =
-      let (f, b) = splitAt c l
-      in case u of
-        Nothing -> withEnd (dropWhile sp) f ++ dropWhile sp b
-        Just _ -> withEnd (dropWhile sp) f ++ b
+      let (f, b) = T.splitAt c(R.toText l)
+      in R.fromText $ T.stripEnd f <> case u of
+        Nothing -> T.stripStart b
+        Just _ -> b
 
 ----------------------------------------
 -- Transform operations
 
 -- | capitalise the word under the cursor
 uppercaseWordB :: BufferM ()
-uppercaseWordB = transformB (fmap toUpper) unitWord Forward
+uppercaseWordB = transformB (R.withText T.toUpper) unitWord Forward
 
 -- | lowerise word under the cursor
 lowercaseWordB :: BufferM ()
-lowercaseWordB = transformB (fmap toLower) unitWord Forward
+lowercaseWordB = transformB (R.withText T.toLower) unitWord Forward
 
 -- | capitalise the first letter of this word
 capitaliseWordB :: BufferM ()
@@ -316,7 +326,8 @@ capitaliseWordB = transformB capitalizeFirst unitWord Forward
 
 -- | switch the case of the letter under the cursor
 switchCaseCharB :: BufferM ()
-switchCaseCharB = transformB (fmap switchCaseChar) Character Forward
+switchCaseCharB =
+  transformB (R.withText $ T.map switchCaseChar) Character Forward
 
 switchCaseChar :: Char -> Char
 switchCaseChar c = if isUpper c then toLower c else toUpper c
@@ -341,8 +352,22 @@ swapB = do eol <- atEol
 
 -- | Delete trailing whitespace from all lines
 deleteTrailingSpaceB :: BufferM ()
-deleteTrailingSpaceB = modifyRegionClever deleteSpaces =<< regionOfB Document
-  where deleteSpaces = mapLines $ reverse . dropWhile (`elem` " \t") . reverse
+deleteTrailingSpaceB =
+  regionOfB Document >>= modifyRegionB (tru . mapLines stripEnd)
+  where
+    -- Strips the space from the end of each line, preserving
+    -- newlines.
+    stripEnd :: R.YiString -> R.YiString
+    stripEnd x = case R.last x of
+      Nothing -> x
+      Just '\n' -> (`R.snoc` '\n') $ R.dropWhileEnd isSpace x
+      _ -> R.dropWhileEnd isSpace x
+
+    -- | Cut off trailing newlines, making sure to preserve one.
+    tru :: R.YiString -> R.YiString
+    tru x = if R.length x == 0
+            then x
+            else (`R.snoc` '\n') $ R.dropWhileEnd (== '\n') x
 
 -- ----------------------------------------------------
 -- | Marks
@@ -375,7 +400,7 @@ data BufferFileInfo =
                    , bufInfoLineNo   :: Int
                    , bufInfoColNo    :: Int
                    , bufInfoCharNo   :: Point
-                   , bufInfoPercent  :: String
+                   , bufInfoPercent  :: T.Text
                    , bufInfoModified :: Bool
                    }
 
@@ -388,7 +413,7 @@ bufInfoB = do
     l <- curLn
     c <- curCol
     nm <- gets identString
-    let bufInfo = BufferFileInfo { bufInfoFileName = nm
+    let bufInfo = BufferFileInfo { bufInfoFileName = T.unpack nm
                                  , bufInfoSize     = fromIntegral s
                                  , bufInfoLineNo   = l
                                  , bufInfoColNo    = c
@@ -471,6 +496,19 @@ scrollB n = do
   w <- askWindow wkey
   (%=) pointFollowsWindowA (\old w' -> ((w == w') || old w'))
 
+
+-- Scroll line above window to the bottom.
+scrollToLineAboveWindowB :: BufferM ()
+scrollToLineAboveWindowB = do downFromTosB 0
+                              replicateM_ 1 lineUp
+                              scrollCursorToBottomB
+
+-- Scroll line below window to the top.
+scrollToLineBelowWindowB :: BufferM ()
+scrollToLineBelowWindowB = do upFromBosB 0
+                              replicateM_ 1 lineDown
+                              scrollCursorToTopB
+
 -- | Move the point to inside the viewable region
 snapInsB :: BufferM ()
 snapInsB = do
@@ -544,7 +582,6 @@ middleB = do
 
 pointInWindowB :: Point -> BufferM Bool
 pointInWindowB p = nearRegion p <$> winRegionB
---  do w <- winRegionB;  trace ("pointInWindowB " ++ show w ++ " p = " ++ show p)
 
 -----------------------------
 -- Region-related operations
@@ -586,53 +623,49 @@ extendSelectRegionB region = (setSelectRegionB . unionRegion region) =<< getSele
 -- Some line related movements/operations
 
 deleteBlankLinesB :: BufferM ()
-deleteBlankLinesB =
-  do isThisBlank <- isBlank <$> readLnB
-     when isThisBlank $ do
-       p <- pointB
-       -- go up to the 1st blank line in the group
-       void $ whileB (isBlank <$> getNextLineB Backward) lineUp
-       q <- pointB
-       -- delete the whole blank region.
-       deleteRegionB $ mkRegion p q
+deleteBlankLinesB = do
+  isThisBlank <- isBlank <$> readLnB
+  when isThisBlank $ do
+    p <- pointB
+    -- go up to the 1st blank line in the group
+    void $ whileB (R.null <$> getNextLineB Backward) lineUp
+    q <- pointB
+    -- delete the whole blank region.
+    deleteRegionB $ mkRegion p q
 
 -- | Get a (lazy) stream of lines in the buffer, starting at the /next/ line
 -- in the given direction.
-lineStreamB :: Direction -> BufferM [String]
-lineStreamB dir = drop 1 . fmap rev . lines' . R.toString <$> (streamB dir =<< pointB)
-    where rev = case dir of
-                  Forward -> id
-                  Backward -> reverse
+lineStreamB :: Direction -> BufferM [YiString]
+lineStreamB dir = fmap rev . R.lines <$> (streamB dir =<< pointB)
+  where
+    rev = case dir of
+      Forward -> id
+      Backward -> R.reverse
 
-{-
-  | Get the next line of text in the given direction. This returns simply 'Nothing' if there
-  is no such line.
--}
-getMaybeNextLineB :: Direction -> BufferM (Maybe String)
+-- | Get the next line of text in the given direction. This returns
+-- simply 'Nothing' if there no such line.
+getMaybeNextLineB :: Direction -> BufferM (Maybe YiString)
 getMaybeNextLineB dir = listToMaybe <$> lineStreamB dir
 
-{-
-  | The same as 'getMaybeNextLineB' but avoids the use of the 'Maybe'
-  type in the return by returning the empty string if there is no next line.
--}
-getNextLineB :: Direction -> BufferM String
-getNextLineB dir = fromMaybe "" <$> getMaybeNextLineB dir
+-- | The same as 'getMaybeNextLineB' but avoids the use of the 'Maybe'
+-- type in the return by returning the empty string if there is no
+-- next line.
+getNextLineB :: Direction -> BufferM YiString
+getNextLineB dir = fromMaybe R.empty <$> getMaybeNextLineB dir
 
-{-
-  | Get closest line to the current line (not including the current line) in the given direction
-  which satisfies the given condition. Returns 'Nothing' if there is
-  no line which satisfies the condition.
--}
-getNextLineWhichB :: Direction -> (String -> Bool) -> BufferM (Maybe String)
+-- | Get closest line to the current line (not including the current
+-- line) in the given direction which satisfies the given condition.
+-- Returns 'Nothing' if there is no line which satisfies the
+-- condition.
+getNextLineWhichB :: Direction -> (YiString -> Bool) -> BufferM (Maybe YiString)
 getNextLineWhichB dir cond = listToMaybe . filter cond <$> lineStreamB dir
 
-{-
-  | Returns the closest line to the current line which is non-blank, in the given direction.
-  Returns the empty string if there is no such line (for example if
-  we are on the top line already).
--}
-getNextNonBlankLineB :: Direction -> BufferM String
-getNextNonBlankLineB dir = fromMaybe "" <$> getNextLineWhichB dir (not . isBlank)
+-- | Returns the closest line to the current line which is non-blank,
+-- in the given direction. Returns the empty string if there is no
+-- such line (for example if we are on the top line already).
+getNextNonBlankLineB :: Direction -> BufferM YiString
+getNextNonBlankLineB dir =
+  fromMaybe R.empty <$> getNextLineWhichB dir (not . R.null)
 
 ------------------------------------------------
 -- Some more utility functions involving
@@ -642,51 +675,58 @@ getNextNonBlankLineB dir = fromMaybe "" <$> getNextLineWhichB dir (not . isBlank
 -- Currently unsets the mark such that we have no selection, arguably
 -- we could instead work out where the new positions should be
 -- and move the mark and point accordingly.
-modifySelectionB :: (String -> String) -> BufferM ()
+modifySelectionB :: (R.YiString -> R.YiString) -> BufferM ()
 modifySelectionB = modifyExtendedSelectionB Character
 
-
-modifyExtendedSelectionB :: TextUnit -> (String -> String) -> BufferM ()
+modifyExtendedSelectionB :: TextUnit -> (R.YiString -> R.YiString) -> BufferM ()
 modifyExtendedSelectionB unit transform
     = modifyRegionB transform =<< unitWiseRegion unit =<< getSelectRegionB
 
--- | Prefix each line in the selection using
--- the given string.
-linePrefixSelectionB :: String -- ^ The string that starts a line comment
+-- | Prefix each line in the selection using the given string.
+linePrefixSelectionB :: R.YiString -- ^ The string that starts a line comment
                      ->  BufferM ()
-                         -- The returned buffer action
 linePrefixSelectionB s =
-  modifyExtendedSelectionB Line $ skippingLast $ mapLines (s++)
-  where skippingLast f xs = f (init xs) ++ [last xs]
+  modifyExtendedSelectionB Line . skippingLast $ mapLines (s <>)
+  where
+    -- Makes sure to not leave a comment in case we have a trailing
+    -- newline from 'mapLines'.
+    --
+    -- TODO: yi-rope init
+    skippingLast :: (R.YiString -> R.YiString) -> R.YiString -> R.YiString
+    skippingLast f xs = let l = R.length xs in case R.last xs of
+      Nothing -> xs
+      Just x  -> f (R.take (l - 1) xs) `R.snoc` x
 
 -- | Uncomments the selection using the given line comment
 -- starting string. This only works for the comments which
 -- begin at the start of the line.
-unLineCommentSelectionB :: String -- ^ The string which begins a line comment
-                        -> String -- ^ A potentially shorter string that begins a comment
+unLineCommentSelectionB :: R.YiString -- ^ The string which begins a
+                                      -- line comment
+                        -> R.YiString -- ^ A potentially shorter
+                                      -- string that begins a comment
                         -> BufferM ()
 unLineCommentSelectionB s1 s2 =
   modifyExtendedSelectionB Line $ mapLines unCommentLine
   where
-  unCommentLine :: String -> String
-  unCommentLine line
-    | s1 `isPrefixOf` line = drop (length s1) line
-    | s2 `isPrefixOf` line = drop (length s2) line
-    | otherwise            = line
+  (l1, l2) = (R.length s1, R.length s2)
+
+  unCommentLine :: R.YiString -> R.YiString
+  unCommentLine line = case (R.splitAt l1 line, R.splitAt l2 line) of
+    ((f, s) , (f', s')) | s1 == f   -> s
+                        | s2 == f'  -> s'
+                        | otherwise -> line
 
 -- | Just like 'toggleCommentSelectionB' but automatically inserts a
 -- whitespace suffix to the inserted comment string. In fact:
---
--- @toggleCommentB c = toggleCommentSelectionB (c ++ " ") foo@
-toggleCommentB :: String -> BufferM ()
-toggleCommentB c = toggleCommentSelectionB (c ++ " ") c
+toggleCommentB :: R.YiString -> BufferM ()
+toggleCommentB c = toggleCommentSelectionB (c `R.snoc` ' ') c
 
 -- | Toggle line comments in the selection by adding or removing a
 -- prefix to each line.
-toggleCommentSelectionB :: String -> String -> BufferM ()
+toggleCommentSelectionB :: R.YiString -> R.YiString -> BufferM ()
 toggleCommentSelectionB insPrefix delPrefix = do
   l <- readUnitB Line
-  if delPrefix `isPrefixOf` l
+  if delPrefix == R.take (R.length delPrefix) l
     then unLineCommentSelectionB insPrefix delPrefix
     else linePrefixSelectionB insPrefix
 
@@ -699,33 +739,34 @@ justifySelectionWithTopB :: BufferM ()
 justifySelectionWithTopB =
   modifySelectionB justifyLines
   where
-  justifyLines :: String -> String
+
+  justifyLines :: R.YiString -> R.YiString
   justifyLines input =
-    case lines input of
+    case R.lines input of
       []           -> ""
       [ one ]      -> one
       (top : _)    -> mapLines justifyLine input
-                      where
-                      -- The indentation of the top line.
-                      topIndent = takeWhile isSpace top
+        where
+          -- The indentation of the top line.
+          topIndent = R.takeWhile isSpace top
 
-                      -- Justify a single line by removing its current
-                      -- indentation and replacing it with that of the top
-                      -- line. Note that this will work even if the indentation
-                      -- contains tab characters.
-                      justifyLine :: String -> String
-                      justifyLine "" = ""
-                      justifyLine l  = topIndent ++ dropWhile isSpace l
+          -- Justify a single line by removing its current indentation
+          -- and replacing it with that of the top line. Note that
+          -- this will work even if the indentation contains tab
+          -- characters.
+          justifyLine :: R.YiString -> R.YiString
+          justifyLine "" = ""
+          justifyLine l  = topIndent <> R.dropWhile isSpace l
 
 -- | Replace the contents of the buffer with some string
-replaceBufferContent :: String -> BufferM ()
+replaceBufferContent :: YiString -> BufferM ()
 replaceBufferContent newvalue = do
   r <- regionOfB Document
   replaceRegionB r newvalue
 
 -- | Fill the text in the region so it fits nicely 80 columns.
 fillRegion :: Region -> BufferM ()
-fillRegion = modifyRegionClever (unlines' . fillText 80)
+fillRegion = modifyRegionClever (R.unlines . fillText 80)
 
 fillParagraph :: BufferM ()
 fillParagraph = fillRegion =<< regionOfB unitParagraph
@@ -735,12 +776,14 @@ sortLines :: BufferM ()
 sortLines = modifyExtendedSelectionB Line (onLines sort)
 
 -- | Helper function: revert the buffer contents to its on-disk version
-revertB :: Rope -> UTCTime -> BufferM ()
+revertB :: YiString -> UTCTime -> BufferM ()
 revertB s now = do
     r <- regionOfB Document
-    if R.length s <= smallBufferSize -- for large buffers, we must avoid building strings, because we'll end up using huge amounts of memory
-    then replaceRegionClever r (R.toString s)
-    else replaceRegionB' r s
+    -- for large buffers, we must avoid building strings, because
+    -- we'll end up using huge amounts of memory
+    if R.length s <= smallBufferSize
+    then replaceRegionClever r s
+    else replaceRegionB r s
     markSavedB now
 
 smallBufferSize :: Int
@@ -869,38 +912,39 @@ deleteRegionWithStyleB reg style = savingPointB $ do
     deleteRegionB effectiveRegion
     return $! regionStart effectiveRegion
 
-readRegionRopeWithStyleB :: Region -> RegionStyle -> BufferM Rope
+readRegionRopeWithStyleB :: Region -> RegionStyle -> BufferM YiString
 readRegionRopeWithStyleB reg Block = savingPointB $ do
     (start, lengths) <- shapeOfBlockRegionB reg
     moveTo start
     chunks <- forM lengths $ \l ->
         if l == 0
-        then lineMoveRel 1 >> return R.empty
+        then lineMoveRel 1 >> return mempty
         else do
             p <- pointB
-            r <- readRegionB' $ mkRegion p (p +~ Size l)
+            r <- readRegionB $ mkRegion p (p +~ Size l)
             void $ lineMoveRel 1
             return r
-    return $ R.concat $ intersperse "\n" chunks
-readRegionRopeWithStyleB reg style = readRegionB' =<< convertRegionToStyleB reg style
+    return $ R.intersperse '\n' chunks
+readRegionRopeWithStyleB reg style = readRegionB =<< convertRegionToStyleB reg style
 
-insertRopeWithStyleB :: Rope -> RegionStyle -> BufferM ()
+insertRopeWithStyleB :: YiString -> RegionStyle -> BufferM ()
 insertRopeWithStyleB rope Block = savingPointB $ do
-    let ls = R.split (fromIntegral (ord '\n')) rope
-        advanceLine = do
-            bottom <- atLastLine
-            if bottom
-            then do
-                col <- curCol
-                moveToEol
-                newlineB
-                insertN $ replicate col ' '
-            else void $ lineMoveRel 1
-    sequence_ $ intersperse advanceLine $ fmap (savingPointB . insertN') ls
+  let ls = R.lines rope
+      advanceLine = atLastLine >>= \case
+        False -> void $ lineMoveRel 1
+        True -> do
+          col <- curCol
+          moveToEol
+          newlineB
+          -- TODO: maybe implementing R.replicate would be faster?
+          -- Maybe a specialised version for characters. Benchmark.
+          insertN . R.fromText $ T.replicate col (T.singleton ' ')
+
+  sequence_ $ intersperse advanceLine $ fmap (savingPointB . insertN) ls
 insertRopeWithStyleB rope LineWise = do
     moveToSol
-    savingPointB $ insertN' rope
-insertRopeWithStyleB rope _ = insertN' rope
+    savingPointB $ insertN rope
+insertRopeWithStyleB rope _ = insertN rope
 
 -- consider the following buffer content
 --
@@ -964,3 +1008,64 @@ findMatchingPairB = do
     p <- pointB
     foundMatch <- goToMatch
     unless foundMatch $ moveTo p
+
+-- Vim numbers
+
+-- | Increase (or decrease if negative) next number on line by n.
+incrementNextNumberByB :: Int -> BufferM ()
+incrementNextNumberByB n = do
+    start <- pointB
+    untilB_ (not <$> isNumberB) (moveXorSol 1)
+    untilB_ (isNumberB) (moveXorEol 1)
+    begin <- pointB
+    beginIsEol <- atEol
+    untilB_ (not <$> isNumberB) (moveXorEol 1)
+    end <- pointB
+    if beginIsEol then moveTo start
+    else do modifyRegionB (increment n) (mkRegion begin end)
+            moveXorSol 1
+
+-- | Increment number in string by n.
+increment :: Int -> R.YiString -> R.YiString
+increment n l = R.fromString $ go (R.toString l)
+  where
+    go ('0':'x':xs) = ((\ys -> '0':'x':ys) . (flip showHex "") . (+ n) . (fst . head . readHex)) xs
+    go ('0':'o':xs) = ((\ys -> '0':'o':ys) . (flip showOct "") . (+ n) . (fst . head . readOct)) xs
+    go s            = (show . (+ n) . (\x -> read x :: Int)) s
+
+-- | Is character under cursor a number.
+isNumberB :: BufferM Bool
+isNumberB = do
+    eol <- atEol
+    sol <- atSol
+    if sol then isDigit <$> readB
+    else if eol then return False
+         else test3CharB
+
+-- | Used by isNumber to test if current character under cursor is a number.
+test3CharB :: BufferM Bool
+test3CharB = do
+    moveXorSol 1
+    previous <- readB
+    moveXorEol 2
+    next <- readB
+    moveXorSol 1
+    current <- readB
+    if | previous == '0' && current == 'o' && isOctDigit next -> return True  -- octal format
+       | previous == '0' && current == 'x' && isHexDigit next -> return True  -- hex format
+       |                    current == '-' && isDigit next    -> return True  -- negative numbers
+       |                    isDigit current                   -> return True  -- all decimal digits
+       |                    isHexDigit current                -> testHexB     -- ['a'..'f'] for hex
+       | otherwise                                            -> return False
+
+-- | Characters ['a'..'f'] are part of a hex number only if preceded by 0x.
+-- Test if the current occurence of ['a'..'f'] is part of a hex number.
+testHexB :: BufferM Bool
+testHexB = savingPointB $ do
+    untilB_ (not . isHexDigit <$> readB) (moveXorSol 1)
+    leftChar <- readB
+    moveXorSol 1
+    leftToLeftChar <- readB
+    if leftChar == 'x' && leftToLeftChar == '0'
+    then return True
+    else return False

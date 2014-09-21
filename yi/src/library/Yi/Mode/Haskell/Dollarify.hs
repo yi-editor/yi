@@ -1,44 +1,60 @@
+{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE PatternGuards #-}
+{-# OPTIONS_HADDOCK show-extensions #-}
+
+-- |
+-- Module      :  Yi.Mode.Haskell.Dollarify
+-- License     :  GPL-2
+-- Maintainer  :  yi-devel@googlegroups.com
+-- Stability   :  experimental
+-- Portability :  portable
+
 module Yi.Mode.Haskell.Dollarify where
 
-import Control.Applicative
-import Control.Monad
-import Data.Maybe (fromMaybe)
-import Data.List (sortBy)
-import Data.Function (on)
-import Yi.Syntax.Paren (Expr, Tree(..))
+import           Control.Applicative
+import           Control.Monad
+import           Data.Function (on)
+import           Data.List (sortBy)
+import           Data.Maybe (fromMaybe)
+import           Data.Monoid
+import           Data.Text ()
+import           Yi.Buffer hiding (Block)
+import           Yi.Debug
+import           Yi.Lexer.Alex (posnOfs, Tok(..))
+import           Yi.Lexer.Haskell (isComment, TT, Token(..))
+import qualified Yi.Rope as R
+import           Yi.String
 import qualified Yi.Syntax.Haskell as H (Tree, Exp(..))
-import Yi.Syntax.Tree (getAllSubTrees, getFirstOffset, getLastOffset,getLastPath)
-import Yi.Lexer.Alex (posnOfs, Tok(..))
-import Yi.Lexer.Haskell (isComment, TT, Token(..))
-import Yi.Buffer hiding (Block)
-import Yi.Debug
+import           Yi.Syntax.Paren (Expr, Tree(..))
+import           Yi.Syntax.Tree (getAllSubTrees, getFirstOffset,
+                                 getLastOffset, getLastPath)
 
 dollarify :: Tree TT -> BufferM ()
 dollarify t = maybe (return ()) dollarifyWithin . selectedTree [t] =<< getSelectRegionB
 
 dollarifyWithin :: Tree TT -> BufferM ()
-dollarifyWithin = trace . ("dollarifyWithin: " ++) . show <*> runQ . (dollarifyTop =<<) . getAllSubTrees
+dollarifyWithin = trace . ("dollarifyWithin: " <>) . showT <*> runQ . (dollarifyTop =<<) . getAllSubTrees
 
 data QueuedUpdate = QueuedUpdate { qUpdatePoint :: Point
-                                 , qInsert      :: String
+                                 , qInsert      :: R.YiString
                                  , qDelete      :: Int
                                  } deriving (Eq, Ord, Show)
 
 runQ :: [QueuedUpdate] -> BufferM ()
-runQ = trace . ("runQ: " ++) . show <*> mapM_ run1Q . sortBy (flip compare)
+runQ = trace . ("runQ: " <>) . showT <*> mapM_ run1Q . sortBy (flip compare)
     where
        run1Q :: QueuedUpdate -> BufferM ()
        run1Q (QueuedUpdate { qUpdatePoint = p, qInsert = i, qDelete = d })
               = do deleteNAt Forward d p
-                   unless (null i) $ insertNAt i p
+                   unless (R.null i) $ insertNAt i p
 
 openParen, closeParen :: Token
 openParen = Special '('
 closeParen = Special ')'
 
 isNormalParen :: Tree TT -> Bool
-isNormalParen (Paren t1 xs t2) = tokT t1 == openParen && tokT t2 == closeParen && not (any isTuple xs)
+isNormalParen (Paren t1 xs t2) =
+  tokT t1 == openParen && tokT t2 == closeParen && not (any isTuple xs)
 isNormalParen _               = False
 
 isTuple ::Tree TT -> Bool
@@ -50,7 +66,7 @@ queueDelete :: TT -> QueuedUpdate
 queueDelete = queueReplaceWith ""
 
 -- Assumes length of token is one character
-queueReplaceWith :: String -> TT -> QueuedUpdate
+queueReplaceWith :: R.YiString -> TT -> QueuedUpdate
 queueReplaceWith s t = QueuedUpdate { qUpdatePoint = posnOfs $ tokPosn t
                                     , qInsert = s
                                     , qDelete = 1
@@ -111,10 +127,11 @@ dollarifyP :: H.Tree TT -> BufferM ()
 dollarifyP e = maybe (return ()) dollarifyWithinP . selectedTreeP [e] =<< getSelectRegionB
 
 dollarifyWithinP :: H.Exp TT -> BufferM ()
-dollarifyWithinP = trace . ("dollarifyWithin: " ++) . show <*> runQ . (dollarifyTopP =<<) . getAllSubTrees
+dollarifyWithinP = trace . ("dollarifyWithin: " <>) . showT <*> runQ . (dollarifyTopP =<<) . getAllSubTrees
 
 isNormalParenP :: H.Exp TT -> Bool
-isNormalParenP (H.Paren (H.PAtom r _) xs (H.PAtom r' _)) = tokT r == openParen && tokT r' == closeParen && not (any isTupleP xs)
+isNormalParenP (H.Paren (H.PAtom r _) xs (H.PAtom r' _)) =
+  tokT r == openParen && tokT r' == closeParen && not (any isTupleP xs)
 isNormalParenP _               = False
 
 isTupleP :: H.Exp TT -> Bool

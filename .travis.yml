@@ -45,10 +45,10 @@ script:
  - travis_retry cabal-1.20 install -j2 -fpango --enable-tests -ftesting --only-dependencies --reorder-goals --force-reinstalls
  - cabal-1.20 install -j1 -fpango --enable-tests -ftesting
  - cd ../yi/example-configs
- - for config in yi-*.hs;
-   do
-     ghc -Wall --make $config;
-   done;
+ # - for config in yi-*.hs;
+ #   do
+ #     ghc -Wall --make $config;
+ #   done;
 
  - cd ../../yi-contrib
  - cabal-1.20 install

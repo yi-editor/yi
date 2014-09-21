@@ -14,9 +14,13 @@ newtype EditorM a = EditorM {fromEditorM :: ReaderT Config (State Editor) a}
 
 runEditor :: Config -> EditorM a -> Editor -> (Editor, a)
 
-class (Monad m, MonadState Editor m) => MonadEditor m
-    where askCfg :: m Config
-          withEditor :: EditorM a -> m a
-          withEditor f = do
-              cfg <- askCfg
-              getsAndModify (runEditor cfg f)
+class (Monad m, MonadState Editor m) => MonadEditor m where
+  askCfg :: m Config
+
+  withEditor :: EditorM a -> m a
+  withEditor f = do
+    cfg <- askCfg
+    getsAndModify (runEditor cfg f)
+
+  withEditor_ :: EditorM a -> m ()
+  withEditor_ = withEditor . void

@@ -23,14 +23,14 @@ terminateSubprocesses shouldTerminate _yi var = do
 -- | Start a subprocess with the given command and arguments.
 startSubprocess :: FilePath -> [String] -> (Either Exception ExitCode -> YiM x) -> YiM BufferRef
 startSubprocess cmd args onExit = onYiVar $ \yi var -> do
-        let (e', bufref) = runEditor 
-                              (yiConfig yi) 
-                              (printMsg ("Launched process: " ++ cmd) >> newBufferE (Left bufferName) (fromString ""))
+        let (e', bufref) = runEditor
+                              (yiConfig yi)
+                              (printMsg ("Launched process: " ++ cmd) >> newEmptyBufferE (Left bufferName))
                               (yiEditor var)
             procid = yiSubprocessIdSupply var + 1
         procinfo <- createSubprocess cmd args bufref
         startSubprocessWatchers procid procinfo yi onExit
-        return (var {yiEditor = e', 
+        return (var {yiEditor = e',
                      yiSubprocessIdSupply = procid,
                      yiSubprocesses = M.insert procid procinfo (yiSubprocesses var)
                     }, bufref)
@@ -71,13 +71,13 @@ sendToProcess bufref s = do
     io $ hPutStr (hIn subProcessInfo) s
 
 pipeToBuffer :: Handle -> (String -> IO ()) -> IO ()
-pipeToBuffer h append = 
+pipeToBuffer h append =
   handle (const $ return ()) $ forever $ (hWaitForInput h (-1) >> readAvailable h >>= append)
 
 
 waitForExit :: ProcessHandle -> IO (Either Exception ExitCode)
-waitForExit ph = 
-    handle (\e -> return (Left e)) $ do 
+waitForExit ph =
+    handle (\e -> return (Left e)) $ do
       mec <- getProcessExitCode ph
       case mec of
           Nothing -> threadDelay (500*1000) >> waitForExit ph

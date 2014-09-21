@@ -1,3 +1,5 @@
+{-# LANGUAGE OverloadedStrings #-}
+
 module Yi.UI.SimpleLayout
     ( Rect (..)
     , Layout (..)
@@ -15,6 +17,7 @@ import Data.List (partition)
 import qualified Data.List.PointedList.Circular as PL
 import qualified Data.Map.Strict as M
 import Data.Monoid
+import qualified Data.Text as T
 import Data.Traversable (mapM)
 
 import Yi.Buffer
@@ -102,7 +105,7 @@ layoutWindow win e w h = win
                        w
                        tabWidth
                        fromMarkPoint
-                       ([(-1, c) | c <- prompt] ++ text ++ [(eofPoint, ' ')])
+                       ([(-1, c) | c <- T.unpack prompt] ++ text ++ [(eofPoint, ' ')])
                              -- we always add one character which can be used to position the cursor at the end of file
 
 layoutText

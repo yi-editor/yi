@@ -81,7 +81,6 @@ editors = [("emacs", toEmacsStyleConfig),
            ("vim",  toVimStyleConfig),
            ("cua",   toCuaStyleConfig)]
 
-{-# ANN options "HLint: ignore Use string literal" #-}
 options :: [OptDescr Opts]
 options =
   [ Option []     ["self-check"]  (NoArg  SelfCheck)             "Run self-checks"
@@ -157,4 +156,3 @@ main :: (Config, ConsoleConfig) -> Maybe Editor -> IO ()
 main (cfg, _cfgcon) state = do
   when (debugMode cfg) $ initDebug ".yi.dbg"
   startEditor cfg state
-

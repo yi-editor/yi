@@ -1,0 +1,10 @@
+-- Input
+(1,1)
+Make sure aa bb cc dd ee ff 0x1 increments correctly.
+Make sure oo 0o1 increments correctly.
+-- Output
+(2,16)
+Make sure aa bb cc dd ee ff 0x2 increments correctly.
+Make sure oo 0o2 increments correctly.
+-- Events
+<C-a>+<C-a>

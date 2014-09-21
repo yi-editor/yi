@@ -1,10 +1,23 @@
-{- |
-Provides abstract controls which implement 'Yi.Layout.Layout's and which manage the minibuffer.
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE ViewPatterns #-}
+{-# LANGUAGE TupleSections #-}
+{-# OPTIONS_HADDOCK show-extensions #-}
 
-The implementation strategy is to first construct the layout managers @WeightedStack@ (implementing the 'Stack' constructor) and @SlidingPair@ (implementing the 'Pair' constructor), and then construct 'LayoutDisplay' as a tree of these, mirroring the structure of 'Layout'.
--}
-
-{-# LANGUAGE GeneralizedNewtypeDeriving, ViewPatterns, TupleSections #-}
+-- |
+-- Module      :  Yi.UI.Pango.Layouts
+-- License     :  GPL-2
+-- Maintainer  :  yi-devel@googlegroups.com
+-- Stability   :  experimental
+-- Portability :  portable
+--
+-- Provides abstract controls which implement 'Yi.Layout.Layout's and
+-- which manage the minibuffer.
+--
+-- The implementation strategy is to first construct the layout
+-- managers @WeightedStack@ (implementing the 'Stack' constructor) and
+-- @SlidingPair@ (implementing the 'Pair' constructor), and then
+-- construct 'LayoutDisplay' as a tree of these, mirroring the
+-- structure of 'Layout'.
 
 module Yi.UI.Pango.Layouts (
   -- * Getting the underlying widget
@@ -21,30 +34,32 @@ module Yi.UI.Pango.Layouts (
   -- * Tabs
   SimpleNotebook,
   simpleNotebookNew,
-  simpleNotebookSet, -- incorporates label names, removeTab, insertTabBefore, insertTab
+  simpleNotebookSet,
   simpleNotebookOnSwitchPage,
   -- * Utils
   update,
  ) where
 
-import Prelude hiding (mapM)
-import Control.Monad hiding (mapM, forM)
-import Control.Applicative
+import           Control.Applicative
+import           Control.Monad hiding (mapM, forM)
+import           Data.Foldable (toList)
+import           Data.IORef
 import qualified Data.List.PointedList as PL
-import Data.Traversable
-import Data.Foldable (toList)
-import Yi.Layout(Orientation(..), RelativeSize, DividerPosition, Layout(..), DividerRef)
-import System.Glib.Types
-import Graphics.UI.Gtk as Gtk hiding(Orientation, Layout)
-import Data.IORef
+import qualified Data.Text as T
+import           Data.Traversable
+import           Graphics.UI.Gtk as Gtk hiding(Orientation, Layout)
+import           Prelude hiding (mapM)
+import           Yi.Layout(Orientation(..), RelativeSize, DividerPosition,
+                           Layout(..), DividerRef)
 
 class WidgetLike w where
   -- | Extracts the main widget. This is the widget to be added to the GUI.
   baseWidget :: w -> Widget
 
 ----------------------- The WeightedStack type
-{- |
-A @WeightedStack@ is like a 'VBox' or 'HBox', except that we may specify the ratios of the areas of the child widgets (so this implements the 'Stack' constructor of 'Yi.Layout.Layout'.
+{- | A @WeightedStack@ is like a 'VBox' or 'HBox', except that we may
+specify the ratios of the areas of the child widgets (so this
+implements the 'Stack' constructor of 'Yi.Layout.Layout'.
 
 Essentially, we implement this layout manager from scratch, by
 implementing the 'sizeRequest' and 'sizeAllocate' signals by hand (see
@@ -333,7 +348,7 @@ miniwindowDisplaySet mwd ws = do
 data SimpleNotebook
    = SN
     { snMainWidget :: Notebook,
-      snTabs :: IORef (Maybe (PL.PointedList (Widget, String)))
+      snTabs :: IORef (Maybe (PL.PointedList (Widget, T.Text)))
     }
 
 instance WidgetLike SimpleNotebook where
@@ -347,7 +362,7 @@ simpleNotebookNew = do
   return (SN nb ts)
 
 -- | Sets the tabs
-simpleNotebookSet :: SimpleNotebook -> PL.PointedList (Widget, String) -> IO ()
+simpleNotebookSet :: SimpleNotebook -> PL.PointedList (Widget, T.Text) -> IO ()
 simpleNotebookSet sn ts = do
   curTs <- readIORef (snTabs sn)
 

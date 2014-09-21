@@ -1,19 +1,46 @@
+{-# LANGUAGE OverloadedStrings #-}
+{-# OPTIONS_HADDOCK show-extensions #-}
+
+-- |
+-- Module      :  Yi.Buffer.Region
+-- License     :  GPL-2
+-- Maintainer  :  yi-devel@googlegroups.com
+-- Stability   :  experimental
+-- Portability :  portable
+--
 -- Handles indentation in the keymaps. Includes:
+--
 --  * (TODO) Auto-indentation to the previous lines indentation
 --  * Tab-expansion
 --  * Shifting of the indentation for a region of text
 
-module Yi.Buffer.Indent where
+module Yi.Buffer.Indent
+    ( autoIndentB
+    , cycleIndentsB
+    , indentAsNextB
+    , indentAsPreviousB
+    , indentOfB
+    , indentOfCurrentPosB
+    , indentSettingsB
+    , indentToB
+    , newlineAndIndentB
+    , shiftIndentOfRegionB
+    , tabB
+    ) where
 
-import Control.Applicative
-import Yi.Buffer.Basic
-import Yi.Buffer.Misc
-import Yi.Buffer.HighLevel
-import Yi.Buffer.Normal
-import Yi.Buffer.Region
-import Data.Char
-import Data.List (sort, nub)
-import Yi.String
+import           Control.Applicative
+import           Data.Char
+import           Data.List (sort, nub)
+import           Data.Monoid
+import qualified Data.Text as T
+import           Yi.Buffer.Basic
+import           Yi.Buffer.HighLevel
+import           Yi.Buffer.Misc
+import           Yi.Buffer.Normal
+import           Yi.Buffer.Region
+import           Yi.Rope (YiString)
+import qualified Yi.Rope as R
+import           Yi.String
 
 {- |
   Return either a \t or the number of spaces specified by tabSize in the
@@ -48,12 +75,12 @@ autoIndentB = autoIndentHelperB fetchPreviousIndentsB indentsOfString
   --     The indent of the given string
   --     The indent of the given string plus two
   --     The offset of the last open bracket if any in the line.
-  indentsOfString :: String -> BufferM [Int]
-  indentsOfString input =
-    do indent       <- indentOfB input
-       bracketHints <- lastOpenBracketHint input
-       indentSettings <- indentSettingsB
-       return $ indent : (indent + shiftWidth indentSettings) : bracketHints
+  indentsOfString :: YiString -> BufferM [Int]
+  indentsOfString input = do
+    indent       <- indentOfB input
+    bracketHints <- lastOpenBracketHint input
+    indentSettings <- indentSettingsB
+    return $ indent : (indent + shiftWidth indentSettings) : bracketHints
 
 {-|
   This takes two arguments the first is a function to
@@ -74,7 +101,7 @@ autoIndentB = autoIndentHelperB fetchPreviousIndentsB indentsOfString
 -}
 autoIndentHelperB :: BufferM [ Int ]
                   -- ^ Action to fetch hints from previous lines
-                 -> (String -> BufferM [ Int ])
+                 -> (YiString -> BufferM [ Int ])
                  -- ^ Action to calculate hints from previous line
                  -> IndentBehaviour
                  -- ^ Sets the indent behaviour,
@@ -158,20 +185,20 @@ cycleIndentsB indentBehave indents =
   the outer scope.
 -}
 fetchPreviousIndentsB :: BufferM [Int]
-fetchPreviousIndentsB =
-     -- Move up one line,
-  do moveOffset <- lineMoveRel (-1)
-     line       <- readLnB
-     indent     <- indentOfB line
-     -- So if we didn't manage to move upwards
-     -- or the current offset was zero *and* the line
-     -- was non-blank then we return just the current
-     -- indent (it might be the first line but indented some.)
-     if moveOffset == 0 ||
-        ( indent == 0 &&
-          any (not . isSpace) line )
-        then return [ indent ]
-        else (indent :) <$> fetchPreviousIndentsB
+fetchPreviousIndentsB = do
+  -- Move up one line,
+  moveOffset <- lineMoveRel (-1)
+  line       <- readLnB
+  indent     <- indentOfB line
+  -- So if we didn't manage to move upwards
+  -- or the current offset was zero *and* the line
+  -- was non-blank then we return just the current
+  -- indent (it might be the first line but indented some.)
+  --
+  -- TODO: implement ‘any’ for YiString
+  if moveOffset == 0 || (indent == 0 && T.any (not . isSpace) (R.toText line))
+    then return [ indent ]
+    else (indent :) <$> fetchPreviousIndentsB
 
 
 {-| An application of 'autoIndentHelperB' which adds more
@@ -185,22 +212,22 @@ fetchPreviousIndentsB =
     default ('autoIndentB') which is to use any non-closed
     opening brackets as hints.
 -}
-autoIndentWithKeywordsB :: [ String ]   -- ^ Keywords to act as hints
-                        -> [ String ]   -- ^ Keywords to act as offset hints
+autoIndentWithKeywordsB :: [ R.YiString ]   -- ^ Keywords to act as hints
+                        -> [ R.YiString ]   -- ^ Keywords to act as offset hints
                         -> IndentBehaviour
                         -> BufferM ()
 autoIndentWithKeywordsB firstKeywords secondKeywords =
   autoIndentHelperB fetchPreviousIndentsB getPreviousLineHints
   where
-  getPreviousLineHints :: String -> BufferM [ Int ]
-  getPreviousLineHints input =
-    do indent       <- indentOfB input
-       bracketHints <- lastOpenBracketHint input
-       keyHintsOne  <- keywordHints firstKeywords input
-       keyHintsTwo  <- keywordAfterHints secondKeywords input
-       return $ indent : (indent + 2) : ( bracketHints ++
-                                          keyHintsOne  ++
-                                          keyHintsTwo )
+  getPreviousLineHints :: YiString -> BufferM [ Int ]
+  getPreviousLineHints input = do
+    indent       <- indentOfB input
+    bracketHints <- lastOpenBracketHint input
+    keyHintsOne  <- keywordHints firstKeywords input
+    keyHintsTwo  <- keywordAfterHints secondKeywords input
+    return $ indent : (indent + 2) : ( bracketHints ++
+                                       keyHintsOne  ++
+                                       keyHintsTwo )
 
 -- | Returns the position of the last opening bracket on the
 -- line which is not closed on the same line.
@@ -219,11 +246,11 @@ autoIndentWithKeywordsB firstKeywords secondKeywords =
 -- TODO: we also do not care whether or not the bracket is within
 -- a string or escaped. If someone feels up to caring about that
 -- by all means please fix this.
-lastOpenBracketHint :: String -> BufferM [ Int ]
+lastOpenBracketHint :: YiString -> BufferM [ Int ]
 lastOpenBracketHint input =
-  case getOpen 0 $ reverse input of
+  case getOpen 0 $ R.reverse input of
     Nothing -> return []
-    Just s  -> (: []) <$> spacingOfB s
+    Just s  -> return <$> spacingOfB s
   where
   -- We get the last open bracket by counting through
   -- the reversed line, when we see a closed bracket we
@@ -234,21 +261,21 @@ lastOpenBracketHint input =
   -- This can then be turned into an indentation by calling 'spacingOfB'
   -- on it so that tabs are counted as tab length.
   -- NOTE: that this will work even if tab occur in the middle of the line
-  getOpen :: Int -> String -> Maybe String
-  -- We of course return nothing, there is no bracket to give a hint.
-  getOpen _ []               = Nothing
-  getOpen i (c : rest)
-      -- If it is opening and we have no closing to match
-      -- then we return the rest of the line
-    | isOpening c && i == 0 = Just rest
-      -- If i is not zero then we have matched one of the
-      -- closing parentheses and we can decrease the nesting count.
-    | isOpening c           = getOpen (i - 1) rest
-      -- If the character is a closing bracket then we must increase
-      -- the nesting count
-    | isClosing c           = getOpen (i + 1) rest
-      -- If it is just a normal character forget about it and move on.
-    | otherwise             = getOpen i rest
+  getOpen :: Int -> YiString -> Maybe YiString
+  getOpen i s = let rest = R.drop 1 s in case R.head s of
+    Nothing -> Nothing
+    Just c
+        -- If it is opening and we have no closing to match
+        -- then we return the rest of the line
+      | isOpening c && i == 0 -> Just rest
+        -- If i is not zero then we have matched one of the
+        -- closing parentheses and we can decrease the nesting count.
+      | isOpening c           -> getOpen (i - 1) rest
+        -- If the character is a closing bracket then we must increase
+        -- the nesting count
+      | isClosing c           -> getOpen (i + 1) rest
+        -- If it is just a normal character forget about it and move on.
+      | otherwise             -> getOpen i rest
 
   isOpening :: Char -> Bool
   isOpening '(' = True
@@ -266,23 +293,27 @@ lastOpenBracketHint input =
 -- | Returns the offsets of all the given keywords
 -- within the given string. This is potentially useful
 -- as providing indentation hints.
-keywordHints :: [ String ] -> String -> BufferM [ Int ]
-keywordHints keywords =
-  getHints 0
+--
+-- TODO: yi-rope needs break and span for this
+keywordHints :: [ R.YiString ] -> R.YiString -> BufferM [ Int ]
+keywordHints keywordsTODO inpTODO = getHints 0 (R.toText inpTODO)
   where
+  keywords = R.toText <$> keywordsTODO
   -- Calculate the indentation hints of keywords from the
   -- given string. The first argument is the current offset.
   -- NOTE: that we have to take into account how long tab characters
   -- are according to the indentation settings.
-  getHints :: Int -> String -> BufferM [ Int ]
-  getHints _i []                     = return []
+  --
+  -- TODO: break/span for yi-rope
+  getHints :: Int -> T.Text -> BufferM [ Int ]
+  getHints _i ""                     = return []
   getHints i input
     -- If there are no non-white characters left return zero hints.
-    | null rest                      = return []
+    | T.null rest                      = return []
     -- Check if there are white space characters at the front and if
     -- so then calculate the ident of it and carry on.
-    | not $ null white               = do spaceSize <- spacingOfB white
-                                          getHints (i + spaceSize) rest
+    | not $ T.null white = do spaceSize <- spacingOfB (R.fromText white)
+                              getHints (i + spaceSize) rest
     -- If there are no white space characters check if we are looking
     -- at a keyword and if so add it as a hint
     | initNonWhite `elem` keywords = (i :) <$> whiteRestHints
@@ -290,12 +321,12 @@ keywordHints keywords =
     | otherwise                      = whiteRestHints
     where
     -- Separate into the leading non-white characters and the rest
-    (initNonWhite, whiteRest) = break isSpace input
+    (initNonWhite, whiteRest) = T.break isSpace input
     -- Separate into the leading white space characters and the rest
-    (white, rest)             = span isSpace input
+    (white, rest)             = T.span isSpace input
     -- Get the hints from everything after any leading non-white space.
     -- This should only be used if there is no white space at the start.
-    whiteRestHints            = getHints (i + length initNonWhite) whiteRest
+    whiteRestHints            = getHints (i + T.length initNonWhite) whiteRest
 
 
 -- | Returns the offsets of anything that isn't white space 'after'
@@ -304,63 +335,59 @@ keywordHints keywords =
 -- for each keyword on the input rather than return the offset at
 -- the start of the keyword we return the offset of the first non-white
 -- character after the keyword.
-keywordAfterHints :: [ String ] -> String -> BufferM [ Int ]
-keywordAfterHints keywords =
-  getHints 0
+keywordAfterHints :: [ R.YiString ] -> R.YiString -> BufferM [ Int ]
+keywordAfterHints keywordsTODO inpTODO = getHints 0 (R.toText inpTODO)
   where
+  keywords = R.toText <$> keywordsTODO
   -- Calculate the indentation hints of keywords from the
   -- given string. The first argument is the current offset.
   -- NOTE: that we have to take into account how long tab characters
   -- are according to the indentation settings.
-  getHints :: Int -> String -> BufferM [ Int ]
-  getHints _i []                  = return []
+  getHints :: Int -> T.Text -> BufferM [ Int ]
+  getHints _i ""                  = return []
   getHints i input
     -- If there is any preceding white space then just take the length
     -- of it (according to the indentation settings and proceed.
-    | not $ null indentation      = do indent <- spacingOfB indentation
-                                       getHints (i + indent) nonWhite
+    | not $ T.null indentation      = do
+        indent <- spacingOfB (R.fromText indentation)
+        getHints (i + indent) nonWhite
     -- If there is a keyword at the current position and
     -- the keyword isn't the last thing on the line.
     | key `elem` keywords
-      && not (null afterwhite)    =  do indent    <- spacingOfB white
-                                        let hint  =  i + length key + indent
-                                        tailHints <- getHints hint afterwhite
-                                        return $ hint : tailHints
+      && not (T.null afterwhite)    =  do
+        indent    <- spacingOfB (R.fromText white)
+        let hint  =  i + T.length key + indent
+        tailHints <- getHints hint afterwhite
+        return $ hint : tailHints
     -- we don't have a hint and we can re-try for the rest of the line
     | otherwise                   = afterKeyHints
     where
     -- Split the input into the preceding white space and the rest
-    (indentation, nonWhite) = span isSpace input
+    (indentation, nonWhite) = T.span isSpace input
 
     -- The keyword and what is after the keyword
     -- this is only used if 'indentation' is null so we needn't worry that
     -- we are taking from the input rather than 'nonWhite'
-    (key, afterkey)     = break isSpace input
+    (key, afterkey)     = T.break isSpace input
     -- The white space and what is after the white space
-    (white, afterwhite) = span  isSpace afterkey
+    (white, afterwhite) = T.span isSpace afterkey
 
     -- Get the hints from everything after any leading non-white space.
     -- This should only be used if there is no white space at the start.
-    afterKeyHints       = getHints (i + length key) afterkey
+    afterKeyHints       = getHints (i + T.length key) afterkey
 
 
-{-|
-  Returns the indentation of a given string. Note that this depends
-  on the current indentation settings.
--}
-indentOfB :: String -> BufferM Int
-indentOfB = spacingOfB . takeWhile isSpace
+-- | Returns the indentation of a given string. Note that this depends
+--on the current indentation settings.
+indentOfB :: YiString -> BufferM Int
+indentOfB = spacingOfB . R.takeWhile isSpace
 
-{-| Returns the length of a given string taking into account the
-    white space and the indentation settings.
--}
-spacingOfB :: String -> BufferM Int
-spacingOfB text =
-  do indentSettings <- indentSettingsB
-     let spacingOfChar :: Char -> Int
-         spacingOfChar '\t' = tabSize indentSettings
-         spacingOfChar _    = 1
-     return (sum $ fmap spacingOfChar text)
+-- | Returns the length of a given string taking into account the
+-- white space and the indentation settings.
+spacingOfB :: YiString -> BufferM Int
+spacingOfB text = do
+  indentSettings <- indentSettingsB
+  return $ countIndent indentSettings text
 
 {-| Indents the current line to the given indentation level.
     In addition moves the point according to where it was on the
@@ -372,8 +399,8 @@ spacingOfB text =
 -}
 indentToB :: Int -> BufferM ()
 indentToB level = do
-    indentSettings <- indentSettingsB
-    modifyRegionClever (rePadString indentSettings level) =<< regionOfB Line
+  indentSettings <- indentSettingsB
+  modifyRegionClever (rePadString indentSettings level) =<< regionOfB Line
 
 -- | Indent as much as the previous line
 indentAsPreviousB :: BufferM ()
@@ -384,10 +411,10 @@ indentAsNextB :: BufferM ()
 indentAsNextB = indentAsNeighborLineB Forward
 
 indentAsNeighborLineB :: Direction -> BufferM ()
-indentAsNeighborLineB dir =
-  do otherLine   <- getNextNonBlankLineB dir
-     otherIndent <- indentOfB otherLine
-     indentToB otherIndent
+indentAsNeighborLineB dir = do
+  otherLine   <- getNextNonBlankLineB dir
+  otherIndent <- indentOfB otherLine
+  indentToB otherIndent
 
 -- | Insert a newline at point and indent the new line as the previous one.
 newlineAndIndentB :: BufferM ()
@@ -395,43 +422,55 @@ newlineAndIndentB = newlineB >> indentAsPreviousB
 
 -- | Set the padding of the string to newCount, filling in tabs if
 -- expandTabs is set in the buffers IndentSettings
-rePadString :: IndentSettings -> Int -> String -> String
-rePadString indentSettings newCount input
-    | newCount <= 0 = rest
-    | expandTabs indentSettings = replicate newCount ' ' ++ rest
-    | otherwise = tabs ++ spaces ++ rest
-    where (_indents,rest) = span isSpace input
-          tabs   = replicate (newCount `div` tabSize indentSettings) '\t'
-          spaces = replicate (newCount `mod` tabSize indentSettings) ' '
+rePadString :: IndentSettings -> Int -> R.YiString -> R.YiString
+rePadString indentSettings newCount input'
+    | newCount <= 0 = R.fromText rest
+    | expandTabs indentSettings = R.fromText $ T.replicate newCount " " <> rest
+    | otherwise = R.fromText $ tabs <> spaces <> rest
+    where (_indents,rest) = T.span isSpace input
+          tabs   = T.replicate (newCount `div` tabSize indentSettings) "\t"
+          spaces = T.replicate (newCount `mod` tabSize indentSettings) " "
+          input = R.toText input'
 
+-- | Counts the size of the indent in the given text.
+--
+-- Assumes nothing but tabs and spaces: uses 'isSpace'.
+countIndent :: IndentSettings -> R.YiString -> Int
+countIndent i t = T.foldl' (\i' c -> i' + spacing c) 0 indents
+  where
+    (indents, _) = T.span isSpace (R.toText t)
+
+    spacing '\t' = tabSize i
+    spacing _    = 1
 
 -- | shifts right (or left if num is negative) num times, filling in tabs if
 -- expandTabs is set in the buffers IndentSettings
-indentString :: IndentSettings -> Int -> String -> String
-indentString indentSettings numOfShifts input = rePadString indentSettings newCount input
-    where (indents,_) = span isSpace input
-          countSpace '\t' = tabSize indentSettings
-          countSpace _ = 1 -- we'll assume nothing but tabs and spaces
-          newCount = sum (fmap countSpace indents) + (shiftWidth indentSettings * numOfShifts)
+indentString :: IndentSettings -> Int -> R.YiString -> R.YiString
+indentString is numOfShifts i = rePadString is newCount i
+    where
+      newCount = countIndent is i + (shiftWidth is * numOfShifts)
 
 -- | Increases the indentation on the region by the given amount of shiftWidth
-shiftIndentOfRegion :: Int -> Region -> BufferM ()
-shiftIndentOfRegion shiftCount region = do
-    indentSettings <- indentSettingsB
-    modifyRegionB (mapLines (indentString indentSettings shiftCount `unless` null)) region
+shiftIndentOfRegionB :: Int -> Region -> BufferM ()
+shiftIndentOfRegionB shiftCount region = do
+    is <- indentSettingsB
+    let i :: R.YiString -> R.YiString
+        i = indentString is shiftCount `unless` R.null
+    modifyRegionB (mapLines i) region
     moveTo $ regionStart region
     firstNonSpaceB
   where (f `unless` c) x = if c x then x else f x
 
 deleteIndentOfRegion :: Region -> BufferM ()
-deleteIndentOfRegion = modifyRegionB (mapLines $ dropWhile isSpace)
+deleteIndentOfRegion = modifyRegionB (mapLines $ R.dropWhile isSpace)
 
--- | Return the number of spaces at the beginning of the line, up to the point.
+-- | Return the number of spaces at the beginning of the line, up to
+-- the point.
 indentOfCurrentPosB :: BufferM Int
 indentOfCurrentPosB = do
-    p <- pointB
-    moveToSol
-    sol <- pointB
-    moveTo p
-    let region = mkRegion p sol
-    readRegionB region >>=  spacingOfB
+  p <- pointB
+  moveToSol
+  sol <- pointB
+  moveTo p
+  let region = mkRegion p sol
+  readRegionB region >>= spacingOfB

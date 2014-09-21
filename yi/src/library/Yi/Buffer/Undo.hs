@@ -152,7 +152,7 @@ undoUntilInteractive pointMark xs ur@(URList cs rs) b = case cs of
             (b'', (ur'', xs'')) = undoUntilInteractive pointMark xs ur' b'
         in (b'', (ur'', u:xs''))
     where
-      -- | Apply a /valid/ update and also move point in buffer to update position
+      -- Apply a /valid/ update and also move point in buffer to update position
       applyUpdateWithMoveI :: Update -> BufferImpl syntax -> BufferImpl syntax
       applyUpdateWithMoveI u = case updateDirection u of
                                  Forward ->  apply . move

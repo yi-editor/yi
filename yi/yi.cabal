@@ -61,6 +61,7 @@ library
     Yi
     Yi.Boot
     Yi.Buffer
+    Yi.Buffer.Adjusted
     Yi.Buffer.HighLevel
     Yi.Buffer.Indent
     Yi.Buffer.Normal
@@ -206,7 +207,6 @@ library
     dlist >=0.4.1,
     dyre >=0.8.11,
     filepath>=1.1 && <1.4,
-    fingertree >= 0 && <0.2,
     hashable >=1.1.2.5,
     hint > 0.3.1,
     mtl >= 0.1.0.1,
@@ -217,7 +217,7 @@ library
     safe >= 0.3.4 && < 0.4,
     split >= 0.1 && < 0.3,
     template-haskell >= 2.4,
-    text,
+    text == 1.1.1.3,
     time >= 1.1 && < 1.5,
     utf8-string >= 0.3.1,
     unix-compat >=0.1 && <0.5,
@@ -227,7 +227,8 @@ library
     semigroups,
     word-trie >= 0.2.0.4,
     yi-language >= 0.1.0.2,
-    oo-prototypes
+    oo-prototypes,
+    yi-rope >= 0.2.1.12
 
   build-tools: alex >= 3.0.3
   ghc-options: -Wall -fno-warn-orphans
@@ -289,7 +290,6 @@ library
     -- Should probably be split out to another package.
     Control.Exc,
     Data.DelayList,
-    Data.Rope,
     System.CanonicalizePath,
     System.FriendlyPath
 
@@ -315,7 +315,7 @@ Test-Suite test-suite
   main-is: TestSuite.hs
   build-depends:
     base,
-    lens >= 4.0,
+    lens >= 4.4.0.1,
     semigroups,
     tasty,
     tasty-hunit,
@@ -324,5 +324,7 @@ Test-Suite test-suite
     QuickCheck,
     filepath,
     directory,
+    text,
     yi-language >= 0.1.0.2,
+    yi-rope,
     yi

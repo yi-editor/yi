@@ -36,18 +36,16 @@ import           Data.DeriveTH
 #else
 import           GHC.Generics (Generic)
 #endif
-import           Data.Either (rights)
 import           Data.Foldable hiding (forM_)
+import           Data.List (delete, (\\))
 import           Data.List.NonEmpty (fromList, NonEmpty(..), nub)
 import qualified Data.List.NonEmpty as NE
-import           Data.List (delete, (\\))
 import qualified Data.List.PointedList as PL (atEnd, moveTo)
 import qualified Data.List.PointedList.Circular as PL
 import qualified Data.Map as M
 import           Data.Maybe
-import           Data.Rope (Rope)
-import qualified Data.Rope as R
 import           Data.Semigroup
+import qualified Data.Text as T
 import           Data.Typeable
 import           Prelude hiding (foldl,concatMap,foldr,all)
 import           System.FilePath (splitPath)
@@ -60,13 +58,16 @@ import           Yi.JumpList
 import           Yi.KillRing
 import           Yi.Layout
 import           Yi.Monad
+import           Yi.Rope (YiString, fromText, empty)
+import qualified Yi.Rope as R
+import           Yi.String
 import           Yi.Style (StyleName, defaultStyle)
 import           Yi.Tab
 import           Yi.Utils hiding ((+~))
 import           Yi.Window
 import           {-# source #-} Yi.Keymap (extractTopKeymap)
 
-type Status = ([String],StyleName)
+type Status = ([T.Text], StyleName)
 type Statuses = DelayList.DelayList Status
 
 -- | The Editor state
@@ -115,18 +116,26 @@ instance Binary Editor where
 newtype EditorM a = EditorM {fromEditorM :: ReaderT Config (State Editor) a}
     deriving (Monad, MonadState Editor, MonadReader Config, Functor)
 
+#if __GLASGOW_HASKELL__ < 708
 deriving instance Typeable1 EditorM
+#else
+deriving instance Typeable EditorM
+#endif
 
 instance Applicative EditorM where
   pure = return
   (<*>) = ap
 
-class (Monad m, MonadState Editor m) => MonadEditor m
-    where askCfg :: m Config
-          withEditor :: EditorM a -> m a
-          withEditor f = do
-              cfg <- askCfg
-              getsAndModify (runEditor cfg f)
+class (Monad m, MonadState Editor m) => MonadEditor m where
+  askCfg :: m Config
+
+  withEditor :: EditorM a -> m a
+  withEditor f = do
+    cfg <- askCfg
+    getsAndModify (runEditor cfg f)
+
+  withEditor_ :: EditorM a -> m ()
+  withEditor_ = withEditor . void
 
 liftEditor :: MonadEditor m => EditorM a -> m a
 liftEditor = withEditor
@@ -151,7 +160,7 @@ emptyEditor = Editor
   , maxStatusHeight = 1
   , onCloseActions = M.empty
   }
-  where buf = newB 0 (Left "console") ""
+  where buf = newB 0 (MemBuffer "console") mempty
         win = (dummyWindow (bkey buf)) { wkey = WindowRef 1 , isMini = False }
         tab = makeTab1 2 win
 
@@ -195,7 +204,8 @@ newBufRef = BufferRef <$> newRef
 -- | Does not focus the window, or make it the current window.
 -- | Call newWindowE or switchToBufferE to take care of that.
 stringToNewBuffer :: BufferId -- ^ The buffer indentifier
-                  -> Rope -- ^ The contents with which to populate the buffer
+                  -> YiString -- ^ The contents with which to populate
+                              -- the buffer
                   -> EditorM BufferRef
 stringToNewBuffer nm cs = do
     u <- newBufRef
@@ -276,11 +286,12 @@ bufferSet = M.elems . buffers
 
 -- | Return a prefix that can be removed from all buffer paths while
 -- keeping them unique.
-commonNamePrefix :: Editor -> [String]
+commonNamePrefix :: Editor -> [FilePath]
 commonNamePrefix = commonPrefix . fmap (dropLast . splitPath)
-                   . rights . fmap (^. identA) . bufferSet
+                   . fbufs . fmap (^. identA) . bufferSet
   where dropLast [] = []
         dropLast x = init x
+        fbufs xs = [ x | FileBuffer x <- xs ]
           -- drop the last component, so that it is never hidden.
 
 getBufferStack :: EditorM (NonEmpty FBuffer)
@@ -298,18 +309,18 @@ findBufferWith k e = case M.lookup k (buffers e) of
   Nothing -> error "Editor.findBufferWith: no buffer has this key"
 
 -- | Find buffers with this name
-findBufferWithName :: String -> Editor -> [BufferRef]
+findBufferWithName :: T.Text -> Editor -> [BufferRef]
 findBufferWithName n e =
   let bufs = (M.elems $ buffers e)
       sameIdent b = shortIdentString (commonNamePrefix e) b == n
   in map bkey $ filter sameIdent bufs
 
 -- | Find buffer with given name. Fail if not found.
-getBufferWithName :: String -> EditorM BufferRef
+getBufferWithName :: T.Text -> EditorM BufferRef
 getBufferWithName bufName = do
   bs <- gets $ findBufferWithName bufName
   case bs of
-    [] -> fail ("Buffer not found: " ++ bufName)
+    [] -> fail ("Buffer not found: " ++ T.unpack bufName)
     b:_ -> return b
 
 -- | Make all buffers visible by splitting the current window list.
@@ -349,7 +360,7 @@ withGivenBufferAndWindow0 w k f = do
                in (e & buffersA .~ mapAdjust' (const b') k (buffers e)
                      & killringA %~
                         if accum && all updateIsDelete us
-                        then foldl (.) id $ reverse [ krPut dir (R.toString s)
+                        then foldl (.) id $ reverse [ krPut dir s
                                                     | Delete _ dir s <- us ]
                         else id
 
@@ -381,11 +392,12 @@ currentBuffer = NE.head . bufferStack
 -----------------------
 -- Handling of status
 
--- | Display a transient message
-printMsg :: String -> EditorM ()
+-- | Prints a message with 'defaultStyle'.
+printMsg :: T.Text -> EditorM ()
 printMsg s = printStatus ([s], defaultStyle)
 
-printMsgs :: [String] -> EditorM ()
+-- | Prints a all given messages with 'defaultStyle'.
+printMsgs :: [T.Text] -> EditorM ()
 printMsgs s = printStatus (s, defaultStyle)
 
 printStatus :: Status -> EditorM ()
@@ -399,7 +411,7 @@ setStatus = setTmpStatus maxBound
 clrStatus :: EditorM ()
 clrStatus = setStatus ([""], defaultStyle)
 
-statusLine :: Editor -> [String]
+statusLine :: Editor -> [T.Text]
 statusLine = fst . statusLineInfo
 
 statusLineInfo :: Editor -> Status
@@ -410,23 +422,24 @@ setTmpStatus :: Int -> Status -> EditorM ()
 setTmpStatus delay s = do
   statusLinesA %= DelayList.insert (delay, s)
   -- also show in the messages buffer, so we don't loose any message
-  bs <- gets (filter (\b -> b ^. identA == Left "messages") . M.elems . buffers)
+  bs <- gets (filter (\b -> b ^. identA == MemBuffer "messages") . M.elems . buffers)
 
   b <- case bs of
          (b':_) -> return $ bkey b'
-         [] -> stringToNewBuffer (Left "messages") ""
-  withGivenBuffer0 b $ do botB; insertN (show s ++ "\n")
+         [] -> stringToNewBuffer (MemBuffer "messages") mempty
+  let m = '(' `T.cons` listifyT (fst s) `T.append` ", <function>)"
+  withGivenBuffer0 b $ botB >> insertN (R.fromText m)
 
 
 -- ---------------------------------------------------------------------
 -- kill-register (vim-style) interface to killring.
 
 -- | Put string into yank register
-setRegE :: String -> EditorM ()
+setRegE :: R.YiString -> EditorM ()
 setRegE s = killringA %= krSet s
 
 -- | Return the contents of the yank register
-getRegE :: EditorM String
+getRegE :: EditorM R.YiString
 getRegE = uses killringA krGet
 
 -- ---------------------------------------------------------------------
@@ -456,16 +469,20 @@ prevBufW :: EditorM ()
 prevBufW = shiftBuffer (negate 1)
 
 -- | Like fnewE, create a new buffer filled with the String @s@,
--- Switch the current window to this buffer. Doesn't associate any file
--- with the buffer (unlike fnewE) and so is good for popup internal
--- buffers (like scratch)
+-- Switch the current window to this buffer. Doesn't associate any
+-- file with the buffer (unlike fnewE) and so is good for popup
+-- internal buffers (like scratch)
 newBufferE :: BufferId   -- ^ buffer name
-              -> Rope -- ^ buffer contents
-              -> EditorM BufferRef
+           -> YiString -- ^ buffer contents
+           -> EditorM BufferRef
 newBufferE f s = do
     b <- stringToNewBuffer f s
     switchToBufferE b
     return b
+
+-- | Like 'newBufferE' but defaults to empty contents.
+newEmptyBufferE :: BufferId -> EditorM BufferRef
+newEmptyBufferE f = newBufferE f Yi.Rope.empty
 
 alternateBufferE :: Int -> EditorM ()
 alternateBufferE n = do
@@ -494,18 +511,19 @@ switchToBufferOtherWindowE b = shiftOtherWindow >> switchToBufferE b
 
 -- | Switch to the buffer specified as parameter. If the buffer name
 -- is empty, switch to the next buffer.
-switchToBufferWithNameE :: String -> EditorM ()
+switchToBufferWithNameE :: T.Text -> EditorM ()
 switchToBufferWithNameE "" = alternateBufferE 0
 switchToBufferWithNameE bufName = switchToBufferE =<< getBufferWithName bufName
 
 -- | Close a buffer.
 -- Note: close the current buffer if the empty string is given
-closeBufferE :: String -> EditorM ()
+closeBufferE :: T.Text -> EditorM ()
 closeBufferE nm = deleteBuffer =<< getBufferWithNameOrCurrent nm
 
-getBufferWithNameOrCurrent :: String -> EditorM BufferRef
-getBufferWithNameOrCurrent [] = gets currentBuffer
-getBufferWithNameOrCurrent nm = getBufferWithName nm
+getBufferWithNameOrCurrent :: T.Text -> EditorM BufferRef
+getBufferWithNameOrCurrent t = case T.null t of
+  True -> gets currentBuffer
+  False -> getBufferWithName t
 
 
 ------------------------------------------------------------------------
@@ -727,18 +745,18 @@ withOtherWindow f = do
   liftEditor prevWinE
   return x
 
-acceptedInputs :: EditorM [String]
+acceptedInputs :: EditorM [T.Text]
 acceptedInputs = do
   km <- defaultKm <$> askCfg
   keymap <- withBuffer0 $ gets (withMode0 modeKeymap)
   let l = I.accepted 3 . I.mkAutomaton . extractTopKeymap . keymap $ km
-  return $ fmap unwords l
+  return $ fmap T.unwords l
 
 -- | Shows the current key bindings in a new window
 acceptedInputsOtherWindow :: EditorM ()
 acceptedInputsOtherWindow = do
   ai <- acceptedInputs
-  b <- stringToNewBuffer (Left "keybindings") (R.fromString $ unlines ai)
+  b <- stringToNewBuffer (MemBuffer "keybindings") (fromText $ T.unlines ai)
   w <- newWindowE False b
   windowsA %= PL.insertRight w
 
@@ -804,6 +822,7 @@ data TempBufferNameHint = TempBufferNameHint
     , tmp_name_index :: Int
     } deriving Typeable
 
+-- …why? Stop 'Show' abuse ;_; !
 instance Show TempBufferNameHint where
     show (TempBufferNameHint s i) = s ++ "-" ++ show i
 
@@ -834,12 +853,12 @@ newTempBufferE = do
   hint :: TempBufferNameHint <- getDynamic
   e <- gets id
   -- increment the index of the hint until no buffer is found with that name
-  let find_next in_name = case findBufferWithName (show in_name) e of
+  let find_next in_name = case findBufferWithName (T.pack $ show in_name) e of
         (_b : _) -> find_next $ inc in_name
         []      -> in_name
       inc in_name = in_name & tmp_name_indexA +~ 1
       next_tmp_name = find_next hint
 
-  b <- newBufferE (Left $ show next_tmp_name) ""
+  b <- newEmptyBufferE (MemBuffer . T.pack $ show next_tmp_name)
   setDynamic $ inc next_tmp_name
   return b
