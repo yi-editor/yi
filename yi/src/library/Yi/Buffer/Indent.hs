@@ -19,6 +19,7 @@ module Yi.Buffer.Indent
     , cycleIndentsB
     , indentAsNextB
     , indentAsPreviousB
+    , indentAsTheMostIndentedNeighborLineB
     , indentOfB
     , indentOfCurrentPosB
     , indentSettingsB
@@ -406,9 +407,17 @@ indentToB level = do
 indentAsPreviousB :: BufferM ()
 indentAsPreviousB = indentAsNeighborLineB Backward
 
--- | Indent as much as the previous line
+-- | Indent as much as the next line
 indentAsNextB :: BufferM ()
 indentAsNextB = indentAsNeighborLineB Forward
+
+indentAsTheMostIndentedNeighborLineB :: BufferM ()
+indentAsTheMostIndentedNeighborLineB = do
+  prevLine <- getNextNonBlankLineB Backward
+  nextLine <- getNextNonBlankLineB Forward
+  prevIndent <- indentOfB prevLine
+  nextIndent <- indentOfB nextLine
+  indentToB (max prevIndent nextIndent)
 
 indentAsNeighborLineB :: Direction -> BufferM ()
 indentAsNeighborLineB dir = do

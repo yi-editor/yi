@@ -167,7 +167,7 @@ printableAction evs = do
                   newlineB
               else do
                   newlineB
-                  indentAsPreviousB
+                  indentAsTheMostIndentedNeighborLineB
               firstNonSpaceB
           "<Tab>" -> do
               IndentSettings et _ts sw <- indentSettingsB

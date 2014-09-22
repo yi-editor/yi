@@ -215,7 +215,8 @@ continuingBindings = fmap (mkStringBindingE Normal Continue)
     , ("A", withBuffer0 moveToEol, switchMode $ Insert 'A')
     , ("o", withBuffer0 $ do
           moveToEol
-          newlineAndIndentB
+          newlineB
+          indentAsTheMostIndentedNeighborLineB
         , switchMode $ Insert 'o')
     , ("O", withBuffer0 $ do
                      moveToSol
