@@ -23,6 +23,7 @@ import Control.Exception
 import Control.Lens
 import Control.Monad
 import Data.Char
+import qualified Data.DList as D
 import Data.Foldable (toList, foldr1, concatMap)
 import Data.IORef
 import Data.List (nub, sort)
@@ -64,8 +65,9 @@ data FrontendState = FrontendState
     }
 
 start :: UIBoot
-start config submitEvent submitActions editor = do
+start config submitEvents submitActions editor = do
     vty <- (Vty.mkVty . configVty . configUI) config
+    let inputChan = Vty._eventChannel (Vty.inputIface vty)
     endInput <- newEmptyMVar
     endMain <- newEmptyMVar
     endRender <- newEmptyMVar
@@ -74,18 +76,24 @@ start config submitEvent submitActions editor = do
     let -- | Action to read characters into a channel
         inputLoop :: IO ()
         inputLoop = tryTakeMVar endInput >>=
-                    maybe (getEvent >>= submitEvent >> inputLoop)
+                    maybe (do
+                            let go evs = do
+                                e <- getEvent
+                                done <- isEmptyChan inputChan
+                                if done
+                                then submitEvents (D.toList (evs `D.snoc` e))
+                                else go (evs `D.snoc` e)
+                            go D.empty
+                            inputLoop)
                           (const $ return ())
 
         -- | Read a key. UIs need to define a method for getting events.
         getEvent :: IO Yi.Event.Event
         getEvent = do
-          event <- Vty.nextEvent vty
+          event <- readChan inputChan
           case event of
             (Vty.EvResize _ _) -> do
-                submitActions [makeAction (return () :: YiM ())]
-                -- since any action will force a refresh, return () is probably
-                -- sufficient instead of "layoutAction ui"
+                submitActions []
                 getEvent
             _ -> return (fromVtyEvent event)
 

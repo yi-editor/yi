@@ -87,7 +87,7 @@ configFundamentalMode = last . modeTable
 configTopLevelKeymap :: Config -> Keymap
 configTopLevelKeymap = extractTopKeymap . defaultKm
 
-type UIBoot = Config -> (Event -> IO ()) -> ([Action] -> IO ()) ->  Editor -> IO UI
+type UIBoot = Config -> ([Event] -> IO ()) -> ([Action] -> IO ()) ->  Editor -> IO UI
 
 makeLensesWithSuffix "A" ''Config
 makeLensesWithSuffix "A" ''UIConfig
