@@ -26,7 +26,6 @@ import Data.Char
 import qualified Data.DList as D
 import Data.Foldable (toList, foldr1, concatMap)
 import Data.IORef
-import Data.List (nub, sort)
 import qualified Data.List.PointedList.Circular as PL
 import qualified Data.Map.Strict as M
 import Data.Maybe
@@ -40,7 +39,6 @@ import Yi.Config
 import Yi.Debug
 import Yi.Editor
 import Yi.Event
-import Yi.Keymap
 import Yi.Style
 import qualified Yi.UI.Common as Common
 import qualified Yi.UI.SimpleLayout as SL
@@ -153,13 +151,12 @@ refresh fs e = do
     (colCount, rowCount) <- Vty.displayBounds (Vty.outputIface (fsVty fs))
     let (_e, SL.Layout tabbarRect winRects promptRect) = SL.layout colCount rowCount e
         ws = windows e
-        windowStartY = 1
         (cmd, cmdSty) = statusLineInfo e
         niceCmd = arrangeItems cmd (SL.sizeX promptRect) (maxStatusHeight e)
         mkLine = T.justifyLeft colCount ' ' . T.take colCount
         formatCmdLine text = withAttributes statusBarStyle (mkLine text)
         winImage (win, hasFocus) =
-            let rect = winRects M.! (wkey win)
+            let rect = winRects M.! wkey win
             in renderWindow (configUI $ fsConfig fs) e rect (win, hasFocus)
         windowsAndImages =
             fmap (\(w, f) -> (w, winImage (w, f))) (PL.withFocus ws)
@@ -175,10 +172,10 @@ refresh fs e = do
         tabBarImages = renderTabBar e fs (SL.sizeX tabbarRect)
         cmdImage = if null cmd
                    then Vty.emptyImage
-                   else (Vty.translate
+                   else Vty.translate
                            (SL.offsetX promptRect)
                            (SL.offsetY promptRect)
-                           (Vty.vertCat (fmap formatCmdLine niceCmd)))
+                           (Vty.vertCat (fmap formatCmdLine niceCmd))
         tabBarImage = Vty.vertCat tabBarImages
         cursorPos =
             case (\(w, r) -> (isMini w, cursor r)) (PL._focus windowsAndImages) of
