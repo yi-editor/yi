@@ -192,7 +192,7 @@ startNoMsgGtkHook userHook cfg ch outCh ed = do
   -- Yi.Buffer.Misc.insertN for atomic input?
   let imContextCommitS :: Signal IMContext (String -> IO ())
       imContextCommitS = imContextCommit
-  im `on` imContextCommitS $ mapM_ (\k -> ch $ Event (KASCII k) [])
+  im `on` imContextCommitS $ mapM_ (\k -> ch [Event (KASCII k) []])
 
   set win [ windowDefaultWidth  := 700
           , windowDefaultHeight := 900
@@ -692,7 +692,7 @@ mkCol _ (RGB x y z) = Color (fromIntegral x * 256)
 -- * GTK Event handlers
 
 -- | Process GTK keypress if IM fails
-handleKeypress :: (Event -> IO ()) -- ^ Event dispatcher (Yi.Core.dispatch)
+handleKeypress :: ([Event] -> IO ()) -- ^ Event dispatcher (Yi.Core.dispatch)
                -> IMContext
                -> EventM EKey Bool
 handleKeypress ch im = do
@@ -710,7 +710,7 @@ handleKeypress ch im = do
   case (ifIM, key) of
     (True, _   ) -> return ()
     (_, Nothing) -> logPutStrLn $ "Event not translatable: " <> showT key
-    (_, Just k ) -> io $ ch $ Event k mods
+    (_, Just k ) -> io $ ch [Event k mods]
   return True
 
 -- | Map Yi modifiers to GTK

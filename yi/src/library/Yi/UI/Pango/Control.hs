@@ -169,7 +169,7 @@ runControl f = runReaderT (runControl'' f)
 runAction :: Action -> ControlM ()
 runAction action = do
     out <- liftYi $ asks yiOutput
-    liftBase $ out [action]
+    liftBase $ out True [action]
 
 -- | Test 2
 mkUI :: IO () -> MVar Control -> Common.UI
@@ -810,13 +810,13 @@ handleMove view p0 event = do
   liftBase $ widgetQueueDraw (drawArea view)
   return True
 
-processEvent :: (Event -> IO ()) -> Gdk.Events.Event -> IO Bool
+processEvent :: ([Event] -> IO ()) -> Gdk.Events.Event -> IO Bool
 processEvent ch ev = do
   -- logPutStrLn $ "Gtk.Event: " <> show ev
   -- logPutStrLn $ "Event: " <> show (gtkToYiEvent ev)
   case gtkToYiEvent ev of
     Nothing -> logPutStrLn $ "Event not translatable: " <> showT ev
-    Just e -> ch e
+    Just e -> ch [e]
   return True
 
 gtkToYiEvent :: Gdk.Events.Event -> Maybe Event
