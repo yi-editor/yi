@@ -46,6 +46,7 @@ module Yi.Keymap
     , handleJustE
     , YiAction (..)
     , Yi(..)
+    , IsRefreshNeeded(..)
     , YiVar(..)
     , write
     , withModeY
@@ -108,9 +109,12 @@ type KeymapEndo = Keymap -> Keymap
 
 type KeymapProcess = I.P Event Action
 
+data IsRefreshNeeded = MustRefresh | NoNeedToRefresh
+    deriving (Show, Eq)
+
 data Yi = Yi { yiUi          :: UI
              , yiInput       :: [Event] -> IO ()      -- ^ input stream
-             , yiOutput      :: Bool -> [Action] -> IO ()   -- ^ output stream
+             , yiOutput      :: IsRefreshNeeded -> [Action] -> IO ()   -- ^ output stream
              , yiConfig      :: Config
                -- TODO: this leads to anti-patterns and seems like one itself
                -- too coarse for actual concurrency, otherwise pointless
