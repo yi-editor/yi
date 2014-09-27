@@ -13,7 +13,9 @@
 -- Stability   :  experimental
 -- Portability :  portable
 --
--- A module for CTags integration
+-- A module for CTags integration. Note that this reads the ‘tags’
+-- file produced by @hasktags@, not the ‘TAGS’ file which uses a
+-- different format (etags).
 
 module Yi.Tag ( lookupTag
               , importTagTable

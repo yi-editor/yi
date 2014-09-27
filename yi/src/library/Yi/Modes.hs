@@ -24,7 +24,8 @@ import           Control.Applicative
 import           Control.Lens
 import           Data.List (isPrefixOf)
 import           Data.Maybe
-import qualified Data.Text as T
+import           Data.Monoid
+import           Data.Text ()
 import           System.FilePath
 import           Text.Regex.TDFA ((=~))
 import           Yi.Buffer
@@ -94,7 +95,7 @@ styleMode :: Show (l s) => StyleLexer l s t i
 styleMode l = linearSyntaxMode' (l ^. styleLexer) (l ^. tokenToStyle)
 
 removeAnnots :: Mode a -> Mode a
-removeAnnots m = m { modeName = modeName m `T.append` " no annots"
+removeAnnots m = m { modeName = modeName m <> " no annots"
                    , modeGetAnnotations = modeGetAnnotations emptyMode }
 
 cMode :: StyleBasedMode
@@ -116,7 +117,7 @@ cabalMode :: StyleBasedMode
 cabalMode = styleMode Cabal.lexer
   & modeNameA .~ "cabal"
   & modeAppliesA .~ anyExtension [ "cabal" ]
-  & modeToggleCommentSelectionA .~ withBuffer (toggleCommentSelectionB "-- " "--")
+  & modeToggleCommentSelectionA .~ withBuffer (toggleCommentB "--")
 
 
 srmcMode :: StyleBasedMode
@@ -159,7 +160,7 @@ pythonMode :: StyleBasedMode
 pythonMode = base
   & modeNameA .~ "python"
   & modeAppliesA .~ anyExtension [ "py" ]
-  & modeToggleCommentSelectionA .~ withBuffer (toggleCommentSelectionB "# " "#")
+  & modeToggleCommentSelectionA .~ withBuffer (toggleCommentB "#")
   & modeIndentSettingsA %~ (\x -> x { expandTabs = True, tabSize = 4 })
   where
     base = styleMode Python.lexer
