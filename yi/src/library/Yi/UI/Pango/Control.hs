@@ -169,7 +169,7 @@ runControl f = runReaderT (runControl'' f)
 runAction :: Action -> ControlM ()
 runAction action = do
     out <- liftYi $ asks yiOutput
-    liftBase $ out True [action]
+    liftBase $ out MustRefresh [action]
 
 -- | Test 2
 mkUI :: IO () -> MVar Control -> Common.UI
