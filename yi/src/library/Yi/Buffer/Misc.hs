@@ -1114,9 +1114,8 @@ deleteN n = pointB >>= deleteNAt Forward n
 curCol :: BufferM Int
 curCol = colOf =<< pointB
 
--- | TODO: foldl for yi-rope
 colOf :: Point -> BufferM Int
-colOf p = T.foldl' colMove 0 . R.toText <$> queryBuffer (charsFromSolBI p)
+colOf p = R.foldl' colMove 0 <$> queryBuffer (charsFromSolBI p)
 
 lineOf :: Point -> BufferM Int
 lineOf p = queryBuffer $ lineAt p

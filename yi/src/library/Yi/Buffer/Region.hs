@@ -30,16 +30,17 @@ module Yi.Buffer.Region
 where
 
 import           Control.Applicative
-import           Control.Lens hiding (transform)
 import           Control.Monad
 import           Data.Algorithm.Diff
+import           Data.Char (isSpace)
+import           Data.Monoid (mconcat)
 import           Data.List (sort)
 import qualified Data.Text as T
 import           Yi.Buffer.Misc
 import           Yi.Region
 import           Yi.Rope (YiString)
 import qualified Yi.Rope as R
-import           Yi.String (lines')
+import           Yi.String (overInit)
 import           Yi.Utils
 import           Yi.Window (winRegion)
 
@@ -138,20 +139,17 @@ blockifyRegion r = savingPointB $ do
 -- | Joins lines in the region with a single space, skipping any empty
 -- lines.
 joinLinesB :: Region -> BufferM ()
-joinLinesB = savingPointB . modifyRegionClever (withT g')
+joinLinesB = savingPointB . modifyRegionClever g'
   where
-    -- TODO yi-rope init
-    withT f = R.fromText . f . R.toText
-    g' = over _init $ T.concat . over _tail pad . lines'
-    pad :: [T.Text] -> [T.Text]
-    pad = fmap $ skip (T.cons ' ' . T.stripStart)
-    skip g x = if T.null x then x else g x
+    g' = overInit $ mconcat . pad . R.lines
 
+    pad :: [R.YiString] -> [R.YiString]
+    pad [] = []
+    pad (x:xs) = x : fmap (skip (R.cons ' ' . R.dropWhile isSpace)) xs
+
+    skip g x = if R.null x then x else g x
 
 -- | Concatenates lines in the region preserving the trailing newline
 -- if any.
 concatLinesB :: Region -> BufferM ()
-concatLinesB = savingPointB . modifyRegionClever f
-  where
-    -- TODO: yi-rope init
-    f = R.fromText . over _init (T.filter (/= '\n')) . R.toText
+concatLinesB = savingPointB . modifyRegionClever (overInit $ R.filter (/= '\n'))

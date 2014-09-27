@@ -33,7 +33,6 @@ import           Control.Applicative
 import           Data.Char
 import           Data.List (sort, nub)
 import           Data.Monoid
-import qualified Data.Text as T
 import           Yi.Buffer.Basic
 import           Yi.Buffer.HighLevel
 import           Yi.Buffer.Misc
@@ -195,9 +194,7 @@ fetchPreviousIndentsB = do
   -- or the current offset was zero *and* the line
   -- was non-blank then we return just the current
   -- indent (it might be the first line but indented some.)
-  --
-  -- TODO: implement ‘any’ for YiString
-  if moveOffset == 0 || (indent == 0 && T.any (not . isSpace) (R.toText line))
+  if moveOffset == 0 || (indent == 0 && R.any (not . isSpace) line)
     then return [ indent ]
     else (indent :) <$> fetchPreviousIndentsB
 
@@ -294,27 +291,21 @@ lastOpenBracketHint input =
 -- | Returns the offsets of all the given keywords
 -- within the given string. This is potentially useful
 -- as providing indentation hints.
---
--- TODO: yi-rope needs break and span for this
 keywordHints :: [ R.YiString ] -> R.YiString -> BufferM [ Int ]
-keywordHints keywordsTODO inpTODO = getHints 0 (R.toText inpTODO)
+keywordHints keywords = getHints 0
   where
-  keywords = R.toText <$> keywordsTODO
   -- Calculate the indentation hints of keywords from the
   -- given string. The first argument is the current offset.
   -- NOTE: that we have to take into account how long tab characters
   -- are according to the indentation settings.
-  --
-  -- TODO: break/span for yi-rope
-  getHints :: Int -> T.Text -> BufferM [ Int ]
+  getHints :: Int -> R.YiString -> BufferM [ Int ]
   getHints _i ""                     = return []
   getHints i input
     -- If there are no non-white characters left return zero hints.
-    | T.null rest                      = return []
+    | R.null rest                      = return []
     -- Check if there are white space characters at the front and if
     -- so then calculate the ident of it and carry on.
-    | not $ T.null white = do spaceSize <- spacingOfB (R.fromText white)
-                              getHints (i + spaceSize) rest
+    | not $ R.null white = spacingOfB white >>= \ss -> getHints (i + ss) rest
     -- If there are no white space characters check if we are looking
     -- at a keyword and if so add it as a hint
     | initNonWhite `elem` keywords = (i :) <$> whiteRestHints
@@ -322,13 +313,12 @@ keywordHints keywordsTODO inpTODO = getHints 0 (R.toText inpTODO)
     | otherwise                      = whiteRestHints
     where
     -- Separate into the leading non-white characters and the rest
-    (initNonWhite, whiteRest) = T.break isSpace input
+    (initNonWhite, whiteRest) = R.break isSpace input
     -- Separate into the leading white space characters and the rest
-    (white, rest)             = T.span isSpace input
+    (white, rest)             = R.span isSpace input
     -- Get the hints from everything after any leading non-white space.
     -- This should only be used if there is no white space at the start.
-    whiteRestHints            = getHints (i + T.length initNonWhite) whiteRest
-
+    whiteRestHints            = getHints (i + R.length initNonWhite) whiteRest
 
 -- | Returns the offsets of anything that isn't white space 'after'
 -- a keyword on the given line.
@@ -337,45 +327,44 @@ keywordHints keywordsTODO inpTODO = getHints 0 (R.toText inpTODO)
 -- the start of the keyword we return the offset of the first non-white
 -- character after the keyword.
 keywordAfterHints :: [ R.YiString ] -> R.YiString -> BufferM [ Int ]
-keywordAfterHints keywordsTODO inpTODO = getHints 0 (R.toText inpTODO)
+keywordAfterHints keywords = getHints 0
   where
-  keywords = R.toText <$> keywordsTODO
   -- Calculate the indentation hints of keywords from the
   -- given string. The first argument is the current offset.
   -- NOTE: that we have to take into account how long tab characters
   -- are according to the indentation settings.
-  getHints :: Int -> T.Text -> BufferM [ Int ]
+  getHints :: Int -> R.YiString -> BufferM [ Int ]
   getHints _i ""                  = return []
   getHints i input
     -- If there is any preceding white space then just take the length
     -- of it (according to the indentation settings and proceed.
-    | not $ T.null indentation      = do
-        indent <- spacingOfB (R.fromText indentation)
+    | not $ R.null indentation      = do
+        indent <- spacingOfB indentation
         getHints (i + indent) nonWhite
     -- If there is a keyword at the current position and
     -- the keyword isn't the last thing on the line.
     | key `elem` keywords
-      && not (T.null afterwhite)    =  do
-        indent    <- spacingOfB (R.fromText white)
-        let hint  =  i + T.length key + indent
+      && not (R.null afterwhite)    =  do
+        indent    <- spacingOfB white
+        let hint  =  i + R.length key + indent
         tailHints <- getHints hint afterwhite
         return $ hint : tailHints
     -- we don't have a hint and we can re-try for the rest of the line
     | otherwise                   = afterKeyHints
     where
     -- Split the input into the preceding white space and the rest
-    (indentation, nonWhite) = T.span isSpace input
+    (indentation, nonWhite) = R.span isSpace input
 
     -- The keyword and what is after the keyword
     -- this is only used if 'indentation' is null so we needn't worry that
     -- we are taking from the input rather than 'nonWhite'
-    (key, afterkey)     = T.break isSpace input
+    (key, afterkey)     = R.break isSpace input
     -- The white space and what is after the white space
-    (white, afterwhite) = T.span isSpace afterkey
+    (white, afterwhite) = R.span isSpace afterkey
 
     -- Get the hints from everything after any leading non-white space.
     -- This should only be used if there is no white space at the start.
-    afterKeyHints       = getHints (i + T.length key) afterkey
+    afterKeyHints       = getHints (i + R.length key) afterkey
 
 
 -- | Returns the indentation of a given string. Note that this depends
@@ -432,22 +421,21 @@ newlineAndIndentB = newlineB >> indentAsPreviousB
 -- | Set the padding of the string to newCount, filling in tabs if
 -- expandTabs is set in the buffers IndentSettings
 rePadString :: IndentSettings -> Int -> R.YiString -> R.YiString
-rePadString indentSettings newCount input'
-    | newCount <= 0 = R.fromText rest
-    | expandTabs indentSettings = R.fromText $ T.replicate newCount " " <> rest
-    | otherwise = R.fromText $ tabs <> spaces <> rest
-    where (_indents,rest) = T.span isSpace input
-          tabs   = T.replicate (newCount `div` tabSize indentSettings) "\t"
-          spaces = T.replicate (newCount `mod` tabSize indentSettings) " "
-          input = R.toText input'
+rePadString indentSettings newCount input
+    | newCount <= 0 = rest
+    | expandTabs indentSettings = R.replicateChar newCount ' ' <> rest
+    | otherwise = tabs <> spaces <> rest
+    where (_indents,rest) = R.span isSpace input
+          tabs   = R.replicateChar (newCount `div` tabSize indentSettings) '\t'
+          spaces = R.replicateChar (newCount `mod` tabSize indentSettings) ' '
 
 -- | Counts the size of the indent in the given text.
 --
 -- Assumes nothing but tabs and spaces: uses 'isSpace'.
 countIndent :: IndentSettings -> R.YiString -> Int
-countIndent i t = T.foldl' (\i' c -> i' + spacing c) 0 indents
+countIndent i t = R.foldl' (\i' c -> i' + spacing c) 0 indents
   where
-    (indents, _) = T.span isSpace (R.toText t)
+    (indents, _) = R.span isSpace t
 
     spacing '\t' = tabSize i
     spacing _    = 1

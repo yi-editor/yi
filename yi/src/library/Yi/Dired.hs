@@ -445,13 +445,13 @@ diredRefresh = do
 --   and the FilePath of the file represented by that textual region
 insertDiredLine :: ([R.YiString], StyleName, String) -> BufferM (Point, Point, FilePath)
 insertDiredLine (fields, sty, filenm) = bypassReadOnly $ do
-    insertN . R.fromText . T.unwords $ R.toText <$> init fields
-    p1 <- pointB
-    insertN  $ ' ' `R.cons` last fields
-    p2 <- pointB
-    newlineB
-    addOverlayB (mkOverlay UserLayer (mkRegion p1 p2) sty)
-    return (p1, p2, filenm)
+  insertN . R.unwords $ init fields
+  p1 <- pointB
+  insertN  $ ' ' `R.cons` last fields
+  p2 <- pointB
+  newlineB
+  addOverlayB (mkOverlay UserLayer (mkRegion p1 p2) sty)
+  return (p1, p2, filenm)
 
 -- | TODO Text/YiString
 data DRStrings = DRPerms {undrs :: String}

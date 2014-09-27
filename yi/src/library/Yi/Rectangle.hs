@@ -14,7 +14,6 @@ module Yi.Rectangle where
 
 import           Control.Applicative
 import           Control.Monad
-import           Data.List (intersperse)
 import           Data.List (sort, transpose)
 import           Data.Monoid
 import qualified Data.Text as T
@@ -52,7 +51,7 @@ alignRegion str = do
 -- | Align each line of the region on the given regex.
 -- Fails if it is not found in any line.
 alignRegionOn :: T.Text -> BufferM ()
-alignRegionOn s = alignRegion $ "^(.*)(" `T.append` s `T.append` ")(.*)"
+alignRegionOn s = alignRegion $ "^(.*)(" <> s <> ")(.*)"
 
 -- | Get the selected region as a rectangle.
 -- Returns the region extended to lines, plus the start and end columns of the rectangle.
@@ -78,7 +77,7 @@ openRectangle :: BufferM ()
 openRectangle = onRectangle openLine
   where
     openLine l r line =
-      left <> R.fromText (T.replicate (r - l) (T.singleton ' ')) <> right
+      left <> R.replicateChar (r - l) ' ' <> right
           where (left, right) = R.splitAt l line
 
 stringRectangle :: R.YiString -> BufferM ()
@@ -88,21 +87,17 @@ stringRectangle inserted = onRectangle stringLine
 
 killRectangle :: EditorM ()
 killRectangle = do
-  -- TODO: implement in yi-rope package smarter
-  let unls x = mconcat $ intersperse (R.singleton '\n') x
   cutted <- withBuffer0 $ do
       (reg, l, r) <- getRectangle
-      -- TODO: seems we could do this block over the rope fairly
-      -- easily without converting
       text <- readRegionB reg
       let (cutted, rest) = unzip $ fmap cut $ R.lines' text
 
           cut :: R.YiString -> (R.YiString, R.YiString)
           cut line = let [left,mid,right] = multiSplit [l,r] line
                      in (mid, left <> right)
-      replaceRegionB reg (unls rest)
+      replaceRegionB reg (R.unlines rest)
       return cutted
-  setRegE (unls cutted)
+  setRegE (R.unlines cutted)
 
 yankRectangle :: EditorM ()
 yankRectangle = do

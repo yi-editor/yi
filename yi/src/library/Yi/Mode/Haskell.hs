@@ -170,7 +170,7 @@ adjustBlock e len = do
         when (indent > col) $
          if len >= 0
           then do
-           insertN (R.fromText . T.replicate len $ T.singleton ' ')
+           insertN $ R.replicateChar len ' '
            leftN len
           else deleteN (negate len)
 

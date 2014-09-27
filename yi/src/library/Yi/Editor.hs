@@ -44,6 +44,7 @@ import qualified Data.List.PointedList as PL (atEnd, moveTo)
 import qualified Data.List.PointedList.Circular as PL
 import qualified Data.Map as M
 import           Data.Maybe
+import qualified Data.Monoid as Mon
 import           Data.Semigroup
 import qualified Data.Text as T
 import           Data.Typeable
@@ -417,19 +418,17 @@ statusLine = fst . statusLineInfo
 statusLineInfo :: Editor -> Status
 statusLineInfo = snd . head . statusLines
 
-
 setTmpStatus :: Int -> Status -> EditorM ()
 setTmpStatus delay s = do
   statusLinesA %= DelayList.insert (delay, s)
   -- also show in the messages buffer, so we don't loose any message
-  bs <- gets (filter (\b -> b ^. identA == MemBuffer "messages") . M.elems . buffers)
+  bs <- gets (filter ((== MemBuffer "messages") . view identA) . M.elems . buffers)
 
   b <- case bs of
          (b':_) -> return $ bkey b'
          [] -> stringToNewBuffer (MemBuffer "messages") mempty
-  let m = '(' `T.cons` listifyT (fst s) `T.append` ", <function>)"
-  withGivenBuffer0 b $ botB >> insertN (R.fromText m)
-
+  let m = '(' `R.cons` listify (R.fromText <$> fst s) Mon.<> ", <function>)"
+  withGivenBuffer0 b $ botB >> insertN m
 
 -- ---------------------------------------------------------------------
 -- kill-register (vim-style) interface to killring.

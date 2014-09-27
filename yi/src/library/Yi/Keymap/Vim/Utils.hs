@@ -173,7 +173,7 @@ indentBlockRegionB count reg = do
       whenM (not <$> atEol) $ do
         let w = shiftWidth indentSettings
         if count > 0
-        then insertN . R.fromText $ T.replicate (count * w) (T.singleton ' ')
+        then insertN $ R.replicateChar (count * w) ' '
         else do
             let go 0 = return ()
                 go n = do

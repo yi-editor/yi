@@ -162,7 +162,7 @@ text txt = do
     expand :: IndentSettings -> R.YiString -> R.YiString -> R.YiString
     expand is str rst = case R.head rst of
       Nothing -> R.reverse str
-      Just '\t' -> let t = R.fromText (T.replicate (tabSize is) " ") <> str
+      Just '\t' -> let t = R.replicateChar (tabSize is) ' ' <> str
                    in expand is t (R.drop 1 rst)
       Just s -> expand is (s `R.cons` str) rst
 

@@ -19,8 +19,9 @@ module Yi.String (isBlank,
                   padLeft, padRight,
                   commonTPrefix,
                   commonTPrefix',
-                  listifyT,
-                  showT
+                  listify,
+                  showT,
+                  overInit, overTail
                  ) where
 
 import           Data.Char (toUpper, toLower, isSpace, isAlphaNum)
@@ -38,8 +39,8 @@ showT = T.pack . show
 -- | This is kind of like the default Show instance for lists except
 -- over 'T.Text'. It does not leave the elements in extra quotes and
 -- should not be attempted to be 'show'n and 'read' back.
-listifyT :: [T.Text] -> T.Text
-listifyT t = '[' `T.cons` T.intercalate ", " t `T.snoc` ']'
+listify :: [R.YiString] -> R.YiString
+listify t = '[' `R.cons` R.intercalate ", " t `R.snoc` ']'
 
 -- | Works by resupplying the found prefix back into the list,
 -- eventually either finding the prefix or not matching.
@@ -91,6 +92,26 @@ fillText margin = map (R.unwords . reverse) . fill 0 [] . R.words
     fill n acc (w:ws)
       | n + R.length w >= margin = acc : fill (R.length w) [w] ws
       | otherwise = fill (n + 1 + R.length w) (w:acc) ws
+
+-- | @overInit f@ runs f over the 'R.init' of the input if possible,
+-- preserving the 'R.last' element as-is. If given a string with
+-- length ≤ 1, it effectively does nothing.
+--
+-- Also see 'overTail'.
+overInit :: (R.YiString -> R.YiString) -> R.YiString -> R.YiString
+overInit f t = case (R.init t, R.last t) of
+  (Just xs, Just x) -> f xs `R.snoc` x
+  _ -> t
+
+-- | @overInit f@ runs f over the 'R.tail' of the input if possible,
+-- preserving the 'R.head' element as-is. If given a string with
+-- length ≤ 1, it effectively does nothing.
+--
+-- Also see 'overInit'.
+overTail :: (R.YiString -> R.YiString) -> R.YiString -> R.YiString
+overTail f t = case (R.head t, R.tail t) of
+  (Just x, Just xs) -> x `R.cons` f xs
+  _ -> t
 
 -- | Inverse of 'lines''. In contrast to 'Prelude.unlines', this does
 -- not add an empty line at the end.

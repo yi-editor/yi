@@ -304,9 +304,9 @@ deleteHorizontalSpaceB u = do
   where
     deleteSpaces :: Int -> R.YiString -> R.YiString
     deleteSpaces c l =
-      let (f, b) = T.splitAt c(R.toText l)
-      in R.fromText $ T.stripEnd f <> case u of
-        Nothing -> T.stripStart b
+      let (f, b) = R.splitAt c l
+      in R.dropWhileEnd isSpace f <> case u of
+        Nothing -> R.dropWhile isSpace b
         Just _ -> b
 
 ----------------------------------------
@@ -686,16 +686,7 @@ modifyExtendedSelectionB unit transform
 linePrefixSelectionB :: R.YiString -- ^ The string that starts a line comment
                      ->  BufferM ()
 linePrefixSelectionB s =
-  modifyExtendedSelectionB Line . skippingLast $ mapLines (s <>)
-  where
-    -- Makes sure to not leave a comment in case we have a trailing
-    -- newline from 'mapLines'.
-    --
-    -- TODO: yi-rope init
-    skippingLast :: (R.YiString -> R.YiString) -> R.YiString -> R.YiString
-    skippingLast f xs = let l = R.length xs in case R.last xs of
-      Nothing -> xs
-      Just x  -> f (R.take (l - 1) xs) `R.snoc` x
+  modifyExtendedSelectionB Line . overInit $ mapLines (s <>)
 
 -- | Uncomments the selection using the given line comment
 -- starting string. This only works for the comments which
@@ -936,9 +927,7 @@ insertRopeWithStyleB rope Block = savingPointB $ do
           col <- curCol
           moveToEol
           newlineB
-          -- TODO: maybe implementing R.replicate would be faster?
-          -- Maybe a specialised version for characters. Benchmark.
-          insertN . R.fromText $ T.replicate col (T.singleton ' ')
+          insertN $ R.replicateChar col ' '
 
   sequence_ $ intersperse advanceLine $ fmap (savingPointB . insertN) ls
 insertRopeWithStyleB rope LineWise = do

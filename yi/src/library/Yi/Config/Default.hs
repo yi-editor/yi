@@ -12,7 +12,7 @@ import           Control.Monad
 import           Data.Default
 import qualified Data.HashMap.Strict as HM
 import qualified Data.Map as M
-import qualified Data.Text as T
+import           Data.Monoid
 import           Paths_yi
 import           System.FilePath
 import           Yi.Command (cabalBuildE, cabalConfigureE, grepFind, makeBuild,
@@ -214,10 +214,11 @@ openScratchBuffer :: YiM ()
 openScratchBuffer = withEditor $ do
   fileBufOpen <- any isFileOrDir . M.elems <$> use buffersA
   unless fileBufOpen $
-    void . newBufferE (MemBuffer "scratch") . R.fromText $ T.unlines
+    void . newBufferE (MemBuffer "scratch") $ R.unlines
             [ "This buffer is for notes you don't want to save."
             , "If you want to create a file, open that file,"
             , "then enter the text in that file's own buffer."
+            , ""
             ]
   where
     isFileOrDir :: FBuffer -> Bool
@@ -235,8 +236,8 @@ nilKeymap = choice [
       configHelp :: YiM ()
       configHelp = do
         dataDir <- io getDataDir
-        let x <//> y = T.pack (x </> T.unpack y)
-            welcomeText = R.fromText $ T.unlines
+        let x <//> y = R.fromString (x </> y)
+            welcomeText = R.unlines
               [ "This instance of Yi is not configured."
               , ""
               , "To get a standard reasonable keymap, you can run yi with"
@@ -244,6 +245,7 @@ nilKeymap = choice [
               , ""
               , "You should however create your own ~/.config/yi/yi.hs file."
               , "As a starting point it's recommended to use one of the configs"
-              , "from " `T.append` (dataDir <//> "example-configs/")
+              , "from " <> (dataDir <//> "example-configs/")
+              , ""
               ]
         withEditor_ $ newBufferE (MemBuffer "configuration help") welcomeText
