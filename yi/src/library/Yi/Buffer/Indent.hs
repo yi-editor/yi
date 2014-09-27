@@ -198,35 +198,6 @@ fetchPreviousIndentsB = do
     then return [ indent ]
     else (indent :) <$> fetchPreviousIndentsB
 
-
-{-| An application of 'autoIndentHelperB' which adds more
-    indentation hints using the given keywords.
-    The offsets of the first set of keywords are used as hints.
-    For the second set of keywords it is not the offsets of the
-    keywords themselves but the offset of the first non-white
-    characters after the keywords.
-
-    In addition to the keyword hints we also do the same as the
-    default ('autoIndentB') which is to use any non-closed
-    opening brackets as hints.
--}
-autoIndentWithKeywordsB :: [ R.YiString ]   -- ^ Keywords to act as hints
-                        -> [ R.YiString ]   -- ^ Keywords to act as offset hints
-                        -> IndentBehaviour
-                        -> BufferM ()
-autoIndentWithKeywordsB firstKeywords secondKeywords =
-  autoIndentHelperB fetchPreviousIndentsB getPreviousLineHints
-  where
-  getPreviousLineHints :: YiString -> BufferM [ Int ]
-  getPreviousLineHints input = do
-    indent       <- indentOfB input
-    bracketHints <- lastOpenBracketHint input
-    keyHintsOne  <- keywordHints firstKeywords input
-    keyHintsTwo  <- keywordAfterHints secondKeywords input
-    return $ indent : (indent + 2) : ( bracketHints ++
-                                       keyHintsOne  ++
-                                       keyHintsTwo )
-
 -- | Returns the position of the last opening bracket on the
 -- line which is not closed on the same line.
 -- Note that if we have unmatched parentheses such as "( ]"
@@ -286,86 +257,6 @@ lastOpenBracketHint input =
   isClosing ']' = True
   isClosing '}' = True
   isClosing _   = False
-
-
--- | Returns the offsets of all the given keywords
--- within the given string. This is potentially useful
--- as providing indentation hints.
-keywordHints :: [ R.YiString ] -> R.YiString -> BufferM [ Int ]
-keywordHints keywords = getHints 0
-  where
-  -- Calculate the indentation hints of keywords from the
-  -- given string. The first argument is the current offset.
-  -- NOTE: that we have to take into account how long tab characters
-  -- are according to the indentation settings.
-  getHints :: Int -> R.YiString -> BufferM [ Int ]
-  getHints _i ""                     = return []
-  getHints i input
-    -- If there are no non-white characters left return zero hints.
-    | R.null rest                      = return []
-    -- Check if there are white space characters at the front and if
-    -- so then calculate the ident of it and carry on.
-    | not $ R.null white = spacingOfB white >>= \ss -> getHints (i + ss) rest
-    -- If there are no white space characters check if we are looking
-    -- at a keyword and if so add it as a hint
-    | initNonWhite `elem` keywords = (i :) <$> whiteRestHints
-    -- Finally we just continue with the tail.
-    | otherwise                      = whiteRestHints
-    where
-    -- Separate into the leading non-white characters and the rest
-    (initNonWhite, whiteRest) = R.break isSpace input
-    -- Separate into the leading white space characters and the rest
-    (white, rest)             = R.span isSpace input
-    -- Get the hints from everything after any leading non-white space.
-    -- This should only be used if there is no white space at the start.
-    whiteRestHints            = getHints (i + R.length initNonWhite) whiteRest
-
--- | Returns the offsets of anything that isn't white space 'after'
--- a keyword on the given line.
--- This is essentially then the same as 'keywordHints' except that
--- for each keyword on the input rather than return the offset at
--- the start of the keyword we return the offset of the first non-white
--- character after the keyword.
-keywordAfterHints :: [ R.YiString ] -> R.YiString -> BufferM [ Int ]
-keywordAfterHints keywords = getHints 0
-  where
-  -- Calculate the indentation hints of keywords from the
-  -- given string. The first argument is the current offset.
-  -- NOTE: that we have to take into account how long tab characters
-  -- are according to the indentation settings.
-  getHints :: Int -> R.YiString -> BufferM [ Int ]
-  getHints _i ""                  = return []
-  getHints i input
-    -- If there is any preceding white space then just take the length
-    -- of it (according to the indentation settings and proceed.
-    | not $ R.null indentation      = do
-        indent <- spacingOfB indentation
-        getHints (i + indent) nonWhite
-    -- If there is a keyword at the current position and
-    -- the keyword isn't the last thing on the line.
-    | key `elem` keywords
-      && not (R.null afterwhite)    =  do
-        indent    <- spacingOfB white
-        let hint  =  i + R.length key + indent
-        tailHints <- getHints hint afterwhite
-        return $ hint : tailHints
-    -- we don't have a hint and we can re-try for the rest of the line
-    | otherwise                   = afterKeyHints
-    where
-    -- Split the input into the preceding white space and the rest
-    (indentation, nonWhite) = R.span isSpace input
-
-    -- The keyword and what is after the keyword
-    -- this is only used if 'indentation' is null so we needn't worry that
-    -- we are taking from the input rather than 'nonWhite'
-    (key, afterkey)     = R.break isSpace input
-    -- The white space and what is after the white space
-    (white, afterwhite) = R.span isSpace afterkey
-
-    -- Get the hints from everything after any leading non-white space.
-    -- This should only be used if there is no white space at the start.
-    afterKeyHints       = getHints (i + R.length key) afterkey
-
 
 -- | Returns the indentation of a given string. Note that this depends
 --on the current indentation settings.
@@ -457,9 +348,6 @@ shiftIndentOfRegionB shiftCount region = do
     moveTo $ regionStart region
     firstNonSpaceB
   where (f `unless` c) x = if c x then x else f x
-
-deleteIndentOfRegion :: Region -> BufferM ()
-deleteIndentOfRegion = modifyRegionB (mapLines $ R.dropWhile isSpace)
 
 -- | Return the number of spaces at the beginning of the line, up to
 -- the point.
