@@ -648,24 +648,29 @@ updatePango ui font w b layout = do
   let [width'', height''] = fmap fromIntegral [width', height']
       metrics             = winMetrics w
       lineHeight          = ascent metrics + descent metrics
+      charWidth           = max (approximateCharWidth metrics)
+                                (approximateDigitWidth metrics)
+      winw                = max 1 $ floor (width'' / charWidth)
       winh                = max 1 $ floor (height'' / lineHeight)
+      maxChars            = winw * winh
+      conf                = uiConfig ui
 
       (tos, size, point, text) = askBuffer win b $ do
         from     <- use . markPointA =<< fromMark <$> askMarks
         rope     <- streamB Forward from
         p        <- pointB
-        bufEnd     <- sizeB
-        let content = fst $ R.splitAtLine winh rope
+        bufEnd   <- sizeB
+        let content = takeContent conf maxChars . fst $ R.splitAtLine winh rope
+
         -- allow BOS offset to be just after the last line
         let addNL = if R.countNewLines content == winh
                         then id
                         else (`R.snoc` '\n')
         return (from, bufEnd, p, R.toText $ addNL content)
 
-  if configLineWrap $ uiConfig ui
-    then do oldWidth <- layoutGetWidth layout
-            when (oldWidth /= Just width'')
-              (layoutSetWidth layout $ Just width'')
+
+  if configLineWrap conf
+    then wrapToWidth layout WrapAnywhere width''
     else do
     (Rectangle px _py pwidth _pheight, _) <- layoutGetPixelExtents layout
     widgetSetSizeRequest (textview w) (px+pwidth) (-1)
@@ -677,6 +682,58 @@ updatePango ui font w b layout = do
   (_, bosOffset, _) <- layoutXYToIndex layout width''
                        (fromIntegral winh * lineHeight - 1)
   return (tos, point, tos + fromIntegral bosOffset + 1, size)
+
+-- | This is a hack that makes this renderer not suck in the common
+-- case. There are two scenarios: we're line wrapping or we're not
+-- line wrapping. This function already assumes that the contents
+-- given have all the possible lines we can fit on the screen.
+--
+-- If we are line wrapping then the most text we'll ever need to
+-- render is precisely the number of characters that can fit on the
+-- screen. If that's the case, that's precisely what we do, truncate
+-- up to the point where the text would be off-screen anyway.
+--
+-- If we aren't line-wrapping then we can't simply truncate at the max
+-- number of characters: lines might be really long, but considering
+-- we're not truncating, we should still be able to see every single
+-- line that can fit on screen up to the screen bound. This suggests
+-- that we could simply render each line up to the bound. While this
+-- does work wonders for performance and would work regardless whether
+-- we're wrapping or not, currently our implementation of the rest of
+-- the module depends on all characters used being set into the
+-- layout: if we cut some text off, painting strokes on top or going
+-- to the end makes for strange effects. So currently we have no
+-- choice but to render all characters in the visible lines. If you
+-- have really long lines, this will kill the performance.
+--
+-- So here we implement the hack for the line-wrapping case. Once we
+-- fix stroke painting &c, this distinction can be removed and we can
+-- simply snip at the screen boundary whether we're wrapping or not
+-- which actually results in great performance in the end. Until that
+-- happens, only the line-wrapping case doesn't suck. Fortunately it
+-- is the default.
+takeContent :: UIConfig -> Int -> R.YiString -> R.YiString
+takeContent cf cl t = case configLineWrap cf of
+  True -> R.take cl t
+  False -> t
+
+-- | Wraps the layout according to the given 'LayoutWrapMode', using
+-- the specified width.
+--
+-- In contrast to the past, it actually implements wrapping properly
+-- which was previously broken.
+wrapToWidth :: PangoLayout -> LayoutWrapMode -> Double -> IO ()
+wrapToWidth l wm w = do
+  layoutGetWrap l >>= \wr -> case (wr, wm) of
+    -- No Eq instance…
+    (WrapWholeWords, WrapWholeWords) -> return ()
+    (WrapAnywhere, WrapAnywhere) -> return ()
+    (WrapPartialWords, WrapPartialWords) -> return ()
+    _ -> layoutSetWrap l wm
+
+  layoutGetWidth l >>= \case
+    Just x | x == w -> return ()
+    _               -> layoutSetWidth l (Just w)
 
 reloadProject :: IO ()
 reloadProject = return ()
