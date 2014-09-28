@@ -3,6 +3,13 @@
 
  * Unicode syntax highlighting fixed (issue #82)
  * Hook to GTK Window exposed (#557)
+ * Multiple components moved out to separate packages (oo-prototypes,
+   word-trie, yi-languages, yi-string)
+ * Replace a lot of the API to use YiString/Text instead of String
+   improving performance
+ * Greatly improve performance in the pango front-end as long as
+   line-wrapping is on (default)
+ * Recognise read-only files (#145)
 
 0.9.0
 -----
