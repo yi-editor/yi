@@ -10,6 +10,15 @@
  * Greatly improve performance in the pango front-end as long as
    line-wrapping is on (default)
  * Recognise read-only files (#145)
+ * Various Vim keymap improvements and fixes
+ * Use lens instead of uniplate, replace some boilerplate with lens
+ * Improve test framework to handle windows interactions, e.g. scrolling.
+ * Use GHC.Generics instead of derive on GHC 7.8
+ * Remove bitrotten ghcapi and scion flags.
+ * Support non-qwerty vim users
+ * Support eventlog profiling with -feventlog
+ * Eliminate idle CPU consumption in vty frontend
+ * General cleanup
 
 0.9.0
 -----
