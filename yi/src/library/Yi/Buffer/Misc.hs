@@ -42,6 +42,7 @@ module Yi.Buffer.Misc
   , pointB
   , pointOfLineColB
   , solPointB
+  , eolPointB
   , markLines
   , moveTo
   , moveToColB
@@ -1043,11 +1044,11 @@ elemsB = queryBuffer mem
 -- characters.
 betweenB :: Point -- ^ Point to start at
          -> Point -- ^ Point to stop at
-         -> YiM YiString
+         -> BufferM YiString
 betweenB (Point s) (Point e) =
-  if e >= s
+  if s >= e
   then return mempty
-  else withBuffer $ snd . R.splitAt s . fst . R.splitAt e <$> elemsB
+  else snd . R.splitAt s . fst . R.splitAt e <$> elemsB
 
 -- | Read the character at the current point
 readB :: BufferM Char
@@ -1132,6 +1133,10 @@ colMove col _    = col + 1
 -- | Returns start of line point for a given point @p@
 solPointB :: Point -> BufferM Point
 solPointB p = queryBuffer $ solPoint' p
+
+-- | Returns end of line for given point.
+eolPointB :: Point -> BufferM Point
+eolPointB p = queryBuffer $ eolPoint' p
 
 -- | Go to line indexed from current point
 -- Returns the actual moved difference which of course

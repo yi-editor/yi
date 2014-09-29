@@ -44,14 +44,15 @@ module Yi.Buffer.TextUnit
     , deleteUnitB
     ) where
 
-import Control.Applicative
-import Control.Monad
-import Data.Char
-import Data.Typeable
-import Yi.Buffer.Basic
-import Yi.Buffer.Misc
-import Yi.Buffer.Region
-import Yi.Rope (YiString)
+import           Control.Applicative
+import           Control.Monad
+import           Data.Char
+import           Data.Typeable
+import           Yi.Buffer.Basic
+import           Yi.Buffer.Misc
+import           Yi.Buffer.Region
+import           Yi.Rope (YiString)
+import qualified Yi.Rope as R
 
 -- | Designate a given "unit" of text.
 data TextUnit = Character -- ^ a single character
@@ -72,14 +73,21 @@ outsideUnit :: TextUnit -> TextUnit
 outsideUnit (GenUnit enclosing boundary) = GenUnit enclosing (boundary . reverseDir)
 outsideUnit x = x -- for a lack of better definition
 
--- | Common boundary checking function: run the condition on @siz@
+-- | Common boundary checking function: run the condition on @len@
 -- characters in specified direction shifted by specified offset.
-genBoundary :: Int -> (String -> Bool) -> Direction -> BufferM Bool
-genBoundary ofs condition dir = condition <$> peekB
-  where -- read some characters in the specified direction
-    peekB = savingPointB $ do
-      moveN $ mayNegate ofs
-      pointB >>= streamB' dir
+genBoundary :: Int -- ^ Offset from current position
+            -> Int -- ^ Look-ahead
+            -> (YiString -> Bool) -- ^ predicate
+            -> Direction -- ^ Direction to look in
+            -> BufferM Bool
+genBoundary ofs len condition dir = condition <$> peekB
+  where
+    peekB = do
+      Point p' <- pointB
+      let pt@(Point p) = Point (p' + mayNegate ofs)
+      case dir of
+        Forward -> betweenB pt (Point $ max 0 p + len)
+        Backward -> R.reverse <$> betweenB (Point $ p - len) pt
 
     mayNegate = case dir of
       Forward -> id
@@ -108,32 +116,43 @@ isNl = (== '\n')
 isEndOfSentence :: Char -> Bool
 isEndOfSentence = (`elem` ".!?")
 
--- | Verifies that the list matches all the predicates, pairwise.
--- If the list is "too small", then return 'False'.
-checks :: [a -> Bool] -> [a] -> Bool
-checks [] _ = True
-checks _ [] = False
-checks (p:ps) (x:xs) = p x && checks ps xs
-
+-- | Verifies that the string matches all the predicates, pairwise. If
+-- the string is "too small", then return 'False'. Note the length of
+-- predicates has to be finite.
+checks :: [Char -> Bool] -> YiString -> Bool
+checks ps' t' = go ps' (R.toString t')
+  where
+    go [] _ = True
+    go _ [] = False
+    go (p:ps) (x:xs) =  p x && go ps xs
 
 checkPeekB :: Int -> [Char -> Bool] -> Direction -> BufferM Bool
-checkPeekB offset conds = genBoundary offset (checks conds)
+checkPeekB offset conds = genBoundary offset (length conds) (checks conds)
+
+-- | Helper that takes first two characters of YiString. Faster than
+-- take 2 and string conversion.
+firstTwo :: YiString -> Maybe (Char, Char)
+firstTwo t = case R.head t of
+  Nothing -> Nothing
+  Just c -> case R.tail t >>= R.head of
+    Nothing -> Nothing
+    Just c' -> Just (c, c')
 
 atViWordBoundary :: (Char -> Int) -> Direction -> BufferM Bool
-atViWordBoundary charType = genBoundary (-1) $ \cs -> case cs of
-      (c1:c2:_) -> isNl c1 && isNl c2 -- stop at empty lines
-              || not (isSpace c1) && (charType c1 /= charType c2)
-      _ -> True
+atViWordBoundary charType = genBoundary (-1) 2 $ \cs -> case firstTwo cs of
+  Just (c1, c2) -> isNl c1 && isNl c2 -- stop at empty lines
+                   || not (isSpace c1) && (charType c1 /= charType c2)
+  Nothing -> True
 
 atAnyViWordBoundary :: (Char -> Int) -> Direction -> BufferM Bool
-atAnyViWordBoundary charType = genBoundary (-1) $ \cs -> case cs of
-      (c1:c2:_) -> isNl c1 || isNl c2 || charType c1 /= charType c2
-      _ -> True
+atAnyViWordBoundary charType = genBoundary (-1) 2 $ \cs -> case firstTwo cs of
+  Just (c1, c2) -> isNl c1 || isNl c2 || charType c1 /= charType c2
+  Nothing -> True
 
 atViWordBoundaryOnLine :: (Char -> Int) -> Direction -> BufferM Bool
-atViWordBoundaryOnLine charType = genBoundary (-1)  $ \cs -> case cs of
-      (c1:c2:_) -> isNl c1 || isNl c2 || not (isSpace c1) && charType c1 /= charType c2
-      _ -> True
+atViWordBoundaryOnLine charType = genBoundary (-1) 2 $ \cs -> case firstTwo cs of
+  Just (c1, c2)-> isNl c1 || isNl c2 || not (isSpace c1) && charType c1 /= charType c2
+  Nothing -> True
 
 unitViWord :: TextUnit
 unitViWord = GenUnit Document $ atViWordBoundary viWordCharType
@@ -162,19 +181,21 @@ viWORDCharType :: Char -> Int
 viWORDCharType c | isSpace c = 1
                  | otherwise = 2
 
--- | Separator characters (space, tab, unicode separators). Most of the units
--- above attempt to identify "words" with various punctuation and symbols included
--- or excluded. This set of units is a simple inverse: it is true for "whitespace"
--- or "separators" and false for anything that is not (letters, numbers, symbols,
+-- | Separator characters (space, tab, unicode separators). Most of
+-- the units above attempt to identify "words" with various
+-- punctuation and symbols included or excluded. This set of units is
+-- a simple inverse: it is true for "whitespace" or "separators" and
+-- false for anything that is not (letters, numbers, symbols,
 -- punctuation, whatever).
-
 isAnySep :: Char -> Bool
-isAnySep c = isSeparator c || isSpace c || generalCategory c `elem` [ Space, LineSeparator, ParagraphSeparator ]
+isAnySep c = isSeparator c || isSpace c || generalCategory c `elem` seps
+  where
+    seps = [ Space, LineSeparator, ParagraphSeparator ]
 
 atSepBoundary :: Direction -> BufferM Bool
-atSepBoundary = genBoundary (-1) $ \cs -> case cs of
-    (c1:c2:_) -> isNl c1 || isNl c2 || isAnySep c1 /= isAnySep c2
-    _ -> True
+atSepBoundary = genBoundary (-1) 2 $ \cs -> case firstTwo cs of
+  Just (c1, c2) -> isNl c1 || isNl c2 || isAnySep c1 /= isAnySep c2
+  Nothing -> True
 
 -- | unitSep is true for any kind of whitespace/separator
 unitSep :: TextUnit
@@ -306,10 +327,11 @@ genMoveB unit (boundDir, boundSide) moveDir =
 -- | Generic maybe move operation.
 -- As genMoveB, but don't move if we are at boundary already.
 genMaybeMoveB :: TextUnit -> (Direction, BoundarySide) -> Direction -> BufferM ()
+-- optimized case for Document
 genMaybeMoveB Document boundSpec moveDir = genMoveB Document boundSpec moveDir
-   -- optimized case for Document
+-- optimized case for start/end of Line
 genMaybeMoveB Line (Backward, InsideBound) Backward = moveTo =<< solPointB =<< pointB
-   -- optimized case for begin of Line
+genMaybeMoveB Line (Forward, OutsideBound) Forward = moveTo =<< eolPointB =<< pointB
 genMaybeMoveB unit (boundDir, boundSide) moveDir =
   untilB_ (genAtBoundaryB unit boundDir boundSide) (moveB Character moveDir)
 

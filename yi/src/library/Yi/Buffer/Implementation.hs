@@ -41,6 +41,8 @@ module Yi.Buffer.Implementation
   , newBI
   , solPoint
   , solPoint'
+  , eolPoint
+  , eolPoint'
   , charsFromSolBI
   , regexRegionBI
   , getMarkDefaultPosBI
@@ -351,9 +353,24 @@ lineAt (Point p) fb = 1 + R.countNewLines (R.take p $ mem fb)
 solPoint :: Int -> BufferImpl syntax -> Point
 solPoint line fb = Point $ R.length $ fst $ R.splitAtLine (line - 1) (mem fb)
 
+-- | Point that's at EOL. Notably, this puts you right before the
+-- newline character if one exists, and right at the end of the text
+-- if one does not.
+eolPoint :: Int -> BufferImpl syntax -> Point
+eolPoint l = Point . checkEol . fst . R.splitAtLine l . mem
+  where
+    -- In case we're somewhere without trailing newline, we need to stay where we are
+    checkEol t = let l' = R.length t in case R.last t of
+      Just '\n' -> l' - 1
+      _ -> l'
+
 -- | Get begin of the line relatively to @point@.
 solPoint' :: Point -> BufferImpl syntax -> Point
 solPoint' point fb = solPoint (lineAt point fb) fb
+
+-- | Get end of the line relative to the point
+eolPoint' :: Point -> BufferImpl s -> Point
+eolPoint' p fb = eolPoint (lineAt p fb) fb
 
 charsFromSolBI :: Point -> BufferImpl syntax -> YiString
 charsFromSolBI pnt fb = nelemsBI (fromIntegral $ pnt - sol) sol fb
