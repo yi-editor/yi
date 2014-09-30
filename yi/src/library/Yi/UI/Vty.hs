@@ -169,14 +169,15 @@ refresh fs e = do
         statusBarStyle =
             ((appEndo <$> cmdSty) <*> baseAttributes)
                 (configStyle (configUI (fsConfig fs)))
-        tabBarImages = renderTabBar e fs (SL.sizeX tabbarRect)
+        tabBarImage =
+            renderTabBar (configStyle (configUI (fsConfig fs)))
+                (map (\(TabDescr t f) -> (t, f)) (toList (tabBarDescr e)))
         cmdImage = if null cmd
                    then Vty.emptyImage
                    else Vty.translate
                            (SL.offsetX promptRect)
                            (SL.offsetY promptRect)
                            (Vty.vertCat (fmap formatCmdLine niceCmd))
-        tabBarImage = Vty.vertCat tabBarImages
         cursorPos =
             case (\(w, r) -> (isMini w, cursor r)) (PL._focus windowsAndImages) of
                 (False, Just (y, x)) -> Vty.Cursor (toEnum x) (toEnum y)
@@ -319,16 +320,14 @@ drawText h w point tabWidth bufData
         | ord c < 32 = [('^',p),(chr (ord c + 64),p)]
         | otherwise = [(c,p)]
 
--- | Construct images for the tabbar if at least one tab exists.
-renderTabBar :: Editor -> FrontendState -> Int -> [Vty.Image]
-renderTabBar e fs xss = [tabImages Vty.<|> extraImage]
-  where tabImages       = foldr1 (Vty.<|>) $ fmap tabToVtyImage $ tabBarDescr e
-        imagePad = T.replicate (xss - fromEnum totalTabWidth) $ T.singleton ' '
-        extraImage      = withAttributes (tabBarAttributes uiStyle) imagePad
-        totalTabWidth   = Vty.imageWidth tabImages
-        uiStyle         = configStyle $ configUI $ fsConfig fs
-        tabTitle text   = ' ' `T.cons` text `T.snoc` ' '
-        tabAttr b       = baseAttr b $ tabBarAttributes uiStyle
-        baseAttr True  sty = attributesToAttr (appEndo (tabInFocusStyle uiStyle) sty) Vty.defAttr
-        baseAttr False sty = attributesToAttr (appEndo (tabNotFocusedStyle uiStyle) sty) Vty.defAttr `Vty.withStyle` Vty.underline
-        tabToVtyImage _tab@(TabDescr text inFocus) = Vty.text' (tabAttr inFocus) (tabTitle text)
+renderTabBar :: UIStyle -> [(T.Text, Bool)] -> Vty.Image
+renderTabBar uiStyle = foldr1 (Vty.<|>) . fmap render
+  where
+    render (text, inFocus) = Vty.text' (tabAttr inFocus) (tabTitle text)
+    tabTitle text   = ' ' `T.cons` text `T.snoc` ' '
+    tabAttr b       = baseAttr b $ tabBarAttributes uiStyle
+    baseAttr True sty =
+        attributesToAttr (appEndo (tabInFocusStyle uiStyle) sty) Vty.defAttr
+    baseAttr False sty =
+        attributesToAttr (appEndo (tabNotFocusedStyle uiStyle) sty) Vty.defAttr
+            `Vty.withStyle` Vty.underline
