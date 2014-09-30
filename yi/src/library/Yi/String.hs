@@ -1,10 +1,14 @@
 {-# LANGUAGE OverloadedStrings #-}
---
--- Copyright (c) 2005 Don Stewart - http://www.cse.unsw.edu.au/~dons
---
---
+{-# OPTIONS_HADDOCK show-extensions #-}
 
--- | String manipulation utilities
+-- |
+-- Module      :  Yi.String
+-- License     :  GPL-2
+-- Maintainer  :  yi-devel@googlegroups.com
+-- Stability   :  experimental
+-- Portability :  portable
+--
+-- String manipulation utilities
 
 module Yi.String (isBlank,
                   chomp,

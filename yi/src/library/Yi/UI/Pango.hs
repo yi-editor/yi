@@ -142,7 +142,7 @@ mkUI ui = Common.dummyUI
     }
 
 updateFont :: UIConfig -> IORef FontDescription -> IORef TabCache -> Statusbar
-                  -> FontDescription -> IO ()
+           -> FontDescription -> IO ()
 updateFont cfg fontRef tc status font = do
     maybe (return ()) (fontDescriptionSetFamily font) (configFontName cfg)
     maybe (return ()) (fontDescriptionSetSize font . fromIntegral)

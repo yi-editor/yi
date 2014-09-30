@@ -1,22 +1,33 @@
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE TemplateHaskell #-}
+{-# OPTIONS_HADDOCK show-extensions #-}
+
+-- |
+-- Module      :  Yi.Config
+-- License     :  GPL-2
+-- Maintainer  :  yi-devel@googlegroups.com
+-- Stability   :  experimental
+-- Portability :  portable
+--
+-- Module exposing common user settings. Users most likely want to be starting
+-- with "Yi.Config.Default".
 
 module Yi.Config where
 
-import Data.Prototype
+import           Data.Prototype
 
-import Yi.Buffer
-import Yi.Layout
-import Yi.Config.Misc
-import {-# source #-} Yi.Keymap
-import {-# source #-} Yi.Editor
-import Yi.Dynamic(ConfigVariables)
-import Yi.Event
-import Yi.Style
-import Yi.Style.Library
-import {-# source #-} Yi.UI.Common
+import           Yi.Buffer
+import           Yi.Config.Misc
+import           Yi.Dynamic (ConfigVariables)
+import           Yi.Event
 import qualified Yi.Interact as I
-import Yi.Utils
+import           Yi.Layout
+import           Yi.Style
+import           Yi.Style.Library
+import           Yi.Utils
+import           {-# source #-} Yi.Editor
+import           {-# source #-} Yi.Keymap
+import           {-# source #-} Yi.UI.Common
 
 #ifdef FRONTEND_VTY
 import qualified Graphics.Vty as Vty
@@ -28,7 +39,7 @@ data UIConfig = UIConfig {
 #endif
    configFontName :: Maybe String,  -- ^ Font name, for the UI that support it.
    configFontSize :: Maybe Int,     -- ^ Font size, for the UI that support it.
-   configScrollStyle ::Maybe ScrollStyle,
+   configScrollStyle :: Maybe ScrollStyle,
    -- ^ Style of scroll
    configScrollWheelAmount :: Int,  -- ^ Amount to move the buffer when using the scroll wheel
    configLeftSideScrollBar :: Bool, -- ^ Should the scrollbar be shown on the left side?
@@ -42,7 +53,8 @@ data UIConfig = UIConfig {
    configTheme :: Theme             -- ^ UI colours
   }
 
--- | When should we use a \"fat\" cursor (i.e. 2 pixels wide, rather than 1)? Fat cursors have only been implemented for the Pango frontend.
+-- | When should we use a "fat" cursor (i.e. 2 pixels wide, rather than 1)? Fat
+-- cursors have only been implemented for the Pango frontend.
 data CursorStyle = AlwaysFat
                  | NeverFat
                  | FatWhenFocused
