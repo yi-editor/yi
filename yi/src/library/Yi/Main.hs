@@ -85,7 +85,7 @@ options :: [OptDescr Opts]
 options =
   [ Option []     ["self-check"]  (NoArg  SelfCheck)             "Run self-checks"
   , Option ['f']  ["frontend"]    (ReqArg Frontend   "FRONTEND") frontendHelp
-  , Option ['y']  ["config-file"] (ReqArg ConfigFile "PATH")     "Specify a configuration file"
+  , Option ['y']  ["config-file"] (ReqArg ConfigFile "PATH")     "Specify a folder containing a configuration yi.hs file"
   , Option ['V']  ["version"]     (NoArg  Version)               "Show version information"
   , Option ['h']  ["help"]        (NoArg  Help)                  "Show this help"
   , Option []     ["debug"]       (NoArg  Debug)                 "Write debug information in a log file"
