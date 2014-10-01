@@ -80,7 +80,8 @@ paintStrokes f0 x0 lf@((pf,f):tf) lx@((px,x):tx) =
 paintPicture :: a -> [[Span (Endo a)]] -> [(Point,a)]
 paintPicture a = foldr (paintStrokes id a . strokePicture) []
 
-attributesPictureB :: UIStyle -> Maybe SearchExp -> Region -> [[Span StyleName]] -> BufferM [(Point,Attributes)]
+attributesPictureB :: UIStyle -> Maybe SearchExp -> Region -> [[Span StyleName]]
+    -> BufferM [(Point,Attributes)]
 attributesPictureB sty mexp region extraLayers =
   paintPicture (baseAttributes sty) <$>
     fmap (fmap (fmap ($ sty))) <$>
