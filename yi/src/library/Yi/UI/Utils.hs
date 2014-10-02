@@ -30,12 +30,6 @@ import           Yi.Style
 import           Yi.Syntax (Span(..))
 import           Yi.Window
 
-indexedAnnotatedStreamB :: Point -> BufferM [(Point, Char)]
-indexedAnnotatedStreamB p = do
-    text <- indexedStreamB Forward p
-    annots <- withSyntaxB modeGetAnnotations
-    return $ spliceAnnots text (dropWhile (\s -> spanEnd s < p) (annots p))
-
 applyHeights :: Traversable t => [Int] -> t Window -> t Window
 applyHeights heights ws = evalState (mapM distribute ws) heights
     where

@@ -127,7 +127,6 @@ module Yi.Buffer.Misc
   , modeIndentSettingsA
   , modeToggleCommentSelectionA
   , modeGetStrokesA
-  , modeGetAnnotationsA
   , modeOnLoadA
   , modeModeLineA
   , AnyMode (..)
@@ -417,7 +416,6 @@ data Mode syntax = Mode
   , modeToggleCommentSelection :: YiM ()
   , modeGetStrokes :: syntax -> Point -> Point -> Point -> [Stroke]
     -- ^ Strokes that should be applied when displaying a syntax element
-  , modeGetAnnotations :: syntax -> Point -> [Span String]
     -- should this be an Action instead?
   , modeOnLoad :: BufferM ()
     -- ^ An action that is to be executed when this mode is set
@@ -678,7 +676,6 @@ emptyMode = Mode
    },
    modeToggleCommentSelection = promptCommentString,
    modeGetStrokes = \_ _ _ _ -> [],
-   modeGetAnnotations = \_ _ -> [],
    modeOnLoad = return (),
    modeModeLine = defaultModeLine
   }

@@ -43,7 +43,6 @@ abellaModeGen :: (Char -> [Event]) -> TokenBasedMode Abella.Token
 abellaModeGen abellaBinding = styleMode Abella.lexer
   & modeNameA .~ "abella"
   & modeAppliesA .~ anyExtension ["thm"]
-  & modeGetAnnotationsA .~ tokenBasedAnnots getAnnot
   & modeToggleCommentSelectionA .~ withBuffer (toggleCommentSelectionB "% " "%")
   & modeKeymapA .~ topKeymapA %~ (<||)
      (choice

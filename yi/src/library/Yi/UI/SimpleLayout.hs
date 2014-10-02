@@ -92,7 +92,7 @@ layoutWindow win e w h = win
         fromMarkPoint = if isMini win
                         then Point 0
                         else evalBuffer $ use $ markPointA fromM
-        text = evalBuffer (indexedAnnotatedStreamB fromMarkPoint) -- read chars from the buffer, lazily
+        text = evalBuffer (indexedStreamB Forward fromMarkPoint) -- read chars from the buffer, lazily
 
         -- TODO: I suspect that this costs quite a lot of CPU in the "dry run" which determines the window size;
         -- In that case, since attributes are also useless there, it might help to replace the call by a dummy value.

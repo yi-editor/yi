@@ -16,7 +16,7 @@ module Yi.Modes (TokenBasedMode, fundamentalMode,
                  perlMode, pythonMode, javaMode, jsonMode, anyExtension,
                  extensionOrContentsMatch, linearSyntaxMode,
                  svnCommitMode, hookModes, applyModeHooks,
-                 lookupMode, whitespaceMode, removeAnnots,
+                 lookupMode, whitespaceMode,
                  gitCommitMode, rubyMode, styleMode
                 ) where
 
@@ -92,10 +92,6 @@ linearSyntaxMode initSt scanToken =
 styleMode :: Show (l s) => StyleLexer l s t i
           -> TokenBasedMode t
 styleMode l = linearSyntaxMode' (l ^. styleLexer) (l ^. tokenToStyle)
-
-removeAnnots :: Mode a -> Mode a
-removeAnnots m = m { modeName = modeName m `T.append` " no annots"
-                   , modeGetAnnotations = modeGetAnnotations emptyMode }
 
 cMode :: StyleBasedMode
 cMode = styleMode C.lexer

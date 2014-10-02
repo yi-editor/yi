@@ -212,7 +212,7 @@ renderWindow cfg e (SL.Rect x y w h) (win, focused) =
         fromMarkPoint = if notMini
                             then fst $ runBuffer win b $ use $ markPointA fromM
                             else Point 0
-        (text, _) = runBuffer win b (indexedAnnotatedStreamB fromMarkPoint) -- read chars from the buffer, lazily
+        (text, _) = runBuffer win b (indexedStreamB Forward fromMarkPoint)
 
         (attributes, _) = runBuffer win b $ attributesPictureAndSelB sty (currentRegex e) region
         -- TODO: I suspect that this costs quite a lot of CPU in the "dry run" which determines the window size;
@@ -228,7 +228,7 @@ renderWindow cfg e (SL.Rect x y w h) (win, focused) =
             drawText h' w
                      point
                      tabWidth
-                     ([(c,(wsty, -1)) | c <- T.unpack prompt] ++ bufData ++ [(' ',(wsty, eofPoint))])
+                     ([(c, (wsty, -1)) | c <- T.unpack prompt] ++ bufData ++ [(' ', (wsty, eofPoint))])
                      -- we always add one character which can be used to position the cursor at the end of file
         commonPref = T.pack <$> commonNamePrefix e
         (modeLine0, _) = runBuffer win b $ getModeLine commonPref
@@ -320,8 +320,11 @@ drawText h w point tabWidth bufData
         | ord c < 32 = [('^',p),(chr (ord c + 64),p)]
         | otherwise = [(c,p)]
 
+renderText :: [[(Attributes, T.Text)]] -> Vty.Image
+renderText = Vty.vertCat . map (Vty.horizCat . map (uncurry withAttributes))
+
 renderTabBar :: UIStyle -> [(T.Text, Bool)] -> Vty.Image
-renderTabBar uiStyle = foldr1 (Vty.<|>) . fmap render
+renderTabBar uiStyle = Vty.horizCat . fmap render
   where
     render (text, inFocus) = Vty.text' (tabAttr inFocus) (tabTitle text)
     tabTitle text   = ' ' `T.cons` text `T.snoc` ' '
