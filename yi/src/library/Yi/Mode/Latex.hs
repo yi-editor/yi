@@ -15,7 +15,6 @@ module Yi.Mode.Latex (latexMode3, latexMode2, fastMode) where
 import           Data.Text ()
 import           Yi.Buffer
 import qualified Yi.IncrementalParse as IncrParser
-import           Yi.Keymap (withBuffer)
 import           Yi.Lexer.Alex (lexScanner, commonLexer, CharScanner,
                                 Tok, AlexState)
 import qualified Yi.Lexer.Latex as Latex
