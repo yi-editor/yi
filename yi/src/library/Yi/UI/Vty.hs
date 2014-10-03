@@ -218,12 +218,11 @@ renderWindow cfg e (SL.Rect x y w h) (win, focused) =
         -- In that case, since attributes are also useless there, it might help to replace the call by a dummy value.
         -- This is also approximately valid of the call to "indexedAnnotatedStreamB".
         colors = map (fmap (($ Vty.defAttr) . attributesToAttr)) attributes
-        bufData = -- trace (unlines (map show text) ++ unlines (map show $ concat strokes)) $
-                  paintChars Vty.defAttr colors text
+        bufData =  paintChars Vty.defAttr colors text
         tabWidth = tabSize . fst $ runBuffer win b indentSettingsB
         prompt = if isMini win then miniIdentString b else ""
 
-        cur = (fmap (\(SL.Point2D curx cury) -> (cury, curx)) . fst)
+        cur = (fmap (\(SL.Point2D curx cury) -> (cury, T.length prompt + curx)) . fst)
               (runBuffer win b
                          (SL.coordsOfCharacterB
                              (SL.Size2D w h)
