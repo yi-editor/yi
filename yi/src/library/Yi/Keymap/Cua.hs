@@ -25,6 +25,7 @@ import qualified Data.Text as T
 import           Yi.Core
 import           Yi.File
 import           Yi.Keymap.Emacs.Utils
+import           Yi.MiniBuffer
 import           Yi.Misc (adjBlock)
 import           Yi.Rectangle
 import qualified Yi.Rope as R
@@ -147,7 +148,7 @@ other  cmd = choice [
  cmd (char 'y')   ?>>! redoB,
  cmd (char 's')   ?>>! fwriteE,
  cmd (char 'o')   ?>>! findFile,
- cmd (char '/')   ?>>! withModeY modeToggleCommentSelection,
+ cmd (char '/')   ?>>! commentRegion,
  cmd (char ']')   ?>>! autoIndentB IncreaseOnly,
  cmd (char '[')   ?>>! autoIndentB DecreaseOnly
  ]

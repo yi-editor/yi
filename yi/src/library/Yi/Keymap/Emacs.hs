@@ -191,7 +191,7 @@ emacsKeys univArg =
          , metaCh '>'           ?>>! repeatingArg botB
          , metaCh '%'           ?>>! queryReplaceE
          , metaCh '^'           ?>>! joinLinesE univArg
-         , metaCh ';'           ?>>! withModeY modeToggleCommentSelection
+         , metaCh ';'           ?>>! commentRegion
          , metaCh 'a'           ?>>! repeatingArg (moveE unitSentence Backward)
          , metaCh 'b'           ?>>! repeatingArg prevWordB
          , metaCh 'c'           ?>>! repeatingArg capitaliseWordB
@@ -234,7 +234,8 @@ emacsKeys univArg =
   withIntArg :: YiAction (m ()) () => (Int -> m ()) -> YiM ()
   withIntArg cmd = withUnivArg $ \arg -> cmd (fromMaybe 1 arg)
 
-  ctrlC = choice [ ctrlCh 'c' ?>>! withModeY modeToggleCommentSelection ]
+
+  ctrlC = choice [ ctrlCh 'c' ?>>! commentRegion ]
 
 
   rectangleFunctions = choice [ char 'a' ?>>! alignRegionOn

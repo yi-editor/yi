@@ -77,7 +77,7 @@ haskellAbstract :: Mode (tree TT)
 haskellAbstract = emptyMode
   & modeAppliesA .~ extensionOrContentsMatch extensions shebangPattern
   & modeNameA .~ "haskell"
-  & modeToggleCommentSelectionA .~ withBuffer (toggleCommentB "--")
+  & modeToggleCommentSelectionA .~ Just (toggleCommentB "--")
   where extensions = ["hs", "x", "hsc", "hsinc"]
         shebangPattern = "^#![[:space:]]*/usr/bin/env[[:space:]]+runhaskell"
 

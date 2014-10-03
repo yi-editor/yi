@@ -30,7 +30,7 @@ abstract :: Mode syntax
 abstract = fundamentalMode
  {
    modeApplies = anyExtension ["tex", "sty", "ltx"],
-   modeToggleCommentSelection = withBuffer (toggleCommentSelectionB "% " "%")
+   modeToggleCommentSelection = Just (toggleCommentB "%")
  }
 
 fastMode :: Mode (Tree Latex.TT)

@@ -27,6 +27,7 @@ module Yi.MiniBuffer ( spawnMinibufferE, withMinibufferFree, withMinibuffer
                      , getAllModeNames, matchingBufferNames, anyModeByNameM
                      , anyModeName, (:::)(..), LineNumber, RegexTag
                      , FilePatternTag, ToKill, CommandArguments(..)
+                     , commentRegion
                      ) where
 
 import           Control.Applicative
@@ -50,6 +51,19 @@ import           Yi.Monad
 import qualified Yi.Rope as R
 import           Yi.Style (defaultStyle)
 import           Yi.String (commonTPrefix)
+
+
+-- | Prompts the user for comment syntax to use for the current mode.
+commentRegion :: YiM ()
+commentRegion =
+  withBuffer (gets $ withMode0 modeToggleCommentSelection) >>= \case
+    Nothing -> do
+      withMinibufferFree "No comment syntax is defined. Use: " $ \cString ->
+        withBuffer $ do
+          let toggle = toggleCommentB (R.fromText cString)
+          _ <- toggle
+          modifyMode $ (\x -> x { modeToggleCommentSelection = Just toggle })
+    Just b -> withBuffer b
 
 -- | Open a minibuffer window with the given prompt and keymap
 -- The third argument is an action to perform after the minibuffer

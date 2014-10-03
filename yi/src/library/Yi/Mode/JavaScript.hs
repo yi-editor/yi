@@ -35,7 +35,7 @@ import           Yi.Buffer.Indent (indentSettingsB, indentOfB,
                                    cycleIndentsB, newlineAndIndentB)
 import           Yi.Buffer.Misc (Mode(..), BufferM, IndentBehaviour, file,
                                  pointAt, shiftWidth, BufferId(..))
-import           Yi.Core (emptyMode, toggleCommentSelectionB, withSyntax)
+import           Yi.Core (emptyMode, toggleCommentB, withSyntax)
 import           Yi.Dynamic
 import           Yi.Editor (withEditor, withOtherWindow, getDynamic,
                             stringToNewBuffer , findBuffer, switchToBufferE)
@@ -63,7 +63,7 @@ javaScriptAbstract :: Mode syntax
 javaScriptAbstract = emptyMode
   { modeApplies = anyExtension ["js"]
   , modeName = "javascript"
-  , modeToggleCommentSelection = withBuffer (toggleCommentSelectionB "// " "//")
+  , modeToggleCommentSelection = Just (toggleCommentB "//")
   }
 
 javaScriptMode :: Mode (Tree TT)

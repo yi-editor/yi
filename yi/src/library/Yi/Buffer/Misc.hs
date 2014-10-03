@@ -212,9 +212,8 @@ import qualified Yi.Rope as R
 import           Yi.Syntax
 import           Yi.Utils
 import           Yi.Window
-import           {-# SOURCE #-} Yi.Buffer.HighLevel
-import           {-# SOURCE #-} Yi.MiniBuffer (withMinibufferFree)
-import           {-# source #-} Yi.Keymap
+import           {-# source #-} Yi.Keymap (KeymapProcess, KeymapSet,
+                                           Action, emptyAction)
 
 #ifdef TESTING
 -- TODO: make this compile.
@@ -415,7 +414,7 @@ data Mode syntax = Mode
   , modeFollow :: syntax -> Action
     -- ^ Follow a \"link\" in the file. (eg. go to location of error message)
   , modeIndentSettings :: IndentSettings
-  , modeToggleCommentSelection :: YiM ()
+  , modeToggleCommentSelection :: Maybe (BufferM ())
   , modeGetStrokes :: syntax -> Point -> Point -> Point -> [Stroke]
     -- ^ Strokes that should be applied when displaying a syntax element
   , modeGetAnnotations :: syntax -> Point -> [Span String]
@@ -677,21 +676,12 @@ emptyMode = Mode
    , tabSize = 8
    , shiftWidth = 4
    },
-   modeToggleCommentSelection = promptCommentString,
+   modeToggleCommentSelection = Nothing,
    modeGetStrokes = \_ _ _ _ -> [],
    modeGetAnnotations = \_ _ -> [],
    modeOnLoad = return (),
    modeModeLine = defaultModeLine
   }
-
-
--- | Prompts the user for comment syntax to use for the current mode.
-promptCommentString :: YiM ()
-promptCommentString =
-  withMinibufferFree "No comment syntax is defined. Use: " $ \cString -> withBuffer $ do
-    let toggle = toggleCommentB (R.fromText cString)
-    _ <- toggle
-    modifyMode $ (\x -> x { modeToggleCommentSelection = withBuffer toggle })
 
 -- | Create buffer named @nm@ with contents @s@
 newB :: BufferRef -> BufferId -> YiString -> FBuffer
