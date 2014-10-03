@@ -10,9 +10,6 @@
 --
 -- Working with blocks (units) of text.
 --
--- TODO: Functions here kill performance, notably 'genBoundary'. This
--- needs porting to YiString or Text and use of 'streamB''
--- eliminated.
 
 module Yi.Buffer.TextUnit
     ( TextUnit(..)

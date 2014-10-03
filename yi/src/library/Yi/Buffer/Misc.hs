@@ -148,7 +148,6 @@ module Yi.Buffer.Misc
   , keymapProcessA
   , strokesRangesB
   , streamB
-  , streamB'
   , indexedStreamB
   , askMarks
   , pointAt
@@ -719,10 +718,6 @@ nelemsB n i = R.take n <$> streamB Forward i
 
 streamB :: Direction -> Point -> BufferM YiString
 streamB dir i = queryBuffer $ getStream dir i
-
--- | 'String' version of 'streamB'. See comment on 'getStream''.
-streamB' :: Direction -> Point -> BufferM String
-streamB' dir i = queryBuffer $ getStream' dir i
 
 indexedStreamB :: Direction -> Point -> BufferM [(Point,Char)]
 indexedStreamB dir i = queryBuffer $ getIndexedStream dir i

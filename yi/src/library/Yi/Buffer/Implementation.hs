@@ -59,7 +59,6 @@ module Yi.Buffer.Implementation
   , getAst, focusAst
   , strokesRangesBI
   , getStream
-  , getStream'
   , getIndexedStream
   , lineAt
   , SearchExp
@@ -242,13 +241,6 @@ nelemsBI n (Point i) = R.take n . R.drop i . mem
 getStream :: Direction -> Point -> BufferImpl syntax -> YiString
 getStream Forward  (Point i) = R.drop i . mem
 getStream Backward (Point i) = R.reverse . R.take i . mem
-
--- | 'String' version of 'getStream. TODO: Remove me after porting
--- things using "Yi.Buffer.TextUnit" to work over 'YiString' or at
--- least 'Text'.
-getStream' :: Direction -> Point -> BufferImpl syntax -> String
-getStream' Forward  (Point i) = R.toString . R.drop i . mem
-getStream' Backward (Point i) = R.toReverseString . R.take i . mem
 
 -- | TODO: This guy is a pretty big bottleneck and only one function
 -- uses it which in turn is only seldom used and most of the output is
