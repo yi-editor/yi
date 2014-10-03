@@ -1,8 +1,12 @@
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE BangPatterns #-}
 
 module Yi.UI.SimpleLayout
     ( Rect (..)
     , Layout (..)
+    , Point2D (..)
+    , Size2D (..)
+    , coordsOfCharacterB
     , layout
     , verticalOffsetsForWindows
     ) where
@@ -36,6 +40,16 @@ data Rect = Rect
     , offsetY :: !Int
     , sizeX :: !Int
     , sizeY :: !Int
+    }
+
+data Point2D = Point2D
+    { pointCol :: !Int
+    , pointRow :: !Int
+    }
+
+data Size2D = Size2D
+    { sizeWidth :: !Int
+    , sizeHeight :: !Int
     }
 
 layout :: Int -> Int -> Editor -> (Editor, Layout)
@@ -107,6 +121,50 @@ layoutWindow win e w h = win
                        fromMarkPoint
                        ([(-1, c) | c <- T.unpack prompt] ++ text ++ [(eofPoint, ' ')])
                              -- we always add one character which can be used to position the cursor at the end of file
+
+moveXorEol' :: Int -> Int -> BufferM Point
+moveXorEol' ts x = do
+    let go n | n < 1 = return ()
+        go n = do
+          c <- readB
+          case c of
+              '\n' -> return ()
+              '\t' -> rightB >> go (n - ts)
+              _ -> rightB >> go (n - 1)
+    go x
+    pointB
+
+coordsOfCharacterB :: Size2D -> Point -> Point
+    -> BufferM (Maybe Point2D)
+coordsOfCharacterB _ topLeft char | topLeft > char = return Nothing
+coordsOfCharacterB (Size2D _ 0) _ _ = return Nothing
+coordsOfCharacterB (Size2D w h) (Point topLeft) (Point char) = savingPointB $ do
+    moveTo (Point topLeft)
+    ts <- fmap tabSize indentSettingsB
+    (Point afterMove) <- moveXorEol' ts (w - 1)
+    if afterMove >= char
+    then do
+        moveTo (Point topLeft)
+        let go !acc = do
+                (Point p) <- pointB
+                if p == char
+                then return acc
+                else do
+                    c <- readB
+                    rightB
+                    case c of
+                        '\t' -> go (acc + ts)
+                        _ -> go (acc + 1)
+        column <- go 0
+        return (Just (Point2D column 0))
+    else do
+        rightB
+        (Point nextTopLeft) <- pointB
+        fmap (fmap (\(Point2D x y) -> Point2D x (y + 1)))
+             (coordsOfCharacterB
+                 (Size2D w (h - 1))
+                 (Point nextTopLeft)
+                 (Point char))
 
 layoutText
     :: Int    -- ^ The height of the part of the window we are in

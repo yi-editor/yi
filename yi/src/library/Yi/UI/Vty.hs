@@ -16,7 +16,7 @@ module Yi.UI.Vty
     ( start
     ) where
 
-import Prelude hiding (error, foldr1, concatMap, reverse)
+import Prelude hiding (error, concatMap, reverse)
 import Control.Applicative hiding ((<|>))
 import Control.Concurrent
 import Control.Exception
@@ -24,7 +24,7 @@ import Control.Lens
 import Control.Monad
 import Data.Char
 import qualified Data.DList as D
-import Data.Foldable (toList, foldr1, concatMap)
+import Data.Foldable (toList, concatMap)
 import Data.IORef
 import qualified Data.List.PointedList.Circular as PL
 import qualified Data.Map.Strict as M
@@ -149,7 +149,7 @@ requestRefresh fs e = do
 refresh :: FrontendState -> Editor -> IO ()
 refresh fs e = do
     (colCount, rowCount) <- Vty.displayBounds (Vty.outputIface (fsVty fs))
-    let (_e, SL.Layout tabbarRect winRects promptRect) = SL.layout colCount rowCount e
+    let (_e, SL.Layout _tabbarRect winRects promptRect) = SL.layout colCount rowCount e
         ws = windows e
         (cmd, cmdSty) = statusLineInfo e
         niceCmd = arrangeItems cmd (SL.sizeX promptRect) (maxStatusHeight e)
@@ -204,14 +204,13 @@ renderWindow cfg e (SL.Rect x y w h) (win, focused) =
         wsty = attributesToAttr ground Vty.defAttr
         eofsty = appEndo (eofStyle sty) ground
         (point, _) = runBuffer win b pointB
-        (eofPoint, _) = runBuffer win b sizeB
         region = mkSizeRegion fromMarkPoint (Size (w*h'))
         -- Work around a problem with the mini window never displaying it's contents due to a
         -- fromMark that is always equal to the end of the buffer contents.
         (Just (MarkSet fromM _ _), _) = runBuffer win b (getMarks win)
         fromMarkPoint = if notMini
-                            then fst $ runBuffer win b $ use $ markPointA fromM
-                            else Point 0
+                        then fst $ runBuffer win b $ use $ markPointA fromM
+                        else Point 0
         (text, _) = runBuffer win b (indexedStreamB Forward fromMarkPoint)
 
         (attributes, _) = runBuffer win b $ attributesPictureAndSelB sty (currentRegex e) region
@@ -224,11 +223,17 @@ renderWindow cfg e (SL.Rect x y w h) (win, focused) =
         tabWidth = tabSize . fst $ runBuffer win b indentSettingsB
         prompt = if isMini win then miniIdentString b else ""
 
-        (rendered, cur) =
+        cur = (fmap (\(SL.Point2D curx cury) -> (cury, curx)) . fst)
+              (runBuffer win b
+                         (SL.coordsOfCharacterB
+                             (SL.Size2D w h)
+                             fromMarkPoint
+                             point))
+
+        rendered =
             drawText h' w
-                     point
                      tabWidth
-                     ([(c, (wsty, -1)) | c <- T.unpack prompt] ++ bufData ++ [(' ', (wsty, eofPoint))])
+                     ([(c, wsty) | c <- T.unpack prompt] ++ bufData ++ [(' ', wsty)])
                      -- we always add one character which can be used to position the cursor at the end of file
         commonPref = T.pack <$> commonNamePrefix e
         (modeLine0, _) = runBuffer win b $ getModeLine commonPref
@@ -257,24 +262,23 @@ attributesToAttr (Attributes fg bg reverse bd _itlc underline') =
 
 -- | Apply the attributes in @sty@ and @changes@ to @cs@.  If the
 -- attributes are not used, @sty@ and @changes@ are not evaluated.
-paintChars :: a -> [(Point,a)] -> [(Point,Char)] -> [(Char, (a,Point))]
-paintChars sty changes cs = [(c,(s,p)) | ((p,c),s) <- zip cs attrs]
+paintChars :: a -> [(Point, a)] -> [(Point, Char)] -> [(Char, a)]
+paintChars sty changes cs = zip (fmap snd cs) attrs
     where attrs = stys sty changes cs
 
-stys :: a -> [(Point,a)] -> [(Point,Char)] -> [a]
+stys :: a -> [(Point, a)] -> [(Point, Char)] -> [a]
 stys sty [] cs = [ sty | _ <- cs ]
-stys sty ((endPos,sty'):xs) cs = [ sty | _ <- previous ] <> stys sty' xs later
+stys sty ((endPos, sty') : xs) cs = [ sty | _ <- previous ] <> stys sty' xs later
     where (previous, later) = break ((endPos <=) . fst) cs
 
 drawText :: Int    -- ^ The height of the part of the window we are in
          -> Int    -- ^ The width of the part of the window we are in
-         -> Point  -- ^ The position of the cursor
          -> Int    -- ^ The number of spaces to represent a tab character with.
-         -> [(Char, (Vty.Attr, Point))]  -- ^ The data to draw.
-         -> ([Vty.Image], Maybe (Int, Int))
-drawText h w point tabWidth bufData
-    | h == 0 || w == 0 = ([], Nothing)
-    | otherwise        = (renderedLines, pntpos)
+         -> [(Char, Vty.Attr)]  -- ^ The data to draw.
+         -> [Vty.Image]
+drawText h w tabWidth bufData
+    | h == 0 || w == 0 = []
+    | otherwise        = renderedLines
     where
 
     -- the number of lines that taking wrapping into account,
@@ -282,28 +286,22 @@ drawText h w point tabWidth bufData
     wrapped = concatMap (wrapLine w) $ map (concatMap expandGraphic) $ take h $ lines' bufData
     lns0 = take h wrapped
 
-    pntpos = listToMaybe
-        [ (y, x)
-        | (y, l) <- zip [0..] lns0
-        , (x, (_char, (_attr, p))) <- zip [0..] l
-        , p == point]
-
     -- fill lines with blanks, so the selection looks ok.
     renderedLines = map fillColorLine lns0
-    colorChar (c, (a, _aPoint)) = Vty.char a c
+    colorChar (c, a) = Vty.char a c
 
-    fillColorLine :: [(Char, (Vty.Attr, Point))] -> Vty.Image
+    fillColorLine :: [(Char, Vty.Attr)] -> Vty.Image
     fillColorLine [] = Vty.charFill Vty.defAttr ' ' w 1
     fillColorLine l = Vty.horizCat (map colorChar l)
                       Vty.<|>
                       Vty.charFill a ' ' (w - length l) 1
-                      where (_,(a,_x)) = last l
+                      where (_, a) = last l
 
     -- | Cut a string in lines separated by a '\n' char. Note
     -- that we add a blank character where the \n was, so the
     -- cursor can be positioned there.
 
-    lines' :: [(Char,a)] -> [[(Char,a)]]
+    lines' :: [(Char, a)] -> [[(Char, a)]]
     lines' [] =  []
     lines' s  = case s' of
                   []          -> [l]
@@ -316,12 +314,9 @@ drawText h w point tabWidth bufData
     wrapLine n l = let (x,rest) = splitAt n l in x : wrapLine n rest
 
     expandGraphic ('\t', p) = replicate tabWidth (' ', p)
-    expandGraphic (c,p)
-        | ord c < 32 = [('^',p),(chr (ord c + 64),p)]
-        | otherwise = [(c,p)]
-
-renderText :: [[(Attributes, T.Text)]] -> Vty.Image
-renderText = Vty.vertCat . map (Vty.horizCat . map (uncurry withAttributes))
+    expandGraphic (c, p)
+        | ord c < 32 = [('^', p), (chr (ord c + 64), p)]
+        | otherwise = [(c, p)]
 
 renderTabBar :: UIStyle -> [(T.Text, Bool)] -> Vty.Image
 renderTabBar uiStyle = Vty.horizCat . fmap render
