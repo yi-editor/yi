@@ -266,11 +266,6 @@ instance Binary BufferId where
   put (MemBuffer t) = put (0 :: Word8) >> put (E.encodeUtf8 t)
   put (FileBuffer t) = put (1 :: Word8) >> put t
 
--- TODO:
--- data BufferIdent
---     = MemBuffer String -- ^ Buffer ident
---     | FileBuffer FilePath
-
 data Attributes = Attributes
                 { ident :: !BufferId
                 , bkey__   :: !BufferRef          -- ^ immutable unique key
