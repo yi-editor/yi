@@ -19,6 +19,7 @@
  * Support eventlog profiling with -feventlog
  * Eliminate idle CPU consumption in vty frontend
  * General cleanup
+ * Make C-w closer to actual emacs behaviour (#612)
 
 0.9.0
 -----

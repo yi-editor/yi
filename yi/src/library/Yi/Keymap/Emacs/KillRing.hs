@@ -23,8 +23,11 @@ import qualified Yi.Rope as R
 
 
 -- | C-w
+--
+-- This is like @kill-region-or-backward-word@.
 killRegion :: BufferM ()
-killRegion = deleteRegionB =<< getSelectRegionB
+killRegion = getSelectRegionB >>= \r ->
+  if regionStart r == regionEnd r then bkillWordB else deleteRegionB r
 
 -- | C-k
 killLineE :: Maybe Int -> YiM ()
