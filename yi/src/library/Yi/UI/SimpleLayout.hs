@@ -109,21 +109,15 @@ layoutWindow win e w h = win
         fromMarkPoint = if isMini win
                         then Point 0
                         else evalBuffer $ use $ markPointA fromM
-        text = evalBuffer (indexedStreamB Forward fromMarkPoint) -- read chars from the buffer, lazily
 
         -- TODO: I suspect that this costs quite a lot of CPU in the "dry run" which determines the window size;
         -- In that case, since attributes are also useless there, it might help to replace the call by a dummy value.
         -- This is also approximately valid of the call to "indexedAnnotatedStreamB".
-        tabWidth = tabSize $ evalBuffer indentSettingsB
-        prompt = if isMini win then miniIdentString b else ""
+        (toMarkPoint, wrapCount) = evalBuffer
+            (lastVisiblePointAndWrapCountB (Size2D w h') fromMarkPoint)
 
-        (toMarkPoint, dispLnCount) =
-            layoutText h'
-                       w
-                       tabWidth
-                       fromMarkPoint
-                       ([(-1, c) | c <- T.unpack prompt] ++ text ++ [(eofPoint, ' ')])
-                             -- we always add one character which can be used to position the cursor at the end of file
+        dispLnCount = h' - wrapCount
+
 
 coordsOfCharacterB :: Size2D -> Point -> Point
     -> BufferM (Maybe Point2D)
@@ -143,6 +137,21 @@ coordsOfCharacterB (Size2D w h) (Point topLeft) (Point char) = savingPointB $ do
                 _ -> go (x + 1) y (n - 1) t
         go !x !y _ _ = Just (Point2D x y)
     return (go 0 0 (char - topLeft) text)
+
+lastVisiblePointAndWrapCountB :: Size2D -> Point -> BufferM (Point, Int)
+lastVisiblePointAndWrapCountB (Size2D w h) (Point topLeft) = savingPointB $ do
+    ts <- fmap tabSize indentSettingsB
+    text <- fmap (R.toText . R.take (w * h))
+                 (streamB Forward (Point topLeft))
+    let go !x !y !wc !n t | x >= w = go (x - w) (y + 1) (wc + 1) n t
+        go _  !y !wc !n _ | y >= h = (Point (n - 1), wc)
+        go !x !y !wc !n (T.uncons -> Just (c, t)) =
+            case c of
+                '\t' -> go (x + ts) y wc (n + 1) t
+                '\n' -> go 0 (y + 1) wc (n + 1) t
+                _ -> go (x + 1) y wc (n + 1) t
+        go !x !y !wc !n _ = (Point n, wc)
+    return (go 0 0 0 topLeft text)
 
 layoutText
     :: Int    -- ^ The height of the part of the window we are in
