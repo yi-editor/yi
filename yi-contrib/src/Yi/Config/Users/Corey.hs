@@ -31,16 +31,12 @@ prefIndent m = m {
                 tabSize = 4
             }}
 
-noHaskellAnnots m 
-    | modeName m == "haskell" = m { modeGetAnnotations = modeGetAnnotations emptyMode }
-    | otherwise = m
-
 config = defaultConfig 
     {
         -- Use VTY as the default UI.
         -- startFrontEnd = Yi.UI.Vty.start,
         defaultKm = keymapSet,
-        modeTable = fmap (onMode $ noHaskellAnnots . prefIndent) (modeTable defaultConfig),
+        modeTable = fmap (onMode prefIndent) (modeTable defaultConfig),
         configUI = (configUI defaultConfig)
             {
                 configTheme = darkBlueTheme

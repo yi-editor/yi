@@ -66,6 +66,5 @@ myModes = [
          AnyMode Haskell.fastMode {
              -- Disable beautification
              modePrettify = const $ return ()
-           , modeGetAnnotations = (const . const) []
          }
     ]

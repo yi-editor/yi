@@ -37,7 +37,7 @@ import           Control.Monad hiding (forM_)
 import           Data.Binary
 import           Data.Default
 import           Data.Foldable
-import           Data.Maybe (listToMaybe, isJust, catMaybes)
+import           Data.Maybe (listToMaybe, isJust)
 import           Data.Monoid
 import qualified Data.Text as T
 import           Data.Typeable
@@ -89,14 +89,12 @@ cleverMode = haskellAbstract
   & modeHLA .~ mkParenModeHL (skipScanner 50) haskellLexer
   & modeAdjustBlockA .~ adjustBlock
   & modePrettifyA .~ cleverPrettify . allToks
-  & modeGetAnnotationsA .~ tokenBasedAnnots Paren.tokenToAnnot
 
 fastMode :: Mode (OnlineTree.Tree TT)
 fastMode = haskellAbstract
   & modeNameA .~ "fast haskell"
   & modeHLA .~ mkOnlineModeHL haskellLexer
   & modeGetStrokesA .~ tokenBasedStrokes Paren.tokenToStroke
-  & modeGetAnnotationsA .~ tokenBasedAnnots Paren.tokenToAnnot
 
 literateMode :: Mode (Paren.Tree TT)
 literateMode = haskellAbstract
@@ -105,7 +103,6 @@ literateMode = haskellAbstract
   & modeHLA .~ mkParenModeHL id literateHaskellLexer
   & modeGetStrokesA .~ strokesOfParenTree
     -- FIXME I think that 'begin' should not be ignored
-  & modeGetAnnotationsA .~ (\t _begin -> catMaybes $ fmap Paren.tokenToAnnot $ allToks t)
   & modeAdjustBlockA .~ adjustBlock
   & modeIndentA .~ cleverAutoIndentHaskellB
   & modePrettifyA .~ cleverPrettify . allToks

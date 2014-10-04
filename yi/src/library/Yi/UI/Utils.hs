@@ -30,12 +30,6 @@ import           Yi.Style
 import           Yi.Syntax (Span(..))
 import           Yi.Window
 
-indexedAnnotatedStreamB :: Point -> BufferM [(Point, Char)]
-indexedAnnotatedStreamB p = do
-    text <- indexedStreamB Forward p
-    annots <- withSyntaxB modeGetAnnotations
-    return $ spliceAnnots text (dropWhile (\s -> spanEnd s < p) (annots p))
-
 applyHeights :: Traversable t => [Int] -> t Window -> t Window
 applyHeights heights ws = evalState (mapM distribute ws) heights
     where
@@ -80,7 +74,8 @@ paintStrokes f0 x0 lf@((pf,f):tf) lx@((px,x):tx) =
 paintPicture :: a -> [[Span (Endo a)]] -> [(Point,a)]
 paintPicture a = foldr (paintStrokes id a . strokePicture) []
 
-attributesPictureB :: UIStyle -> Maybe SearchExp -> Region -> [[Span StyleName]] -> BufferM [(Point,Attributes)]
+attributesPictureB :: UIStyle -> Maybe SearchExp -> Region -> [[Span StyleName]]
+    -> BufferM [(Point,Attributes)]
 attributesPictureB sty mexp region extraLayers =
   paintPicture (baseAttributes sty) <$>
     fmap (fmap (fmap ($ sty))) <$>
@@ -101,6 +96,7 @@ attributesPictureAndSelB sty mexp region = do
 
 -- | Arrange a list of items in columns over maximum @maxNumberOfLines@ lines
 arrangeItems :: [T.Text] -> Int -> Int -> [T.Text]
+arrangeItems items _ _ | all T.null items = []
 arrangeItems items maxWidth maxNumberOfLines = take maxNumberOfLines $ snd choice
     where choice = maximumBy (compare `on` fst) arrangements
           arrangements = fmap (arrangeItems' items maxWidth) (reverse [1..maxNumberOfLines])

@@ -37,9 +37,8 @@ fastMode = abstract
   {
     modeName = "fast latex",
     modeHL = ExtHL $ mkHighlighter (IncrParser.scanner manyToks . latexLexer),
-    modeGetStrokes = tokenBasedStrokes Latex.tokenToStroke,
-    modeGetAnnotations = tokenBasedAnnots Latex.tokenToAnnot
- }
+    modeGetStrokes = tokenBasedStrokes Latex.tokenToStroke
+  }
 
 -- | syntax-based latex mode
 latexMode2 :: Mode (Latex.Tree Latex.TT)
@@ -48,8 +47,7 @@ latexMode2 = abstract
     modeName = "latex",
     modeHL = ExtHL $
        mkHighlighter (IncrParser.scanner Latex.parse . latexLexer),
-    modeGetStrokes = \t point begin end -> Latex.getStrokes point begin end t,
-    modeGetAnnotations = tokenBasedAnnots Latex.tokenToAnnot
+    modeGetStrokes = \t point begin end -> Latex.getStrokes point begin end t
   }
 
 -- | syntax-based latex mode
@@ -59,8 +57,7 @@ latexMode3 = abstract
     modeName = "latex",
     modeHL = ExtHL $
        Driver.mkHighlighter (IncrParser.scanner Latex.parse . latexLexer),
-    modeGetStrokes = \t point begin end -> Latex.getStrokes point begin end t,
-    modeGetAnnotations = tokenBasedAnnots Latex.tokenToAnnot
+    modeGetStrokes = \t point begin end -> Latex.getStrokes point begin end t
   }
 
 latexLexer :: CharScanner -> Scanner (AlexState Latex.HlState) (Tok Latex.Token)

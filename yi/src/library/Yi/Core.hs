@@ -106,14 +106,14 @@ import           {-# source #-} Yi.PersistentState(loadPersistentState,
 
 -- | Make an action suitable for an interactive run.
 -- UI will be refreshed.
-interactive :: [Action] -> YiM ()
-interactive action = do
+interactive :: IsRefreshNeeded -> [Action] -> YiM ()
+interactive isRefreshNeeded action = do
   evs <- withEditor $ use pendingEventsA
   logPutStrLn $ ">>> interactively" <> showEvs evs
   withEditor $ (%=) buffersA (fmap $  undosA %~ addChangeU InteractivePoint)
   mapM_ runAction action
   withEditor $ (%=) killringA krEndCmd
-  refreshEditor
+  when (isRefreshNeeded == MustRefresh) refreshEditor
   logPutStrLn "<<<"
   return ()
 
@@ -138,11 +138,12 @@ startEditor cfg st = do
     (ui, runYi) <- mdo
         let handler (exception :: SomeException) =
               runYi $ errorEditor (showT exception) >> refreshEditor
-            inF ev    = handle handler $ runYi $ dispatch ev
-            outF acts = handle handler $ runYi $ interactive acts
+            inF evs   = handle handler $ runYi $ dispatch evs
+            outF refreshNeeded acts =
+                handle handler $ runYi $ interactive refreshNeeded acts
             runYi f   = runReaderT (runYiM f) yi
             yi        = Yi ui inF outF cfg newSt
-        ui <- uiStart cfg inF outF editor
+        ui <- uiStart cfg inF (outF MustRefresh) editor
         return (ui, runYi)
 
     runYi loadPersistentState
@@ -150,10 +151,10 @@ startEditor cfg st = do
     runYi $ do
       if isNothing st
         -- process options if booting for the first time
-        then postActions $ startActions cfg
+        then postActions NoNeedToRefresh $ startActions cfg
         -- otherwise: recover the mode of buffers
         else withEditor $ buffersA.mapped %= recoverMode (modeTable cfg)
-      postActions $ initialActions cfg ++ [makeAction showErrors]
+      postActions NoNeedToRefresh $ initialActions cfg ++ [makeAction showErrors]
 
     runYi refreshEditor
 
@@ -164,8 +165,8 @@ recoverMode tbl buffer  = case fromMaybe (AnyMode emptyMode) (find (\(AnyMode m)
     AnyMode m -> setMode0 m buffer
   where oldName = case buffer of FBuffer {bmode = m} -> modeName m
 
-postActions :: [Action] -> YiM ()
-postActions actions = do yi <- ask; liftBase $ yiOutput yi actions
+postActions :: IsRefreshNeeded -> [Action] -> YiM ()
+postActions refreshNeeded actions = do yi <- ask; liftBase $ yiOutput yi refreshNeeded actions
 
 -- | Display the errors buffer if it is not already visible.
 showErrors :: YiM ()
@@ -176,14 +177,12 @@ showErrors = withEditor $ do
                  _  -> do splitE
                           switchToBufferWithNameE "*errors*"
 
--- | Process an event by advancing the current keymap automaton an
--- execing the generated actions.
-dispatch :: Event -> YiM ()
-dispatch ev = do
+-- | Process events by advancing the current keymap automaton and
+-- executing the generated actions.
+dispatch :: [Event] -> YiM () -- TODO: use non-empty list here
+dispatch (ev : evs) = do
   yi <- ask
-  entryEvs <- withEditor $ use pendingEventsA
-  logPutStrLn $ "pending events: " <> showEvs entryEvs
-  (userActions,_p') <- withBuffer $ do
+  (userActions, _p') <- withBuffer $ do
     keymap <- gets (withMode0 modeKeymap)
     p0 <- use keymapProcessA
     let km = extractTopKeymap $ keymap $ defaultKm $ yiConfig yi
@@ -203,9 +202,10 @@ dispatch ev = do
                       printMsg ("Unrecognized input: " <> showEvs (evs ++ [ev]))]
           _ -> actions
 
-        actions1 = [makeAction $ printMsg "Keymap was in an ambiguous state! Resetting it." | ambiguous]
+        actions1 = [ makeAction $ printMsg "Keymap was in an ambiguous state! Resetting it."
+                   | ambiguous]
 
-    return (actions0 ++ actions1,p')
+    return (actions0 ++ actions1, p')
 
   let decay, pendingFeedback :: EditorM ()
       decay = statusLinesA %= DelayList.decrease 1
@@ -213,7 +213,11 @@ dispatch ev = do
                            if null userActions
                                then printMsg . showEvs =<< use pendingEventsA
                                else assign pendingEventsA []
-  postActions $ [makeAction decay] ++ userActions ++ [makeAction pendingFeedback]
+      allActions = [makeAction decay] ++ userActions ++ [makeAction pendingFeedback]
+
+  if null evs
+  then postActions MustRefresh allActions
+  else postActions NoNeedToRefresh allActions >> dispatch evs
 
 
 showEvs :: [Event] -> T.Text
@@ -419,7 +423,7 @@ startSubprocessWatchers procid procinfo yi onExit =
             ("Exit", waitForExit (procHandle procinfo) >>= reportExit)])
   where
     send :: YiM () -> IO ()
-    send a = yiOutput yi [makeAction a]
+    send a = yiOutput yi MustRefresh [makeAction a]
 
     -- TODO: This 'String' here is due to 'pipeToBuffer' but I don't
     -- know how viable it would be to read from a process as Text.

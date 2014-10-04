@@ -129,11 +129,12 @@ inclusiveRegionB r =
 -- a list of small regions form this block region.
 blockifyRegion :: Region -> BufferM [Region]
 blockifyRegion r = savingPointB $ do
-  [lowCol,highCol] <- sort <$> mapM colOf [regionStart r, regionEnd r]
+  [lowCol, highCol] <- sort <$> mapM colOf [regionStart r, regionEnd r]
   startLine <- lineOf $ regionStart r
   endLine   <- lineOf $ regionEnd r
   when (startLine > endLine) $ fail "blockifyRegion: impossible"
-  mapM (\line -> mkRegion <$> pointOfLineColB line lowCol <*> pointOfLineColB line (1 + highCol))
+  mapM (\line -> mkRegion <$> pointOfLineColB line lowCol
+                          <*> pointOfLineColB line (1 + highCol))
        [startLine..endLine]
 
 -- | Joins lines in the region with a single space, skipping any empty

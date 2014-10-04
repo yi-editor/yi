@@ -16,7 +16,6 @@ import           Yi hiding (Block)
 import           Yi.Hoogle (hoogle)
 import           Yi.Lexer.Haskell (TT)
 import qualified Yi.Mode.Haskell as H
-import           Yi.Modes (removeAnnots)
 import qualified Yi.Rope as R
 import           Yi.String (mapLines)
 import           Yi.Syntax.Haskell (Tree)
@@ -62,4 +61,4 @@ haskellModeHooks mode =
 
 -- This is used in order to remove the unicode characters usually used.
 noAnnots :: Mode (Tree TT)
-noAnnots = removeAnnots (H.preciseMode {modeName = "preciseNoUnicode"})
+noAnnots = H.preciseMode {modeName = "preciseNoUnicode"}

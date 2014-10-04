@@ -27,23 +27,18 @@ import           Data.Char (isSpace)
 import           Data.Default
 import           Data.Maybe (isJust)
 import qualified Data.Text as T
-import           Data.Traversable (sequenceA)
 import           Data.Typeable
 import           Yi.Core
 import qualified Yi.Lexer.Abella as Abella
-import           Yi.Lexer.Alex
 import           Yi.MiniBuffer (CommandArguments(..))
 import qualified Yi.Mode.Interactive as Interactive
 import           Yi.Modes (TokenBasedMode, styleMode, anyExtension)
 import qualified Yi.Rope as R
-import           Yi.Syntax (Span)
-import           Yi.Syntax.Tree
 
 abellaModeGen :: (Char -> [Event]) -> TokenBasedMode Abella.Token
 abellaModeGen abellaBinding = styleMode Abella.lexer
   & modeNameA .~ "abella"
   & modeAppliesA .~ anyExtension ["thm"]
-  & modeGetAnnotationsA .~ tokenBasedAnnots getAnnot
   & modeToggleCommentSelectionA .~ Just (toggleCommentB "%")
   & modeKeymapA .~ topKeymapA %~ (<||)
      (choice
@@ -53,9 +48,6 @@ abellaModeGen abellaBinding = styleMode Abella.lexer
       , abellaBinding 'a' ?*>>! abellaAbort
       , abellaBinding '\r' ?*>>! abellaEvalFromProofPoint
       ])
-  where
-    getAnnot :: Tok Abella.Token -> Maybe (Span String)
-    getAnnot = sequenceA . tokToSpan . fmap Abella.tokenToText
 
 abellaModeEmacs :: TokenBasedMode Abella.Token
 abellaModeEmacs = abellaModeGen (\ch -> [ctrlCh 'c', ctrlCh ch])
