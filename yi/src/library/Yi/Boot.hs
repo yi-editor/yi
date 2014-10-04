@@ -19,11 +19,10 @@ import qualified Config.Dyre as Dyre
 import qualified Config.Dyre.Options as Dyre
 import           Config.Dyre.Relaunch
 import           Control.Lens
-import           Control.Monad.Base
-import           Control.Monad.State
 import           Data.Text ()
 import           System.Environment
 import           System.Exit
+import           Yi.Boot.Internal
 import           Yi.Buffer.Misc (BufferId(..))
 import           Yi.Config
 import           Yi.Editor
@@ -31,7 +30,6 @@ import           Yi.Keymap
 import           Yi.Main
 import           Yi.Paths (getCustomConfigPath)
 import           Yi.Rope (fromString)
-import qualified Yi.UI.Common as UI
 
 -- | Once the custom yi is compiled this restores the editor state (if
 -- requested) then proceeds to run the editor.
@@ -88,14 +86,3 @@ profilingParams =
   , "-osuf=p_o", "-hisuf=p_hi"] ++
 #endif
   []
-
--- | "reloads" the configuration
---
--- Serializes the editor state and relaunches Yi using the serialized
--- state. The launch of Yi will result in recompilation of the user's
--- custom Yi. This, in effect, "reloads" the configuration.
-reload :: YiM ()
-reload = do
-  editor <- withEditor get
-  withUI (`UI.end` False)
-  liftBase $ relaunchWithBinaryState (Just editor) Nothing

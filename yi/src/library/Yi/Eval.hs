@@ -47,6 +47,7 @@ import qualified Language.Haskell.Interpreter as LHI
 import           Prelude hiding (error, mapM_)
 import           System.Directory (doesFileExist)
 import           Text.Read (readMaybe)
+import           Yi.Boot.Internal (reload)
 import           Yi.Config.Simple.Types
 import           Yi.Core
 import           Yi.Debug
@@ -57,7 +58,6 @@ import           Yi.Regex
 import qualified Yi.Rope as R
 import           Yi.String
 import           Yi.Utils
-import           {-# source #-} Yi.Boot (reload)
 
 -- TODO: should we be sticking Text here?
 

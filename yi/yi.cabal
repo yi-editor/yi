@@ -60,6 +60,7 @@ library
   exposed-modules:
     Yi
     Yi.Boot
+    Yi.Boot.Internal
     Yi.Buffer
     Yi.Buffer.Adjusted
     Yi.Buffer.HighLevel
