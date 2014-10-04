@@ -34,15 +34,15 @@ import qualified Data.Map as M
 import Control.Exc(ignoringException)
 import Control.Lens
 
-import Yi.Dynamic
 import Yi.Config.Simple.Types(customVariable, Field)
-import Yi.History
+import Yi.Dynamic
 import Yi.Editor
+import Yi.History
 import Yi.Keymap(YiM)
 import Yi.KillRing(Killring(..))
-import Yi.Search(getRegexE, setRegexE)
-import Yi.Regex(SearchExp(..))
 import Yi.Paths(getPersistentStateFilename)
+import Yi.Regex(SearchExp(..))
+import Yi.Search.Internal (getRegexE, setRegexE)
 import Yi.Utils
 
 data PersistentState = PersistentState { histories     :: !Histories

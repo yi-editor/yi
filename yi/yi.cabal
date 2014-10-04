@@ -164,6 +164,7 @@ library
     Yi.Snippets
     Yi.Snippets.Haskell
     Yi.Search
+    Yi.Search.Internal
     Yi.String
     Yi.Syntax.Driver
     Yi.Syntax.Haskell
