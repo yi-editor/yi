@@ -131,7 +131,7 @@ instance Show WinInfo where
 instance Ord EventM.Modifier where
   x <= y = fromEnum x <= fromEnum y
 
-mkUI :: UI -> Common.UI
+mkUI :: UI -> Common.UI Editor
 mkUI ui = Common.dummyUI
     { Common.main          = main
     , Common.end           = const end

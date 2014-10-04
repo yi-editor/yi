@@ -108,7 +108,7 @@ type KeymapEndo = Keymap -> Keymap
 
 type KeymapProcess = I.P Event Action
 
-data Yi = Yi { yiUi          :: UI
+data Yi = Yi { yiUi          :: UI Editor
              , yiInput       :: Event -> IO ()      -- ^ input stream
              , yiOutput      :: [Action] -> IO ()   -- ^ output stream
              , yiConfig      :: Config
@@ -153,7 +153,7 @@ write x = I.write (makeAction x)
 --------------------------------
 -- Uninteresting glue code
 
-withUI :: (UI -> IO a) -> YiM a
+withUI :: (UI Editor -> IO a) -> YiM a
 withUI = with yiUi
 
 unsafeWithEditor :: Config -> MVar YiVar -> EditorM a -> IO a

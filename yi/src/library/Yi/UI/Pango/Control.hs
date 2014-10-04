@@ -172,7 +172,7 @@ runAction action = do
     liftBase $ out [action]
 
 -- | Test 2
-mkUI :: IO () -> MVar Control -> Common.UI
+mkUI :: IO () -> MVar Control -> Common.UI Editor
 mkUI main yiMVar = Common.dummyUI
     { Common.main          = main
     , Common.end           = \_ -> void $ runControl' end yiMVar

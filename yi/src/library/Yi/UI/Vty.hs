@@ -78,7 +78,7 @@ data UI = UI
   , oAttrs          :: TerminalAttributes
   }
 
-mkUI :: UI -> Common.UI
+mkUI :: UI -> Common.UI Editor
 mkUI ui = Common.dummyUI
   {
    Common.main           = main ui,
