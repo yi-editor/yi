@@ -65,7 +65,7 @@ import           Data.Binary
 import           Data.Char
 import           Data.Default
 import           Data.Maybe
-import            Data.Monoid
+import           Data.Monoid
 import qualified Data.Text as T
 import qualified Data.Text.Encoding as E
 import           Data.Typeable
@@ -73,30 +73,10 @@ import           Yi.Core
 import           Yi.History
 import           Yi.Regex
 import qualified Yi.Rope as R
+import           Yi.Search.Internal
 import           Yi.String (showT)
 import           Yi.Utils
 import           Yi.Window
-
--- ---------------------------------------------------------------------
--- Searching and substitutions with regular expressions
---
--- The most recent regex is held by the editor. You can get at it with
--- getRegeE. This is useful to determine if there was a previous
--- pattern.
---
-
--- | Put regex into regex 'register'
-setRegexE :: SearchExp -> EditorM ()
-setRegexE re = assign currentRegexA (Just re)
-
--- | Clear the regex 'register'
-resetRegexE :: EditorM ()
-resetRegexE = assign currentRegexA Nothing
-
--- | Return contents of regex register
-getRegexE :: EditorM (Maybe SearchExp)
-getRegexE = use currentRegexA
-
 
 -- ---------------------------------------------------------------------
 --
