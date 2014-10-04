@@ -129,8 +129,8 @@ newtype YiM a = YiM {runYiM :: ReaderT Yi IO a}
     deriving (Monad, Applicative, MonadReader Yi, MonadBase IO, Typeable, Functor)
 
 instance MonadState Editor YiM where
-    get = yiEditor <$> (readRef =<< yiVar <$> ask)
-    put v = flip modifyRef (\x -> x {yiEditor = v}) =<< yiVar <$> ask
+    get = yiEditor <$> (liftBase . readMVar =<< yiVar <$> ask)
+    put v = liftBase . flip modifyMVar_ (\x -> return $ x {yiEditor = v}) =<< yiVar <$> ask
 
 instance MonadEditor YiM where
     askCfg = yiConfig <$> ask
