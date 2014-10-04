@@ -13,7 +13,7 @@ import Foreign.Marshal.Alloc(allocaBytes)
 import Foreign.C.String
 
 import Control.Exc(orException)
-import Yi.Buffer (BufferRef)
+import Yi.Buffer.Basic (BufferRef)
 import Yi.Monad
 
 #ifndef mingw32_HOST_OS

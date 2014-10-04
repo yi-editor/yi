@@ -26,7 +26,7 @@ import           Data.List
 import           Data.Maybe
 import           Data.Monoid
 import qualified Data.Text as T
-import           Yi.Editor
+import           Yi.Editor (EditorM, printMsg, printMsgs)
 import           Yi.String (commonTPrefix', showT)
 import           Yi.Utils
 

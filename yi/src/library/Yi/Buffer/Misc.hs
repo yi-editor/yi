@@ -2,7 +2,6 @@
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DeriveFoldable #-}
 {-# LANGUAGE DeriveFunctor #-}
-{-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE DeriveTraversable #-}
 {-# LANGUAGE ExistentialQuantification #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
@@ -12,6 +11,7 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE TemplateHaskell #-}
+{-# OPTIONS_GHC -fno-warn-orphans #-}
 {-# OPTIONS_HADDOCK show-extensions #-}
 
 -- |
@@ -181,11 +181,6 @@ import           Control.Monad.RWS.Strict hiding (mapM_, mapM, get, put, forM_, 
 import           Data.Binary
 import           Data.Char(ord)
 import           Data.Default
-#if __GLASGOW_HASKELL__ < 708
-import           Data.DeriveTH
-#else
-import           GHC.Generics (Generic)
-#endif
 import           Data.Foldable
 import           Data.Function hiding ((.), id)
 import qualified Data.Map as M
@@ -194,7 +189,6 @@ import qualified Data.Text as T
 import qualified Data.Text.Encoding as E
 import           Data.Time
 import           Data.Traversable
-import           Data.Typeable
 import           Numeric(showHex)
 import           Prelude hiding (foldr, mapM, notElem)
 import           System.FilePath
@@ -208,10 +202,9 @@ import           Yi.Region
 import           Yi.Rope (YiString)
 import qualified Yi.Rope as R
 import           Yi.Syntax
+import           Yi.Types
 import           Yi.Utils
 import           Yi.Window
-import           {-# source #-} Yi.Keymap (KeymapProcess, KeymapSet,
-                                           Action, emptyAction)
 
 #ifdef TESTING
 -- TODO: make this compile.
@@ -235,90 +228,27 @@ import           {-# source #-} Yi.Keymap (KeymapProcess, KeymapSet,
 --  * Log of updates mades
 --  * Undo
 
-type WinMarks = MarkSet Mark
-
-data MarkSet a = MarkSet { fromMark, insMark, selMark :: !a } deriving (Traversable, Foldable, Functor)
-
-#if __GLASGOW_HASKELL__ < 708
-$(derive makeBinary ''MarkSet)
-#else
-deriving instance Generic (MarkSet a)
-instance Binary a => Binary (MarkSet a)
-#endif
-
-data SelectionStyle = SelectionStyle
-  { highlightSelection :: !Bool
-  , rectangleSelection :: !Bool
-  }
-  deriving Typeable
-
-data BufferId = MemBuffer T.Text
-              | FileBuffer FilePath
-              deriving (Show, Eq)
-
-instance Binary BufferId where
-  get = get >>= \case
-    (0 :: Word8) -> MemBuffer . E.decodeUtf8 <$> get
-    1 -> FileBuffer <$> get
-    x -> fail $ "Binary failed on BufferId, tag: " ++ show x
-  put (MemBuffer t) = put (0 :: Word8) >> put (E.encodeUtf8 t)
-  put (FileBuffer t) = put (1 :: Word8) >> put t
-
-data Attributes = Attributes
-                { ident :: !BufferId
-                , bkey__   :: !BufferRef          -- ^ immutable unique key
-                , undos  :: !URList               -- ^ undo/redo list
-                , bufferDynamic :: !DynamicValues -- ^ dynamic components
-                , preferCol :: !(Maybe Int)       -- ^ prefered column to arrive at when we do a lineDown / lineUp
-                , pendingUpdates :: ![UIUpdate]   -- ^ updates that haven't been synched in the UI yet
-                , selectionStyle :: !SelectionStyle
-                , keymapProcess :: !KeymapProcess
-                , winMarks :: !(M.Map WindowRef WinMarks)
-                , lastActiveWindow :: !Window
-                , lastSyncTime :: !UTCTime        -- ^ time of the last synchronization with disk
-                , readOnly :: !Bool               -- ^ read-only flag
-                , inserting                 :: !Bool -- ^ the keymap is ready for insertion into this buffer
-                , directoryContent          :: !Bool -- ^ does buffer contain directory contents
-                , pointFollowsWindow        :: !(WindowRef -> Bool)
-                , updateTransactionInFlight :: !Bool
-                , updateTransactionAccum    :: ![Update]
-                } deriving Typeable
-
 makeClassyWithSuffix "A" ''Attributes
-
-instance Binary Attributes where
-    put (Attributes n b u bd pc pu selectionStyle_ _proc wm law lst ro ins _dc _pfw
-        isTransacPresent transacAccum) = do
-          put n >> put b >> put u >> put bd
-          put pc >> put pu >> put selectionStyle_ >> put wm
-          put law >> put lst >> put ro >> put ins >> put _dc >> put isTransacPresent >> put transacAccum
-    get = Attributes <$> get <*> get <*> get <*>
-          get <*> get <*> get <*> get <*> pure I.End <*> get <*> get <*> get <*> get <*> get <*>
-              get <*> pure (const False) <*> get <*> get
-
-instance Binary UTCTime where
-    put (UTCTime x y) = put (fromEnum x) >> put (fromEnum y)
-    get = UTCTime <$> (toEnum <$> get) <*> (toEnum <$> get)
-
-data FBuffer = forall syntax.
-        FBuffer { bmode  :: !(Mode syntax)
-                , rawbuf :: !(BufferImpl syntax)
-                , attributes :: !Attributes
-               }
-        deriving Typeable
 
 instance HasAttributes FBuffer where
     attributesA = lens attributes (\(FBuffer f1 f2 _) a -> FBuffer f1 f2 a)
 
 shortIdentString :: [a] -> FBuffer -> T.Text
 shortIdentString prefix b = case b ^. identA of
-  MemBuffer bName -> "*" `T.append` bName `T.append` "*"
+  MemBuffer bName -> "*" <> bName <> "*"
   FileBuffer fName -> T.pack . joinPath . drop (length prefix) $ splitPath fName
 
 identString :: FBuffer -> T.Text
 identString b = case b ^. identA of
-  MemBuffer bName -> "*" `T.append` bName `T.append` "*"
+  MemBuffer bName -> "*" <> bName <> "*"
   FileBuffer fName -> T.pack fName
+
+
+-- TODO: proper instance + de-orphan
+instance Show FBuffer where
+    show b = Prelude.concat [ "Buffer #", show (bkey b)
+                            , " (",  T.unpack (identString b), ")" ]
+
 
 miniIdentString :: FBuffer -> T.Text
 miniIdentString b = case b ^. identA of
@@ -338,10 +268,6 @@ instance Binary FBuffer where
         FBuffer <$> get <*> getStripped <*> get
       where getStripped :: Get (BufferImpl ())
             getStripped = get
-
-instance Binary SelectionStyle where
-  put (SelectionStyle h r) = put h >> put r
-  get = SelectionStyle <$> get <*> get
 
 -- | update the syntax information (clear the dirty "flag")
 clearSyntax :: FBuffer -> FBuffer
@@ -372,89 +298,12 @@ rectangleSelectionA :: Lens' FBuffer Bool
 rectangleSelectionA = selectionStyleA .
   lens rectangleSelection (\e x -> e { rectangleSelection = x })
 
--- | Currently duplicates some of Vim's indent settings. Allowing a
--- buffer to specify settings that are more dynamic, perhaps via
--- closures, could be useful.
-data IndentSettings = IndentSettings
-  { expandTabs :: Bool -- ^ Insert spaces instead of tabs as possible
-  , tabSize    :: Int  -- ^ Size of a Tab
-  , shiftWidth :: Int  -- ^ Indent by so many columns
-  } deriving (Eq, Show, Typeable)
-
-
-data AnyMode = forall syntax. AnyMode (Mode syntax)
-  deriving Typeable
-
--- | A Mode customizes the Yi interface for editing a particular data
--- format. It specifies when the mode should be used and controls
--- file-specific syntax highlighting and command input, among other
--- things.
-data Mode syntax = Mode
-  { modeName :: T.Text
-    -- ^ so this can be serialized, debugged.
-  , modeApplies :: FilePath -> R.YiString -> Bool
-    -- ^ What type of files does this mode apply to?
-  , modeHL :: ExtHL syntax
-    -- ^ Syntax highlighter
-  , modePrettify :: syntax -> BufferM ()
-    -- ^ Prettify current \"paragraph\"
-  , modeKeymap :: KeymapSet -> KeymapSet
-    -- ^ Buffer-local keymap modification
-  , modeIndent :: syntax -> IndentBehaviour -> BufferM ()
-    -- ^ emacs-style auto-indent line
-  , modeAdjustBlock :: syntax -> Int -> BufferM ()
-    -- ^ adjust the indentation after modification
-  , modeFollow :: syntax -> Action
-    -- ^ Follow a \"link\" in the file. (eg. go to location of error message)
-  , modeIndentSettings :: IndentSettings
-  , modeToggleCommentSelection :: Maybe (BufferM ())
-  , modeGetStrokes :: syntax -> Point -> Point -> Point -> [Stroke]
-    -- ^ Strokes that should be applied when displaying a syntax element
-    -- should this be an Action instead?
-  , modeOnLoad :: BufferM ()
-    -- ^ An action that is to be executed when this mode is set
-  , modeModeLine :: [T.Text] -> BufferM T.Text
-    -- ^ buffer-local modeline formatting method
-  }
-
 -- | Just stores the mode name.
 instance Binary (Mode syntax) where
     put = put . E.encodeUtf8 . modeName
     get = do
       n <- E.decodeUtf8 <$> get
       return (emptyMode {modeName = n})
-
--- | Used to specify the behaviour of the automatic indent command.
-data IndentBehaviour =
-    IncreaseCycle -- ^ Increase the indentation to the next higher indentation
-                  --   hint. If we are currently at the highest level of
-                  --   indentation then cycle back to the lowest.
-  | DecreaseCycle -- ^ Decrease the indentation to the next smaller indentation
-                  --   hint. If we are currently at the smallest level then
-                  --   cycle back to the largest
-  | IncreaseOnly  -- ^ Increase the indentation to the next higher hint
-                  --   if no such hint exists do nothing.
-  | DecreaseOnly  -- ^ Decrease the indentation to the next smaller indentation
-                  --   hint, if no such hint exists do nothing.
-    deriving (Eq, Show)
-
-
--- | The BufferM monad writes the updates performed.
-newtype BufferM a = BufferM { fromBufferM :: RWS Window [Update] FBuffer a }
-    deriving (Monad, Functor, MonadWriter [Update], MonadState FBuffer, MonadReader Window, Typeable)
-
--- deriving instance Typeable4 RWS
-
-instance Applicative BufferM where
-    pure = return
-    (<*>) = ap
-
-instance Eq FBuffer where
-    (==) = (==) `on` bkey
-
-instance Show FBuffer where
-    show b = Prelude.concat [ "Buffer #", show (bkey b)
-                            , " (",  T.unpack (identString b), ")" ]
 
 -- | Given a buffer, and some information update the modeline
 --
@@ -483,7 +332,7 @@ defaultModeLine prefix = do
         changed = if unchanged then "-" else "*"
         readOnly' = if ro then "%" else changed
         hexxed = T.pack $ showHex (ord curChar) ""
-        hexChar = "0x" `T.append` T.justifyRight 2 '0' hexxed
+        hexChar = "0x" <> T.justifyRight 2 '0' hexxed
         toT = T.pack . show
 
     nm <- gets $ shortIdentString prefix

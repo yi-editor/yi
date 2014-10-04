@@ -82,6 +82,7 @@ library
     Yi.Dired
     Yi.Dynamic
     Yi.Editor
+    Yi.Editor.Internal
     Yi.Eval
     Yi.Event
     Yi.File
@@ -178,7 +179,8 @@ library
     Yi.Syntax.Strokes.Haskell
     Yi.Tab
     Yi.Tag
-    Yi.TextCompletion,
+    Yi.TextCompletion
+    Yi.Types
     Yi.UI.Common
     Yi.UI.Batch
     Yi.UI.SimpleLayout

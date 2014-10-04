@@ -356,7 +356,6 @@ matchingBufferNames _ = withEditor $ do
 instance (YiAction a x, Promptable r) => YiAction (r -> a) x where
     makeAction f = YiA $ doPrompt (runAction . makeAction . f)
 
-
 -- | Tag a type with a documentation
 newtype (:::) t doc = Doc {fromDoc :: t} deriving (Eq, Typeable, Num, IsString)
 

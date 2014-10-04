@@ -137,6 +137,7 @@ startEditor cfg st = do
     (ui, runYi) <- mdo
         let handler (exception :: SomeException) =
               runYi $ errorEditor (showT exception) >> refreshEditor
+
             inF evs   = handle handler $ runYi $ dispatch evs
             outF refreshNeeded acts =
                 handle handler $ runYi $ interactive refreshNeeded acts
@@ -197,8 +198,8 @@ dispatch (ev : evs) = do
     assign keymapProcessA (if ambiguous then freshP else p')
     let actions0 = case state of
           Dead -> [makeAction $ do
-                      evs <- use pendingEventsA
-                      printMsg ("Unrecognized input: " <> showEvs (evs ++ [ev]))]
+                      evs' <- use pendingEventsA
+                      printMsg ("Unrecognized input: " <> showEvs (evs' ++ [ev]))]
           _ -> actions
 
         actions1 = [ makeAction $ printMsg "Keymap was in an ambiguous state! Resetting it."

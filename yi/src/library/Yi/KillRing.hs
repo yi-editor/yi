@@ -45,13 +45,14 @@ data Killring = Killring { _krKilled :: Bool
                          , _krAccumulate :: Bool
                          , _krContents :: NonEmpty R.YiString
                          , _krLastYank :: Bool
-                         }
-    deriving (Show)
+                         } deriving (Show, Eq)
 
 instance Binary Killring where
-  put (Killring k a c l) = put k >> put a
-                           >> put c >> put l
-  get = Killring <$> get <*> get <*> get <*> get
+  put (Killring k a c l) =
+    let putNE (x :| xs) = put x >> put xs
+    in put k >> put a >> putNE c >> put l
+  get = let getNE = (:|) <$> get <*> get
+        in Killring <$> get <*> get <*> getNE <*> get
 
 makeLenses ''Killring
 
@@ -59,7 +60,6 @@ makeLenses ''Killring
 $(derive makeBinary ''NonEmpty)
 #else
 deriving instance Generic Killring
-instance Binary a => Binary (NonEmpty a)
 #endif
 
 maxDepth :: Int

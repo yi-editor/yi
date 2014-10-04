@@ -24,7 +24,6 @@ import           Control.Applicative
 import           Control.Lens
 import           Data.List (isPrefixOf)
 import           Data.Maybe
-import           Data.Monoid
 import           Data.Text ()
 import           System.FilePath
 import           Text.Regex.TDFA ((=~))

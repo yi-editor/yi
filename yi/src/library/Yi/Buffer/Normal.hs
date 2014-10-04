@@ -1,4 +1,4 @@
-{-# LANGUAGE DeriveDataTypeable, TemplateHaskell, CPP, StandaloneDeriving, DeriveGeneric #-}
+{-# LANGUAGE TemplateHaskell, CPP, StandaloneDeriving #-}
 --
 -- Copyright (C) 2008 JP Bernardy
 --
@@ -45,42 +45,12 @@ module Yi.Buffer.Normal (TextUnit(Character, Line, VLine, Document, GenUnit),
                          ) where
 
 import Control.Lens
-import Data.Binary
-#if __GLASGOW_HASKELL__ < 708
-import Data.DeriveTH
-#else
-import GHC.Generics (Generic)
-#endif
-import Data.Default
-import Data.Typeable
 import Data.List (sort)
-
 import Yi.Buffer.Basic
 import Yi.Buffer.Misc
 import Yi.Buffer.Region
 import Yi.Buffer.TextUnit
-import Yi.Dynamic
-
--- Region styles are relative to the buffer contents.
--- They likely should be considered a TextUnit.
-data RegionStyle = LineWise
-                 | Inclusive
-                 | Exclusive
-                 | Block
-  deriving (Eq, Typeable, Show)
-
-#if __GLASGOW_HASKELL__ < 708
-$(derive makeBinary ''RegionStyle)
-#else
-deriving instance Generic RegionStyle
-instance Binary RegionStyle
-#endif
-
--- TODO: put in the buffer state proper.
-instance Default RegionStyle where
-  def = Inclusive
-
-instance YiVariable RegionStyle
+import Yi.Types (RegionStyle(..))
 
 regionStyleA :: Lens' FBuffer RegionStyle
 regionStyleA = bufferDynamicValueA

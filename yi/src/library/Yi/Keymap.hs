@@ -62,89 +62,16 @@ module Yi.Keymap
     , yiVarA
     ) where
 
-import           Control.Applicative
-import           Control.Concurrent
 import           Control.Exception
-import           Control.Monad.Base
 import           Control.Monad.Reader hiding (mapM_)
 import           Control.Monad.State hiding (mapM_)
-import qualified Data.Map as M
-import           Data.Typeable
 import           Yi.Buffer
-import           Yi.Config
-import           Yi.Editor (EditorM, Editor, runEditor, MonadEditor(..))
 import qualified Yi.Editor as Editor
-import           Yi.Event
 import qualified Yi.Interact as I
 import           Yi.Monad
-import           Yi.Process (SubprocessInfo, SubprocessId)
+import           Yi.Types
 import           Yi.UI.Common
 import           Yi.Utils
-
--- TODO: refactor this!
-
-data Action = forall a. Show a => YiA (YiM a)
-            | forall a. Show a => EditorA (EditorM a)
-            | forall a. Show a => BufferA (BufferM a)
-        deriving Typeable
-
-emptyAction :: Action
-emptyAction = BufferA (return ())
-
-instance Eq Action where
-    _ == _ = False
-
-instance Show Action where
-    show (YiA _) = "@Y"
-    show (EditorA _) = "@E"
-    show (BufferA _) = "@B"
-
-type Interact ev a = I.I ev Action a
-
-type KeymapM a = Interact Event a
-
-type Keymap = KeymapM ()
-
-type KeymapEndo = Keymap -> Keymap
-
-type KeymapProcess = I.P Event Action
-
-data IsRefreshNeeded = MustRefresh | NoNeedToRefresh
-    deriving (Show, Eq)
-
-data Yi = Yi { yiUi          :: UI Editor
-             , yiInput       :: [Event] -> IO ()    -- ^ input stream
-             , yiOutput      :: IsRefreshNeeded -> [Action] -> IO ()   -- ^ output stream
-             , yiConfig      :: Config
-               -- TODO: this leads to anti-patterns and seems like one itself
-               -- too coarse for actual concurrency, otherwise pointless
-               -- And MVars can be empty so this causes soundness problems
-               -- Also makes code a bit opaque
-             , yiVar         :: MVar YiVar           -- ^ The only mutable state in the program
-             }
-             deriving Typeable
-
-data YiVar = YiVar { yiEditor             :: !Editor
-                   , yiSubprocessIdSupply :: !SubprocessId
-                   , yiSubprocesses       :: !(M.Map SubprocessId SubprocessInfo)
-                   }
-
--- | The type of user-bindable functions
--- TODO: doc how these are actually user-bindable
--- are they?
-newtype YiM a = YiM {runYiM :: ReaderT Yi IO a}
-    deriving (Monad, Applicative, MonadReader Yi, MonadBase IO, Typeable, Functor)
-
-instance MonadState Editor YiM where
-    get = yiEditor <$> (readRef =<< yiVar <$> ask)
-    put v = flip modifyRef (\x -> x {yiEditor = v}) =<< yiVar <$> ask
-
-instance MonadEditor YiM where
-    askCfg = yiConfig <$> ask
-    withEditor f = do
-      r <- asks yiVar
-      cfg <- asks yiConfig
-      liftBase $ unsafeWithEditor cfg r f
 
 
 -----------------------
@@ -159,18 +86,6 @@ write x = I.write (makeAction x)
 
 withUI :: (UI Editor -> IO a) -> YiM a
 withUI = with yiUi
-
-unsafeWithEditor :: Config -> MVar YiVar -> EditorM a -> IO a
-unsafeWithEditor cfg r f = modifyMVar r $ \var -> do
-  let e = yiEditor var
-  let (e',a) = runEditor cfg f e
-  -- Make sure that the result of runEditor is evaluated before
-  -- replacing the editor state. Otherwise, we might replace e
-  -- with an exception-producing thunk, which makes it impossible
-  -- to look at or update the editor state.
-  -- Maybe this could also be fixed by -fno-state-hack flag?
-  -- TODO: can we simplify this?
-  e' `seq` a `seq` return (var {yiEditor = e'}, a)
 
 withGivenBuffer :: MonadEditor m => BufferRef -> BufferM a -> m a
 withGivenBuffer b f = withEditor (Editor.withGivenBuffer0 b f)
@@ -214,19 +129,7 @@ instance YiAction (BufferM x) x where
 instance YiAction Action () where
     makeAction = id
 
-data KeymapSet = KeymapSet
-    { topKeymap :: Keymap         -- ^ Content of the top-level loop.
-    , insertKeymap :: Keymap      -- ^ For insertion-only modes
-    }
-
 makeLensesWithSuffix "A" ''KeymapSet
-
-extractTopKeymap :: KeymapSet -> Keymap
-extractTopKeymap kms = forever (topKeymap kms)
-    -- Note the use of "forever": this has quite subtle implications, as it means that
-    -- failures in one iteration can yield to jump to the next iteration seamlessly.
-    -- eg. in emacs keybinding, failures in incremental search, like <left>, will "exit"
-    -- incremental search and immediately move to the left.
 
 modelessKeymapSet :: Keymap -> KeymapSet
 modelessKeymapSet k = KeymapSet

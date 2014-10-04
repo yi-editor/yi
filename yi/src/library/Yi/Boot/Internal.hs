@@ -14,7 +14,7 @@ module Yi.Boot.Internal where
 import Config.Dyre.Relaunch (relaunchWithBinaryState)
 import Control.Monad.Base (liftBase)
 import Control.Monad.State (get)
-import Yi.Editor (withEditor)
+import Yi.Types (withEditor)
 import Yi.Keymap (YiM, withUI)
 import Yi.UI.Common (end)
 

@@ -85,9 +85,6 @@ lookupMove s = findMoveWithStyle Exclusive exclusiveMotions
 changeMoveStyle :: (RegionStyle -> RegionStyle) -> Move -> Move
 changeMoveStyle smod (Move s j m) = Move (smod s) j m
 
-instance Functor ((,,) a b) where
-    fmap f (a, b, c) = (a, b, f c)
-
 -- Linewise motions which treat no count as being the same as a count of 1.
 linewiseMotions :: [(EventString, Bool, Maybe Int -> BufferM ())]
 linewiseMotions = fmap withDefaultCount
@@ -187,7 +184,7 @@ gotoXOrEOF n = case n of
     Just n' -> gotoLn n' >> moveToSol
 
 withDefaultCount :: (EventString, Bool, Int -> BufferM ()) -> (EventString, Bool, Maybe Int -> BufferM ())
-withDefaultCount = fmap (. fromMaybe 1)
+withDefaultCount = over _3 (. fromMaybe 1)
 
 matchGotoMarkMove :: String -> MatchResult Move
 matchGotoMarkMove (m:_) | m `notElem` "'`" = NoMatch
