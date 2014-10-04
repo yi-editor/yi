@@ -67,6 +67,7 @@ import           Control.Monad.Reader hiding (mapM_,forM_,forM)
 import qualified Data.DelayList as DelayList
 import           Data.Foldable
 import           Data.List (partition)
+import           Data.List.NonEmpty (NonEmpty(..))
 import qualified Data.List.PointedList.Circular as PL
 import           Data.List.Split (splitOn)
 import qualified Data.Map as M
@@ -138,7 +139,9 @@ startEditor cfg st = do
         let handler (exception :: SomeException) =
               runYi $ errorEditor (showT exception) >> refreshEditor
 
-            inF evs   = handle handler $ runYi $ dispatch evs
+            inF []     = return ()
+            inF (e:es) = handle handler $ runYi $ dispatch (e :| es)
+
             outF refreshNeeded acts =
                 handle handler $ runYi $ interactive refreshNeeded acts
             runYi f   = runReaderT (runYiM f) yi
@@ -179,8 +182,8 @@ showErrors = withEditor $ do
 
 -- | Process events by advancing the current keymap automaton and
 -- executing the generated actions.
-dispatch :: [Event] -> YiM () -- TODO: use non-empty list here
-dispatch (ev : evs) = do
+dispatch :: NonEmpty Event -> YiM ()
+dispatch (ev :| evs) = do
   yi <- ask
   (userActions, _p') <- withBuffer $ do
     keymap <- gets (withMode0 modeKeymap)
@@ -215,9 +218,9 @@ dispatch (ev : evs) = do
                                else assign pendingEventsA []
       allActions = [makeAction decay] ++ userActions ++ [makeAction pendingFeedback]
 
-  if null evs
-  then postActions MustRefresh allActions
-  else postActions NoNeedToRefresh allActions >> dispatch evs
+  case evs of
+    [] -> postActions MustRefresh allActions
+    (e:es) -> postActions NoNeedToRefresh allActions >> dispatch (e :| es)
 
 
 showEvs :: [Event] -> T.Text
