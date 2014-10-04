@@ -203,9 +203,16 @@ escToMeta = mkAutomaton $ forever $ (anyEvent >>= I.write) ||> do
     c <- printableChar
     I.write (Event (KASCII c) [MMeta])
 
-toVimStyleConfig cfg = cfg { defaultKm = Vim.keymapSet
-                            , configUI = (configUI cfg) { configScrollStyle = Just SingleLine}
-                            , configRegionStyle = Inclusive }
+toVimStyleConfig cfg = cfg
+  { defaultKm = Vim.keymapSet
+  , configUI = (configUI cfg)
+      { configScrollStyle = Just SingleLine
+#ifdef FRONTEND_VTY
+      , configVty = (configVty (configUI cfg)) { Vty.vtime = Just 0 }
+#endif
+      }
+  , configRegionStyle = Inclusive
+  }
 
 toCuaStyleConfig cfg = cfg {defaultKm = Cua.keymap}
 
