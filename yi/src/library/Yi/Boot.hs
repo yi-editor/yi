@@ -17,6 +17,7 @@ module Yi.Boot (yi, yiDriver, reload) where
 
 import qualified Config.Dyre as Dyre
 import qualified Config.Dyre.Options as Dyre
+import qualified Config.Dyre.Params as Dyre
 import           Config.Dyre.Relaunch
 import           Control.Lens
 import           Data.Text ()
@@ -67,11 +68,12 @@ yiDriver cfg = do
                       , Dyre.realMain     = realMain
                       , Dyre.showError    = showErrorsInConf
                       , Dyre.configDir    = Just $ userConfigDir cfgcon
-                      , Dyre.ghcOpts      = ["-threaded", "-O2"]
+                      , Dyre.ghcOpts      = ["-threaded", "-O2", "-rtsopts"]
                                             ++ ["-i" ++ modules]
                                             ++ profilingParams
                                             ++ ghcOptions cfgcon
                       , Dyre.includeCurrentDirectory = False
+                      , Dyre.rtsOptsHandling = Dyre.RTSAppend ["-I5"]
                       }
       Dyre.wrapMain yiParams (finalCfg, cfgcon)
 
