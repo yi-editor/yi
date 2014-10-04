@@ -37,7 +37,7 @@ import           Control.Monad hiding (forM_)
 import           Data.Binary
 import           Data.Default
 import           Data.Foldable
-import           Data.Maybe (listToMaybe, isJust, catMaybes)
+import           Data.Maybe (listToMaybe, isJust)
 import           Data.Monoid
 import qualified Data.Text as T
 import           Data.Typeable

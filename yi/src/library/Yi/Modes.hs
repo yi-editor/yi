@@ -24,7 +24,6 @@ import           Control.Applicative
 import           Control.Lens
 import           Data.List (isPrefixOf)
 import           Data.Maybe
-import qualified Data.Text as T
 import           System.FilePath
 import           Text.Regex.TDFA ((=~))
 import           Yi.Buffer

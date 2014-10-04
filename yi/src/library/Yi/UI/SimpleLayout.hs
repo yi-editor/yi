@@ -16,7 +16,6 @@ import Prelude hiding (concatMap, mapM)
 
 import Control.Lens
 import Control.Monad.State (evalState, get, put)
-import Data.Char
 import Data.Foldable
 import Data.List (partition)
 import qualified Data.List.PointedList.Circular as PL
@@ -58,7 +57,7 @@ data Size2D = Size2D
 layout :: Int -> Int -> Editor -> (Editor, Layout)
 layout colCount rowCount e =
     ( ((windowsA .~ newWindows) e)
-    , Layout (Rect 0 0 colCount 1) windowRects cmdRect
+    , Layout (Rect 0 0 colCount 1) winRects cmdRect
     )
     where
         (miniWs, ws) = partition isMini (toList (windows e))
@@ -80,7 +79,7 @@ layout colCount rowCount e =
         miniWindowsWithHeights =
             fmap (\win -> layoutWindow win e colCount 1) miniWs
         Just newWindows = PL.fromList (miniWindowsWithHeights <> bigWindowsWithHeights)
-        windowRects = M.fromList (bigWindowsWithRects <> miniWindowsWithRects)
+        winRects = M.fromList (bigWindowsWithRects <> miniWindowsWithRects)
         bigWindowsWithRects =
             zipWith (\w offset -> (wkey w, Rect 0 (offset + tabbarHeight) colCount (height w)))
                     bigWindowsWithHeights
@@ -102,7 +101,6 @@ layoutWindow win e w h = win
         -- Mini windows don't have a mode line.
         h' = h - if isMini win then 0 else 1
 
-        eofPoint = evalBuffer sizeB
         -- Work around a problem with the mini window never displaying it's contents due to a
         -- fromMark that is always equal to the end of the buffer contents.
         Just (MarkSet fromM _ _) = evalBuffer (getMarks win)
@@ -150,56 +148,12 @@ lastVisiblePointAndWrapCountB (Size2D w h) (Point topLeft) = savingPointB $ do
                 '\t' -> go (x + ts) y wc (n + 1) t
                 '\n' -> go 0 (y + 1) wc (n + 1) t
                 _ -> go (x + 1) y wc (n + 1) t
-        go !x !y !wc !n _ = (Point n, wc)
+        go _ _ !wc !n _ = (Point n, wc)
     return (go 0 0 0 topLeft text)
 
-layoutText
-    :: Int    -- ^ The height of the part of the window we are in
-    -> Int    -- ^ The width of the part of the window we are in
-    -> Int    -- ^ The number of spaces to represent a tab character with.
-    -> Point
-    -> [(Point, Char)]  -- ^ The data to draw.
-    -> (Point, Int)
-layoutText h w tabWidth topPoint bufData
-    | h == 0 || w == 0 = (topPoint, 0)
-    | otherwise        = (bottomPoint, h - (length wrapped - h))
-    where
-
-    -- the number of lines that taking wrapping into account,
-    -- we use this to calculate the number of lines displayed.
-    wrapped = concatMap (wrapLine . concatMap expandGraphic) $ take h $ lines' bufData
-
-    lns0 = take h wrapped
-    bottomPoint = case lns0 of
-                   [] -> topPoint
-                   _ -> fst $ last $ last lns0
-
-    -- | Cut a string in lines separated by a '\n' char. Note
-    -- that we add a blank character where the \n was, so the
-    -- cursor can be positioned there.
-    lines' :: [(a, Char)] -> [[(a, Char)]]
-    lines' [] = []
-    lines' s =
-        let (l, s') = break ((== '\n') . snd) s
-        in case s' of
-            []          -> [l]
-            ((x, _):s'') -> (l++[(x, ' ')]) : lines' s''
-
-    wrapLine :: [x] -> [[x]]
-    wrapLine [] = []
-    wrapLine l =
-        let (x, rest) = splitAt w l
-        in x : wrapLine rest
-
-    expandGraphic (p, '\t') = replicate tabWidth (p, ' ')
-    expandGraphic (p, c)
-        | ord c < 32 = [(p, '^'),(p, chr (ord c + 64))]
-        | otherwise = [(p, c)]
-
-
 verticalOffsetsForWindows :: Int -> PL.PointedList Window -> PL.PointedList Int
-verticalOffsetsForWindows startY windows =
-    scanrT (+) startY (fmap (\w -> if isMini w then 0 else height w) windows)
+verticalOffsetsForWindows startY ws =
+    scanrT (+) startY (fmap (\w -> if isMini w then 0 else height w) ws)
 
 -- As scanr, but generalized to a traversable (TODO)
 scanrT :: (Int -> Int -> Int) -> Int -> PL.PointedList Int -> PL.PointedList Int
