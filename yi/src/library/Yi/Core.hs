@@ -442,7 +442,7 @@ startSubprocessWatchers procid procinfo yi onExit =
       void $ onExit ec
 
 removeSubprocess :: SubprocessId -> YiM ()
-removeSubprocess procid = modifiesRef yiVar (yiSubprocessesA %~ M.delete procid)
+removeSubprocess procid = asks yiVar >>= liftBase . flip modifyMVar_ (pure . (yiSubprocessesA %~ M.delete procid))
 
 -- | Appends a 'R.YiString' to the given buffer.
 --
@@ -467,7 +467,7 @@ appendToBuffer atErr bufref s = withGivenBuffer0 bufref $ do
 sendToProcess :: BufferRef -> String -> YiM ()
 sendToProcess bufref s = do
     yi <- ask
-    find ((== bufref) . bufRef) . yiSubprocesses <$> readRef (yiVar yi) >>= \case
+    find ((== bufref) . bufRef) . yiSubprocesses <$> liftBase (readMVar (yiVar yi)) >>= \case
       Just subProcessInfo -> io $ hPutStr (hIn subProcessInfo) s
       Nothing -> msgEditor "Could not get subProcessInfo in sendToProcess"
 

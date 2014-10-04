@@ -222,7 +222,7 @@ refresh e = do
 
     updateCache e -- The cursor may have changed since doLayout
     viewsRef <- asks views
-    vs <- liftBase $ readRef viewsRef
+    vs <- liftBase $ readIORef viewsRef
     forM_ (Map.elems vs) $ \v -> do
         let b = findBufferWith (viewFBufRef v) e
         -- when (not $ null $ b ^. pendingUpdatesA) $
@@ -238,7 +238,7 @@ doLayout e = do
     liftBase $ putStrLn "Yi Control Do Layout"
     updateCache e
     cacheRef <- asks tabCache
-    tabs <- liftBase $ readRef cacheRef
+    tabs <- liftBase $ readIORef cacheRef
     heights <- concat <$> mapM (getHeightsInTab e) tabs
     let e' = (tabsA %~ fmap (mapWindows updateWin)) e
         updateWin w = case find (\(ref,_,_) -> (wkey w == ref)) heights of
@@ -252,7 +252,7 @@ doLayout e = do
 getHeightsInTab :: Editor -> TabInfo -> ControlM [(WindowRef,Int,Region)]
 getHeightsInTab e tab = do
   viewsRef <- asks views
-  vs <- liftBase $ readRef viewsRef
+  vs <- liftBase $ readIORef viewsRef
   foldlM (\a w ->
         case Map.lookup (wkey w) vs of
             Just v -> do
@@ -322,9 +322,9 @@ updateCache :: Editor -> ControlM ()
 updateCache e = do
     let tabs = e ^. tabsA
     cacheRef <- asks tabCache
-    cache <- liftBase $ readRef cacheRef
+    cache <- liftBase $ readIORef cacheRef
     cache' <- syncTabs e (toList $ PL.withFocus tabs) cache
-    liftBase $ writeRef cacheRef cache'
+    liftBase $ writeIORef cacheRef cache'
 
 syncTabs :: Editor -> [(Tab, Bool)] -> [TabInfo] -> ControlM [TabInfo]
 syncTabs e (tfocused@(t,focused):ts) (c:cs)
@@ -606,7 +606,7 @@ newView buffer font = do
         oldText <- layoutGetText layout
         when (text /= oldText) $ layoutSetText layout text
         drawLayout dw gc 0 0 layout
-        liftBase $ writeRef shownTos tos
+        liftBase $ writeIORef shownTos tos
 
         -- paint the cursor
         (PangoRectangle curx cury curw curh, _) <-
@@ -627,15 +627,15 @@ newView buffer font = do
     liftBase $ widgetGrabFocus drawArea
 
     tabsRef <- asks tabCache
-    ts <- liftBase $ readRef tabsRef
+    ts <- liftBase $ readIORef tabsRef
     -- TODO: the Tab idkey should be assigned using
     -- Yi.Editor.newRef. But we can't modify that here, since our
     -- access to 'Yi' is readonly.
-    liftBase $ writeRef tabsRef (TabInfo (makeTab1 0 newWindow):ts)
+    liftBase $ writeIORef tabsRef (TabInfo (makeTab1 0 newWindow):ts)
 
     viewsRef <- asks views
-    vs <- liftBase $ readRef viewsRef
-    liftBase $ writeRef viewsRef $ Map.insert windowRef view vs
+    vs <- liftBase $ readIORef viewsRef
+    liftBase $ writeIORef viewsRef $ Map.insert windowRef view vs
 
     return view
   where
@@ -704,7 +704,7 @@ handleClick view event = do
   -- retrieve the clicked offset.
   (_,layoutIndex,_) <- io $ layoutXYToIndex (layout view)
                        (Gdk.Events.eventX event) (Gdk.Events.eventY event)
-  tos <- readRef (shownTos view)
+  tos <- liftBase $ readIORef (shownTos view)
   let p1 = tos + fromIntegral layoutIndex
 
   let winRef = windowRef view
@@ -720,11 +720,11 @@ handleClick view event = do
      (Gdk.Events.SingleClick, Gdk.Events.LeftButton) -> do
         cid <- onMotionNotify (drawArea view) False $ \event ->
             runControl (handleMove view p1 event) control
-        writeRef (winMotionSignal view) $ Just cid
+        writeIORef (winMotionSignal view) $ Just cid
 
      _ -> do
-       maybe (return ()) signalDisconnect =<< readRef (winMotionSignal view)
-       writeRef (winMotionSignal view) Nothing
+       maybe (return ()) signalDisconnect =<< readIORef (winMotionSignal view)
+       writeIORef (winMotionSignal view) Nothing
 
   case (Gdk.Events.eventClick event, Gdk.Events.eventButton event) of
     (Gdk.Events.SingleClick, Gdk.Events.LeftButton) ->
@@ -774,7 +774,7 @@ handleMove view p0 event = do
   (_,layoutIndex,_) <-
     liftBase $ layoutXYToIndex (layout view)
     (Gdk.Events.eventX event) (Gdk.Events.eventY event)
-  tos <- readRef (shownTos view)
+  tos <- liftBase $ readIORef (shownTos view)
   let p1 = tos + fromIntegral layoutIndex
 
 

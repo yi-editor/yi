@@ -265,7 +265,7 @@ end = mainQuit
 -- | Modify GUI and the 'TabCache' to reflect information in 'Editor'.
 updateCache :: UI -> Editor -> IO ()
 updateCache ui e = do
-       cache <- readRef $ tabCache ui
+       cache <- readIORef $ tabCache ui
        -- convert to a map for convenient lookups
        let cacheMap = mapFromFoldable . fmap (\t -> (coreTabKey t, t)) $ cache
 
@@ -276,7 +276,7 @@ updateCache ui e = do
            Nothing -> newTab e ui tab
 
        -- store the new cache
-       writeRef (tabCache ui) cache'
+       writeIORef (tabCache ui) cache'
 
        -- update the GUI
        simpleNotebookSet (uiNotebook ui)
@@ -475,7 +475,7 @@ refresh ui e = do
          statusLine e
 
     updateCache ui e -- The cursor may have changed since doLayout
-    cache <- readRef $ tabCache ui
+    cache <- readIORef $ tabCache ui
     forM_ cache $ \t -> do
         wCache <- readIORef (windowCache t)
         forM_ wCache $ \w -> do
@@ -575,8 +575,8 @@ render ui w _event =
 doLayout :: UI -> Editor -> IO Editor
 doLayout ui e = do
     updateCache ui e
-    tabs <- readRef $ tabCache ui
-    f <- readRef (uiFont ui)
+    tabs <- readIORef $ tabCache ui
+    f <- readIORef (uiFont ui)
     heights <- fold <$> mapM (getHeightsInTab ui f e) tabs
     let e' = (tabsA %~ fmap (mapWindows updateWin)) e
         updateWin w = case M.lookup (wkey w) heights of
