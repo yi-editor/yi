@@ -69,7 +69,6 @@ haskellModeHooks mode =
                   -- uncomment for shim:
                   -- Shim.minorMode $
                      mode {
-                        modeGetAnnotations = tokenBasedAnnots tta,
 
                         -- modeAdjustBlock = \_ _ -> return (),
                         -- modeGetStrokes = \_ _ _ _ -> [],

@@ -2,7 +2,6 @@
 module Yi.Config.Users.Ertai (config) where
 
 import Yi
-import Yi.Modes (removeAnnots)
 import qualified Yi.Mode.Haskell as Haskell
 import qualified Yi.Syntax.Haskell as Haskell
 import qualified Yi.Lexer.Haskell as Haskell
@@ -32,11 +31,11 @@ myModetable = [
               ,
                AnyMode $ haskellModeHooks Haskell.fastMode
               ,
-               AnyMode . haskellModeHooks . removeAnnots $ Haskell.cleverMode
+               AnyMode . haskellModeHooks $ Haskell.cleverMode
               ,
                AnyMode $ haskellModeHooks Haskell.fastMode
               ,
-               AnyMode . haskellModeHooks . removeAnnots $ Haskell.fastMode
+               AnyMode . haskellModeHooks $ Haskell.fastMode
               ]
 
 type Endom a = a -> a
@@ -46,8 +45,6 @@ haskellModeHooks mode =
   -- uncomment for shim:
   -- Shim.minorMode $ 
      mode {
-        modeGetAnnotations = Tree.tokenBasedAnnots Haskell.tokenToAnnot,
-
         -- modeAdjustBlock = \_ _ -> return (),
         -- modeGetStrokes = \_ _ _ _ -> [],
         modeName = "my " ++ modeName mode,
