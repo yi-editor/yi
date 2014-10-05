@@ -363,11 +363,10 @@ justOneSep = readB >>= \c ->
 
 -- | Join this line to previous (or next N if universal)
 joinLinesE :: UnivArgument -> BufferM ()
-joinLinesE a = do case a of
-                     Nothing -> return ()
-                     Just _n -> moveB VLine Forward
-                  moveToSol >> transformB (const " ") Character Backward
-                    >> justOneSep
+joinLinesE Nothing = return ()
+joinLinesE (Just _) = do
+  moveB VLine Forward
+  moveToSol >> transformB (const " ") Character Backward >> justOneSep
 
 -- | Shortcut to use a default list when a blank list is given.
 -- Used for default values to emacs queries
