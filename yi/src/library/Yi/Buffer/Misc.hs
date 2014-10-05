@@ -658,6 +658,7 @@ insertB = insertN . R.singleton
 
 -- | @deleteNAt n p@ deletes @n@ characters forwards from position @p@
 deleteNAt :: Direction -> Int -> Point -> BufferM ()
+deleteNAt _ 0 _ = return ()
 deleteNAt dir n pos = do
   els <- R.take n <$> streamB Forward pos
   applyUpdate $ Delete pos dir els
