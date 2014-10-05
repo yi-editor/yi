@@ -31,7 +31,7 @@ defSearchMotionMap = [enterBinding, editBinding, exitBinding]
 enterBinding :: VimBinding
 enterBinding = VimBindingE f
     where f "<CR>" (VimState { vsMode = Search {}} ) = WholeMatch $ do
-              Search prevMode dir <- fmap vsMode getDynamic
+              Search prevMode dir <- fmap vsMode getEditorDyn
               -- TODO: parse cmd into regex and flags
               isearchFinishE
               historyFinish
@@ -78,7 +78,7 @@ editBinding = VimBindingE (f . T.unpack . _unEv)
 exitBinding :: VimBinding
 exitBinding = VimBindingE f
     where f _ (VimState { vsMode = Search {}} ) = WholeMatch $ do
-              Search prevMode _dir <- fmap vsMode getDynamic
+              Search prevMode _dir <- fmap vsMode getEditorDyn
               isearchCancelE
               switchModeE prevMode
               return Drop

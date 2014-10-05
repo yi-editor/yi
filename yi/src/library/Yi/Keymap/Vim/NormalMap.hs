@@ -93,7 +93,7 @@ chooseRegisterBinding = mkChooseRegisterBinding ((== Normal) . vsMode)
 zeroBinding :: VimBinding
 zeroBinding = VimBindingE f
     where f "0" (VimState {vsMode = Normal}) = WholeMatch $ do
-              currentState <- getDynamic
+              currentState <- getEditorDyn
               case vsCount currentState of
                   Just c -> do
                       setCountE (10 * c)
@@ -109,7 +109,7 @@ repeatBinding :: VimBinding
 repeatBinding = VimBindingE (f . T.unpack . _unEv)
   where
     f "." (VimState {vsMode = Normal}) = WholeMatch $ do
-      currentState <- getDynamic
+      currentState <- getEditorDyn
       case vsRepeatableAction currentState of
           Nothing -> return ()
           Just (RepeatableAction prevCount (Ev actionString)) -> do
@@ -166,7 +166,7 @@ finishingBingings = fmap (mkStringBindingE Normal Finish)
 pasteBefore :: EditorM ()
 pasteBefore = do
     -- TODO: use count
-    register <- getRegisterE . vsActiveRegister =<< getDynamic
+    register <- getRegisterE . vsActiveRegister =<< getEditorDyn
     case register of
         Nothing -> return ()
         Just (Register LineWise rope) -> withBuffer0 $ unless (R.null rope) $
@@ -177,7 +177,7 @@ pasteBefore = do
 pasteAfter :: EditorM ()
 pasteAfter = do
     -- TODO: use count
-    register <- getRegisterE . vsActiveRegister =<< getDynamic
+    register <- getRegisterE . vsActiveRegister =<< getEditorDyn
     case register of
         Nothing -> return ()
         Just (Register LineWise rope) -> withBuffer0 $ do
@@ -379,7 +379,7 @@ searchBinding :: VimBinding
 searchBinding = VimBindingE (f . T.unpack . _unEv)
     where f evs (VimState { vsMode = Normal }) | evs `elem` group "/?"
             = WholeMatch $ do
-                  state <- fmap vsMode getDynamic
+                  state <- fmap vsMode getEditorDyn
                   let dir = if evs == "/" then Forward else Backward
                   switchModeE $ Search state dir
                   isearchInitE dir
@@ -399,7 +399,7 @@ continueSearching fdir = do
 
 repeatGotoCharE :: (Direction -> Direction) -> EditorM ()
 repeatGotoCharE mutateDir = do
-    prevCommand <- fmap vsLastGotoCharCommand getDynamic
+    prevCommand <- fmap vsLastGotoCharCommand getEditorDyn
     count <- getCountE
     withBuffer0 $ case prevCommand of
         Just (GotoCharCommand c dir style) -> do
@@ -417,8 +417,8 @@ repeatGotoCharE mutateDir = do
 
 enableVisualE :: RegionStyle -> EditorM ()
 enableVisualE style = withBuffer0 $ do
-    assign regionStyleA style
-    assign rectangleSelectionA $ Block == style
+    putRegionStyle style
+    rectangleSelectionA .= (Block == style)
     setVisibleSelection True
     pointB >>= setSelectionMarkPointB
 
@@ -433,7 +433,7 @@ cutCharE dir count = do
         deleteRegionB $ mkRegion p0 p1
         leftOnEol
         return rope
-    regName <- fmap vsActiveRegister getDynamic
+    regName <- fmap vsActiveRegister getEditorDyn
     setRegisterE regName Inclusive r
 
 tabTraversalBinding :: VimBinding

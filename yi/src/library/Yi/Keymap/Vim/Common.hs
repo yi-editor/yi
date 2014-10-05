@@ -46,11 +46,11 @@ import qualified Data.Text as T
 import qualified Data.Text.Encoding as E
 import           Data.Typeable
 import           Yi.Buffer.Adjusted hiding (Insert)
-import           Yi.Dynamic
 import           Yi.Editor
 import           Yi.Keymap
 import           Yi.Keymap.Vim.MatchResult
 import           Yi.Rope (YiString)
+import           Yi.Types (YiVariable)
 
 newtype EventString = Ev { _unEv :: T.Text } deriving (Show, Eq, Ord)
 

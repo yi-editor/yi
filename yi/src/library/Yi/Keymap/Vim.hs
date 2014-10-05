@@ -117,7 +117,7 @@ genericHandleEvent :: MonadEditor m => (VimConfig -> [VimBinding])
                    -> Bool
                    -> m ()
 genericHandleEvent getBindings pick config unconvertedEvent needsToConvertEvents = do
-    currentState <- withEditor getDynamic
+    currentState <- withEditor getEditorDyn
     let event = if needsToConvertEvents
                 then convertEvent (vsMode currentState) (vimRelayout config) unconvertedEvent
                 else unconvertedEvent
@@ -145,7 +145,7 @@ genericHandleEvent getBindings pick config unconvertedEvent needsToConvertEvents
                         flushAccumulatorE
 
     withEditor $ do
-        newMode <- vsMode <$> getDynamic
+        newMode <- vsMode <$> getEditorDyn
 
         -- TODO: we should introduce some hook mechanism like autocommands in vim
         case (prevMode, newMode) of
@@ -159,7 +159,7 @@ genericHandleEvent getBindings pick config unconvertedEvent needsToConvertEvents
 
 performEvalIfNecessary :: VimConfig -> EditorM ()
 performEvalIfNecessary config = do
-    stateAfterAction <- getDynamic
+    stateAfterAction <- getEditorDyn
 
     -- see comment for 'pureEval'
     modifyStateE $ \s -> s { vsStringToEval = mempty }

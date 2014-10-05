@@ -52,8 +52,8 @@ import qualified Data.Trie as Trie
 import           Data.Typeable
 import           System.FilePath (takeFileName, takeDirectory, (</>))
 import           System.FriendlyPath
-import           Yi.Dynamic
 import           Yi.Editor
+import           Yi.Types (YiVariable)
 
 
 newtype Tags  = Tags (Maybe TagTable) deriving Typeable
@@ -138,26 +138,26 @@ completeTag tags prefix =
 
 -- | Set a new TagTable
 setTags :: TagTable -> EditorM ()
-setTags = setDynamic . Tags . Just
+setTags = putEditorDyn . Tags . Just
 
 -- | Reset the TagTable
 resetTags :: EditorM ()
-resetTags = setDynamic $ Tags Nothing
+resetTags = putEditorDyn $ Tags Nothing
 
 -- | Get the currently registered tag table
 getTags :: EditorM (Maybe TagTable)
 getTags = do
-  Tags t <- getDynamic
+  Tags t <- getEditorDyn
   return t
 
 setTagsFileList :: String -> EditorM ()
 setTagsFileList fps = do
   resetTags
-  setDynamic $ TagsFileList (splitOn "," fps)
+  putEditorDyn $ TagsFileList (splitOn "," fps)
 
 getTagsFileList :: EditorM [FilePath]
 getTagsFileList = do
-  TagsFileList fps <- getDynamic
+  TagsFileList fps <- getEditorDyn
   return fps
 
 #if __GLASGOW_HASKELL__ < 708

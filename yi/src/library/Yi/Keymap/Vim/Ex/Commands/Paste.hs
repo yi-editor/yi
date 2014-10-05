@@ -27,7 +27,7 @@ parse = parseOption "paste" action
 
 action :: OptionAction -> Action
 action Ask = EditorA $ do
-    value <- vsPaste <$> getDynamic
+    value <- vsPaste <$> getEditorDyn
     printMsg $ "paste = " <> showT value
 action (Set b) = modPaste $ const b
 action Invert = modPaste not

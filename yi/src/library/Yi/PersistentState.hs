@@ -35,7 +35,6 @@ import Control.Exc(ignoringException)
 import Control.Lens
 
 import Yi.Config.Simple.Types(customVariable, Field)
-import Yi.Dynamic
 import Yi.Editor
 import Yi.History
 import Yi.Keymap(YiM)
@@ -44,6 +43,7 @@ import Yi.Paths(getPersistentStateFilename)
 import Yi.Regex(SearchExp(..))
 import Yi.Search.Internal (getRegexE, setRegexE)
 import Yi.Utils
+import Yi.Types (YiConfigVariable)
 
 data PersistentState = PersistentState { histories     :: !Histories
                                        , aKillring     :: !Killring
@@ -89,7 +89,7 @@ savePersistentState :: YiM ()
 savePersistentState = do
     MaxHistoryEntries histLimit <- withEditor askConfigVariableA
     pStateFilename      <- getPersistentStateFilename
-    (hist :: Histories) <- withEditor $ use dynA
+    (hist :: Histories) <- withEditor $ getEditorDyn
     kr                  <- withEditor $ use killringA
     curRe               <- withEditor   getRegexE
     let pState = PersistentState {
@@ -117,6 +117,6 @@ loadPersistentState = do
     maybePState <- readPersistentState
     case maybePState of
       Nothing     -> return ()
-      Just pState -> do withEditor $ assign dynA                 $ histories     pState
+      Just pState -> do withEditor $ putEditorDyn                $ histories     pState
                         withEditor $ assign killringA            $ aKillring     pState
                         withEditor $ maybe (return ()) setRegexE $ aCurrentRegex pState

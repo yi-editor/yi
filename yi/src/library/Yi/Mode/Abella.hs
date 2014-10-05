@@ -35,7 +35,7 @@ import qualified Data.Text as T
 import           Data.Typeable
 import           Yi.Buffer
 import           Yi.Core (sendToProcess)
-import           Yi.Dynamic
+import           Yi.Types (YiVariable)
 import           Yi.Editor
 import           Yi.Keymap
 import           Yi.Keymap.Keys
@@ -117,14 +117,14 @@ abellaAbort = do
 abella :: CommandArguments -> YiM BufferRef
 abella (CommandArguments args) = do
     b <- Interactive.spawnProcess "abella" (T.unpack <$> args)
-    withEditor . setDynamic . AbellaBuffer $ Just b
+    withEditor . putEditorDyn . AbellaBuffer $ Just b
     return b
 
 -- | Return Abella's buffer; create it if necessary.
 -- Show it in another window.
 abellaGet :: YiM BufferRef
 abellaGet = withOtherWindow $ do
-    AbellaBuffer mb <- withEditor getDynamic
+    AbellaBuffer mb <- withEditor getEditorDyn
     case mb of
         Nothing -> abella (CommandArguments [])
         Just b -> do

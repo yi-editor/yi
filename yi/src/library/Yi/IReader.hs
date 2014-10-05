@@ -21,7 +21,6 @@
 module Yi.IReader where
 
 import           Control.Exception
-import           Control.Lens
 import           Control.Monad
 import           Data.Binary
 import qualified Data.ByteString.Char8 as B (pack, unpack, readFile, ByteString)
@@ -30,12 +29,12 @@ import           Data.Default
 import           Data.Sequence as S
 import           Data.Typeable
 import           Yi.Buffer.HighLevel (replaceBufferContent, topB)
-import           Yi.Buffer.Misc (bufferDynamicValueA, elemsB)
-import           Yi.Dynamic
+import           Yi.Buffer.Misc (getBufferDyn, putBufferDyn, elemsB)
 import           Yi.Keymap (withBuffer, YiM)
 import           Yi.Paths (getArticleDbFilename)
 import qualified Yi.Rope as R
 import           Yi.Utils
+import           Yi.Types (YiVariable)
 
 -- | TODO: Why 'B.ByteString'?
 type Article = B.ByteString
@@ -102,7 +101,7 @@ readDB = io $ (getArticleDbFilename >>= r) `catch` returnDefault
 -- we get an empty Seq), only then do we call 'readDB'.
 oldDbNewArticle :: YiM (ArticleDB, Article)
 oldDbNewArticle = do
-  saveddb <- withBuffer $ use bufferDynamicValueA
+  saveddb <- withBuffer getBufferDyn
   newarticle <- fmap (B.pack . R.toString) $ withBuffer elemsB
   if not $ S.null (unADB saveddb)
     then return (saveddb, newarticle)
@@ -116,7 +115,7 @@ setDisplayedArticle newdb = do
   withBuffer $ do
     replaceBufferContent $ R.fromString (B.unpack next)
     topB -- replaceBufferContents moves us to bottom?
-    assign bufferDynamicValueA newdb
+    putBufferDyn newdb
 
 -- | Go to next one. This ignores the buffer, but it doesn't remove
 -- anything from the database. However, the ordering does change.

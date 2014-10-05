@@ -34,7 +34,7 @@ exitReplaceMode :: EditorM ()
 exitReplaceMode = do
   count <- getCountE
   when (count > 1) $ do
-      inputEvents <- fmap (parseEvents . vsOngoingInsertEvents) getDynamic
+      inputEvents <- fmap (parseEvents . vsOngoingInsertEvents) getEditorDyn
       replicateM_ (count - 1) $ mapM_ (printableAction . eventToEventString) inputEvents
   modifyStateE $ \s -> s { vsOngoingInsertEvents = mempty }
   withBuffer0 $ moveXorSol 1

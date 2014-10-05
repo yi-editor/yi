@@ -39,11 +39,11 @@ import           Data.Maybe (catMaybes)
 import qualified Data.Text as T
 import           Data.Typeable
 import           Yi.Buffer
-import           Yi.Dynamic
 import           Yi.Keymap
 import           Yi.Keymap.Keys
 import qualified Yi.Rope as R
 import           Yi.TextCompletion
+import           Yi.Types (YiVariable)
 
 type SnippetCmd = RWST (Int, Int) [MarkInfo] () BufferM
 
@@ -186,9 +186,9 @@ runSnippet deleteLast s = do
         let newDepMarks = filter (not . len1) $
                             groupBy belongTogether $
                               sort markInfo
-        bufferDynamicValueA %= (BufferMarks newMarks `mappend`)
+        getBufferDyn >>= putBufferDyn.(BufferMarks newMarks `mappend`)
         unless (null newDepMarks) $
-            bufferDynamicValueA %= (DependentMarks newDepMarks `mappend`)
+            getBufferDyn >>= putBufferDyn.(DependentMarks newDepMarks `mappend`)
         moveToNextBufferMark deleteLast
     return a
   where
@@ -207,7 +207,7 @@ findEditedMarks upds = liftM (nub . concat) (mapM findEditedMarks' upds)
     findEditedMarks' :: Update -> BufferM [MarkInfo]
     findEditedMarks' upd = do
         let p = updatePoint upd
-        ms <- return . nub . concat . marks =<< use bufferDynamicValueA
+        ms <- return . nub . concat . marks =<< getBufferDyn
         ms' <- forM ms $ \m ->do
                  r <- adjMarkRegion m
                  return $ if (updateIsDelete upd && p `nearRegion` r)
@@ -223,7 +223,7 @@ dependentSiblings mark deps =
     Just lst -> filter (not . (mark==)) lst
 
 updateDependents :: MarkInfo -> BufferM ()
-updateDependents m = use bufferDynamicValueA >>= updateDependents' m . marks
+updateDependents m = getBufferDyn >>= updateDependents' m . marks
 
 updateDependents' :: MarkInfo -> [[MarkInfo]] -> BufferM ()
 updateDependents' mark deps =
@@ -318,7 +318,7 @@ findOverlappingMarksWith :: (MarkInfo -> BufferM Region)
 findOverlappingMarksWith fMarkRegion flattenMarks border r m =
   let markFilter = filter (m /=) . flattenMarks . marks
       regOverlap = liftM (regionsOverlap border r) . fMarkRegion
-  in liftM markFilter (use bufferDynamicValueA) >>= filterM regOverlap
+  in liftM markFilter getBufferDyn >>= filterM regOverlap
 
 findOverlappingMarks :: ([[MarkInfo]] -> [MarkInfo]) -> Bool -> Region ->
                         MarkInfo -> BufferM [MarkInfo]
@@ -345,17 +345,17 @@ dependentOverlappingMarks border = overlappingMarks border True
 
 nextBufferMark :: Bool -> BufferM (Maybe MarkInfo)
 nextBufferMark deleteLast = do
-  BufferMarks ms <- use bufferDynamicValueA
+  BufferMarks ms <- getBufferDyn
   if null ms
     then return Nothing
     else do
       let mks = if deleteLast then const $ tail ms else (tail ms <>)
-      assign bufferDynamicValueA . BufferMarks . mks $ [head ms]
+      putBufferDyn . BufferMarks . mks $ [head ms]
       return . Just $ head ms
 
-isDependentMarker :: MonadState FBuffer m => Mark -> m Bool
+isDependentMarker :: (MonadState FBuffer m, Functor m) => Mark -> m Bool
 isDependentMarker bMark = do
-    DependentMarks ms <- use bufferDynamicValueA
+    DependentMarks ms <- getBufferDyn
     return . elem bMark . concatMap bufferMarkers . concat $ ms
 
 safeDeleteMarkB :: Mark -> BufferM ()

@@ -81,7 +81,6 @@ library
     Yi.Core
     Yi.Debug
     Yi.Dired
-    Yi.Dynamic
     Yi.Editor
     Yi.Editor.Internal
     Yi.Eval
@@ -205,7 +204,7 @@ library
     base >= 4 && < 5,
     bytestring >= 0.9.1 && < 0.11,
     cautious-file >= 1.0.1,
-    concrete-typerep >= 0.1.0.2 && < 0.1.1,
+    dynamic-state >= 0.1.0.5,
     data-default,
     lens >= 4.4.0.1,
     dlist >=0.4.1,

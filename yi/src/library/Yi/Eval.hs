@@ -52,7 +52,7 @@ import           Yi.Buffer
 import           Yi.Config.Simple.Types
 import           Yi.Core (errorEditor, runAction)
 import           Yi.Debug
-import           Yi.Dynamic
+import           Yi.Types (YiVariable,YiConfigVariable)
 import           Yi.Editor
 import           Yi.File
 import           Yi.Hooks
@@ -152,7 +152,7 @@ ghciEvaluator = Evaluator { execEditorActionImpl = execAction
 
     getNames :: YiM [String]
     getNames = do
-      NamesCache cache <- withEditor $ use dynA
+      NamesCache cache <- withEditor $ getEditorDyn
       result <- if null cache
                 then do
                   res <- io $ LHI.runInterpreter $ do
@@ -162,7 +162,7 @@ ghciEvaluator = Evaluator { execEditorActionImpl = execAction
                     Left err ->[show err]
                     Right exports -> flattenExports exports
                 else return $ sort cache
-      withEditor $ assign dynA (NamesCache result)
+      withEditor $ putEditorDyn $ NamesCache result
       return result
 
     flattenExports :: [LHI.ModuleElem] -> [String]

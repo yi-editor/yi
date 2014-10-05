@@ -37,7 +37,7 @@ import           System.FilePath
 import           System.FriendlyPath
 import           Yi.Buffer
 import           Yi.Core (errorEditor)
-import           Yi.Dynamic
+import           Yi.Types (YiVariable)
 import           Yi.Editor
 import           Yi.File
 import           Yi.Keymap
@@ -65,23 +65,23 @@ instance Binary VimTagStack
 
 getTagList :: EditorM [(Tag, FilePath, Int, Int)]
 getTagList = do
-    VimTagStack ts _ <- getDynamic
+    VimTagStack ts _ <- getEditorDyn
     return ts
 
 getTagIndex :: EditorM Int
 getTagIndex = do
-    VimTagStack _ ti <- getDynamic
+    VimTagStack _ ti <- getEditorDyn
     return ti
 
 setTagList :: [(Tag, FilePath, Int, Int)] -> EditorM ()
 setTagList tl =  do
-    t@(VimTagStack _ _) <- getDynamic
-    setDynamic $ t { tagStackList = tl }
+    t@(VimTagStack _ _) <- getEditorDyn
+    putEditorDyn $ t { tagStackList = tl }
 
 setTagIndex :: Int -> EditorM ()
 setTagIndex ti = do
-    t@(VimTagStack _ _) <- getDynamic
-    setDynamic $ t { tagStackIndex = ti }
+    t@(VimTagStack _ _) <- getEditorDyn
+    putEditorDyn $ t { tagStackIndex = ti }
 
 -- | Push tag at index.
 pushTagStack :: Tag -> FilePath -> Int -> Int -> EditorM ()

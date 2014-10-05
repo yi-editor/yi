@@ -34,7 +34,7 @@ actualReplaceBinding :: VimBinding
 actualReplaceBinding = VimBindingE (f . T.unpack . _unEv)
   where
     f evs s | ReplaceSingleChar == vsMode s = WholeMatch $ do
-        currentState <- getDynamic
+        currentState <- getEditorDyn
         let count = fromMaybe 1 $ vsCount currentState
         let replacer = case evs of
                         (c:[]) -> replaceCharB c

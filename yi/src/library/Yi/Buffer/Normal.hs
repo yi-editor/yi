@@ -41,10 +41,10 @@ module Yi.Buffer.Normal (TextUnit(Character, Line, VLine, Document, GenUnit),
                          , convertRegionToStyleB
                          , unitWiseRegion
                          , extendRegionToBoundaries
-                         , regionStyleA
+                         , getRegionStyle
+                         , putRegionStyle
                          ) where
 
-import Control.Lens
 import Data.List (sort)
 import Yi.Buffer.Basic
 import Yi.Buffer.Misc
@@ -52,8 +52,10 @@ import Yi.Buffer.Region
 import Yi.Buffer.TextUnit
 import Yi.Types (RegionStyle(..))
 
-regionStyleA :: Lens' FBuffer RegionStyle
-regionStyleA = bufferDynamicValueA
+getRegionStyle :: BufferM RegionStyle
+getRegionStyle = getBufferDyn
+putRegionStyle :: RegionStyle -> BufferM ()
+putRegionStyle = putBufferDyn
 
 convertRegionToStyleB :: Region -> RegionStyle -> BufferM Region
 convertRegionToStyleB r = mkRegionOfStyleB (regionStart r) (regionEnd r)

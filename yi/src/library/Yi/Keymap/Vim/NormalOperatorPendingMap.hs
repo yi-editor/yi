@@ -39,7 +39,7 @@ textObject operators = VimBindingE f
                         NormalOperatorPending _ -> WholeMatch $ action evs
                         _ -> NoMatch
     action (Ev evs) = do
-        currentState <- getDynamic
+        currentState <- getEditorDyn
 
         let partial = vsTextObjectAccumulator currentState
             opChar = Ev . T.pack $ lastCharForOperator op

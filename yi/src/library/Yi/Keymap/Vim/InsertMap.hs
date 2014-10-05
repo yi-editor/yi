@@ -48,9 +48,9 @@ exitBinding digraphs = VimBindingE f
       | evs `elem` ["<Esc>", "<C-c>"]
       = WholeMatch $ do
         count <- getCountE
-        (Insert starter) <- fmap vsMode getDynamic
+        (Insert starter) <- fmap vsMode getEditorDyn
         when (count > 1) $ do
-            inputEvents <- fmap (parseEvents . vsOngoingInsertEvents) getDynamic
+            inputEvents <- fmap (parseEvents . vsOngoingInsertEvents) getEditorDyn
             replicateM_ (count - 1) $ do
                 when (starter `elem` "Oo") $ withBuffer0 $ insertB '\n'
                 replay digraphs inputEvents
@@ -84,7 +84,7 @@ rawPrintable = VimBindingE f
 replay :: [(String, Char)] -> [Event] -> EditorM ()
 replay _ [] = return ()
 replay digraphs (e1:es1) = do
-    state <- getDynamic
+    state <- getEditorDyn
     let recurse = replay digraphs
         evs1 = eventToEventString e1
         bindingMatch1 = selectPureBinding evs1 state (defInsertMap digraphs)
@@ -147,7 +147,7 @@ printableAction :: EventString -> EditorM RepeatToken
 printableAction evs = do
     saveInsertEventStringE evs
     currentCursor <- withBuffer0 pointB
-    secondaryCursors <- fmap vsSecondaryCursors getDynamic
+    secondaryCursors <- fmap vsSecondaryCursors getEditorDyn
     let allCursors = currentCursor :| secondaryCursors
     marks <- withBuffer0 $ forM' allCursors $ \cursor -> do
         moveTo cursor

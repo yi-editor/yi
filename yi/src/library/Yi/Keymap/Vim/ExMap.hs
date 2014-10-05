@@ -135,7 +135,7 @@ failBindingE = VimBindingE f
     where f evs s | vsMode s == Ex && evs == "<CR>"
             = WholeMatch $ do
                 exitEx False
-                state <- getDynamic
+                state <- getEditorDyn
                 printMsg . _unEv $ "Not an editor command: " <> vsOngoingInsertEvents state
                 return Drop
           f _ _ = NoMatch
