@@ -75,6 +75,7 @@ library
     Yi.Config
     Yi.Config.Default
     Yi.Config.Misc
+    Yi.Config.Lens
     Yi.Config.Simple
     Yi.Config.Simple.Types
     Yi.Core
@@ -234,7 +235,6 @@ library
     oo-prototypes,
     yi-rope >= 0.4.0.0
 
-  build-tools: alex >= 3.0.3
   ghc-options: -Wall -fno-warn-orphans
   ghc-prof-options: -prof -auto-all -rtsopts
 
@@ -308,7 +308,7 @@ executable yi
 
   build-depends:
     base >=4 && <5, yi
-  build-tools: alex >= 3.0.3
+
   ghc-options: -threaded
   ghc-prof-options: -prof -auto-all -rtsopts
 
