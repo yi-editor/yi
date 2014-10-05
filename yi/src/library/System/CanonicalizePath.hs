@@ -71,6 +71,7 @@ makeAbsolute f
 combinePath :: FilePath -> String -> FilePath
 combinePath x "."  = x
 combinePath x ".." = takeDirectory x
+combinePath "/" y  = "/" </> y
 combinePath x y
     | isDrive x = (x ++ [pathSeparator]) </> y -- "C:" </> "bin" = "C:bin"
     | otherwise = x </> y

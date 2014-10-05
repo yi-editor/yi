@@ -22,6 +22,7 @@
  * Make C-w closer to actual emacs behaviour (#612)
  * Make M-h behave more like emacs (#611)
  * Hint with buffer names when using C-k with emacs keymap (#606)
+ * Fix display of paths starting with / (#528)
 
 0.9.0
 -----
