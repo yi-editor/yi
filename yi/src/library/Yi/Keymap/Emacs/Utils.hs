@@ -287,34 +287,53 @@ scrollUpE a = case a of
                  Nothing -> upScreenB
                  Just n -> scrollB (negate n)
 
-switchBufferE :: YiM ()
-switchBufferE = do
+-- | Prompts for a buffer name, turns it into a 'BufferRef' and passes
+-- it on to the handler function. Uses all known buffers for hinting.
+promptingForBuffer :: T.Text -- ^ Prompt
+                   -> (BufferRef -> YiM ()) -- ^ Handler
+                   -> ([BufferRef] -> [BufferRef] -> [BufferRef])
+                   -- ^ Hint pre-processor. It takes the list of open
+                   -- buffers and a list of all buffers, and should
+                   -- spit out all the buffers to possibly hint, in
+                   -- the wanted order. Note the hinter uses name
+                   -- prefix for filtering regardless of what you do
+                   -- here.
+                   -> YiM ()
+promptingForBuffer prompt act hh = do
     openBufs <- fmap bufkey . toList <$> use windowsA
     names <- withEditor $ do
       bs <- toList . fmap bkey <$> getBufferStack
-
-      -- put the open buffers at the end.
-      let choices = (bs \\ openBufs) ++ openBufs
-
+      let choices = hh openBufs bs
       prefix <- gets commonNamePrefix
       forM choices $ \k -> gets (shortIdentString prefix . findBufferWith k)
-    withMinibufferFin "switch to buffer:" names
-      (withEditor . switchToBufferWithNameE)
+    withMinibufferFin prompt names (withEditor . getBufferWithName >=> act)
 
-killBufferE :: BufferRef ::: ToKill -> YiM ()
-killBufferE (Doc b) = do
-    buf <- withEditor . gets $ findBufferWith b
-    ch <- deservesSave buf
-    let askKeymap = choice [ char 'n' ?>>! closeBufferAndWindowE
-                           , char 'y' ?>>! delBuf >> closeBufferAndWindowE
-                           , ctrlCh 'g' ?>>! closeBufferAndWindowE
-                           ]
-        delBuf = deleteBuffer b
-        question = identString buf <> " changed, close anyway? (y/n)"
-    withEditor $
-       if ch
-       then void $ spawnMinibufferE question (const askKeymap)
-       else delBuf
+-- | Prompts the user for a buffer name and switches to the chosen buffer.
+switchBufferE :: YiM ()
+switchBufferE = promptingForBuffer "switch to buffer:"
+                  (withEditor . switchToBufferE) (\o b -> (b \\ o) ++ o)
+
+
+-- | Prompts the user for a buffer name and kills the chosen buffer.
+-- Prompts about really closing if the buffer is marked as changed
+-- since last save.
+killBufferE :: YiM ()
+killBufferE = promptingForBuffer "kill buffer:" k (\o b -> o ++ (b \\ o))
+  where
+    k :: BufferRef -> YiM ()
+    k b = do
+      buf <- withEditor . gets $ findBufferWith b
+      ch <- deservesSave buf
+      let askKeymap = choice [ char 'n' ?>>! closeBufferAndWindowE
+                             , char 'y' ?>>! delBuf >> closeBufferAndWindowE
+                             , ctrlCh 'g' ?>>! closeBufferAndWindowE
+                             ]
+          delBuf = deleteBuffer b
+          question = identString buf <> " changed, close anyway? (y/n)"
+      withEditor $
+         if ch
+         then void $ spawnMinibufferE question (const askKeymap)
+         else delBuf
 
 
 -- | If on separators (space, tab, unicode seps), reduce multiple
