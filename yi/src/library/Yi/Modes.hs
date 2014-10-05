@@ -61,11 +61,10 @@ type StyleBasedMode = TokenBasedMode StyleName
 
 fundamentalMode :: Mode syntax
 fundamentalMode = emptyMode
-  {
-   modeName = "fundamental",
-   modeApplies = modeAlwaysApplies,
-   modeIndent = const autoIndentB,
-   modePrettify = const fillParagraph
+  { modeName = "fundamental"
+  , modeApplies = modeAlwaysApplies
+  , modeIndent = const autoIndentB
+  , modePrettify = const fillParagraph
   }
 
 -- | Creates a 'TokenBasedMode' from a 'Lexer' and a function that
@@ -222,17 +221,16 @@ extensionOrContentsMatch extensions pattern fileName contents
 
 -- | Adds a hook to all matching hooks in a list
 hookModes :: (AnyMode -> Bool) -> BufferM () -> [AnyMode] -> [AnyMode]
-hookModes p h = map $ \am@(AnyMode m) -> if p am
-                                            then AnyMode $ m { modeOnLoad = modeOnLoad m >> h }
-                                            else am
+hookModes p h = map $ \am@(AnyMode m) ->
+  if p am then AnyMode (m & modeOnLoadA %~ (>> h)) else am
 
 -- | Apply a list of mode hooks to a list of AnyModes
 applyModeHooks :: [(AnyMode -> Bool, BufferM ())] -> [AnyMode] -> [AnyMode]
-applyModeHooks hs ms = flip map ms $ \am -> case filter (($am) . fst) hs of
+applyModeHooks hs ms = flip map ms $ \am -> case filter (($ am) . fst) hs of
     [] -> am
-    ls -> onMode (\m -> m { modeOnLoad = foldr ((>>) . snd) (modeOnLoad m) ls }) am
+    ls -> onMode (modeOnLoadA %~ \x -> foldr ((>>) . snd) x ls) am
 
--- | Check whether a mode of the same name is already in modeTable and returns the
--- original mode, if it isn't the case.
+-- | Check whether a mode of the same name is already in modeTable and
+-- returns the original mode, if it isn't the case.
 lookupMode :: AnyMode -> YiM AnyMode
 lookupMode am@(AnyMode m) = fromMaybe am <$> anyModeByNameM (modeName m)

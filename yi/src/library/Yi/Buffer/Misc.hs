@@ -363,13 +363,13 @@ queryAndModify = getsAndModify . queryAndModifyRawbuf
 -- | Adds an "overlay" to the buffer
 addOverlayB :: Overlay -> BufferM ()
 addOverlayB ov = do
-  (%=) pendingUpdatesA (++ [overlayUpdate ov])
+  pendingUpdatesA %= (++ [overlayUpdate ov])
   modifyBuffer $ addOverlayBI ov
 
 -- | Remove an existing "overlay"
 delOverlayB :: Overlay -> BufferM ()
 delOverlayB ov = do
-  (%=) pendingUpdatesA (++ [overlayUpdate ov])
+  pendingUpdatesA %= (++ [overlayUpdate ov])
   modifyBuffer $ delOverlayBI ov
 
 delOverlayLayerB :: OvlLayer -> BufferM ()
@@ -406,7 +406,7 @@ runBufferFull w b f =
                         Just mrks  <- uses winMarksA (M.lookup $ wkey (b ^. lastActiveWindowA))
                         forM mrks getMarkValueB
                 newMrks <- forM newMarkValues newMarkB
-                (%=) winMarksA (M.insert (wkey w) newMrks)
+                winMarksA %= M.insert (wkey w) newMrks
             assign lastActiveWindowA w
             f
     in (a, updates, pendingUpdatesA %~ (++ fmap TextUpdate updates) $ b')
@@ -431,7 +431,7 @@ runBufferDummyWindow b = fst . runBuffer (dummyWindow $ bkey b) b
 
 -- | Mark the current point in the undo list as a saved state.
 markSavedB :: UTCTime -> BufferM ()
-markSavedB t = do (%=) undosA setSavedFilePointU
+markSavedB t = do undosA %= setSavedFilePointU
                   assign lastSyncTimeA t
 
 bkey :: FBuffer -> BufferRef
@@ -446,7 +446,7 @@ startUpdateTransactionB = do
   if transactionPresent
   then error "Already started update transaction"
   else do
-    (%=) undosA $ addChangeU InteractivePoint
+    undosA %= addChangeU InteractivePoint
     assign updateTransactionInFlightA True
 
 commitUpdateTransactionB :: BufferM ()
@@ -459,8 +459,8 @@ commitUpdateTransactionB = do
     transacAccum <- use updateTransactionAccumA
     assign updateTransactionAccumA []
 
-    (%=) undosA $ appEndo . mconcat $ fmap (Endo . addChangeU . AtomicChange) transacAccum
-    (%=) undosA $ addChangeU InteractivePoint
+    undosA %= (appEndo . mconcat) (Endo . addChangeU . AtomicChange <$> transacAccum)
+    undosA %= addChangeU InteractivePoint
 
 
 undoRedo :: (forall syntax. Mark -> URList -> BufferImpl syntax
