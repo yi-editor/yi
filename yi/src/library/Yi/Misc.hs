@@ -1,3 +1,4 @@
+{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TypeOperators #-}
 {-# OPTIONS_HADDOCK show-extensions #-}
@@ -14,6 +15,7 @@
 module Yi.Misc where
 
 import           Control.Applicative
+import           Control.Monad ((>=>), filterM)
 import           Control.Monad.Base
 import           Data.Char (chr, isAlpha, isLower, isUpper, ord)
 import           Data.List ((\\))
@@ -22,7 +24,8 @@ import qualified Data.Text as T
 import           System.CanonicalizePath (canonicalizePath, replaceShorthands,
                                           replaceShorthands)
 import           System.Directory (doesDirectoryExist, getDirectoryContents,
-                                   getCurrentDirectory)
+                                   getCurrentDirectory, setCurrentDirectory)
+import           System.Environment (lookupEnv)
 import           System.FilePath (takeDirectory, (</>), takeFileName,
                                   addTrailingPathSeparator,
                                   hasTrailingPathSeparator)
@@ -32,6 +35,7 @@ import           Yi.Core
 import           Yi.MiniBuffer (withMinibufferGen, mkCompleteFn )
 import           Yi.Monad
 import qualified Yi.Rope as R
+import           Yi.Utils (io)
 
 -- | Given a possible starting path (which if not given defaults to
 -- the current directory) and a fragment of a path we find all files
@@ -105,17 +109,24 @@ adjBlock x = withSyntaxB' (\m s -> modeAdjustBlock m s x)
 adjIndent :: IndentBehaviour -> BufferM ()
 adjIndent ib = withSyntaxB' (\m s -> modeIndent m s ib)
 
-
-
 -- | Generic emacs style prompt file action. Takes a @prompt@ and a continuation
 -- @act@ and prompts the user with file hints.
 promptFile :: T.Text -> (T.Text -> YiM ()) -> YiM ()
-promptFile prompt act = do
+promptFile prompt act = promptFileChangingHints prompt (const return) act
+
+-- | As 'promptFile' but additionally allows the caller to transform
+-- the list of hints arbitrarily, such as only showing directories.
+promptFileChangingHints :: T.Text -- ^ Prompt
+                        -> (T.Text -> [T.Text] -> YiM [T.Text])
+                        -- ^ Hint transformer: current path, generated hints
+                        -> (T.Text -> YiM ()) -- ^ Action over choice
+                        -> YiM ()
+promptFileChangingHints prompt ht act = do
   maybePath <- withBuffer $ gets file
   startPath <- T.pack . addTrailingPathSeparator
                <$> liftBase (canonicalizePath =<< getFolder maybePath)
   -- TODO: Just call withMinibuffer
-  withMinibufferGen startPath (findFileHint startPath) prompt
+  withMinibufferGen startPath (\x -> findFileHint startPath x >>= ht x) prompt
     (completeFile startPath) showCanon (act . replaceShorthands)
   where
     showCanon = withBuffer . replaceBufferContent . R.fromText . replaceShorthands
@@ -141,6 +152,21 @@ onCharLetterCode f c | isAlpha c = chr (f (ord c - a) `mod` 26 + a)
                      where a | isUpper c = ord 'A'
                              | isLower c = ord 'a'
                              | otherwise = undefined
+
+cd :: YiM ()
+cd = promptFileChangingHints "switch directory to:" dirs $ \path ->
+  io $ getFolder (Just $ T.unpack path) >>= clean . T.pack
+       >>= System.Directory.setCurrentDirectory . addTrailingPathSeparator
+  where
+     replaceHome p@('~':'/':xs) = lookupEnv "HOME" >>= return . \case
+       Nothing -> p
+       Just h -> h </> xs
+     replaceHome p = return p
+     clean = replaceHome . T.unpack . replaceShorthands >=> canonicalizePath
+     dirs x xs = return []
+
+pwd :: YiM ()
+pwd = io getCurrentDirectory >>= withEditor . printMsg . T.pack
 
 rot13Char :: Char -> Char
 rot13Char = onCharLetterCode (+13)

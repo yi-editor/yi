@@ -118,9 +118,9 @@ parseOption name action = parse $ do
 
 removePwd :: T.Text -> YiM T.Text
 removePwd path = do
-  pwd <- T.pack <$> io getCurrentDirectory
-  return $! if pwd `T.snoc` '/' `T.isPrefixOf` path
-            then T.drop (1 + T.length pwd) path
+  pwd' <- T.pack <$> io getCurrentDirectory
+  return $! if pwd' `T.snoc` '/' `T.isPrefixOf` path
+            then T.drop (1 + T.length pwd') path
             else path
 
 filenameComplete :: T.Text -> YiM [T.Text]
