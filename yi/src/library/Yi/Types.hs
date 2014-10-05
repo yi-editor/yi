@@ -2,7 +2,6 @@
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DeriveFoldable #-}
 {-# LANGUAGE DeriveFunctor #-}
-{-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE DeriveTraversable #-}
 {-# LANGUAGE ExistentialQuantification #-}
 {-# LANGUAGE FlexibleContexts #-}
@@ -39,11 +38,6 @@ import           Data.Binary (Binary)
 import qualified Data.Binary as B
 import           Data.Default
 import qualified Data.DelayList as DelayList
-#if __GLASGOW_HASKELL__ < 708
-import           Data.DeriveTH
-#else
-import           GHC.Generics (Generic)
-#endif
 import           Data.Foldable
 import           Data.Function (on)
 import           Data.List.NonEmpty
@@ -202,15 +196,12 @@ instance Eq FBuffer where
 
 type WinMarks = MarkSet Mark
 
-data MarkSet a = MarkSet { fromMark, insMark, selMark :: !a } deriving (Traversable, Foldable, Functor)
+data MarkSet a = MarkSet { fromMark, insMark, selMark :: !a }
+               deriving (Traversable, Foldable, Functor)
 
-#if __GLASGOW_HASKELL__ < 708
-$(derive makeBinary ''MarkSet)
-#else
-deriving instance Generic (MarkSet a)
-instance Binary a => Binary (MarkSet a)
-#endif
-
+instance Binary a => Binary (MarkSet a) where
+  put (MarkSet f i s) = B.put f >> B.put i >> B.put s
+  get = liftM3 MarkSet B.get B.get B.get
 
 data Attributes = Attributes
                 { ident :: !BufferId
@@ -452,15 +443,21 @@ data RegionStyle = LineWise
                  | Block
   deriving (Eq, Typeable, Show)
 
+instance Binary RegionStyle where
+  put LineWise = B.put (0 :: Word8)
+  put Inclusive = B.put (1 :: Word8)
+  put Exclusive = B.put (2 :: Word8)
+  put Block = B.put (3 :: Word8)
+
+  get = B.get >>= \case
+    (0 :: Word8) -> return LineWise
+    1 -> return Inclusive
+    2 -> return Exclusive
+    3 -> return Block
+    n -> fail $ "Binary RegionStyle fail with " ++ show n
+
 -- TODO: put in the buffer state proper.
 instance Default RegionStyle where
   def = Inclusive
 
 instance YiVariable RegionStyle
-
-#if __GLASGOW_HASKELL__ < 708
-$(derive makeBinary ''RegionStyle)
-#else
-deriving instance Generic RegionStyle
-instance Binary RegionStyle
-#endif
