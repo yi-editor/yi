@@ -42,7 +42,7 @@ install:
 
 script:
  - cd yi
- - travis_retry cabal-1.20 install -j2 -fpango --enable-tests -ftesting --only-dependencies --reorder-goals --force-reinstalls
+ - travis_retry cabal-1.20 install -j2 -fpango --enable-tests -ftesting --only-dependencies --reorder-goals --force-reinstalls --constraint=optparse-applicative==0.10.0
  - cabal-1.20 install -j1 -fpango --enable-tests -ftesting
  - cd ../yi/example-configs
  # - for config in yi-*.hs;
