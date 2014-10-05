@@ -1,4 +1,5 @@
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE PackageImports #-}
 {-# OPTIONS_HADDOCK show-extensions #-}
 
 -- |
@@ -26,7 +27,7 @@ import           Data.List (isPrefixOf)
 import           Data.Maybe
 import           Data.Text ()
 import           System.FilePath
-import           Text.Regex.TDFA ((=~))
+import "regex-tdfa" Text.Regex.TDFA ((=~))
 import           Yi.Buffer
 import qualified Yi.IncrementalParse as IncrParser
 import           Yi.Keymap

@@ -1,4 +1,5 @@
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE PackageImports #-}
 {-# OPTIONS_HADDOCK show-extensions #-}
 
 -- |
@@ -17,7 +18,7 @@ import           Control.Monad
 import           Data.List (sort, transpose)
 import           Data.Monoid
 import qualified Data.Text as T
-import           Text.Regex.TDFA
+import "regex-tdfa" Text.Regex.TDFA
 import           Yi.Buffer
 import           Yi.Editor
 import qualified Yi.Rope as R
