@@ -41,6 +41,7 @@ module Yi.Keymap.Emacs.Utils
   , killBufferE
   , insertNextC
   , findFile
+  , findFileReadOnly
   , findFileNewTab
   , promptFile
   , promptTag
@@ -262,12 +263,23 @@ readUniversalArg :: KeymapM (Maybe Int)
 readUniversalArg = optional ((ctrlCh 'u' ?>> (read <$> some (digit id) <|> pure 4)) <|> (read <$> some tt))
 
 
+-- | Finds file and runs specified action on the resulting buffer
+findFileAndDo :: T.Text -- ^ Prompt
+              -> (BufferRef -> YiM a) -- ^ Action to run on the resulting buffer
+              -> YiM ()
+findFileAndDo prompt act = promptFile prompt $ \filename -> do
+  msgEditor $ "loading " <> filename
+  void $ editFile (T.unpack filename) >>= act
+
 -- | Open a file using the minibuffer. We have to set up some stuff to
 -- allow hints and auto-completion.
 findFile :: YiM ()
-findFile = promptFile "find file:" $ \filename -> do
-  msgEditor $ "loading " <> filename
-  void $ editFile (T.unpack filename)
+findFile = findFileAndDo "find file:" return
+
+-- | Like 'findFile' but sets the resulting buffer to read-only.
+findFileReadOnly :: YiM ()
+findFileReadOnly = findFileAndDo "find file (read only):" $ \b ->
+  withGivenBuffer b (readOnlyA .= True)
 
 -- | Open a file in a new tab using the minibuffer.
 findFileNewTab :: YiM ()

@@ -42,7 +42,8 @@ import Yi.Keymap.Emacs.Utils
   (askQuitEditor, evalRegionE, executeExtendedCommandE, findFile,
    findFileNewTab, promptFile, insertNextC, isearchKeymap, killBufferE,
    queryReplaceE, readUniversalArg, scrollDownE, scrollUpE, switchBufferE,
-   askSaveEditor, argToInt, promptTag, justOneSep, joinLinesE, countWordsRegion)
+   askSaveEditor, argToInt, promptTag, justOneSep, joinLinesE, countWordsRegion,
+   findFileReadOnly)
 import Yi.MiniBuffer
 import Yi.Misc (adjBlock, adjIndent)
 import Yi.Mode.Buffers ( listBuffers )
@@ -264,6 +265,7 @@ emacsKeys univArg =
                  , ctrlCh 'b'    ?>>! listBuffers
                  , ctrlCh 'c'    ?>>! askQuitEditor
                  , ctrlCh 'f'    ?>>! findFile
+                 , ctrlCh 'r'    ?>>! findFileReadOnly
                  , ctrlCh 'q'    ?>>! withBuffer0 (readOnlyA %= not)
                  , ctrlCh 's'    ?>>! fwriteE
                  , ctrlCh 'w'    ?>>! promptFile "Write file:" fwriteToE
