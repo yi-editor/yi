@@ -1,5 +1,6 @@
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE TupleSections #-}
 {-# LANGUAGE TypeOperators #-}
 {-# OPTIONS_HADDOCK show-extensions #-}
 
@@ -153,6 +154,10 @@ onCharLetterCode f c | isAlpha c = chr (f (ord c - a) `mod` 26 + a)
                              | isLower c = ord 'a'
                              | otherwise = undefined
 
+-- | Like @M-x cd@, it changes the current working directory. Mighty
+-- useful when we don't start Yi from the project directory or want to
+-- switch projects, as many tools only use the current working
+-- directory.
 cd :: YiM ()
 cd = promptFileChangingHints "switch directory to:" dirs $ \path ->
   io $ getFolder (Just $ T.unpack path) >>= clean . T.pack
@@ -163,8 +168,15 @@ cd = promptFileChangingHints "switch directory to:" dirs $ \path ->
        Just h -> h </> xs
      replaceHome p = return p
      clean = replaceHome . T.unpack . replaceShorthands >=> canonicalizePath
-     dirs x xs = return []
 
+     x <//> y = T.pack $ takeDirectory (T.unpack x) </> T.unpack y
+
+     dirs :: T.Text -> [T.Text] -> YiM [T.Text]
+     dirs x xs = do
+       xsc <- io $ mapM (\y -> (,y) <$> clean (x <//> y)) xs
+       filterM (io . doesDirectoryExist . fst) xsc >>= return . map snd
+
+-- | Shows current working directory. Also see 'cd'.
 pwd :: YiM ()
 pwd = io getCurrentDirectory >>= withEditor . printMsg . T.pack
 
