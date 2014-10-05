@@ -204,14 +204,6 @@ type WinMarks = MarkSet Mark
 
 data MarkSet a = MarkSet { fromMark, insMark, selMark :: !a } deriving (Traversable, Foldable, Functor)
 
-#if __GLASGOW_HASKELL__ < 708
-$(derive makeBinary ''MarkSet)
-#else
-deriving instance Generic (MarkSet a)
-instance Binary a => Binary (MarkSet a)
-#endif
-
-
 data Attributes = Attributes
                 { ident :: !BufferId
                 , bkey__   :: !BufferRef          -- ^ immutable unique key
@@ -357,12 +349,6 @@ instance MonadEditor EditorM where
     askCfg = ask
     withEditor = id
 
-#if __GLASGOW_HASKELL__ < 708
-deriving instance Typeable1 EditorM
-#else
-deriving instance Typeable EditorM
-#endif
-
 class (Monad m, MonadState Editor m) => MonadEditor m where
   askCfg :: m Config
 
@@ -457,6 +443,19 @@ instance Default RegionStyle where
   def = Inclusive
 
 instance YiVariable RegionStyle
+
+#if __GLASGOW_HASKELL__ < 708
+deriving instance Typeable1 EditorM
+#else
+deriving instance Typeable EditorM
+#endif
+
+#if __GLASGOW_HASKELL__ < 708
+$(derive makeBinary ''MarkSet)
+#else
+deriving instance Generic (MarkSet a)
+instance Binary a => Binary (MarkSet a)
+#endif
 
 #if __GLASGOW_HASKELL__ < 708
 $(derive makeBinary ''RegionStyle)
