@@ -45,7 +45,6 @@ module Yi.Dired
   ) where
 
 import           Control.Category ((>>>))
-import qualified Codec.Binary.UTF8.String as UTF8
 import           Control.Applicative
 import           Control.Exc
 import           Control.Lens hiding (act, op, pre)
@@ -536,7 +535,7 @@ data DRStrings = DRPerms {undrs :: String}
 
 -- | Return a List of (prefix, fullDisplayNameIncludingSourceAndDestOfLink, style, filename)
 linesToDisplay :: DiredState -> [([DRStrings], StyleName, String)]
-linesToDisplay dState = map (\(k, i) -> let k' = UTF8.decodeString k in lineToDisplay k' i) (M.assocs $ diredEntries dState)
+linesToDisplay dState = map (uncurry lineToDisplay) (M.assocs $ diredEntries dState)
     where
     lineToDisplay k (DiredFile v)      = (l " -" v <> [DRFiles k], defaultStyle, k)
     lineToDisplay k (DiredDir v)       = (l " d" v <> [DRFiles k], const (withFg blue), k)
@@ -558,8 +557,6 @@ linesToDisplay dState = map (\(k, i) -> let k' = UTF8.decodeString k in lineToDi
 diredScanDir :: FilePath -> IO (M.Map FilePath DiredEntry)
 diredScanDir dir = do
     files <- getDirectoryContents dir
-    -- The file strings as UTF-8 encoded on linux. They need to stay this way for functions that
-    -- stat these paths. However for display they need to be converted to ISO-10646 strings.
     foldM (lineForFile dir) M.empty files
     where
     lineForFile :: String -> M.Map FilePath DiredEntry -> String -> IO (M.Map FilePath DiredEntry)

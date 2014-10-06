@@ -26,6 +26,7 @@
  * Don't mark buffer as changed if nothing was killed (#618)
  * Nicer findFile &c behaviour in dired buffers (#149)
  * Implement C-a for CUA (#167)
+ * Fix dired for directories with unicode files/dirs (#445)
 
 0.9.0
 -----
