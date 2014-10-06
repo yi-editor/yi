@@ -96,9 +96,11 @@ fwriteBufferE bufferKey = do
   nameContents <- withGivenBuffer bufferKey ((,) <$> gets file
                                                  <*> streamB Forward 0)
   case nameContents of
-    (Just f, contents) -> do liftBase $ R.writeFile f contents
-                             now <- io getCurrentTime
-                             withGivenBuffer bufferKey (markSavedB now)
+    (Just f, contents) -> io (doesDirectoryExist f) >>= \case
+      True -> msgEditor "Can't save over a directory, doing nothing."
+      False -> do
+        liftBase $ R.writeFile f contents
+        io getCurrentTime >>= withGivenBuffer bufferKey . markSavedB
     (Nothing, _c)      -> msgEditor "Buffer not associated with a file"
 
 -- | Write current buffer to disk as @f@. The file is also set to @f@.

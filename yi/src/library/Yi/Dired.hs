@@ -444,10 +444,9 @@ diredDir dir = void (diredDirBuffer dir)
 
 diredDirBuffer :: FilePath -> YiM BufferRef
 diredDirBuffer d = do
-    -- Emacs doesn't follow symlinks, probbably Yi shouldn't do too
+    -- Emacs doesn't follow symlinks, probably Yi shouldn't do too
     dir <- io $ canonicalizePath d
-    -- XXX Don't specify the path as the filename of the buffer.
-    b <- withEditor $ stringToNewBuffer (MemBuffer $ T.pack dir) mempty
+    b <- withEditor $ stringToNewBuffer (FileBuffer dir) mempty
     withEditor $ switchToBufferE b
     withBuffer $ do
       bufferDynamicValueA %= (diredPathA .~ dir)
