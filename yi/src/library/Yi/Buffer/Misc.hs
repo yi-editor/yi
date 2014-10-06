@@ -206,24 +206,6 @@ import           Yi.Types
 import           Yi.Utils
 import           Yi.Window
 
-#ifdef TESTING
--- TODO: make this compile.
-
--- import Test.QuickCheck
--- import Driver ()
-
--- instance Arbitrary FBuffer where
---     arbitrary = do b0 <- return (newB 0 "*buffername*") `ap` (LazyUTF8.fromString `fmap` arbitrary)
---                    p0 <- arbitrary
---                    return $ snd $ runBuffer (dummyWindow $ bkey b0) b0 (moveTo $ Point p0)
-
--- prop_replace_point b = snd $ runBufferDummyWindow b $ do
---   p0 <- pointB
---   replaceRegionB r
---   p1 <- pointB
---   return $ (p1 - p0) == ...
-#endif
-
 -- In addition to Buffer's text, this manages (among others):
 --  * Log of updates mades
 --  * Undo
@@ -233,11 +215,27 @@ makeClassyWithSuffix "A" ''Attributes
 instance HasAttributes FBuffer where
     attributesA = lens attributes (\(FBuffer f1 f2 _) a -> FBuffer f1 f2 a)
 
-shortIdentString :: [a] -> FBuffer -> T.Text
-shortIdentString prefix b = case b ^. identA of
+-- | Gets a short identifier of a buffer. If we're given a 'MemBuffer'
+-- then just wraps the buffer name like so: @*name*@. If we're given a
+-- 'FileBuffer', it drops the the number of characters specified.
+--
+-- >>> shortIdentString 3 (MemBuffer "hello")
+-- "*hello*"
+-- >>> shortIdentString 3 (FileBuffer "hello")
+-- "lo"
+shortIdentString :: Int -- ^ Number of characters to drop from FileBuffer names
+                 -> FBuffer -- ^ Buffer to work with
+                 -> T.Text
+shortIdentString dl b = case b ^. identA of
   MemBuffer bName -> "*" <> bName <> "*"
-  FileBuffer fName -> T.pack . joinPath . drop (length prefix) $ splitPath fName
+  FileBuffer fName -> T.pack . joinPath . drop dl $ splitPath fName
 
+-- | Gets the buffer's identifier string, emphasising the 'MemBuffer':
+--
+-- >>> identString (MemBuffer "hello")
+-- "*hello*"
+-- >>> identString (FileBuffer "hello")
+-- "hello"
 identString :: FBuffer -> T.Text
 identString b = case b ^. identA of
   MemBuffer bName -> "*" <> bName <> "*"
@@ -335,7 +333,7 @@ defaultModeLine prefix = do
         hexChar = "0x" <> T.justifyRight 2 '0' hexxed
         toT = T.pack . show
 
-    nm <- gets $ shortIdentString prefix
+    nm <- gets $ shortIdentString (length prefix)
     return $ T.concat [ readOnly', changed, " ", nm
                       , "     ", hexChar, "  "
                       , "L", T.justifyRight 5 ' ' (toT ln)
@@ -636,7 +634,7 @@ newlineB = insertB '\n'
 
 ------------------------------------------------------------------------
 
--- | Insert given 'YiString' at specified point, etxending size of the
+-- | Insert given 'YiString' at specified point, extending size of the
 -- buffer.
 insertNAt :: YiString -> Point -> BufferM ()
 insertNAt rope pnt = applyUpdate (Insert pnt Forward rope)
@@ -647,10 +645,12 @@ insertN cs = pointB >>= insertNAt cs
 
 -- | Insert the char at current point, extending size of buffer
 --
--- TODO: seems very inefficient and we end up with a lot af chunk size
--- 1 chunks when typing, perhaps we should snoc onto the end of our
--- existing 'YiString' directly. Need to benchmark this, maybe it's
--- optimised away.
+-- Implementation note: This just 'insertB's a 'R.singleton'. This
+-- seems sub-optimal because we should be able to do much better
+-- without spewing chunks of size 1 everywhere. This approach is
+-- necessary however so an 'Update' can be recorded. A possible
+-- improvement for space would be to have ‘yi-rope’ package optimise
+-- for appends with length 1.
 insertB :: Char -> BufferM ()
 insertB = insertN . R.singleton
 

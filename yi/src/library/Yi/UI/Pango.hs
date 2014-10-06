@@ -319,7 +319,7 @@ updateWindow e _ui win wInfo = do
 setWindowFocus :: Editor -> UI -> TabInfo -> WinInfo -> IO ()
 setWindowFocus e ui t w = do
   win <- readIORef (coreWin w)
-  let bufferName = shortIdentString (commonNamePrefix e) $
+  let bufferName = shortIdentString (length $ commonNamePrefix e) $
                    findBufferWith (bufkey win) e
       ml = askBuffer win (findBufferWith (bufkey win) e) $
            getModeLine (T.pack <$> commonNamePrefix e)

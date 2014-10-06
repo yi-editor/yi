@@ -34,7 +34,7 @@ tabBarDescr :: Editor -> TabBarDescr
 tabBarDescr editor = tabDescr <$> PL.withFocus (editor ^. tabsA)
   where
     prefix = commonNamePrefix editor
-    shorten = tabAbbrevTitle . shortIdentString prefix
+    shorten = tabAbbrevTitle . shortIdentString (length prefix)
     mkHintWith f = shorten $ findBufferWith f editor
     hintForTab tab = mkHintWith (bufkey $ PL._focus (tab ^. tabWindowsA))
 

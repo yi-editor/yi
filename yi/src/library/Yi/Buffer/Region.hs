@@ -35,7 +35,6 @@ import           Data.Algorithm.Diff
 import           Data.Char (isSpace)
 import           Data.Monoid (mconcat)
 import           Data.List (sort)
-import qualified Data.Text as T
 import           Yi.Buffer.Misc
 import           Yi.Region
 import           Yi.Rope (YiString)
@@ -81,11 +80,11 @@ replaceRegionClever region text' = savingExcursionB $ do
       Both str _ -> rightN $ length str
       Second str -> insertN (R.fromString str)
 
--- | TODO: implement map over 'YiString'.
+-- | Map the given function over the characters in the region.
 mapRegionB :: Region -> (Char -> Char) -> BufferM ()
 mapRegionB r f = do
   text <- readRegionB r
-  replaceRegionB r (R.withText (T.map f) text)
+  replaceRegionB r (R.map f text)
 
 -- | Swap the content of two Regions
 swapRegionsB :: Region -> Region -> BufferM ()

@@ -257,7 +257,7 @@ findBufferWith k e = case M.lookup k (buffers e) of
 findBufferWithName :: T.Text -> Editor -> [BufferRef]
 findBufferWithName n e =
   let bufs = (M.elems $ buffers e)
-      sameIdent b = shortIdentString (commonNamePrefix e) b == n
+      sameIdent b = shortIdentString (length $ commonNamePrefix e) b == n
   in map bkey $ filter sameIdent bufs
 
 -- | Find buffer with given name. Fail if not found.

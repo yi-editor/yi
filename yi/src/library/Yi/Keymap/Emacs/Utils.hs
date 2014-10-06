@@ -317,7 +317,8 @@ promptingForBuffer prompt act hh = do
       bs <- toList . fmap bkey <$> getBufferStack
       let choices = hh openBufs bs
       prefix <- gets commonNamePrefix
-      forM choices $ \k -> gets (shortIdentString prefix . findBufferWith k)
+      forM choices $ \k ->
+        gets (shortIdentString (length prefix) . findBufferWith k)
     withMinibufferFin prompt names (withEditor . getBufferWithName >=> act)
 
 -- | Prompts the user for a buffer name and switches to the chosen buffer.

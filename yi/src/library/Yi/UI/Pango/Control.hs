@@ -361,7 +361,7 @@ askBuffer w b f = fst $ runBuffer w b f
 
 setWindowFocus :: Editor -> TabInfo -> View -> ControlM ()
 setWindowFocus e t v = do
-  let bufferName = shortIdentString (commonNamePrefix e) $
+  let bufferName = shortIdentString (length $ commonNamePrefix e) $
                    findBufferWith (viewFBufRef v) e
       window = findWindowWith (windowRef v) e
       ml = askBuffer window (findBufferWith (viewFBufRef v) e) $

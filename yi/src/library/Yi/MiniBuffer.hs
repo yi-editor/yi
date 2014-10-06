@@ -340,18 +340,15 @@ instance Promptable BufferRef where
     getPrompt _ = "Buffer"
     getPromptedValue = withEditor . getBufferWithNameOrCurrent
     getMinibuffer _ prompt act = do
-      bufs <- matchingBufferNames ""
+      bufs <- matchingBufferNames
       withMinibufferFin prompt bufs act
 
--- | Returns all the buffer names.
---
--- TODO: look at this sketchy function when I'm done with this Text
--- mess. – Fūzetsu
-matchingBufferNames :: T.Text -> YiM [T.Text]
-matchingBufferNames _ = withEditor $ do
+-- | Returns all the buffer names
+matchingBufferNames :: YiM [T.Text]
+matchingBufferNames = withEditor $ do
   p <- gets commonNamePrefix
   bs <- gets bufferSet
-  return $ fmap (shortIdentString p) bs
+  return $ fmap (shortIdentString $ length p) bs
 
 instance (YiAction a x, Promptable r) => YiAction (r -> a) x where
     makeAction f = YiA $ doPrompt (runAction . makeAction . f)

@@ -70,7 +70,6 @@ shellCommandV cmd = do
 
 ----------------------------
 -- Cabal-related commands
--- TODO: rename to "BuildBuffer" or something.
 newtype CabalBuffer = CabalBuffer {cabalBuffer :: Maybe BufferRef}
     deriving (Default, Typeable, Binary)
 
