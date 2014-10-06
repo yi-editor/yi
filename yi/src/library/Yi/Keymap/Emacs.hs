@@ -45,7 +45,7 @@ import Yi.Keymap.Emacs.Utils
    askSaveEditor, argToInt, promptTag, justOneSep, joinLinesE, countWordsRegion,
    findFileReadOnly)
 import Yi.MiniBuffer
-import Yi.Misc (adjBlock, adjIndent)
+import Yi.Misc (adjBlock, adjIndent, selectAll, placeMark)
 import Yi.Mode.Buffers ( listBuffers )
 import Yi.Rectangle
 import Yi.Search (isearchFinishWithE, resetRegexE)
@@ -87,14 +87,6 @@ completionKm caseSensitive = do void $ some (meta (char '/') ?>>! wordComplete' 
                                 write resetComplete
            -- 'adjustPriority' is there to lift the ambiguity between "continuing" completion
            -- and resetting it (restarting at the 1st completion).
-
-placeMark :: BufferM ()
-placeMark = do
-  assign highlightSelectionA True
-  pointB >>= setSelectionMarkPointB
-
-selectAll ::BufferM()
-selectAll =  botB >> placeMark >> topB >> setVisibleSelection True
 
 deleteB' :: BufferM ()
 deleteB' = adjBlock (-1) >> deleteN 1

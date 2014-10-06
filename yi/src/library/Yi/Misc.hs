@@ -16,6 +16,7 @@
 module Yi.Misc where
 
 import           Control.Applicative
+import           Control.Lens (assign)
 import           Control.Monad ((>=>), filterM)
 import           Control.Monad.Base
 import           Data.Char (chr, isAlpha, isLower, isUpper, ord)
@@ -100,6 +101,16 @@ matchingFileNames start s = do
                    else fmap (T.pack . (T.unpack sDir </>) . T.unpack) files
 
   return results
+
+-- | Place mark at current point
+placeMark :: BufferM ()
+placeMark = do
+  assign highlightSelectionA True
+  pointB >>= setSelectionMarkPointB
+
+-- | Select the contents of the whole buffer
+selectAll :: BufferM ()
+selectAll = botB >> placeMark >> topB >> setVisibleSelection True
 
 adjBlock :: Int -> BufferM ()
 adjBlock x = withSyntaxB' (\m s -> modeAdjustBlock m s x)

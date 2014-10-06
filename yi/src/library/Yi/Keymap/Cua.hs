@@ -26,7 +26,7 @@ import           Yi.Core
 import           Yi.File
 import           Yi.Keymap.Emacs.Utils
 import           Yi.MiniBuffer
-import           Yi.Misc (adjBlock)
+import           Yi.Misc (adjBlock, selectAll)
 import           Yi.Rectangle
 import qualified Yi.Rope as R
 import           Yi.String
@@ -150,5 +150,6 @@ other  cmd = choice [
  cmd (char 'o')   ?>>! findFile,
  cmd (char '/')   ?>>! commentRegion,
  cmd (char ']')   ?>>! autoIndentB IncreaseOnly,
- cmd (char '[')   ?>>! autoIndentB DecreaseOnly
+ cmd (char '[')   ?>>! autoIndentB DecreaseOnly,
+ cmd (char 'a')   ?>>! selectAll
  ]

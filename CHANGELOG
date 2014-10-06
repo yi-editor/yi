@@ -25,6 +25,7 @@
  * Fix display of paths starting with / (#528)
  * Don't mark buffer as changed if nothing was killed (#618)
  * Nicer findFile &c behaviour in dired buffers (#149)
+ * Implement C-a for CUA (#167)
 
 0.9.0
 -----
