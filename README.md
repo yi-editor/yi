@@ -33,7 +33,8 @@ Other information (much of it old) is available on the [Haskell wiki][haskellwik
 ## Installing
 
 See [this documentation page](http://yi-editor.github.io//pages/installing/)
-for installation instructions.
+for installation instructions. Hacking instructions if you're using
+the nix package manager are also there.
 
 ## Getting Source
 
