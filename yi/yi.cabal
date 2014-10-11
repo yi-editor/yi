@@ -197,7 +197,6 @@ library
     build-depends: binary >= 0.7
   build-depends:
     Cabal >= 1.10,
-    Diff >=0.2,
     array,
     containers,
     directory,

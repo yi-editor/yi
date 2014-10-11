@@ -246,13 +246,13 @@ setMarkText txt (SimpleMarkInfo _ start) = do
     then insertNAt txt p
     else do
       r <- regionOfPartNonEmptyAtB unitViWordOnLine Forward p
-      modifyRegionClever (const txt) r
+      modifyRegionB (const txt) r
 
 setMarkText txt mi = do
     start <- use $ markPointA $ startMark mi
     end   <- use $ markPointA $ endMark mi
     let r = mkRegion start end
-    modifyRegionClever (const txt) r
+    modifyRegionB (const txt) r
     when (start == end) $
       markPointA (endMark mi) .= end + Point (R.length txt)
 

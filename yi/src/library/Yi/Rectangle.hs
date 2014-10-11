@@ -27,7 +27,7 @@ import           Yi.String
 alignRegion :: T.Text -> BufferM ()
 alignRegion str = do
   s <- getSelectRegionB >>= unitWiseRegion Line
-  modifyRegionClever (R.fromText . alignText str . R.toText) s
+  modifyRegionB (R.fromText . alignText str . R.toText) s
   where
     regexSplit :: String -> String -> [T.Text]
     regexSplit regex l = case l =~ regex of

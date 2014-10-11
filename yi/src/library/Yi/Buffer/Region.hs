@@ -16,11 +16,9 @@ module Yi.Buffer.Region
   , swapRegionsB
   , deleteRegionB
   , replaceRegionB
-  , replaceRegionClever
   , readRegionB
   , mapRegionB
   , modifyRegionB
-  , modifyRegionClever
   , winRegionB
   , inclusiveRegionB
   , blockifyRegion
@@ -31,7 +29,6 @@ where
 
 import           Control.Applicative
 import           Control.Monad
-import           Data.Algorithm.Diff
 import           Data.Char (isSpace)
 import           Data.Monoid (mconcat)
 import           Data.List (sort)
@@ -60,26 +57,6 @@ replaceRegionB r s = do
   deleteRegionB r
   insertNAt s $ regionStart r
 
--- TODO: reimplement 'getGroupedDiff' for Ropes, so we can use
--- 'replaceRegionClever' on large regions.
--- TODO2: …do above or do the same for Text
-
--- | As 'replaceRegionB, but do a minimal edition instead of deleting
--- the whole region and inserting it back.
---
--- Due to use of 'getGroupedDiff', we convert to and from 'String'
--- which means it might actually be faster to delete and insert a
--- whole region as long as we do it over 'YiString'.
-replaceRegionClever :: Region -> YiString -> BufferM ()
-replaceRegionClever region text' = savingExcursionB $ do
-    text <- readRegionB region
-    let diffs = getGroupedDiff (R.toString text) (R.toString text')
-    moveTo (regionStart region)
-    forM_ diffs $ \d -> case d of
-      First str -> deleteN $ length str
-      Both str _ -> rightN $ length str
-      Second str -> insertN (R.fromString str)
-
 -- | Map the given function over the characters in the region.
 mapRegionB :: Region -> (Char -> Char) -> BufferM ()
 mapRegionB r f = do
@@ -95,13 +72,6 @@ swapRegionsB r r'
                      replaceRegionB r' w0
                      replaceRegionB r  w1
 
--- Transform a replace into a modify.
-replToMod :: (Region -> a -> BufferM b) -- ^ Replacer
-          -> (R.YiString -> a) -- ^ region transformer
-             -> Region -- ^ Region to transform
-             -> BufferM b
-replToMod replace f region = f <$> readRegionB region >>= replace region
-
 -- | Modifies the given region according to the given
 -- string transformation function
 modifyRegionB :: (R.YiString -> R.YiString)
@@ -109,12 +79,7 @@ modifyRegionB :: (R.YiString -> R.YiString)
               -> Region
                  -- ^ The region to modify
               -> BufferM ()
-modifyRegionB = replToMod replaceRegionB
-
--- | As 'modifyRegionB', but do a minimal edition instead of deleting the whole
--- region and inserting it back.
-modifyRegionClever :: (R.YiString -> R.YiString) -> Region -> BufferM ()
-modifyRegionClever = replToMod replaceRegionClever
+modifyRegionB f region = f <$> readRegionB region >>= replaceRegionB region
 
 -- | Extend the right bound of a region to include it.
 inclusiveRegionB :: Region -> BufferM Region
@@ -139,7 +104,7 @@ blockifyRegion r = savingPointB $ do
 -- | Joins lines in the region with a single space, skipping any empty
 -- lines.
 joinLinesB :: Region -> BufferM ()
-joinLinesB = savingPointB . modifyRegionClever g'
+joinLinesB = savingPointB . modifyRegionB g'
   where
     g' = overInit $ mconcat . pad . R.lines
 
@@ -152,4 +117,4 @@ joinLinesB = savingPointB . modifyRegionClever g'
 -- | Concatenates lines in the region preserving the trailing newline
 -- if any.
 concatLinesB :: Region -> BufferM ()
-concatLinesB = savingPointB . modifyRegionClever (overInit $ R.filter (/= '\n'))
+concatLinesB = savingPointB . modifyRegionB (overInit $ R.filter (/= '\n'))

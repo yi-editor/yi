@@ -678,7 +678,7 @@ getBuffer view = Buffer {fBufRef = viewFBufRef view}
 setText :: Buffer -> YiString -> ControlM ()
 setText b text = withBuffer b $ do
     r <- regionOfB Document
-    replaceRegionClever r text
+    replaceRegionB r text
 
 getText :: Buffer -> Iter -> Iter -> ControlM Text
 getText b Iter{point = p1} Iter{point = p2} =

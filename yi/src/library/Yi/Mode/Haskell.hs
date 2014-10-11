@@ -349,7 +349,7 @@ cleverPrettify toks = do
       text <- T.unwords . fmap (T.drop 2 . R.toText) <$> mapM tokText g
       let region = mkRegion (tokBegin . head $ g) (tokEnd . last $ g)
           mkGrp = const . R.unlines $ R.append "-- " <$> fillText 80 (R.fromText text)
-      modifyRegionClever mkGrp region
+      modifyRegionB mkGrp region
 
 tokTyp :: Token -> Maybe Haskell.CommentType
 tokTyp (Comment t) = Just t

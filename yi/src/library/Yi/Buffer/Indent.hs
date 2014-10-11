@@ -284,7 +284,7 @@ indentToB level = do
   indentSettings <- indentSettingsB
   r <- regionOfB Line
   when (regionDirection r == Forward) $
-    modifyRegionClever (rePadString indentSettings level) r
+    modifyRegionB (rePadString indentSettings level) r
 
 -- | Indent as much as the previous line
 indentAsPreviousB :: BufferM ()

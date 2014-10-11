@@ -295,7 +295,7 @@ deleteHorizontalSpaceB u = do
   reg <- regionOfB Line
   text <- readRegionB reg
   let r = deleteSpaces c text
-  modifyRegionClever (const r) reg
+  modifyRegionB (const r) reg
   -- If we only deleted before point, move back that many characters
   -- too or it feels weird.
   case u of
@@ -758,7 +758,7 @@ replaceBufferContent newvalue = do
 
 -- | Fill the text in the region so it fits nicely 80 columns.
 fillRegion :: Region -> BufferM ()
-fillRegion = modifyRegionClever (R.unlines . fillText 80)
+fillRegion = modifyRegionB (R.unlines . fillText 80)
 
 fillParagraph :: BufferM ()
 fillParagraph = fillRegion =<< regionOfB unitParagraph
@@ -771,15 +771,8 @@ sortLines = modifyExtendedSelectionB Line (onLines sort)
 revertB :: YiString -> UTCTime -> BufferM ()
 revertB s now = do
     r <- regionOfB Document
-    -- for large buffers, we must avoid building strings, because
-    -- we'll end up using huge amounts of memory
-    if R.length s <= smallBufferSize
-    then replaceRegionClever r s
-    else replaceRegionB r s
+    replaceRegionB r s
     markSavedB now
-
-smallBufferSize :: Int
-smallBufferSize = 1000000
 
 -- get lengths of parts covered by block region
 --
