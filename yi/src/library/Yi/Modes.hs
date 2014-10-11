@@ -56,6 +56,8 @@ import           Yi.Syntax.Driver (mkHighlighter)
 import           Yi.Syntax.OnlineTree (manyToks, Tree)
 import           Yi.Syntax.Tree
 
+import Yi.Search (makeSimpleSearch)
+
 type TokenBasedMode tok = Mode (Tree (Tok tok))
 type StyleBasedMode = TokenBasedMode StyleName
 
@@ -65,6 +67,11 @@ fundamentalMode = emptyMode
   , modeApplies = modeAlwaysApplies
   , modeIndent = const autoIndentB
   , modePrettify = const fillParagraph
+  , modeGotoDeclaration = do currentWord <- readCurrentWordB
+                             gotoLn 0
+                             word <- return (makeSimpleSearch currentWord)
+                             region <- head <$> regexB Forward word
+                             moveTo $ regionStart region
   }
 
 -- | Creates a 'TokenBasedMode' from a 'Lexer' and a function that
