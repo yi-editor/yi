@@ -613,8 +613,8 @@ getSelectRegionB = do
 setSelectRegionB :: Region -> BufferM ()
 setSelectRegionB region = do
   assign highlightSelectionA True
-  setSelectionMarkPointB $ regionEnd region
-  moveTo $ regionStart region
+  setSelectionMarkPointB $ regionStart region
+  moveTo $ regionEnd region
 
 -- | Extend the selection mark using the given region.
 extendSelectRegionB :: Region -> BufferM ()
