@@ -105,7 +105,7 @@ emacsKeys univArg =
   choice [ -- First all the special key bindings
            spec KTab            ?>>! adjIndent IncreaseCycle
          , shift (spec KTab)    ?>>! adjIndent DecreaseCycle
-         , spec KEnter          ?>>! repeatingArg (insertB '\n')
+         , spec KEnter          ?>>! repeatingArg newlineB
          , spec KDel            ?>>! repeatingArg (blockKillring >> deleteB')
          , spec KBS             ?>>! repeatingArg (blockKillring >>
                                                     adjBlock (-1) >>
