@@ -828,10 +828,17 @@ handleButtonClick ui ref = do
         runAction = uiActionCh ui . makeAction
 
     runAction focusWindow
+
+    win <- io $ readIORef (coreWin w)
+
+    let selectRegion tu = runAction $ do
+          b <- gets $ bkey . findBufferWith (bufkey win)
+          withGivenBufferAndWindow0 win b $
+            moveTo point >> regionOfB tu >>= setSelectRegionB
+
     case (click, button) of
-      (SingleClick, LeftButton) ->  do
+      (SingleClick, LeftButton) -> do
         io $ writeIORef (lButtonPressed w) True
-        win <- io $ readIORef (coreWin w)
         runAction $ do
           b <- gets $ bkey . findBufferWith (bufkey win)
           withGivenBufferAndWindow0 win b $ do
@@ -839,9 +846,12 @@ handleButtonClick ui ref = do
             markPointA m .= point
             moveTo point
             setVisibleSelection False
+      (DoubleClick, LeftButton) -> selectRegion unitWord
+      (TripleClick, LeftButton) -> selectRegion Line
       _ -> return ()
 
     return True
+
 
 handleButtonRelease :: UI -> WinInfo -> EventM EButton Bool
 handleButtonRelease ui w = do
