@@ -54,6 +54,7 @@ import           Yi.Monad
 import qualified Yi.Rope as R
 import           Yi.Style
 import           Yi.Tab
+import           Yi.Types (fontsizeVariation, attributes)
 import qualified Yi.UI.Common as Common
 import           Yi.UI.Pango.Control (keyTable)
 #ifdef GNOME_ENABLED
@@ -145,8 +146,12 @@ updateFont :: UIConfig -> IORef FontDescription -> IORef TabCache -> Statusbar
            -> FontDescription -> IO ()
 updateFont cfg fontRef tc status font = do
     maybe (return ()) (fontDescriptionSetFamily font) (configFontName cfg)
-    maybe (return ()) (fontDescriptionSetSize font . fromIntegral)
-      (configFontSize cfg)
+    -- case configFontSize cfg of
+    --   Nothing -> return ()
+    --   Just x -> fontDescriptionGetSize font >>= \case
+    --     Nothing -> return ()
+    --     Just cs ->
+    -- maybe (return ()) (fontDescriptionSetSize font . fromIntegral)
 
     writeIORef fontRef font
     widgetModifyFont status (Just font)
@@ -638,11 +643,37 @@ updatePango ui font w b layout = do
   let width' = max 0 (width_' - 1) -- see Note [PangoLayout width]
       fontDescriptionToStringT :: FontDescription -> IO Text
       fontDescriptionToStringT = fontDescriptionToString
+
+  -- Resize (and possibly copy) the currently used font.
+  curFont <- case fromIntegral <$> configFontSize (uiConfig ui) of
+    Nothing -> return font
+    Just defSize -> fontDescriptionGetSize font >>= \case
+      Nothing -> fontDescriptionSetSize font defSize >> return font
+      Just currentSize -> let fsv = fontsizeVariation $ attributes b
+                              newSize = max 1 (fromIntegral fsv + defSize) in do
+        if (newSize == currentSize)
+          then return font
+          else do
+          -- This seems like it would be very expensive but I'm
+          -- justifying it with that it only gets ran once per font
+          -- size change. If the font size stays the same, we only
+          -- enter this once per layout. We're effectivelly copying
+          -- the default font for each layout that changes. An
+          -- alternative would be to assign each buffer its own font
+          -- but that seems a pain to maintain and if the user never
+          -- changes font sizes, it's a waste of memory.
+          nf <- fontDescriptionCopy font
+          fontDescriptionSetSize nf newSize
+          return nf
+
   oldFont <- layoutGetFontDescription layout
   oldFontStr <- maybe (return Nothing)
                 (fmap Just . fontDescriptionToStringT) oldFont
-  newFontStr <- Just <$> fontDescriptionToStringT font
-  when (oldFontStr /= newFontStr) (layoutSetFontDescription layout (Just font))
+  newFontStr <- Just <$> fontDescriptionToStringT curFont
+
+  when (oldFontStr /= newFontStr) $
+    layoutSetFontDescription layout (Just curFont)
+
 
   win <- readIORef (coreWin w)
   let [width'', height''] = fmap fromIntegral [width', height']

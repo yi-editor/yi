@@ -158,6 +158,8 @@ emacsKeys univArg =
          , ctrlCh 'w'           ?>>! killRegion
          , ctrlCh 'y'           ?>>! yankE
          , ctrlCh 'z'           ?>>! suspendEditor
+         , ctrlCh '+'           ?>>! repeatingArg (increaseFontSize 1)
+         , ctrlCh '-'           ?>>! repeatingArg (decreaseFontSize 1)
 
          -- All the keybindings of the form "C-M-c" where 'c' is some character
          , ctrl (metaCh 'w')    ?>>! appendNextKillE

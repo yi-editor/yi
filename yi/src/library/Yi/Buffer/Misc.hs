@@ -173,6 +173,8 @@ module Yi.Buffer.Misc
   , commitUpdateTransactionB
   , applyUpdate
   , betweenB
+  , decreaseFontSize
+  , increaseFontSize
   ) where
 
 import           Control.Applicative
@@ -303,12 +305,20 @@ instance Binary (Mode syntax) where
       n <- E.decodeUtf8 <$> get
       return (emptyMode {modeName = n})
 
+-- | Increases the font size in the buffer by specified number. What
+-- this number actually means depends on the front-end.
+increaseFontSize :: Int -> BufferM ()
+increaseFontSize x = fontsizeVariationA %= \fs -> max 1 (fs + x)
+
+-- | Decreases the font size in the buffer by specified number. What
+-- this number actually means depends on the front-end.
+decreaseFontSize :: Int -> BufferM ()
+decreaseFontSize x = fontsizeVariationA %= \fs -> max 1 (fs - x)
+
 -- | Given a buffer, and some information update the modeline
 --
 -- N.B. the contents of modelines should be specified by user, and
 -- not hardcoded.
---
-
 getModeLine :: [T.Text] -> BufferM T.Text
 getModeLine prefix = withModeB (`modeModeLine` prefix)
 
@@ -544,6 +554,7 @@ newB unique nm s =
             , pointFollowsWindow = const False
             , updateTransactionInFlight = False
             , updateTransactionAccum = []
+            , fontsizeVariation = 0
             } }
 
 epoch :: UTCTime

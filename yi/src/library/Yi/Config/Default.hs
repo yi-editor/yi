@@ -123,7 +123,7 @@ defaultConfig =
              [] -> error "panic: no frontend compiled in! (configure with -fvty or another frontend.)"
              ((_,f):_) -> f
          , configUI         =  UIConfig
-           { configFontSize = Nothing
+           { configFontSize = Just 10
            , configFontName = Nothing
            , configScrollWheelAmount = 4
            , configScrollStyle = Nothing

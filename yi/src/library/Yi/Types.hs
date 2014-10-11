@@ -221,21 +221,24 @@ data Attributes = Attributes
                 , pointFollowsWindow        :: !(WindowRef -> Bool)
                 , updateTransactionInFlight :: !Bool
                 , updateTransactionAccum    :: ![Update]
+                , fontsizeVariation         :: !Int
+                  -- ^ How many points (frontend-specific) to change
+                  -- the font by in this buffer
                 } deriving Typeable
 
 
 instance Binary Yi.Types.Attributes where
     put (Yi.Types.Attributes n b u bd pc pu selectionStyle_
-         _proc wm law lst ro ins _dc _pfw isTransacPresent transacAccum) = do
+         _proc wm law lst ro ins _dc _pfw isTransacPresent transacAccum fv) = do
       let putTime (UTCTime x y) = B.put (fromEnum x) >> B.put (fromEnum y)
       B.put n >> B.put b >> B.put u >> B.put bd
       B.put pc >> B.put pu >> B.put selectionStyle_ >> B.put wm
       B.put law >> putTime lst >> B.put ro >> B.put ins >> B.put _dc
-      B.put isTransacPresent >> B.put transacAccum
+      B.put isTransacPresent >> B.put transacAccum >> B.put fv
     get = Yi.Types.Attributes <$> B.get <*> B.get <*> B.get <*>
           B.get <*> B.get <*> B.get <*> B.get <*> pure I.End <*> B.get <*> B.get
           <*> getTime <*> B.get <*> B.get <*> B.get
-          <*> pure (const False) <*> B.get <*> B.get
+          <*> pure (const False) <*> B.get <*> B.get <*> B.get
       where
         getTime = UTCTime <$> (toEnum <$> B.get) <*> (toEnum <$> B.get)
 
