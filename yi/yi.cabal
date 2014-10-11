@@ -127,6 +127,7 @@ library
     Yi.Keymap.Vim.Ex.Types
     Yi.Keymap.Vim.Ex.Eval
     Yi.Keymap.Vim.ExMap
+    Yi.Keymap.Vim.Extras
     Yi.Keymap.Vim.InsertMap
     Yi.Keymap.Vim.MatchResult
     Yi.Keymap.Vim.Motion
