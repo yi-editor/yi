@@ -26,7 +26,7 @@ import qualified Data.Text as T
 import           Data.Typeable
 import           System.Exit (ExitCode(..))
 import           Yi.Buffer
-import           Yi.Core (msgEditor, startSubprocess)
+import           Yi.Core (startSubprocess)
 import           Yi.Dynamic
 import           Yi.Editor
 import           Yi.Keymap
@@ -64,13 +64,13 @@ shellCommandV cmd = do
                    then withEditor . void $ -- see GitHub issue #477
                           newBufferE (MemBuffer "Shell Command Output")
                                      (R.fromString cmdOut)
-                   else msgEditor $ case T.pack cmdOut of
+                   else (withEditor . printMsg) $ case T.pack cmdOut of
                      "" -> "(Shell command with no output)"
                      -- Drop trailing newline from output
                      xs -> if T.last xs == '\n' then T.init xs else xs
     -- FIXME: here we get a string and convert it back to utf8;
     -- this indicates a possible bug.
-    ExitFailure _ -> msgEditor $ T.pack cmdErr
+    ExitFailure _ -> (withEditor . printMsg) $ T.pack cmdErr
 
 ----------------------------
 -- Cabal-related commands

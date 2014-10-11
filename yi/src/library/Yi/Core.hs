@@ -31,7 +31,6 @@ module Yi.Core
   , userForceRefresh
 
   -- * Global editor actions
-  , msgEditor           -- :: String -> YiM ()
   , errorEditor         -- :: String -> YiM ()
   , closeWindow         -- :: YiM ()
 
@@ -336,18 +335,15 @@ runProcessWithInput cmd inp = do
 
 ------------------------------------------------------------------------
 
--- | Same as 'msgEditor', but do nothing instead of printing @()@
-msgEditor' :: T.Text -> YiM ()
-msgEditor' "()" = return ()
-msgEditor' s = msgEditor s
+-- | Same as 'Yi.Editor.printMsg', but do nothing instead of printing @()@
+msgEditor :: T.Text -> YiM ()
+msgEditor "()" = return ()
+msgEditor s = withEditor (printMsg s)
 
 runAction :: Action -> YiM ()
-runAction (YiA act) = act >>= msgEditor' . showT
-runAction (EditorA act) = withEditor act >>= msgEditor' . showT
-runAction (BufferA act) = withBuffer act >>= msgEditor' . showT
-
-msgEditor :: T.Text -> YiM ()
-msgEditor = withEditor . printMsg
+runAction (YiA act) = act >>= msgEditor . showT
+runAction (EditorA act) = withEditor act >>= msgEditor . showT
+runAction (BufferA act) = withBuffer act >>= msgEditor . showT
 
 -- | Show an error on the status line and log it.
 errorEditor :: T.Text -> YiM ()
@@ -459,7 +455,7 @@ sendToProcess bufref s = do
     yi <- ask
     find ((== bufref) . bufRef) . yiSubprocesses <$> liftBase (readMVar (yiVar yi)) >>= \case
       Just subProcessInfo -> io $ hPutStr (hIn subProcessInfo) s
-      Nothing -> msgEditor "Could not get subProcessInfo in sendToProcess"
+      Nothing -> withEditor (printMsg "Could not get subProcessInfo in sendToProcess")
 
 pipeToBuffer :: Handle -> (String -> IO ()) -> IO ()
 pipeToBuffer h append = void . ignoringException . forever $ do

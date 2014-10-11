@@ -65,7 +65,7 @@ import           System.FilePath (takeDirectory, takeFileName, (</>))
 import           System.FriendlyPath ()
 import           Yi.Buffer
 import           Yi.Command (cabalConfigureE, cabalBuildE, reloadProjectE)
-import           Yi.Core (msgEditor, quitEditor)
+import           Yi.Core (quitEditor)
 import           Yi.Editor
 import           Yi.Eval
 import           Yi.File
@@ -272,7 +272,7 @@ findFileAndDo :: T.Text -- ^ Prompt
               -> (BufferRef -> YiM a) -- ^ Action to run on the resulting buffer
               -> YiM ()
 findFileAndDo prompt act = promptFile prompt $ \filename -> do
-  msgEditor $ "loading " <> filename
+  (withEditor . printMsg) $ "loading " <> filename
   void $ editFile (T.unpack filename) >>= act
 
 -- | Open a file using the minibuffer. We have to set up some stuff to
@@ -289,7 +289,7 @@ findFileReadOnly = findFileAndDo "find file (read only):" $ \b ->
 findFileNewTab :: YiM ()
 findFileNewTab = promptFile "find file (new tab): " $ \filename -> do
   withEditor newTabE
-  msgEditor $ "loading " <> filename
+  (withEditor . printMsg) $ "loading " <> filename
   void . editFile $ T.unpack filename
 
 
@@ -450,7 +450,7 @@ countWordsRegion = do
     t <- withBuffer0 $ getRectangle >>= \(reg, _, _) -> readRegionB reg
     let nls = R.countNewLines t
     return (if nls == 0 then 1 else nls, length $ R.words t, R.length t)
-  msgEditor $ T.unwords [ "Region has", showT l, p l "line" <> ","
+  (withEditor . printMsg) $ T.unwords [ "Region has", showT l, p l "line" <> ","
                         , showT w, p w "word" <> ", and"
                         , showT c, p w "character" <> "."
                         ]

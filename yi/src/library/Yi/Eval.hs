@@ -50,7 +50,7 @@ import           Text.Read (readMaybe)
 import           Yi.Boot.Internal (reload)
 import           Yi.Buffer
 import           Yi.Config.Simple.Types
-import           Yi.Core (errorEditor, msgEditor, runAction)
+import           Yi.Core (errorEditor, runAction)
 import           Yi.Debug
 import           Yi.Dynamic
 import           Yi.Editor
@@ -244,7 +244,7 @@ parseErrorMessageB = parseErrorMessage <$> readLnB
 -- 'parseErrorMessageB'.
 jumpToErrorE :: YiM ()
 jumpToErrorE = withBuffer parseErrorMessageB >>= \case
-  Nothing -> msgEditor "Couldn't parse out an error message."
+  Nothing -> (withEditor . printMsg) "Couldn't parse out an error message."
   Just (f, l, c) -> jumpToE f l c
 
 prompt :: R.YiString

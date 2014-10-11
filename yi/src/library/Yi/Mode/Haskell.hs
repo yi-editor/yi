@@ -44,7 +44,7 @@ import           Data.Typeable
 import           Prelude hiding (and,error,elem,notElem,all,concatMap,exp)
 import           Text.Read (readMaybe)
 import           Yi.Buffer
-import           Yi.Core (msgEditor, sendToProcess)
+import           Yi.Core (sendToProcess)
 import           Yi.Debug
 import           Yi.Dynamic
 import           Yi.Editor
@@ -469,5 +469,5 @@ ghciSetProcessArgs = do
                            ]
   withMinibufferFree prompt $ \arg ->
     case readMaybe $ T.unpack arg of
-      Nothing -> msgEditor "Could not parse as [String], keep old args."
+      Nothing -> (withEditor . printMsg) "Could not parse as [String], keep old args."
       Just arg' -> setDynamic $ g & GHCi.ghciProcessArgs .~ arg'

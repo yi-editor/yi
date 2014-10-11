@@ -341,9 +341,9 @@ procDiredOp counting r@(DOChoice prompt op:ops) = do
           allAction = do cleanUp
                          modDiredOpState (\st -> st{diredOpForAll=True})
                          proceedYes
-          quit = cleanUp >> msgEditor "Quit"
+          quit = cleanUp >> (withEditor . printMsg) "Quit"
           help = do
-            msgEditor $ "y: yes, n: no, " <> "!: yes on all remaining items, "
+            (withEditor . printMsg) $ "y: yes, n: no, " <> "!: yes on all remaining items, "
                         <> "q: quit, h: help"
             cleanUp
             procDiredOp counting r -- repeat
@@ -382,9 +382,9 @@ askDelFiles dir fs =
           ops = map opGenerator fs
           showResult st = do
             diredRefresh
-            msgEditor $ showT (diredOpSucCnt st) <> " of "
+            (withEditor . printMsg) $ showT (diredOpSucCnt st) <> " of "
                         <> showT total <> " deletions done"
-          showNothing _ = msgEditor "(No deletions requested)"
+          showNothing _ = (withEditor . printMsg) "(No deletions requested)"
           total = length fs
           opGenerator :: (FilePath, DiredEntry) -> IO DiredOp
           opGenerator (fn, de) = do
@@ -438,7 +438,7 @@ diredKeymap =
 
 dired :: YiM ()
 dired = do
-    msgEditor "Dired..."
+    (withEditor . printMsg) "Dired..."
     maybepath <- withBuffer $ gets file
     dir <- io $ getFolder maybepath
     void $ editFile dir
@@ -744,9 +744,9 @@ askRenameFiles dir fs =
                               ckParentDir = doesDirectoryExist $ takeDirectory (dropTrailingPathSeparator t)
           showResult st = do
             diredRefresh
-            msgEditor $ showT (diredOpSucCnt st) <> " of "
+            (withEditor . printMsg) $ showT (diredOpSucCnt st) <> " of "
                         <> showT total <> " item(s) moved."
-          showNothing _ = msgEditor "Quit"
+          showNothing _ = (withEditor . printMsg) "Quit"
           total = length fs
 
 -- | copy selected files in a given directory to the target location given
@@ -790,9 +790,9 @@ askCopyFiles dir fs =
                                     takeDirectory (dropTrailingPathSeparator t)
     showResult st = do
       diredRefresh
-      msgEditor $ showT (diredOpSucCnt st) <> " of "
+      (withEditor . printMsg) $ showT (diredOpSucCnt st) <> " of "
                   <> showT total <> " item(s) copied."
-    showNothing _ = msgEditor "Quit"
+    showNothing _ = (withEditor . printMsg) "Quit"
     total = length fs
     op4Type :: DiredEntry -> FilePath -> FilePath -> DiredOp
     op4Type (DiredDir _) = DOCopyDir
@@ -831,46 +831,46 @@ diredLoad = do
           exists <- io $ doesFileExist sel
           if exists
             then void $ editFile sel
-            else msgEditor $ sel' <> " no longer exists"
+            else (withEditor . printMsg) $ sel' <> " no longer exists"
         (DiredDir _dfi)  -> do
           exists <- io $ doesDirectoryExist sel
           if exists
             then diredDir sel
-            else msgEditor $ sel' <> " no longer exists"
+            else (withEditor . printMsg) $ sel' <> " no longer exists"
         (DiredSymLink _dfi dest) -> do
           let target = if isAbsolute dest then dest else dir </> dest
           existsFile <- io $ doesFileExist target
           existsDir <- io $ doesDirectoryExist target
-          msgEditor $ "Following link:" <> T.pack target
+          (withEditor . printMsg) $ "Following link:" <> T.pack target
           if existsFile then void $ editFile target else
             if existsDir then diredDir target else
-              msgEditor $ T.pack target <> " does not exist"
+              (withEditor . printMsg) $ T.pack target <> " does not exist"
         (DiredSocket _dfi) -> do
           exists <- io $ doesFileExist sel
-          msgEditor (if exists
+          (withEditor . printMsg) (if exists
                     then "Can't open Socket " <> sel'
                     else sel' <> " no longer exists")
         (DiredBlockDevice _dfi) -> do
           exists <- io $ doesFileExist sel
-          msgEditor (if exists
+          (withEditor . printMsg) (if exists
                     then "Can't open Block Device " <> sel'
                     else sel' <> " no longer exists")
         (DiredCharacterDevice _dfi) -> do
           exists <- io $ doesFileExist sel
-          msgEditor (if exists
+          (withEditor . printMsg) (if exists
                     then "Can't open Character Device " <> sel'
                     else sel' <> " no longer exists")
         (DiredNamedPipe _dfi) -> do
           exists <- io $ doesFileExist sel
-          msgEditor (if exists
+          (withEditor . printMsg) (if exists
                     then "Can't open Pipe " <> sel'
                     else sel' <> " no longer exists")
-        DiredNoInfo -> msgEditor $ "No File Info for:" <> sel'
+        DiredNoInfo -> (withEditor . printMsg) $ "No File Info for:" <> sel'
     Nothing        -> noFileAtThisLine
 
 
 noFileAtThisLine :: YiM ()
-noFileAtThisLine = msgEditor "(No file at this line)"
+noFileAtThisLine = (withEditor . printMsg) "(No file at this line)"
 
 -- | Extract the filename at point. NB this may fail if the buffer has been edited. Maybe use Markers instead.
 fileFromPoint :: BufferM (Maybe (FilePath, DiredEntry))
@@ -898,7 +898,7 @@ diredCreateDir =
   withMinibufferFree "Create Dir:" $ \nm -> do
     dir <- currentDir
     let newdir = dir </> T.unpack nm
-    msgEditor $ "Creating " <> T.pack newdir <> "..."
+    (withEditor . printMsg) $ "Creating " <> T.pack newdir <> "..."
     io $ createDirectoryIfMissing True newdir
     diredRefresh
 

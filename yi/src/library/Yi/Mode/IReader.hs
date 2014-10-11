@@ -18,6 +18,7 @@ import Data.Text ()
 import Control.Lens
 import Data.Char (intToDigit)
 import Yi.Buffer.Misc
+import Yi.Editor
 import Yi.IReader
 import Yi.Keymap
 import Yi.Keymap.Keys
@@ -41,4 +42,4 @@ ireadMode ::  YiM ()
 ireadMode = do
   withBuffer $ setAnyMode $ AnyMode ireaderMode
   nextArticle
-  msgEditor "M-` new; M-0 delete; M-[1-9]: save w/higher priority"
+  (withEditor . printMsg) "M-` new; M-0 delete; M-[1-9]: save w/higher priority"

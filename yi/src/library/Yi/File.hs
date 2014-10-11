@@ -51,8 +51,8 @@ revertE = do
       now <- io getCurrentTime
       s <- liftBase $ R.readFile fp
       withBuffer $ revertB s now
-      msgEditor ("Reverted from " <> showT fp)
-    Nothing -> msgEditor "Can't revert, no file associated with buffer."
+      (withEditor . printMsg) ("Reverted from " <> showT fp)
+    Nothing -> (withEditor . printMsg) "Can't revert, no file associated with buffer."
 
 
 -- | Try to write a file in the manner of vi\/vim
@@ -68,7 +68,7 @@ viWrite = do
        let message = (showT f <>) (if f == s
                          then " written"
                          else " " <> showT s <> " written")
-       msgEditor message
+       (withEditor . printMsg) message
 
 -- | Try to write to a named file in the manner of vi/vim
 viWriteTo :: T.Text -> YiM ()
@@ -79,7 +79,7 @@ viWriteTo f = do
   let message = f `T.append` if f == s
                              then " written"
                              else ' ' `T.cons` s `T.append` " written"
-  msgEditor message
+  (withEditor . printMsg) message
 
 -- | Try to write to a named file if it doesn't exist. Error out if it does.
 viSafeWriteTo :: T.Text -> YiM ()
@@ -100,11 +100,11 @@ fwriteBufferE bufferKey = do
                                                  <*> streamB Forward 0)
   case nameContents of
     (Just f, contents) -> io (doesDirectoryExist f) >>= \case
-      True -> msgEditor "Can't save over a directory, doing nothing."
+      True -> (withEditor . printMsg) "Can't save over a directory, doing nothing."
       False -> do
         liftBase $ R.writeFile f contents
         io getCurrentTime >>= withGivenBuffer bufferKey . markSavedB
-    (Nothing, _c)      -> msgEditor "Buffer not associated with a file"
+    (Nothing, _c)      -> (withEditor . printMsg) "Buffer not associated with a file"
 
 -- | Write current buffer to disk as @f@. The file is also set to @f@.
 fwriteToE :: T.Text -> YiM ()
