@@ -22,9 +22,13 @@ import           Control.Applicative
 import           Control.Lens hiding (act)
 import           Control.Monad
 import qualified Data.Text as T
-import           Yi.Core
+import           Yi.Buffer
+-- import           Yi.Core
+import           Yi.Editor
 import           Yi.File
+import           Yi.Keymap
 import           Yi.Keymap.Emacs.Utils
+import           Yi.Keymap.Keys
 import           Yi.MiniBuffer
 import           Yi.Misc (adjBlock, selectAll)
 import           Yi.Rectangle

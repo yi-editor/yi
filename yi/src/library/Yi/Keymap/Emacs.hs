@@ -33,10 +33,13 @@ import Data.Char
 import Data.Maybe
 import Data.Prototype
 import Data.Text ()
+import Yi.Buffer
 import Yi.Command (shellCommandE)
-import Yi.Core
+import Yi.Core (closeWindow, runAction, suspendEditor, userForceRefresh, withSyntax)
 import Yi.Dired
+import Yi.Editor
 import Yi.File
+import Yi.Keymap
 import Yi.Keymap.Emacs.KillRing
 import Yi.Keymap.Emacs.Utils
   (askQuitEditor, evalRegionE, executeExtendedCommandE, findFile,
@@ -44,6 +47,7 @@ import Yi.Keymap.Emacs.Utils
    queryReplaceE, readUniversalArg, scrollDownE, scrollUpE, switchBufferE,
    askSaveEditor, argToInt, promptTag, justOneSep, joinLinesE, countWordsRegion,
    findFileReadOnly)
+import Yi.Keymap.Keys
 import Yi.MiniBuffer
 import Yi.Misc (adjBlock, adjIndent, selectAll, placeMark)
 import Yi.Mode.Buffers ( listBuffers )

@@ -101,11 +101,15 @@ module Yi.Config.Simple (
   -- we can't just export 'module Yi', because then we would get
   -- clashes with Yi.Config
   module Yi.Boot,
+  module Yi.Buffer,
   module Yi.Core,
   module Yi.Dired,
+  module Yi.Editor,
   module Yi.File,
   module Yi.Config,
   module Yi.Config.Default,
+  module Yi.Keymap,
+  module Yi.Keymap.Keys,
   module Yi.Layout,
   module Yi.Search,
   module Yi.Style,
@@ -121,13 +125,17 @@ import           Data.Maybe(mapMaybe)
 import qualified Data.Text as T
 import           Text.Printf(printf)
 import           Yi.Boot
+import           Yi.Buffer hiding (modifyMode)
 import           Yi.Config.Default
 import           Yi.Config.Misc
 import           Yi.Config.Simple.Types
-import           Yi.Core hiding(modifyMode)
+import           Yi.Core
 import           Yi.Dired
+import           Yi.Editor
 import           Yi.Eval
 import           Yi.File
+import           Yi.Keymap
+import           Yi.Keymap.Keys
 import           Yi.Layout
 import           Yi.Misc
 import           Yi.Mode.Haskell

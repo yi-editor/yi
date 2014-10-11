@@ -75,8 +75,13 @@ import           System.PosixCompat.Files
 import           System.PosixCompat.Types
 import           System.PosixCompat.User
 import           Text.Printf
+import           Yi.Buffer
 import           Yi.Config
 import           Yi.Core
+import           Yi.Dynamic
+import           Yi.Editor
+import           Yi.Keymap
+import           Yi.Keymap.Keys
 import           Yi.MiniBuffer (spawnMinibufferE, withMinibufferFree, noHint,
                                 withMinibuffer)
 import           Yi.Misc (getFolder, promptFile)

@@ -19,7 +19,9 @@ import           Data.Char (isUpper)
 import           Data.List (nub)
 import qualified Data.Text as T
 import           System.Exit (ExitCode(ExitFailure))
-import           Yi.Core
+import           Yi.Buffer
+import           Yi.Editor
+import           Yi.Keymap
 import           Yi.Process (runProgCommand)
 import qualified Yi.Rope as R
 import           Yi.String (showT)

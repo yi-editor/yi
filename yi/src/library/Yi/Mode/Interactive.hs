@@ -17,8 +17,12 @@ import           Control.Concurrent (threadDelay)
 import           Control.Lens
 import           Data.Monoid
 import qualified Data.Text as T
-import           Yi.Core
+import           Yi.Buffer
+import           Yi.Core (sendToProcess, startSubprocess, withSyntax)
+import           Yi.Editor
 import           Yi.History
+import           Yi.Keymap
+import           Yi.Keymap.Keys
 import           Yi.Lexer.Alex (Tok)
 import           Yi.Lexer.Compilation (Token)
 import qualified Yi.Mode.Compilation as Compilation

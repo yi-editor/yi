@@ -29,7 +29,10 @@ import           GHC.Generics (Generic)
 import           Data.Text ()
 import qualified Data.Text as T
 import           Data.Typeable
-import           Yi.Core
+import           Yi.Buffer
+import           Yi.Dynamic
+import           Yi.Keymap
+import           Yi.Keymap.Keys
 import           Yi.Lexer.Alex (Tok)
 import           Yi.Lexer.Compilation (Token())
 import qualified Yi.Mode.Interactive as I

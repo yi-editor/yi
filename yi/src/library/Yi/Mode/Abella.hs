@@ -15,9 +15,14 @@
 -- interactive theorem prover.
 
 module Yi.Mode.Abella
-  ( abellaModeEmacs, abella
-  , abellaEval, abellaEvalFromProofPoint, abellaUndo, abellaGet, abellaSend)
-where
+  ( abellaModeEmacs
+  , abella
+  , abellaEval
+  , abellaEvalFromProofPoint
+  , abellaUndo
+  , abellaGet
+  , abellaSend
+  ) where
 
 import           Control.Applicative
 import           Control.Lens
@@ -28,7 +33,12 @@ import           Data.Default
 import           Data.Maybe (isJust)
 import qualified Data.Text as T
 import           Data.Typeable
-import           Yi.Core
+import           Yi.Buffer
+import           Yi.Core (sendToProcess)
+import           Yi.Dynamic
+import           Yi.Editor
+import           Yi.Keymap
+import           Yi.Keymap.Keys
 import qualified Yi.Lexer.Abella as Abella
 import           Yi.MiniBuffer (CommandArguments(..))
 import qualified Yi.Mode.Interactive as Interactive

@@ -20,16 +20,9 @@
 -- through the interface defined here.
 
 module Yi.Core
-  ( module Yi.Dynamic
-    -- * Keymap
-  , module Yi.Keymap
-
-  , module Yi.Editor
-  , module Yi.Buffer
-  , module Yi.Keymap.Keys
-
+  (
   -- * Construction and destruction
-  , startEditor
+    startEditor
   , quitEditor          -- :: YiM ()
 
   -- * User interaction
@@ -51,9 +44,7 @@ module Yi.Core
   , runAction
   , withSyntax
   , focusAllSyntax
-
-  )
-where
+  ) where
 
 import           Control.Applicative
 import           Control.Concurrent
@@ -88,7 +79,6 @@ import           System.Process (terminateProcess, getProcessExitCode,
 import           Yi.Buffer
 import           Yi.Config
 import           Yi.Debug
-import           Yi.Dynamic
 import           Yi.Editor
 import           Yi.Keymap
 import           Yi.Keymap.Keys

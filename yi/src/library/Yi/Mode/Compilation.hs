@@ -14,10 +14,14 @@ module Yi.Mode.Compilation where
 
 import           Control.Lens
 import           Data.Text ()
-import           Yi.Core
+import           Yi.Buffer
+import           Yi.Core (withSyntax)
+import           Yi.Editor
 import           Yi.File (editFile)
 import           Yi.Lexer.Alex (Tok(..), Posn(..))
 import qualified Yi.Lexer.Compilation as Compilation
+import           Yi.Keymap
+import           Yi.Keymap.Keys
 import           Yi.Modes (styleMode, TokenBasedMode)
 import qualified Yi.Syntax.OnlineTree as OnlineTree
 

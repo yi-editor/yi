@@ -21,32 +21,40 @@ module Yi
   (
     module Data.Prototype, -- prototypes are mainly there for config; makes sense to export them.
     module Yi.Boot,
+    module Yi.Buffer,
     module Yi.Config,
+    module Yi.Config.Default,
     module Yi.Core,
     module Yi.Dired,
+    module Yi.Editor,
     module Yi.Eval,
     module Yi.File,
-    module Yi.Config.Default,
-    module Yi.Search,
-    module Yi.Style,
-    module Yi.Style.Library,
+    module Yi.Keymap,
+    module Yi.Keymap.Keys,
     module Yi.Misc,
     module Yi.Mode.Haskell,
     module Yi.Mode.IReader,
+    module Yi.Search,
+    module Yi.Style,
+    module Yi.Style.Library,
   ) where
 
 import Data.Prototype
 import Yi.Boot
+import Yi.Buffer
 import Yi.Config
+import Yi.Config.Default
 import Yi.Core
 import Yi.Dired
+import Yi.Editor
 import Yi.Eval
 import Yi.File
-import Yi.Config.Default
-import Yi.Search
-import Yi.Style
-import Yi.Style.Library
+import Yi.Keymap
+import Yi.Keymap.Keys
 import Yi.Misc
 import Yi.Mode.Haskell (ghciGet, ghciLoadBuffer,
                         ghciSetProcessName, ghciSetProcessArgs)
 import Yi.Mode.IReader (ireaderMode, ireadMode)
+import Yi.Search
+import Yi.Style
+import Yi.Style.Library

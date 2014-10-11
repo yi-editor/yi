@@ -42,11 +42,15 @@ import           Data.String (IsString)
 import qualified Data.Text as T
 import           Data.Typeable
 import           System.CanonicalizePath (replaceShorthands)
+import           Yi.Buffer
 import           Yi.Completion (infixMatch, prefixMatch, containsMatch',
                                 completeInList, completeInList')
 import           Yi.Config
 import           Yi.Core
+import           Yi.Editor
 import           Yi.History
+import           Yi.Keymap
+import           Yi.Keymap.Keys
 import           Yi.Monad
 import qualified Yi.Rope as R
 import           Yi.Style (defaultStyle)

@@ -48,11 +48,16 @@ import           Prelude hiding (error, mapM_)
 import           System.Directory (doesFileExist)
 import           Text.Read (readMaybe)
 import           Yi.Boot.Internal (reload)
+import           Yi.Buffer
 import           Yi.Config.Simple.Types
-import           Yi.Core
+import           Yi.Core (errorEditor, msgEditor, runAction)
 import           Yi.Debug
+import           Yi.Dynamic
+import           Yi.Editor
 import           Yi.File
 import           Yi.Hooks
+import           Yi.Keymap
+import           Yi.Keymap.Keys
 import qualified Yi.Paths (getEvaluatorContextFilename)
 import           Yi.Regex
 import qualified Yi.Rope as R

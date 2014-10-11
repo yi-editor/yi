@@ -25,11 +25,14 @@ import System.Exit
 #include "ghcconfig.h"
 #endif
 
+import Yi.Buffer
 import Yi.Config
 import Yi.Config.Default
-import Yi.Core
+import Yi.Core (startEditor)
 import Yi.Debug
+import Yi.Editor
 import Yi.File
+import Yi.Keymap
 import Yi.Paths (getConfigDir)
 import Paths_yi
 

@@ -23,14 +23,16 @@ module Yi.Keymap.Keys
      pString
     ) where
 
-import Yi.Event
-import Yi.Keymap
-import Data.Char
 import Prelude hiding (error)
-import Yi.Interact hiding (write)
+
 import Control.Monad (unless)
-import Yi.Debug
+import Data.Char
 import Data.List (sort, nub)
+
+import Yi.Event
+import Yi.Debug
+import Yi.Keymap
+import Yi.Interact hiding (write)
 
 printableChar :: (MonadInteract m w Event) => m Char
 printableChar = do

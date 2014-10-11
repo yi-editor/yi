@@ -43,10 +43,14 @@ import qualified Data.Text as T
 import           Data.Typeable
 import           Prelude hiding (and,error,elem,notElem,all,concatMap,exp)
 import           Text.Read (readMaybe)
-import           Yi.Core
+import           Yi.Buffer
+import           Yi.Core (msgEditor, sendToProcess)
 import           Yi.Debug
+import           Yi.Dynamic
+import           Yi.Editor
 import           Yi.File
 import qualified Yi.IncrementalParse as IncrParser
+import           Yi.Keymap
 import           Yi.Lexer.Alex (Tok(..), Posn(..), tokBegin, tokEnd,
                                 commonLexer, AlexState, lexScanner, CharScanner)
 import           Yi.Lexer.Haskell as Haskell

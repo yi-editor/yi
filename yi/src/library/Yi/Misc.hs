@@ -32,8 +32,10 @@ import           System.FilePath (takeDirectory, (</>), takeFileName,
                                   addTrailingPathSeparator,
                                   hasTrailingPathSeparator)
 import           System.FriendlyPath (expandTilda, isAbsolute')
+import           Yi.Buffer
 import           Yi.Completion (completeInList')
-import           Yi.Core
+import           Yi.Editor
+import           Yi.Keymap
 import           Yi.MiniBuffer (withMinibufferGen, mkCompleteFn )
 import           Yi.Monad
 import qualified Yi.Rope as R

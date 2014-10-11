@@ -25,7 +25,11 @@ import           Data.Default
 import qualified Data.Text as T
 import           Data.Typeable
 import           System.Exit (ExitCode(..))
-import           Yi.Core
+import           Yi.Buffer
+import           Yi.Core (msgEditor, startSubprocess)
+import           Yi.Dynamic
+import           Yi.Editor
+import           Yi.Keymap
 import           Yi.MiniBuffer
 import qualified Yi.Mode.Compilation as Compilation
 import qualified Yi.Mode.Interactive as Interactive

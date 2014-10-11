@@ -69,7 +69,9 @@ import           Data.Monoid
 import qualified Data.Text as T
 import qualified Data.Text.Encoding as E
 import           Data.Typeable
-import           Yi.Core
+import           Yi.Buffer
+import           Yi.Dynamic
+import           Yi.Editor
 import           Yi.History
 import           Yi.Regex
 import qualified Yi.Rope as R

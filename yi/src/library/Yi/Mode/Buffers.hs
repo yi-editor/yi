@@ -18,7 +18,10 @@ import           Control.Lens
 import           Data.List.NonEmpty (toList)
 import qualified Data.Text as T
 import           System.FilePath (takeFileName)
-import           Yi.Core
+import           Yi.Buffer
+import           Yi.Editor
+import           Yi.Keymap
+import           Yi.Keymap.Keys
 import qualified Yi.Rope as R
 
 -- | Retrieve buffer list and open a them in buffer mode using the

@@ -36,8 +36,11 @@ import           Data.Maybe
 import qualified Data.Text as T
 import qualified Data.Text.Encoding as E
 import           Data.Typeable
+import           Yi.Buffer
 import           Yi.Completion
-import           Yi.Core
+import           Yi.Dynamic
+import           Yi.Editor
+import           Yi.Keymap
 import qualified Yi.Rope as R
 import           Yi.Utils
 

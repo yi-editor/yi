@@ -35,8 +35,12 @@ import           Data.Typeable
 import           System.Directory (doesFileExist)
 import           System.FilePath
 import           System.FriendlyPath
-import           Yi.Core
+import           Yi.Buffer
+import           Yi.Core (errorEditor)
+import           Yi.Dynamic
+import           Yi.Editor
 import           Yi.File
+import           Yi.Keymap
 import           Yi.Tag
 import           Yi.Utils
 

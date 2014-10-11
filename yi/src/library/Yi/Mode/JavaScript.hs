@@ -28,14 +28,8 @@ import           Data.Monoid
 import qualified Data.Text as T
 import           Data.Typeable
 import           System.FilePath.Posix (takeBaseName)
-import           Yi.Buffer.Basic (BufferRef, Direction(..))
-import           Yi.Buffer.HighLevel (replaceBufferContent,
-                                      getNextNonBlankLineB, moveToSol)
-import           Yi.Buffer.Indent (indentSettingsB, indentOfB,
-                                   cycleIndentsB, newlineAndIndentB)
-import           Yi.Buffer.Misc (Mode(..), BufferM, IndentBehaviour, file,
-                                 pointAt, shiftWidth, BufferId(..))
-import           Yi.Core (emptyMode, toggleCommentB, withSyntax)
+import           Yi.Buffer
+import           Yi.Core (withSyntax)
 import           Yi.Dynamic
 import           Yi.Editor (withEditor, withOtherWindow, getDynamic,
                             stringToNewBuffer , findBuffer, switchToBufferE)

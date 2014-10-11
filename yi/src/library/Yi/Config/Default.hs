@@ -15,17 +15,22 @@ import qualified Data.Map as M
 import           Data.Monoid
 import           Paths_yi
 import           System.FilePath
+
+import           Yi.Buffer
 import           Yi.Command (cabalBuildE, cabalConfigureE, grepFind, makeBuild,
                              reloadProjectE, searchSources, shell)
 import           Yi.Config
 import           Yi.Config.Misc
-import           Yi.Core
+import           Yi.Core (errorEditor, quitEditor)
+import           Yi.Editor
 import           Yi.Eval(publishedActions)
 import           Yi.File
 import           Yi.IReader (saveAsNewArticle)
 import qualified Yi.Interact as I
+import           Yi.Keymap
 import qualified Yi.Keymap.Cua  as Cua
 import qualified Yi.Keymap.Emacs  as Emacs
+import           Yi.Keymap.Keys
 import qualified Yi.Keymap.Vim  as Vim
 import           Yi.Layout
 import qualified Yi.Mode.Abella as Abella

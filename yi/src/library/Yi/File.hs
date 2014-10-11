@@ -33,8 +33,11 @@ import qualified Data.Text as T
 import           Data.Time
 import           System.Directory
 import           System.FriendlyPath
+import           Yi.Buffer
 import           Yi.Core
 import           Yi.Dired
+import           Yi.Editor
+import           Yi.Keymap
 import           Yi.Monad
 import qualified Yi.Rope as R
 import           Yi.String

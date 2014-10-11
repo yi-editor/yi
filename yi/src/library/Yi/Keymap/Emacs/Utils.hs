@@ -63,10 +63,14 @@ import qualified Data.Text as T
 import           System.Directory (doesDirectoryExist)
 import           System.FilePath (takeDirectory, takeFileName, (</>))
 import           System.FriendlyPath ()
+import           Yi.Buffer
 import           Yi.Command (cabalConfigureE, cabalBuildE, reloadProjectE)
-import           Yi.Core
+import           Yi.Core (msgEditor, quitEditor)
+import           Yi.Editor
 import           Yi.Eval
 import           Yi.File
+import           Yi.Keymap
+import           Yi.Keymap.Keys
 import           Yi.MiniBuffer
 import           Yi.Misc (promptFile)
 import           Yi.Monad
