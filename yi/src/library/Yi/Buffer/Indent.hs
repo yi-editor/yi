@@ -30,6 +30,7 @@ module Yi.Buffer.Indent
     ) where
 
 import           Control.Applicative
+import           Control.Monad (when)
 import           Data.Char
 import           Data.List (sort, nub)
 import           Data.Monoid
@@ -281,7 +282,9 @@ spacingOfB text = do
 indentToB :: Int -> BufferM ()
 indentToB level = do
   indentSettings <- indentSettingsB
-  modifyRegionClever (rePadString indentSettings level) =<< regionOfB Line
+  r <- regionOfB Line
+  when (regionDirection r == Forward) $
+    modifyRegionClever (rePadString indentSettings level) r
 
 -- | Indent as much as the previous line
 indentAsPreviousB :: BufferM ()
