@@ -55,7 +55,7 @@ import Yi.Tab
 import Yi.Window as Yi
 import Yi.Editor
 import Yi.Event
-import Yi.Keymap hiding(withCurrentBuffer)
+import Yi.Keymap
 import Yi.Monad
 import Yi.Style
 import Yi.UI.Utils
@@ -669,20 +669,20 @@ setBufferMode f buffer = do
                 switchToBufferE bufRef
             -- withEditor focusAllSyntax
 
-withCurrentBuffer :: Buffer -> BufferM a -> ControlM a
-withCurrentBuffer Buffer{fBufRef = b} f = liftYi $ withGivenBuffer b f
+withBuffer :: Buffer -> BufferM a -> ControlM a
+withBuffer Buffer{fBufRef = b} f = liftYi $ withGivenBuffer b f
 
 getBuffer :: View -> Buffer
 getBuffer view = Buffer {fBufRef = viewFBufRef view}
 
 setText :: Buffer -> YiString -> ControlM ()
-setText b text = withCurrentBuffer b $ do
+setText b text = withBuffer b $ do
     r <- regionOfB Document
     replaceRegionB r text
 
 getText :: Buffer -> Iter -> Iter -> ControlM Text
 getText b Iter{point = p1} Iter{point = p2} =
-  fmap toText . withCurrentBuffer b . readRegionB $ mkRegion p1 p2
+  fmap toText . withBuffer b . readRegionB $ mkRegion p1 p2
 
 mkCol :: Bool -- ^ is foreground?
       -> Yi.Style.Color -> Gtk.Color
@@ -728,7 +728,7 @@ handleClick view event = do
 
   case (Gdk.Events.eventClick event, Gdk.Events.eventButton event) of
     (Gdk.Events.SingleClick, Gdk.Events.LeftButton) ->
-      runAction . makeAction $ do
+      runAction . EditorA $ do
         -- b <- gets $ (bkey . findBufferWith (viewFBufRef view))
         -- focusWindow
         window <- findWindowWith winRef <$> get
@@ -741,7 +741,7 @@ handleClick view event = do
         cb <- liftBase $ clipboardGetForDisplay disp selectionPrimary
         let cbHandler :: Maybe R.YiString -> IO ()
             cbHandler Nothing = return ()
-            cbHandler (Just txt) = runControl (runAction . makeAction $ do
+            cbHandler (Just txt) = runControl (runAction . EditorA $ do
                 window <- findWindowWith winRef <$> get
                 withGivenBufferAndWindow window (viewFBufRef view) $ do
                     pointB >>= setSelectionMarkPointB
@@ -761,7 +761,7 @@ handleScroll view event = do
                         Gdk.Events.ScrollDown -> 1
                         _ -> 0 -- Left/right scrolling not supported
 
-  runAction $ makeAction editorAction
+  runAction $ EditorA editorAction
   liftBase $ widgetQueueDraw (drawArea view)
   return True
 

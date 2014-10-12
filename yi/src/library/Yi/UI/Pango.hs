@@ -875,7 +875,7 @@ handleScroll ui w = do
             ScrollDown -> configAmount
             _          -> 0 -- Left/right scrolling not supported
         configAmount = configScrollWheelAmount $ uiConfig ui
-    uiActionCh ui (makeAction editorAction)
+    uiActionCh ui (EditorA editorAction)
     when ifPressed $ selectArea ui w xy
   return True
 
@@ -923,7 +923,7 @@ pasteSelectionClipboard ui w p cb = do
   win <- io $ readIORef (coreWin w)
   let cbHandler :: Maybe R.YiString -> IO ()
       cbHandler Nothing    = return ()
-      cbHandler (Just txt) = uiActionCh ui $ makeAction $ do
+      cbHandler (Just txt) = uiActionCh ui $ EditorA $ do
         b <- gets $ bkey . findBufferWith (bufkey win)
         withGivenBufferAndWindow win b $ do
           pointB >>= setSelectionMarkPointB
