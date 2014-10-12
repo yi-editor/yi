@@ -173,7 +173,7 @@ defaultConfig =
          , configInputPreprocess = I.idAutomaton
          , bufferUpdateHandler = []
          , layoutManagers = [hPairNStack 1, vPairNStack 1, tall, wide]
-         , configVars = def
+         , configVars = mempty
          }
 
 defaultEmacsConfig, defaultVimConfig, defaultCuaConfig :: Config

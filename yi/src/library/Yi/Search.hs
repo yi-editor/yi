@@ -70,7 +70,7 @@ import qualified Data.Text as T
 import qualified Data.Text.Encoding as E
 import           Data.Typeable
 import           Yi.Buffer
-import           Yi.Dynamic
+import           Yi.Types (YiVariable)
 import           Yi.Editor
 import           Yi.History
 import           Yi.Regex
@@ -228,12 +228,12 @@ isearchInitE dir = do
   historyStartGen iSearch
   p <- withBuffer0 pointB
   resetRegexE
-  setDynamic (Isearch [(T.empty ,mkRegion p p, dir)])
+  putEditorDyn (Isearch [(T.empty ,mkRegion p p, dir)])
   printMsg "I-search: "
 
 isearchIsEmpty :: EditorM Bool
 isearchIsEmpty = do
-  Isearch s <- getDynamic
+  Isearch s <- getEditorDyn
   return . not . T.null . fst3 $ head s
 
 isearchAddE :: T.Text -> EditorM ()
@@ -252,7 +252,7 @@ makeISearch s = case makeSearchOptsM opts (T.unpack s) of
 
 isearchFunE :: (T.Text -> T.Text) -> EditorM ()
 isearchFunE fun = do
-  Isearch s <- getDynamic
+  Isearch s <- getEditorDyn
   let (previous,p0,direction) = head s
       current = fun previous
       srch = makeISearch current
@@ -266,7 +266,7 @@ isearchFunE fun = do
       regexB direction srch
 
   let onSuccess p = do withBuffer0 $ moveTo (regionEnd p)
-                       setDynamic $ Isearch ((current,p,direction):s)
+                       putEditorDyn $ Isearch ((current,p,direction):s)
 
   case matches of
     (p:_) -> onSuccess p
@@ -281,24 +281,24 @@ isearchFunE fun = do
              case matchesAfterWrap of
                (p:_) -> onSuccess p
                [] -> do withBuffer0 $ moveTo prevPoint -- go back to where we were
-                        setDynamic $ Isearch ((current,p0,direction):s)
+                        putEditorDyn $ Isearch ((current,p0,direction):s)
                         printMsg $ "Failing I-search: " <> current
 
 isearchDelE :: EditorM ()
 isearchDelE = do
-  Isearch s <- getDynamic
+  Isearch s <- getEditorDyn
   case s of
     (_:(text,p,dir):rest) -> do
       withBuffer0 $
         moveTo $ regionEnd p
-      setDynamic $ Isearch ((text,p,dir):rest)
+      putEditorDyn $ Isearch ((text,p,dir):rest)
       setRegexE $ makeISearch text
       printMsg $ "I-search: " <> text
     _ -> return () -- if the searched string is empty, don't try to remove chars from it.
 
 isearchHistory :: Int -> EditorM ()
 isearchHistory delta = do
-  Isearch ((current,_p0,_dir):_) <- getDynamic
+  Isearch ((current,_p0,_dir):_) <- getEditorDyn
   h <- historyMoveGen iSearch delta (return current)
   isearchFunE (const h)
 
@@ -310,7 +310,7 @@ isearchNextE = isearchNext0 Forward
 
 isearchNext0 :: Direction -> EditorM ()
 isearchNext0 newDir = do
-  Isearch ((current,_p0,_dir):_rest) <- getDynamic
+  Isearch ((current,_p0,_dir):_rest) <- getEditorDyn
   if T.null current
     then isearchHistory 1
     else isearchNext newDir
@@ -318,7 +318,7 @@ isearchNext0 newDir = do
 
 isearchNext :: Direction -> EditorM ()
 isearchNext direction = do
-  Isearch ((current,p0,_dir):rest) <- getDynamic
+  Isearch ((current,p0,_dir):rest) <- getEditorDyn
   withBuffer0 $ moveTo (regionStart p0 + startOfs)
   mp <- withBuffer0 $
     regexB direction (makeISearch current)
@@ -331,12 +331,12 @@ isearchNext direction = do
       let wrappedOfs = case direction of
                          Forward -> mkRegion 0 0
                          Backward -> mkRegion endPoint endPoint
-      setDynamic $ Isearch ((current,wrappedOfs,direction):rest) -- prepare to wrap around.
+      putEditorDyn $ Isearch ((current,wrappedOfs,direction):rest) -- prepare to wrap around.
     (p:_) -> do
       withBuffer0 $
         moveTo (regionEnd p)
       printMsg $ "I-search: " <> current
-      setDynamic $ Isearch ((current,p,direction):rest)
+      putEditorDyn $ Isearch ((current,p,direction):rest)
  where startOfs = case direction of
                       Forward  ->  1
                       Backward -> -1
@@ -379,7 +379,7 @@ iSearch = "isearch"
 -- anything so we use 'isearchEnd' which just does nothing. For emacs,
 -- we want to cancel highlighting and stay where we are.
 isearchEndWith :: EditorM a -> Bool -> EditorM ()
-isearchEndWith act accept = getDynamic >>= \case
+isearchEndWith act accept = getEditorDyn >>= \case
   Isearch [] -> return ()
   Isearch s@((lastSearched, _, dir):_) -> do
     let (_,p0,_) = last s

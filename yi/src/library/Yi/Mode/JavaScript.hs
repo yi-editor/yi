@@ -30,8 +30,8 @@ import           Data.Typeable
 import           System.FilePath.Posix (takeBaseName)
 import           Yi.Buffer
 import           Yi.Core (withSyntax)
-import           Yi.Dynamic
-import           Yi.Editor (withEditor, withOtherWindow, getDynamic,
+import           Yi.Types (YiVariable)
+import           Yi.Editor (withEditor, withOtherWindow, getEditorDyn,
                             stringToNewBuffer , findBuffer, switchToBufferE)
 import           Yi.Event (Key(..), Event(..))
 import           Yi.File (fwriteE)
@@ -121,7 +121,7 @@ jsCompile tree = do
 -- | Returns the JS verifier buffer, creating it if necessary.
 getJSBuffer :: YiM BufferRef
 getJSBuffer = withOtherWindow $ do
-  JSBuffer mb <- withEditor getDynamic
+  JSBuffer mb <- withEditor getEditorDyn
   case mb of
     Nothing -> mkJSBuffer
     Just b  -> do stillExists <- withEditor $ isJust <$> findBuffer b

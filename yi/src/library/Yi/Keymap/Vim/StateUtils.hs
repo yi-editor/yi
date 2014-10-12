@@ -57,8 +57,8 @@ switchModeE mode = modifyStateE $ switchMode mode
 
 modifyStateE :: (VimState -> VimState) -> EditorM ()
 modifyStateE f = do
-    currentState <- getDynamic
-    setDynamic $ f currentState
+    currentState <- getEditorDyn
+    putEditorDyn $ f currentState
 
 resetCount :: VimState -> VimState
 resetCount s = s { vsCount = Nothing }
@@ -67,11 +67,11 @@ resetCountE :: EditorM ()
 resetCountE = modifyStateE resetCount
 
 getMaybeCountE :: EditorM (Maybe Int)
-getMaybeCountE = fmap vsCount getDynamic
+getMaybeCountE = fmap vsCount getEditorDyn
 
 getCountE :: EditorM Int
 getCountE = do
-    currentState <- getDynamic
+    currentState <- getEditorDyn
     return $! fromMaybe 1 (vsCount currentState)
 
 setCountE :: Int -> EditorM ()
@@ -91,7 +91,7 @@ accumulateTextObjectEventE evs = modifyStateE $
 
 flushAccumulatorE :: EditorM ()
 flushAccumulatorE = do
-    accum <- vsAccumulator <$> getDynamic
+    accum <- vsAccumulator <$> getEditorDyn
     let repeatableAction = stringToRepeatableAction accum
     modifyStateE $ \s ->
         s { vsRepeatableAction = Just repeatableAction
@@ -118,11 +118,11 @@ dropTextObjectAccumulatorE =
   modifyStateE $ \s -> s { vsTextObjectAccumulator = mempty }
 
 getRegisterE :: RegisterName -> EditorM (Maybe Register)
-getRegisterE name = fmap (HM.lookup name . vsRegisterMap) getDynamic
+getRegisterE name = fmap (HM.lookup name . vsRegisterMap) getEditorDyn
 
 setRegisterE :: RegisterName -> RegionStyle -> YiString -> EditorM ()
 setRegisterE name style rope = do
-    rmap <- fmap vsRegisterMap getDynamic
+    rmap <- fmap vsRegisterMap getEditorDyn
     let rmap' = HM.insert name (Register style rope) rmap
     modifyStateE $ \state -> state { vsRegisterMap = rmap' }
 
@@ -146,7 +146,7 @@ setStickyEolE b = modifyStateE $ \s -> s { vsStickyEol = b }
 
 updateModeIndicatorE :: VimMode -> EditorM ()
 updateModeIndicatorE prevMode = do
-  currentState <- getDynamic
+  currentState <- getEditorDyn
   let mode = vsMode currentState
       paste = vsPaste currentState
   when (mode /= prevMode) $ do

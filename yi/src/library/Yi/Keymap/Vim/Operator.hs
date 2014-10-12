@@ -70,7 +70,7 @@ opYank = VimOperator {
     operatorName = "y"
   , operatorApplyToRegionE = \_count (StyledRegion style reg) -> do
         s <- withBuffer0 $ readRegionRopeWithStyleB reg style
-        regName <- fmap vsActiveRegister getDynamic
+        regName <- fmap vsActiveRegister getEditorDyn
         setRegisterE regName style s
         withBuffer0 $ moveTo . regionStart =<< convertRegionToStyleB reg style
         switchModeE Normal
@@ -82,7 +82,7 @@ opDelete = VimOperator {
     operatorName = "d"
   , operatorApplyToRegionE = \_count (StyledRegion style reg) -> do
         s <- withBuffer0 $ readRegionRopeWithStyleB reg style
-        regName <- fmap vsActiveRegister getDynamic
+        regName <- fmap vsActiveRegister getEditorDyn
         setRegisterE regName style s
         withBuffer0 $ do
             point <- deleteRegionWithStyleB reg style
@@ -103,7 +103,7 @@ opChange = VimOperator {
     operatorName = "c"
   , operatorApplyToRegionE = \_count (StyledRegion style reg) -> do
         s <- withBuffer0 $ readRegionRopeWithStyleB reg style
-        regName <- fmap vsActiveRegister getDynamic
+        regName <- fmap vsActiveRegister getEditorDyn
         setRegisterE regName style s
         withBuffer0 $ do
             point <- deleteRegionWithStyleB reg style

@@ -11,6 +11,7 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE FlexibleContexts #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 {-# OPTIONS_HADDOCK show-extensions #-}
 
@@ -152,7 +153,8 @@ module Yi.Buffer.Misc
   , pointAt
   , SearchExp
   , lastActiveWindowA
-  , bufferDynamicValueA
+  , putBufferDyn
+  , getBufferDyn
   , shortIdentString
   , identString
   , miniIdentString
@@ -191,13 +193,13 @@ import qualified Data.Text as T
 import qualified Data.Text.Encoding as E
 import           Data.Time
 import           Data.Traversable
+import           Data.DynamicState.Serializable
 import           Numeric(showHex)
 import           Prelude hiding (foldr, mapM, notElem)
 import           System.FilePath
 import           Yi.Buffer.Basic
 import           Yi.Buffer.Implementation
 import           Yi.Buffer.Undo
-import           Yi.Dynamic
 import           Yi.Interact as I
 import           Yi.Monad
 import           Yi.Region
@@ -541,7 +543,7 @@ newB unique nm s =
             , bkey__ = unique
             , undos  = emptyU
             , preferCol = Nothing
-            , bufferDynamic = def
+            , bufferDynamic = mempty
             , pendingUpdates = []
             , selectionStyle = SelectionStyle False False
             , keymapProcess = I.End
@@ -988,12 +990,18 @@ gotoLnFrom x = do
     return (l' - l)
 
 -- | Access to a value into the extensible state, keyed by its type.
---   This allows you to save or retrieve inside a 'BufferM' monad, ie:
+--   This allows you to retrieve inside a 'BufferM' monad, ie:
 --
--- > assign bufferDynamicValueA updatedvalue
--- > value <- use bufferDynamicValueA
-bufferDynamicValueA :: YiVariable a => Lens' FBuffer a
-bufferDynamicValueA = bufferDynamicA . dynamicValueA
+-- > value <- getBufferDyn
+getBufferDyn :: (YiVariable a, MonadState FBuffer m, Functor m) => m a
+getBufferDyn = fromMaybe def <$> getDyn (use bufferDynamicA) (assign bufferDynamicA)
+
+-- | Access to a value into the extensible state, keyed by its type.
+--   This allows you to save inside a 'BufferM' monad, ie:
+--
+-- > putBufferDyn updatedvalue
+putBufferDyn :: (YiVariable a, MonadState FBuffer m, Functor m) => a -> m ()
+putBufferDyn = putDyn (use bufferDynamicA) (assign bufferDynamicA)
 
 -- | perform a @BufferM a@, and return to the current point. (by using a mark)
 savingExcursionB :: BufferM a -> BufferM a

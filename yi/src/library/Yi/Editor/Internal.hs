@@ -31,6 +31,7 @@ import           Control.Monad.State hiding (get, put, mapM, forM_)
 import           Data.Binary
 import           Data.Default
 import qualified Data.DelayList as DelayList
+import           Data.DynamicState.Serializable
 #if __GLASGOW_HASKELL__ < 708
 import           Data.DeriveTH
 #else
@@ -52,7 +53,6 @@ import           Prelude hiding (foldl,concatMap,foldr,all)
 import           System.FilePath (splitPath)
 import           Yi.Buffer
 import           Yi.Config
-import           Yi.Dynamic
 import           Yi.Interact as I
 import           Yi.JumpList
 import           Yi.KillRing
@@ -101,7 +101,7 @@ emptyEditor = Editor
   , refSupply    = 3
   , currentRegex = Nothing
   , searchDirection = Forward
-  , dynamic      = def
+  , dynamic      = mempty
   , statusLines  = DelayList.insert (maxBound, ([""], defaultStyle)) []
   , killring     = krEmpty
   , pendingEvents = []
@@ -131,10 +131,7 @@ currentTabA = tabsA . PL.focus
 
 askConfigVariableA :: (YiConfigVariable b, MonadEditor m) => m b
 askConfigVariableA = do cfg <- askCfg
-                        return $ cfg ^. configVarsA ^. configVariableA
-
-dynA :: YiVariable a => Lens' Editor a
-dynA = dynamicA . dynamicValueA
+                        return $ cfg ^. configVariable
 
 -- ---------------------------------------------------------------------
 -- Buffer operations
@@ -155,9 +152,11 @@ stringToNewBuffer :: BufferId -- ^ The buffer indentifier
 stringToNewBuffer nm cs = do
     u <- newBufRef
     defRegStyle <- configRegionStyle <$> askCfg
-    insertBuffer $ set regionStyleA defRegStyle $ newB u nm cs
+    insertBuffer $ newB u nm cs
     m <- asks configFundamentalMode
-    withGivenBuffer0 u $ setAnyMode m
+    withGivenBuffer0 u $ do
+      putRegionStyle defRegStyle
+      setAnyMode m
     return u
 
 insertBuffer :: FBuffer -> EditorM ()
@@ -396,12 +395,12 @@ getRegE = uses killringA krGet
 --
 
 -- | Retrieve a value from the extensible state
-getDynamic :: (MonadEditor m, YiVariable a) => m a
-getDynamic = use (dynamicA . dynamicValueA)
+getEditorDyn :: (MonadEditor m, YiVariable a, Default a, Functor m) => m a
+getEditorDyn = fromMaybe def <$> getDyn (use dynamicA) (assign dynamicA)
 
 -- | Insert a value into the extensible state, keyed by its type
-setDynamic :: (MonadEditor m, YiVariable a) => a -> m ()
-setDynamic = assign (dynamicA . dynamicValueA)
+putEditorDyn :: (MonadEditor m, YiVariable a, Functor m) => a -> m ()
+putEditorDyn = putDyn (use dynamicA) (assign dynamicA)
 
 -- | Attach the next buffer in the buffer stack to the current window.
 nextBufW :: EditorM ()
@@ -793,7 +792,7 @@ makeLensesWithSuffix "A" ''TempBufferNameHint
 -- not count from zero every time?
 newTempBufferE :: EditorM BufferRef
 newTempBufferE = do
-  hint :: TempBufferNameHint <- getDynamic
+  hint :: TempBufferNameHint <- getEditorDyn
   e <- gets id
   -- increment the index of the hint until no buffer is found with that name
   let find_next in_name = case findBufferWithName (T.pack $ show in_name) e of
@@ -803,5 +802,5 @@ newTempBufferE = do
       next_tmp_name = find_next hint
 
   b <- newEmptyBufferE (MemBuffer . T.pack $ show next_tmp_name)
-  setDynamic $ inc next_tmp_name
+  putEditorDyn $ inc next_tmp_name
   return b

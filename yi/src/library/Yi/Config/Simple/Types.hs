@@ -10,7 +10,7 @@ import Control.Monad.Base
 import Control.Applicative
 import Control.Lens
 import Yi.Config
-import Yi.Dynamic
+import Yi.Types
 
 -- | The configuration monad. Run it with 'configMain'.
 newtype ConfigM a = ConfigM {
@@ -36,4 +36,4 @@ userName = unUserNameA '.' 'customVariable'@
 Here, the hypothetical library would provide the field @userName@ to be used in preference to @customVariable@.
 -}
 customVariable :: YiConfigVariable a => Field a
-customVariable = configVarsA . configVariableA
+customVariable = configVariable

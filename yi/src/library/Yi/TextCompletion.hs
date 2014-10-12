@@ -38,7 +38,7 @@ import qualified Data.Text.Encoding as E
 import           Data.Typeable
 import           Yi.Buffer
 import           Yi.Completion
-import           Yi.Dynamic
+import           Yi.Types (YiVariable)
 import           Yi.Editor
 import           Yi.Keymap
 import qualified Yi.Rope as R
@@ -69,7 +69,7 @@ instance YiVariable Completion
 
 -- | Switch out of completion mode.
 resetComplete :: EditorM ()
-resetComplete = setDynamic (Completion [])
+resetComplete = putEditorDyn (Completion [])
 
 -- | Try to complete the current word with occurences found elsewhere in the
 -- editor. Further calls try other options.
@@ -79,17 +79,17 @@ mkWordComplete :: YiM T.Text -- ^ Extract function
                -> (T.Text -> T.Text -> Bool) -- ^ Predicate matcher
                -> YiM T.Text
 mkWordComplete extractFn sourceFn msgFn predMatch = do
-  Completion complList <- withEditor getDynamic
+  Completion complList <- withEditor getEditorDyn
   case complList of
     (x:xs) -> do -- more alternatives, use them.
        msgFn (x:xs)
-       withEditor . setDynamic $ Completion xs
+       withEditor . putEditorDyn $ Completion xs
        return x
     [] -> do -- no alternatives, build them.
       w <- extractFn
       ws <- sourceFn w
       let comps = nubSet (filter (matches w) ws) ++ [w]
-      setDynamic $ Completion comps
+      putEditorDyn $ Completion comps
       -- We put 'w' back at the end so we go back to it after seeing
       -- all possibilities.
 

@@ -30,7 +30,7 @@ import           Data.Text ()
 import qualified Data.Text as T
 import           Data.Typeable
 import           Yi.Buffer
-import           Yi.Dynamic
+import           Yi.Types (YiVariable)
 import           Yi.Keymap
 import           Yi.Keymap.Keys
 import           Yi.Lexer.Alex (Tok)

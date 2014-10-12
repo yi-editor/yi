@@ -67,10 +67,10 @@ module Yi.Hooks(
 
 import Control.Lens
 import Yi.Config
-import Yi.Dynamic
 import Yi.Editor
 import Yi.Keymap
 import Yi.Config.Simple.Types(customVariable, Field)
+import Yi.Types (YiConfigVariable)
 
 -- | Looks up the configured value for the hook, and runs it. The
 -- argument to 'runHook' will typically be a record accessor. See
@@ -92,10 +92,10 @@ class HookType ty where
 instance HookType (EditorM a) where
     runHookImpl lookupHook = do
         cfg <- askCfg
-        lookupHook (cfg ^. configVarsA ^. configVariableA)
+        lookupHook (cfg ^. configVariable)
 instance HookType (YiM a) where
     runHookImpl lookupHook = do
         cfg <- askCfg
-        lookupHook (cfg ^. configVarsA ^. configVariableA)
+        lookupHook (cfg ^. configVariable)
 instance HookType b => HookType (a -> b) where
     runHookImpl lookupHook a = runHookImpl (($a) . lookupHook)

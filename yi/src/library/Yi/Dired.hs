@@ -78,7 +78,7 @@ import           Text.Printf
 import           Yi.Buffer
 import           Yi.Config
 import           Yi.Core
-import           Yi.Dynamic
+import           Yi.Types (YiVariable)
 import           Yi.Editor
 import           Yi.Keymap
 import           Yi.Keymap.Keys
@@ -230,19 +230,19 @@ bypassReadOnly f = do ro <- use readOnlyA
                       return res
 
 filenameColOf :: BufferM () -> BufferM ()
-filenameColOf f = use bufferDynamicValueA >>= assign preferColA . Just . diredNameCol >> f
+filenameColOf f = getBufferDyn >>= assign preferColA . Just . diredNameCol >> f
 
 resetDiredOpState :: YiM ()
-resetDiredOpState = withBuffer $ bufferDynamicValueA %= (\_ds -> def :: DiredOpState)
+resetDiredOpState = withBuffer $ putBufferDyn (def :: DiredOpState)
 
 incDiredOpSucCnt :: YiM ()
-incDiredOpSucCnt = withBuffer $ bufferDynamicValueA %= (\ds -> ds { diredOpSucCnt = diredOpSucCnt ds + 1 })
+incDiredOpSucCnt = withBuffer $ getBufferDyn >>= putBufferDyn.(\ds -> ds { diredOpSucCnt = diredOpSucCnt ds + 1 })
 
 getDiredOpState :: YiM DiredOpState
-getDiredOpState = withBuffer $ use bufferDynamicValueA
+getDiredOpState = withBuffer $ getBufferDyn
 
 modDiredOpState :: (DiredOpState -> DiredOpState) -> YiM ()
-modDiredOpState f = withBuffer $ bufferDynamicValueA %= f
+modDiredOpState f = withBuffer $ getBufferDyn >>= putBufferDyn.f
 
 -- | execute the operations
 -- Pass the list of remaining operations down, insert new ops at the head if needed
@@ -453,15 +453,16 @@ diredDirBuffer d = do
     b <- withEditor $ stringToNewBuffer (FileBuffer dir) mempty
     withEditor $ switchToBufferE b
     withBuffer $ do
-      bufferDynamicValueA %= (diredPathA .~ dir)
-      assign directoryContentA True
+      state <- getBufferDyn
+      putBufferDyn (state & diredPathA .~ dir)
+      directoryContentA .= True
     diredRefresh
     return b
 
 -- | Write the contents of the supplied directory into the current buffer in dired format
 diredRefresh :: YiM ()
 diredRefresh = do
-    dState <- withBuffer $ use bufferDynamicValueA
+    dState <- withBuffer getBufferDyn
     let dir = diredPath dState
     -- Scan directory
     di <- io $ diredScanDir dir
@@ -490,7 +491,7 @@ diredRefresh = do
       -- paint header
       addOverlayB $ mkOverlay UserLayer (mkRegion 0 (p-2)) headStyle
       ptsList <- mapM insertDiredLine $ zip3 (fmap R.fromString <$> strss') stys strs
-      assign bufferDynamicValueA $ diredFilePointsA .~ ptsList $ diredNameColA .~ namecol $ ds
+      putBufferDyn $ diredFilePointsA .~ ptsList $ diredNameColA .~ namecol $ ds
       -- Colours for Dired come from overlays not syntax highlighting
       modifyMode $ modeKeymapA .~  topKeymapA %~ diredKeymap
                    >>> modeNameA .~ "dired"
@@ -646,7 +647,8 @@ diredMarkWithChar c mv = bypassReadOnly $ do
                            maybefile <- fileFromPoint
                            case maybefile of
                              Just (fn, _de) -> do
-                                            bufferDynamicValueA %= (diredMarksA %~ M.insert fn c)
+                                            state <- getBufferDyn
+                                            putBufferDyn (state & diredMarksA %~ M.insert fn c)
                                             filenameColOf mv
                                             diredRefreshMark
                              Nothing        -> filenameColOf mv
@@ -654,7 +656,7 @@ diredMarkWithChar c mv = bypassReadOnly $ do
 diredRefreshMark :: BufferM ()
 diredRefreshMark = do
   b <- pointB
-  dState <- use bufferDynamicValueA
+  dState <- getBufferDyn
   let posDict = diredFilePoints dState
       markMap = diredMarks dState
       draw (pos, _, fn) = case M.lookup fn markMap of
@@ -684,16 +686,16 @@ diredUnmark = bypassReadOnly $ do
 
 
 diredUnmarkPath :: FilePath -> BufferM()
-diredUnmarkPath fn = bufferDynamicValueA %= (diredMarksA %~ M.delete fn)
+diredUnmarkPath fn = getBufferDyn >>= putBufferDyn.(diredMarksA %~ M.delete fn)
 
 diredUnmarkAll :: BufferM ()
 diredUnmarkAll = bypassReadOnly $ do
-                   bufferDynamicValueA %= (diredMarksA .~ M.empty)
+                   getBufferDyn >>= putBufferDyn.(diredMarksA .~ M.empty)
                    filenameColOf $ return ()
                    diredRefreshMark
 
 currentDir :: YiM FilePath
-currentDir = fmap diredPath $ withBuffer $ use bufferDynamicValueA
+currentDir = fmap diredPath $ withBuffer $ getBufferDyn
 
 -- | move selected files in a given directory to the target location given
 -- by user input
@@ -876,7 +878,7 @@ noFileAtThisLine = (withEditor . printMsg) "(No file at this line)"
 fileFromPoint :: BufferM (Maybe (FilePath, DiredEntry))
 fileFromPoint = do
     p <- pointB
-    dState <- use bufferDynamicValueA
+    dState <- getBufferDyn
     let candidates = filter (\(_,p2,_)->p<=p2) (diredFilePoints dState)
     case candidates of
       ((_, _, f):_) -> return $ Just (f, M.findWithDefault DiredNoInfo f $ diredEntries dState)
@@ -884,7 +886,7 @@ fileFromPoint = do
 
 markedFiles :: (Char -> Bool) -> YiM [(FilePath, DiredEntry)]
 markedFiles cond = do
-  dState <- withBuffer $ use bufferDynamicValueA
+  dState <- withBuffer getBufferDyn
   let fs = fst . unzip $ filter (cond . snd) (M.assocs $ diredMarks dState)
   return $ map (\f -> (f, diredEntries dState M.! f)) fs
 

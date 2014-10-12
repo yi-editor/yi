@@ -27,7 +27,7 @@ import           Data.Typeable
 import           System.Exit (ExitCode(..))
 import           Yi.Buffer
 import           Yi.Core (startSubprocess)
-import           Yi.Dynamic
+import           Yi.Types (YiVariable)
 import           Yi.Editor
 import           Yi.Keymap
 import           Yi.MiniBuffer
@@ -98,8 +98,8 @@ buildRun :: T.Text -> [T.Text] -> (Either SomeException ExitCode -> YiM x) -> Yi
 buildRun cmd args onExit = withOtherWindow $ do
    b <- startSubprocess (T.unpack cmd) (T.unpack <$> args) onExit
    withEditor $ do
-       maybeM deleteBuffer =<< cabalBuffer <$> getDynamic
-       setDynamic $ CabalBuffer $ Just b
+       maybeM deleteBuffer =<< cabalBuffer <$> getEditorDyn
+       putEditorDyn $ CabalBuffer $ Just b
        withBuffer0 $ setMode Compilation.mode
    return ()
 

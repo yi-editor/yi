@@ -43,7 +43,7 @@ escAction = do
     clrStatus
     withBuffer0 $ do
         setVisibleSelection False
-        assign regionStyleA Inclusive
+        putRegionStyle Inclusive
     switchModeE Normal
     return Drop
 
@@ -67,7 +67,7 @@ digitBindings = zeroBinding : fmap mkDigitBinding ['1' .. '9']
 zeroBinding :: VimBinding
 zeroBinding = VimBindingE f
     where f "0" (VimState { vsMode = (Visual _) }) = WholeMatch $ do
-              currentState <- getDynamic
+              currentState <- getEditorDyn
               case vsCount currentState of
                   Just c -> do
                       setCountE (10 * c)
@@ -92,7 +92,7 @@ changeVisualStyleBinding = VimBindingE f
     where f evs (VimState { vsMode = (Visual _) })
             | evs `elem` ["v", "V", "<C-v>"]
             = WholeMatch $ do
-                  currentMode <- fmap vsMode getDynamic
+                  currentMode <- fmap vsMode getEditorDyn
                   let newStyle = case evs of
                          "v" -> Inclusive
                          "V" -> LineWise
@@ -104,8 +104,8 @@ changeVisualStyleBinding = VimBindingE f
                   else do
                       modifyStateE $ \s -> s { vsMode = newMode }
                       withBuffer0 $ do
-                          assign regionStyleA newStyle
-                          assign rectangleSelectionA $ Block == newStyle
+                          putRegionStyle newStyle
+                          rectangleSelectionA .= (Block == newStyle)
                           setVisibleSelection True
                       return Finish
           f _ _ = NoMatch
@@ -155,7 +155,7 @@ chooseRegisterBinding = mkChooseRegisterBinding $
 shiftDBinding :: VimBinding
 shiftDBinding = VimBindingE (f . T.unpack . _unEv)
     where f "D" (VimState { vsMode = (Visual _) }) = WholeMatch $ do
-              (Visual style) <- vsMode <$> getDynamic
+              (Visual style) <- vsMode <$> getEditorDyn
               reg <- withBuffer0 regionOfSelectionB
               case style of
                   Block -> withBuffer0 $ do
@@ -185,7 +185,7 @@ mkOperatorBinding op = VimBindingE f
       action <$ evs `matchesString` Ev (_unOp $ operatorName op)
     f _ _ = NoMatch
     action = do
-        (Visual style) <- vsMode <$> getDynamic
+        (Visual style) <- vsMode <$> getEditorDyn
         region <- withBuffer0 regionOfSelectionB
         count <- getCountE
         token <- operatorApplyToRegionE op count $ StyledRegion style region
@@ -193,7 +193,7 @@ mkOperatorBinding op = VimBindingE f
         clrStatus
         withBuffer0 $ do
             setVisibleSelection False
-            assign regionStyleA Inclusive
+            putRegionStyle Inclusive
         return token
 
 replaceBinding :: VimBinding
@@ -202,7 +202,7 @@ replaceBinding = VimBindingE (f . T.unpack . _unEv)
               case evs of
                 "r" -> PartialMatch
                 ('r':c:[]) -> WholeMatch $ do
-                    (Visual style) <- vsMode <$> getDynamic
+                    (Visual style) <- vsMode <$> getEditorDyn
                     region <- withBuffer0 regionOfSelectionB
                     withBuffer0 $ transformCharactersInRegionB (StyledRegion style region)
                                       (\x -> if x == '\n' then x else c)
@@ -215,7 +215,7 @@ switchEdgeBinding :: VimBinding
 switchEdgeBinding = VimBindingE (f . T.unpack . _unEv)
     where f [c] (VimState { vsMode = (Visual _) }) | c `elem` "oO"
               = WholeMatch $ do
-                  (Visual style) <- vsMode <$> getDynamic
+                  (Visual style) <- vsMode <$> getEditorDyn
                   withBuffer0 $ do
                       here <- pointB
                       there <- getSelectionMarkPointB
@@ -231,7 +231,7 @@ insertBinding :: VimBinding
 insertBinding = VimBindingE (f . T.unpack . _unEv)
     where f evs (VimState { vsMode = (Visual _) }) | evs `elem` group "IA"
             = WholeMatch $ do
-                  (Visual style) <- vsMode <$> getDynamic
+                  (Visual style) <- vsMode <$> getEditorDyn
                   region <- withBuffer0 regionOfSelectionB
                   cursors <- withBuffer0 $ case evs of
                       "I" -> leftEdgesOfRegionB style region

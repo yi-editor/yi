@@ -125,7 +125,7 @@ mkMotionBinding token condition = VimBindingE f
 
     go :: String -> Move -> EditorM RepeatToken
     go evs (Move _style isJump move) = do
-        state <- getDynamic
+        state <- getEditorDyn
         count <- getMaybeCountE
         prevPoint <- withBuffer0 $ do
             p <- pointB

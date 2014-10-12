@@ -46,7 +46,7 @@ import           Text.Read (readMaybe)
 import           Yi.Buffer
 import           Yi.Core (sendToProcess)
 import           Yi.Debug
-import           Yi.Dynamic
+import           Yi.Types (YiVariable)
 import           Yi.Editor
 import           Yi.File
 import qualified Yi.IncrementalParse as IncrParser
@@ -394,16 +394,16 @@ instance YiVariable GhciBuffer
 -- | Start GHCi in a buffer
 ghci :: YiM BufferRef
 ghci = do
-  g <- getDynamic
+  g <- getEditorDyn
   b <- GHCi.spawnProcess (g ^. GHCi.ghciProcessName) (g ^. GHCi.ghciProcessArgs)
-  withEditor . setDynamic . GhciBuffer $ Just b
+  withEditor . putEditorDyn . GhciBuffer $ Just b
   return b
 
 -- | Return GHCi's buffer; create it if necessary.
 -- Show it in another window.
 ghciGet :: YiM BufferRef
 ghciGet = withOtherWindow $ do
-    GhciBuffer mb <- withEditor getDynamic
+    GhciBuffer mb <- withEditor getEditorDyn
     case mb of
         Nothing -> ghci
         Just b -> do
@@ -449,16 +449,16 @@ ghciInferTypeOf nm = do
 
 ghciSetProcessName :: YiM ()
 ghciSetProcessName = do
-  g <- getDynamic
+  g <- getEditorDyn
   let nm = g ^. GHCi.ghciProcessName
       prompt = T.concat [ "Command to call for GHCi, currently ‘"
                         , T.pack nm, "’: " ]
   withMinibufferFree prompt $ \s ->
-    setDynamic $ g & GHCi.ghciProcessName .~ T.unpack s
+    putEditorDyn $ g & GHCi.ghciProcessName .~ T.unpack s
 
 ghciSetProcessArgs :: YiM ()
 ghciSetProcessArgs = do
-  g <- getDynamic
+  g <- getEditorDyn
   let nm = g ^. GHCi.ghciProcessName
       args = g ^. GHCi.ghciProcessArgs
       prompt = T.unwords $ [ "List of args to call "
@@ -470,4 +470,4 @@ ghciSetProcessArgs = do
   withMinibufferFree prompt $ \arg ->
     case readMaybe $ T.unpack arg of
       Nothing -> (withEditor . printMsg) "Could not parse as [String], keep old args."
-      Just arg' -> setDynamic $ g & GHCi.ghciProcessArgs .~ arg'
+      Just arg' -> putEditorDyn $ g & GHCi.ghciProcessArgs .~ arg'

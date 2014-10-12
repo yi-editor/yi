@@ -34,6 +34,8 @@ import           Control.Monad.Base
 import           Control.Monad.RWS.Strict (RWS, MonadWriter)
 import           Control.Monad.Reader
 import           Control.Monad.State
+import qualified Data.DynamicState as ConfigState
+import qualified Data.DynamicState.Serializable as DynamicState
 import           Data.Binary (Binary)
 import qualified Data.Binary as B
 import           Data.Default
@@ -56,7 +58,6 @@ import           Yi.Buffer.Basic (BufferRef, WindowRef)
 import           Yi.Buffer.Implementation
 import           Yi.Buffer.Undo
 import           Yi.Config.Misc
-import           Yi.Dynamic
 import           Yi.Event
 import qualified Yi.Interact as I
 import           Yi.KillRing
@@ -83,6 +84,9 @@ data Action = forall a. Show a => YiA (YiM a)
 
 emptyAction :: Action
 emptyAction = BufferA (return ())
+
+class (Default a, Binary a, Typeable a) => YiVariable a
+class (Default a, Typeable a) => YiConfigVariable a
 
 instance Eq Action where
     _ == _ = False
@@ -207,7 +211,7 @@ data Attributes = Attributes
                 { ident :: !BufferId
                 , bkey__   :: !BufferRef          -- ^ immutable unique key
                 , undos  :: !URList               -- ^ undo/redo list
-                , bufferDynamic :: !DynamicValues -- ^ dynamic components
+                , bufferDynamic :: !DynamicState.DynamicState  -- ^ dynamic components
                 , preferCol :: !(Maybe Int)       -- ^ prefered column to arrive at when we do a lineDown / lineUp
                 , pendingUpdates :: ![UIUpdate]   -- ^ updates that haven't been synched in the UI yet
                 , selectionStyle :: !SelectionStyle
@@ -328,7 +332,7 @@ data Editor = Editor
   , refSupply       :: !Int  -- ^ Supply for buffer, window and tab ids.
   , tabs_           :: !(PointedList Tab)
     -- ^ current tab contains the visible windows pointed list.
-  , dynamic         :: !DynamicValues -- ^ dynamic components
+  , dynamic         :: !DynamicState.DynamicState -- ^ dynamic components
   , statusLines     :: !Statuses
   , maxStatusHeight :: !Int
   , killring        :: !Killring
@@ -431,7 +435,7 @@ data Config = Config {startFrontEnd :: UIBoot,
                       bufferUpdateHandler :: [[Update] -> BufferM ()],
                       layoutManagers :: [AnyLayoutManager],
                       -- ^ List of layout managers for 'cycleLayoutManagersNext'
-                      configVars :: ConfigVariables
+                      configVars :: ConfigState.DynamicState
                       -- ^ Custom configuration, containing the 'YiConfigVariable's. Configure with 'configVariableA'.
                      }
 
