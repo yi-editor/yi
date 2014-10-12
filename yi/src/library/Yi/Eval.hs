@@ -244,7 +244,7 @@ parseErrorMessageB = parseErrorMessage <$> readLnB
 -- 'parseErrorMessageB'.
 jumpToErrorE :: YiM ()
 jumpToErrorE = withCurrentBuffer parseErrorMessageB >>= \case
-  Nothing -> (withEditor . printMsg) "Couldn't parse out an error message."
+  Nothing -> printMsg "Couldn't parse out an error message."
   Just (f, l, c) -> jumpToE f l c
 
 prompt :: R.YiString

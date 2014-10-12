@@ -117,18 +117,18 @@ abellaAbort = do
 abella :: CommandArguments -> YiM BufferRef
 abella (CommandArguments args) = do
     b <- Interactive.spawnProcess "abella" (T.unpack <$> args)
-    withEditor . setDynamic . AbellaBuffer $ Just b
+    setDynamic . AbellaBuffer $ Just b
     return b
 
 -- | Return Abella's buffer; create it if necessary.
 -- Show it in another window.
 abellaGet :: YiM BufferRef
 abellaGet = withOtherWindow $ do
-    AbellaBuffer mb <- withEditor getDynamic
+    AbellaBuffer mb <- getDynamic
     case mb of
         Nothing -> abella (CommandArguments [])
         Just b -> do
-            stillExists <- withEditor $ isJust <$> findBuffer b
+            stillExists <- isJust <$> findBuffer b
             if stillExists
                 then do withEditor $ switchToBufferE b
                         return b

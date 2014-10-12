@@ -135,7 +135,7 @@ modelessKeymapSet k = KeymapSet
 withModeY :: (forall syntax. Mode syntax -> YiM ()) -> YiM ()
 withModeY f = do
    bufref <- gets Editor.currentBuffer
-   mfbuf <- withEditor $ Editor.findBuffer bufref
+   mfbuf <- Editor.findBuffer bufref
    case mfbuf of
      Nothing -> return ()
      Just (FBuffer {bmode = m}) -> f m

@@ -121,17 +121,17 @@ jsCompile tree = do
 -- | Returns the JS verifier buffer, creating it if necessary.
 getJSBuffer :: YiM BufferRef
 getJSBuffer = withOtherWindow $ do
-  JSBuffer mb <- withEditor getDynamic
+  JSBuffer mb <- getDynamic
   case mb of
     Nothing -> mkJSBuffer
-    Just b  -> do stillExists <- withEditor $ isJust <$> findBuffer b
+    Just b  -> do stillExists <- isJust <$> findBuffer b
                   if stillExists
                     then return b
                     else mkJSBuffer
 
 -- | Creates a new empty buffer and returns it.
 mkJSBuffer :: YiM BufferRef
-mkJSBuffer = withEditor $ stringToNewBuffer (MemBuffer "js") mempty
+mkJSBuffer = stringToNewBuffer (MemBuffer "js") mempty
 
 -- | Given a filename, a BufferRef and a list of errors, prints the
 -- errors in that buffer.

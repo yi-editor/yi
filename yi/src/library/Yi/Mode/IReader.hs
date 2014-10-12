@@ -41,4 +41,4 @@ ireadMode ::  YiM ()
 ireadMode = do
   withCurrentBuffer $ setAnyMode $ AnyMode ireaderMode
   nextArticle
-  (withEditor . printMsg) "M-` new; M-0 delete; M-[1-9]: save w/higher priority"
+  printMsg "M-` new; M-0 delete; M-[1-9]: save w/higher priority"

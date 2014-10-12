@@ -79,11 +79,11 @@ mkWordComplete :: YiM T.Text -- ^ Extract function
                -> (T.Text -> T.Text -> Bool) -- ^ Predicate matcher
                -> YiM T.Text
 mkWordComplete extractFn sourceFn msgFn predMatch = do
-  Completion complList <- withEditor getDynamic
+  Completion complList <- getDynamic
   case complList of
     (x:xs) -> do -- more alternatives, use them.
        msgFn (x:xs)
-       withEditor . setDynamic $ Completion xs
+       setDynamic $ Completion xs
        return x
     [] -> do -- no alternatives, build them.
       w <- extractFn
@@ -100,7 +100,7 @@ mkWordComplete extractFn sourceFn msgFn predMatch = do
 
 wordCompleteString' :: Bool -> YiM T.Text
 wordCompleteString' caseSensitive =
-  mkWordComplete (withEditor $ withCurrentBuffer $
+  mkWordComplete (withCurrentBuffer $
                    textRegion =<< regionOfPartB unitWord Backward)
                  (\_ -> withEditor wordsForCompletion)
                  (\_ -> return ())

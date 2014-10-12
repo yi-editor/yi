@@ -651,7 +651,7 @@ setBufferMode f buffer = do
     let bufRef = fBufRef buffer
     -- adjust the mode
     tbl <- liftYi $ asks (modeTable . yiConfig)
-    contents <- liftYi $ withEditor $ withGivenBuffer bufRef elemsB
+    contents <- liftYi $ withGivenBuffer bufRef elemsB
     let header = R.toString $ R.take 1024 contents
         hmode = case header =~ ("\\-\\*\\- *([^ ]*) *\\-\\*\\-" :: String) of
             AllTextSubmatches [_,m] -> T.pack m
@@ -670,7 +670,7 @@ setBufferMode f buffer = do
             -- withEditor focusAllSyntax
 
 withCurrentBuffer :: Buffer -> BufferM a -> ControlM a
-withCurrentBuffer Buffer{fBufRef = b} f = liftYi $ withEditor $ withGivenBuffer b f
+withCurrentBuffer Buffer{fBufRef = b} f = liftYi $ withGivenBuffer b f
 
 getBuffer :: View -> Buffer
 getBuffer view = Buffer {fBufRef = viewFBufRef view}
@@ -796,7 +796,7 @@ handleMove view p0 event = do
   -- Relies on uiActionCh being synchronous
   selection <- liftBase $ newIORef ""
   let yiAction = do
-      txt <- withEditor (withCurrentBuffer (readRegionB =<< getSelectRegionB))
+      txt <- (withCurrentBuffer (readRegionB =<< getSelectRegionB))
              :: YiM R.YiString
       liftBase $ writeIORef selection txt
   runAction $ makeAction yiAction

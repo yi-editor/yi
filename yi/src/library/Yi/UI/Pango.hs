@@ -937,7 +937,7 @@ setSelectionClipboard ui _w cb = do
   -- Why uiActionCh doesn't allow returning values?
   selection <- newIORef mempty
   let yiAction = do
-        txt <- withEditor $ withCurrentBuffer $
+        txt <- withCurrentBuffer $
                fmap R.toText . readRegionB =<< getSelectRegionB :: YiM T.Text
         io $ writeIORef selection txt
   uiActionCh ui $ makeAction yiAction

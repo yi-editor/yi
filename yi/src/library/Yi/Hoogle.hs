@@ -96,4 +96,4 @@ hoogleSearch = do
   results <- io $ hoogleRaw word ""
 
   -- The quotes help legibility between closely-packed results
-  withEditor $ printMsgs $ map showT results
+  printMsgs $ map showT results

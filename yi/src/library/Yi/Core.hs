@@ -338,7 +338,7 @@ runProcessWithInput cmd inp = do
 -- | Same as 'Yi.Editor.printMsg', but do nothing instead of printing @()@
 msgEditor :: T.Text -> YiM ()
 msgEditor "()" = return ()
-msgEditor s = withEditor (printMsg s)
+msgEditor s = printMsg s
 
 runAction :: Action -> YiM ()
 runAction (YiA act) = act >>= msgEditor . showT
@@ -348,7 +348,7 @@ runAction (BufferA act) = withCurrentBuffer act >>= msgEditor . showT
 -- | Show an error on the status line and log it.
 errorEditor :: T.Text -> YiM ()
 errorEditor s = do
-  withEditor $ printStatus (["error: " <> s], errorStyle)
+  printStatus (["error: " <> s], errorStyle)
   logPutStrLn $ "errorEditor: " <> s
 
 -- | Close the current window.
@@ -455,7 +455,7 @@ sendToProcess bufref s = do
     yi <- ask
     find ((== bufref) . bufRef) . yiSubprocesses <$> liftBase (readMVar (yiVar yi)) >>= \case
       Just subProcessInfo -> io $ hPutStr (hIn subProcessInfo) s
-      Nothing -> withEditor (printMsg "Could not get subProcessInfo in sendToProcess")
+      Nothing -> printMsg "Could not get subProcessInfo in sendToProcess"
 
 pipeToBuffer :: Handle -> (String -> IO ()) -> IO ()
 pipeToBuffer h append = void . ignoringException . forever $ do

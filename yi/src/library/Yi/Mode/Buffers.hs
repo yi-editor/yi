@@ -26,9 +26,9 @@ import qualified Yi.Rope as R
 
 -- | Retrieve buffer list and open a them in buffer mode using the
 -- 'bufferKeymap'.
-listBuffers :: YiM  ()
+listBuffers :: YiM ()
 listBuffers = do
-  withEditor $  do
+  withEditor $ do
     bs <- toList <$> getBufferStack
     let bufferList = R.fromText . T.intercalate "\n" $ map identString bs
     bufRef <- stringToNewBuffer (MemBuffer "Buffer List") bufferList

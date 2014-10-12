@@ -168,9 +168,8 @@ withMinibufferGen proposal getHint prompt completer onTyping act = do
                         windowsA %= fromJust . PL.find initialWindow
       showMatchings = showMatchingsOf . R.toText =<< withCurrentBuffer elemsB
       showMatchingsOf userInput =
-        withEditor . printStatus =<< withDefaultStyle <$> (getHint userInput)
+        printStatus =<< withDefaultStyle <$> (getHint userInput)
       withDefaultStyle msg = (msg, defaultStyle)
-      -- typing = withEditor . onTyping =<< withCurrentBuffer elemsB
       typing = onTyping . R.toText =<< withCurrentBuffer elemsB
 
       innerAction = do
@@ -342,7 +341,7 @@ instance Promptable AnyMode where
 
 instance Promptable BufferRef where
     getPrompt _ = "Buffer"
-    getPromptedValue = withEditor . getBufferWithNameOrCurrent
+    getPromptedValue = getBufferWithNameOrCurrent
     getMinibuffer _ prompt act = do
       bufs <- matchingBufferNames
       withMinibufferFin prompt bufs act

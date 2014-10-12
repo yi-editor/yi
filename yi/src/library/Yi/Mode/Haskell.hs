@@ -396,18 +396,18 @@ ghci :: YiM BufferRef
 ghci = do
   g <- getDynamic
   b <- GHCi.spawnProcess (g ^. GHCi.ghciProcessName) (g ^. GHCi.ghciProcessArgs)
-  withEditor . setDynamic . GhciBuffer $ Just b
+  setDynamic . GhciBuffer $ Just b
   return b
 
 -- | Return GHCi's buffer; create it if necessary.
 -- Show it in another window.
 ghciGet :: YiM BufferRef
 ghciGet = withOtherWindow $ do
-    GhciBuffer mb <- withEditor getDynamic
+    GhciBuffer mb <- getDynamic
     case mb of
         Nothing -> ghci
         Just b -> do
-            stillExists <- withEditor $ isJust <$> findBuffer b
+            stillExists <- isJust <$> findBuffer b
             if stillExists
                 then do withEditor $ switchToBufferE b
                         return b
@@ -469,5 +469,5 @@ ghciSetProcessArgs = do
                            ]
   withMinibufferFree prompt $ \arg ->
     case readMaybe $ T.unpack arg of
-      Nothing -> (withEditor . printMsg) "Could not parse as [String], keep old args."
+      Nothing -> printMsg "Could not parse as [String], keep old args."
       Just arg' -> setDynamic $ g & GHCi.ghciProcessArgs .~ arg'
