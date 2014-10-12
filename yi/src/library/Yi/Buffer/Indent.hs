@@ -56,13 +56,6 @@ tabB = do
     else "\t"
 
 {-|
-  Retrieve the current indentation settings for the buffer.
--}
-indentSettingsB :: BufferM IndentSettings
-indentSettingsB = withModeB $ return . modeIndentSettings
-
-
-{-|
   A specialisation of 'autoIndentHelperB'.
   This is the most basic and the user is encouraged to
   specialise 'autoIndentHelperB' on their own.

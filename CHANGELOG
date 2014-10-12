@@ -30,6 +30,7 @@
  * Fix vim indenting under some circumstances (#621)
  * Allow the font size to be changed per buffer (#608)
  * Double-click and triple-click selection in pango (#100 and #101)
+ * Count columns properly in presence of tabs (#440)
 
 0.9.0
 -----

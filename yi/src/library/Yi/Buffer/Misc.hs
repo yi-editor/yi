@@ -177,11 +177,13 @@ module Yi.Buffer.Misc
   , betweenB
   , decreaseFontSize
   , increaseFontSize
+  , indentSettingsB
   ) where
 
 import           Control.Applicative
 import           Control.Lens hiding ((+~), Action, reversed, at, act)
-import           Control.Monad.RWS.Strict hiding (mapM_, mapM, get, put, forM_, forM)
+import           Control.Monad.RWS.Strict hiding (mapM_, mapM, get, put,
+                                                  forM_, forM)
 import           Data.Binary
 import           Data.Char(ord)
 import           Data.Default
@@ -844,7 +846,8 @@ moveToColB :: Int -> BufferM ()
 moveToColB targetCol = do
   solPnt <- solPointB =<< pointB
   chrs <- R.toString <$> nelemsB targetCol solPnt
-  let cols = scanl colMove 0 chrs    -- columns corresponding to the char
+  is <- indentSettingsB
+  let cols = scanl (colMove is) 0 chrs    -- columns corresponding to the char
       toSkip = takeWhile (\(char,col) -> char /= '\n' && col < targetCol) (zip chrs cols)
   moveTo $ solPnt +~ fromIntegral (length toSkip)
 
@@ -948,6 +951,9 @@ deleteN n = pointB >>= deleteNAt Forward n
 
 ------------------------------------------------------------------------
 
+-- | Gives the 'IndentSettings' for the current buffer.
+indentSettingsB :: BufferM IndentSettings
+indentSettingsB = withModeB $ return . modeIndentSettings
 
 -- | Current column.
 -- Note that this is different from offset or number of chars from sol.
@@ -956,7 +962,9 @@ curCol :: BufferM Int
 curCol = colOf =<< pointB
 
 colOf :: Point -> BufferM Int
-colOf p = R.foldl' colMove 0 <$> queryBuffer (charsFromSolBI p)
+colOf p = do
+  is <- indentSettingsB
+  R.foldl' (colMove is) 0 <$> queryBuffer (charsFromSolBI p)
 
 lineOf :: Point -> BufferM Int
 lineOf p = queryBuffer $ lineAt p
@@ -964,11 +972,10 @@ lineOf p = queryBuffer $ lineAt p
 lineCountB :: BufferM Int
 lineCountB = lineOf =<< sizeB
 
--- | TODO: assumes tab to be 8 but other places check width, perhaps
--- this needs fixing?
-colMove :: Int -> Char -> Int
-colMove col '\t' = (col + 7) `mod` 8
-colMove col _    = col + 1
+-- | Decides which column we should be on after the given character.
+colMove :: IndentSettings -> Int -> Char -> Int
+colMove is col '\t' | tabSize is > 1 = col + tabSize is
+colMove _  col _    = col + 1
 
 -- | Returns start of line point for a given point @p@
 solPointB :: Point -> BufferM Point
