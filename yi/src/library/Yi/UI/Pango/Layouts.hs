@@ -41,6 +41,7 @@ module Yi.UI.Pango.Layouts (
  ) where
 
 import           Control.Applicative
+import           Control.Arrow (first)
 import           Control.Monad hiding (mapM, forM)
 import           Data.Foldable (toList)
 import           Data.IORef
@@ -77,37 +78,41 @@ newtype WeightedStack = WS Fixed
 type StackDescr = [(Widget, RelativeSize)]
 
 weightedStackNew :: Orientation -> StackDescr -> IO WeightedStack
-weightedStackNew o s =
-  do
-    when (any ((<= 0) . snd) s) $ error "Yi.UI.Pango.WeightedStack.WeightedStack: all weights must be positive"
-    l <- fixedNew
-    set l (fmap ((containerChild :=) . fst) s)
-    void $ Gtk.on l sizeRequest (doSizeRequest o s)
-    void $ Gtk.on l sizeAllocate (relayout o s)
-    return (WS l)
+weightedStackNew o s = do
+  when (any ((<= 0) . snd) s) $ error
+    "Yi.UI.Pango.WeightedStack.WeightedStack: all weights must be positive"
+  l <- fixedNew
+  set l (fmap ((containerChild :=) . fst) s)
+  void $ Gtk.on l sizeRequest (doSizeRequest o s)
+  void $ Gtk.on l sizeAllocate (relayout o s)
+  return (WS l)
 
 -- | Requests the smallest size so that each widget gets its requested size
 doSizeRequest :: Orientation -> StackDescr -> IO Requisition
 doSizeRequest o s =
-   let
-     (requestAlong, requestAcross) =
-       case o of
-         Horizontal ->
-           (\(Requisition w _) -> fromIntegral w,
-            \(Requisition _ h) -> h)
-         Vertical ->
-           (\(Requisition _ h) -> fromIntegral h,
-            \(Requisition w _) -> w)
+  let
+    (requestAlong, requestAcross) =
+      case o of
+        Horizontal ->
+          (\(Requisition w _) -> fromIntegral w,
+           \(Requisition _ h) -> h)
+        Vertical ->
+          (\(Requisition _ h) -> fromIntegral h,
+           \(Requisition w _) -> w)
 
-     totalWeight = sum . fmap snd $ s
-     sizeAlong widgetRequests = totalWeight * (maximum . fmap (\(request,relSize) -> requestAlong request / relSize) $ widgetRequests)
-     sizeAcross widgetRequests = maximum . fmap (requestAcross . fst) $ widgetRequests
-     mkRequisition wr =
-       case o of
-         Horizontal -> Requisition (round $ sizeAlong wr) (sizeAcross wr)
-         Vertical -> Requisition (sizeAcross wr) (round $ sizeAlong wr)
-   in
-    boundRequisition =<< mkRequisition <$> mapM (\(w,relSize) -> (,relSize) <$> widgetSizeRequest w) s
+    totalWeight = sum . fmap snd $ s
+    reqsize (request, relSize) = requestAlong request / relSize
+    sizeAlong widgetRequests =
+      totalWeight * (maximum . fmap reqsize $ widgetRequests)
+    sizeAcross widgetRequests =
+      maximum . fmap (requestAcross . fst) $ widgetRequests
+    mkRequisition wr =
+      case o of
+        Horizontal -> Requisition (round $ sizeAlong wr) (sizeAcross wr)
+        Vertical -> Requisition (sizeAcross wr) (round $ sizeAlong wr)
+    swreq (w, relSize) = (,relSize) <$> widgetSizeRequest w
+  in
+   boundRequisition =<< mkRequisition <$> mapM swreq s
 
 
 -- | Bounds the given requisition to not exceed screen dimensions
@@ -116,7 +121,8 @@ boundRequisition r@(Requisition w h) =
   do
     mscr <- screenGetDefault
     case mscr of
-      Just scr -> Requisition <$> (min w <$> screenGetWidth scr) <*> (min h <$> screenGetHeight scr)
+      Just scr -> Requisition <$> (min w <$> screenGetWidth scr)
+                              <*> (min h <$> screenGetHeight scr)
       Nothing -> return r
 
 -- | Position the children appropriately for the given width and height
@@ -129,7 +135,8 @@ relayout o s (Rectangle x y width height) =
         Horizontal -> width
         Vertical -> height
     wtMult = totalSpace / totalWeight
-    calcPosition pos (widget, wt) = (pos + wt * wtMult, (pos, wt * wtMult, widget))
+    calcPosition pos (widget, wt) = (pos + wt * wtMult,
+                                     (pos, wt * wtMult, widget))
     widgetToRectangle (round -> pos, round -> size, widget) =
       case o of
         Horizontal -> (Rectangle pos y size height, widget)
@@ -138,12 +145,13 @@ relayout o s (Rectangle x y width height) =
       case o of
         Horizontal -> x
         Vertical -> y
-    widgetPositions = fmap widgetToRectangle (snd (mapAccumL calcPosition startPosition s))
+    widgetPositions =
+      fmap widgetToRectangle (snd (mapAccumL calcPosition startPosition s))
   in forM_ widgetPositions $ \(rect, widget) -> widgetSizeAllocate widget rect
 
 ------------------------------------------------------- SlidingPair
 
-{-
+{-|
 'SlidingPair' implements the 'Pair' constructor.
 
 Most of what is needed is already implemented by the 'HPaned' and
@@ -155,7 +163,10 @@ constant even when resizing.
 newtype SlidingPair = SP Paned
   deriving(GObjectClass, ObjectClass, WidgetClass, ContainerClass)
 
-slidingPairNew :: (WidgetClass w1, WidgetClass w2) => Orientation -> w1 -> w2 -> DividerPosition -> (DividerPosition -> IO ()) -> IO SlidingPair
+slidingPairNew :: (WidgetClass w1, WidgetClass w2) => Orientation -> w1 -> w2
+               -> DividerPosition
+               -> (DividerPosition -> IO ())
+               -> IO SlidingPair
 slidingPairNew o w1 w2 pos handleNewPos = do
   p <-
     case o of
@@ -192,7 +203,8 @@ is also no need to correct the slider position.
           let newPos = fromIntegral sliderPos / fromIntegral sz
           writeIORef posRef newPos
           when (oldPos /= newPos) $ handleNewPos newPos
-        else -- the size was changed; restore the slider position and save the new position
+        else -- the size was changed; restore the slider position and
+             -- save the new position
           set p [ panedPosition := round (oldPos * fromIntegral sz) ]
 
   return (SP p)
@@ -232,19 +244,24 @@ layoutDisplayNew = do
   box <- toBin <$> alignmentNew 0 0 1 1
   return (LD box implRef cbRef)
 
--- | Registers a callback to a divider changing position. (There is currently no way to unregister.)
-layoutDisplayOnDividerMove :: LayoutDisplay -> (DividerRef -> DividerPosition -> IO ()) -> IO ()
+-- | Registers a callback to a divider changing position. (There is
+-- currently no way to unregister.)
+layoutDisplayOnDividerMove :: LayoutDisplay
+                           -> (DividerRef -> DividerPosition -> IO ())
+                           -> IO ()
 layoutDisplayOnDividerMove ld cb = modifyIORef (dividerCallbacks ld) (cb:)
 
 --- changing the layout
-{- | Sets the layout to the given schema.
 
- * it is permissible to add or remove widgets in this process.
-
- * as an optimisation, this function will first check whether the layout has actually changed (so the caller need not be concerned with this)
-
- * will run 'widgetShowAll', and hence will show the underlying widgets too
--}
+-- | Sets the layout to the given schema.
+--
+-- * it is permissible to add or remove widgets in this process.
+--
+-- * as an optimisation, this function will first check whether the
+-- layout has actually changed (so the caller need not be concerned
+-- with this)
+--
+-- * will run 'widgetShowAll', and hence will show the underlying widgets too
 layoutDisplaySet :: LayoutDisplay -> Layout Widget -> IO ()
 layoutDisplaySet ld lyt = do
   mimpl <- readIORef (implWidget ld)
@@ -261,30 +278,36 @@ layoutDisplaySet ld lyt = do
       unattachWidgets (toContainer $ mainWidget ld) impl
       applyLayout
 
-runCb :: IORef [DividerRef -> DividerPosition -> IO ()] -> DividerRef -> DividerPosition -> IO ()
+runCb :: IORef [DividerRef -> DividerPosition -> IO ()]
+      -> DividerRef -> DividerPosition -> IO ()
 runCb cbRef dRef dPos = readIORef cbRef >>= mapM_ (\cb -> cb dRef dPos)
 
-buildImpl :: (DividerRef -> DividerPosition -> IO ()) -> Layout Widget -> IO LayoutImpl
+buildImpl :: (DividerRef -> DividerPosition -> IO ())
+          -> Layout Widget -> IO LayoutImpl
 buildImpl cb = go
   where
     go (SingleWindow w) = return (SingleWindowI w)
     go (s@Stack{}) = do
       impls <- forM (wins s) $ \(lyt,relSize) -> (,relSize) <$> go lyt
-      ws <- weightedStackNew (orientation s) (fmap (mapFst outerWidget) impls)
+      ws <- weightedStackNew (orientation s) (first outerWidget <$> impls)
       return (StackI (orientation s) impls ws)
     go (p@Pair{}) = do
       w1 <- go (pairFst p)
       w2 <- go (pairSnd p)
-      sp <- slidingPairNew (orientation p) (outerWidget w1) (outerWidget w2) (divPos p) (cb (divRef p))
+      sp <- slidingPairNew (orientation p) (outerWidget w1)
+                           (outerWidget w2) (divPos p) (cb $ divRef p)
       return $ PairI (orientation p) w1 w2 (divRef p) sp
 
--- true if the displayed layout agrees with the given schema, other than divider positions
+-- | true if the displayed layout agrees with the given schema, other
+-- than divider positions
 sameLayout :: LayoutImpl -> Layout Widget -> Bool
 sameLayout (SingleWindowI w) (SingleWindow w') = w == w'
 sameLayout (s@StackI{}) (s'@Stack{}) =
      orientationI s == orientation s'
   && length (winsI s) == length (wins s')
-  && and (zipWith (\(impl, relSize) (layout, relSize') -> relSize == relSize' && sameLayout impl layout) (winsI s) (wins s'))
+  && and (zipWith (\(impl, relSize) (layout, relSize') ->
+                    relSize == relSize' && sameLayout impl layout)
+          (winsI s) (wins s'))
 sameLayout (p@PairI{}) (p'@Pair{}) =
      orientationI p == orientation p'
   && divRefI p == divRef p'
@@ -311,10 +334,6 @@ outerWidget p@PairI{} = toWidget . pairWidget $ p
 
 instance WidgetLike LayoutDisplay where
   baseWidget = toWidget . mainWidget
-
--- TODO: use from Data.Tuple.HT
-mapFst :: (a -> c) -> (a, b) -> (c, b)
-mapFst f (a,b) = (f a, b)
 
 ---------------- MiniwindowDisplay
 data MiniwindowDisplay
