@@ -18,7 +18,7 @@ module Yi.Templates ( templates
 
 import qualified Data.Map as Map
 import           Yi.Buffer (BufferM, insertN)
-import           Yi.Editor (EditorM, withBuffer0, printMsg)
+import           Yi.Editor (EditorM, withCurrentBuffer, printMsg)
 import qualified Yi.Rope as R
 
 type Template       = String
@@ -29,7 +29,7 @@ addTemplate :: String -> EditorM ()
 addTemplate tName =
   case lookupTemplate tName of
     Nothing -> printMsg "template-name not found"
-    Just t  -> withBuffer0 $ addTemplateBuffer t
+    Just t  -> withCurrentBuffer $ addTemplateBuffer t
   where
   addTemplateBuffer :: Template -> BufferM ()
   addTemplateBuffer = insertN . R.fromString

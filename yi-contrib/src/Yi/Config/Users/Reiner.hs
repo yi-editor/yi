@@ -54,7 +54,7 @@ setup = do
 --------------------------------------------------------------------------------
 yiCreateDirectory :: YiM ()
 yiCreateDirectory = do
-    BufferFileInfo{bufInfoFileName} <- withEditor $ withBuffer0 bufInfoB
+    BufferFileInfo{bufInfoFileName} <- withEditor $ withCurrentBuffer bufInfoB
     let dir = takeDirectory bufInfoFileName
     exists <- io $ doesDirectoryExist dir
     if not exists
@@ -101,7 +101,7 @@ globalBindings = choice
 
 compileLatex :: YiM ()
 compileLatex = do
-  withEditor (withBuffer0 $ gets file) >>= \case
+  withEditor (withCurrentBuffer $ gets file) >>= \case
     Just filename -> buildRun "pdflatex" ["--file-line-error"
                                          , "--interaction=nonstopmode"
                                          , T.pack filename

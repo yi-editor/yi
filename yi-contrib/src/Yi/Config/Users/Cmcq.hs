@@ -76,7 +76,7 @@ timeStart idleDo evs start p1 ch actionCh p4 = do
   evaluate (L.length evs)
   return ui
     { Common.main = do
-        actionCh . (:[]) . makeAction . withBuffer0 $ setMode Yi.Mode.Haskell.fastMode
+        actionCh . (:[]) . makeAction . withCurrentBuffer $ setMode Yi.Mode.Haskell.fastMode
         idleDo (fmap ch evs)
         Common.main ui
     }
