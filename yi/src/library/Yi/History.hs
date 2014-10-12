@@ -35,15 +35,21 @@ import           Yi.Editor
 import qualified Yi.Rope as R
 import           Yi.Types (YiVariable)
 
-type Histories = M.Map String History
+newtype Histories = Histories (M.Map T.Text History)
+                  deriving (Show, Eq, Typeable)
 
+instance Binary Histories where
+  put (Histories m) = put $ M.mapKeys T.unpack m
+  get = Histories . M.mapKeys T.pack <$> get
+
+instance Default Histories where
+  def = Histories def
 
 data History = History { _historyCurrent :: Int
                        , _historyContents :: [T.Text]
                        , _historyPrefix :: T.Text
-                       }
+                       } deriving (Show, Eq, Typeable)
 
-    deriving (Show, Typeable)
 instance Default History where
     def = History (-1) [] mempty
 
@@ -52,7 +58,7 @@ instance Binary History where
     put cu >> put (map E.encodeUtf8 co) >> put (E.encodeUtf8 pr)
   get = liftA3 History get (fmap E.decodeUtf8 <$> get) (E.decodeUtf8 <$> get)
 
-instance YiVariable (M.Map String History)
+instance YiVariable Histories
 
 dynKeyA :: (Default v, Ord k) => k -> Lens' (M.Map k v) v
 dynKeyA key = lens (M.findWithDefault def key) (flip (M.insert key))
@@ -71,28 +77,26 @@ historyStart = historyStartGen miniBuffer
 
 -- | Start an input session with History
 historyStartGen :: T.Text -> EditorM ()
-historyStartGen identT = do
-  let ident = T.unpack identT
-  histories <- getEditorDyn
-  let (History _cur cont pref) = view (dynKeyA ident) histories
-  putEditorDyn $ set (dynKeyA ident) (History 0 (nub ("":cont)) pref) histories
+historyStartGen ident = do
+  Histories histories <- getEditorDyn
+  let (History _cur cont pref) = histories ^. dynKeyA ident
+  setHistory ident (History 0 (nub ("":cont)) pref) histories
 
 historyFinish :: EditorM ()
 historyFinish = historyFinishGen miniBuffer (R.toText <$> withBuffer0 elemsB)
 
 -- | Finish the current input session with history.
 historyFinishGen :: T.Text -> EditorM T.Text -> EditorM ()
-historyFinishGen identTODO getCurValue = do
-  let ident = T.unpack identTODO
-  histories <- getEditorDyn
-  let (History _cur cont pref) = view (dynKeyA ident) histories
+historyFinishGen ident getCurValue = do
+  Histories histories <- getEditorDyn
+  let History _cur cont pref = histories ^. dynKeyA ident
   curValue <- getCurValue
   let cont' = dropWhile (curValue ==) . dropWhile T.null $ cont
   curValue `seq`        -- force the new value, otherwise we'll hold
                         -- on to the buffer from which it's computed
     cont'         `seq` -- force checking the top of the history,
                         -- otherwise we'll build up thunks
-    putEditorDyn $ set (dynKeyA ident) (History (-1) (curValue:cont') pref) histories
+    setHistory ident (History (-1) (curValue:cont') pref) histories
 
 historyFind :: [T.Text] -> Int -> Int -> Int -> T.Text -> Int
 historyFind cont len cur delta pref =
@@ -112,10 +116,9 @@ historyMove ident delta = do
   withBuffer0 . replaceBufferContent . R.fromText $ s
 
 historyMoveGen :: T.Text -> Int -> EditorM T.Text -> EditorM T.Text
-historyMoveGen identTODO delta getCurValue = do
-  let ident = T.unpack identTODO
-  histories <- getEditorDyn
-  let (History cur cont pref) = view (dynKeyA ident) histories
+historyMoveGen ident delta getCurValue = do
+  Histories histories <- getEditorDyn
+  let History cur cont pref = histories ^. dynKeyA ident
 
   curValue <- getCurValue
   let len = length cont
@@ -123,22 +126,29 @@ historyMoveGen identTODO delta getCurValue = do
       nextValue = cont !! next
   case (next < 0, next >= len) of
     (True, _) -> do
-      printMsg $ "end of " <> identTODO <> " history, no next item."
+      printMsg $ "end of " <> ident <> " history, no next item."
       return curValue
     (_, True) -> do
-      printMsg $ "beginning of " <> identTODO <> " history, no previous item."
+      printMsg $ "beginning of " <> ident <> " history, no previous item."
       return curValue
     (_,_) -> do
-      putEditorDyn $ set (dynKeyA ident) (History next (take cur cont ++ [curValue] ++ drop (cur+1) cont) pref) histories
+      let contents = take cur cont ++ [curValue] ++ drop (cur + 1) cont
+      setHistory ident (History next contents pref) histories
       return nextValue
 
 historyPrefixSet :: T.Text -> EditorM ()
 historyPrefixSet = historyPrefixSet' miniBuffer
 
 historyPrefixSet' :: T.Text -> T.Text -> EditorM ()
-historyPrefixSet' identTODO pref = do
-  let ident = T.unpack identTODO
-  histories <- getEditorDyn
-  let (History cur cont _pref) = view (dynKeyA ident) histories
-  putEditorDyn $ set (dynKeyA ident) (History cur cont pref) histories
-  return ()
+historyPrefixSet' ident pref = do
+  Histories histories <- getEditorDyn
+  let History cur cont _pref = histories ^. dynKeyA ident
+  setHistory ident (History cur cont pref) histories
+
+-- | Helper that sets the given history at ident and 'putEditorDyn's
+-- the result.
+setHistory :: (MonadEditor m, Functor m) => T.Text -- ^ identifier
+           -> History -- ^ History to set
+           -> M.Map T.Text History -- ^ Map of existing histories
+           -> m ()
+setHistory i h = putEditorDyn . Histories . set (dynKeyA i) h
