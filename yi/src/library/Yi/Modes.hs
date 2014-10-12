@@ -182,7 +182,6 @@ gnuMakeMode = styleMode GNUMake.lexer
               matches "makefile"    = True
               matches "GNUmakefile" = True
               matches filename      = extensionMatches [ "mk" ] filename
-              -- TODO: .mk is fairly standard but are there others?
 
 ottMode :: StyleBasedMode
 ottMode = styleMode Ott.lexer
