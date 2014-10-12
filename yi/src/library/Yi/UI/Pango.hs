@@ -146,12 +146,6 @@ updateFont :: UIConfig -> IORef FontDescription -> IORef TabCache -> Statusbar
            -> FontDescription -> IO ()
 updateFont cfg fontRef tc status font = do
     maybe (return ()) (fontDescriptionSetFamily font) (configFontName cfg)
-    -- case configFontSize cfg of
-    --   Nothing -> return ()
-    --   Just x -> fontDescriptionGetSize font >>= \case
-    --     Nothing -> return ()
-    --     Just cs ->
-    -- maybe (return ()) (fontDescriptionSetSize font . fromIntegral)
 
     writeIORef fontRef font
     widgetModifyFont status (Just font)
