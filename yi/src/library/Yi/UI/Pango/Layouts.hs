@@ -413,7 +413,7 @@ simpleNotebookSet sn ts = do
 
 -- | The 'onSwitchPage' callback
 simpleNotebookOnSwitchPage :: SimpleNotebook -> (Int -> IO ()) -> IO ()
-simpleNotebookOnSwitchPage sn cb = void $ onSwitchPage (snMainWidget sn) cb
+simpleNotebookOnSwitchPage sn = void . (snMainWidget sn `on` switchPage)
 
 
 ------------------- Utils
