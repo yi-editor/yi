@@ -23,7 +23,6 @@ import           Control.Lens hiding (act)
 import           Control.Monad
 import qualified Data.Text as T
 import           Yi.Buffer
--- import           Yi.Core
 import           Yi.Editor
 import           Yi.File
 import           Yi.Keymap
@@ -55,7 +54,8 @@ portableKeymap cmd = modelessKeymapSet $ selfInsertKeymap <|> move <|> select <|
 selfInsertKeymap :: Keymap
 selfInsertKeymap = do
   c <- printableChar
-  write (withBuffer0 . replaceSel $ R.singleton c)
+  let action = (withCurrentBuffer . replaceSel $ R.singleton c) :: EditorM ()
+  write action
 
 setMark :: Bool -> BufferM ()
 setMark b = do
@@ -79,24 +79,24 @@ replaceSel s = do
 
 deleteSel :: BufferM () -> YiM ()
 deleteSel act = do
-  haveSelection <- withBuffer $ use highlightSelectionA
+  haveSelection <- withCurrentBuffer $ use highlightSelectionA
   if haveSelection
     then withEditor del
-    else withBuffer (adjBlock (-1) >> act)
+    else withCurrentBuffer (adjBlock (-1) >> act)
 
 cut :: EditorM ()
 cut = copy >> del
 
 del :: EditorM ()
 del = do
-  asRect <- withBuffer0 $ use rectangleSelectionA
+  asRect <- withCurrentBuffer $ use rectangleSelectionA
   if asRect
     then killRectangle
-    else withBuffer0 $ deleteRegionB =<< getSelectRegionB
+    else withCurrentBuffer $ deleteRegionB =<< getSelectRegionB
 
 copy :: EditorM ()
 copy =
-  (setRegE =<<) $ withBuffer0 $ do
+  (setRegE =<<) $ withCurrentBuffer $ do
     asRect <- use rectangleSelectionA
     if not asRect
       then getSelectRegionB >>= readRegionB
@@ -107,10 +107,10 @@ copy =
 
 paste :: EditorM ()
 paste = do
-  asRect <- withBuffer0 (use rectangleSelectionA)
+  asRect <- withCurrentBuffer (use rectangleSelectionA)
   if asRect
     then yankRectangle
-    else withBuffer0 . replaceSel =<< getRegE
+    else withCurrentBuffer . replaceSel =<< getRegE
 
 moveKeys :: [(Event, BufferM ())]
 moveKeys = [

@@ -98,7 +98,7 @@ deleteB' = adjBlock (-1) >> deleteN 1
 -- | Wrapper around 'moveE' which also cancels incremental search. See
 -- issue #499 for details.
 moveE ∷ TextUnit → Direction → EditorM ()
-moveE u d = isearchFinishWithE resetRegexE >> withBuffer (moveB u d)
+moveE u d = isearchFinishWithE resetRegexE >> withCurrentBuffer (moveB u d)
 
 emacsKeys :: Maybe Int -> Keymap
 emacsKeys univArg =
@@ -145,7 +145,7 @@ emacsKeys univArg =
          , ctrlCh 'i'           ?>>! adjIndent IncreaseOnly
          , ctrlCh 'j'           ?>>! newlineAndIndentB
          , ctrlCh 'k'           ?>>! killLineE univArg
-         , ctrlCh 'l'           ?>>! (withBuffer scrollToCursorB >> userForceRefresh)
+         , ctrlCh 'l'           ?>>! (withCurrentBuffer scrollToCursorB >> userForceRefresh)
          , ctrlCh 'm'           ?>>! repeatingArg (insertB '\n')
          , ctrlCh 'n'           ?>>! repeatingArg (moveE VLine Forward)
          , ctrlCh 'o'           ?>>! repeatingArg (insertB '\n' >> leftB)
@@ -250,7 +250,7 @@ emacsKeys univArg =
                         , optMod ctrl (char 't') >>! newTabE
                         , optMod ctrl (char 'e') >>! findFileNewTab
                         , optMod ctrl (char 'd') >>! deleteTabE
-                        , charOf id '0' '9' >>=! moveTab . Just . digitToInt
+                        , charOf id '0' '9' >>=! moveTabE . Just . digitToInt
                         ]
   -- These keybindings are all preceded by a 'C-x' so for example to
   -- quit the editor we do a 'C-x C-c'
@@ -264,7 +264,8 @@ emacsKeys univArg =
                  , ctrlCh 'c'    ?>>! askQuitEditor
                  , ctrlCh 'f'    ?>>! findFile
                  , ctrlCh 'r'    ?>>! findFileReadOnly
-                 , ctrlCh 'q'    ?>>! withBuffer0 (readOnlyA %= not)
+                 , ctrlCh 'q'    ?>>!
+                     ((withCurrentBuffer (readOnlyA %= not)) :: EditorM ())
                  , ctrlCh 's'    ?>>! fwriteE
                  , ctrlCh 'w'    ?>>! promptFile "Write file:" fwriteToE
                  , ctrlCh 'x'    ?>>! (exchangePointAndMarkB >>

@@ -32,7 +32,8 @@ import           Data.Typeable
 import           Yi.Buffer.HighLevel (replaceBufferContent, topB)
 import           Yi.Buffer.Misc (bufferDynamicValueA, elemsB)
 import           Yi.Dynamic
-import           Yi.Keymap (withBuffer, YiM)
+import           Yi.Editor (withCurrentBuffer)
+import           Yi.Keymap (YiM)
 import           Yi.Paths (getArticleDbFilename)
 import qualified Yi.Rope as R
 import           Yi.Utils
@@ -102,8 +103,8 @@ readDB = io $ (getArticleDbFilename >>= r) `catch` returnDefault
 -- we get an empty Seq), only then do we call 'readDB'.
 oldDbNewArticle :: YiM (ArticleDB, Article)
 oldDbNewArticle = do
-  saveddb <- withBuffer $ use bufferDynamicValueA
-  newarticle <- fmap (B.pack . R.toString) $ withBuffer elemsB
+  saveddb <- withCurrentBuffer $ use bufferDynamicValueA
+  newarticle <- fmap (B.pack . R.toString) $ withCurrentBuffer elemsB
   if not $ S.null (unADB saveddb)
     then return (saveddb, newarticle)
     else readDB >>= \olddb -> return (olddb, newarticle)
@@ -113,7 +114,7 @@ oldDbNewArticle = do
 setDisplayedArticle :: ArticleDB -> YiM ()
 setDisplayedArticle newdb = do
   let next = getLatestArticle newdb
-  withBuffer $ do
+  withCurrentBuffer $ do
     replaceBufferContent $ R.fromString (B.unpack next)
     topB -- replaceBufferContents moves us to bottom?
     assign bufferDynamicValueA newdb

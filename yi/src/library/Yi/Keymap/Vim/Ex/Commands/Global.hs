@@ -42,16 +42,16 @@ global :: T.Text -> ExCommand -> ExCommand
 global p c = Common.pureExCommand {
     cmdShow = "g/" <> p `T.snoc` '/' <> showT c
   , cmdAction = EditorA $ do
-        mark <- withBuffer0 setMarkHereB
-        lineCount <- withBuffer0 lineCountB
+        mark <- withCurrentBuffer setMarkHereB
+        lineCount <- withCurrentBuffer lineCountB
         forM_ (reverse [1..lineCount]) $ \l -> do
-            ln <- withBuffer0 $ gotoLn l >> R.toText <$> readLnB
+            ln <- withCurrentBuffer $ gotoLn l >> R.toText <$> readLnB
             when (p `T.isInfixOf` ln) $
                 case cmdAction c of
-                    BufferA action -> withBuffer0 $ void action
+                    BufferA action -> withCurrentBuffer $ void action
                     EditorA action -> void action
                     _ -> error "Impure command as an argument to global."
-        withBuffer0 $ do
+        withCurrentBuffer $ do
             use (markPointA mark) >>= moveTo
             deleteMarkB mark
   }

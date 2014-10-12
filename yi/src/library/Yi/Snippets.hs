@@ -40,6 +40,7 @@ import qualified Data.Text as T
 import           Data.Typeable
 import           Yi.Buffer
 import           Yi.Dynamic
+import           Yi.Editor
 import           Yi.Keymap
 import           Yi.Keymap.Keys
 import qualified Yi.Rope as R
@@ -397,7 +398,7 @@ superTab :: (MonadInteract m Action Event) => Bool -> SupertabExt -> m ()
 superTab caseSensitive (Supertab expander) =
     some (spec KTab ?>>! doSuperTab) >> deprioritize >>! resetComplete
   where
-    doSuperTab = do canExpand <- withBuffer $ do
+    doSuperTab = do canExpand <- withCurrentBuffer $ do
                                    sol <- atSol
                                    ws  <- hasWhiteSpaceBefore
                                    return $ sol || ws
@@ -405,15 +406,15 @@ superTab caseSensitive (Supertab expander) =
                       then insertTab
                       else runCompleter
 
-    insertTab = withBuffer $ mapM_ insertB =<< tabB
+    insertTab = withCurrentBuffer $ mapM_ insertB =<< tabB
 
-    runCompleter = do w <- withBuffer readPrevWordB
+    runCompleter = do w <- withCurrentBuffer readPrevWordB
                       case expander w of
-                        Just cmd -> withBuffer $ bkillWordB >> cmd
+                        Just cmd -> withCurrentBuffer $ bkillWordB >> cmd
                         _        -> autoComplete
 
     autoComplete = wordCompleteString' caseSensitive >>=
-                   withBuffer . (bkillWordB >>) . (insertN . R.fromText)
+                   withCurrentBuffer . (bkillWordB >>) . (insertN . R.fromText)
 
 -- | Convert snippet description list into a SuperTab extension
 fromSnippets :: Bool -> [(R.YiString, SnippetCmd ())] -> SupertabExt

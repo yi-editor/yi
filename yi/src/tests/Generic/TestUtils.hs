@@ -44,7 +44,7 @@ runTest setupActions preConditions testActions assertions c = do
 -- Return the contents of the current buffer as a string.
 extractBufferString :: Config -> Editor -> String
 extractBufferString c editor =
-  R.toString $ snd (runEditor c (withBuffer0 elemsB) editor)
+  R.toString $ snd (runEditor c (withCurrentBuffer elemsB) editor)
 
 
 --------------------------------------------------
@@ -53,7 +53,7 @@ extractBufferString c editor =
 -- | Insert the given text into the editor inside an update transaction.
 insertText :: String -> EditorM ()
 insertText text =
-    withBuffer0 $ do
+    withCurrentBuffer $ do
         startUpdateTransactionB
         insertN (R.fromString text)
         commitUpdateTransactionB

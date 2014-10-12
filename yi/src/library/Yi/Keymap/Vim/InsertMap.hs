@@ -52,14 +52,14 @@ exitBinding digraphs = VimBindingE f
         when (count > 1) $ do
             inputEvents <- fmap (parseEvents . vsOngoingInsertEvents) getDynamic
             replicateM_ (count - 1) $ do
-                when (starter `elem` "Oo") $ withBuffer0 $ insertB '\n'
+                when (starter `elem` "Oo") $ withCurrentBuffer $ insertB '\n'
                 replay digraphs inputEvents
         modifyStateE $ \s -> s { vsOngoingInsertEvents = mempty }
-        withBuffer0 $ moveXorSol 1
+        withCurrentBuffer $ moveXorSol 1
         modifyStateE $ \s -> s { vsSecondaryCursors = mempty }
         resetCountE
         switchModeE Normal
-        withBuffer0 $ whenM isCurrentLineAllWhiteSpaceB $ moveToSol >> deleteToEol
+        withCurrentBuffer $ whenM isCurrentLineAllWhiteSpaceB $ moveToSol >> deleteToEol
         return Finish
     f _ _ = NoMatch
 
@@ -69,7 +69,7 @@ rawPrintable = VimBindingE f
     f :: EventString -> VimState -> MatchResult (EditorM RepeatToken)
     f evs s@(VimState { vsMode = (Insert _)})
           | vsPaste s && evs `notElem` ["<Esc>", "<C-c>"]
-              = WholeMatch . withBuffer0 $ do
+              = WholeMatch . withCurrentBuffer $ do
             case evs of
               "<lt>" -> insertB '<'
               "<CR>" -> newlineB
@@ -110,7 +110,7 @@ oneshotNormalBinding = VimBindingE (f . T.unpack . _unEv)
     action evs = do
         let (countString, motionCmd) = span isDigit evs
             WholeMatch (Move _style _isJump move) = stringToMove . Ev . T.pack $ motionCmd
-        withBuffer0 $ move (if null countString then Nothing else Just (read countString))
+        withCurrentBuffer $ move (if null countString then Nothing else Just (read countString))
         return Continue
 
 pasteRegisterBinding :: VimBinding
@@ -121,7 +121,7 @@ pasteRegisterBinding = VimBindingE (f . T.unpack . _unEv)
                   mr <- getRegisterE regName
                   case mr of
                     Nothing -> return ()
-                    Just (Register _style rope) -> withBuffer0 $ insertRopeWithStyleB rope Inclusive
+                    Just (Register _style rope) -> withCurrentBuffer $ insertRopeWithStyleB rope Inclusive
                   return Continue
           f _ _ = NoMatch
 
@@ -129,7 +129,7 @@ digraphBinding :: [(String, Char)] -> VimBinding
 digraphBinding digraphs = VimBindingE (f . T.unpack . _unEv)
     where f ('<':'C':'-':'k':'>':c1:c2:[]) (VimState { vsMode = Insert _ })
             = WholeMatch $ do
-                  maybe (return ()) (withBuffer0 . insertB) $ charFromDigraph digraphs c1 c2
+                  maybe (return ()) (withCurrentBuffer . insertB) $ charFromDigraph digraphs c1 c2
                   return Continue
           f ('<':'C':'-':'k':'>':_c1:[]) (VimState { vsMode = Insert _ }) = PartialMatch
           f "<C-k>" (VimState { vsMode = Insert _ }) = PartialMatch
@@ -146,10 +146,10 @@ printable = VimBindingE f
 printableAction :: EventString -> EditorM RepeatToken
 printableAction evs = do
     saveInsertEventStringE evs
-    currentCursor <- withBuffer0 pointB
+    currentCursor <- withCurrentBuffer pointB
     secondaryCursors <- fmap vsSecondaryCursors getDynamic
     let allCursors = currentCursor :| secondaryCursors
-    marks <- withBuffer0 $ forM' allCursors $ \cursor -> do
+    marks <- withCurrentBuffer $ forM' allCursors $ \cursor -> do
         moveTo cursor
         -- getMarkB $ Just $ "v_I" <> show cursor
         getMarkB Nothing
@@ -186,7 +186,7 @@ printableAction evs = do
           "<lt>" -> insertB '<'
           evs' -> error $ "Unhandled event " <> show evs' <> " in insert mode"
 
-    updatedCursors <- withBuffer0 $ do
+    updatedCursors <- withCurrentBuffer $ do
         updatedCursors <- forM' marks $ \mark -> do
             moveTo =<< use (markPointA mark)
             bufAction
@@ -216,6 +216,6 @@ cursorBinding = VimBindingE f
             | evs `elem` ["<Up>", "<Left>", "<Down>", "<Right>"]
             = WholeMatch $ do
                   let WholeMatch (Move _style _isJump move) = stringToMove evs
-                  withBuffer0 $ move Nothing
+                  withCurrentBuffer $ move Nothing
                   return Continue
           f _ _ = NoMatch

@@ -174,7 +174,7 @@ showErrors = withEditor $ do
 dispatch :: NonEmpty Event -> YiM ()
 dispatch (ev :| evs) = do
   yi <- ask
-  (userActions, _p') <- withBuffer $ do
+  (userActions, _p') <- withCurrentBuffer $ do
     keymap <- gets (withMode0 modeKeymap)
     p0 <- use keymapProcessA
     let km = extractTopKeymap $ keymap $ defaultKm $ yiConfig yi
@@ -189,12 +189,12 @@ dispatch (ev :| evs) = do
             _ -> False
     assign keymapProcessA (if ambiguous then freshP else p')
     let actions0 = case state of
-          Dead -> [makeAction $ do
+          Dead -> [EditorA $ do
                       evs' <- use pendingEventsA
                       printMsg ("Unrecognized input: " <> showEvs (evs' ++ [ev]))]
           _ -> actions
 
-        actions1 = [ makeAction $ printMsg "Keymap was in an ambiguous state! Resetting it."
+        actions1 = [ EditorA (printMsg "Keymap was in an ambiguous state! Resetting it.")
                    | ambiguous]
 
     return (actions0 ++ actions1, p')
@@ -343,7 +343,7 @@ msgEditor s = withEditor (printMsg s)
 runAction :: Action -> YiM ()
 runAction (YiA act) = act >>= msgEditor . showT
 runAction (EditorA act) = withEditor act >>= msgEditor . showT
-runAction (BufferA act) = withBuffer act >>= msgEditor . showT
+runAction (BufferA act) = withCurrentBuffer act >>= msgEditor . showT
 
 -- | Show an error on the status line and log it.
 errorEditor :: T.Text -> YiM ()
@@ -438,7 +438,7 @@ appendToBuffer :: Bool      -- Something to do with stdout/stderr?
                -> BufferRef -- ^ Buffer to append to
                -> R.YiString  -- ^ Text to append
                -> EditorM ()
-appendToBuffer atErr bufref s = withGivenBuffer0 bufref $ do
+appendToBuffer atErr bufref s = withGivenBuffer bufref $ do
     -- We make sure stdout is always after stderr. This ensures that
     -- the output of the two pipe do not get interleaved. More
     -- importantly, GHCi prompt should always come after the error

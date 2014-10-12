@@ -77,16 +77,16 @@ textObject operators = VimBindingE f
                     JustMove (CountedMove n m) -> do
                         mcount <- getMaybeCountE
                         normalizeCountE n
-                        region <- withBuffer0 $ regionOfMoveB $ CountedMove (maybeMult mcount n) m
+                        region <- withCurrentBuffer $ regionOfMoveB $ CountedMove (maybeMult mcount n) m
                         operatorApplyToRegionE op 1 region
                     JustOperator n style -> do
                         normalizeCountE (Just n)
                         normalizedCount <- getCountE
-                        region <- withBuffer0 $ regionForOperatorLineB normalizedCount style
-                        curPoint <- withBuffer0 pointB
+                        region <- withCurrentBuffer $ regionForOperatorLineB normalizedCount style
+                        curPoint <- withCurrentBuffer pointB
                         token <- operatorApplyToRegionE op 1 region
                         when (opname == Op "y") $
-                            withBuffer0 $ moveTo curPoint
+                            withCurrentBuffer $ moveTo curPoint
                         return token
 
                     _ -> error "can't happen"

@@ -54,11 +54,11 @@ myBindings eval =
          -- for times when you don't press shift hard enough
        , nmap ";" (eval ":")
 
-       , nmap "<F3>" (withBuffer0 deleteTrailingSpaceB)
-       , nmap "<F4>" (withBuffer0 moveToSol)
-       , nmap "<F1>" (withBuffer0 readCurrentWordB >>= printMsg . R.toText)
-       , imap "<Home>" (withBuffer0 moveToSol)
-       , imap "<End>" (withBuffer0 moveToEol)
+       , nmap "<F3>" (withCurrentBuffer deleteTrailingSpaceB)
+       , nmap "<F4>" (withCurrentBuffer moveToSol)
+       , nmap "<F1>" (withCurrentBuffer readCurrentWordB >>= printMsg . R.toText)
+       , imap "<Home>" (withCurrentBuffer moveToSol)
+       , imap "<End>" (withCurrentBuffer moveToEol)
        ]
 
 myModes :: [AnyMode]

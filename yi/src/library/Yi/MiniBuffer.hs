@@ -60,14 +60,14 @@ import           Yi.String (commonTPrefix)
 -- | Prompts the user for comment syntax to use for the current mode.
 commentRegion :: YiM ()
 commentRegion =
-  withBuffer (gets $ withMode0 modeToggleCommentSelection) >>= \case
+  withCurrentBuffer (gets $ withMode0 modeToggleCommentSelection) >>= \case
     Nothing -> do
       withMinibufferFree "No comment syntax is defined. Use: " $ \cString ->
-        withBuffer $ do
+        withCurrentBuffer $ do
           let toggle = toggleCommentB (R.fromText cString)
           _ <- toggle
           modifyMode $ (\x -> x { modeToggleCommentSelection = Just toggle })
-    Just b -> withBuffer b
+    Just b -> withCurrentBuffer b
 
 -- | Open a minibuffer window with the given prompt and keymap
 -- The third argument is an action to perform after the minibuffer
@@ -77,7 +77,7 @@ spawnMinibufferE :: T.Text -> KeymapEndo -> EditorM BufferRef
 spawnMinibufferE prompt kmMod = do
   b <- stringToNewBuffer (MemBuffer prompt) mempty
   -- Now create the minibuffer keymap and switch to the minibuffer window
-  withGivenBuffer0 b $
+  withGivenBuffer b $
     modifyMode $ \m -> m { modeKeymap = \kms -> kms { topKeymap = kmMod (insertKeymap kms)
                                                     } }
   -- The minibuffer window must not be moved from the position newWindowE places it!
@@ -166,16 +166,16 @@ withMinibufferGen proposal getHint prompt completer onTyping act = do
       -- apply it to the desired action
       closeMinibuffer = closeBufferAndWindowE >>
                         windowsA %= fromJust . PL.find initialWindow
-      showMatchings = showMatchingsOf . R.toText =<< withBuffer elemsB
+      showMatchings = showMatchingsOf . R.toText =<< withCurrentBuffer elemsB
       showMatchingsOf userInput =
         withEditor . printStatus =<< withDefaultStyle <$> (getHint userInput)
       withDefaultStyle msg = (msg, defaultStyle)
-      -- typing = withEditor . onTyping =<< withBuffer elemsB
-      typing = onTyping . R.toText =<< withBuffer elemsB
+      -- typing = withEditor . onTyping =<< withCurrentBuffer elemsB
+      typing = onTyping . R.toText =<< withCurrentBuffer elemsB
 
       innerAction = do
         lineString <- withEditor $ do
-          let bufToText = R.toText <$> withBuffer0 elemsB
+          let bufToText = R.toText <$> withCurrentBuffer elemsB
           historyFinishGen prompt bufToText
           lineString <- bufToText
           closeMinibuffer
@@ -202,7 +202,7 @@ withMinibufferGen proposal getHint prompt completer onTyping act = do
       void $ spawnMinibufferE (prompt `T.snoc` ' ')
         (\bindings -> rebindings <|| (bindings >> write showMatchings
                                       >> write typing))
-      withBuffer0 . replaceBufferContent . R.fromText
+      withCurrentBuffer . replaceBufferContent . R.fromText
         $ replaceShorthands proposal
 
 -- | Open a minibuffer, given a finite number of suggestions.
@@ -239,15 +239,15 @@ withMinibufferFin prompt possibilities act
 -- to 'YiString'.
 completionFunction :: (T.Text -> YiM T.Text) -> YiM ()
 completionFunction f = do
-  p <- withBuffer pointB
+  p <- withCurrentBuffer pointB
   let r = mkRegion 0 p
-  text <- withBuffer $ readRegionB r
+  text <- withCurrentBuffer $ readRegionB r
   compl <- R.fromText <$> f (R.toText text)
 
   -- it's important to do this before removing the text, so if the
   -- completion function raises an exception, we don't delete the
   -- buffer contents.
-  withBuffer $ replaceRegionB r compl
+  withCurrentBuffer $ replaceRegionB r compl
 
 class Promptable a where
     getPromptedValue :: T.Text -> YiM a

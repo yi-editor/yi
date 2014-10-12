@@ -32,13 +32,13 @@ import           Yi.Buffer
 import           Yi.Core (withSyntax)
 import           Yi.Dynamic
 import           Yi.Editor (withEditor, withOtherWindow, getDynamic,
-                            stringToNewBuffer , findBuffer, switchToBufferE)
+                            stringToNewBuffer, findBuffer, switchToBufferE,
+                            withCurrentBuffer, withGivenBuffer)
 import           Yi.Event (Key(..), Event(..))
 import           Yi.File (fwriteE)
 import           Yi.IncrementalParse (scanner)
 import           Yi.Interact (choice)
-import           Yi.Keymap (YiM, Action(..), withBuffer,
-                            withGivenBuffer, topKeymapA)
+import           Yi.Keymap (YiM, Action(..), topKeymapA)
 import           Yi.Keymap.Keys (ctrlCh, (?>>), (?>>!), important)
 import           Yi.Lexer.Alex (AlexState, Tok, lexScanner,
                                 commonLexer, CharScanner)
@@ -113,7 +113,7 @@ instance YiVariable JSBuffer
 jsCompile :: Tree TT -> YiM ()
 jsCompile tree = do
   fwriteE
-  Just filename <- withBuffer $ gets file
+  Just filename <- withCurrentBuffer $ gets file
   buf <- getJSBuffer
   withOtherWindow $ withEditor $ switchToBufferE buf
   jsErrors filename buf (D.toList $ execWriter $ verify tree)

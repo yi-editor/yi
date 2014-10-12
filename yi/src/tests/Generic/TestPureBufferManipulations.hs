@@ -178,8 +178,8 @@ mkTestCase cf t = testCase (ktName t) $ do
   where
     setCursorPosition cursorLine =
         let (x, y) = read cursorLine
-        in withBuffer0 $ moveToLineColB x (y - 1)
-    cursorPos = show . snd . runEditor cf (withBuffer0 $ do
+        in withCurrentBuffer $ moveToLineColB x (y - 1)
+    cursorPos = show . snd . runEditor cf (withCurrentBuffer $ do
                                             l <- curLn
                                             c <- curCol
                                             return (l, c + 1))

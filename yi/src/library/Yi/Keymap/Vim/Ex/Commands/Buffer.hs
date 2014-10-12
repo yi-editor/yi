@@ -33,7 +33,7 @@ parse = Common.parseWithBangAndCount nameParser $ \ _ bang mcount -> do
   return $ Common.pureExCommand {
       cmdShow = "buffer"
     , cmdAction = EditorA $ do
-        unchanged <- withBuffer0 $ gets isUnchangedBuffer
+        unchanged <- withCurrentBuffer $ gets isUnchangedBuffer
         if bang || unchanged
           then case mcount of
             Nothing -> switchToBuffer bufIdent

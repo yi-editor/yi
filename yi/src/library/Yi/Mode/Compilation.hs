@@ -32,11 +32,11 @@ mode = styleMode Compilation.lexer
   & modeKeymapA .~ topKeymapA %~ ((spec KEnter ?>>! withSyntax modeFollow) <||)
   & modeFollowA .~ YiA . follow
   where
-    follow errs = withBuffer pointB >>= \point ->
+    follow errs = withCurrentBuffer pointB >>= \point ->
       case OnlineTree.tokAtOrBefore point errs of
         Just t@Tok {tokT = Compilation.Report filename line col _} -> do
-          withBuffer . moveTo . posnOfs $ tokPosn t
+          withCurrentBuffer . moveTo . posnOfs $ tokPosn t
           shiftOtherWindow
           _ <- editFile filename
-          withBuffer $ gotoLn line >> rightN col
+          withCurrentBuffer $ gotoLn line >> rightN col
         _ -> return ()

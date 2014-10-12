@@ -67,9 +67,6 @@ import           Yi.Types
 import           Yi.Utils hiding ((+~))
 import           Yi.Window
 
-liftEditor :: MonadEditor m => EditorM a -> m a
-liftEditor = withEditor
-
 instance Binary Editor where
   put (Editor bss bs supply ts dv _sl msh kr _re _dir _ev _cwa ) =
     let putNE (x :| xs) = put x >> put xs
@@ -139,33 +136,34 @@ dynA = dynamicA . dynamicValueA
 -- ---------------------------------------------------------------------
 -- Buffer operations
 
-newRef :: EditorM Int
-newRef = refSupplyA %= (+ 1) >> use refSupplyA
+newRef :: MonadEditor m => m Int
+newRef = withEditor (refSupplyA %= (+ 1) >> use refSupplyA)
 
-newBufRef :: EditorM BufferRef
-newBufRef = BufferRef <$> newRef
+newBufRef :: MonadEditor m => m BufferRef
+newBufRef = liftM BufferRef newRef
 
 -- | Create and fill a new buffer, using contents of string.
 -- | Does not focus the window, or make it the current window.
 -- | Call newWindowE or switchToBufferE to take care of that.
-stringToNewBuffer :: BufferId -- ^ The buffer indentifier
+stringToNewBuffer :: MonadEditor m
+                  => BufferId -- ^ The buffer indentifier
                   -> YiString -- ^ The contents with which to populate
                               -- the buffer
-                  -> EditorM BufferRef
-stringToNewBuffer nm cs = do
+                  -> m BufferRef
+stringToNewBuffer nm cs = withEditor $ do
     u <- newBufRef
     defRegStyle <- configRegionStyle <$> askCfg
     insertBuffer $ set regionStyleA defRegStyle $ newB u nm cs
     m <- asks configFundamentalMode
-    withGivenBuffer0 u $ setAnyMode m
+    withGivenBuffer u $ setAnyMode m
     return u
 
-insertBuffer :: FBuffer -> EditorM ()
-insertBuffer b =
-  modify $ \e -> -- insert buffers at the end, so that
-           -- "background" buffers do not interfere.
-           e { bufferStack = nub (bufferStack e <> (bkey b :| []))
-             , buffers = M.insert (bkey b) b (buffers e)}
+insertBuffer :: MonadEditor m => FBuffer -> m ()
+insertBuffer b = withEditor . modify $ \e ->
+    -- insert buffers at the end, so that
+    -- "background" buffers do not interfere.
+    e { bufferStack = nub (bufferStack e <> (bkey b :| []))
+      , buffers = M.insert (bkey b) b (buffers e)}
 
 
 -- Prevent possible space leaks in the editor structure
@@ -176,8 +174,8 @@ forceFoldTabs :: Foldable t => t Tab -> t Tab
 forceFoldTabs x = foldr (seq . forceTab) x x
 
 -- | Delete a buffer (and release resources associated with it).
-deleteBuffer :: BufferRef -> EditorM ()
-deleteBuffer k = do
+deleteBuffer :: MonadEditor m => BufferRef -> m ()
+deleteBuffer k = withEditor $ do
   -- If the buffer has an associated close action execute that now.
   -- Unless the buffer is the last buffer in the editor. In which case
   -- it cannot be closed and, I think, the close action should not be
@@ -239,13 +237,13 @@ commonNamePrefix = commonPrefix . fmap (dropLast . splitPath)
         fbufs xs = [ x | FileBuffer x <- xs ]
           -- drop the last component, so that it is never hidden.
 
-getBufferStack :: EditorM (NonEmpty FBuffer)
-getBufferStack = do
+getBufferStack :: MonadEditor m => m (NonEmpty FBuffer)
+getBufferStack = withEditor $ do
   bufMap <- gets buffers
   gets $ fmap (bufMap M.!) . bufferStack
 
-findBuffer :: BufferRef -> EditorM (Maybe FBuffer)
-findBuffer k = gets $ M.lookup k . buffers
+findBuffer :: MonadEditor m => BufferRef -> m (Maybe FBuffer)
+findBuffer k = withEditor (gets (M.lookup k . buffers))
 
 -- | Find buffer with this key
 findBufferWith :: BufferRef -> Editor -> FBuffer
@@ -261,8 +259,8 @@ findBufferWithName n e =
   in map bkey $ filter sameIdent bufs
 
 -- | Find buffer with given name. Fail if not found.
-getBufferWithName :: T.Text -> EditorM BufferRef
-getBufferWithName bufName = do
+getBufferWithName :: MonadEditor m => T.Text -> m BufferRef
+getBufferWithName bufName = withEditor $ do
   bs <- gets $ findBufferWithName bufName
   case bs of
     [] -> fail ("Buffer not found: " ++ T.unpack bufName)
@@ -276,29 +274,18 @@ openAllBuffersE = do
   forM_ bs $ ((%=) windowsA . PL.insertRight =<<) . newWindowE False . bkey
 
 ------------------------------------------------------------------------
-
--- | Rotate the buffer stack by the given amount.
-shiftBuffer :: Int -> EditorM ()
-shiftBuffer shift = do
-  bufferStackA %= (\x -> case rotate x of
-                      [] -> x
-                      y:ys -> y :| ys)
-  fixCurrentWindow
-  where rotate l = take len $ NE.drop (shift `mod` len) $ NE.cycle l
-          where len = NE.length l
-
-------------------------------------------------------------------------
 -- | Perform action with any given buffer, using the last window that
 -- was used for that buffer.
-withGivenBuffer0 :: BufferRef -> BufferM a -> EditorM a
-withGivenBuffer0 k f = do
+withGivenBuffer :: MonadEditor m => BufferRef -> BufferM a -> m a
+withGivenBuffer k f = do
     b <- gets (findBufferWith k)
 
-    withGivenBufferAndWindow0 (b ^. lastActiveWindowA) k f
+    withGivenBufferAndWindow (b ^. lastActiveWindowA) k f
 
 -- | Perform action with any given buffer
-withGivenBufferAndWindow0 :: Window -> BufferRef -> BufferM a -> EditorM a
-withGivenBufferAndWindow0 w k f = do
+withGivenBufferAndWindow :: MonadEditor m
+    => Window -> BufferRef -> BufferM a -> m a
+withGivenBufferAndWindow w k f = withEditor $ do
   accum <- asks configKillringAccumulate
   let edit e = let b = findBufferWith k e
                    (v, us, b') = runBufferFull w b f
@@ -314,18 +301,18 @@ withGivenBufferAndWindow0 w k f = do
 
   updHandler <- return . bufferUpdateHandler =<< ask
   unless (null us || null updHandler) $
-    forM_ updHandler (\h -> withGivenBufferAndWindow0 w k (h us))
+    forM_ updHandler (\h -> withGivenBufferAndWindow w k (h us))
   return v
 
 -- | Perform action with current window's buffer
-withBuffer0 :: BufferM a -> EditorM a
-withBuffer0 f = do
+withCurrentBuffer :: MonadEditor m => BufferM a -> m a
+withCurrentBuffer f = withEditor $ do
   w <- use currentWindowA
-  withGivenBufferAndWindow0 w (bufkey w) f
+  withGivenBufferAndWindow w (bufkey w) f
 
-withEveryBufferE :: BufferM a -> EditorM [a]
-withEveryBufferE action =
-    gets bufferStack >>= mapM (`withGivenBuffer0` action) . NE.toList
+withEveryBuffer :: MonadEditor m => BufferM a -> m [a]
+withEveryBuffer action =
+    withEditor (gets bufferStack) >>= mapM (`withGivenBuffer` action) . NE.toList
 
 currentWindowA :: Lens' Editor Window
 currentWindowA = windowsA . PL.focus
@@ -338,18 +325,18 @@ currentBuffer = NE.head . bufferStack
 -- Handling of status
 
 -- | Prints a message with 'defaultStyle'.
-printMsg :: T.Text -> EditorM ()
+printMsg :: MonadEditor m => T.Text -> m ()
 printMsg s = printStatus ([s], defaultStyle)
 
 -- | Prints a all given messages with 'defaultStyle'.
-printMsgs :: [T.Text] -> EditorM ()
+printMsgs :: MonadEditor m => [T.Text] -> m ()
 printMsgs s = printStatus (s, defaultStyle)
 
-printStatus :: Status -> EditorM ()
+printStatus :: MonadEditor m => Status -> m ()
 printStatus = setTmpStatus 1
 
 -- | Set the "background" status line
-setStatus :: Status -> EditorM ()
+setStatus :: MonadEditor m => Status -> m ()
 setStatus = setTmpStatus maxBound
 
 -- | Clear the status line
@@ -362,8 +349,8 @@ statusLine = fst . statusLineInfo
 statusLineInfo :: Editor -> Status
 statusLineInfo = snd . head . statusLines
 
-setTmpStatus :: Int -> Status -> EditorM ()
-setTmpStatus delay s = do
+setTmpStatus :: MonadEditor m => Int -> Status -> m ()
+setTmpStatus delay s = withEditor $ do
   statusLinesA %= DelayList.insert (delay, s)
   -- also show in the messages buffer, so we don't loose any message
   bs <- gets (filter ((== MemBuffer "messages") . view identA) . M.elems . buffers)
@@ -372,10 +359,13 @@ setTmpStatus delay s = do
          (b':_) -> return $ bkey b'
          [] -> stringToNewBuffer (MemBuffer "messages") mempty
   let m = '(' `R.cons` listify (R.fromText <$> fst s) Mon.<> ", <function>)"
-  withGivenBuffer0 b $ botB >> insertN m
+  withGivenBuffer b $ botB >> insertN m
 
 -- ---------------------------------------------------------------------
 -- kill-register (vim-style) interface to killring.
+-- 
+-- Note that our vim keymap currently has its own registers
+-- and doesn't use killring.
 
 -- | Put string into yank register
 setRegE :: R.YiString -> EditorM ()
@@ -402,14 +392,6 @@ getDynamic = use (dynamicA . dynamicValueA)
 -- | Insert a value into the extensible state, keyed by its type
 setDynamic :: (MonadEditor m, YiVariable a) => a -> m ()
 setDynamic = assign (dynamicA . dynamicValueA)
-
--- | Attach the next buffer in the buffer stack to the current window.
-nextBufW :: EditorM ()
-nextBufW = shiftBuffer 1
-
--- | Attach the previous buffer in the stack list to the current window.
-prevBufW :: EditorM ()
-prevBufW = shiftBuffer (negate 1)
 
 -- | Like fnewE, create a new buffer filled with the String @s@,
 -- Switch the current window to this buffer. Doesn't associate any
@@ -463,10 +445,11 @@ switchToBufferWithNameE bufName = switchToBufferE =<< getBufferWithName bufName
 closeBufferE :: T.Text -> EditorM ()
 closeBufferE nm = deleteBuffer =<< getBufferWithNameOrCurrent nm
 
-getBufferWithNameOrCurrent :: T.Text -> EditorM BufferRef
-getBufferWithNameOrCurrent t = case T.null t of
-  True -> gets currentBuffer
-  False -> getBufferWithName t
+getBufferWithNameOrCurrent :: MonadEditor m => T.Text -> m BufferRef
+getBufferWithNameOrCurrent t = withEditor $
+    case T.null t of
+        True -> gets currentBuffer
+        False -> getBufferWithName t
 
 
 ------------------------------------------------------------------------
@@ -531,12 +514,12 @@ fixCurrentBufferA_ = lens id (\_old new -> let
 
 -- | Counterpart of fixCurrentBufferA_: fix the current window to point to the
 -- right buffer.
-fixCurrentWindow :: EditorM ()
-fixCurrentWindow =
+fixCurrentWindowE :: EditorM ()
+fixCurrentWindowE =
   gets currentBuffer >>= \b -> windowsA . PL.focus . bufkeyA .= b
 
 withWindowE :: Window -> BufferM a -> EditorM a
-withWindowE w = withGivenBufferAndWindow0 w (bufkey w)
+withWindowE w = withGivenBufferAndWindow w (bufkey w)
 
 findWindowWith :: WindowRef -> Editor -> Window
 findWindowWith k e =
@@ -584,18 +567,18 @@ splitE = do
 -- | Cycle to the next layout manager, or the first one if the current
 -- one is nonstandard.
 layoutManagersNextE :: EditorM ()
-layoutManagersNextE = withLMStack PL.next
+layoutManagersNextE = withLMStackE PL.next
 
 -- | Cycle to the previous layout manager, or the first one if the
 -- current one is nonstandard.
 layoutManagersPreviousE :: EditorM ()
-layoutManagersPreviousE = withLMStack PL.previous
+layoutManagersPreviousE = withLMStackE PL.previous
 
 -- | Helper function for 'layoutManagersNext' and 'layoutManagersPrevious'
-withLMStack :: (PL.PointedList AnyLayoutManager
+withLMStackE :: (PL.PointedList AnyLayoutManager
                 -> PL.PointedList AnyLayoutManager)
             -> EditorM ()
-withLMStack f = askCfg >>= \cfg ->
+withLMStackE f = askCfg >>= \cfg ->
   currentTabA . tabLayoutManagerA %= go (layoutManagers cfg)
   where
    go [] lm = lm
@@ -636,12 +619,14 @@ previousTabE = tabsA %= PL.previous
 
 -- | Moves the focused tab to the given index, or to the end if the
 -- index is not specified.
-moveTab :: Maybe Int -> EditorM ()
-moveTab Nothing  = do count <- uses tabsA PL.length
-                      tabsA %= fromJust . PL.moveTo (pred count)
-moveTab (Just n) = do newTabs <- uses tabsA (PL.moveTo n)
-                      when (isNothing newTabs) failure
-                      assign tabsA $ fromJust newTabs
+moveTabE :: Maybe Int -> EditorM ()
+moveTabE Nothing  = do
+    count <- uses tabsA PL.length
+    tabsA %= fromJust . PL.moveTo (pred count)
+moveTabE (Just n) = do
+    newTabs <- uses tabsA (PL.moveTo n)
+    when (isNothing newTabs) failure
+    assign tabsA $ fromJust newTabs
   where failure = fail $ "moveTab " ++ show n ++ ": no such tab"
 
 -- | Deletes the current tab. If there is only one tab open then error out.
@@ -672,7 +657,7 @@ closeOtherE = windowsA %= PL.deleteOthers
 
 -- | Switch focus to some other window. If none is available, create one.
 shiftOtherWindow :: MonadEditor m => m ()
-shiftOtherWindow = liftEditor $ do
+shiftOtherWindow = withEditor $ do
   len <- uses windowsA PL.length
   if len == 1
     then splitE
@@ -685,13 +670,13 @@ withOtherWindow :: MonadEditor m => m a -> m a
 withOtherWindow f = do
   shiftOtherWindow
   x <- f
-  liftEditor prevWinE
+  withEditor prevWinE
   return x
 
 acceptedInputs :: EditorM [T.Text]
 acceptedInputs = do
   km <- defaultKm <$> askCfg
-  keymap <- withBuffer0 $ gets (withMode0 modeKeymap)
+  keymap <- withCurrentBuffer $ gets (withMode0 modeKeymap)
   let l = I.accepted 3 . I.mkAutomaton . extractTopKeymap . keymap $ km
   return $ fmap T.unwords l
 
@@ -721,7 +706,7 @@ onCloseBufferE b a =
   onCloseActionsA %= M.insertWith' (\_ old_a -> old_a >> a) b a
 
 addJumpHereE :: EditorM ()
-addJumpHereE = addJumpAtE =<< withBuffer0 pointB
+addJumpHereE = addJumpAtE =<< withCurrentBuffer pointB
 
 addJumpAtE :: Point -> EditorM ()
 addJumpAtE point = do
@@ -732,11 +717,11 @@ addJumpAtE point = do
       case bfStillAlive of
         Nothing -> return False
         _ -> do
-          p <- withGivenBuffer0 bf . use $ markPointA mark
+          p <- withGivenBuffer bf . use $ markPointA mark
           return $! (p, bf) /= (point, bufkey w)
     _ -> return True
   when shouldAddJump $ do
-    m <- withBuffer0 setMarkHereB
+    m <- withCurrentBuffer setMarkHereB
     let bf = bufkey w
         j = Jump m bf
     assign currentWindowA $ w & jumpListA %~ addJump j
@@ -755,7 +740,7 @@ modifyJumpListE f = do
     Nothing -> return ()
     Just (PL.PointedList _ (Jump mark bf) _) -> do
       switchToBufferE bf
-      withBuffer0 $ use (markPointA mark) >>= moveTo
+      withCurrentBuffer $ use (markPointA mark) >>= moveTo
       currentWindowA . jumpListA %= f
 
 

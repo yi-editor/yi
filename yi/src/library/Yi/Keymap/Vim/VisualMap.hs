@@ -41,7 +41,7 @@ escAction :: EditorM RepeatToken
 escAction = do
     resetCountE
     clrStatus
-    withBuffer0 $ do
+    withCurrentBuffer $ do
         setVisibleSelection False
         assign regionStyleA Inclusive
     switchModeE Normal
@@ -73,7 +73,7 @@ zeroBinding = VimBindingE f
                       setCountE (10 * c)
                       return Continue
                   Nothing -> do
-                      withBuffer0 moveToSol
+                      withCurrentBuffer moveToSol
                       resetCountE
                       setStickyEolE False
                       return Continue
@@ -83,7 +83,7 @@ setMarkBinding :: VimBinding
 setMarkBinding = VimBindingE (f . T.unpack . _unEv)
     where f "m" (VimState { vsMode = (Visual _) }) = PartialMatch
           f ('m':c:[]) (VimState { vsMode = (Visual _) }) = WholeMatch $ do
-              withBuffer0 $ setNamedMarkHereB [c]
+              withCurrentBuffer $ setNamedMarkHereB [c]
               return Continue
           f _ _ = NoMatch
 
@@ -103,7 +103,7 @@ changeVisualStyleBinding = VimBindingE f
                   then escAction
                   else do
                       modifyStateE $ \s -> s { vsMode = newMode }
-                      withBuffer0 $ do
+                      withCurrentBuffer $ do
                           assign regionStyleA newStyle
                           assign rectangleSelectionA $ Block == newStyle
                           setVisibleSelection True
@@ -156,9 +156,9 @@ shiftDBinding :: VimBinding
 shiftDBinding = VimBindingE (f . T.unpack . _unEv)
     where f "D" (VimState { vsMode = (Visual _) }) = WholeMatch $ do
               (Visual style) <- vsMode <$> getDynamic
-              reg <- withBuffer0 regionOfSelectionB
+              reg <- withCurrentBuffer regionOfSelectionB
               case style of
-                  Block -> withBuffer0 $ do
+                  Block -> withCurrentBuffer $ do
                       (start, lengths) <- shapeOfBlockRegionB reg
                       moveTo start
                       startCol <- curCol
@@ -168,8 +168,8 @@ shiftDBinding = VimBindingE (f . T.unpack . _unEv)
                           whenM (fmap (== startCol) curCol) deleteToEol
                       leftOnEol
                   _ ->  do
-                      reg' <- withBuffer0 $ convertRegionToStyleB reg LineWise
-                      reg'' <- withBuffer0 $ mkRegionOfStyleB (regionStart reg')
+                      reg' <- withCurrentBuffer $ convertRegionToStyleB reg LineWise
+                      reg'' <- withCurrentBuffer $ mkRegionOfStyleB (regionStart reg')
                                                               (regionEnd reg' -~ Size 1)
                                                               Exclusive
                       void $ operatorApplyToRegionE opDelete 1 $ StyledRegion LineWise reg''
@@ -186,12 +186,12 @@ mkOperatorBinding op = VimBindingE f
     f _ _ = NoMatch
     action = do
         (Visual style) <- vsMode <$> getDynamic
-        region <- withBuffer0 regionOfSelectionB
+        region <- withCurrentBuffer regionOfSelectionB
         count <- getCountE
         token <- operatorApplyToRegionE op count $ StyledRegion style region
         resetCountE
         clrStatus
-        withBuffer0 $ do
+        withCurrentBuffer $ do
             setVisibleSelection False
             assign regionStyleA Inclusive
         return token
@@ -203,8 +203,8 @@ replaceBinding = VimBindingE (f . T.unpack . _unEv)
                 "r" -> PartialMatch
                 ('r':c:[]) -> WholeMatch $ do
                     (Visual style) <- vsMode <$> getDynamic
-                    region <- withBuffer0 regionOfSelectionB
-                    withBuffer0 $ transformCharactersInRegionB (StyledRegion style region)
+                    region <- withCurrentBuffer regionOfSelectionB
+                    withCurrentBuffer $ transformCharactersInRegionB (StyledRegion style region)
                                       (\x -> if x == '\n' then x else c)
                     switchModeE Normal
                     return Finish
@@ -216,7 +216,7 @@ switchEdgeBinding = VimBindingE (f . T.unpack . _unEv)
     where f [c] (VimState { vsMode = (Visual _) }) | c `elem` "oO"
               = WholeMatch $ do
                   (Visual style) <- vsMode <$> getDynamic
-                  withBuffer0 $ do
+                  withCurrentBuffer $ do
                       here <- pointB
                       there <- getSelectionMarkPointB
                       (here', there') <- case (c, style) of
@@ -232,12 +232,12 @@ insertBinding = VimBindingE (f . T.unpack . _unEv)
     where f evs (VimState { vsMode = (Visual _) }) | evs `elem` group "IA"
             = WholeMatch $ do
                   (Visual style) <- vsMode <$> getDynamic
-                  region <- withBuffer0 regionOfSelectionB
-                  cursors <- withBuffer0 $ case evs of
+                  region <- withCurrentBuffer regionOfSelectionB
+                  cursors <- withCurrentBuffer $ case evs of
                       "I" -> leftEdgesOfRegionB style region
                       "A" -> rightEdgesOfRegionB style region
                       _ -> error "Just silencing ghc's false positive warning."
-                  withBuffer0 $ moveTo $ head cursors
+                  withCurrentBuffer $ moveTo $ head cursors
                   modifyStateE $ \s -> s { vsSecondaryCursors = drop 1 cursors }
                   switchModeE $ Insert (head evs)
                   return Continue

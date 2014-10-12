@@ -47,7 +47,7 @@ changeBufferNameE :: YiM ()
 changeBufferNameE = withMinibufferFree "New buffer name:" strFun
   where
     strFun :: T.Text -> YiM ()
-    strFun = withBuffer . assign identA . MemBuffer
+    strFun = withCurrentBuffer . assign identA . MemBuffer
 
 ----------------------------
 -- | shell-command with argument prompt
@@ -100,7 +100,7 @@ buildRun cmd args onExit = withOtherWindow $ do
    withEditor $ do
        maybeM deleteBuffer =<< cabalBuffer <$> getDynamic
        setDynamic $ CabalBuffer $ Just b
-       withBuffer0 $ setMode Compilation.mode
+       withCurrentBuffer $ setMode Compilation.mode
    return ()
 
 makeBuild :: CommandArguments -> YiM ()
@@ -131,5 +131,5 @@ grepFind (Doc filePattern) (Doc searchedRegex) = withOtherWindow $ do
     void $ startSubprocess "find" [".",
                                       "-name", "_darcs", "-prune", "-o",
                                       "-name", filePattern, "-exec", "grep", "-Hnie", searchedRegex, "{}", ";"] (const $ return ())
-    withBuffer $ setMode Compilation.mode
+    withCurrentBuffer $ setMode Compilation.mode
     return ()

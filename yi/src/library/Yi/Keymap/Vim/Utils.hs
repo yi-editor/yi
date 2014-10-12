@@ -106,12 +106,12 @@ setUnjumpMarks p = do
 
 addVimJumpAtE :: Point -> EditorM ()
 addVimJumpAtE p = do
-    withBuffer0 $ setUnjumpMarks p
+    withCurrentBuffer $ setUnjumpMarks p
     addJumpAtE p
 
 addVimJumpHereE :: EditorM ()
 addVimJumpHereE = do
-    withBuffer0 $ setUnjumpMarks =<< pointB
+    withCurrentBuffer $ setUnjumpMarks =<< pointB
     addJumpHereE
 
 mkMotionBinding :: RepeatToken -> (VimMode -> Bool) -> VimBinding
@@ -127,7 +127,7 @@ mkMotionBinding token condition = VimBindingE f
     go evs (Move _style isJump move) = do
         state <- getDynamic
         count <- getMaybeCountE
-        prevPoint <- withBuffer0 $ do
+        prevPoint <- withCurrentBuffer $ do
             p <- pointB
             move count
             leftOnEol
@@ -138,7 +138,7 @@ mkMotionBinding token condition = VimBindingE f
         -- moving with j/k after $ sticks cursor to the right edge
         when (evs == "$") $ setStickyEolE True
         when (evs `elem` group "jk" && vsStickyEol state) $
-            withBuffer0 $ moveToEol >> moveXorSol 1
+            withCurrentBuffer $ moveToEol >> moveXorSol 1
         when (evs `notElem` group "jk$") $ setStickyEolE False
 
         let m = head evs

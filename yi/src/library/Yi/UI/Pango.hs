@@ -827,7 +827,7 @@ handleButtonClick ui ref = do
 
     let selectRegion tu = runAction $ do
           b <- gets $ bkey . findBufferWith (bufkey win)
-          withGivenBufferAndWindow0 win b $
+          withGivenBufferAndWindow win b $
             moveTo point >> regionOfB tu >>= setSelectRegionB
 
     case (click, button) of
@@ -835,7 +835,7 @@ handleButtonClick ui ref = do
         io $ writeIORef (lButtonPressed w) True
         runAction $ do
           b <- gets $ bkey . findBufferWith (bufkey win)
-          withGivenBufferAndWindow0 win b $ do
+          withGivenBufferAndWindow win b $ do
             m <- selMark <$> askMarks
             markPointA m .= point
             moveTo point
@@ -870,7 +870,7 @@ handleScroll ui w = do
     ifPressed <- readIORef $ lButtonPressed w
     -- query new coordinates
     let editorAction =
-          withBuffer0 $ scrollB $ case scrollDirection of
+          withCurrentBuffer $ scrollB $ case scrollDirection of
             ScrollUp   -> negate configAmount
             ScrollDown -> configAmount
             _          -> 0 -- Left/right scrolling not supported
@@ -909,7 +909,7 @@ selectArea :: UI -> WinInfo -> (Double, Double) -> IO ()
 selectArea ui w (x,y) = do
   p <- pointToOffset (x,y) w
   let editorAction = do
-        txt <- withBuffer0 $ do
+        txt <- withCurrentBuffer $ do
           moveTo p
           setVisibleSelection True
           readRegionB =<< getSelectRegionB
@@ -925,7 +925,7 @@ pasteSelectionClipboard ui w p cb = do
       cbHandler Nothing    = return ()
       cbHandler (Just txt) = uiActionCh ui $ makeAction $ do
         b <- gets $ bkey . findBufferWith (bufkey win)
-        withGivenBufferAndWindow0 win b $ do
+        withGivenBufferAndWindow win b $ do
           pointB >>= setSelectionMarkPointB
           moveTo p
           insertN txt
@@ -937,7 +937,7 @@ setSelectionClipboard ui _w cb = do
   -- Why uiActionCh doesn't allow returning values?
   selection <- newIORef mempty
   let yiAction = do
-        txt <- withEditor $ withBuffer0 $
+        txt <- withEditor $ withCurrentBuffer $
                fmap R.toText . readRegionB =<< getSelectRegionB :: YiM T.Text
         io $ writeIORef selection txt
   uiActionCh ui $ makeAction yiAction

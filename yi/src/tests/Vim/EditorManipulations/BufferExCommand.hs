@@ -125,7 +125,7 @@ tests c ev =
                     assertNotCurrentBuffer (nthBufferRef 1 buffers) editor
 
                 testActions buffers = do
-                    withBuffer0 $ insertN "The buffer is altered"
+                    withCurrentBuffer $ insertN "The buffer is altered"
                     ev $ ":buffer " ++ nthBufferName 1 buffers ++ "<CR>"
 
                 assertions editor buffers = do
@@ -141,7 +141,7 @@ tests c ev =
                     assertNotCurrentBuffer (nthBufferRef 1 buffers) editor
 
                 testActions buffers = do
-                    withBuffer0 $ insertN "The buffer is altered"
+                    withCurrentBuffer $ insertN "The buffer is altered"
                     ev $ ":buffer! " ++ nthBufferName 1 buffers ++ "<CR>"
 
                 assertions editor buffers = do

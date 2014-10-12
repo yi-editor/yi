@@ -233,16 +233,16 @@ filenameColOf :: BufferM () -> BufferM ()
 filenameColOf f = use bufferDynamicValueA >>= assign preferColA . Just . diredNameCol >> f
 
 resetDiredOpState :: YiM ()
-resetDiredOpState = withBuffer $ bufferDynamicValueA %= (\_ds -> def :: DiredOpState)
+resetDiredOpState = withCurrentBuffer $ bufferDynamicValueA %= (\_ds -> def :: DiredOpState)
 
 incDiredOpSucCnt :: YiM ()
-incDiredOpSucCnt = withBuffer $ bufferDynamicValueA %= (\ds -> ds { diredOpSucCnt = diredOpSucCnt ds + 1 })
+incDiredOpSucCnt = withCurrentBuffer $ bufferDynamicValueA %= (\ds -> ds { diredOpSucCnt = diredOpSucCnt ds + 1 })
 
 getDiredOpState :: YiM DiredOpState
-getDiredOpState = withBuffer $ use bufferDynamicValueA
+getDiredOpState = withCurrentBuffer $ use bufferDynamicValueA
 
 modDiredOpState :: (DiredOpState -> DiredOpState) -> YiM ()
-modDiredOpState f = withBuffer $ bufferDynamicValueA %= f
+modDiredOpState f = withCurrentBuffer $ bufferDynamicValueA %= f
 
 -- | execute the operations
 -- Pass the list of remaining operations down, insert new ops at the head if needed
@@ -252,7 +252,7 @@ procDiredOp counting (DORemoveFile f:ops) = do
   when counting postproc
   procDiredOp counting ops
     where postproc = do incDiredOpSucCnt
-                        withBuffer $ diredUnmarkPath (takeFileName f)
+                        withCurrentBuffer $ diredUnmarkPath (takeFileName f)
 procDiredOp counting (DORemoveDir f:ops) = do
   io $ printingException ("Remove directory " <> f) (removeDirectoryRecursive f)
   -- document suggests removeDirectoryRecursive will follow
@@ -261,7 +261,7 @@ procDiredOp counting (DORemoveDir f:ops) = do
   procDiredOp counting ops
     where postproc = do
             incDiredOpSucCnt
-            withBuffer $ diredUnmarkPath (takeFileName f)
+            withCurrentBuffer $ diredUnmarkPath (takeFileName f)
 procDiredOp _counting (DORemoveBuffer _:_) = undefined -- TODO
 procDiredOp counting  (DOCopyFile o n:ops) = do
   io $ printingException ("Copy file " <> o) (copyFile o n)
@@ -269,7 +269,7 @@ procDiredOp counting  (DOCopyFile o n:ops) = do
   procDiredOp counting ops
     where postproc = do
             incDiredOpSucCnt
-            withBuffer $ diredUnmarkPath (takeFileName o)
+            withCurrentBuffer $ diredUnmarkPath (takeFileName o)
             -- TODO: mark copied files with "C" if the target dir's dired buffer exists
 procDiredOp counting (DOCopyDir o n:ops) = do
   contents <- io $ printingException (concat ["Copy directory ", o, " to ", n]) doCopy
@@ -279,7 +279,7 @@ procDiredOp counting (DOCopyDir o n:ops) = do
   procDiredOp counting ops
     where postproc = do
             incDiredOpSucCnt
-            withBuffer $ diredUnmarkPath (takeFileName o)
+            withCurrentBuffer $ diredUnmarkPath (takeFileName o)
           -- perform dir copy: create new dir and create other copy ops
           doCopy :: IO [FilePath]
           doCopy = do
@@ -303,7 +303,7 @@ procDiredOp counting (DORename o n:ops) = do
   procDiredOp counting ops
     where postproc = do
             incDiredOpSucCnt
-            withBuffer $ diredUnmarkPath (takeFileName o)
+            withCurrentBuffer $ diredUnmarkPath (takeFileName o)
 procDiredOp counting r@(DOConfirm prompt eops enops:ops) =
   withMinibuffer (T.pack prompt `T.append` " (yes/no)") noHint (act . T.unpack)
   where act s = case map toLower s of
@@ -405,7 +405,7 @@ askDelFiles dir fs =
 diredDoDel :: YiM ()
 diredDoDel = do
   dir <- currentDir
-  maybefile <- withBuffer fileFromPoint
+  maybefile <- withCurrentBuffer fileFromPoint
   case maybefile of
     Just (fn, de) -> askDelFiles dir [(fn, de)]
     Nothing       -> noFileAtThisLine
@@ -426,7 +426,8 @@ diredKeymap =
              char 'm'                   ?>>! diredMark,
              char '^'                   ?>>! diredUpDir,
              char '+'                   ?>>! diredCreateDir,
-             char 'q'                   ?>>! (deleteBuffer =<< gets currentBuffer),
+             char 'q'                   ?>>!
+                 ((deleteBuffer =<< gets currentBuffer) :: EditorM ()),
              char 'x'                   ?>>! diredDoMarkedDel,
              oneOf [ctrl $ char 'm', spec KEnter, char 'f'] >>! diredLoad,
              oneOf [char 'u', spec KBS]  >>! diredUnmark,
@@ -439,7 +440,7 @@ diredKeymap =
 dired :: YiM ()
 dired = do
     (withEditor . printMsg) "Dired..."
-    maybepath <- withBuffer $ gets file
+    maybepath <- withCurrentBuffer $ gets file
     dir <- io $ getFolder maybepath
     void $ editFile dir
 
@@ -452,7 +453,7 @@ diredDirBuffer d = do
     dir <- io $ canonicalizePath d
     b <- withEditor $ stringToNewBuffer (FileBuffer dir) mempty
     withEditor $ switchToBufferE b
-    withBuffer $ do
+    withCurrentBuffer $ do
       bufferDynamicValueA %= (diredPathA .~ dir)
       assign directoryContentA True
     diredRefresh
@@ -461,13 +462,13 @@ diredDirBuffer d = do
 -- | Write the contents of the supplied directory into the current buffer in dired format
 diredRefresh :: YiM ()
 diredRefresh = do
-    dState <- withBuffer $ use bufferDynamicValueA
+    dState <- withCurrentBuffer $ use bufferDynamicValueA
     let dir = diredPath dState
     -- Scan directory
     di <- io $ diredScanDir dir
     currFile <- if null (diredFilePoints dState)
                 then return ""
-                else do maybefile <- withBuffer fileFromPoint
+                else do maybefile <- withCurrentBuffer fileFromPoint
                         case maybefile of
                           Just (fp, _) -> return fp
                           Nothing      -> return ""
@@ -480,7 +481,7 @@ diredRefresh = do
                   let l1details = init $ head strss' in Data.List.sum (map length l1details) + length l1details
 
     -- Set buffer contents
-    withBuffer $ do -- Clear buffer
+    withCurrentBuffer $ do -- Clear buffer
       assign readOnlyA False
       ---- modifications begin here
       deleteRegionB =<< regionOfB Document
@@ -693,7 +694,7 @@ diredUnmarkAll = bypassReadOnly $ do
                    diredRefreshMark
 
 currentDir :: YiM FilePath
-currentDir = fmap diredPath $ withBuffer $ use bufferDynamicValueA
+currentDir = fmap diredPath $ withCurrentBuffer $ use bufferDynamicValueA
 
 -- | move selected files in a given directory to the target location given
 -- by user input
@@ -802,7 +803,7 @@ diredRename :: YiM ()
 diredRename = do
   dir <- currentDir
   fs <- markedFiles (`Data.List.elem` "*")
-  if null fs then do maybefile <- withBuffer fileFromPoint
+  if null fs then do maybefile <- withCurrentBuffer fileFromPoint
                      case maybefile of
                        Just (fn, de) -> askRenameFiles dir [(fn, de)]
                        Nothing       -> noFileAtThisLine
@@ -812,7 +813,7 @@ diredCopy :: YiM ()
 diredCopy = do
   dir <- currentDir
   fs <- markedFiles (`Data.List.elem` "*")
-  if null fs then do maybefile <- withBuffer fileFromPoint
+  if null fs then do maybefile <- withCurrentBuffer fileFromPoint
                      case maybefile of
                        Just (fn, de) -> askCopyFiles dir [(fn, de)]
                        Nothing       -> noFileAtThisLine
@@ -821,7 +822,7 @@ diredCopy = do
 diredLoad :: YiM ()
 diredLoad = do
   dir <- currentDir
-  maybefile <- withBuffer fileFromPoint
+  maybefile <- withCurrentBuffer fileFromPoint
   case maybefile of
     Just (fn, de) -> do
       let sel = dir </> fn
@@ -884,7 +885,7 @@ fileFromPoint = do
 
 markedFiles :: (Char -> Bool) -> YiM [(FilePath, DiredEntry)]
 markedFiles cond = do
-  dState <- withBuffer $ use bufferDynamicValueA
+  dState <- withCurrentBuffer $ use bufferDynamicValueA
   let fs = fst . unzip $ filter (cond . snd) (M.assocs $ diredMarks dState)
   return $ map (\f -> (f, diredEntries dState M.! f)) fs
 

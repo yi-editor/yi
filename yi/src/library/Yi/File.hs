@@ -46,11 +46,11 @@ import           Yi.Utils
 -- | Revert to the contents of the file on disk
 revertE :: YiM ()
 revertE = do
-  withBuffer (gets file) >>= \case
+  withCurrentBuffer (gets file) >>= \case
     Just fp -> do
       now <- io getCurrentTime
       s <- liftBase $ R.readFile fp
-      withBuffer $ revertB s now
+      withCurrentBuffer $ revertB s now
       (withEditor . printMsg) ("Reverted from " <> showT fp)
     Nothing -> (withEditor . printMsg) "Can't revert, no file associated with buffer."
 
@@ -59,10 +59,10 @@ revertE = do
 -- Need to catch any exception to avoid losing bindings
 viWrite :: YiM ()
 viWrite = do
-  withBuffer (gets file) >>= \case
+  withCurrentBuffer (gets file) >>= \case
    Nothing -> errorEditor "no file name associate with buffer"
    Just f  -> do
-       bufInfo <- withBuffer bufInfoB
+       bufInfo <- withCurrentBuffer bufInfoB
        let s   = bufInfoFileName bufInfo
        fwriteE
        let message = (showT f <>) (if f == s
@@ -73,7 +73,7 @@ viWrite = do
 -- | Try to write to a named file in the manner of vi/vim
 viWriteTo :: T.Text -> YiM ()
 viWriteTo f = do
-  bufInfo <- withBuffer bufInfoB
+  bufInfo <- withCurrentBuffer bufInfoB
   let s   = T.pack $ bufInfoFileName bufInfo
   fwriteToE f
   let message = f `T.append` if f == s

@@ -38,8 +38,6 @@ module Yi.Keymap
     , YiM(..)
     , withUI
     , unsafeWithEditor
-    , withGivenBuffer
-    , withBuffer
     , readEditor
     , catchDynE
     , catchJustE
@@ -86,12 +84,6 @@ write x = I.write (makeAction x)
 
 withUI :: (UI Editor -> IO a) -> YiM a
 withUI = with yiUi
-
-withGivenBuffer :: MonadEditor m => BufferRef -> BufferM a -> m a
-withGivenBuffer b f = withEditor (Editor.withGivenBuffer0 b f)
-
-withBuffer :: MonadEditor m => BufferM a -> m a
-withBuffer f = withEditor (Editor.withBuffer0 f)
 
 readEditor :: MonadEditor m => (Editor -> a) -> m a
 readEditor f = withEditor (gets f)

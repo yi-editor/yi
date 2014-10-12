@@ -424,7 +424,7 @@ ghciSend cmd = do
 ghciLoadBuffer :: YiM ()
 ghciLoadBuffer = do
     fwriteE
-    f <- withBuffer (gets file)
+    f <- withCurrentBuffer (gets file)
     case f of
       Nothing -> error "Couldn't get buffer filename in ghciLoadBuffer"
       Just filename -> ghciSend $ ":load " <> show filename
@@ -433,7 +433,7 @@ ghciLoadBuffer = do
 -- check for errors (yet)
 ghciInferType :: YiM ()
 ghciInferType = do
-    nm <- withBuffer (readUnitB unitWord)
+    nm <- withCurrentBuffer (readUnitB unitWord)
     unless (R.null nm) $
       withMinibufferGen (R.toText nm) noHint "Insert type of which identifier?"
       return (const $ return ()) (ghciInferTypeOf . R.fromText)
@@ -443,7 +443,7 @@ ghciInferTypeOf nm = do
     buf <- ghciGet
     result <- Interactive.queryReply buf (":t " <> R.toString nm)
     let successful = (not . R.null) nm && nm == result
-    when successful . withBuffer $
+    when successful . withCurrentBuffer $
       moveToSol *> insertB '\n' *> leftB
       *> insertN result *> rightB
 

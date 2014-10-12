@@ -22,7 +22,6 @@ import Yi.Editor
 import Yi.IReader
 import Yi.Keymap
 import Yi.Keymap.Keys
-import Yi.Core
 import Yi.Modes (anyExtension, fundamentalMode)
 
 abstract :: Mode syntax
@@ -40,6 +39,6 @@ ireaderMode = abstract { modeName = "interactive reading of text" }
 
 ireadMode ::  YiM ()
 ireadMode = do
-  withBuffer $ setAnyMode $ AnyMode ireaderMode
+  withCurrentBuffer $ setAnyMode $ AnyMode ireaderMode
   nextArticle
   (withEditor . printMsg) "M-` new; M-0 delete; M-[1-9]: save w/higher priority"

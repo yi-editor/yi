@@ -88,7 +88,7 @@ stringRectangle inserted = onRectangle stringLine
 
 killRectangle :: EditorM ()
 killRectangle = do
-  cutted <- withBuffer0 $ do
+  cutted <- withCurrentBuffer $ do
       (reg, l, r) <- getRectangle
       text <- readRegionB reg
       let (cutted, rest) = unzip $ fmap cut $ R.lines' text
@@ -103,6 +103,6 @@ killRectangle = do
 yankRectangle :: EditorM ()
 yankRectangle = do
   text <- R.lines' <$> getRegE
-  withBuffer0 $ forM_ text $ \t -> do
+  withCurrentBuffer $ forM_ text $ \t -> do
     savingPointB $ insertN t
     lineDown
