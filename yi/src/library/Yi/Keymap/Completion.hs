@@ -1,8 +1,3 @@
---
--- Copyright (c) B.Zapf July 2005
---
---
-
 -- | This is a little helper for completion interfaces.
 
 module Yi.Keymap.Completion (
@@ -62,4 +57,3 @@ complete (CT level) (a:ta) = first ((:) a) $
 
 
 --alternatives :: CompletionTree a->[[a]]
-

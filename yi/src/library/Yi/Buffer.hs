@@ -3,7 +3,6 @@
 -- |
 -- Module      :  Yi.Buffer
 -- License     :  GPL-2
--- Copyright   :  Jean-Philippe Bernardy 2008
 -- Maintainer  :  yi-devel@googlegroups.com
 -- Stability   :  experimental
 -- Portability :  portable

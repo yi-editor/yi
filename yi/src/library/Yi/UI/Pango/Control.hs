@@ -7,7 +7,6 @@
 
 -- |
 -- Module      :  Yi.UI.Pango.Control
--- Copyright   :  2007-2009 Jean-Philippe Bernardy, Hamish Mackenzie
 -- License     :  GPL
 
 module Yi.UI.Pango.Control (

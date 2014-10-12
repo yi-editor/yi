@@ -1,6 +1,5 @@
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE OverloadedStrings #-}
--- Copyright (c) Jean-Philippe Bernardy 2006,2007,2008.
 
 module Yi.Config.Default ( defaultConfig, availableFrontends, defaultEmacsConfig
                          , defaultVimConfig, defaultCuaConfig, toVimStyleConfig

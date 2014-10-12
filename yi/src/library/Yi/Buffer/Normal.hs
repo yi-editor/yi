@@ -1,7 +1,4 @@
 {-# LANGUAGE TemplateHaskell, CPP, StandaloneDeriving #-}
---
--- Copyright (C) 2008 JP Bernardy
---
 
 -- | A normalized API to many buffer operations.
 

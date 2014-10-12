@@ -4,7 +4,6 @@
 
 -- |
 -- Module      :  Yi.Window
--- Copyright   :  (c) Jean-Philippe Bernardy 2008
 -- License     :  GPL-2
 -- Maintainer  :  yi-devel@googlegroups.com
 -- Stability   :  experimental

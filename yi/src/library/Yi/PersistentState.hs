@@ -8,8 +8,7 @@
   CPP,
   StandaloneDeriving,
   DeriveGeneric #-}
--- Copyright '2012 by Michal J. Gajda
---
+
 -- | This module implements persistence across different Yi runs.
 --   It includes minibuffer command history, marks etc.
 --   Warning: Current version will _not_ check whether two or more instances

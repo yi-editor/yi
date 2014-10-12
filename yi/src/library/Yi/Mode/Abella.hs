@@ -5,7 +5,6 @@
 
 -- |
 -- Module      :  Yi.Mode.Abella
--- Copyright   :  (c) Nicolas Pouillard 2009
 -- License     :  GPL-2
 -- Maintainer  :  yi-devel@googlegroups.com
 -- Stability   :  experimental

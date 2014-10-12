@@ -1,4 +1,3 @@
--- Copyright (c) JP Bernardy 2008
 {-# LANGUAGE GADTs, RankNTypes, ScopedTypeVariables, TypeOperators #-}
 
 -- TODO:
@@ -365,6 +364,3 @@ onRight f (Zip errs x y) = Zip errs x (f y)
 
 
 type Process token result = Zip token (result :< ())
-
-
-

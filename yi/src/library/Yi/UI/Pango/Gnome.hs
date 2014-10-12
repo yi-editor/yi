@@ -1,9 +1,4 @@
---
--- Copyright (c) Colin McQuillan 2009
---
--- Gnome integration
---
-
+-- | Gnome integration
 module Yi.UI.Pango.Gnome(watchSystemFont) where
 
 import Control.Monad
@@ -24,4 +19,3 @@ watch gconf key cb = do
   cb =<< gconfGet gconf key
   gconfNotifyAdd gconf key $ \key' val -> when (key == key') (cb val)
   return ()
-

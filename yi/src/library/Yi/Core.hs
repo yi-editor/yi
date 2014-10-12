@@ -8,9 +8,6 @@
 -- |
 -- Module      :  Yi.Core
 -- License     :  GPL-2
--- Copyright   :  Tuomo Valkonen         2004
---                Don Stewart            2004-2005
---                Jean-Philippe Bernardy 2007-2008
 -- Maintainer  :  yi-devel@googlegroups.com
 -- Stability   :  experimental
 -- Portability :  portable

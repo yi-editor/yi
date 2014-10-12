@@ -1,4 +1,3 @@
--- Copyright (c) JP Bernardy 2008
 {-# LANGUAGE ScopedTypeVariables #-}
 
 module Yi.IncrementalParse (recoverWith, symbol, eof, lookNext, testNext,
@@ -28,4 +27,3 @@ scanner parser input = Scanner
         updateState0 curState toks@((st,tok):rest) = ((st, curState), result) : updateState0 nextState rest
             where nextState =       evalL $           pushSyms [tok]           curState
                   result    = fst $ evalR $ pushEof $ pushSyms (fmap snd toks) curState
-

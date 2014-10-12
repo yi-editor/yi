@@ -5,7 +5,6 @@
 
 -- |
 -- Module      :  Yi.Syntax.Latex
--- Copyright   :  (c) JP Bernardy 2008
 -- License     :  GPL-2
 -- Maintainer  :  yi-devel@googlegroups.com
 -- Stability   :  experimental

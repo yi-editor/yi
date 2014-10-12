@@ -1,9 +1,5 @@
 {-# LANGUAGE TemplateHaskell, CPP, StandaloneDeriving, DeriveGeneric #-}
 
--- Copyright (c) 2004 Don Stewart - http://www.cse.unsw.edu.au/~dons
--- Copyright (c) 2008 JP Bernardy
-
---
 -- | An implementation of restricted, linear undo, as described in:
 --
 -- >    T. Berlage, "A selective undo mechanism for graphical user interfaces

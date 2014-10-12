@@ -1,10 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
---
--- Copyright (c) Krasimir Angelov 2008.
---
--- Random GTK utils
---
 
+-- | Random GTK utils
 module Yi.UI.Pango.Utils where
 
 import Control.Exception (catch, throw)

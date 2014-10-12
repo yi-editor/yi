@@ -1,6 +1,5 @@
 {-# LANGUAGE ScopedTypeVariables, ExistentialQuantification, MultiParamTypeClasses #-}
 {-# OPTIONS_GHC -fno-warn-name-shadowing #-}
--- Copyright (C) JP Bernardy 2009
 
 -- | This module defines implementations of syntax-awareness drivers.
 
@@ -58,4 +57,3 @@ unzipFM l = (M.fromList mu, M.fromList mv)
 
 zipWithFM :: Ord k => (u -> v -> w) -> v -> Map k u -> Map k v -> [(k,w)]
 zipWithFM f v0 mu mv = [ (k,f u (M.findWithDefault v0 k mv) ) | (k,u) <- M.assocs mu]
-
