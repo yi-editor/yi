@@ -71,7 +71,7 @@ maxHistoryEntries = customVariable . unMaxHistoryEntries
 
 -- | Trims per-command histories to contain at most N completions each.
 trimHistories :: Int -> Histories -> Histories
-trimHistories maxHistory = M.map trimH
+trimHistories maxHistory (Histories m) = Histories $ M.map trimH m
   where
     trimH (History cur content prefix) = History cur (trim content) prefix
     trim content = drop (max 0 (length content - maxHistory)) content
