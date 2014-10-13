@@ -461,7 +461,8 @@ diredKeymap = important $ choice
       ((deleteBuffer =<< gets currentBuffer) :: EditorM ())
   , char 'x'                   ?>>! diredDoMarkedDel
   , oneOf [ctrl $ char 'm', spec KEnter, char 'f'] >>! diredLoad
-  , oneOf [char 'u', spec KBS]  >>! diredUnmark
+  , char 'u'                   ?>>! diredUnmark Forward
+  , spec KBS                   ?>>! diredUnmark Backward
   , char 'D'                   ?>>! diredDoDel
   , char 'U'                   ?>>! diredUnmarkAll
   , char 'R'                   ?>>! diredRename
@@ -735,15 +736,16 @@ diredRefreshMark = do
       styleOfMark  _  = defaultStyle
 
 
-diredUnmark :: BufferM ()
-diredUnmark = bypassReadOnly $ do
+diredUnmark :: Direction -> BufferM ()
+diredUnmark d = bypassReadOnly $ do
+  let lineDir = case d of { Forward -> lineDown; Backward -> lineUp; }
   maybefile <- fileFromPoint
   case maybefile of
     Just (fn, _de) -> do
       diredUnmarkPath fn
-      filenameColOf lineDown
+      filenameColOf lineDir
       diredRefreshMark
-    Nothing        -> filenameColOf lineDown
+    Nothing        -> filenameColOf lineDir
 
 
 diredUnmarkPath :: FilePath -> BufferM()
