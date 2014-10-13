@@ -1,6 +1,7 @@
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE TemplateHaskell #-}
@@ -130,12 +131,20 @@ data DiredEntry = DiredFile DiredFileInfo
                 | DiredNoInfo
                 deriving (Show, Eq, Typeable)
 
+-- | Alias serving as documentation of some arguments. We keep most
+-- paths as 'R.YiString' for the sole reason that we'll have to render
+-- them.
+type DiredFilePath = R.YiString
+
+-- | Handy alias for 'DiredEntry' map.
+type DiredEntries = M.Map DiredFilePath DiredEntry
+
 data DiredState = DiredState
   { diredPath :: FilePath -- ^ The full path to the directory being viewed
     -- FIXME Choose better data structure for Marks...
    , diredMarks :: M.Map FilePath Char
      -- ^ Map values are just leafnames, not full paths
-   , diredEntries :: M.Map R.YiString DiredEntry
+   , diredEntries :: DiredEntries
      -- ^ keys are just leafnames, not full paths
    , diredFilePoints :: [(Point,Point,FilePath)]
      -- ^ position in the buffer where filename is
@@ -449,25 +458,41 @@ diredDoMarkedDel = do
   askDelFiles dir fs
 
 diredKeymap :: Keymap -> Keymap
-diredKeymap = important $ choice
-  [ char 'p'                   ?>>! filenameColOf lineUp
-  , oneOf [char 'n', char ' ']  >>! filenameColOf lineDown
-  , char 'd'                   ?>>! diredMarkDel
-  , char 'g'                   ?>>! diredRefresh
-  , char 'm'                   ?>>! diredMark
-  , char '^'                   ?>>! diredUpDir
-  , char '+'                   ?>>! diredCreateDir
-  , char 'q'                   ?>>!
-      ((deleteBuffer =<< gets currentBuffer) :: EditorM ())
-  , char 'x'                   ?>>! diredDoMarkedDel
-  , oneOf [ctrl $ char 'm', spec KEnter, char 'f'] >>! diredLoad
-  , char 'u'                   ?>>! diredUnmark Forward
-  , spec KBS                   ?>>! diredUnmark Backward
-  , char 'D'                   ?>>! diredDoDel
-  , char 'U'                   ?>>! diredUnmarkAll
-  , char 'R'                   ?>>! diredRename
-  , char 'C'                   ?>>! diredCopy
-  ]
+diredKeymap = important $ withArg mainMap
+  where
+    -- produces a copy of the map allowing for C-u
+    withArg :: (Maybe Int -> Keymap) -> Keymap
+    withArg k = choice [ ctrlCh 'u' ?>> k (Just 1) , k Nothing ]
+
+    mainMap :: Maybe Int -> Keymap
+    mainMap univArg = choice
+      [ char 'p'                   ?>>! filenameColOf lineUp
+      , oneOf [char 'n', char ' ']  >>! filenameColOf lineDown
+      , char 'd'                   ?>>! diredMarkDel
+      , char 'g'                   ?>>! diredRefresh
+      , char 'm'                   ?>>! diredMark
+      , char '^'                   ?>>! diredUpDir
+      , char '+'                   ?>>! diredCreateDir
+      , char 'q'                   ?>>!
+          ((deleteBuffer =<< gets currentBuffer) :: EditorM ())
+      , char 'x'                   ?>>! diredDoMarkedDel
+      , oneOf [ctrl $ char 'm', spec KEnter, char 'f'] >>! diredLoad
+      , char 'u'                   ?>>! diredUnmark Forward
+      , spec KBS                   ?>>! diredUnmark Backward
+      , char 'D'                   ?>>! diredDoDel
+      , char 'U'                   ?>>! diredUnmarkAll
+      , char 'R'                   ?>>! diredRename
+      , char 'C'                   ?>>! diredCopy
+      , char '*'                   ?>>  multiMarks univArg
+      ]
+
+    multiMarks :: Maybe Int -> Keymap
+    multiMarks univArg = choice
+      [ char '!' ?>>! diredUnmarkAll
+      , char '@' ?>>! diredMarkSymlinks univArg
+      , char '/' ?>>! diredMarkDirectories univArg
+      , char 't' ?>>! diredToggleAllMarks
+      ]
 
 dired :: YiM ()
 dired = do
@@ -608,15 +633,15 @@ linesToDisplay dState = map (uncurry lineToDisplay) (M.assocs entries)
                DRDates $ modificationTimeString v]
 
 -- | Return dired entries for the contents of the supplied directory
-diredScanDir :: FilePath -> IO (M.Map R.YiString DiredEntry)
+diredScanDir :: FilePath -> IO DiredEntries
 diredScanDir dir = do
     files <- getDirectoryContents dir
     foldM (lineForFile dir) M.empty files
     where
     lineForFile :: FilePath
-                -> M.Map R.YiString DiredEntry
+                -> DiredEntries
                 -> FilePath
-                -> IO (M.Map R.YiString DiredEntry)
+                -> IO DiredEntries
     lineForFile d m f = do
       let fp = d </> f
       fileStatus <- getSymbolicLinkStatus fp
@@ -702,10 +727,64 @@ diredMark = diredMarkWithChar '*' lineDown
 diredMarkDel :: BufferM ()
 diredMarkDel = diredMarkWithChar 'D' lineDown
 
+-- | Generic mark toggler.
+diredMarkKind :: Maybe Int
+                 -- ^ universal argument, usually indicating whether
+                 -- to mark or unmark. Here ‘Just …’ is taken as
+                 -- unmark.
+              -> (DiredFilePath -> DiredEntry -> Bool)
+                 -- ^ Picks which entries to consider
+              -> Char
+                 -- ^ Character used for marking. Pass garbage if
+                 -- unmarking.
+              -> BufferM ()
+diredMarkKind m p c = bypassReadOnly $ do
+  dState <- getBufferDyn
+  let es = M.assocs $ diredEntries dState
+      ms = M.fromList [ (R.toString fp, c) | (fp, e) <- es, p fp e ]
+  putBufferDyn (dState & diredMarksA %~ run ms)
+  diredRefreshMark
+  where
+    run :: M.Map FilePath Char -> M.Map FilePath Char -> M.Map FilePath Char
+    run ms cms = case m of
+      Nothing -> M.union ms cms
+      Just _ -> deleteKeys cms (M.keys ms)
+
+diredMarkSymlinks :: Maybe Int -> BufferM ()
+diredMarkSymlinks m = diredMarkKind m p '*'
+  where
+    p _ DiredSymLink {} = True
+    p _ _ = False
+
+diredMarkDirectories :: Maybe Int -> BufferM ()
+diredMarkDirectories m = diredMarkKind m p '*'
+  where
+    p "." DiredDir {} = False
+    p ".." DiredDir {} = False
+    p _ DiredDir {} = True
+    p _ _ = False
+
+diredToggleAllMarks :: BufferM ()
+diredToggleAllMarks = bypassReadOnly $ do
+  dState <- getBufferDyn
+  let es = diredEntries dState
+  putBufferDyn (dState & diredMarksA %~ tm es)
+  diredRefreshMark
+  where
+    -- Get all entries, filter out the ones that are marked already,
+    -- then mark everything that remains, in effect toggling the
+    -- marks.
+    tm :: DiredEntries -> M.Map FilePath Char -> M.Map FilePath Char
+    tm de ms = let unmarked = deleteKeys (M.mapKeys R.toString de) (M.keys ms)
+               in M.map (const '*') unmarked
+
+-- | Delete all the keys from the map.
+deleteKeys :: Ord k => M.Map k v -> [k] -> M.Map k v
+deleteKeys = foldl' (flip M.delete)
+
 diredMarkWithChar :: Char -> BufferM () -> BufferM ()
 diredMarkWithChar c mv = bypassReadOnly $ do
-  maybefile <- fileFromPoint
-  case maybefile of
+  fileFromPoint >>= \case
     Just (fn, _de) -> do
       state <- getBufferDyn
       putBufferDyn (state & diredMarksA %~ M.insert fn c)
@@ -735,12 +814,13 @@ diredRefreshMark = do
       styleOfMark 'D' = const (withFg red)
       styleOfMark  _  = defaultStyle
 
-
-diredUnmark :: Direction -> BufferM ()
+-- | Removes mark from current file (if any) and moves in the
+-- specified direction.
+diredUnmark :: Direction -- ^ Direction to move in after unmarking
+            -> BufferM ()
 diredUnmark d = bypassReadOnly $ do
   let lineDir = case d of { Forward -> lineDown; Backward -> lineUp; }
-  maybefile <- fileFromPoint
-  case maybefile of
+  fileFromPoint >>= \case
     Just (fn, _de) -> do
       diredUnmarkPath fn
       filenameColOf lineDir
@@ -888,8 +968,7 @@ diredCopy = do
 diredLoad :: YiM ()
 diredLoad = do
   dir <- currentDir
-  maybefile <- withCurrentBuffer fileFromPoint
-  case maybefile of
+  withCurrentBuffer fileFromPoint >>= \case
     Just (fn, de) -> do
       let sel = dir </> fn
           sel' = T.pack sel

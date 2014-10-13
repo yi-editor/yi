@@ -31,6 +31,7 @@
  * Allow the font size to be changed per buffer (#608)
  * Double-click and triple-click selection in pango (#100 and #101)
  * Count columns properly in presence of tabs (#440)
+ * Extra marking operations in dired
 
 0.9.0
 -----
