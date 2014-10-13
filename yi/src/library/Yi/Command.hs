@@ -47,7 +47,7 @@ changeBufferNameE :: YiM ()
 changeBufferNameE = withMinibufferFree "New buffer name:" strFun
   where
     strFun :: T.Text -> YiM ()
-    strFun = withBuffer . assign identA . MemBuffer
+    strFun = withCurrentBuffer . assign identA . MemBuffer
 
 ----------------------------
 -- | shell-command with argument prompt
@@ -64,13 +64,13 @@ shellCommandV cmd = do
                    then withEditor . void $ -- see GitHub issue #477
                           newBufferE (MemBuffer "Shell Command Output")
                                      (R.fromString cmdOut)
-                   else (withEditor . printMsg) $ case T.pack cmdOut of
+                   else printMsg $ case T.pack cmdOut of
                      "" -> "(Shell command with no output)"
                      -- Drop trailing newline from output
                      xs -> if T.last xs == '\n' then T.init xs else xs
     -- FIXME: here we get a string and convert it back to utf8;
     -- this indicates a possible bug.
-    ExitFailure _ -> (withEditor . printMsg) $ T.pack cmdErr
+    ExitFailure _ -> printMsg $ T.pack cmdErr
 
 ----------------------------
 -- Cabal-related commands
@@ -97,10 +97,9 @@ reloadProjectE s = withUI $ \ui -> reloadProject ui s
 buildRun :: T.Text -> [T.Text] -> (Either SomeException ExitCode -> YiM x) -> YiM ()
 buildRun cmd args onExit = withOtherWindow $ do
    b <- startSubprocess (T.unpack cmd) (T.unpack <$> args) onExit
-   withEditor $ do
-       maybeM deleteBuffer =<< cabalBuffer <$> getEditorDyn
-       putEditorDyn $ CabalBuffer $ Just b
-       withBuffer0 $ setMode Compilation.mode
+   maybeM deleteBuffer =<< cabalBuffer <$> getEditorDyn
+   putEditorDyn $ CabalBuffer $ Just b
+   withCurrentBuffer $ setMode Compilation.mode
    return ()
 
 makeBuild :: CommandArguments -> YiM ()
@@ -131,5 +130,5 @@ grepFind (Doc filePattern) (Doc searchedRegex) = withOtherWindow $ do
     void $ startSubprocess "find" [".",
                                       "-name", "_darcs", "-prune", "-o",
                                       "-name", filePattern, "-exec", "grep", "-Hnie", searchedRegex, "{}", ";"] (const $ return ())
-    withBuffer $ setMode Compilation.mode
+    withCurrentBuffer $ setMode Compilation.mode
     return ()

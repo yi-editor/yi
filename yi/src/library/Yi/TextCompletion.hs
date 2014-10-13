@@ -100,7 +100,7 @@ mkWordComplete extractFn sourceFn msgFn predMatch = do
 
 wordCompleteString' :: Bool -> YiM T.Text
 wordCompleteString' caseSensitive =
-  mkWordComplete (withEditor $ withBuffer0 $
+  mkWordComplete (withCurrentBuffer $
                    textRegion =<< regionOfPartB unitWord Backward)
                  (\_ -> withEditor wordsForCompletion)
                  (\_ -> return ())
@@ -114,7 +114,7 @@ wordCompleteString = wordCompleteString' True
 wordComplete' :: Bool -> YiM ()
 wordComplete' caseSensitive = do
   x <- R.fromText <$> wordCompleteString' caseSensitive
-  withEditor $ withBuffer0 $
+  withEditor $ withCurrentBuffer $
     flip replaceRegionB x =<< regionOfPartB unitWord Backward
 
 wordComplete :: YiM ()
@@ -156,8 +156,8 @@ data CompletionScope = FromCurrentBuffer | FromAllBuffers
 -}
 veryQuickCompleteWord :: CompletionScope -> EditorM ()
 veryQuickCompleteWord scope = do
-  (curWord, curWords) <- withBuffer0 wordsAndCurrentWord
-  allWords <- fmap concat $ withEveryBufferE $ words' <$> (R.toText <$> elemsB)
+  (curWord, curWords) <- withCurrentBuffer wordsAndCurrentWord
+  allWords <- fmap concat $ withEveryBuffer $ words' <$> (R.toText <$> elemsB)
   let match :: T.Text -> Maybe T.Text
       match x = if (curWord `T.isPrefixOf` x) && (x /= curWord)
                 then Just x
@@ -168,7 +168,7 @@ veryQuickCompleteWord scope = do
   preText             <- completeInList curWord match wordsToChooseFrom
   if T.null curWord
     then printMsg "No word to complete"
-    else withBuffer0 . insertN . R.fromText $ T.drop (T.length curWord) preText
+    else withCurrentBuffer . insertN . R.fromText $ T.drop (T.length curWord) preText
 
 wordsAndCurrentWord :: BufferM (T.Text, [T.Text])
 wordsAndCurrentWord =
@@ -187,8 +187,8 @@ wordsForCompletionInBuffer = do
 wordsForCompletion :: EditorM [T.Text]
 wordsForCompletion = do
     _ :| bs <- fmap bkey <$> getBufferStack
-    w0 <- withBuffer0 wordsForCompletionInBuffer
-    contents <- forM bs $ \b -> withGivenBuffer0 b (R.toText <$> elemsB)
+    w0 <- withCurrentBuffer wordsForCompletionInBuffer
+    contents <- forM bs $ \b -> withGivenBuffer b (R.toText <$> elemsB)
     return $ w0 ++ concatMap words' contents
 
 words' :: T.Text -> [T.Text]

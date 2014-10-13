@@ -42,7 +42,7 @@ actualReplaceBinding = VimBindingE (f . T.unpack . _unEv)
                         "<C-e>" -> replaceCharWithBelowB
                         "<C-y>" -> replaceCharWithAboveB
                         _ -> return ()
-        withBuffer0 $ do
+        withCurrentBuffer $ do
             -- Is there more easy way to get distance to eol?
             here <- pointB
             moveToEol

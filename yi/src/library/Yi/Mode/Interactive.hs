@@ -41,7 +41,7 @@ mode = Compilation.mode
      (choice
       [spec KHome ?>>! moveToSol,
        spec KEnter ?>>! do
-          eof <- withBuffer atLastLine
+          eof <- withCurrentBuffer atLastLine
           if eof
             then feedCommand
             else withSyntax modeFollow,
@@ -57,13 +57,13 @@ interactId = "Interact"
 -- and friends need to migrate to YiString it seems.
 interactHistoryMove :: Int -> EditorM ()
 interactHistoryMove delta =
-  historyMoveGen interactId delta (R.toText <$> withBuffer0 getInput) >>= inp
+  historyMoveGen interactId delta (R.toText <$> withCurrentBuffer getInput) >>= inp
   where
-    inp = withBuffer0 . setInput . R.fromText
+    inp = withCurrentBuffer . setInput . R.fromText
 
 interactHistoryFinish :: EditorM ()
 interactHistoryFinish =
-  historyFinishGen interactId (R.toText <$> withBuffer0 getInput)
+  historyFinishGen interactId (R.toText <$> withCurrentBuffer getInput)
 
 interactHistoryStart :: EditorM ()
 interactHistoryStart = historyStartGen interactId
@@ -91,11 +91,12 @@ spawnProcessMode interMode cmd args = do
     b <- startSubprocess cmd args (const $ return ())
     withEditor interactHistoryStart
     mode' <- lookupMode $ AnyMode interMode
-    withBuffer $ do m1 <- getMarkB (Just "StdERR")
-                    m2 <- getMarkB (Just "StdOUT")
-                    modifyMarkB m1 (\v -> v {markGravity = Backward})
-                    modifyMarkB m2 (\v -> v {markGravity = Backward})
-                    setAnyMode mode'
+    withCurrentBuffer $ do
+        m1 <- getMarkB (Just "StdERR")
+        m2 <- getMarkB (Just "StdOUT")
+        modifyMarkB m1 (\v -> v {markGravity = Backward})
+        modifyMarkB m2 (\v -> v {markGravity = Backward})
+        setAnyMode mode'
     return b
 
 
@@ -105,7 +106,7 @@ feedCommand :: YiM ()
 feedCommand = do
   b <- gets currentBuffer
   withEditor interactHistoryFinish
-  cmd <- withBuffer $ do
+  cmd <- withCurrentBuffer $ do
       botB
       newlineB
       me <- getMarkB (Just "StdERR")

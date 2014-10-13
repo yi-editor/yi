@@ -62,17 +62,17 @@ stringToOperator ops name = find ((== name) . operatorName) ops
 
 operatorApplyToTextObjectE :: VimOperator -> Int -> CountedTextObject -> EditorM RepeatToken
 operatorApplyToTextObjectE op count cto = do
-    styledRegion <- withBuffer0 $ regionOfTextObjectB cto
+    styledRegion <- withCurrentBuffer $ regionOfTextObjectB cto
     operatorApplyToRegionE op count styledRegion
 
 opYank :: VimOperator
 opYank = VimOperator {
     operatorName = "y"
   , operatorApplyToRegionE = \_count (StyledRegion style reg) -> do
-        s <- withBuffer0 $ readRegionRopeWithStyleB reg style
+        s <- withCurrentBuffer $ readRegionRopeWithStyleB reg style
         regName <- fmap vsActiveRegister getEditorDyn
         setRegisterE regName style s
-        withBuffer0 $ moveTo . regionStart =<< convertRegionToStyleB reg style
+        withCurrentBuffer $ moveTo . regionStart =<< convertRegionToStyleB reg style
         switchModeE Normal
         return Finish
 }
@@ -81,10 +81,10 @@ opDelete :: VimOperator
 opDelete = VimOperator {
     operatorName = "d"
   , operatorApplyToRegionE = \_count (StyledRegion style reg) -> do
-        s <- withBuffer0 $ readRegionRopeWithStyleB reg style
+        s <- withCurrentBuffer $ readRegionRopeWithStyleB reg style
         regName <- fmap vsActiveRegister getEditorDyn
         setRegisterE regName style s
-        withBuffer0 $ do
+        withCurrentBuffer $ do
             point <- deleteRegionWithStyleB reg style
             moveTo point
             eof <- atEof
@@ -102,10 +102,10 @@ opChange :: VimOperator
 opChange = VimOperator {
     operatorName = "c"
   , operatorApplyToRegionE = \_count (StyledRegion style reg) -> do
-        s <- withBuffer0 $ readRegionRopeWithStyleB reg style
+        s <- withCurrentBuffer $ readRegionRopeWithStyleB reg style
         regName <- fmap vsActiveRegister getEditorDyn
         setRegisterE regName style s
-        withBuffer0 $ do
+        withCurrentBuffer $ do
             point <- deleteRegionWithStyleB reg style
             moveTo point
         switchModeE $ Insert 'c'
@@ -116,7 +116,7 @@ opFormat :: VimOperator
 opFormat = VimOperator {
     operatorName = "gq"
   , operatorApplyToRegionE = \_count (StyledRegion style reg) -> do
-      withBuffer0 $ formatRegionB style reg
+      withCurrentBuffer $ formatRegionB style reg
       switchModeE Normal
       return Finish
 }
@@ -146,7 +146,7 @@ mkCharTransformOperator :: OperatorName -> (Char -> Char) -> VimOperator
 mkCharTransformOperator name f = VimOperator {
     operatorName = name
   , operatorApplyToRegionE = \count sreg -> do
-        withBuffer0 $ transformCharactersInRegionB sreg
+        withCurrentBuffer $ transformCharactersInRegionB sreg
                     $ foldr (.) id (replicate count f)
         switchModeE Normal
         return Finish
@@ -156,7 +156,7 @@ mkShiftOperator :: OperatorName -> (Int -> Int) -> VimOperator
 mkShiftOperator name countMod = VimOperator {
     operatorName = name
   , operatorApplyToRegionE = \count (StyledRegion style reg) -> do
-        withBuffer0 $
+        withCurrentBuffer $
             if style == Block
             then indentBlockRegionB (countMod count) reg
             else do

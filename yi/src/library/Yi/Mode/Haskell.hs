@@ -406,7 +406,7 @@ ghciGet = withOtherWindow $ do
     case mb of
         Nothing -> ghci
         Just b -> do
-            stillExists <- withEditor $ isJust <$> findBuffer b
+            stillExists <- isJust <$> findBuffer b
             if stillExists
                 then do withEditor $ switchToBufferE b
                         return b
@@ -423,7 +423,7 @@ ghciSend cmd = do
 ghciLoadBuffer :: YiM ()
 ghciLoadBuffer = do
     fwriteE
-    f <- withBuffer (gets file)
+    f <- withCurrentBuffer (gets file)
     case f of
       Nothing -> error "Couldn't get buffer filename in ghciLoadBuffer"
       Just filename -> ghciSend $ ":load " <> show filename
@@ -432,7 +432,7 @@ ghciLoadBuffer = do
 -- check for errors (yet)
 ghciInferType :: YiM ()
 ghciInferType = do
-    nm <- withBuffer (readUnitB unitWord)
+    nm <- withCurrentBuffer (readUnitB unitWord)
     unless (R.null nm) $
       withMinibufferGen (R.toText nm) noHint "Insert type of which identifier?"
       return (const $ return ()) (ghciInferTypeOf . R.fromText)
@@ -442,7 +442,7 @@ ghciInferTypeOf nm = do
     buf <- ghciGet
     result <- Interactive.queryReply buf (":t " <> R.toString nm)
     let successful = (not . R.null) nm && nm == result
-    when successful . withBuffer $
+    when successful . withCurrentBuffer $
       moveToSol *> insertB '\n' *> leftB
       *> insertN result *> rightB
 
@@ -468,5 +468,5 @@ ghciSetProcessArgs = do
                            ]
   withMinibufferFree prompt $ \arg ->
     case readMaybe $ T.unpack arg of
-      Nothing -> (withEditor . printMsg) "Could not parse as [String], keep old args."
+      Nothing -> printMsg "Could not parse as [String], keep old args."
       Just arg' -> putEditorDyn $ g & GHCi.ghciProcessArgs .~ arg'

@@ -83,7 +83,7 @@ historyStartGen ident = do
   setHistory ident (History 0 (nub ("":cont)) pref) histories
 
 historyFinish :: EditorM ()
-historyFinish = historyFinishGen miniBuffer (R.toText <$> withBuffer0 elemsB)
+historyFinish = historyFinishGen miniBuffer (R.toText <$> withCurrentBuffer elemsB)
 
 -- | Finish the current input session with history.
 historyFinishGen :: T.Text -> EditorM T.Text -> EditorM ()
@@ -112,8 +112,8 @@ historyFind cont len cur delta pref =
 
 historyMove :: T.Text -> Int -> EditorM ()
 historyMove ident delta = do
-  s <- historyMoveGen ident delta (R.toText <$> withBuffer0 elemsB)
-  withBuffer0 . replaceBufferContent . R.fromText $ s
+  s <- historyMoveGen ident delta (R.toText <$> withCurrentBuffer elemsB)
+  withCurrentBuffer . replaceBufferContent . R.fromText $ s
 
 historyMoveGen :: T.Text -> Int -> EditorM T.Text -> EditorM T.Text
 historyMoveGen ident delta getCurValue = do

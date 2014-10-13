@@ -40,7 +40,7 @@ enterBinding = VimBindingE f
               count <- getCountE
               getRegexE >>= \case
                 Nothing -> return ()
-                Just regex -> withBuffer0 $
+                Just regex -> withCurrentBuffer $
                   if count == 1 && dir == Forward
                   then do
                     -- Workaround for isearchFinishE leaving cursor after match
@@ -63,7 +63,7 @@ editBinding = VimBindingE (f . T.unpack . _unEv)
     action evs = do
       let evs' = T.pack evs
       fromMaybe (isearchAddE evs') (lookup evs' binds)
-      withBuffer0 elemsB >>= historyPrefixSet . R.toText
+      withCurrentBuffer elemsB >>= historyPrefixSet . R.toText
       return Continue
 
     binds = [ ("<BS>", isearchDelE)

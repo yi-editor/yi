@@ -26,14 +26,14 @@ import qualified Yi.Rope as R
 
 -- | Retrieve buffer list and open a them in buffer mode using the
 -- 'bufferKeymap'.
-listBuffers :: YiM  ()
+listBuffers :: YiM ()
 listBuffers = do
-  withEditor $  do
+  withEditor $ do
     bs <- toList <$> getBufferStack
     let bufferList = R.fromText . T.intercalate "\n" $ map identString bs
     bufRef <- stringToNewBuffer (MemBuffer "Buffer List") bufferList
     switchToBufferE bufRef
-  withBuffer $ do
+  withCurrentBuffer $ do
     modifyMode $ modeKeymapA .~ topKeymapA %~ bufferKeymap
                  >>> modeNameA .~ "buffers"
     assign readOnlyA True
@@ -43,7 +43,7 @@ listBuffers = do
 switch :: YiM ()
 switch = do
   -- the YiString -> FilePath -> Text conversion sucks
-  s <- R.toString <$> withBuffer readLnB
+  s <- R.toString <$> withCurrentBuffer readLnB
   let short = T.pack $ if take 1 s == "/" then takeFileName s else s
   withEditor $ switchToBufferWithNameE short
 
@@ -63,4 +63,4 @@ bufferKeymap = important $ choice
   , char 'v'                        ?>>! (switch >> setReadOnly True)
   ]
   where
-    setReadOnly = withBuffer . assign readOnlyA
+    setReadOnly = withCurrentBuffer . assign readOnlyA

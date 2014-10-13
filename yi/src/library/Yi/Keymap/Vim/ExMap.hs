@@ -45,7 +45,7 @@ completionBinding :: [EventString -> Maybe ExCommand] -> VimBinding
 completionBinding commandParsers = VimBindingY f
   where
     f "<Tab>" (VimState { vsMode = Ex }) = WholeMatch $ do
-        commandString <- Ev . R.toText <$> withBuffer elemsB
+        commandString <- Ev . R.toText <$> withCurrentBuffer elemsB
         case evStringToExCommand commandParsers commandString of
           Just cmd -> complete cmd
           Nothing -> return ()
@@ -64,7 +64,7 @@ completionBinding commandParsers = VimBindingY f
 
     updateCommand :: T.Text -> YiM ()
     updateCommand s = do
-        withBuffer $ replaceBufferContent (R.fromText s)
+        withCurrentBuffer $ replaceBufferContent (R.fromText s)
         withEditor $ do
             historyPrefixSet s
             modifyStateE $ \state -> state {
@@ -125,7 +125,7 @@ finishPrereq commandParsers cmdPred evs s =
 finishAction :: MonadEditor m => [EventString -> Maybe ExCommand] ->
     ([EventString -> Maybe ExCommand] -> EventString -> m ()) -> m RepeatToken
 finishAction commandParsers execute = do
-  s <- withEditor $ withBuffer0 elemsB
+  s <- withEditor $ withCurrentBuffer elemsB
   withEditor $ exitEx True
   execute commandParsers (Ev $ R.toText s) -- TODO
   return Drop
@@ -150,7 +150,7 @@ historyBinding = VimBindingE f
     where f evs (VimState { vsMode = Ex }) | evs `elem` fmap fst binds
              = WholeMatch $ do
               fromJust $ lookup evs binds
-              command <- withBuffer0 elemsB
+              command <- withCurrentBuffer elemsB
               modifyStateE $ \state -> state {
                   vsOngoingInsertEvents = Ev $ R.toText command
               }
@@ -165,7 +165,7 @@ historyBinding = VimBindingE f
 
 editAction :: EventString -> EditorM RepeatToken
 editAction (Ev evs) = do
-  withBuffer0 $ case evs of
+  withCurrentBuffer $ case evs of
       "<BS>"  -> bdeleteB
       "<C-h>" -> bdeleteB
       "<C-w>" -> do
@@ -187,7 +187,7 @@ editAction (Ev evs) = do
       evs' -> case T.length evs' of
         1 -> insertB $ T.head evs'
         _ -> error $ "Unhandled event " ++ show evs' ++ " in ex mode"
-  command <- R.toText <$> withBuffer0 elemsB
+  command <- R.toText <$> withCurrentBuffer elemsB
   historyPrefixSet command
   modifyStateE $ \state -> state {
     vsOngoingInsertEvents = Ev command

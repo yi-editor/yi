@@ -77,23 +77,23 @@ hoogleFunModule a = map ((head &&& (!! 1)) . R.words) . gv <$> hoogleRaw a ""
 -- the first returned function.
 hoogle :: YiM R.YiString
 hoogle = do
-    (wordRegion,word) <- withBuffer $ do
+    (wordRegion,word) <- withCurrentBuffer $ do
       wordRegion <- regionOfB unitWord
       word <- readRegionB wordRegion
       return (wordRegion, word)
     ((modl,fun):_) <- io $ hoogleFunModule word
 
-    withBuffer $ replaceRegionB wordRegion fun
+    withCurrentBuffer $ replaceRegionB wordRegion fun
     return modl
 
 -- | Call out to 'hoogleRaw', and print inside the Minibuffer the results of
 -- searching Hoogle with the word at point.
 hoogleSearch :: YiM ()
 hoogleSearch = do
-  word <- withBuffer $ do
+  word <- withCurrentBuffer $ do
     wordRegion <- regionOfB unitWord
     readRegionB wordRegion
   results <- io $ hoogleRaw word ""
 
   -- The quotes help legibility between closely-packed results
-  withEditor $ printMsgs $ map showT results
+  printMsgs $ map showT results

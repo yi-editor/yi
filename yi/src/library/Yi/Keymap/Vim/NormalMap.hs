@@ -75,7 +75,7 @@ defNormalMap operators =
 
 tagJumpBinding :: VimBinding
 tagJumpBinding = mkBindingY Normal (Event (KASCII ']') [MCtrl], f, id)
-   where f = withBuffer readCurrentWordB >>= gotoTag . Tag . R.toText
+   where f = withCurrentBuffer readCurrentWordB >>= gotoTag . Tag . R.toText
 
 tagPopBinding :: VimBinding
 tagPopBinding = mkBindingY Normal (Event (KASCII 't') [MCtrl], f, id)
@@ -99,7 +99,7 @@ zeroBinding = VimBindingE f
                       setCountE (10 * c)
                       return Continue
                   Nothing -> do
-                      withBuffer0 moveToSol
+                      withCurrentBuffer moveToSol
                       resetCountE
                       setStickyEolE False
                       return Drop
@@ -136,7 +136,7 @@ finishingBingings = fmap (mkStringBindingE Normal Finish)
     , ("X", cutCharE Backward =<< getCountE, resetCount)
 
     , ("D",
-        do region <- withBuffer0 $ regionWithTwoMovesB (return ()) moveToEol
+        do region <- withCurrentBuffer $ regionWithTwoMovesB (return ()) moveToEol
            void $ operatorApplyToRegionE opDelete 1 $ StyledRegion Exclusive region
         , id)
 
@@ -147,13 +147,13 @@ finishingBingings = fmap (mkStringBindingE Normal Finish)
     -- Miscellaneous.
     , ("~", do
            count <- getCountE
-           withBuffer0 $ do
+           withCurrentBuffer $ do
                transformCharactersInLineN count switchCaseChar
                leftOnEol
         , resetCount)
     , ("J", do
         count <- fmap (flip (-) 1 . max 2) getCountE
-        withBuffer0 $ do
+        withCurrentBuffer $ do
             (StyledRegion s r) <- case stringToMove "j" of
                 WholeMatch m -> regionOfMoveB $ CountedMove (Just count) m
                 _ -> error "can't happen"
@@ -169,10 +169,10 @@ pasteBefore = do
     register <- getRegisterE . vsActiveRegister =<< getEditorDyn
     case register of
         Nothing -> return ()
-        Just (Register LineWise rope) -> withBuffer0 $ unless (R.null rope) $
+        Just (Register LineWise rope) -> withCurrentBuffer $ unless (R.null rope) $
             -- Beware of edge cases ahead
             insertRopeWithStyleB (addNewLineIfNecessary rope) LineWise
-        Just (Register style rope) -> withBuffer0 $ pasteInclusiveB rope style
+        Just (Register style rope) -> withCurrentBuffer $ pasteInclusiveB rope style
 
 pasteAfter :: EditorM ()
 pasteAfter = do
@@ -180,7 +180,7 @@ pasteAfter = do
     register <- getRegisterE . vsActiveRegister =<< getEditorDyn
     case register of
         Nothing -> return ()
-        Just (Register LineWise rope) -> withBuffer0 $ do
+        Just (Register LineWise rope) -> withCurrentBuffer $ do
             -- Beware of edge cases ahead
             moveToEol
             eof <- atEof
@@ -192,7 +192,7 @@ pasteAfter = do
                 moveTo (newSize - 1)
                 curChar <- readB
                 when (curChar == '\n') $ deleteN 1
-        Just (Register style rope) -> withBuffer0 $ do
+        Just (Register style rope) -> withCurrentBuffer $ do
             whenM (fmap not atEol) rightB
             pasteInclusiveB rope style
 
@@ -210,15 +210,15 @@ continuingBindings = fmap (mkStringBindingE Normal Continue)
     -- Transition to insert mode
     , ("i", return (), switchMode $ Insert 'i')
     , ("<Ins>", return (), switchMode $ Insert 'i')
-    , ("I", withBuffer0 firstNonSpaceB, switchMode $ Insert 'I')
-    , ("a", withBuffer0 rightB, switchMode $ Insert 'a')
-    , ("A", withBuffer0 moveToEol, switchMode $ Insert 'A')
-    , ("o", withBuffer0 $ do
+    , ("I", withCurrentBuffer firstNonSpaceB, switchMode $ Insert 'I')
+    , ("a", withCurrentBuffer rightB, switchMode $ Insert 'a')
+    , ("A", withCurrentBuffer moveToEol, switchMode $ Insert 'A')
+    , ("o", withCurrentBuffer $ do
           moveToEol
           newlineB
           indentAsTheMostIndentedNeighborLineB
         , switchMode $ Insert 'o')
-    , ("O", withBuffer0 $ do
+    , ("O", withCurrentBuffer $ do
                      moveToSol
                      newlineB
                      leftB
@@ -238,12 +238,12 @@ nonrepeatableBindings = fmap (mkBindingE Normal Drop)
 
     -- Changing
     , (char 'C',
-        do region <- withBuffer0 $ regionWithTwoMovesB (return ()) moveToEol
+        do region <- withCurrentBuffer $ regionWithTwoMovesB (return ()) moveToEol
            void $ operatorApplyToRegionE opChange 1 $ StyledRegion Exclusive region
         , switchMode $ Insert 'C')
     , (char 's', cutCharE Forward =<< getCountE, switchMode $ Insert 's')
     , (char 'S',
-        do region <- withBuffer0 $ regionWithTwoMovesB firstNonSpaceB moveToEol
+        do region <- withCurrentBuffer $ regionWithTwoMovesB firstNonSpaceB moveToEol
            void $ operatorApplyToRegionE opDelete 1 $ StyledRegion Exclusive region
         , switchMode $ Insert 'S')
 
@@ -252,7 +252,7 @@ nonrepeatableBindings = fmap (mkBindingE Normal Drop)
 
     -- Yanking
     , ( char 'Y'
-      , do region <- withBuffer0 $ regionWithTwoMovesB (return ()) moveToEol
+      , do region <- withCurrentBuffer $ regionWithTwoMovesB (return ()) moveToEol
            void $ operatorApplyToRegionE opYank 1 $ StyledRegion Exclusive region
       , id
       )
@@ -276,17 +276,17 @@ nonrepeatableBindings = fmap (mkBindingE Normal Drop)
       , switchMode Ex)
 
     -- Undo
-    , (char 'u', withCountOnBuffer0 undoB >> withBuffer0 leftOnEol, id)
-    , (char 'U', withCountOnBuffer0 undoB >> withBuffer0 leftOnEol, id) -- TODO
-    , (ctrlCh 'r', withCountOnBuffer0 redoB >> withBuffer0 leftOnEol, id)
+    , (char 'u', withCountOnBuffer0 undoB >> withCurrentBuffer leftOnEol, id)
+    , (char 'U', withCountOnBuffer0 undoB >> withCurrentBuffer leftOnEol, id) -- TODO
+    , (ctrlCh 'r', withCountOnBuffer0 redoB >> withCurrentBuffer leftOnEol, id)
 
     -- scrolling
-    ,(ctrlCh 'b', getCountE >>= withBuffer0 . upScreensB, id)
-    ,(ctrlCh 'f', getCountE >>= withBuffer0 . downScreensB, id)
-    ,(ctrlCh 'u', getCountE >>= withBuffer0 . vimScrollByB (negate . (`div` 2)), id)
-    ,(ctrlCh 'd', getCountE >>= withBuffer0 . vimScrollByB (`div` 2), id)
-    ,(ctrlCh 'y', getCountE >>= withBuffer0 . vimScrollB . negate, id)
-    ,(ctrlCh 'e', getCountE >>= withBuffer0 . vimScrollB, id)
+    ,(ctrlCh 'b', getCountE >>= withCurrentBuffer . upScreensB, id)
+    ,(ctrlCh 'f', getCountE >>= withCurrentBuffer . downScreensB, id)
+    ,(ctrlCh 'u', getCountE >>= withCurrentBuffer . vimScrollByB (negate . (`div` 2)), id)
+    ,(ctrlCh 'd', getCountE >>= withCurrentBuffer . vimScrollByB (`div` 2), id)
+    ,(ctrlCh 'y', getCountE >>= withCurrentBuffer . vimScrollB . negate, id)
+    ,(ctrlCh 'e', getCountE >>= withCurrentBuffer . vimScrollB, id)
 
     -- unsorted TODO
     , (char '-', return (), id)
@@ -303,26 +303,26 @@ nonrepeatableBindings = fmap (mkBindingE Normal Drop)
     , ("<C-w><C-w>", nextWinE, resetCount)
     , ("<C-w>W", prevWinE, resetCount)
     , ("<C-w>p", prevWinE, resetCount)
-    , ("<C-a>", getCountE >>= withBuffer0 . incrementNextNumberByB, resetCount)
-    , ("<C-x>", getCountE >>= withBuffer0 . incrementNextNumberByB . negate, resetCount)
+    , ("<C-a>", getCountE >>= withCurrentBuffer . incrementNextNumberByB, resetCount)
+    , ("<C-x>", getCountE >>= withCurrentBuffer . incrementNextNumberByB . negate, resetCount)
 
     -- z commands
     -- TODO Add prefix count
-    , ("zt", withBuffer0 scrollCursorToTopB, resetCount)
-    , ("zb", withBuffer0 scrollCursorToBottomB, resetCount)
-    , ("zz", withBuffer0 scrollToCursorB, resetCount)
+    , ("zt", withCurrentBuffer scrollCursorToTopB, resetCount)
+    , ("zb", withCurrentBuffer scrollCursorToBottomB, resetCount)
+    , ("zz", withCurrentBuffer scrollToCursorB, resetCount)
     {- -- TODO Horizantal scrolling
-    , ("ze", withBuffer0 .., resetCount)
-    , ("zs", withBuffer0 .., resetCount)
-    , ("zH", withBuffer0 .., resetCount)
-    , ("zL", withBuffer0 .., resetCount)
-    , ("zh", withBuffer0 .., resetCount)
-    , ("zl", withBuffer0 .., resetCount)
+    , ("ze", withCurrentBuffer .., resetCount)
+    , ("zs", withCurrentBuffer .., resetCount)
+    , ("zH", withCurrentBuffer .., resetCount)
+    , ("zL", withCurrentBuffer .., resetCount)
+    , ("zh", withCurrentBuffer .., resetCount)
+    , ("zl", withCurrentBuffer .., resetCount)
     -}
-    , ("z.", withBuffer0 $ scrollToCursorB >> moveToSol, resetCount)
-    , ("z+", withBuffer0 scrollToLineBelowWindowB, resetCount)
-    , ("z-", withBuffer0 $ scrollCursorToBottomB >> moveToSol, resetCount)
-    , ("z^", withBuffer0 scrollToLineAboveWindowB, resetCount)
+    , ("z.", withCurrentBuffer $ scrollToCursorB >> moveToSol, resetCount)
+    , ("z+", withCurrentBuffer scrollToLineBelowWindowB, resetCount)
+    , ("z-", withCurrentBuffer $ scrollCursorToBottomB >> moveToSol, resetCount)
+    , ("z^", withCurrentBuffer scrollToLineAboveWindowB, resetCount)
     {- -- TODO Code folding
     , ("zf", .., resetCount)
     , ("zc", .., resetCount)
@@ -356,13 +356,13 @@ setMarkBinding = VimBindingE (f . T.unpack . _unEv)
     where f _ s | vsMode s /= Normal = NoMatch
           f "m" _ = PartialMatch
           f ('m':c:[]) _ = WholeMatch $ do
-              withBuffer0 $ setNamedMarkHereB [c]
+              withCurrentBuffer $ setNamedMarkHereB [c]
               return Drop
           f _ _ = NoMatch
 
 searchWordE :: Bool -> Direction -> EditorM ()
 searchWordE wholeWord dir = do
-  word <- withBuffer0 readCurrentWordB
+  word <- withCurrentBuffer readCurrentWordB
 
   let search re = do
         setRegexE re
@@ -401,7 +401,7 @@ repeatGotoCharE :: (Direction -> Direction) -> EditorM ()
 repeatGotoCharE mutateDir = do
     prevCommand <- fmap vsLastGotoCharCommand getEditorDyn
     count <- getCountE
-    withBuffer0 $ case prevCommand of
+    withCurrentBuffer $ case prevCommand of
         Just (GotoCharCommand c dir style) -> do
             let newDir = mutateDir dir
             let move = gotoCharacterB c newDir style True
@@ -416,7 +416,7 @@ repeatGotoCharE mutateDir = do
         Nothing -> return ()
 
 enableVisualE :: RegionStyle -> EditorM ()
-enableVisualE style = withBuffer0 $ do
+enableVisualE style = withCurrentBuffer $ do
     putRegionStyle style
     rectangleSelectionA .= (Block == style)
     setVisibleSelection True
@@ -424,7 +424,7 @@ enableVisualE style = withBuffer0 $ do
 
 cutCharE :: Direction -> Int -> EditorM ()
 cutCharE dir count = do
-    r <- withBuffer0 $ do
+    r <- withCurrentBuffer $ do
         p0 <- pointB
         (if dir == Forward then moveXorEol else moveXorSol) count
         p1 <- pointB
@@ -448,7 +448,7 @@ tabTraversalBinding = VimBindingE (f . T.unpack . _unEv)
 
 openFileUnderCursor :: Maybe (EditorM ()) -> YiM ()
 openFileUnderCursor editorAction = do
-  fileName <- fmap R.toString . withEditor . withBuffer0 $ readUnitB unitViWORD
+  fileName <- fmap R.toString . withEditor . withCurrentBuffer $ readUnitB unitViWORD
   fileExists <- io $ doesFileExist fileName
   if (not fileExists) then
       withEditor . fail $ "Can't find file \"" <> fileName <> "\""
@@ -504,4 +504,4 @@ withCount :: EditorM () -> EditorM ()
 withCount action = flip replicateM_ action =<< getCountE
 
 withCountOnBuffer0 :: BufferM () -> EditorM ()
-withCountOnBuffer0 action = withCount $ withBuffer0 action
+withCountOnBuffer0 action = withCount $ withCurrentBuffer action

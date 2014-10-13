@@ -37,7 +37,7 @@ exitReplaceMode = do
       inputEvents <- fmap (parseEvents . vsOngoingInsertEvents) getEditorDyn
       replicateM_ (count - 1) $ mapM_ (printableAction . eventToEventString) inputEvents
   modifyStateE $ \s -> s { vsOngoingInsertEvents = mempty }
-  withBuffer0 $ moveXorSol 1
+  withCurrentBuffer $ moveXorSol 1
 
 printable :: VimBinding
 printable = VimBindingE f
@@ -47,7 +47,7 @@ printable = VimBindingE f
 printableAction :: EventString -> EditorM RepeatToken
 printableAction evs = do
     saveInsertEventStringE evs
-    withBuffer0 $ case T.unpack . _unEv $ evs of
+    withCurrentBuffer $ case T.unpack . _unEv $ evs of
         [c]    -> insertOrReplaceB c
         "<CR>" -> insertOrReplaceB '\n'
         -- For testing purposes assume noexpandtab, tw=4

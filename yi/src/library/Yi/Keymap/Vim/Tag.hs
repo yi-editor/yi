@@ -111,13 +111,13 @@ gotoTag tag =
         case lookupTag tag tagTable of
           Nothing -> errorEditor $ "tag not found: " `T.append` _unTag tag
           Just (filename, line) -> do
-            bufinf <- withBuffer bufInfoB
+            bufinf <- withCurrentBuffer bufInfoB
             let ln = bufInfoLineNo bufinf
                 cn = bufInfoColNo bufinf
                 fn = bufInfoFileName bufinf
             withEditor $ pushTagStack tag fn ln cn
             void $ editFile filename
-            void . withBuffer $ gotoLn line
+            void . withCurrentBuffer $ gotoLn line
 
 -- | Return to location from before last tag jump.
 popTag :: YiM ()
@@ -131,7 +131,7 @@ popTag = do
                 Nothing -> errorEditor "at bottom of tag stack"
                 Just (_, fn, ln, cn) -> do
                     void $ editFile fn
-                    void . withBuffer $ moveToLineColB ln cn
+                    void . withCurrentBuffer $ moveToLineColB ln cn
 
 -- | Go to next tag in the tag stack. Represents :tag without any
 -- specified tag.
@@ -148,7 +148,7 @@ unpopTag = do
              case lookupTag tag tagTable of
                Nothing -> errorEditor $ "tag not found: " `T.append` _unTag tag
                Just (filename, line) -> do
-                   bufinf <- withBuffer bufInfoB
+                   bufinf <- withCurrentBuffer bufInfoB
                    let ln = bufInfoLineNo bufinf
                        cn = bufInfoColNo bufinf
                        fn = bufInfoFileName bufinf
@@ -156,7 +156,7 @@ unpopTag = do
                                ++ (tag, fn, ln, cn):(drop (ti + 1) tl)
                    withEditor $ setTagList tl'
                    void $ editFile filename
-                   void . withBuffer $ gotoLn line
+                   void . withCurrentBuffer $ gotoLn line
 
 completeVimTag :: T.Text -> YiM [T.Text]
 completeVimTag s =
@@ -182,7 +182,7 @@ tagsFileLocation s
     | otherwise = do
        let s' = drop 2 s
        dir <- takeDirectory <$>
-                 (withBuffer $ bufInfoB >>= return . bufInfoFileName)
+                 (withCurrentBuffer $ bufInfoB >>= return . bufInfoFileName)
        check $ dir </> s'
     where check f = do
             f' <- io $ userToCanonPath f

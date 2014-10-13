@@ -32,13 +32,13 @@ import           Yi.Buffer
 import           Yi.Core (withSyntax)
 import           Yi.Types (YiVariable)
 import           Yi.Editor (withEditor, withOtherWindow, getEditorDyn,
-                            stringToNewBuffer , findBuffer, switchToBufferE)
+                            stringToNewBuffer , findBuffer, switchToBufferE,
+                            withCurrentBuffer, withGivenBuffer)
 import           Yi.Event (Key(..), Event(..))
 import           Yi.File (fwriteE)
 import           Yi.IncrementalParse (scanner)
 import           Yi.Interact (choice)
-import           Yi.Keymap (YiM, Action(..), withBuffer,
-                            withGivenBuffer, topKeymapA)
+import           Yi.Keymap (YiM, Action(..), topKeymapA)
 import           Yi.Keymap.Keys (ctrlCh, (?>>), (?>>!), important)
 import           Yi.Lexer.Alex (AlexState, Tok, lexScanner,
                                 commonLexer, CharScanner)
@@ -113,7 +113,7 @@ instance YiVariable JSBuffer
 jsCompile :: Tree TT -> YiM ()
 jsCompile tree = do
   fwriteE
-  Just filename <- withBuffer $ gets file
+  Just filename <- withCurrentBuffer $ gets file
   buf <- getJSBuffer
   withOtherWindow $ withEditor $ switchToBufferE buf
   jsErrors filename buf (D.toList $ execWriter $ verify tree)
@@ -124,14 +124,14 @@ getJSBuffer = withOtherWindow $ do
   JSBuffer mb <- withEditor getEditorDyn
   case mb of
     Nothing -> mkJSBuffer
-    Just b  -> do stillExists <- withEditor $ isJust <$> findBuffer b
+    Just b  -> do stillExists <- isJust <$> findBuffer b
                   if stillExists
                     then return b
                     else mkJSBuffer
 
 -- | Creates a new empty buffer and returns it.
 mkJSBuffer :: YiM BufferRef
-mkJSBuffer = withEditor $ stringToNewBuffer (MemBuffer "js") mempty
+mkJSBuffer = stringToNewBuffer (MemBuffer "js") mempty
 
 -- | Given a filename, a BufferRef and a list of errors, prints the
 -- errors in that buffer.

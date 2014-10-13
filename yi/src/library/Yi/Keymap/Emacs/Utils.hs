@@ -231,7 +231,7 @@ executeExtendedCommandE = withMinibuffer "M-x" scope act
 evalRegionE :: YiM ()
 evalRegionE = do
   -- FIXME: do something sensible.
-  void $ withBuffer (getSelectRegionB >>= readRegionB)
+  void $ withCurrentBuffer (getSelectRegionB >>= readRegionB)
   return ()
 
 -- * Code for various commands
@@ -400,7 +400,7 @@ maybeTag def t = if T.null t then def else Tag t
 promptTag :: YiM ()
 promptTag = do
   -- default tag is where the buffer is on
-  defaultTag <- withBuffer $ Tag . R.toText <$> readUnitB unitWord
+  defaultTag <- withCurrentBuffer $ Tag . R.toText <$> readUnitB unitWord
   -- if we have tags use them to generate hints
   tagTable <- withEditor getTags
   -- Hints are expensive - only lazily generate 10
@@ -421,7 +421,7 @@ gotoTag tag =
           Nothing -> fail $ "No tags containing " ++ unTag' tag
           Just (filename, line) -> do
             void $ editFile filename
-            void $ withBuffer $ gotoLn line
+            void $ withCurrentBuffer $ gotoLn line
             return ()
 
 -- | Call continuation @act@ with the TagTable. Uses the global table
@@ -446,7 +446,7 @@ visitTagTable act = do
 countWordsRegion :: YiM ()
 countWordsRegion = do
   (l, w, c) <- withEditor $ do
-    t <- withBuffer0 $ getRectangle >>= \(reg, _, _) -> readRegionB reg
+    t <- withCurrentBuffer $ getRectangle >>= \(reg, _, _) -> readRegionB reg
     let nls = R.countNewLines t
     return (if nls == 0 then 1 else nls, length $ R.words t, R.length t)
   (withEditor . printMsg) $ T.unwords [ "Region has", showT l, p l "line" <> ","

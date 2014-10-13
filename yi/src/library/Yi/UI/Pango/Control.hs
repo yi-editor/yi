@@ -24,7 +24,7 @@ module Yi.UI.Pango.Control (
 ,   newView
 ,   getBuffer
 ,   setBufferMode
-,   withBuffer
+,   withCurrentBuffer
 ,   setText
 ,   getText
 ,   keyTable
@@ -54,7 +54,7 @@ import Yi.Tab
 import Yi.Window as Yi
 import Yi.Editor
 import Yi.Event
-import Yi.Keymap hiding(withBuffer)
+import Yi.Keymap
 import Yi.Monad
 import Yi.Style
 import Yi.UI.Utils
@@ -508,7 +508,7 @@ newView buffer font = do
         scrolledWindowSetPolicy scrollWin PolicyAutomatic PolicyNever
 
     initialTos <-
-      liftYi . withEditor . withGivenBufferAndWindow0 newWindow viewFBufRef $
+      liftYi . withEditor . withGivenBufferAndWindow newWindow viewFBufRef $
         (use . markPointA) =<< fromMark <$> askMarks
     shownTos <- liftBase $ newIORef initialTos
     winMotionSignal <- liftBase $ newIORef Nothing
@@ -547,7 +547,7 @@ newView buffer font = do
             let bos = regionEnd (winRegion window)
             let rel p = fromIntegral (p - tos)
 
-            withGivenBufferAndWindow0 window viewFBufRef $ do
+            withGivenBufferAndWindow window viewFBufRef $ do
                 -- tos       <- getMarkPointB =<< fromMark <$> askMarks
                 rope      <- streamB Forward tos
                 point     <- pointB
@@ -650,7 +650,7 @@ setBufferMode f buffer = do
     let bufRef = fBufRef buffer
     -- adjust the mode
     tbl <- liftYi $ asks (modeTable . yiConfig)
-    contents <- liftYi $ withEditor $ withGivenBuffer0 bufRef elemsB
+    contents <- liftYi $ withGivenBuffer bufRef elemsB
     let header = R.toString $ R.take 1024 contents
         hmode = case header =~ ("\\-\\*\\- *([^ ]*) *\\-\\*\\-" :: String) of
             AllTextSubmatches [_,m] -> T.pack m
@@ -662,14 +662,14 @@ setBufferMode f buffer = do
         AnyMode newMode -> do
             -- liftBase $ putStrLn $ show (f, modeName newMode)
             liftYi $ withEditor $ do
-                withGivenBuffer0 bufRef $ do
+                withGivenBuffer bufRef $ do
                     setMode newMode
                     modify clearSyntax
                 switchToBufferE bufRef
             -- withEditor focusAllSyntax
 
 withBuffer :: Buffer -> BufferM a -> ControlM a
-withBuffer Buffer{fBufRef = b} f = liftYi $ withEditor $ withGivenBuffer0 b f
+withBuffer Buffer{fBufRef = b} f = liftYi $ withGivenBuffer b f
 
 getBuffer :: View -> Buffer
 getBuffer view = Buffer {fBufRef = viewFBufRef view}
@@ -727,11 +727,11 @@ handleClick view event = do
 
   case (Gdk.Events.eventClick event, Gdk.Events.eventButton event) of
     (Gdk.Events.SingleClick, Gdk.Events.LeftButton) ->
-      runAction . makeAction $ do
+      runAction . EditorA $ do
         -- b <- gets $ (bkey . findBufferWith (viewFBufRef view))
         -- focusWindow
         window <- findWindowWith winRef <$> get
-        withGivenBufferAndWindow0 window (viewFBufRef view) $ do
+        withGivenBufferAndWindow window (viewFBufRef view) $ do
             moveTo p1
             setVisibleSelection False
     -- (Gdk.Events.SingleClick, _) -> runAction focusWindow
@@ -740,9 +740,9 @@ handleClick view event = do
         cb <- liftBase $ clipboardGetForDisplay disp selectionPrimary
         let cbHandler :: Maybe R.YiString -> IO ()
             cbHandler Nothing = return ()
-            cbHandler (Just txt) = runControl (runAction . makeAction $ do
+            cbHandler (Just txt) = runControl (runAction . EditorA $ do
                 window <- findWindowWith winRef <$> get
-                withGivenBufferAndWindow0 window (viewFBufRef view) $ do
+                withGivenBufferAndWindow window (viewFBufRef view) $ do
                     pointB >>= setSelectionMarkPointB
                     moveTo p1
                     insertN txt) control
@@ -755,12 +755,12 @@ handleClick view event = do
 handleScroll :: View -> Gdk.Events.Event -> ControlM Bool
 handleScroll view event = do
   let editorAction =
-        withBuffer0 $ vimScrollB $ case Gdk.Events.eventDirection event of
+        withCurrentBuffer $ vimScrollB $ case Gdk.Events.eventDirection event of
                         Gdk.Events.ScrollUp   -> -1
                         Gdk.Events.ScrollDown -> 1
                         _ -> 0 -- Left/right scrolling not supported
 
-  runAction $ makeAction editorAction
+  runAction $ EditorA editorAction
   liftBase $ widgetQueueDraw (drawArea view)
   return True
 
@@ -778,7 +778,7 @@ handleMove view p0 event = do
 
 
   let editorAction = do
-        txt <- withBuffer0 $
+        txt <- withCurrentBuffer $
            if p0 /= p1
             then Just <$> do
               m <- selMark <$> askMarks
@@ -795,7 +795,7 @@ handleMove view p0 event = do
   -- Relies on uiActionCh being synchronous
   selection <- liftBase $ newIORef ""
   let yiAction = do
-      txt <- withEditor (withBuffer0 (readRegionB =<< getSelectRegionB))
+      txt <- (withCurrentBuffer (readRegionB =<< getSelectRegionB))
              :: YiM R.YiString
       liftBase $ writeIORef selection txt
   runAction $ makeAction yiAction

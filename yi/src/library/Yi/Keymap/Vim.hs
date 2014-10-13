@@ -150,8 +150,8 @@ genericHandleEvent getBindings pick config unconvertedEvent needsToConvertEvents
         -- TODO: we should introduce some hook mechanism like autocommands in vim
         case (prevMode, newMode) of
             (Insert _, Insert _) -> return ()
-            (Insert _, _) -> withBuffer0 commitUpdateTransactionB
-            (_, Insert _) -> withBuffer0 startUpdateTransactionB
+            (Insert _, _) -> withCurrentBuffer commitUpdateTransactionB
+            (_, Insert _) -> withCurrentBuffer startUpdateTransactionB
             _ -> return ()
 
         performEvalIfNecessary config

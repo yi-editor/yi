@@ -70,7 +70,7 @@ action  True  True  True = saveAndQuitAllE
 
 quitWindowE :: YiM ()
 quitWindowE = do
-    nw <- withBuffer needsAWindowB
+    nw <- withCurrentBuffer needsAWindowB
     ws <- withEditor $ use currentWindowA >>= windowsOnBufferE . bufkey
     if length ws == 1 && nw
        then errorEditor "No write since last change (add ! to override)"
@@ -79,13 +79,13 @@ quitWindowE = do
 quitAllE :: YiM ()
 quitAllE = do
   a :| as <- readEditor bufferStack
-  let needsWindow b = (b,) <$> withEditor (withGivenBuffer0 b needsAWindowB)
+  let needsWindow b = (b,) <$> withEditor (withGivenBuffer b needsAWindowB)
   bs <- mapM needsWindow (a:as)
   -- Vim only shows the first modified buffer in the error.
   case find snd bs of
       Nothing -> quitEditor
       Just (b, _) -> do
-          bufferName <- withEditor $ withGivenBuffer0 b $ gets file
+          bufferName <- withEditor $ withGivenBuffer b $ gets file
           errorEditor $ "No write since last change for buffer "
                         <> showT bufferName
                         <> " (add ! to override)"

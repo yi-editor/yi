@@ -220,7 +220,7 @@ jumpToE :: FilePath -- ^ Filename to make the jump in.
         -> YiM ()
 jumpToE filename line column = do
   _ <- editFile filename
-  withBuffer $ gotoLn line >> moveXorEol column
+  withCurrentBuffer $ gotoLn line >> moveXorEol column
 
 -- | Regex parsing the error message format.
 errorRegex :: Regex
@@ -243,8 +243,8 @@ parseErrorMessageB = parseErrorMessage <$> readLnB
 -- | Tries to jump to error at the current line. See
 -- 'parseErrorMessageB'.
 jumpToErrorE :: YiM ()
-jumpToErrorE = withBuffer parseErrorMessageB >>= \case
-  Nothing -> (withEditor . printMsg) "Couldn't parse out an error message."
+jumpToErrorE = withCurrentBuffer parseErrorMessageB >>= \case
+  Nothing -> printMsg "Couldn't parse out an error message."
   Just (f, l, c) -> jumpToE f l c
 
 prompt :: R.YiString
@@ -259,10 +259,10 @@ takeCommand t = case R.splitAt (R.length prompt) t of
 consoleKeymap :: Keymap
 consoleKeymap = do
   _ <- event (Event KEnter [])
-  write $ withBuffer readLnB >>= \x -> case parseErrorMessage x of
+  write $ withCurrentBuffer readLnB >>= \x -> case parseErrorMessage x of
     Just (f,l,c) -> jumpToE f l c
     Nothing -> do
-      withBuffer $ do
+      withCurrentBuffer $ do
         p <- pointB
         botB
         p' <- pointB

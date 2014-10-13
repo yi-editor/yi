@@ -51,7 +51,7 @@ import           Yi.Utils (io)
 getAppropriateFiles :: Maybe T.Text -> T.Text -> YiM (T.Text, [ T.Text ])
 getAppropriateFiles start s' = do
   curDir <- case start of
-    Nothing -> do bufferPath <- withBuffer $ gets file
+    Nothing -> do bufferPath <- withCurrentBuffer $ gets file
                   liftBase $ getFolder bufferPath
     Just path -> return $ T.unpack path
   let s = T.unpack $ replaceShorthands s'
@@ -136,14 +136,14 @@ promptFileChangingHints :: T.Text -- ^ Prompt
                         -> (T.Text -> YiM ()) -- ^ Action over choice
                         -> YiM ()
 promptFileChangingHints prompt ht act = do
-  maybePath <- withBuffer $ gets file
+  maybePath <- withCurrentBuffer $ gets file
   startPath <- T.pack . addTrailingPathSeparator
                <$> liftBase (canonicalizePath =<< getFolder maybePath)
   -- TODO: Just call withMinibuffer
   withMinibufferGen startPath (\x -> findFileHint startPath x >>= ht x) prompt
     (completeFile startPath) showCanon (act . replaceShorthands)
   where
-    showCanon = withBuffer . replaceBufferContent . R.fromText . replaceShorthands
+    showCanon = withCurrentBuffer . replaceBufferContent . R.fromText . replaceShorthands
 
 matchFile :: T.Text -> T.Text -> Maybe T.Text
 matchFile path proposedCompletion =
@@ -197,7 +197,7 @@ rot13Char :: Char -> Char
 rot13Char = onCharLetterCode (+13)
 
 printFileInfoE :: EditorM ()
-printFileInfoE = printMsg . showBufInfo =<< withBuffer0 bufInfoB
+printFileInfoE = printMsg . showBufInfo =<< withCurrentBuffer bufInfoB
     where showBufInfo :: BufferFileInfo -> T.Text
           showBufInfo bufInfo = T.concat
             [ T.pack $ bufInfoFileName bufInfo

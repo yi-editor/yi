@@ -12,7 +12,7 @@
 {-# OPTIONS_HADDOCK show-extensions #-}
 
 -- |
--- Module      :  Yi.Editor
+-- Module      :  Yi.Editor.Internal
 -- License     :  GPL-2
 -- Maintainer  :  yi-devel@googlegroups.com
 -- Stability   :  experimental
@@ -21,86 +21,7 @@
 -- The top level editor state, and operations on it. This is inside an
 -- internal module for easy re-export with Yi.Types bits.
 
-module Yi.Editor ( Editor(..), EditorM(..), MonadEditor(..)
-                 , runEditor
-                 , acceptedInputsOtherWindow
-                 , addJumpAtE
-                 , addJumpHereE
-                 , alternateBufferE
-                 , askConfigVariableA
-                 , bufferSet
-                 , buffersA
-                 , closeBufferAndWindowE
-                 , closeBufferE
-                 , closeOtherE
-                 , clrStatus
-                 , commonNamePrefix
-                 , currentBuffer
-                 , currentRegexA
-                 , currentWindowA
-                 , deleteBuffer
-                 , deleteTabE
-                 , emptyEditor
-                 , findBuffer
-                 , findBufferWith
-                 , findBufferWithName
-                 , findWindowWith
-                 , focusWindowE
-                 , getBufferStack
-                 , getBufferWithName
-                 , getBufferWithNameOrCurrent
-                 , getEditorDyn
-                 , getRegE
-                 , jumpBackE
-                 , jumpForwardE
-                 , killringA
-                 , layoutManagerNextVariantE
-                 , layoutManagerPreviousVariantE
-                 , layoutManagersNextE
-                 , layoutManagersPreviousE
-                 , moveTabE
-                 , moveWinNextE
-                 , moveWinPrevE
-                 , newBufferE
-                 , newEmptyBufferE
-                 , newTabE
-                 , newTempBufferE
-                 , newWindowE
-                 , nextTabE
-                 , nextWinE
-                 , pendingEventsA
-                 , prevWinE
-                 , previousTabE
-                 , printMsg
-                 , printMsgs
-                 , printStatus
-                 , pushWinToFirstE
-                 , putEditorDyn
-                 , searchDirectionA
-                 , setDividerPosE
-                 , setRegE
-                 , setStatus
-                 , shiftOtherWindow
-                 , splitE
-                 , statusLine
-                 , statusLineInfo
-                 , statusLinesA
-                 , stringToNewBuffer
-                 , swapWinWithFirstE
-                 , switchToBufferE
-                 , switchToBufferWithNameE
-                 , tabsA
-                 , tryCloseE
-                 , windows
-                 , windowsA
-                 , windowsOnBufferE
-                 , withCurrentBuffer
-                 , withEveryBuffer
-                 , withGivenBuffer
-                 , withGivenBufferAndWindow
-                 , withOtherWindow
-                 , withWindowE
-                 ) where
+module Yi.Editor.Internal where
 
 import           Control.Applicative
 import           Control.Lens
@@ -110,7 +31,6 @@ import           Control.Monad.State hiding (get, put, mapM, forM_)
 import           Data.Binary
 import           Data.Default
 import qualified Data.DelayList as DelayList
-import           Data.DynamicState.Serializable
 #if __GLASGOW_HASKELL__ < 708
 import           Data.DeriveTH
 #else
@@ -132,6 +52,7 @@ import           Prelude hiding (foldl,concatMap,foldr,all)
 import           System.FilePath (splitPath)
 import           Yi.Buffer
 import           Yi.Config
+import           Yi.Dynamic
 import           Yi.Interact as I
 import           Yi.JumpList
 import           Yi.KillRing
@@ -145,9 +66,6 @@ import           Yi.Tab
 import           Yi.Types
 import           Yi.Utils hiding ((+~))
 import           Yi.Window
-
-liftEditor :: MonadEditor m => EditorM a -> m a
-liftEditor = withEditor
 
 instance Binary Editor where
   put (Editor bss bs supply ts dv _sl msh kr _re _dir _ev _cwa ) =
@@ -180,7 +98,7 @@ emptyEditor = Editor
   , refSupply    = 3
   , currentRegex = Nothing
   , searchDirection = Forward
-  , dynamic      = mempty
+  , dynamic      = def
   , statusLines  = DelayList.insert (maxBound, ([""], defaultStyle)) []
   , killring     = krEmpty
   , pendingEvents = []
@@ -210,7 +128,10 @@ currentTabA = tabsA . PL.focus
 
 askConfigVariableA :: (YiConfigVariable b, MonadEditor m) => m b
 askConfigVariableA = do cfg <- askCfg
-                        return $ cfg ^. configVariable
+                        return $ cfg ^. configVarsA ^. configVariableA
+
+dynA :: YiVariable a => Lens' Editor a
+dynA = dynamicA . dynamicValueA
 
 -- ---------------------------------------------------------------------
 -- Buffer operations
@@ -232,11 +153,9 @@ stringToNewBuffer :: MonadEditor m
 stringToNewBuffer nm cs = withEditor $ do
     u <- newBufRef
     defRegStyle <- configRegionStyle <$> askCfg
-    insertBuffer $ newB u nm cs
+    insertBuffer $ set regionStyleA defRegStyle $ newB u nm cs
     m <- asks configFundamentalMode
-    withGivenBuffer u $ do
-        putRegionStyle defRegStyle
-        setAnyMode m
+    withGivenBuffer u $ setAnyMode m
     return u
 
 insertBuffer :: MonadEditor m => FBuffer -> m ()
@@ -467,12 +386,12 @@ getRegE = uses killringA krGet
 --
 
 -- | Retrieve a value from the extensible state
-getEditorDyn :: (MonadEditor m, YiVariable a, Default a, Functor m) => m a
-getEditorDyn = fromMaybe def <$> getDyn (use dynamicA) (assign dynamicA)
+getDynamic :: (MonadEditor m, YiVariable a) => m a
+getDynamic = use (dynamicA . dynamicValueA)
 
 -- | Insert a value into the extensible state, keyed by its type
-putEditorDyn :: (MonadEditor m, YiVariable a, Functor m) => a -> m ()
-putEditorDyn = putDyn (use dynamicA) (assign dynamicA)
+setDynamic :: (MonadEditor m, YiVariable a) => a -> m ()
+setDynamic = assign (dynamicA . dynamicValueA)
 
 -- | Like fnewE, create a new buffer filled with the String @s@,
 -- Switch the current window to this buffer. Doesn't associate any
@@ -824,17 +743,50 @@ modifyJumpListE f = do
       withCurrentBuffer $ use (markPointA mark) >>= moveTo
       currentWindowA . jumpListA %= f
 
+
+-- | Specifies the hint for the next temp buffer's name.
+data TempBufferNameHint = TempBufferNameHint
+    { tmp_name_base :: String
+    , tmp_name_index :: Int
+    } deriving Typeable
+
+-- …why? Stop 'Show' abuse ;_; !
+instance Show TempBufferNameHint where
+    show (TempBufferNameHint s i) = s ++ "-" ++ show i
+
+#if __GLASGOW_HASKELL__ < 708
+$(derive makeBinary ''TempBufferNameHint)
+#else
+deriving instance Generic TempBufferNameHint
+instance Binary TempBufferNameHint
+#endif
+
+instance Default TempBufferNameHint where
+    def = TempBufferNameHint "tmp" 0
+
+instance YiVariable TempBufferNameHint
+
+makeLensesWithSuffix "A" ''TempBufferNameHint
+
 -- | Creates an in-memory buffer with a unique name.
+--
+-- A hint for the buffer naming scheme can be specified in the dynamic
+-- variable TempBufferNameHint. The new buffer always has a buffer ID
+-- that did not exist before newTempBufferE.
+--
+-- TODO: this probably a lot more complicated than it should be: why
+-- not count from zero every time?
 newTempBufferE :: EditorM BufferRef
 newTempBufferE = do
+  hint :: TempBufferNameHint <- getDynamic
   e <- gets id
   -- increment the index of the hint until no buffer is found with that name
-  let find_next currentName (nextName:otherNames) =
-          case findBufferWithName currentName e of
-            (_b : _) -> find_next nextName otherNames
-            []      -> currentName
-      find_next _ [] = error "Looks like nearly infinite list has just ended."
-      next_tmp_name = find_next name names
-      (name : names) = (fmap (("tmp-" Mon.<>) . T.pack . show) [0 :: Int ..])
+  let find_next in_name = case findBufferWithName (T.pack $ show in_name) e of
+        (_b : _) -> find_next $ inc in_name
+        []      -> in_name
+      inc in_name = in_name & tmp_name_indexA +~ 1
+      next_tmp_name = find_next hint
 
-  newEmptyBufferE (MemBuffer next_tmp_name)
+  b <- newEmptyBufferE (MemBuffer . T.pack $ show next_tmp_name)
+  setDynamic $ inc next_tmp_name
+  return b

@@ -39,6 +39,6 @@ ireaderMode = abstract { modeName = "interactive reading of text" }
 
 ireadMode ::  YiM ()
 ireadMode = do
-  withBuffer $ setAnyMode $ AnyMode ireaderMode
+  withCurrentBuffer $ setAnyMode $ AnyMode ireaderMode
   nextArticle
-  (withEditor . printMsg) "M-` new; M-0 delete; M-[1-9]: save w/higher priority"
+  printMsg "M-` new; M-0 delete; M-[1-9]: save w/higher priority"

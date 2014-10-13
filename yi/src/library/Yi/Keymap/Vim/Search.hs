@@ -20,10 +20,10 @@ doVimSearch :: Maybe String -> [SearchOption] -> Direction -> EditorM ()
 doVimSearch Nothing _ dir = do
     mbRegex <- getRegexE
     case mbRegex of
-        Just regex -> withBuffer0 $ continueVimSearch (regex, dir)
+        Just regex -> withCurrentBuffer $ continueVimSearch (regex, dir)
         Nothing -> printMsg "No previous search pattern"
 doVimSearch (Just needle) opts dir =
-    searchInit needle dir opts >>= withBuffer0 . continueVimSearch
+    searchInit needle dir opts >>= withCurrentBuffer . continueVimSearch
 
 continueVimSearch :: (SearchExp, Direction) -> BufferM ()
 continueVimSearch (searchExp, dir) = do
