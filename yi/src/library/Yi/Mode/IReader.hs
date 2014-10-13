@@ -22,7 +22,6 @@ import Yi.Editor
 import Yi.IReader
 import Yi.Keymap
 import Yi.Keymap.Keys
-import Yi.Core
 import Yi.Modes (anyExtension, fundamentalMode)
 
 abstract :: Mode syntax

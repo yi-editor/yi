@@ -59,7 +59,6 @@ import           GHC.Generics (Generic)
 import           Data.Foldable (find)
 import           Data.List hiding (find, maximum, concat)
 import qualified Data.Map as M
-import           Data.Maybe
 import           Data.Monoid
 import qualified Data.Text as T
 import           Data.Time
@@ -402,8 +401,8 @@ askDelFiles dir fs =
             -- a deletion command is mapped to a list of deletions
             -- wrapped up by DOConfirm
             -- TODO: is `counting' necessary here?
-            let ops = opList <> [DOFeedback showResult]
-            procDiredOp True [DOConfirm prompt ops [DOFeedback showNothing]]
+            let ops' = opList <> [DOFeedback showResult]
+            procDiredOp True [DOConfirm prompt ops' [DOFeedback showNothing]]
     -- no files listed
     []     -> procDiredOp True [DOFeedback showNothing]
     where
