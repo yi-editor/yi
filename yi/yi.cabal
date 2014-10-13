@@ -230,7 +230,7 @@ library
     word-trie >= 0.2.0.4,
     yi-language >= 0.1.0.2,
     oo-prototypes,
-    yi-rope >= 0.4.0.0
+    yi-rope >= 0.4.0.1
 
   ghc-options: -Wall -fno-warn-orphans
   ghc-prof-options: -prof -auto-all -rtsopts
