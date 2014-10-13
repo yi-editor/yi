@@ -21,7 +21,81 @@
 -- The top level editor state, and operations on it. This is inside an
 -- internal module for easy re-export with Yi.Types bits.
 
-module Yi.Editor.Internal where
+module Yi.Editor.Internal
+    ( acceptedInputsOtherWindow
+    , addJumpAtE
+    , addJumpHereE
+    , alternateBufferE
+    , askConfigVariableA
+    , bufferSet
+    , buffersA
+    , closeBufferAndWindowE
+    , closeBufferE
+    , closeOtherE
+    , clrStatus
+    , commonNamePrefix
+    , currentBuffer
+    , currentRegexA
+    , currentWindowA
+    , deleteBuffer
+    , deleteTabE
+    , emptyEditor
+    , findBuffer
+    , findBufferWith
+    , findBufferWithName
+    , getBufferStack
+    , getBufferWithName
+    , getBufferWithNameOrCurrent
+    , getEditorDyn
+    , getRegE
+    , jumpBackE
+    , jumpForwardE
+    , killringA
+    , layoutManagerNextVariantE
+    , layoutManagerPreviousVariantE
+    , layoutManagersNextE
+    , layoutManagersPreviousE
+    , moveTab
+    , moveWinNextE
+    , moveWinPrevE
+    , newBufferE
+    , newEmptyBufferE
+    , newTabE
+    , newTempBufferE
+    , newWindowE
+    , nextTabE
+    , nextWinE
+    , pendingEventsA
+    , prevWinE
+    , previousTabE
+    , printMsg
+    , printMsgs
+    , printStatus
+    , pushWinToFirstE
+    , putEditorDyn
+    , searchDirectionA
+    , setRegE
+    , setStatus
+    , shiftOtherWindow
+    , splitE
+    , statusLineInfo
+    , statusLinesA
+    , stringToNewBuffer
+    , swapWinWithFirstE
+    , switchToBufferE
+    , switchToBufferWithNameE
+    , tabsA
+    , tryCloseE
+    , windows
+    , windowsA
+    , windowsOnBufferE
+    , withBuffer0
+    , withEveryBufferE
+    , withGivenBuffer0
+    , withGivenBufferAndWindow0
+    , withOtherWindow
+    , withWindowE
+    ) where
 
 import           Control.Applicative
 import           Control.Lens
