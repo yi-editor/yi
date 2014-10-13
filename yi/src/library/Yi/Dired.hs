@@ -737,12 +737,13 @@ diredRefreshMark = do
 
 diredUnmark :: BufferM ()
 diredUnmark = bypassReadOnly $ do
-                maybefile <- fileFromPoint
-                case maybefile of
-                  Just (fn, _de) -> do diredUnmarkPath fn
-                                       filenameColOf lineUp
-                                       diredRefreshMark
-                  Nothing        -> filenameColOf lineUp
+  maybefile <- fileFromPoint
+  case maybefile of
+    Just (fn, _de) -> do
+      diredUnmarkPath fn
+      filenameColOf lineDown
+      diredRefreshMark
+    Nothing        -> filenameColOf lineDown
 
 
 diredUnmarkPath :: FilePath -> BufferM()
