@@ -67,11 +67,15 @@ fundamentalMode = emptyMode
   , modeApplies = modeAlwaysApplies
   , modeIndent = const autoIndentB
   , modePrettify = const fillParagraph
-  , modeGotoDeclaration = do currentWord <- readCurrentWordB
-                             gotoLn 0
-                             word <- return (makeSimpleSearch currentWord)
-                             region <- head <$> regexB Forward word
-                             moveTo $ regionStart region
+  , modeGotoDeclaration = do
+       currentPoint <- pointB
+       currentWord <- readCurrentWordB
+       gotoLn 0
+       word <- return $ makeSimpleSearch currentWord
+       searchResults <- regexB Forward word
+       case searchResults of
+           (declarationRegion : _) -> moveTo $ regionStart declarationRegion
+           [] -> moveTo currentPoint
   }
 
 -- | Creates a 'TokenBasedMode' from a 'Lexer' and a function that
