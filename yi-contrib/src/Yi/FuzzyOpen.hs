@@ -96,7 +96,7 @@ localKeymap bufRef fileList =
                 ]
              <|| (insertChar >>! update)
     where update = updateMatchList bufRef fileList
-          updatingB bufAction = withBuffer bufAction >> update
+          updatingB bufAction = withCurrentBuffer bufAction >> update
 
 showFileList :: [FilePath] -> R.YiString
 showFileList = R.fromText . T.intercalate "\n" . map (mappend "  " . T.pack)
@@ -110,9 +110,9 @@ showFileList = R.fromText . T.intercalate "\n" . map (mappend "  " . T.pack)
 
 updateMatchList :: BufferRef -> [FilePath] -> YiM ()
 updateMatchList bufRef fileList = do
-    needle <- R.toString <$> withBuffer elemsB
+    needle <- R.toString <$> withCurrentBuffer elemsB
     let filteredFiles = filter (subsequenceMatch needle) fileList
-    withEditor $ withGivenBuffer0 bufRef $ do
+    withEditor $ withGivenBuffer bufRef $ do
         replaceBufferContent $ showFileList filteredFiles
         moveTo 0
         replaceCharB '*'
@@ -129,7 +129,7 @@ openInNewTab = openRoutine newTabE
 
 openRoutine :: EditorM () -> BufferRef -> YiM ()
 openRoutine preOpenAction bufRef = do
-  chosenFile <- withEditor $ withGivenBuffer0 bufRef readLnB
+  chosenFile <- withEditor $ withGivenBuffer bufRef readLnB
   withEditor $ do
       replicateM_ 2 closeBufferAndWindowE
       preOpenAction
@@ -139,13 +139,13 @@ insertChar :: Keymap
 insertChar = textChar >>= write . insertB
 
 moveSelectionUp :: BufferRef -> EditorM ()
-moveSelectionUp bufRef = withGivenBuffer0 bufRef $ do
+moveSelectionUp bufRef = withGivenBuffer bufRef $ do
     replaceCharB ' '
     lineUp
     replaceCharB '*'
 
 moveSelectionDown :: BufferRef -> EditorM ()
-moveSelectionDown bufRef = withGivenBuffer0 bufRef $ do
+moveSelectionDown bufRef = withGivenBuffer bufRef $ do
     replaceCharB ' '
     lineDown
     replaceCharB '*'
