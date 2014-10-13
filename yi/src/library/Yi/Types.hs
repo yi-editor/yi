@@ -302,6 +302,8 @@ data Mode syntax = Mode
     -- ^ An action that is to be executed when this mode is set
   , modeModeLine :: [T.Text] -> BufferM T.Text
     -- ^ buffer-local modeline formatting method
+  , modeGotoDeclaration :: BufferM ()
+    -- ^ go to the point where the variable is declared
   }
 
 -- | Used to specify the behaviour of the automatic indent command.

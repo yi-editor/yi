@@ -532,6 +532,7 @@ emptyMode = Mode
    modeToggleCommentSelection = Nothing,
    modeGetStrokes = \_ _ _ _ -> [],
    modeOnLoad = return (),
+   modeGotoDeclaration = return (),
    modeModeLine = defaultModeLine
   }
 
