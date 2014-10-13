@@ -836,50 +836,17 @@ modifyJumpListE f = do
       withBuffer0 $ use (markPointA mark) >>= moveTo
       currentWindowA . jumpListA %= f
 
-
--- | Specifies the hint for the next temp buffer's name.
-data TempBufferNameHint = TempBufferNameHint
-    { tmp_name_base :: String
-    , tmp_name_index :: Int
-    } deriving Typeable
-
--- …why? Stop 'Show' abuse ;_; !
-instance Show TempBufferNameHint where
-    show (TempBufferNameHint s i) = s ++ "-" ++ show i
-
-#if __GLASGOW_HASKELL__ < 708
-$(derive makeBinary ''TempBufferNameHint)
-#else
-deriving instance Generic TempBufferNameHint
-instance Binary TempBufferNameHint
-#endif
-
-instance Default TempBufferNameHint where
-    def = TempBufferNameHint "tmp" 0
-
-instance YiVariable TempBufferNameHint
-
-makeLensesWithSuffix "A" ''TempBufferNameHint
-
 -- | Creates an in-memory buffer with a unique name.
---
--- A hint for the buffer naming scheme can be specified in the dynamic
--- variable TempBufferNameHint. The new buffer always has a buffer ID
--- that did not exist before newTempBufferE.
---
--- TODO: this probably a lot more complicated than it should be: why
--- not count from zero every time?
 newTempBufferE :: EditorM BufferRef
 newTempBufferE = do
-  hint :: TempBufferNameHint <- getEditorDyn
   e <- gets id
   -- increment the index of the hint until no buffer is found with that name
-  let find_next in_name = case findBufferWithName (T.pack $ show in_name) e of
-        (_b : _) -> find_next $ inc in_name
-        []      -> in_name
-      inc in_name = in_name & tmp_name_indexA +~ 1
-      next_tmp_name = find_next hint
+  let find_next currentName (nextName:otherNames) =
+          case findBufferWithName currentName e of
+            (_b : _) -> find_next nextName otherNames
+            []      -> currentName
+      find_next _ [] = error "Looks like nearly infinite list has just ended."
+      next_tmp_name = find_next name names
+      (name : names) = (fmap (("tmp-" Mon.<>) . T.pack . show) [0 :: Int ..])
 
-  b <- newEmptyBufferE (MemBuffer . T.pack $ show next_tmp_name)
-  putEditorDyn $ inc next_tmp_name
-  return b
+  newEmptyBufferE (MemBuffer next_tmp_name)
