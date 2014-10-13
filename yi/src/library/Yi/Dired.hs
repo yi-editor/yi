@@ -476,7 +476,10 @@ diredKeymap = important $ withArg mainMap
       , char 'q'                   ?>>!
           ((deleteBuffer =<< gets currentBuffer) :: EditorM ())
       , char 'x'                   ?>>! diredDoMarkedDel
-      , oneOf [ctrl $ char 'm', spec KEnter, char 'f'] >>! diredLoad
+      , oneOf [ctrl $ char 'm', spec KEnter, char 'f', char 'e'] >>! diredLoad
+        -- Currently ‘o’ misbehaves, seems this naive method loses
+        -- track of buffers.
+      , char 'o'                   ?>>! withOtherWindow diredLoad
       , char 'u'                   ?>>! diredUnmark Forward
       , spec KBS                   ?>>! diredUnmark Backward
       , char 'D'                   ?>>! diredDoDel
