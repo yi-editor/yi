@@ -44,6 +44,8 @@ module Yi.Editor ( Editor(..), EditorM(..), MonadEditor(..)
                  , findBuffer
                  , findBufferWith
                  , findBufferWithName
+                 , findWindowWith
+                 , focusWindowE
                  , getBufferStack
                  , getBufferWithName
                  , getBufferWithNameOrCurrent
@@ -75,10 +77,12 @@ module Yi.Editor ( Editor(..), EditorM(..), MonadEditor(..)
                  , pushWinToFirstE
                  , putEditorDyn
                  , searchDirectionA
+                 , setDividerPosE
                  , setRegE
                  , setStatus
                  , shiftOtherWindow
                  , splitE
+                 , statusLine
                  , statusLineInfo
                  , statusLinesA
                  , stringToNewBuffer
