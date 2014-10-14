@@ -326,6 +326,6 @@ Test-Suite test-suite
     filepath,
     directory,
     text,
-    yi-language >= 0.1.0.2,
+    yi-language >= 0.1.0.7,
     yi-rope,
     yi
