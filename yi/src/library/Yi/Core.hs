@@ -171,7 +171,7 @@ startEditor cfg st = do
 -- printer :: YiM ThreadId
 -- printer = do
 --   mv <- io $ newMVar (0 :: Int)
---   forkYiM (suicide mv) MustRefresh $ do
+--   forkAction (suicide mv) MustRefresh $ do
 --     c <- io $ do
 --       modifyMVar_ mv (return . succ)
 --       tryReadMVar mv
