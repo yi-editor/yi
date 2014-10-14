@@ -27,13 +27,15 @@ module Yi.MiniBuffer ( spawnMinibufferE, withMinibufferFree, withMinibuffer
                      , getAllModeNames, matchingBufferNames, anyModeByNameM
                      , anyModeName, (:::)(..), LineNumber, RegexTag
                      , FilePatternTag, ToKill, CommandArguments(..)
-                     , commentRegion
+                     , commentRegion, promptingForBuffer, debugBufferContent
                      ) where
 
 import           Control.Applicative
+import           Control.Concurrent
 import           Control.Lens hiding (act)
 import           Control.Monad
-import           Data.Foldable (find)
+import           Data.Foldable (find, toList)
+import           Data.IORef
 import qualified Data.List.PointedList.Circular as PL
 import           Data.Maybe
 import           Data.Monoid (mempty)
@@ -55,7 +57,53 @@ import           Yi.Monad
 import qualified Yi.Rope as R
 import           Yi.Style (defaultStyle)
 import           Yi.String (commonTPrefix)
+import           Yi.Utils
+import           Yi.Window (bufkey)
 
+-- | Prints out the rope of the current buffer as-is to stdout.
+--
+-- The only way to stop it is to close the buffer in question which
+-- should free up the 'BufferRef'.
+debugBufferContent :: YiM ()
+debugBufferContent = promptingForBuffer "buffer to trace:"
+                     debugBufferContentUsing (\_ x -> x)
+
+debugBufferContentUsing :: BufferRef -> YiM ()
+debugBufferContentUsing b = do
+  mv <- io $ newMVar mempty
+  keepGoing <- io $ newIORef True
+  let delay = threadDelay 100000 >> readIORef keepGoing
+  void . forkAction delay NoNeedToRefresh $ do
+    findBuffer b >>= \case
+      Nothing -> io $ writeIORef keepGoing True
+      Just _ -> do
+        ns <- withGivenBuffer b elemsB :: YiM R.YiString
+        io $ do
+          tryReadMVar mv >>= \case
+            Nothing -> return ()
+            Just c -> when (c /= ns) (print ns >> void (swapMVar mv ns))
+
+-- | Prompts for a buffer name, turns it into a 'BufferRef' and passes
+-- it on to the handler function. Uses all known buffers for hinting.
+promptingForBuffer :: T.Text -- ^ Prompt
+                   -> (BufferRef -> YiM ()) -- ^ Handler
+                   -> ([BufferRef] -> [BufferRef] -> [BufferRef])
+                   -- ^ Hint pre-processor. It takes the list of open
+                   -- buffers and a list of all buffers, and should
+                   -- spit out all the buffers to possibly hint, in
+                   -- the wanted order. Note the hinter uses name
+                   -- prefix for filtering regardless of what you do
+                   -- here.
+                   -> YiM ()
+promptingForBuffer prompt act hh = do
+    openBufs <- fmap bufkey . toList <$> use windowsA
+    names <- withEditor $ do
+      bs <- toList . fmap bkey <$> getBufferStack
+      let choices = hh openBufs bs
+      prefix <- gets commonNamePrefix
+      forM choices $ \k ->
+        gets (shortIdentString (length prefix) . findBufferWith k)
+    withMinibufferFin prompt names (withEditor . getBufferWithName >=> act)
 
 -- | Prompts the user for comment syntax to use for the current mode.
 commentRegion :: YiM ()

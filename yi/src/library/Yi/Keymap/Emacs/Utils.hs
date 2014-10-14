@@ -54,7 +54,6 @@ import           Control.Applicative
 import           Control.Lens hiding (re,act)
 import           Control.Monad
 import           Control.Monad.Base
-import           Data.Foldable (toList)
 import           Data.List ((\\))
 import           Data.Maybe (fromMaybe)
 import           Data.Monoid
@@ -80,7 +79,6 @@ import           Yi.Search
 import           Yi.String
 import           Yi.Tag
 import           Yi.Utils
-import           Yi.Window
 
 type UnivArgument = Maybe Int
 
@@ -301,28 +299,6 @@ scrollUpE :: UnivArgument -> BufferM ()
 scrollUpE a = case a of
                  Nothing -> upScreenB
                  Just n -> scrollB (negate n)
-
--- | Prompts for a buffer name, turns it into a 'BufferRef' and passes
--- it on to the handler function. Uses all known buffers for hinting.
-promptingForBuffer :: T.Text -- ^ Prompt
-                   -> (BufferRef -> YiM ()) -- ^ Handler
-                   -> ([BufferRef] -> [BufferRef] -> [BufferRef])
-                   -- ^ Hint pre-processor. It takes the list of open
-                   -- buffers and a list of all buffers, and should
-                   -- spit out all the buffers to possibly hint, in
-                   -- the wanted order. Note the hinter uses name
-                   -- prefix for filtering regardless of what you do
-                   -- here.
-                   -> YiM ()
-promptingForBuffer prompt act hh = do
-    openBufs <- fmap bufkey . toList <$> use windowsA
-    names <- withEditor $ do
-      bs <- toList . fmap bkey <$> getBufferStack
-      let choices = hh openBufs bs
-      prefix <- gets commonNamePrefix
-      forM choices $ \k ->
-        gets (shortIdentString (length prefix) . findBufferWith k)
-    withMinibufferFin prompt names (withEditor . getBufferWithName >=> act)
 
 -- | Prompts the user for a buffer name and switches to the chosen buffer.
 switchBufferE :: YiM ()

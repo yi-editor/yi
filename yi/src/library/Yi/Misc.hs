@@ -13,7 +13,11 @@
 --
 -- Various high-level functions to further classify.
 
-module Yi.Misc where
+module Yi.Misc ( getAppropriateFiles, getFolder, cd, pwd, matchingFileNames
+               , rot13Char, placeMark, selectAll, adjBlock, adjIndent
+               , promptFile , promptFileChangingHints, matchFile, completeFile
+               , printFileInfoE, debugBufferContent
+               ) where
 
 import           Control.Applicative
 import           Control.Lens (assign)
@@ -36,7 +40,8 @@ import           Yi.Buffer
 import           Yi.Completion (completeInList')
 import           Yi.Editor
 import           Yi.Keymap
-import           Yi.MiniBuffer (withMinibufferGen, mkCompleteFn )
+import           Yi.MiniBuffer (withMinibufferGen, mkCompleteFn,
+                                debugBufferContent)
 import           Yi.Monad
 import qualified Yi.Rope as R
 import           Yi.Utils (io)

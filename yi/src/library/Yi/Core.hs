@@ -187,7 +187,7 @@ forkAction :: (YiAction a x, Show x)
            => IO Bool
               -- ^ runs after we insert the action: this may be a
               -- thread delay or a thread suicide or whatever else;
-              -- when delay return True, that's our signal to
+              -- when delay returns False, that's our signal to
               -- terminate the thread.
            -> IsRefreshNeeded
               -- ^ should we refresh after each action
