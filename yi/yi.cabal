@@ -5,7 +5,7 @@ synopsis:       The Haskell-Scriptable Editor
 description:
   Yi is a text editor written in Haskell and extensible in Haskell. The goal of the Yi project is
   to provide a flexible, powerful, and correct editor for haskell hacking.
-license:        GPL
+license:        GPL-2
 license-file:   LICENSE
 author:         AUTHORS
 maintainer:     yi-devel@googlegroups.com
