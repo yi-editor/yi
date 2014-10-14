@@ -32,7 +32,12 @@
  * Double-click and triple-click selection in pango (#100 and #101)
  * Count columns properly in presence of tabs (#440)
  * Extra marking operations in dired
- * 13 new contributors
+
+ Contributors:
+  Alan Zimmerman, Anders Papitto, Anthony Quizon, Ben Armston, Benno Fünfstück,
+  Carter Charbonneau, Corey O'Connor, Cray Elliott, Dmitry Ivanov, fiendfan1,
+  Ilya Smelkov, Jakub Arnold, Jared Hance, jetho, Mateusz Kowalczyk,
+  Richard Goulter, Ryan Desfosses, Siddhanathan Shanmugam
 
 0.9.0
 -----
