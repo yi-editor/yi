@@ -40,6 +40,7 @@ module Yi.Core
   , runAction
   , withSyntax
   , focusAllSyntax
+  , forkAction
   ) where
 
 import           Control.Applicative
@@ -148,6 +149,57 @@ startEditor cfg st = do
     runYi refreshEditor
 
     UI.main ui -- transfer control to UI
+
+-- | Runs a 'YiM' action in a separate thread.
+--
+-- Notes:
+--
+-- * It seems to work but I don't know why
+--
+-- * Maybe deadlocks?
+--
+-- * If you're outputting into the Yi window, you should really limit
+-- the rate at which you do so: for example, the Pango front-end will
+-- quite happily segfault/double-free if you output too fast.
+--
+-- I am exporting this for those adventurous to play with but I have
+-- only discovered how to do this a night before the release so it's
+-- rather experimental. A simple function that prints a message once a
+-- second, 5 times, could be written like this:
+--
+-- @
+-- printer :: YiM ThreadId
+-- printer = do
+--   mv <- io $ newMVar (0 :: Int)
+--   forkYiM (suicide mv) MustRefresh $ do
+--     c <- io $ do
+--       modifyMVar_ mv (return . succ)
+--       tryReadMVar mv
+--     case c of
+--       Nothing -> printMsg "messaging unknown time"
+--       Just x -> printMsg $ "message #" <> showT x
+--   where
+--     suicide mv = tryReadMVar mv >>= \case
+--       Just i | i >= 5 -> return True
+--       _ -> threadDelay 1000000 >> return False
+-- @
+forkAction :: (YiAction a x, Show x)
+           => IO Bool
+              -- ^ runs after we insert the action: this may be a
+              -- thread delay or a thread suicide or whatever else;
+              -- when delay return True, that's our signal to
+              -- terminate the thread.
+           -> IsRefreshNeeded
+              -- ^ should we refresh after each action
+           -> a
+              -- ^ The action to actually run
+           -> YiM ThreadId
+forkAction delay ref ym = onYiVar $ \yi yv -> do
+  let loop = do
+        yiOutput yi ref [makeAction ym]
+        delay >>= \b -> when b loop
+  t <- forkIO loop
+  return (yv, t)
 
 recoverMode :: [AnyMode] -> FBuffer -> FBuffer
 recoverMode tbl buffer  = case fromMaybe (AnyMode emptyMode) (find (\(AnyMode m) -> modeName m == oldName) tbl) of
