@@ -70,7 +70,7 @@ debugBufferContent = promptingForBuffer "buffer to trace:"
 
 debugBufferContentUsing :: BufferRef -> YiM ()
 debugBufferContentUsing b = do
-  mv <- io $ newMVar mempty
+  mv <- io $ newIORef mempty
   keepGoing <- io $ newIORef True
   let delay = threadDelay 100000 >> readIORef keepGoing
   void . forkAction delay NoNeedToRefresh $ do
@@ -78,10 +78,8 @@ debugBufferContentUsing b = do
       Nothing -> io $ writeIORef keepGoing True
       Just _ -> do
         ns <- withGivenBuffer b elemsB :: YiM R.YiString
-        io $ do
-          tryReadMVar mv >>= \case
-            Nothing -> return ()
-            Just c -> when (c /= ns) (print ns >> void (swapMVar mv ns))
+        io $ readIORef mv >>= \c ->
+          when (c /= ns) (print ns >> void (writeIORef mv ns))
 
 -- | Prompts for a buffer name, turns it into a 'BufferRef' and passes
 -- it on to the handler function. Uses all known buffers for hinting.
