@@ -1,5 +1,5 @@
 name:           yi
-version:        0.9.1
+version:        0.10.0
 category:       Development, Editor
 synopsis:       The Haskell-Scriptable Editor
 description:
@@ -228,7 +228,7 @@ library
     transformers-base,
     semigroups,
     word-trie >= 0.2.0.4,
-    yi-language >= 0.1.0.2,
+    yi-language >= 0.1.0.7,
     oo-prototypes,
     yi-rope >= 0.4.1.0
 
