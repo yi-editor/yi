@@ -1,18 +1,18 @@
 name:           yi-contrib
-version:        0.10.0
+version:        0.10.1
 category:       Development, Editor
 synopsis:       Add-ons to Yi, the Haskell-Scriptable Editor
 description:
   3rd-party add-ons to Yi. The goal of this package is to simplify the core Yi
   package.
-license:        GPL
+license:        GPL-2
 license-file:   LICENSE
 author:         AUTHORS
 maintainer:     yi-devel@googlegroups.com
 homepage:       http://haskell.org/haskellwiki/Yi
-bug-reports:    http://code.google.com/p/yi-editor/issues/list
+bug-reports:    https://github.com/yi-editor/yi/issues
 Cabal-Version:  >= 1.6
-tested-with:    GHC==7.6.3
+tested-with:    GHC==7.8.3
 build-type:     Simple
 
 library
@@ -39,7 +39,7 @@ library
     filepath < 1.4,
     split >= 0.1 && < 0.3,
     mtl >= 0.1.0.1,
-    yi == 0.10.0,
+    yi == 0.10.*,
     time >= 1.0 && < 2.0,
     old-locale >= 1.0 && < 1.2,
     text,

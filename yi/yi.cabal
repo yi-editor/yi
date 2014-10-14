@@ -1,5 +1,5 @@
 name:           yi
-version:        0.10.0
+version:        0.10.1
 category:       Development, Editor
 synopsis:       The Haskell-Scriptable Editor
 description:
@@ -12,12 +12,67 @@ maintainer:     yi-devel@googlegroups.com
 homepage:       http://haskell.org/haskellwiki/Yi
 bug-reports:    https://github.com/yi-editor/yi/issues
 Cabal-Version:  >= 1.10
-tested-with:    GHC==7.6.3
+tested-with:    GHC==7.8.3
 build-type:     Simple
 data-files:
   art/*.png
   art/*.pdf
   example-configs/*.hs
+
+extra-source-files:
+  src/tests/vimtests/find/*.test
+  src/tests/vimtests/repeat/*.test
+  src/tests/vimtests/ex/*.test
+  src/tests/vimtests/ex/s/*.test
+  src/tests/vimtests/ex/d/*.test
+  src/tests/vimtests/ex/gotoline/*.test
+  src/tests/vimtests/ex/g/*.test
+  src/tests/vimtests/jumplist/*.test
+  src/tests/vimtests/README.rst
+  src/tests/vimtests/undo/*.test
+  src/tests/vimtests/searchword/*.test
+  src/tests/vimtests/blockvisual/*.test
+  src/tests/vimtests/delete/*.test
+  src/tests/vimtests/paste/*.test
+  src/tests/vimtests/insertion/*.test
+  src/tests/vimtests/insertion/cursorkeys/*.test
+  src/tests/vimtests/search/*.test
+  src/tests/vimtests/visual/*.test
+  src/tests/vimtests/indent/*.test
+  src/tests/vimtests/unicode/*.test
+  src/tests/vimtests/joinlines/*.test
+  src/tests/vimtests/replace/*.test
+  src/tests/vimtests/change/*.test
+  src/tests/vimtests/digraphs/*.test
+  src/tests/vimtests/unsorted/*.test
+  src/tests/vimtests/marks/*.test
+  src/tests/vimtests/numbers/*.test
+  src/tests/vimtests/yank/*.test
+  src/tests/vimtests/switchcase/*.test
+  src/tests/vimtests/empty/*.test
+  src/tests/vimtests/empty/emptytest/input
+  src/tests/vimtests/empty/emptytest/output
+  src/tests/vimtests/empty/emptytest/events
+  src/tests/vimtests/macros/*.test
+  src/tests/vimtests/movement/*.test
+  src/tests/vimtests/movement/word/*.test
+  src/tests/vimtests/movement/bigWord/*.test
+  src/tests/vimtests/movement/char/*.test
+  src/tests/vimtests/movement/char/l_at_eol/input
+  src/tests/vimtests/movement/char/l_at_eol/output
+  src/tests/vimtests/movement/char/l_at_eol/events
+  src/tests/vimtests/movement/char/j/input
+  src/tests/vimtests/movement/char/j/output
+  src/tests/vimtests/movement/char/j/events
+  src/tests/vimtests/movement/char/h_at_bol/input
+  src/tests/vimtests/movement/char/h_at_bol/output
+  src/tests/vimtests/movement/char/h_at_bol/events
+  src/tests/vimtests/movement/char/hl/input
+  src/tests/vimtests/movement/char/hl/output
+  src/tests/vimtests/movement/char/hl/events
+  src/tests/vimtests/movement/cursorkeys/*.test
+  src/tests/vimtests/movement/file/*.test
+  src/tests/vimtests/movement/intraline/*.test
 
 source-repository head
   type:     git
@@ -26,11 +81,11 @@ source-repository head
 -- Frontends
 flag pango
   Default: False
-  Description: "Build with Pango frontend"
+  Description: Build with Pango frontend
 
 flag vty
   Default: True
-  Description: "Build with Vty frontend"
+  Description: Build with Vty frontend
 
 flag profiling
   Default: False
@@ -314,6 +369,14 @@ Test-Suite test-suite
   hs-source-dirs: src/tests
   type: exitcode-stdio-1.0
   main-is: TestSuite.hs
+  other-modules:
+    Driver
+    Generic.TestPureBufferManipulations
+    Generic.TestUtils
+    Vim.EditorManipulations.BufferExCommand
+    Vim.TestExCommandParsers
+    Vim.TestPureBufferManipulations
+    Vim.TestPureEditorManipulations
   build-depends:
     base,
     lens >= 4.4.0.1,
