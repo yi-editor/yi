@@ -1,12 +1,5 @@
-{-# LANGUAGE CPP #-}
-{-# LANGUAGE DeriveDataTypeable #-}
-{-# LANGUAGE DeriveGeneric #-}
-{-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE TemplateHaskell #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 {-# OPTIONS_HADDOCK show-extensions #-}
@@ -111,11 +104,6 @@ import           Data.Binary
 import           Data.Default
 import qualified Data.DelayList as DelayList
 import           Data.DynamicState.Serializable
-#if __GLASGOW_HASKELL__ < 708
-import           Data.DeriveTH
-#else
-import           GHC.Generics (Generic)
-#endif
 import           Data.Foldable hiding (forM_)
 import           Data.List (delete, (\\))
 import           Data.List.NonEmpty (fromList, NonEmpty(..), nub)
@@ -127,7 +115,6 @@ import           Data.Maybe
 import qualified Data.Monoid as Mon
 import           Data.Semigroup
 import qualified Data.Text as T
-import           Data.Typeable
 import           Prelude hiding (foldl,concatMap,foldr,all)
 import           System.FilePath (splitPath)
 import           Yi.Buffer
@@ -444,7 +431,7 @@ setTmpStatus delay s = withEditor $ do
 
 -- ---------------------------------------------------------------------
 -- kill-register (vim-style) interface to killring.
--- 
+--
 -- Note that our vim keymap currently has its own registers
 -- and doesn't use killring.
 
