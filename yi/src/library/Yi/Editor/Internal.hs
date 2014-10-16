@@ -363,7 +363,7 @@ setTmpStatus delay s = withEditor $ do
 
 -- ---------------------------------------------------------------------
 -- kill-register (vim-style) interface to killring.
--- 
+--
 -- Note that our vim keymap currently has its own registers
 -- and doesn't use killring.
 
@@ -386,6 +386,9 @@ getRegE = uses killringA krGet
 --
 
 -- | Retrieve a value from the extensible state
+--
+-- TODO: remove this group of functions, there are functions in
+-- Yi.Editor such as getEditorDyn that should be used instead
 getDynamic :: (MonadEditor m, YiVariable a) => m a
 getDynamic = use (dynamicA . dynamicValueA)
 

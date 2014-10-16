@@ -93,8 +93,6 @@ module Yi.Editor ( Editor(..), EditorM(..), MonadEditor(..)
                  , withGivenBufferAndWindow
                  , withOtherWindow
                  , withWindowE
-                 , getDynamic
-                 , setDynamic
                  ) where
 
 import           Control.Applicative
