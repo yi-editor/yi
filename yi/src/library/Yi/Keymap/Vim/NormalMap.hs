@@ -276,9 +276,9 @@ nonrepeatableBindings = fmap (mkBindingE Normal Drop)
       , switchMode Ex)
 
     -- Undo
-    , (char 'u', withCountOnBuffer0 undoB >> withCurrentBuffer leftOnEol, id)
-    , (char 'U', withCountOnBuffer0 undoB >> withCurrentBuffer leftOnEol, id) -- TODO
-    , (ctrlCh 'r', withCountOnBuffer0 redoB >> withCurrentBuffer leftOnEol, id)
+    , (char 'u', withCountOnBuffer undoB >> withCurrentBuffer leftOnEol, id)
+    , (char 'U', withCountOnBuffer undoB >> withCurrentBuffer leftOnEol, id) -- TODO
+    , (ctrlCh 'r', withCountOnBuffer redoB >> withCurrentBuffer leftOnEol, id)
 
     -- scrolling
     ,(ctrlCh 'b', getCountE >>= withCurrentBuffer . upScreensB, id)
@@ -505,5 +505,5 @@ playMacroBinding = VimBindingE (f . T.unpack . _unEv)
 withCount :: EditorM () -> EditorM ()
 withCount action = flip replicateM_ action =<< getCountE
 
-withCountOnBuffer0 :: BufferM () -> EditorM ()
-withCountOnBuffer0 action = withCount $ withCurrentBuffer action
+withCountOnBuffer :: BufferM () -> EditorM ()
+withCountOnBuffer action = withCount $ withCurrentBuffer action
