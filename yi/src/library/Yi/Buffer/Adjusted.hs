@@ -82,12 +82,9 @@ deleteRegionWithStyleB reg Block = savingPointB $ do
     (start, lengths) <- shapeOfBlockRegionB reg
     moveTo start
     forM_ (zip [1..] lengths) $ \(i, l) -> do
-        deleteN l
+        B.deleteN l
         moveTo start
         lineMoveRel i
-    case lengths of
-        [l] -> adjBlock (-l)
-        _ -> return ()
     return start
 
 deleteRegionWithStyleB reg style = savingPointB $ do
