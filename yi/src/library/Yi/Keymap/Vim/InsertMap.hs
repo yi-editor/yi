@@ -18,7 +18,8 @@ import           Data.List.NonEmpty hiding (drop, span, dropWhile)
 import           Data.Monoid
 import qualified Data.Text as T
 import           Prelude hiding (head)
-import           Yi.Buffer.Adjusted hiding (Insert)
+import qualified Yi.Buffer as B
+import           Yi.Buffer.Adjusted as BA hiding (Insert)
 import           Yi.Editor
 import           Yi.Event
 import           Yi.Keymap.Vim.Common
@@ -151,11 +152,19 @@ printableAction evs = do
     let allCursors = currentCursor :| secondaryCursors
     marks <- withCurrentBuffer $ forM' allCursors $ \cursor -> do
         moveTo cursor
-        -- getMarkB $ Just $ "v_I" <> show cursor
         getMarkB Nothing
 
+    -- Using autoindenting with multiple cursors
+    -- is just too broken.
+    let (insertB', insertN', deleteB', bdeleteB', deleteRegionB') =
+            if null secondaryCursors
+            then (BA.insertB, BA.insertN, BA.deleteB,
+                BA.bdeleteB, BA.deleteRegionB)
+            else (B.insertB, B.insertN, B.deleteB,
+                B.bdeleteB, B.deleteRegionB)
+
     let bufAction = case T.unpack . _unEv $ evs of
-          (c:[]) -> insertB c
+          (c:[]) -> insertB' c
           "<CR>" -> do
               isOldLineEmpty <- isCurrentLineEmptyB
               shouldTrimOldLine <- isCurrentLineAllWhiteSpaceB
@@ -172,18 +181,18 @@ printableAction evs = do
           "<Tab>" -> do
               IndentSettings et _ts sw <- indentSettingsB
               if et
-              then insertN . R.fromString $ replicate sw ' '
-              else insertB '\t'
+              then insertN' . R.fromString $ replicate sw ' '
+              else insertB' '\t'
           "<C-t>" -> shiftIndentOfRegionB 1 =<< regionOfB Line
           "<C-d>" -> shiftIndentOfRegionB (-1) =<< regionOfB Line
           "<C-e>" -> insertCharWithBelowB
           "<C-y>" -> insertCharWithAboveB
-          "<BS>"  -> bdeleteB
-          "<C-h>" -> bdeleteB
-          "<Del>" -> deleteB Character Forward
-          "<C-w>" -> deleteRegionB =<< regionOfPartNonEmptyB unitViWordOnLine Backward
+          "<BS>"  -> bdeleteB'
+          "<C-h>" -> bdeleteB'
+          "<Del>" -> deleteB' Character Forward
+          "<C-w>" -> deleteRegionB' =<< regionOfPartNonEmptyB unitViWordOnLine Backward
           "<C-u>" -> bdeleteLineB
-          "<lt>" -> insertB '<'
+          "<lt>" -> insertB' '<'
           evs' -> error $ "Unhandled event " <> show evs' <> " in insert mode"
 
     updatedCursors <- withCurrentBuffer $ do
