@@ -278,34 +278,39 @@ quitEditor = do
 -- FIXME: since we do IO here we must catch exceptions!
 checkFileChanges :: Editor -> IO Editor
 checkFileChanges e0 = do
-        now <- getCurrentTime
-        -- Find out if any file was modified "behind our back" by
-        -- other processes.
-        newBuffers <- forM (buffers e0) $ \b ->
-          let nothing = return (b, Nothing)
-          in if bkey b `elem` visibleBuffers
-          then
-            case b ^.identA of
-               FileBuffer fname -> do
-                  fe <- doesFileExist fname
-                  if not fe then nothing else do
-                  modTime <- fileModTime fname
-                  if b ^. lastSyncTimeA < modTime
-                     then if isUnchangedBuffer b
-                       then do newContents <- R.readFile fname
-                               return (snd $ runBuffer (dummyWindow $ bkey b) b (revertB newContents now), Just msg1)
-                       else return (b, Just msg2)
-                     else nothing
-               _ -> nothing
-          else nothing
-        -- show appropriate update message if applicable
-        return $ case getFirst (foldMap (First . snd) newBuffers) of
-               Just msg -> (statusLinesA %~ DelayList.insert msg) e0 {buffers = fmap fst newBuffers}
-               Nothing -> e0
-    where msg1 = (1, (["File was changed by a concurrent process, reloaded!"], strongHintStyle))
-          msg2 = (1, (["Disk version changed by a concurrent process"], strongHintStyle))
-          visibleBuffers = fmap bufkey $ windows e0
-          fileModTime f = posixSecondsToUTCTime . realToFrac . modificationTime <$> getFileStatus f
+  now <- getCurrentTime
+  -- Find out if any file was modified "behind our back" by
+  -- other processes.
+  newBuffers <- forM (buffers e0) $ \b ->
+    let nothing = return (b, Nothing)
+    in if bkey b `elem` visibleBuffers
+    then
+      case b ^. identA of
+         FileBuffer fname -> do
+            fe <- doesFileExist fname
+            if not fe then nothing else do
+            modTime <- fileModTime fname
+            if b ^. lastSyncTimeA < modTime
+               then if isUnchangedBuffer b
+                 then R.readFile fname >>= return . \case
+                        Left m ->
+                          (runDummy b (readOnlyA .= True), Just $ msg3 m)
+                        Right (newContents, c) ->
+                          (runDummy b (revertB newContents (Just c) now), Just msg1)
+                 else return (b, Just msg2)
+               else nothing
+         _ -> nothing
+    else nothing
+  -- show appropriate update message if applicable
+  return $ case getFirst (foldMap (First . snd) newBuffers) of
+         Just msg -> (statusLinesA %~ DelayList.insert msg) e0 {buffers = fmap fst newBuffers}
+         Nothing -> e0
+  where msg1 = (1, (["File was changed by a concurrent process, reloaded!"], strongHintStyle))
+        msg2 = (1, (["Disk version changed by a concurrent process"], strongHintStyle))
+        msg3 x = (1, (["File changed on disk to unknown encoding, not updating buffer: " <> x], strongHintStyle))
+        visibleBuffers = fmap bufkey $ windows e0
+        fileModTime f = posixSecondsToUTCTime . realToFrac . modificationTime <$> getFileStatus f
+        runDummy b act = snd $ runBuffer (dummyWindow $ bkey b) b act
 
 -- | Hide selection, clear "syntax dirty" flag (as appropriate).
 clearAllSyntaxAndHideSelection :: Editor -> Editor

@@ -49,8 +49,10 @@ revertE = do
   withCurrentBuffer (gets file) >>= \case
     Just fp -> do
       now <- io getCurrentTime
-      s <- liftBase $ R.readFile fp
-      withCurrentBuffer $ revertB s now
+      (s, conv) <- liftBase $ R.readFile fp >>= return . \case
+        Left m -> (mempty, Nothing)
+        Right (c, cv) -> (c, Just cv)
+      withCurrentBuffer $ revertB s conv now
       printMsg ("Reverted from " <> showT fp)
     Nothing -> printMsg "Can't revert, no file associated with buffer."
 
@@ -96,15 +98,21 @@ fwriteE = fwriteBufferE =<< gets currentBuffer
 -- | Write a given buffer to disk if it is associated with a file.
 fwriteBufferE :: BufferRef -> YiM ()
 fwriteBufferE bufferKey = do
-  nameContents <- withGivenBuffer bufferKey ((,) <$> gets file
-                                                 <*> streamB Forward 0)
+  nameContents <- withGivenBuffer bufferKey $ do
+    fl <- gets file
+    st <- streamB Forward 0
+    conv <- use encodingConverterNameA
+    return (fl, st, conv)
+
   case nameContents of
-    (Just f, contents) -> io (doesDirectoryExist f) >>= \case
+    (Just f, contents, conv) -> io (doesDirectoryExist f) >>= \case
       True -> printMsg "Can't save over a directory, doing nothing."
       False -> do
-        liftBase $ R.writeFile f contents
+        liftBase $ case conv of
+          Nothing -> R.writeFileUsingText f contents
+          Just cn -> R.writeFile f contents cn
         io getCurrentTime >>= withGivenBuffer bufferKey . markSavedB
-    (Nothing, _c)      -> printMsg "Buffer not associated with a file"
+    (Nothing, _, _)      -> printMsg "Buffer not associated with a file"
 
 -- | Write current buffer to disk as @f@. The file is also set to @f@.
 fwriteToE :: T.Text -> YiM ()

@@ -178,6 +178,8 @@ module Yi.Buffer.Misc
   , decreaseFontSize
   , increaseFontSize
   , indentSettingsB
+  , fontsizeVariationA
+  , encodingConverterNameA
   ) where
 
 import           Control.Applicative
@@ -337,6 +339,9 @@ defaultModeLine prefix = do
     ro <-use readOnlyA
     modeNm <- gets (withMode0 modeName)
     unchanged <- gets isUnchangedBuffer
+    enc <- use encodingConverterNameA >>= return . \case
+      Nothing -> mempty
+      Just cn -> T.pack $ R.unCn cn
     let pct
           | pos == 0 || s == 0 = " Top"
           | pos == s = " Bot"
@@ -348,7 +353,7 @@ defaultModeLine prefix = do
         toT = T.pack . show
 
     nm <- gets $ shortIdentString (length prefix)
-    return $ T.concat [ readOnly', changed, " ", nm
+    return $ T.concat [ enc, " ", readOnly', changed, " ", nm
                       , "     ", hexChar, "  "
                       , "L", T.justifyRight 5 ' ' (toT ln)
                       , "  "
@@ -560,6 +565,7 @@ newB unique nm s =
             , updateTransactionInFlight = False
             , updateTransactionAccum = []
             , fontsizeVariation = 0
+            , encodingConverterName = Nothing
             } }
 
 epoch :: UTCTime

@@ -865,11 +865,12 @@ sortLines :: BufferM ()
 sortLines = modifyExtendedSelectionB Line (onLines sort)
 
 -- | Helper function: revert the buffer contents to its on-disk version
-revertB :: YiString -> UTCTime -> BufferM ()
-revertB s now = do
-    r <- regionOfB Document
-    replaceRegionB r s
-    markSavedB now
+revertB :: YiString -> Maybe R.ConverterName -> UTCTime -> BufferM ()
+revertB s cn now = do
+  r <- regionOfB Document
+  replaceRegionB r s
+  encodingConverterNameA .= cn
+  markSavedB now
 
 -- get lengths of parts covered by block region
 --

@@ -195,6 +195,9 @@ instance Binary DiredFileInfo
 --
 -- @Yi.File@ module re-exports this, you probably want to import that
 -- instead.
+--
+-- TODO: Make this YiM (Maybe BufferRef); for now if we can't open the
+-- file for some reason, we use ‘fail’.
 editFile :: FilePath -> YiM BufferRef
 editFile filename = do
     f <- io $ userToCanonPath filename
@@ -218,13 +221,16 @@ editFile filename = do
     fileToNewBuffer :: FilePath -> YiM BufferRef
     fileToNewBuffer f = do
       now <- io getCurrentTime
-      contents <- io $ R.readFile f
+      (contents, conv) <- io (R.readFile f) >>= \case
+        Left m -> fail (T.unpack m)
+        Right (cont, c) -> return (cont, Just c)
       permissions <- io $ getPermissions f
 
       b <- stringToNewBuffer (FileBuffer f) contents
-      withGivenBuffer b $ markSavedB now
-
-      unless (writable permissions) (withGivenBuffer b $ assign readOnlyA True)
+      withGivenBuffer b $ do
+        encodingConverterNameA .= conv
+        markSavedB now
+        unless (writable permissions) (readOnlyA .= True)
 
       return b
 
