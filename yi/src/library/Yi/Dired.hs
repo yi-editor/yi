@@ -196,9 +196,9 @@ instance Binary DiredFileInfo
 -- @Yi.File@ module re-exports this, you probably want to import that
 -- instead.
 --
--- TODO: Make this YiM (Maybe BufferRef); for now if we can't open the
--- file for some reason, we use ‘fail’.
-editFile :: FilePath -> YiM BufferRef
+-- In case of a decoding failure, failure message is returned instead
+-- of the 'BufferRef'.
+editFile :: FilePath -> YiM (Either T.Text BufferRef)
 editFile filename = do
     f <- io $ userToCanonPath filename
 
@@ -209,30 +209,34 @@ editFile filename = do
 
     b <- case dupBufs of
       [] -> if dirExists
-               then diredDirBuffer f
-               else setupMode f =<< if fileExists
-                                       then fileToNewBuffer f
-                                       else newEmptyBuffer f
-      (h:_) -> return $ bkey h
+            then Right <$> diredDirBuffer f
+            else do
+              nb <- if fileExists
+                    then fileToNewBuffer f
+                    else Right <$> newEmptyBuffer f
+              case nb of
+                Left m -> return $ Left m
+                Right buf -> Right <$> setupMode f buf
 
-    withEditor $ switchToBufferE b >> addJumpHereE
-    return b
+      (h:_) -> return . Right $ bkey h
+
+    case b of
+     Left m -> return $ Left m
+     Right bf -> withEditor (switchToBufferE bf >> addJumpHereE) >> return b
   where
-    fileToNewBuffer :: FilePath -> YiM BufferRef
-    fileToNewBuffer f = do
-      now <- io getCurrentTime
-      (contents, conv) <- io (R.readFile f) >>= \case
-        Left m -> fail (T.unpack m)
-        Right (cont, c) -> return (cont, Just c)
-      permissions <- io $ getPermissions f
+    fileToNewBuffer :: FilePath -> YiM (Either T.Text BufferRef)
+    fileToNewBuffer f = io getCurrentTime >>= \n -> io (R.readFile f) >>= \case
+      Left m -> return $ Left m
+      Right (contents, conv) -> do
+        permissions <- io $ getPermissions f
 
-      b <- stringToNewBuffer (FileBuffer f) contents
-      withGivenBuffer b $ do
-        encodingConverterNameA .= conv
-        markSavedB now
-        unless (writable permissions) (readOnlyA .= True)
+        b <- stringToNewBuffer (FileBuffer f) contents
+        withGivenBuffer b $ do
+          encodingConverterNameA .= Just conv
+          markSavedB n
+          unless (writable permissions) (readOnlyA .= True)
 
-      return b
+        return $ Right b
 
     newEmptyBuffer :: FilePath -> YiM BufferRef
     newEmptyBuffer f =

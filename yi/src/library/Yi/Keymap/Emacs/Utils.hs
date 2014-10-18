@@ -266,29 +266,27 @@ readUniversalArg = optional ((ctrlCh 'u' ?>> (read <$> some (digit id) <|> pure 
 
 -- | Finds file and runs specified action on the resulting buffer
 findFileAndDo :: T.Text -- ^ Prompt
-              -> (BufferRef -> YiM a) -- ^ Action to run on the resulting buffer
+              -> BufferM a -- ^ Action to run on the resulting buffer
               -> YiM ()
 findFileAndDo prompt act = promptFile prompt $ \filename -> do
-  (withEditor . printMsg) $ "loading " <> filename
-  void $ editFile (T.unpack filename) >>= act
+  printMsg $ "loading " <> filename
+  openingNewFile (T.unpack filename) act
 
 -- | Open a file using the minibuffer. We have to set up some stuff to
 -- allow hints and auto-completion.
 findFile :: YiM ()
-findFile = findFileAndDo "find file:" return
+findFile = findFileAndDo "find file:" $ return ()
 
 -- | Like 'findFile' but sets the resulting buffer to read-only.
 findFileReadOnly :: YiM ()
-findFileReadOnly = findFileAndDo "find file (read only):" $ \b ->
-  withGivenBuffer b (readOnlyA .= True)
+findFileReadOnly = findFileAndDo "find file (read only):" $ readOnlyA .= True
 
 -- | Open a file in a new tab using the minibuffer.
 findFileNewTab :: YiM ()
 findFileNewTab = promptFile "find file (new tab): " $ \filename -> do
   withEditor newTabE
-  (withEditor . printMsg) $ "loading " <> filename
+  printMsg $ "loading " <> filename
   void . editFile $ T.unpack filename
-
 
 scrollDownE :: UnivArgument -> BufferM ()
 scrollDownE a = case a of
@@ -395,10 +393,7 @@ gotoTag tag =
     visitTagTable $ \tagTable ->
         case lookupTag tag tagTable of
           Nothing -> fail $ "No tags containing " ++ unTag' tag
-          Just (filename, line) -> do
-            void $ editFile filename
-            void $ withCurrentBuffer $ gotoLn line
-            return ()
+          Just (filename, line) -> openingNewFile filename $ gotoLn line
 
 -- | Call continuation @act@ with the TagTable. Uses the global table
 -- and prompts the user if it doesn't exist

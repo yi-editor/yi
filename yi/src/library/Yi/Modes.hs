@@ -70,7 +70,7 @@ fundamentalMode = emptyMode
   , modeGotoDeclaration = do
        currentPoint <- pointB
        currentWord <- readCurrentWordB
-       gotoLn 0
+       _ <- gotoLn 0
        word <- return $ makeSimpleSearch currentWord
        searchResults <- regexB Forward word
        case searchResults of

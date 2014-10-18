@@ -194,7 +194,7 @@ publishedActions = customVariable . _publishedActionsA
 publishAction :: (YiAction a x, Show x) => String -> a -> ConfigM ()
 publishAction s a = publishedActions %= M.insert s (makeAction a)
 
--- Evaluator based on a fixed list of published actions. Has a few
+-- | Evaluator based on a fixed list of published actions. Has a few
 -- differences from 'ghciEvaluator':
 --
 -- * expressions can't be evaluated
@@ -218,9 +218,8 @@ jumpToE :: FilePath -- ^ Filename to make the jump in.
         -> Int -- ^ Line to jump to.
         -> Int -- ^ Column to jump to.
         -> YiM ()
-jumpToE filename line column = do
-  _ <- editFile filename
-  withCurrentBuffer $ gotoLn line >> moveXorEol column
+jumpToE filename line column =
+  openingNewFile filename $ gotoLn line >> moveXorEol column
 
 -- | Regex parsing the error message format.
 errorRegex :: Regex

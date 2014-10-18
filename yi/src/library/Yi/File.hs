@@ -11,7 +11,8 @@
 
 module Yi.File (
   -- * File-based actions
-  editFile,       -- :: YiM BufferRef
+  editFile,
+  openingNewFile,
 
   viWrite, viWriteTo, viSafeWriteTo,
   fwriteE,        -- :: YiM ()
@@ -25,8 +26,8 @@ module Yi.File (
   setFileName
  ) where
 
-import           Control.Applicative
-import           Control.Lens
+import           Control.Lens hiding (act)
+import           Control.Monad (void)
 import           Control.Monad.Base
 import           Data.Monoid
 import qualified Data.Text as T
@@ -43,21 +44,33 @@ import qualified Yi.Rope as R
 import           Yi.String
 import           Yi.Utils
 
+-- | Tries to open a new buffer with 'editFile' and runs the given
+-- action on the buffer handle if it succeeds.
+--
+-- If the 'editFile' fails, just the failure message is printed.
+openingNewFile :: FilePath -> BufferM a -> YiM ()
+openingNewFile fp act = editFile fp >>= \case
+  Left m -> printMsg m
+  Right ref -> void $ withGivenBuffer ref act
+
 -- | Revert to the contents of the file on disk
 revertE :: YiM ()
 revertE = do
   withCurrentBuffer (gets file) >>= \case
     Just fp -> do
       now <- io getCurrentTime
-      (s, conv) <- liftBase $ R.readFile fp >>= return . \case
-        Left m -> (mempty, Nothing)
-        Right (c, cv) -> (c, Just cv)
-      withCurrentBuffer $ revertB s conv now
-      printMsg ("Reverted from " <> showT fp)
+      rf <- liftBase $ R.readFile fp >>= \case
+        Left m -> print ("Can't revert: " <> m) >> return Nothing
+        Right (c, cv) -> return $ Just (c, Just cv)
+      case rf of
+       Nothing -> return ()
+       Just (s, conv) -> do
+         withCurrentBuffer $ revertB s conv now
+         printMsg ("Reverted from " <> showT fp)
     Nothing -> printMsg "Can't revert, no file associated with buffer."
 
 
--- | Try to write a file in the manner of vi\/vim
+-- | Try to write a file in the manner of vi/vim
 -- Need to catch any exception to avoid losing bindings
 viWrite :: YiM ()
 viWrite = do

@@ -1,6 +1,7 @@
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE TemplateHaskell #-}
@@ -116,8 +117,7 @@ gotoTag tag =
                 cn = bufInfoColNo bufinf
                 fn = bufInfoFileName bufinf
             withEditor $ pushTagStack tag fn ln cn
-            void $ editFile filename
-            void . withCurrentBuffer $ gotoLn line
+            openingNewFile filename $ gotoLn line
 
 -- | Return to location from before last tag jump.
 popTag :: YiM ()
@@ -129,9 +129,7 @@ popTag = do
             posloc <- withEditor popTagStack
             case posloc of
                 Nothing -> errorEditor "at bottom of tag stack"
-                Just (_, fn, ln, cn) -> do
-                    void $ editFile fn
-                    void . withCurrentBuffer $ moveToLineColB ln cn
+                Just (_, fn, ln, cn) -> openingNewFile fn $ moveToLineColB ln cn
 
 -- | Go to next tag in the tag stack. Represents :tag without any
 -- specified tag.
@@ -155,8 +153,7 @@ unpopTag = do
                        tl' = take ti tl
                                ++ (tag, fn, ln, cn):(drop (ti + 1) tl)
                    withEditor $ setTagList tl'
-                   void $ editFile filename
-                   void . withCurrentBuffer $ gotoLn line
+                   openingNewFile filename $ gotoLn line
 
 completeVimTag :: T.Text -> YiM [T.Text]
 completeVimTag s =

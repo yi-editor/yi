@@ -133,9 +133,9 @@ getConfig shouldOpenInTabs (cfg, cfgcon) opt =
                          []     -> fail "The `-l' option must come after a file argument"
 
       File filename -> if shouldOpenInTabs && not (null (startActions cfg)) then
-                         prependActions [YiA (editFile filename), EditorA newTabE]
+                         prependActions [YiA (void $ editFile filename), EditorA newTabE]
                        else
-                         prependAction (editFile filename)
+                         prependAction (void $ editFile filename)
 
       EditorNm emul -> case lookup (fmap toLower emul) editors of
              Just modifyCfg -> return (modifyCfg cfg, cfgcon)

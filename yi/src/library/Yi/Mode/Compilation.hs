@@ -16,7 +16,7 @@ import           Data.Text ()
 import           Yi.Buffer
 import           Yi.Core (withSyntax)
 import           Yi.Editor
-import           Yi.File (editFile)
+import           Yi.File (openingNewFile)
 import           Yi.Lexer.Alex (Tok(..), Posn(..))
 import qualified Yi.Lexer.Compilation as Compilation
 import           Yi.Keymap
@@ -36,6 +36,5 @@ mode = styleMode Compilation.lexer
         Just t@Tok {tokT = Compilation.Report filename line col _} -> do
           withCurrentBuffer . moveTo . posnOfs $ tokPosn t
           shiftOtherWindow
-          _ <- editFile filename
-          withCurrentBuffer $ gotoLn line >> rightN col
+          openingNewFile filename $ gotoLn line >> rightN col
         _ -> return ()
