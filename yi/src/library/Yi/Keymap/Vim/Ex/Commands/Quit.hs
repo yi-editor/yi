@@ -19,6 +19,7 @@ import           Control.Lens
 import           Control.Monad
 import           Data.Foldable (find)
 import           Data.List.NonEmpty (NonEmpty(..))
+import qualified Data.List.PointedList.Circular as PL
 import           Data.Monoid
 import qualified Data.Text as T
 import qualified Text.ParserCombinators.Parsec as P
@@ -74,7 +75,13 @@ quitWindowE = do
     ws <- withEditor $ use currentWindowA >>= windowsOnBufferE . bufkey
     if length ws == 1 && nw
        then errorEditor "No write since last change (add ! to override)"
-       else closeWindow
+       else do
+         winCount <- withEditor $ uses windowsA PL.length
+         tabCount <- withEditor $ uses tabsA PL.length
+         if winCount == 1 && tabCount == 1
+            -- if its the last window, quitting will quit the editor
+            then quitAllE
+            else closeWindow
 
 quitAllE :: YiM ()
 quitAllE = do
