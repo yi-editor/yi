@@ -42,9 +42,10 @@ import           Data.DeriveTH
 import           GHC.Generics (Generic)
 #endif
 import           Data.Default
+import qualified Data.Foldable as F
 import           Data.List (isPrefixOf)
 import           Data.List.Split (splitOn)
-import           Data.Map (Map, fromList, lookup, keys)
+import           Data.Map (Map, fromListWith, lookup, keys)
 import           Data.Maybe (mapMaybe)
 import qualified Data.Text as T
 import qualified Data.Text.Encoding as E
@@ -83,7 +84,7 @@ data TagTable = TagTable { tagFileName :: FilePath
                            , tagBaseDir :: FilePath
                            -- ^ path to the tag file directory
                            -- tags are relative to this path
-                           , tagFileMap :: Map Tag (FilePath, Int)
+                           , tagFileMap :: Map Tag [(FilePath, Int)]
                            -- ^ map from tags to files
                            , tagTrie :: Trie.Trie
                            -- ^ trie to speed up tag hinting
@@ -91,20 +92,20 @@ data TagTable = TagTable { tagFileName :: FilePath
 
 -- | Find the location of a tag using the tag table.
 -- Returns a full path and line number
-lookupTag :: Tag -> TagTable -> Maybe (FilePath, Int)
+lookupTag :: Tag -> TagTable -> [(FilePath, Int)]
 lookupTag tag tagTable = do
-  (file, line) <- Data.Map.lookup tag $ tagFileMap tagTable
+  (file, line) <- F.concat . Data.Map.lookup tag $ tagFileMap tagTable
   return (tagBaseDir tagTable </> file, line)
 
 -- | Super simple parsing CTag format 1 parsing algorithm
 -- TODO: support search patterns in addition to lineno
-readCTags :: String -> Map Tag (FilePath, Int)
+readCTags :: String -> Map Tag [(FilePath, Int)]
 readCTags =
-    fromList . mapMaybe (parseTagLine . words) . lines
+    fromListWith (++) . mapMaybe (parseTagLine . words) . lines
     where parseTagLine (tag:tagfile:lineno:_) =
               -- remove ctag control lines
               if "!_TAG_" `isPrefixOf` tag then Nothing
-              else Just (mkTag tag, (tagfile, fst . head . reads $ lineno))
+              else Just (mkTag tag, [(tagfile, fst . head . reads $ lineno)])
           parseTagLine _ = Nothing
 
 -- | Read in a tag file from the system

@@ -110,8 +110,8 @@ gotoTag :: Tag -> YiM ()
 gotoTag tag =
     void . visitTagTable $ \tagTable ->
         case lookupTag tag tagTable of
-          Nothing -> errorEditor $ "tag not found: " `T.append` _unTag tag
-          Just (filename, line) -> do
+          [] -> errorEditor $ "tag not found: " `T.append` _unTag tag
+          ((filename, line):_) -> do
             bufinf <- withCurrentBuffer bufInfoB
             let ln = bufInfoLineNo bufinf
                 cn = bufInfoColNo bufinf
@@ -144,8 +144,8 @@ unpopTag = do
     else let (tag, _, _, _) = tl !! ti
          in void . visitTagTable $ \tagTable ->
              case lookupTag tag tagTable of
-               Nothing -> errorEditor $ "tag not found: " `T.append` _unTag tag
-               Just (filename, line) -> do
+               [] -> errorEditor $ "tag not found: " `T.append` _unTag tag
+               ((filename, line):_) -> do
                    bufinf <- withCurrentBuffer bufInfoB
                    let ln = bufInfoLineNo bufinf
                        cn = bufInfoColNo bufinf
