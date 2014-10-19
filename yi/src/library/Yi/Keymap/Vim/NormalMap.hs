@@ -75,7 +75,8 @@ defNormalMap operators =
 
 tagJumpBinding :: VimBinding
 tagJumpBinding = mkBindingY Normal (Event (KASCII ']') [MCtrl], f, id)
-   where f = withCurrentBuffer readCurrentWordB >>= gotoTag . Tag . R.toText
+   where f = withCurrentBuffer readCurrentWordB >>= g . Tag . R.toText
+         g tag = gotoTag tag 0 Nothing
 
 tagPopBinding :: VimBinding
 tagPopBinding = mkBindingY Normal (Event (KASCII 't') [MCtrl], f, id)
