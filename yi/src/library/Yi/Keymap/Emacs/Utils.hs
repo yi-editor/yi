@@ -392,8 +392,8 @@ gotoTag :: Tag -> YiM ()
 gotoTag tag =
     visitTagTable $ \tagTable ->
         case lookupTag tag tagTable of
-          Nothing -> fail $ "No tags containing " ++ unTag' tag
-          Just (filename, line) -> openingNewFile filename $ gotoLn line
+          [] -> printMsg $ "No tags containing " <> _unTag tag
+          (filename, line):_ -> openingNewFile filename $ gotoLn line
 
 -- | Call continuation @act@ with the TagTable. Uses the global table
 -- and prompts the user if it doesn't exist

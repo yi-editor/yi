@@ -17,6 +17,7 @@
 module Yi.Keymap.Vim.Tag
     ( completeVimTag
     , gotoTag
+    , nextTag
     , popTag
     , unpopTag
     ) where
@@ -31,6 +32,7 @@ import           Data.DeriveTH
 import           GHC.Generics (Generic)
 #endif
 import           Data.Maybe
+import           Data.Monoid
 import qualified Data.Text as T
 import           Data.Typeable
 import           System.Directory (doesFileExist)
@@ -48,7 +50,7 @@ import           Yi.Utils
 -- | List of tags and the file/line/char that they originate from.
 -- (the location that :tag or Ctrl-[ was called from).
 data VimTagStack = VimTagStack {
-        tagStackList :: [(Tag, FilePath, Int, Int)]
+        tagStackList :: [(Tag, Int, FilePath, Int, Int)]
       , tagStackIndex :: Int }
     deriving Typeable
 
@@ -64,7 +66,8 @@ deriving instance Generic VimTagStack
 instance Binary VimTagStack
 #endif
 
-getTagList :: EditorM [(Tag, FilePath, Int, Int)]
+-- | Returns tag, tag index, filepath, line number, char number
+getTagList :: EditorM [(Tag, Int, FilePath, Int, Int)]
 getTagList = do
     VimTagStack ts _ <- getEditorDyn
     return ts
@@ -74,7 +77,7 @@ getTagIndex = do
     VimTagStack _ ti <- getEditorDyn
     return ti
 
-setTagList :: [(Tag, FilePath, Int, Int)] -> EditorM ()
+setTagList :: [(Tag, Int, FilePath, Int, Int)] -> EditorM ()
 setTagList tl =  do
     t@(VimTagStack _ _) <- getEditorDyn
     putEditorDyn $ t { tagStackList = tl }
@@ -85,16 +88,16 @@ setTagIndex ti = do
     putEditorDyn $ t { tagStackIndex = ti }
 
 -- | Push tag at index.
-pushTagStack :: Tag -> FilePath -> Int -> Int -> EditorM ()
-pushTagStack tag fp ln cn = do
+pushTagStack :: Tag -> Int -> FilePath -> Int -> Int -> EditorM ()
+pushTagStack tag ind fp ln cn = do
     tl <- getTagList
     ti <- getTagIndex
-    setTagList $ (take ti tl) ++ [(tag, fp, ln, cn)]
+    setTagList $ (take ti tl) ++ [(tag, ind, fp, ln, cn)]
     setTagIndex $ ti + 1
 
 -- | Get tag and decrement index (so that when a new push is done, the current
 -- tag is popped)
-popTagStack :: EditorM (Maybe (Tag, FilePath, Int, Int))
+popTagStack :: EditorM (Maybe (Tag, Int, FilePath, Int, Int))
 popTagStack = do
     tl <- getTagList
     ti <- getTagIndex
@@ -106,18 +109,31 @@ popTagStack = do
 
 -- | Opens the file that contains @tag@. Uses the global tag table or uses
 -- the first valid tag file in @TagsFileList@.
-gotoTag :: Tag -> YiM ()
-gotoTag tag =
-    void . visitTagTable $ \tagTable ->
-        case lookupTag tag tagTable of
-          Nothing -> errorEditor $ "tag not found: " `T.append` _unTag tag
-          Just (filename, line) -> do
+gotoTag :: Tag -> Int -> Maybe (FilePath, Int, Int) -> YiM ()
+gotoTag tag ind ret =
+    void . visitTagTable $ \tagTable -> do
+        let lis = lookupTag tag tagTable
+        if (length lis) <= ind
+          then errorEditor $ "tag not found: " <> _unTag tag
+          else do
             bufinf <- withCurrentBuffer bufInfoB
-            let ln = bufInfoLineNo bufinf
-                cn = bufInfoColNo bufinf
-                fn = bufInfoFileName bufinf
-            withEditor $ pushTagStack tag fn ln cn
+
+            let (filename, line) = lis !! ind
+                (fn, ln, cn) = case ret of
+                   Just ret' -> ret'
+                   Nothing -> (bufInfoFileName bufinf, 
+                               bufInfoLineNo bufinf, 
+                               bufInfoColNo bufinf)
+            withEditor $ pushTagStack tag ind fn ln cn
             openingNewFile filename $ gotoLn line
+
+-- | Goes to the next tag. (:tnext)
+nextTag :: YiM ()
+nextTag = do
+    prev <- withEditor popTagStack 
+    case prev of
+        Nothing -> errorEditor $ "tag stack empty"
+        Just (tag, ind, fn, ln, cn) -> gotoTag tag (ind + 1) (Just (fn, ln, cn))
 
 -- | Return to location from before last tag jump.
 popTag :: YiM ()
@@ -129,7 +145,7 @@ popTag = do
             posloc <- withEditor popTagStack
             case posloc of
                 Nothing -> errorEditor "at bottom of tag stack"
-                Just (_, fn, ln, cn) -> openingNewFile fn $ moveToLineColB ln cn
+                Just (_, _, fn, ln, cn) -> openingNewFile fn $ moveToLineColB ln cn
 
 -- | Go to next tag in the tag stack. Represents :tag without any
 -- specified tag.
@@ -139,19 +155,21 @@ unpopTag = do
   ti <- withEditor getTagIndex
   if ti >= length tl
     then case tl of
-            [] -> errorEditor "at top of tag stack"
-            _ -> errorEditor "tag stack empty"
-    else let (tag, _, _, _) = tl !! ti
-         in void . visitTagTable $ \tagTable ->
-             case lookupTag tag tagTable of
-               Nothing -> errorEditor $ "tag not found: " `T.append` _unTag tag
-               Just (filename, line) -> do
+            [] -> errorEditor "tag stack empty"
+            _ -> errorEditor "at top of tag stack"
+    else let (tag, ind, _, _, _) = tl !! ti
+         in void . visitTagTable $ \tagTable -> do
+             let lis =  lookupTag tag tagTable
+             if (length lis) <= ind
+               then errorEditor $ "tag not found: " <> _unTag tag
+               else do
                    bufinf <- withCurrentBuffer bufInfoB
-                   let ln = bufInfoLineNo bufinf
+                   let (filename, line) = lis !! ind
+                       ln = bufInfoLineNo bufinf
                        cn = bufInfoColNo bufinf
                        fn = bufInfoFileName bufinf
                        tl' = take ti tl
-                               ++ (tag, fn, ln, cn):(drop (ti + 1) tl)
+                               ++ (tag, ind, fn, ln, cn):(drop (ti + 1) tl)
                    withEditor $ setTagList tl'
                    openingNewFile filename $ gotoLn line
 
