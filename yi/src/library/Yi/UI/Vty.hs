@@ -179,10 +179,12 @@ refresh fs e = do
                            (SL.offsetY promptRect)
                            (Vty.vertCat (fmap formatCmdLine niceCmd))
         cursorPos =
-            case (\(w, r) -> (isMini w, cursor r)) (PL._focus windowsAndImages) of
-                (False, Just (y, x)) -> Vty.Cursor (toEnum x) (toEnum y)
-                (True, Just (_, x)) -> Vty.Cursor (toEnum x) (toEnum (rowCount - 1))
-                (_, Nothing) -> Vty.NoCursor
+            let (w, image) = PL._focus windowsAndImages
+            in case (isMini w, cursor image, winRects M.! wkey w) of
+                  (False, Just (y, x), SL.Rect ox oy _ _) ->
+                      Vty.Cursor (toEnum (x + ox)) (toEnum (y + oy - 1))
+                  (True, Just (_, x), _) -> Vty.Cursor (toEnum x) (toEnum (rowCount - 1))
+                  (_, Nothing, _) -> Vty.NoCursor
     logPutStrLn "refreshing screen."
     Vty.update (fsVty fs)
         (Vty.picForLayers ([tabBarImage, cmdImage] ++ bigImages ++ miniImages))
