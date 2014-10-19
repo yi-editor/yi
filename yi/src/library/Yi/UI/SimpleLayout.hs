@@ -18,6 +18,7 @@ import Control.Lens
 import Control.Monad.State (evalState, get, put)
 import Data.Foldable
 import Data.List (partition)
+import Data.Maybe (fromJust)
 import qualified Data.List.PointedList.Circular as PL
 import qualified Data.Map.Strict as M
 import Data.Monoid
@@ -78,7 +79,8 @@ layout colCount rowCount e =
                     heights
         miniWindowsWithHeights =
             fmap (\win -> layoutWindow win e colCount 1) miniWs
-        Just newWindows = PL.fromList (miniWindowsWithHeights <> bigWindowsWithHeights)
+        newWindows =
+            merge (miniWindowsWithHeights <> bigWindowsWithHeights) (windows e)
         winRects = M.fromList (bigWindowsWithRects <> miniWindowsWithRects)
         bigWindowsWithRects =
             zipWith (\w offset -> (wkey w, Rect 0 (offset + tabbarHeight) colCount (height w)))
@@ -87,6 +89,11 @@ layout colCount rowCount e =
         miniWindowsWithRects =
             map (\w -> (wkey w, Rect 0 (rowCount - 1) colCount 1))
                 miniWindowsWithHeights
+        merge :: [Window] -> PL.PointedList Window -> PL.PointedList Window
+        merge updates =
+            let replace (Window { wkey = k }) = fromJust (find ((== k) . wkey) updates)
+            in fmap replace
+
 
 layoutWindow :: Window -> Editor -> Int -> Int -> Window
 layoutWindow win e w h = win
