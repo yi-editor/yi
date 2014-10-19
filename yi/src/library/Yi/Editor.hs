@@ -133,9 +133,6 @@ import           Yi.Types
 import           Yi.Utils hiding ((+~))
 import           Yi.Window
 
-liftEditor :: MonadEditor m => EditorM a -> m a
-liftEditor = withEditor
-
 instance Binary Editor where
   put (Editor bss bs supply ts dv _sl msh kr _re _dir _ev _cwa ) =
     let putNE (x :| xs) = put x >> put xs
