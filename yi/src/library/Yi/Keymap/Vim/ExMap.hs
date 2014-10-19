@@ -116,7 +116,7 @@ finishPrereq :: [EventString -> Maybe ExCommand] -> (ExCommand -> Bool)
 finishPrereq commandParsers cmdPred evs s =
     matchFromBool . and $
         [ vsMode s == Ex
-        , evs == "<CR>"
+        , evs `elem` ["<CR>", "<C-m>"]
         , case evStringToExCommand commandParsers (vsOngoingInsertEvents s) of
             Just cmd -> cmdPred cmd
             _ -> False
