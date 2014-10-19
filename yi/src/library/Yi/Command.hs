@@ -108,11 +108,16 @@ makeBuild (CommandArguments args) = buildRun "make" args (const $ return ())
 cabalRun :: T.Text -> (Either SomeException ExitCode -> YiM x) -> CommandArguments -> YiM ()
 cabalRun cmd onExit (CommandArguments args) = buildRun "cabal" (cmd:args) onExit
 
+makeRun :: (Either SomeException ExitCode -> YiM x) -> CommandArguments -> YiM ()
+makeRun onExit (CommandArguments args) = buildRun "make" args onExit
+
 -----------------------
 -- | cabal-build
 cabalBuildE :: CommandArguments -> YiM ()
 cabalBuildE = cabalRun "build" (const $ return ())
 
+makeBuildE :: CommandArguments -> YiM ()
+makeBuildE = makeRun (const $ return ())
 
 shell :: YiM BufferRef
 shell = do

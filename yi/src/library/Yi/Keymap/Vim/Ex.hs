@@ -24,6 +24,7 @@ import qualified Yi.Keymap.Vim.Ex.Commands.Delete as Delete
 import qualified Yi.Keymap.Vim.Ex.Commands.Edit as Edit
 import qualified Yi.Keymap.Vim.Ex.Commands.Global as Global
 import qualified Yi.Keymap.Vim.Ex.Commands.GotoLine as GotoLine
+import qualified Yi.Keymap.Vim.Ex.Commands.Make as Make
 import qualified Yi.Keymap.Vim.Ex.Commands.Nohl as Nohl
 import qualified Yi.Keymap.Vim.Ex.Commands.Paste as Paste
 import qualified Yi.Keymap.Vim.Ex.Commands.Quit as Quit
@@ -45,6 +46,7 @@ defExCommandParsers =
     , Edit.parse
     , Global.parse
     , GotoLine.parse
+    , Make.parse
     , Nohl.parse
     , Paste.parse
     , Quit.parse
