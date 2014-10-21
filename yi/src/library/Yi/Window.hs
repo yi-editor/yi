@@ -33,6 +33,7 @@ data Window = Window
       -- accessed one is first element
     , height    :: !Int -- ^ height of the window (in number of screen
                        -- lines displayed)
+    , width     :: !Int -- ^ width of the window (in number of chars)
     , winRegion :: !Region -- ^ view area. note that the top point is
                           -- also available as a buffer mark.
     , wkey      :: !WindowRef -- ^ identifier for the window (for UI sync)
@@ -50,10 +51,10 @@ data Window = Window
 makeLensesWithSuffix "A" ''Window
 
 instance Binary Window where
-    put (Window mini bk bl _h _rgn key lns jl) =
+    put (Window mini bk bl _w _h _rgn key lns jl) =
         put mini >> put bk >> put bl >> put key >> put lns >> put jl
     get = Window <$> get <*> get <*> get
-                   <*> return 0 <*> return emptyRegion
+                   <*> return 0 <*> return 0 <*> return emptyRegion
                    <*> get <*> get <*> get
 
 
@@ -77,4 +78,4 @@ pointInWindow point win = tospnt win <= point && point <= bospnt win
 
 -- | Return a "fake" window onto a buffer.
 dummyWindow :: BufferRef -> Window
-dummyWindow b = Window False b [] 0 emptyRegion def 0 Nothing
+dummyWindow b = Window False b [] 0 0 emptyRegion def 0 Nothing

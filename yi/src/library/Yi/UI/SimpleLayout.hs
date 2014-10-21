@@ -98,6 +98,7 @@ layout colCount rowCount e =
 layoutWindow :: Window -> Editor -> Int -> Int -> Window
 layoutWindow win e w h = win
     { height = h
+    , width = w
     , winRegion = mkRegion fromMarkPoint toMarkPoint
     , actualLines = dispLnCount
     }

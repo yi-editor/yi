@@ -576,29 +576,32 @@ doLayout ui e = do
     updateCache ui e
     tabs <- readIORef $ tabCache ui
     f <- readIORef (uiFont ui)
-    heights <- fold <$> mapM (getHeightsInTab ui f e) tabs
+    dims <- fold <$> mapM (getDimensionsInTab ui f e) tabs
     let e' = (tabsA %~ fmap (mapWindows updateWin)) e
-        updateWin w = case M.lookup (wkey w) heights of
+        updateWin w = case M.lookup (wkey w) dims of
                           Nothing -> w
-                          Just (h,rgn) -> w { height = h, winRegion = rgn }
+                          Just (wi,h,rgn) -> w { width = wi, height = h, winRegion = rgn }
 
     -- Don't leak references to old Windows
     let forceWin x w = height w `seq` winRegion w `seq` x
     return $ (foldl . tabFoldl) forceWin e' (e' ^. tabsA)
 
-getHeightsInTab :: UI -> FontDescription -> Editor
-                -> TabInfo -> IO (M.Map WindowRef (Int,Region))
-getHeightsInTab ui f e tab = do
+-- | Width, Height
+getDimensionsInTab :: UI -> FontDescription -> Editor
+                -> TabInfo -> IO (M.Map WindowRef (Int,Int,Region))
+getDimensionsInTab ui f e tab = do
   wCache <- readIORef (windowCache tab)
   forM wCache $ \wi -> do
-    (_, h) <- widgetGetSize $ textview wi
+    (wid, h) <- widgetGetSize $ textview wi
     win <- readIORef (coreWin wi)
     let metrics = winMetrics wi
         lineHeight = ascent metrics + descent metrics
-    let b0 = findBufferWith (bufkey win) e
+        charWidth = max (approximateCharWidth metrics) (approximateDigitWidth metrics)
+        width = round $ fromIntegral wid / charWidth
+        height = round $ fromIntegral h / lineHeight
+        b0 = findBufferWith (bufkey win) e
     rgn <- shownRegion ui f wi b0
-    let ret= (round $ fromIntegral h / lineHeight, rgn)
-    return ret
+    return (width, height, rgn)
 
 shownRegion :: UI -> FontDescription -> WinInfo -> FBuffer -> IO Region
 shownRegion ui f w b = modifyMVar (winLayoutInfo w) $ \wli -> do

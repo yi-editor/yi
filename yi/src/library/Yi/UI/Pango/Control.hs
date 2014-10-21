@@ -238,28 +238,32 @@ doLayout e = do
     updateCache e
     cacheRef <- asks tabCache
     tabs <- liftBase $ readIORef cacheRef
-    heights <- concat <$> mapM (getHeightsInTab e) tabs
+    dims <- concat <$> mapM (getDimensionsInTab e) tabs
     let e' = (tabsA %~ fmap (mapWindows updateWin)) e
-        updateWin w = case find (\(ref,_,_) -> (wkey w == ref)) heights of
+        updateWin w = case find (\(ref,_,_,_) -> (wkey w == ref)) dims of
                           Nothing -> w
-                          Just (_,h,rgn) -> w { height = h, winRegion = rgn }
-
+                          Just (_, wi, h,rgn) -> w { width = wi
+                                                   , height = h
+                                                   , winRegion = rgn }
     -- Don't leak references to old Windows
     let forceWin x w = height w `seq` winRegion w `seq` x
     return $ (foldl . tabFoldl) forceWin e' (e' ^. tabsA)
 
-getHeightsInTab :: Editor -> TabInfo -> ControlM [(WindowRef,Int,Region)]
-getHeightsInTab e tab = do
+-- | Width, Height
+getDimensionsInTab :: Editor -> TabInfo -> ControlM [(WindowRef,Int,Int,Region)]
+getDimensionsInTab e tab = do
   viewsRef <- asks views
   vs <- liftBase $ readIORef viewsRef
   foldlM (\a w ->
         case Map.lookup (wkey w) vs of
             Just v -> do
-                (_, h) <- liftBase $ widgetGetSize $ drawArea v
+                (wi, h) <- liftBase $ widgetGetSize $ drawArea v
                 let lineHeight = ascent (metrics v) + descent (metrics v)
-                let b0 = findBufferWith (viewFBufRef v) e
+                    charWidth = Gtk.approximateCharWidth $ metrics v
+                    b0 = findBufferWith (viewFBufRef v) e
                 rgn <- shownRegion e v b0
-                let ret= (windowRef v, round $ fromIntegral h / lineHeight, rgn)
+                let ret= (windowRef v, round $ fromIntegral wi / charWidth, 
+                          round $ fromIntegral h / lineHeight, rgn)
                 return $ a <> [ret]
             Nothing -> return a)
       [] (coreTab tab ^. tabWindowsA)
