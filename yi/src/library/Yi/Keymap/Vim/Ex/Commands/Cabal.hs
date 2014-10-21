@@ -27,7 +27,7 @@ import           Yi.MiniBuffer
 parse :: EventString -> Maybe ExCommand
 parse = Common.parse $ do
     void $ P.try (P.string "cabal build") <|> P.try (P.string "cabal")
-    args <- map T.pack <$> P.many (P.many1 P.space *> P.many1 P.anyChar)
+    args <- Common.commandArgs
     return $ Common.impureExCommand {
         cmdShow = T.pack "cabal build"
       , cmdAction = YiA $ cabalBuildE $ CommandArguments args

@@ -10,7 +10,6 @@
 module Yi.Keymap.Vim.Ex.Commands.Make (parse) where
 
 import           Control.Applicative
-import           Control.Monad
 import qualified Data.Text as T
 import qualified Text.ParserCombinators.Parsec as P
 import           Yi.Command
@@ -22,8 +21,7 @@ import           Yi.MiniBuffer
 
 parse :: EventString -> Maybe ExCommand
 parse = Common.parse $ do
-    void $ P.string "make"
-    args <- map T.pack <$> P.many (P.many1 P.space *> P.many1 P.anyChar)
+    args <- P.string "make" *> Common.commandArgs
     return $ Common.impureExCommand {
         cmdShow = T.pack "make"
       , cmdAction = YiA $ makeBuildE $ CommandArguments args
