@@ -125,8 +125,7 @@ layoutWindow win e w h = win
         dispLnCount = h' - wrapCount
 
 
-coordsOfCharacterB :: Size2D -> Point -> Point
-    -> BufferM (Maybe Point2D)
+coordsOfCharacterB :: Size2D -> Point -> Point -> BufferM (Maybe Point2D)
 coordsOfCharacterB _ topLeft char | topLeft > char = return Nothing
 coordsOfCharacterB (Size2D w h) (Point topLeft) (Point char)
     | char - topLeft >= w * h = return Nothing
