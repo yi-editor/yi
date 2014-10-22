@@ -100,6 +100,7 @@ module Yi.Buffer.Misc
   , savingPrefCol
   , forgetPreferCol
   , movingToPrefCol
+  , movingToPrefVisCol
   , preferColA
   , markSavedB
   , addOverlayB
@@ -552,6 +553,7 @@ newB unique nm s =
             , bkey__ = unique
             , undos  = emptyU
             , preferCol = Nothing
+            , preferVisCol = Nothing
             , bufferDynamic = mempty
             , pendingUpdates = []
             , selectionStyle = SelectionStyle False False
@@ -855,6 +857,18 @@ movingToPrefCol f = do
   preferColA .= Just targetCol
   return r
 
+-- | Moves to a visual column within the current line as shown
+-- on the editor (ie, moving within the current width of a
+-- single visual line)
+movingToPrefVisCol :: BufferM a -> BufferM a
+movingToPrefVisCol f = do
+  prefCol <- use preferVisColA
+  targetCol <- maybe curVisCol return prefCol
+  r <- f
+  moveToVisColB targetCol
+  preferVisColA .= Just targetCol
+  return r
+
 moveToColB :: Int -> BufferM ()
 moveToColB targetCol = do
   solPnt <- solPointB =<< pointB
@@ -864,6 +878,13 @@ moveToColB targetCol = do
       toSkip = takeWhile (\(char,col) -> char /= '\n' && col < targetCol) (zip chrs cols)
   moveTo $ solPnt +~ fromIntegral (length toSkip)
 
+moveToVisColB :: Int -> BufferM ()
+moveToVisColB targetCol = do
+  col <- curCol
+  wid <- width <$> use lastActiveWindowA
+  let jumps = col `div` wid
+  moveToColB $ jumps * wid + targetCol
+
 moveToLineColB :: Int -> Int -> BufferM ()
 moveToLineColB line col = gotoLn line >> moveToColB col
 
@@ -871,13 +892,15 @@ pointOfLineColB :: Int -> Int -> BufferM Point
 pointOfLineColB line col = savingPointB $ moveToLineColB line col >> pointB
 
 forgetPreferCol :: BufferM ()
-forgetPreferCol = preferColA .= Nothing
+forgetPreferCol = preferColA .= Nothing >> preferVisColA .= Nothing
 
 savingPrefCol :: BufferM a -> BufferM a
 savingPrefCol f = do
   pc <- use preferColA
+  pv <- use preferVisColA
   result <- f
   preferColA .= pc
+  preferVisColA .= pv
   return result
 
 -- | Move point up one line
@@ -973,6 +996,10 @@ indentSettingsB = withModeB $ return . modeIndentSettings
 -- (This takes into account tabs, unicode chars, etc.)
 curCol :: BufferM Int
 curCol = colOf =<< pointB
+
+-- | Current column, visually.
+curVisCol :: BufferM Int
+curVisCol = rem <$> curCol <*> (width <$> use lastActiveWindowA)
 
 colOf :: Point -> BufferM Int
 colOf p = do
