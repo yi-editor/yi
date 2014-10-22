@@ -334,7 +334,7 @@ library
       Yi.UI.Vty.Conversions
     build-depends:
       unix-compat >=0.1 && <0.5,
-      vty >= 5.2.2 && < 6
+      vty >= 5.2.4 && < 6
     cpp-options: -DFRONTEND_VTY
 
   other-modules:
