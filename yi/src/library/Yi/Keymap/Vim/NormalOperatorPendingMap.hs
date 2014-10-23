@@ -32,6 +32,7 @@ import           Yi.Keymap.Vim.Utils
 defNormalOperatorPendingMap :: [VimOperator] -> [VimBinding]
 defNormalOperatorPendingMap operators = [textObject operators, escBinding]
 
+textObject :: [VimOperator] -> VimBinding
 textObject operators = VimBindingE f
   where
     f evs vs = case vsMode vs of
