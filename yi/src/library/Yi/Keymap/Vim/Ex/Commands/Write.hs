@@ -23,14 +23,13 @@ import           Yi.Keymap.Vim.Ex.Types
 
 parse :: EventString -> Maybe ExCommand
 parse = Common.parse $
-               P.choice [parseWrite, parseWriteAs]
+               (P.try (P.string "w") <|> P.string "write")
+            *> (parseWriteAs <|> parseWrite)
     where parseWrite = do
-            void $ P.try ( P.string "write") <|> P.string "w"
             alls <- P.many (P.try ( P.string "all") <|> P.string "a")
             return $! writeCmd $ not (null alls)
 
           parseWriteAs = do
-            void $ P.try ( P.string "write") <|> P.string "w"
             void $ P.many1 P.space
             filename <- T.pack <$> P.many1 P.anyChar
             return $! writeAsCmd filename
