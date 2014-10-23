@@ -200,6 +200,7 @@ matchGotoMarkMove _ = NoMatch
 
 matchGotoCharMove :: String -> MatchResult Move
 matchGotoCharMove (m:[]) | m `elem` "fFtT" = PartialMatch
+matchGotoCharMove (m:"<lt>") | m `elem` "fFtT" = matchGotoCharMove (m:"<")
 matchGotoCharMove (m:c:[]) | m `elem` "fFtT" = WholeMatch $ Move style False action
     where (dir, style, move) =
               case m of
