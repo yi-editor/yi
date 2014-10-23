@@ -32,7 +32,6 @@ import           Yi.Keymap.Vim.Utils
 defNormalOperatorPendingMap :: [VimOperator] -> [VimBinding]
 defNormalOperatorPendingMap operators = [textObject operators, escBinding]
 
-textObject :: [VimOperator] -> VimBinding
 textObject operators = VimBindingE f
   where
     f evs vs = case vsMode vs of
@@ -112,11 +111,12 @@ regionForOperatorLineB n style = normalizeRegion =<< StyledRegion style <$> savi
 escBinding :: VimBinding
 escBinding = mkBindingE ReplaceSingleChar Drop (spec KEsc, return (), resetCount . switchMode Normal)
 
-data OperandParseResult = JustTextObject !CountedTextObject
-                         | JustMove !CountedMove
-                         | JustOperator !Int !RegionStyle -- ^ like dd and d2vd
-                         | PartialOperand
-                         | NoOperand
+data OperandParseResult
+    = JustTextObject !CountedTextObject
+    | JustMove !CountedMove
+    | JustOperator !Int !RegionStyle -- ^ like dd and d2vd
+    | PartialOperand
+    | NoOperand
 
 parseOperand :: EventString -> String -> OperandParseResult
 parseOperand opChar s = parseCommand mcount styleMod opChar commandString
@@ -139,6 +139,9 @@ parseCommand _ _ _ "a" = PartialOperand
 parseCommand _ _ _ "g" = PartialOperand
 parseCommand n sm o s | o' == s = JustOperator (fromMaybe 1 n) (sm LineWise)
   where o' = T.unpack . _unEv $ o
+parseCommand n sm _ "0" =
+  let m = Move Exclusive False (const moveToSol)
+  in JustMove (CountedMove (Just 1) (changeMoveStyle sm m))
 parseCommand n sm _ s = case stringToMove . Ev $ T.pack s of
   WholeMatch m -> JustMove $ CountedMove n $ changeMoveStyle sm m
   PartialMatch -> PartialOperand

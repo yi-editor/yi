@@ -1,0 +1,12 @@
+-- Input
+(1,6)
+abc def ghi
+123 456 789
+lorem ipsum
+-- Output
+(1,1)
+ef ghi
+123 456 789
+lorem ipsum
+-- Events
+d0
