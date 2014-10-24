@@ -447,10 +447,12 @@ swapB = do eol <- atEol
            when eol leftB
            transposeB Character Forward
 
--- | Delete trailing whitespace from all lines
+-- | Delete trailing whitespace from all lines. Uses 'savingPositionB'
+-- to get back to where it was.
 deleteTrailingSpaceB :: BufferM ()
 deleteTrailingSpaceB =
-  regionOfB Document >>= modifyRegionB (tru . mapLines stripEnd)
+  regionOfB Document >>=
+  savingPositionB . modifyRegionB (tru . mapLines stripEnd)
   where
     -- Strips the space from the end of each line, preserving
     -- newlines.

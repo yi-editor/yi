@@ -107,6 +107,7 @@ module Yi.Buffer.Misc
   , delOverlayLayerB
   , savingExcursionB
   , savingPointB
+  , savingPositionB
   , pendingUpdatesA
   , highlightSelectionA
   , rectangleSelectionA
@@ -1035,12 +1036,27 @@ markPointA mark = lens getter setter where
   getter b = markPoint $ getMarkValueRaw mark b
   setter b pos = modifyMarkRaw mark (\v -> v {markPoint = pos}) b
 
--- | perform an @BufferM a@, and return to the current point
+-- | Perform an @BufferM a@, and return to the current point.
 savingPointB :: BufferM a -> BufferM a
 savingPointB f = savingPrefCol $ do
   p <- pointB
   res <- f
   moveTo p
+  return res
+
+-- | Perform an @BufferM a@, and return to the current line and column
+-- number. The difference between this and 'savingPointB' is that here
+-- we attempt to return to the specific line and column number, rather
+-- than a specific number of characters from the beginning of the
+-- buffer.
+--
+-- In case the column is further away than EOL, the point is left at
+-- EOL: 'moveToLineColB' is used internally.
+savingPositionB :: BufferM a -> BufferM a
+savingPositionB f = savingPrefCol $ do
+  (c, l) <- (,) <$> curCol <*> curLn
+  res <- f
+  moveToLineColB l c
   return res
 
 pointAt :: BufferM a -> BufferM Point

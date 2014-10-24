@@ -2,6 +2,7 @@
 -------
 
  * Try to guess and preserve the file encoding (#638)
+ * Restore cursor position better after deleteTrailingSpacesB (#666)
 
 0.10.0
 ------
