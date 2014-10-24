@@ -183,7 +183,7 @@ emacsKeys univArg =
          , ctrlCh 'c' ?>>      ctrlC
 
          -- All The key-bindings of the form M-c where 'c' is some character.
-         , metaCh ' '           ?>>! justOneSep
+         , metaCh ' '           ?>>! justOneSep univArg
          , metaCh 'v'           ?>>! scrollUpE univArg
          , metaCh '!'           ?>>! shellCommandE
          , metaCh '<'           ?>>! repeatingArg topB

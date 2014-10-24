@@ -327,27 +327,38 @@ killBufferE = promptingForBuffer "kill buffer:" k (\o b -> o ++ (b \\ o))
 
 
 -- | If on separators (space, tab, unicode seps), reduce multiple
--- separators to just a single separator. If we aren't looking at a separator,
--- insert a single space. This kind of behaves as emacs ‘just-one-space’
--- function with the argument of ‘1’ but it prefers to use the separator we're
--- looking at instead of assuming a space.
-justOneSep :: BufferM ()
-justOneSep = readB >>= \c ->
+-- separators to just a single separator (or however many given
+-- through 'UniversalArgument').
+--
+-- If we aren't looking at a separator, insert a single space. This is
+-- like emacs ‘just-one-space’ but doesn't deal with negative argument
+-- case but works with other separators than just space. What counts
+-- as a separator is decided by 'isAnySep' modulo @\n@ character.
+--
+-- Further, it will only reduce a single type of separator at once: if
+-- we have hard tabs followed by spaces, we are able to reduce one and
+-- not the other.
+justOneSep :: UnivArgument -> BufferM ()
+justOneSep u = readB >>= \c ->
   pointB >>= \point -> case point of
-    Point 0 -> if isAnySep c then deleteSeparators else insertB ' '
+    Point 0 -> if isSep c then deleteSeparators else insertMult c
     Point x ->
-      if isAnySep c
+      if isSep c
       then deleteSeparators
       else readAtB (Point $ x - 1) >>= \d ->
         -- We weren't looking at separator but there might be one behind us
-        if isAnySep d
+        if isSep d
           then moveB Character Backward >> deleteSeparators
-          else insertB ' ' -- no separators, insert a space just like emacs does
+          else insertMult ' ' -- no separators, insert a space just
+                              -- like emacs does
   where
+    isSep c = c /= '\n' && isAnySep c
+    insertMult c = insertN $ R.replicateChar (maybe 1 (max 1) u) c
+
     deleteSeparators = do
       genMaybeMoveB unitSepThisLine (Backward, InsideBound) Backward
       moveB Character Forward
-      doIfCharB isAnySep $ deleteB unitSepThisLine Forward
+      doIfCharB isSep $ deleteB unitSepThisLine Forward
 
 
 
@@ -356,7 +367,7 @@ joinLinesE :: UnivArgument -> BufferM ()
 joinLinesE Nothing = return ()
 joinLinesE (Just _) = do
   moveB VLine Forward
-  moveToSol >> transformB (const " ") Character Backward >> justOneSep
+  moveToSol >> transformB (const " ") Character Backward >> justOneSep Nothing
 
 -- | Shortcut to use a default list when a blank list is given.
 -- Used for default values to emacs queries
