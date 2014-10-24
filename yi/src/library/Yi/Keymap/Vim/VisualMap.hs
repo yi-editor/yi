@@ -25,9 +25,12 @@ import           Yi.Keymap.Vim.Common
 import           Yi.Keymap.Vim.Operator
 import           Yi.Keymap.Vim.StateUtils
 import           Yi.Keymap.Vim.StyledRegion
+import           Yi.Keymap.Vim.Tag
 import           Yi.Keymap.Vim.Utils
 import           Yi.MiniBuffer
 import           Yi.Monad
+import qualified Yi.Rope as R
+import           Yi.Tag
 import           Yi.Utils
 
 defVisualMap :: [VimOperator] -> [VimBinding]
@@ -36,6 +39,7 @@ defVisualMap operators =
     ++ [chooseRegisterBinding]
     ++ operatorBindings operators ++ digitBindings ++ [replaceBinding, switchEdgeBinding]
     ++ [insertBinding, exBinding, shiftDBinding]
+    ++ [tagJumpBinding]
 
 escAction :: EditorM RepeatToken
 escAction = do
@@ -241,4 +245,15 @@ insertBinding = VimBindingE (f . T.unpack . _unEv)
                   modifyStateE $ \s -> s { vsSecondaryCursors = drop 1 cursors }
                   switchModeE $ Insert (head evs)
                   return Continue
+          f _ _ = NoMatch
+
+tagJumpBinding :: VimBinding
+tagJumpBinding = VimBindingY (f . T.unpack . _unEv)
+    where f "<C-]>" (VimState { vsMode = (Visual _) })
+            = WholeMatch $ do 
+                 tag <- Tag . R.toText <$> withCurrentBuffer
+                            (regionOfSelectionB >>= readRegionB)
+                 withEditor $ switchModeE Normal
+                 gotoTag tag 0 Nothing
+                 return Finish
           f _ _ = NoMatch
