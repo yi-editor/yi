@@ -35,7 +35,8 @@ import Data.Prototype
 import Data.Text ()
 import Yi.Buffer
 import Yi.Command (shellCommandE)
-import Yi.Core (closeWindow, runAction, suspendEditor, userForceRefresh, withSyntax)
+import Yi.Core (closeWindowEmacs, runAction, suspendEditor,
+                userForceRefresh, withSyntax)
 import Yi.Dired
 import Yi.Editor
 import Yi.File
@@ -255,7 +256,7 @@ emacsKeys univArg =
   -- These keybindings are all preceded by a 'C-x' so for example to
   -- quit the editor we do a 'C-x C-c'
   ctrlX = choice [ ctrlCh 'o'    ?>>! deleteBlankLinesB
-                 , char '0'      ?>>! closeWindow
+                 , char '0'      ?>>! closeWindowEmacs
                  , char '1'      ?>>! closeOtherE
                  , char '2'      ?>>! splitE
                  , char 'h'      ?>>! selectAll

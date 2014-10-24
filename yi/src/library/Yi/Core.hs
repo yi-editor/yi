@@ -30,6 +30,7 @@ module Yi.Core
   -- * Global editor actions
   , errorEditor         -- :: String -> YiM ()
   , closeWindow         -- :: YiM ()
+  , closeWindowEmacs
 
   -- * Interacting with external commands
   , runProcessWithInput          -- :: String -> String -> YiM String
@@ -88,7 +89,7 @@ import           Yi.String
 import           Yi.Style (errorStyle, strongHintStyle)
 import qualified Yi.UI.Common as UI
 import           Yi.Utils
-import           Yi.Window (dummyWindow, bufkey, wkey, winRegion)
+import           Yi.Window (dummyWindow, bufkey, wkey, winRegion, isMini)
 import           Yi.PersistentState (loadPersistentState, savePersistentState)
 
 -- | Make an action suitable for an interactive run.
@@ -97,9 +98,9 @@ interactive :: IsRefreshNeeded -> [Action] -> YiM ()
 interactive isRefreshNeeded action = do
   evs <- withEditor $ use pendingEventsA
   logPutStrLn $ ">>> interactively" <> showEvs evs
-  withEditor $ (%=) buffersA (fmap $  undosA %~ addChangeU InteractivePoint)
+  withEditor $ buffersA %= (fmap $ undosA %~ addChangeU InteractivePoint)
   mapM_ runAction action
-  withEditor $ (%=) killringA krEndCmd
+  withEditor $ killringA %= krEndCmd
   when (isRefreshNeeded == MustRefresh) refreshEditor
   logPutStrLn "<<<"
   return ()
@@ -417,6 +418,23 @@ closeWindow = do
     tabCount <- withEditor $ uses tabsA PL.length
     when (winCount == 1 && tabCount == 1) quitEditor
     withEditor tryCloseE
+
+-- | This is a like 'closeWindow' but with emacs behaviour of C-x 0:
+-- if we're trying to close the minibuffer or last buffer in the
+-- editor, then just print a message warning the user about it rather
+-- closing mini or quitting editor.
+closeWindowEmacs :: YiM ()
+closeWindowEmacs = do
+  wins <- withEditor $ use windowsA
+  let winCount = PL.length wins
+  tabCount <- withEditor $ uses tabsA PL.length
+
+  case () of
+   _ | winCount == 1 && tabCount == 1 ->
+         printMsg "Attempt to delete sole ordinary window"
+     | isMini (PL._focus wins) ->
+         printMsg "Attempt to delete the minibuffer"
+     | otherwise -> withEditor tryCloseE
 
 onYiVar :: (Yi -> YiVar -> IO (YiVar, a)) -> YiM a
 onYiVar f = do
