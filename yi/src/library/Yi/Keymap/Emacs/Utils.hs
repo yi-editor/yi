@@ -98,18 +98,6 @@ askSaveEditor = askIndividualSave False =<< getModifiedBuffers
 getModifiedBuffers :: YiM [FBuffer]
 getModifiedBuffers = filterM deservesSave =<< gets bufferSet
 
-deservesSave :: FBuffer -> YiM Bool
-deservesSave b
-   | isUnchangedBuffer b = return False
-   | otherwise = isFileBuffer b
-
--- | Is there a proper file associated with the buffer?
--- In other words, does it make sense to offer to save it?
-isFileBuffer :: (Functor m, MonadBase IO m) => FBuffer -> m Bool
-isFileBuffer b = case b ^. identA of
-  MemBuffer _ -> return False
-  FileBuffer fn -> not <$> liftBase (doesDirectoryExist fn)
-
 --------------------------------------------------
 -- Takes in a list of buffers which have been identified
 -- as modified since their last save.

@@ -23,9 +23,11 @@ module Yi.File (
   revertE,        -- :: YiM ()
 
   -- * Helper functions
-  setFileName
+  setFileName,
+  deservesSave
  ) where
 
+import           Control.Applicative
 import           Control.Lens hiding (act)
 import           Control.Monad (void)
 import           Control.Monad.Base
@@ -151,3 +153,17 @@ setFileName :: BufferRef -> FilePath -> YiM ()
 setFileName b filename = do
   cfn <- liftBase $ userToCanonPath filename
   withGivenBuffer b $ assign identA $ FileBuffer cfn
+
+-- | Checks if the given buffer deserves a save: whether it's a file
+-- buffer and whether it's pointing at a file rather than a directory.
+deservesSave :: FBuffer -> YiM Bool
+deservesSave b
+   | isUnchangedBuffer b = return False
+   | otherwise = isFileBuffer b
+
+-- | Is there a proper file associated with the buffer?
+-- In other words, does it make sense to offer to save it?
+isFileBuffer :: FBuffer -> YiM Bool
+isFileBuffer b = case b ^. identA of
+  MemBuffer _ -> return False
+  FileBuffer fn -> not <$> liftBase (doesDirectoryExist fn)

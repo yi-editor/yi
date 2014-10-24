@@ -6,6 +6,7 @@
  * Fix eolPoint' when on last, empty line (#667, #662)
  * More intuitive justOneSep (emacs M-SPC) (#665)
  * Closer behaviour to emacs C-x 0 (#642)
+ * Allow vim to close dired &c buffers (#649)
 
 0.10.0
 ------

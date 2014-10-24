@@ -20,6 +20,7 @@ import           Control.Monad
 import           Data.Foldable (find)
 import           Data.List.NonEmpty (NonEmpty(..))
 import qualified Data.List.PointedList.Circular as PL
+import           Data.Maybe
 import           Data.Monoid
 import qualified Data.Text as T
 import qualified Text.ParserCombinators.Parsec as P
@@ -71,7 +72,7 @@ action  True  True  True = saveAndQuitAllE
 
 quitWindowE :: YiM ()
 quitWindowE = do
-    nw <- withCurrentBuffer needsAWindowB
+    nw <- gets currentBuffer >>= needsSaving
     ws <- withEditor $ use currentWindowA >>= windowsOnBufferE . bufkey
     if length ws == 1 && nw
        then errorEditor "No write since last change (add ! to override)"
@@ -85,14 +86,13 @@ quitWindowE = do
 
 quitAllE :: YiM ()
 quitAllE = do
-  a :| as <- readEditor bufferStack
-  let needsWindow b = (b,) <$> withEditor (withGivenBuffer b needsAWindowB)
-  bs <- mapM needsWindow (a:as)
+  let needsWindow b = (b,) <$> deservesSave b
+  bs <- readEditor bufferSet >>= mapM needsWindow
   -- Vim only shows the first modified buffer in the error.
   case find snd bs of
       Nothing -> quitEditor
       Just (b, _) -> do
-          bufferName <- withEditor $ withGivenBuffer b $ gets file
+          bufferName <- withEditor $ withGivenBuffer (bkey b) $ gets file
           errorEditor $ "No write since last change for buffer "
                         <> showT bufferName
                         <> " (add ! to override)"
@@ -100,10 +100,5 @@ quitAllE = do
 saveAndQuitAllE :: YiM ()
 saveAndQuitAllE = Common.forAllBuffers fwriteBufferE >> quitEditor
 
-needsAWindowB :: BufferM Bool
-needsAWindowB = do
-  isWorthless <- gets (^. identA) >>= return . \case
-    MemBuffer _ -> True
-    FileBuffer _ -> False
-  canClose <- gets isUnchangedBuffer
-  return (not (isWorthless || canClose))
+needsSaving :: BufferRef -> YiM Bool
+needsSaving = findBuffer >=> maybe (return False) deservesSave
