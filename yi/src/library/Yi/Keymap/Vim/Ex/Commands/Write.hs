@@ -23,7 +23,7 @@ import           Yi.Keymap.Vim.Ex.Types
 
 parse :: EventString -> Maybe ExCommand
 parse = Common.parse $
-               (P.try (P.string "w") <|> P.string "write")
+               (P.try (P.string "write") <|> P.string "w")
             *> (parseWriteAs <|> parseWrite)
     where parseWrite = do
             alls <- P.many (P.try ( P.string "all") <|> P.string "a")
