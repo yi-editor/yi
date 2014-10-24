@@ -346,10 +346,10 @@ solPoint line fb = Point $ R.length $ fst $ R.splitAtLine (line - 1) (mem fb)
 -- | Point that's at EOL. Notably, this puts you right before the
 -- newline character if one exists, and right at the end of the text
 -- if one does not.
-eolPoint :: Point
-            -- ^ Point from which we take the line to find the EOL of
-         -> BufferImpl syntax
-         -> Point
+eolPoint' :: Point
+             -- ^ Point from which we take the line to find the EOL of
+          -> BufferImpl syntax
+          -> Point
 eolPoint' p@(Point ofs) fb = Point . checkEol . fst . R.splitAtLine ln $ mem fb
   where
     ln = lineAt p fb
