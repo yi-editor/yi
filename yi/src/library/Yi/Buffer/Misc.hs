@@ -601,7 +601,12 @@ strokesRangesB regex r = do
 moveTo :: Point -> BufferM ()
 moveTo x = do
   forgetPreferCol
-  (.= x) . markPointA =<< getInsMark
+  maxP <- sizeB
+  let p = case () of
+        _ | x < 0 -> Point 0
+          | x > maxP -> maxP
+          | otherwise -> x
+  (.= p) . markPointA =<< getInsMark
 
 ------------------------------------------------------------------------
 
