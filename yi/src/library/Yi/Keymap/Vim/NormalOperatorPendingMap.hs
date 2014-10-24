@@ -142,7 +142,7 @@ parseCommand n sm o s | o' == s = JustOperator (fromMaybe 1 n) (sm LineWise)
   where o' = T.unpack . _unEv $ o
 parseCommand n sm _ "0" =
   let m = Move Exclusive False (const moveToSol)
-  in JustMove (CountedMove (Just 1) (changeMoveStyle sm m))
+  in JustMove (CountedMove n (changeMoveStyle sm m))
 parseCommand n sm _ s = case stringToMove . Ev $ T.pack s of
   WholeMatch m -> JustMove $ CountedMove n $ changeMoveStyle sm m
   PartialMatch -> PartialOperand
@@ -151,16 +151,19 @@ parseCommand n sm _ s = case stringToMove . Ev $ T.pack s of
                $ changeTextObjectStyle sm to
     Nothing -> NoOperand
 
-
+-- TODO: setup doctests
 -- Parse event string that can go after operator
 -- w -> (Nothing, "", "w")
 -- 2w -> (Just 2, "", "w")
 -- V2w -> (Just 2, "V", "w")
 -- v2V3<C-v>w -> (Just 6, "<C-v>", "w")
 -- vvvvvvvvvvvvvw -> (Nothing, "v", "w")
+-- 0 -> (Nothing, "", "0")
+-- V0 -> (Nothing, "V", "0")
 splitCountModifierCommand :: String -> (Maybe Int, String, String)
 splitCountModifierCommand = go "" Nothing [""]
-    where go ds count mods (h:t) | isDigit h = go (ds <> [h]) count mods t
+    where go "" Nothing mods "0" = (Nothing, head mods, "0")
+          go ds count mods (h:t) | isDigit h = go (ds <> [h]) count mods t
           go ds@(_:_) count mods s@(h:_) | not (isDigit h) = go [] (maybeMult count (Just (read ds))) mods s
           go [] count mods (h:t) | h `elem` "vV" = go [] count ([h]:mods) t
           go [] count mods s | "<C-v>" `isPrefixOf` s = go [] count ("<C-v>":mods) (drop 5 s)
