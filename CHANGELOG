@@ -3,7 +3,7 @@
 
  * Try to guess and preserve the file encoding (#638)
  * Restore cursor position better after deleteTrailingSpacesB (#666)
- * Fix eolPoint' when on last, empty line (#667)
+ * Fix eolPoint' when on last, empty line (#667, #662)
  * More intuitive justOneSep (emacs M-SPC) (#665)
 
 0.10.0
