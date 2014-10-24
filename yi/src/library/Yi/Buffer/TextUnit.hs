@@ -314,9 +314,9 @@ genMoveB Document _                     Forward = moveTo =<< sizeB
 genMoveB Document _ Backward = moveTo 0 -- impossible to go outside beginning of doc.
 genMoveB Character _ Forward  = rightB
 genMoveB Character _ Backward = leftB
-genMoveB VLine     _ Forward  =
-  do ofs <- lineMoveRel 1
-     when (ofs < 1) (maybeMoveB Line Forward)
+genMoveB VLine     _ Forward  = do
+  ofs <- lineMoveRel 1
+  when (ofs < 1) (maybeMoveB Line Forward)
 genMoveB VLine _ Backward = lineUp
 genMoveB unit (boundDir, boundSide) moveDir =
   doUntilB_ (genAtBoundaryB unit boundDir boundSide) (moveB Character moveDir)
