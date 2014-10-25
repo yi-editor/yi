@@ -392,7 +392,7 @@ searchBinding = VimBindingE (f . T.unpack . _unEv)
           f _ _ = NoMatch
 
 continueSearching :: (Direction -> Direction) -> EditorM ()
-continueSearching fdir = do
+continueSearching fdir =
   getRegexE >>= \case
     Just regex -> do
       dir <- fdir <$> use searchDirectionA
