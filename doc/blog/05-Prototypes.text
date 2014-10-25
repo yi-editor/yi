@@ -54,7 +54,7 @@ reference to the `self` object explicit. We can do so in Haskell by putting
 the definitions in a record and a lambda.
 
 ~~~~
-data Proto = Proto {a :: A, b :: A, c :: C}
+data Proto = Proto {a :: A, b :: B, c :: C}
 proto = \self -> Proto {
   a = fa (b self) (c self),
   b = fb (a self) (c self),
