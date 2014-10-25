@@ -238,8 +238,8 @@ instance Binary Yi.Types.Attributes where
       let putTime (UTCTime x y) = B.put (fromEnum x) >> B.put (fromEnum y)
       B.put n >> B.put b >> B.put u >> B.put bd
       B.put pc >> B.put pu >> B.put selectionStyle_ >> B.put wm
-      B.put law >> putTime lst >> B.put ro >> B.put ins >> B.put _dc >> B.put cn
-      B.put isTransacPresent >> B.put transacAccum >> B.put fv
+      B.put law >> putTime lst >> B.put ro >> B.put ins >> B.put _dc
+      B.put isTransacPresent >> B.put transacAccum >> B.put fv >> B.put cn
     get = Yi.Types.Attributes <$> B.get <*> B.get <*> B.get <*>
           B.get <*> B.get <*> B.get <*> B.get <*> pure I.End <*> B.get <*> B.get
           <*> getTime <*> B.get <*> B.get <*> B.get
