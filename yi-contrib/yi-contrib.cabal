@@ -28,7 +28,6 @@ library
     Yi.Config.Users.Michal
     Yi.Config.Users.Reiner
     Yi.Style.Misc
-    Yi.Templates
 
   build-depends:
     base >=4.0 && <5,
