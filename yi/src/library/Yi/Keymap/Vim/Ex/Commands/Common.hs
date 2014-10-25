@@ -23,6 +23,7 @@ module Yi.Keymap.Vim.Ex.Commands.Common
     , pureExCommand
     , impureExCommand
     , errorNoWrite
+    , commandArgs
     ) where
 
 import           Control.Applicative
@@ -173,3 +174,32 @@ errorEditor s = printStatus (["error: " <> s], errorStyle)
 -- | Show the common error message about an unsaved file on the status line.
 errorNoWrite :: EditorM ()
 errorNoWrite = errorEditor "No write since last change (add ! to override)"
+
+-- | Useful parser for any Ex command that acts kind of like a shell
+commandArgs :: P.GenParser Char () [T.Text]
+commandArgs = P.many commandArg
+
+-- | Parse a single command, with a space in front
+commandArg :: P.GenParser Char () T.Text
+commandArg = fmap mconcat $ P.many1 P.space *> normArg
+
+-- | Unquoted arg, allows for escaping of \, ", ', and space. Includes quoted arg
+-- as a subset, because of things like aa"bbb"
+normArg :: P.GenParser Char () [T.Text]
+normArg = P.many1 $
+        quoteArg '\"'
+    <|> quoteArg '\"'
+    <|> T.singleton <$> escapeChar
+    <|> T.singleton <$> P.noneOf " \"\'\\"
+
+-- | Quoted arg with char delim. Allows same escapes, but doesn't require escaping
+-- of the opposite kind or space. However, it does allow escaping opposite kind like
+-- normal, as well as allowing escaping of space (is this normal behavior?).
+quoteArg :: Char -> P.GenParser Char () T.Text
+quoteArg delim = fmap T.pack $ P.char delim 
+    *> (P.many1 $ P.noneOf (delim:"\\") <|> escapeChar)
+    <* P.char delim
+
+-- | Parser for a single escape character
+escapeChar :: P.GenParser Char () Char
+escapeChar = P.char '\\' *> P.oneOf " \"\'\\"
