@@ -70,11 +70,16 @@ fundamentalMode = emptyMode
   , modeGotoDeclaration = do
        currentPoint <- pointB
        currentWord <- readCurrentWordB
+       currentWordBeginningPoint <- regionStart <$> regionOfB unitWord
        _ <- gotoLn 0
        word <- return $ makeSimpleSearch currentWord
        searchResults <- regexB Forward word
        case searchResults of
-           (declarationRegion : _) -> moveTo $ regionStart declarationRegion
+           (declarationRegion : _) -> do
+               searchPoint <- return $ regionStart declarationRegion
+               if(currentWordBeginningPoint /= searchPoint)
+               then moveTo searchPoint
+               else moveTo currentPoint
            [] -> moveTo currentPoint
   }
 
