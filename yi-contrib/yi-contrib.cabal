@@ -29,7 +29,6 @@ library
     Yi.Config.Users.Reiner
     Yi.Style.Misc
     Yi.Templates
-    Yi.FuzzyOpen
 
   build-depends:
     base >=4.0 && <5,
