@@ -77,7 +77,7 @@ fundamentalMode = emptyMode
        case searchResults of
            (declarationRegion : _) -> do
                searchPoint <- return $ regionStart declarationRegion
-               if(currentWordBeginningPoint /= searchPoint)
+               if currentWordBeginningPoint /= searchPoint
                then moveTo searchPoint
                else moveTo currentPoint
            [] -> moveTo currentPoint
