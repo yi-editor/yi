@@ -18,9 +18,7 @@ import           Control.Applicative
 import           Control.Lens
 import           Control.Monad
 import           Data.Foldable (find)
-import           Data.List.NonEmpty (NonEmpty(..))
 import qualified Data.List.PointedList.Circular as PL
-import           Data.Maybe
 import           Data.Monoid
 import qualified Data.Text as T
 import qualified Text.ParserCombinators.Parsec as P
@@ -72,7 +70,7 @@ action  True  True  True = saveAndQuitAllE
 
 quitWindowE :: YiM ()
 quitWindowE = do
-    nw <- gets currentBuffer >>= needsSaving
+    nw <- gets currentBuffer >>= Common.needsSaving
     ws <- withEditor $ use currentWindowA >>= windowsOnBufferE . bufkey
     if length ws == 1 && nw
        then errorEditor "No write since last change (add ! to override)"
@@ -99,6 +97,3 @@ quitAllE = do
 
 saveAndQuitAllE :: YiM ()
 saveAndQuitAllE = Common.forAllBuffers fwriteBufferE >> quitEditor
-
-needsSaving :: BufferRef -> YiM Bool
-needsSaving = findBuffer >=> maybe (return False) deservesSave

@@ -24,6 +24,7 @@ module Yi.Keymap.Vim.Ex.Commands.Common
     , impureExCommand
     , errorNoWrite
     , commandArgs
+    , needsSaving
     ) where
 
 import           Control.Applicative
@@ -36,6 +37,7 @@ import qualified Text.ParserCombinators.Parsec as P
 import           Text.Read (readMaybe)
 import           Yi.Buffer
 import           Yi.Editor
+import           Yi.File
 import           Yi.Keymap
 import           Yi.Keymap.Vim.Common
 import           Yi.Keymap.Vim.Ex.Types
@@ -203,3 +205,6 @@ quoteArg delim = fmap T.pack $ P.char delim
 -- | Parser for a single escape character
 escapeChar :: P.GenParser Char () Char
 escapeChar = P.char '\\' *> P.oneOf " \"\'\\"
+
+needsSaving :: BufferRef -> YiM Bool
+needsSaving = findBuffer >=> maybe (return False) deservesSave

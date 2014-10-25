@@ -15,6 +15,8 @@ import           Control.Monad
 import           Data.Monoid
 import qualified Data.Text as T
 import qualified Text.ParserCombinators.Parsec as P
+import           Yi.Buffer
+import           Yi.Editor
 import           Yi.File
 import           Yi.Keymap
 import           Yi.Keymap.Vim.Common
@@ -37,7 +39,9 @@ parse = Common.parse $
 writeCmd :: Bool -> ExCommand
 writeCmd allFlag = Common.impureExCommand {
     cmdShow = "write" <> if allFlag then "all" else ""
-  , cmdAction = YiA $ if allFlag then Common.forAllBuffers fwriteBufferE else viWrite
+  , cmdAction = YiA $ if allFlag
+      then Common.forAllBuffers tryWriteBuffer >> printMsg "All files written"
+      else viWrite
   }
 
 writeAsCmd :: T.Text -> ExCommand
@@ -45,3 +49,8 @@ writeAsCmd filename = Common.impureExCommand {
     cmdShow = "write " <> filename
   , cmdAction = YiA $ viWriteTo filename
   }
+
+tryWriteBuffer :: BufferRef -> YiM ()
+tryWriteBuffer buf = do
+    ns <- Common.needsSaving buf
+    when ns $ fwriteBufferE buf
