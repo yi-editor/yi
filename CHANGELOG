@@ -7,6 +7,9 @@
  * More intuitive justOneSep (emacs M-SPC) (#665)
  * Closer behaviour to emacs C-x 0 (#642)
  * Allow vim to close dired &c buffers (#649)
+ * yi-contrib was retired. yi-fuzzy-open and yi-snippet salvage the
+   somewhat useful parts. You can still view the user configs under
+   the yi-graveyard repository but they will not be maintained.
 
 0.10.0
 ------

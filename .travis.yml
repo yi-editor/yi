@@ -28,7 +28,6 @@ before_install:
    esac
 
  - cp cabal.config yi
- - cp cabal.config yi-contrib
  - sudo add-apt-repository -y ppa:hvr/ghc
  - sudo apt-get update
  - sudo apt-get install cabal-install-1.20 ghc-$GHCVER libicu-dev
@@ -45,14 +44,12 @@ script:
  - travis_retry cabal-1.20 install -j2 -fpango --enable-tests -ftesting --only-dependencies --reorder-goals --force-reinstalls
  - cabal-1.20 install -j1 -fpango --enable-tests -ftesting
  - cabal-1.20 test
- - cd ../yi/example-configs
+ # - cd ../yi/example-configs
  # - for config in yi-*.hs;
  #   do
  #     ghc -Wall --make $config;
  #   done;
 
- - cd ../../yi-contrib
- - cabal-1.20 install
 
 notifications:
   irc: "chat.freenode.net#yi"
