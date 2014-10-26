@@ -304,11 +304,15 @@ drawText h w tabWidth bufData
 
     lines' :: [(Char, a)] -> [[(Char, a)]]
     lines' [] =  []
-    lines' s  = case s' of
-                  []          -> [l]
-                  ((_,x):s'') -> (l++[(' ',x)]) : lines' s''
+    lines' s  = case (lineLen, modLW, s') of
+                  (_, _, [])          -> [l]
+                  (0, _, ((_,x):s'')) -> (l++[(' ',x)]) : lines' s''
+                  (_, 0, ((_,x):s'')) -> l : lines' s''
+                  (_, _, ((_,x):s'')) -> (l++[(' ',x)]) : lines' s''
                 where
                 (l, s') = break ((== '\n') . fst) s
+                lineLen = length l
+                modLW = mod lineLen w
 
     wrapLine :: Int -> [x] -> [[x]]
     wrapLine _ [] = []
