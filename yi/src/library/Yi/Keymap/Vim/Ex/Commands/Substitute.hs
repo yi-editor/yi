@@ -1,3 +1,4 @@
+{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# OPTIONS_HADDOCK show-extensions #-}
 
@@ -16,6 +17,7 @@ import           Data.Monoid
 import qualified Data.Text as T
 import qualified Text.ParserCombinators.Parsec as P
 import           Yi.Buffer.Adjusted hiding (Delete)
+import           Yi.Editor
 import           Yi.Keymap
 import           Yi.Keymap.Vim.Common
 import qualified Yi.Keymap.Vim.Ex.Commands.Common as Common
@@ -47,15 +49,16 @@ substitute from to delimiter global caseInsensitive allLines = Common.pureExComm
               `T.snoc` delimiter
               <>       (if caseInsensitive then "i" else "")
               <>       (if global then "g" else "")
-  , cmdAction = BufferA $ do
-        let regex = makeSimpleSearch from
-            replace = do
-                region <- regionOfB Line
-                void $ searchAndRepRegion0 regex to global region
-
-        if allLines
-        then withEveryLineB replace
-        else replace
-
-        moveToSol
+  , cmdAction = EditorA $ do
+        regex <- if R.null from
+                    then getRegexE
+                    else return . Just . makeSimpleSearch $ from
+        case regex of
+            Nothing -> printMsg "No previous search pattern"
+            Just regex' -> withCurrentBuffer $ do
+                let replace = void $ regionOfB Line >>= searchAndRepRegion0 regex' to global
+                if allLines
+                    then withEveryLineB replace
+                    else replace
+                moveToSol
   }
