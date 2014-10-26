@@ -108,6 +108,9 @@ opChange = VimOperator {
         withCurrentBuffer $ do
             point <- deleteRegionWithStyleB reg style
             moveTo point
+            when (style == LineWise) $ do
+                insertB '\n'
+                leftB
         switchModeE $ Insert 'c'
         return Continue
 }
