@@ -60,7 +60,7 @@ completionBinding commandParsers = VimBindingY f
           ss -> do
               let s = commonTPrefix' ss
               updateCommand s
-              withEditor . printMsg . T.unwords . fmap (dropToLastWordOf s) $ ss
+              printMsg . T.unwords . fmap (dropToLastWordOf s) $ ss
 
     updateCommand :: T.Text -> YiM ()
     updateCommand s = do

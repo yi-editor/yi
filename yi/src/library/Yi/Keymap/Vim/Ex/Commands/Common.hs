@@ -133,7 +133,7 @@ filenameComplete f = case f == "%" of
     -- actual file is in the second buffer in bufferStack
     gets bufferStack >>= \case
       _ :| [] -> do
-        withEditor $ printMsg "filenameComplete: Expected to see minibuffer!"
+        printMsg "filenameComplete: Expected to see minibuffer!"
         return []
       _ :| bufferRef : _ -> do
         currentFileName <- fmap T.pack . withGivenBuffer bufferRef $

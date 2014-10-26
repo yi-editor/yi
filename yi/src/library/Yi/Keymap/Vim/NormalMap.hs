@@ -451,7 +451,7 @@ tabTraversalBinding = VimBindingE (f . T.unpack . _unEv)
 
 openFileUnderCursor :: Maybe (EditorM ()) -> YiM ()
 openFileUnderCursor editorAction = do
-  fileName <- fmap R.toString . withEditor . withCurrentBuffer $ readUnitB unitViWORD
+  fileName <- fmap R.toString . withCurrentBuffer $ readUnitB unitViWORD
   fileExists <- io $ doesFileExist fileName
   if (not fileExists) then
       withEditor . fail $ "Can't find file \"" <> fileName <> "\""

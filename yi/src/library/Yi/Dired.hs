@@ -906,7 +906,7 @@ askRenameFiles dir fs = case fs of
       diredRefresh
       printMsg $ showT (st ^. diredOpSucCnt) <> " of "
                   <> showT total <> " item(s) moved."
-    showNothing _ = (withEditor . printMsg) "Quit"
+    showNothing _ = printMsg "Quit"
     total = length fs
 
 -- | copy selected files in a given directory to the target location given

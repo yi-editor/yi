@@ -419,7 +419,7 @@ countWordsRegion = do
     t <- withCurrentBuffer $ getRectangle >>= \(reg, _, _) -> readRegionB reg
     let nls = R.countNewLines t
     return (if nls == 0 then 1 else nls, length $ R.words t, R.length t)
-  (withEditor . printMsg) $ T.unwords [ "Region has", showT l, p l "line" <> ","
+  printMsg $ T.unwords [ "Region has", showT l, p l "line" <> ","
                         , showT w, p w "word" <> ", and"
                         , showT c, p w "character" <> "."
                         ]

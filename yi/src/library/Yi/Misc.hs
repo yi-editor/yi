@@ -196,7 +196,7 @@ cd = promptFileChangingHints "switch directory to:" dirs $ \path ->
 
 -- | Shows current working directory. Also see 'cd'.
 pwd :: YiM ()
-pwd = io getCurrentDirectory >>= withEditor . printMsg . T.pack
+pwd = io getCurrentDirectory >>= printMsg . T.pack
 
 rot13Char :: Char -> Char
 rot13Char = onCharLetterCode (+13)
