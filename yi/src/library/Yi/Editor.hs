@@ -423,8 +423,8 @@ setTmpStatus delay s = withEditor $ do
   b <- case bs of
          (b':_) -> return $ bkey b'
          [] -> stringToNewBuffer (MemBuffer "messages") mempty
-  let m = '(' `R.cons` listify (R.fromText <$> fst s) Mon.<> ", <function>)"
-  withGivenBuffer b $ botB >> insertN m
+  let m = listify $ R.fromText <$> fst s
+  withGivenBuffer b $ botB >> insertN (m `R.snoc` '\n')
 
 -- ---------------------------------------------------------------------
 -- kill-register (vim-style) interface to killring.
