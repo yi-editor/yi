@@ -98,10 +98,18 @@ unitWord = GenUnit Document $ \direction -> checkPeekB (-1) [isWordChar, not . i
 unitDelimited :: Char -> Char -> Bool -> TextUnit
 unitDelimited left right included = GenUnit Document $ \direction ->
    case (included,direction) of
-       (False, Backward) -> checkPeekB 0 [(== left)] Backward
-       (False, Forward)  -> (== right) <$> readB
-       (True,  Backward) -> checkPeekB (-1) [(== left)] Backward
-       (True,  Forward)  -> checkPeekB 0 [(== right)] Backward
+       (False, Backward) -> do
+           isCursorOnLeftChar <- (== left) <$> readB
+           when isCursorOnLeftChar rightB
+           checkPeekB 0 [(== left)] Backward
+       (False, Forward)  -> do
+           isCursorOnRightChar <- (== right) <$> readB
+           isTextUnitBlank <- checkPeekB 0 [(== left)] Backward
+           if isTextUnitBlank && isCursorOnRightChar
+           then leftB >> return True
+           else return isCursorOnRightChar
+       (True,  Backward) -> checkPeekB 0 [(== left)] Forward
+       (True,  Forward)  -> rightB >> checkPeekB 0 [(== right)] Backward
 
 isWordChar :: Char -> Bool
 isWordChar x = isAlphaNum x || x == '_'
