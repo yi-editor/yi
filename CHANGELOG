@@ -10,6 +10,10 @@
  * yi-contrib was retired. yi-fuzzy-open and yi-snippet salvage the
    somewhat useful parts. You can still view the user configs under
    the yi-graveyard repository but they will not be maintained.
+ * Switching buffers with vty frontend fixed.
+ * Multiple fixes and additions to the vim keymap
+ * Versions in cabal file bumped. Notable bound is on vty 5.2.4 which fixes
+   builds on 32-bit machines.
 
 0.10.0
 ------
