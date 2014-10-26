@@ -1,0 +1,15 @@
+-- Input
+(2,3)
+aaaaaa
+bbbbbb
+cccccc
+dddddd
+eeeeee
+ffffff
+-- Output
+(2,1)
+aaaaaa
+
+ffffff
+-- Events
+V3jc<Esc>

@@ -1,0 +1,12 @@
+-- Input
+(1,11)
+Lorem ipsum dolor sit amet
+abc def ghi
+qwe rty uiop
+-- Output
+(1,3)
+man
+abc def ghi
+qwe rty uiop
+-- Events
+ccman<Esc>
