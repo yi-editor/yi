@@ -22,6 +22,7 @@ import           Data.Monoid
 import qualified Data.Text as T
 import           Prelude hiding (null, lookup)
 import           System.Directory (doesFileExist)
+import           System.FriendlyPath (expandTilda)
 import           Yi.Buffer.Adjusted hiding (Insert)
 import           Yi.Core (quitEditor, closeWindow)
 import           Yi.Editor
@@ -452,12 +453,12 @@ tabTraversalBinding = VimBindingE (f . T.unpack . _unEv)
 openFileUnderCursor :: Maybe (EditorM ()) -> YiM ()
 openFileUnderCursor editorAction = do
   fileName <- fmap R.toString . withCurrentBuffer $ readUnitB unitViWORD
-  fileExists <- io $ doesFileExist fileName
-  if (not fileExists) then
-      withEditor . fail $ "Can't find file \"" <> fileName <> "\""
-  else do
+  fileExists <- io $ doesFileExist =<< expandTilda fileName
+  if fileExists then do
       maybeM withEditor editorAction
       void . editFile $ fileName
+  else
+      withEditor . fail $ "Can't find file \"" <> fileName <> "\""
 
 recordMacroBinding :: VimBinding
 recordMacroBinding = VimBindingE (f . T.unpack . _unEv)
