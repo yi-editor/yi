@@ -16,9 +16,11 @@
 
 module Yi.PersistentState(loadPersistentState,
                           savePersistentState,
-                          maxHistoryEntries)
+                          maxHistoryEntries,
+                          persistentSearch)
 where
 
+import Control.Monad
 import Data.Typeable
 import Data.Binary
 #if __GLASGOW_HASKELL__ < 708
@@ -69,6 +71,19 @@ makeLenses ''MaxHistoryEntries
 maxHistoryEntries :: Field Int
 maxHistoryEntries = customVariable . unMaxHistoryEntries
 
+newtype PersistentSearch = PersistentSearch { _unPersistentSearch :: Bool }
+  deriving(Typeable, Binary)
+
+instance Default PersistentSearch where
+  def = PersistentSearch True
+
+instance YiConfigVariable PersistentSearch
+
+makeLenses ''PersistentSearch
+
+persistentSearch :: Field Bool
+persistentSearch = customVariable . unPersistentSearch
+
 -- | Trims per-command histories to contain at most N completions each.
 trimHistories :: Int -> Histories -> Histories
 trimHistories maxHistory (Histories m) = Histories $ M.map trimH m
@@ -116,6 +131,8 @@ loadPersistentState = do
     maybePState <- readPersistentState
     case maybePState of
       Nothing     -> return ()
-      Just pState -> do withEditor $ putEditorDyn                $ histories     pState
-                        withEditor $ assign killringA            $ aKillring     pState
-                        withEditor $ maybe (return ()) setRegexE $ aCurrentRegex pState
+      Just pState -> do putEditorDyn                $ histories     pState
+                        assign killringA            $ aKillring     pState
+                        PersistentSearch keepSearch <- askConfigVariableA
+                        when keepSearch . withEditor $
+                            maybe (return ()) setRegexE $ aCurrentRegex pState
