@@ -284,7 +284,7 @@ drawText h w tabWidth bufData
 
     -- the number of lines that taking wrapping into account,
     -- we use this to calculate the number of lines displayed.
-    wrapped = concatMap (wrapLine w) $ map (concatMap expandGraphic) $ take h $ lines' bufData
+    wrapped = concatMap (wrapLine w) $ take h $ lines' (concatMap expandGraphic bufData)
     lns0 = take h wrapped
 
     -- fill lines with blanks, so the selection looks ok.
@@ -316,8 +316,10 @@ drawText h w tabWidth bufData
 
     expandGraphic ('\t', p) = replicate tabWidth (' ', p)
     expandGraphic (c, p)
-        | ord c < 32 = [('^', p), (chr (ord c + 64), p)]
+        | numeric == 10 = [(c, p)] -- '\n'
+        | numeric < 32 = [('^', p), (chr (numeric + 64), p)]
         | otherwise = [(c, p)]
+        where numeric = ord c
 
 renderTabBar :: UIStyle -> [(T.Text, Bool)] -> Vty.Image
 renderTabBar uiStyle = Vty.horizCat . fmap render
