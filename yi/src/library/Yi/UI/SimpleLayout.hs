@@ -125,22 +125,23 @@ layoutWindow win e w h = win
         dispLnCount = h' - wrapCount
 
 
-coordsOfCharacterB :: Size2D -> Point -> Point
-    -> BufferM (Maybe Point2D)
+coordsOfCharacterB :: Size2D -> Point -> Point -> BufferM (Maybe Point2D)
 coordsOfCharacterB _ topLeft char | topLeft > char = return Nothing
 coordsOfCharacterB (Size2D w h) (Point topLeft) (Point char)
     | char - topLeft >= w * h = return Nothing
 coordsOfCharacterB (Size2D w h) (Point topLeft) (Point char) = savingPointB $ do
     ts <- fmap tabSize indentSettingsB
     text <- fmap (R.toString . R.take (w * h)) (streamB Forward (Point topLeft))
-    let go !x !y n t | x >= w = go (x - w) (y + 1) n t
-        go _  !y _ _ | y >= h = Nothing
+    let go _  !y _ _ | y >= h = Nothing
         go !x !y 0 _ = Just (Point2D x y)
-        go !x !y !n (c : t) =
-            case c of
-                '\t' -> go (x + ts) y (n - 1) t
-                '\n' -> go 0 (y + 1) (n - 1) t
-                _ -> go (x + 1) y (n - 1) t
+        go !x !y !n (c : d : t) =
+            case (c, d, (compare x wOffset)) of
+                ('\t',  _ , _) -> go (x + ts) y (n - 1) (d:t)
+                ('\n',  _ , _) -> go 0 (y + 1) (n - 1) (d:t)
+                (  _ ,'\n',EQ) -> go x y (n - 1) (d:t)
+                (  _ ,  _ ,EQ) -> go (x - wOffset) (y + 1) (n - 1) (d:t)
+                (  _ ,  _ , _) -> go (x + 1) y (n - 1) (d:t)
+            where wOffset = w - 1
         go !x !y _ _ = Just (Point2D x y)
     return (go 0 0 (char - topLeft) text)
 
