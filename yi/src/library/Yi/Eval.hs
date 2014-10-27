@@ -3,6 +3,7 @@
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE FlexibleContexts #-}
 {-# OPTIONS_HADDOCK show-extensions #-}
 
 -- |
@@ -33,8 +34,12 @@ module Yi.Eval (
 ) where
 
 import           Control.Applicative ((<$>), (<*>))
+import           Control.Concurrent
+import           Control.Monad.Catch (try)
 import           Control.Lens hiding (Action)
 import           Control.Monad hiding (mapM_)
+import           Control.Monad.Base
+import           Control.Monad.Trans (lift)
 import           Data.Array
 import           Data.Binary
 import           Data.Default
@@ -51,7 +56,6 @@ import           Yi.Boot.Internal (reload)
 import           Yi.Buffer
 import           Yi.Config.Simple.Types
 import           Yi.Core (errorEditor, runAction)
-import           Yi.Debug
 import           Yi.Types (YiVariable,YiConfigVariable)
 import           Yi.Editor
 import           Yi.File
@@ -108,6 +112,49 @@ instance Default NamesCache where
     def = NamesCache []
 instance YiVariable NamesCache
 
+type HintRequest = (String, MVar (Either LHI.InterpreterError Action))
+newtype HintThreadVar = HintThreadVar (Maybe (MVar HintRequest))
+  deriving (Typeable, Default)
+
+instance Binary HintThreadVar where
+  put _ = return ()
+  get = return def
+instance YiVariable HintThreadVar
+
+getHintThread :: (MonadEditor m, MonadBase IO m) => m (MVar HintRequest)
+getHintThread = do
+  HintThreadVar x <- getEditorDyn
+  case x of
+    Just t -> return t
+    Nothing -> do
+      req <- io newEmptyMVar
+      contextFile <- Yi.Paths.getEvaluatorContextFilename
+      void . io . forkIO $ hintEvaluatorThread req contextFile
+      putEditorDyn . HintThreadVar $ Just req
+      return req
+
+hintEvaluatorThread :: MVar HintRequest -> FilePath -> IO ()
+hintEvaluatorThread request contextFile = do
+  haveUserContext <- doesFileExist contextFile
+  void $ LHI.runInterpreter $ do
+    LHI.set [LHI.searchPath LHI.:= []]
+
+    -- We no longer have Yi.Prelude, perhaps we should remove
+    -- NoImplicitPrelude?
+    LHI.set [LHI.languageExtensions LHI.:= [ LHI.OverloadedStrings
+                                           , LHI.NoImplicitPrelude
+                                           ]]
+    when haveUserContext $ do
+      LHI.loadModules [contextFile]
+      LHI.setTopLevelModules ["Env"]
+
+    -- Yi.Keymap: Action lives there
+    LHI.setImportsQ [("Yi", Nothing), ("Yi.Keymap",Just "Yi.Keymap")]
+    forever $ do
+      (s,response) <- lift $ takeMVar request
+      res <- try $ LHI.interpret ("Yi.makeAction (" ++ s ++ ")") (LHI.as :: Action)
+      lift $ putMVar response res
+
 -- Evaluator implemented by calling GHCi. This evaluator can run
 -- arbitrary expressions in the class 'YiAction'.
 --
@@ -129,23 +176,11 @@ ghciEvaluator = Evaluator { execEditorActionImpl = execAction
     execAction :: String -> YiM ()
     execAction "reload" = reload
     execAction s = do
-      contextFile <- Yi.Paths.getEvaluatorContextFilename
-      haveUserContext <- io $ doesFileExist contextFile
-      res <- io $ LHI.runInterpreter $ do
-        LHI.set [LHI.searchPath LHI.:= []]
-
-        -- We no longer have Yi.Prelude, perhaps we should remove
-        -- NoImplicitPrelude?
-        LHI.set [LHI.languageExtensions LHI.:= [ LHI.OverloadedStrings
-                                               , LHI.NoImplicitPrelude
-                                               ]]
-        when haveUserContext $ do
-          LHI.loadModules [contextFile]
-          LHI.setTopLevelModules ["Env"]
-
-        -- Yi.Keymap: Action lives there
-        LHI.setImportsQ [("Yi", Nothing), ("Yi.Keymap",Just "Yi.Keymap")]
-        LHI.interpret ("Yi.makeAction (" ++ s ++ ")") (error "as" :: Action)
+      request <- getHintThread
+      res <- io $ do
+        response <- newEmptyMVar
+        putMVar request (s,response)
+        takeMVar response
       case res of
         Left err -> errorEditor (showT err)
         Right action -> runAction action
