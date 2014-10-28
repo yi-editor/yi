@@ -28,11 +28,11 @@ module Yi.Tag ( lookupTag
               , getTags
               , setTags
               , resetTags
-              , getTagsFileList
-              , setTagsFileList
+              , tagsFileList
               ) where
 
 import           Control.Applicative
+import           Control.Lens
 import           Data.Binary
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.UTF8 as BS8
@@ -44,7 +44,6 @@ import           GHC.Generics (Generic)
 import           Data.Default
 import qualified Data.Foldable as F
 import           Data.List (isPrefixOf)
-import           Data.List.Split (splitOn)
 import           Data.Map (Map, fromListWith, lookup, keys)
 import           Data.Maybe (mapMaybe)
 import qualified Data.Text as T
@@ -54,16 +53,28 @@ import           Data.Typeable
 import           System.FilePath (takeFileName, takeDirectory, (</>))
 import           System.FriendlyPath
 import           Yi.Editor
-import           Yi.Types (YiVariable)
+import           Yi.Config.Simple.Types (Field, customVariable)
+import           Yi.Types (YiVariable, YiConfigVariable)
 
+newtype TagsFileList  = TagsFileList { _unTagsFileList :: [FilePath] }
+    deriving Typeable
+
+instance Default TagsFileList where
+    def = TagsFileList ["tags"]
+
+instance YiConfigVariable TagsFileList
+
+makeLenses ''TagsFileList
+
+tagsFileList :: Field [FilePath]
+tagsFileList = customVariable . unTagsFileList
 
 newtype Tags  = Tags (Maybe TagTable) deriving Typeable
+
 instance Default Tags where
     def = Tags Nothing
 
-newtype TagsFileList  = TagsFileList [FilePath] deriving Typeable
-instance Default TagsFileList where
-    def = TagsFileList ["tags"]
+instance YiVariable Tags
 
 newtype Tag = Tag { _unTag :: T.Text } deriving (Show, Eq, Ord)
 
@@ -151,16 +162,6 @@ getTags = do
   Tags t <- getEditorDyn
   return t
 
-setTagsFileList :: String -> EditorM ()
-setTagsFileList fps = do
-  resetTags
-  putEditorDyn $ TagsFileList (splitOn "," fps)
-
-getTagsFileList :: EditorM [FilePath]
-getTagsFileList = do
-  TagsFileList fps <- getEditorDyn
-  return fps
-
 #if __GLASGOW_HASKELL__ < 708
 $(derive makeBinary ''Tags)
 $(derive makeBinary ''TagTable)
@@ -173,7 +174,3 @@ instance Binary Tags
 instance Binary TagTable
 instance Binary TagsFileList
 #endif
-
-instance YiVariable Tags
-
-instance YiVariable TagsFileList

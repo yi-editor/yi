@@ -23,6 +23,7 @@ module Yi.Keymap.Vim.Tag
     ) where
 
 import           Control.Applicative
+import           Control.Lens (view)
 import           Control.Monad
 import           Data.Binary
 import           Data.Default
@@ -181,7 +182,7 @@ completeVimTag s =
 -- file exists.
 tagsFile :: YiM (Maybe FilePath)
 tagsFile = do
-    fs <- withEditor getTagsFileList
+    fs <- view tagsFileList <$> askCfg
     let g f' f = do
         case f' of
             Just _ -> return f'
