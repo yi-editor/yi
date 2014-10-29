@@ -232,7 +232,7 @@ renderWindow cfg e (SL.Rect x y w h) (win, focused) =
                              point))
 
         rendered =
-            drawText h' w
+            drawText wsty h' w
                      tabWidth
                      ([(c, wsty) | c <- T.unpack prompt] ++ bufData ++ [(' ', wsty)])
                      -- we always add one character which can be used to position the cursor at the end of file
@@ -272,19 +272,20 @@ stys sty [] cs = [ sty | _ <- cs ]
 stys sty ((endPos, sty') : xs) cs = [ sty | _ <- previous ] <> stys sty' xs later
     where (previous, later) = break ((endPos <=) . fst) cs
 
-drawText :: Int    -- ^ The height of the part of the window we are in
+drawText :: Vty.Attr -- ^ "Ground" attribute.
+         -> Int    -- ^ The height of the part of the window we are in
          -> Int    -- ^ The width of the part of the window we are in
          -> Int    -- ^ The number of spaces to represent a tab character with.
          -> [(Char, Vty.Attr)]  -- ^ The data to draw.
          -> [Vty.Image]
-drawText h w tabWidth bufData
+drawText wsty h w tabWidth bufData
     | h == 0 || w == 0 = []
     | otherwise        = renderedLines
     where
 
     -- the number of lines that taking wrapping into account,
     -- we use this to calculate the number of lines displayed.
-    wrapped = concatMap (wrapLine w) $ take h $ lines' (concatMap expandGraphic bufData)
+    wrapped = concatMap (wrapLine w) $ map addSpace $ map (concatMap expandGraphic) $ take h $ lines' bufData
     lns0 = take h wrapped
 
     -- fill lines with blanks, so the selection looks ok.
@@ -298,21 +299,26 @@ drawText h w tabWidth bufData
                       Vty.charFill a ' ' (w - length l) 1
                       where (_, a) = last l
 
+
+    addSpace :: [(Char, Vty.Attr)] -> [(Char, Vty.Attr)]
+    addSpace [] = [(' ', wsty)]
+    addSpace l = case (mod lineLength w) of
+                    0 -> l
+                    _ -> l ++ [(' ', wsty)]
+                 where
+                    lineLength = length l
+
     -- | Cut a string in lines separated by a '\n' char. Note
-    -- that we add a blank character where the \n was, so the
-    -- cursor can be positioned there.
+    -- that we remove the newline entirely since it is no longer
+    -- significant for drawing text.
 
     lines' :: [(Char, a)] -> [[(Char, a)]]
     lines' [] =  []
-    lines' s  = case (lineLen, modLW, s') of
-                  (_, _, [])          -> [l]
-                  (0, _, ((_,x):s'')) -> (l++[(' ',x)]) : lines' s''
-                  (_, 0, ((_,x):s'')) -> l : lines' s''
-                  (_, _, ((_,x):s'')) -> (l++[(' ',x)]) : lines' s''
+    lines' s  = case s' of
+                  []          -> [l]
+                  ((_,x):s'') -> l : lines' s''
                 where
                 (l, s') = break ((== '\n') . fst) s
-                lineLen = length l
-                modLW = mod lineLen w
 
     wrapLine :: Int -> [x] -> [[x]]
     wrapLine _ [] = []
@@ -320,7 +326,6 @@ drawText h w tabWidth bufData
 
     expandGraphic ('\t', p) = replicate tabWidth (' ', p)
     expandGraphic (c, p)
-        | numeric == 10 = [(c, p)] -- '\n'
         | numeric < 32 = [('^', p), (chr (numeric + 64), p)]
         | otherwise = [(c, p)]
         where numeric = ord c
