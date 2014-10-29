@@ -142,6 +142,11 @@ coordsOfCharacterB (Size2D w h) (Point topLeft) (Point char) = savingPointB $ do
                 (  _ ,  _ ,EQ) -> go (x - wOffset) (y + 1) (n - 1) (d:t)
                 (  _ ,  _ , _) -> go (x + 1) y (n - 1) (d:t)
             where wOffset = w - 1
+        go !x !y !n (c : []) =
+            case (c, (compare x wOffset)) of
+                ('\n', _) -> go 0 (y + 1) (n - 1) [c]
+                (  _ , _) -> go (x + 1) y (n - 1) [c]
+            where wOffset = w - 1
         go !x !y _ _ = Just (Point2D x y)
     return (go 0 0 (char - topLeft) text)
 
