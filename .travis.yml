@@ -40,7 +40,6 @@ install:
  - travis_retry cabal-1.20 install -j2 gtk2hs-buildtools
 
 script:
- - cd yi
  - travis_retry cabal-1.20 install -j2 -fpango --enable-tests -ftesting --only-dependencies --reorder-goals --force-reinstalls
  - cabal-1.20 install -j1 -fpango --enable-tests -ftesting
  - cabal-1.20 test
