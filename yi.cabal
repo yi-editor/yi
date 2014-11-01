@@ -20,59 +20,60 @@ data-files:
   example-configs/*.hs
 
 extra-source-files:
-  src/tests/vimtests/find/*.test
-  src/tests/vimtests/repeat/*.test
-  src/tests/vimtests/ex/*.test
-  src/tests/vimtests/ex/s/*.test
-  src/tests/vimtests/ex/d/*.test
-  src/tests/vimtests/ex/gotoline/*.test
-  src/tests/vimtests/ex/g/*.test
-  src/tests/vimtests/jumplist/*.test
   src/tests/vimtests/README.rst
-  src/tests/vimtests/undo/*.test
-  src/tests/vimtests/searchword/*.test
   src/tests/vimtests/blockvisual/*.test
-  src/tests/vimtests/delete/*.test
-  src/tests/vimtests/paste/*.test
-  src/tests/vimtests/insertion/*.test
-  src/tests/vimtests/insertion/cursorkeys/*.test
-  src/tests/vimtests/search/*.test
-  src/tests/vimtests/visual/*.test
-  src/tests/vimtests/indent/*.test
-  src/tests/vimtests/unicode/*.test
-  src/tests/vimtests/joinlines/*.test
-  src/tests/vimtests/replace/*.test
   src/tests/vimtests/change/*.test
+  src/tests/vimtests/delete/*.test
   src/tests/vimtests/digraphs/*.test
-  src/tests/vimtests/unsorted/*.test
-  src/tests/vimtests/marks/*.test
-  src/tests/vimtests/numbers/*.test
-  src/tests/vimtests/yank/*.test
-  src/tests/vimtests/switchcase/*.test
   src/tests/vimtests/empty/*.test
+  src/tests/vimtests/empty/emptytest/events
   src/tests/vimtests/empty/emptytest/input
   src/tests/vimtests/empty/emptytest/output
-  src/tests/vimtests/empty/emptytest/events
+  src/tests/vimtests/ex/*.test
+  src/tests/vimtests/ex/d/*.test
+  src/tests/vimtests/ex/g/*.test
+  src/tests/vimtests/ex/gotoline/*.test
+  src/tests/vimtests/ex/s/*.test
+  src/tests/vimtests/find/*.test
+  src/tests/vimtests/indent/*.test
+  src/tests/vimtests/insertion/*.test
+  src/tests/vimtests/insertion/cursorkeys/*.test
+  src/tests/vimtests/joinlines/*.test
+  src/tests/vimtests/jumplist/*.test
   src/tests/vimtests/macros/*.test
+  src/tests/vimtests/marks/*.test
   src/tests/vimtests/movement/*.test
-  src/tests/vimtests/movement/word/*.test
   src/tests/vimtests/movement/bigWord/*.test
   src/tests/vimtests/movement/char/*.test
-  src/tests/vimtests/movement/char/l_at_eol/input
-  src/tests/vimtests/movement/char/l_at_eol/output
-  src/tests/vimtests/movement/char/l_at_eol/events
-  src/tests/vimtests/movement/char/j/input
-  src/tests/vimtests/movement/char/j/output
-  src/tests/vimtests/movement/char/j/events
+  src/tests/vimtests/movement/char/h_at_bol/events
   src/tests/vimtests/movement/char/h_at_bol/input
   src/tests/vimtests/movement/char/h_at_bol/output
-  src/tests/vimtests/movement/char/h_at_bol/events
+  src/tests/vimtests/movement/char/hl/events
   src/tests/vimtests/movement/char/hl/input
   src/tests/vimtests/movement/char/hl/output
-  src/tests/vimtests/movement/char/hl/events
+  src/tests/vimtests/movement/char/j/events
+  src/tests/vimtests/movement/char/j/input
+  src/tests/vimtests/movement/char/j/output
+  src/tests/vimtests/movement/char/l_at_eol/events
+  src/tests/vimtests/movement/char/l_at_eol/input
+  src/tests/vimtests/movement/char/l_at_eol/output
   src/tests/vimtests/movement/cursorkeys/*.test
   src/tests/vimtests/movement/file/*.test
   src/tests/vimtests/movement/intraline/*.test
+  src/tests/vimtests/movement/word/*.test
+  src/tests/vimtests/numbers/*.test
+  src/tests/vimtests/paste/*.test
+  src/tests/vimtests/repeat/*.test
+  src/tests/vimtests/replace/*.test
+  src/tests/vimtests/search/*.test
+  src/tests/vimtests/searchword/*.test
+  src/tests/vimtests/sort/*.test
+  src/tests/vimtests/switchcase/*.test
+  src/tests/vimtests/undo/*.test
+  src/tests/vimtests/unicode/*.test
+  src/tests/vimtests/unsorted/*.test
+  src/tests/vimtests/visual/*.test
+  src/tests/vimtests/yank/*.test
 
 source-repository head
   type:     git
@@ -175,6 +176,7 @@ library
     Yi.Keymap.Vim.Ex.Commands.Quit
     Yi.Keymap.Vim.Ex.Commands.Reload
     Yi.Keymap.Vim.Ex.Commands.Shell
+    Yi.Keymap.Vim.Ex.Commands.Sort
     Yi.Keymap.Vim.Ex.Commands.Substitute
     Yi.Keymap.Vim.Ex.Commands.Tag
     Yi.Keymap.Vim.Ex.Commands.Write

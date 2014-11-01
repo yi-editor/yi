@@ -93,6 +93,7 @@ module Yi.Buffer.HighLevel
     , setSelectRegionB
     , shapeOfBlockRegionB
     , sortLines
+    , sortLinesWithRegion
     , snapInsB
     , snapScreenB
     , splitBlockRegionToContiguousSubRegionsB
@@ -113,13 +114,14 @@ module Yi.Buffer.HighLevel
 
 import           Control.Applicative
 import           Control.Lens hiding ((-~), (+~), re, transform)
+import           Control.Lens.Cons (_last)
 import           Control.Monad
 import           Control.Monad.RWS.Strict (ask)
 import           Control.Monad.State hiding (forM, forM_, sequence_)
 import           Data.Char (isDigit, isHexDigit, isOctDigit,
                             toUpper, isUpper, toLower, isSpace)
 import           Data.List (sort, intersperse)
-import           Data.Maybe (fromMaybe, listToMaybe, catMaybes)
+import           Data.Maybe (fromMaybe, listToMaybe, catMaybes, fromJust)
 import           Data.Monoid
 import qualified Data.Text as T
 import           Data.Time (UTCTime)
@@ -865,6 +867,26 @@ fillParagraph = fillRegion =<< regionOfB unitParagraph
 -- | Sort the lines of the region.
 sortLines :: BufferM ()
 sortLines = modifyExtendedSelectionB Line (onLines sort)
+
+-- | Forces an extra newline into the region (if one exists)
+modifyExtendedLRegion :: Region -> (R.YiString -> R.YiString) -> BufferM ()
+modifyExtendedLRegion region transform = do
+    reg <- unitWiseRegion Line region
+    modifyRegionB transform (fixR reg)
+  where fixR reg = mkRegion (regionStart reg) $ regionEnd reg + 1
+
+sortLinesWithRegion :: Region -> BufferM ()
+sortLinesWithRegion region = modifyExtendedLRegion region (onLines sort')
+    where sort' [] = []
+          sort' lns =
+              if hasnl (last lns)
+                  then sort lns
+                  else over _last
+                      -- should be completely safe since every element contains newline
+                      (fromMaybe (error "sortLinesWithRegion fromMaybe") . R.init) . sort $
+                          over _last (`R.snoc` '\n') lns
+          hasnl t | R.last t == Just '\n' = True
+                  | otherwise = False
 
 -- | Helper function: revert the buffer contents to its on-disk version
 revertB :: YiString -> Maybe R.ConverterName -> UTCTime -> BufferM ()

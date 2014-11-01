@@ -60,7 +60,8 @@ escBinding = VimBindingE f
 exBinding :: VimBinding
 exBinding = VimBindingE f
     where f ":" (VimState { vsMode = (Visual _) }) = WholeMatch $ do
-              void $ spawnMinibufferE (T.pack ":'<,'>") id
+              void $ spawnMinibufferE ":" id
+              withCurrentBuffer $ writeN "'<,'>"
               switchModeE Ex
               return Finish
           f _ _ = NoMatch

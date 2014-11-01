@@ -1,5 +1,6 @@
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 {-# OPTIONS_HADDOCK show-extensions #-}
 
 -- |
@@ -28,6 +29,7 @@ module Yi.Keymap.Vim.Ex.Commands.Common
     ) where
 
 import           Control.Applicative
+import           Control.Lens (use)
 import           Control.Monad
 import           Data.List.NonEmpty (NonEmpty(..))
 import           Data.Monoid
@@ -87,12 +89,83 @@ parseWithBang nameParser argumentParser (Ev s) = do
 parseBang :: P.GenParser Char () Bool
 parseBang = P.string "!" *> return True <|> return False
 
-parseRange :: P.GenParser Char () LineRange
-parseRange = return CurrentLineRange
-
 parseCount :: P.GenParser Char () (Maybe Int)
 parseCount = do
     readMaybe <$> P.many P.digit
+
+parseRange :: P.GenParser Char s (Maybe (BufferM Region))
+parseRange = fmap Just parseFullRange
+         <|> fmap Just parsePointRange
+         <|> return Nothing
+
+parseFullRange :: P.GenParser Char s (BufferM Region)
+parseFullRange = P.char '%' *> return (regionOfB Document)
+
+parsePointRange :: P.GenParser Char s (BufferM Region)
+parsePointRange = do
+    p1 <- parseSinglePoint
+    void $ P.char ','
+    p2 <- parseSinglePoint2 p1
+    return $ do
+        p1' <- p1
+        p2' <- p2
+        return $ mkRegion (min p1' p2') (max p1' p2')
+
+parseSinglePoint :: P.GenParser Char s (BufferM Point)
+parseSinglePoint = parseSingleMark <|> parseLinePoint
+
+-- | Some of the parse rules for the second point actually depend
+-- on the first point. If parse rule succeeds this can result
+-- in the first BufferM Point having to be run twice but this
+-- probably isn't a big deal.
+parseSinglePoint2 :: BufferM Point -> P.GenParser Char s (BufferM Point)
+parseSinglePoint2 ptB = parseEndOfLine ptB <|> parseSinglePoint
+
+-- | Parse a single mark, or a selection mark (< or >)
+parseSingleMark :: P.GenParser Char s (BufferM Point)
+parseSingleMark = P.char '\'' *> (parseSelMark <|> parseNormMark)
+
+-- | Parse a normal mark (non-system)
+parseNormMark :: P.GenParser Char s (BufferM Point)
+parseNormMark = do
+    c <- P.anyChar
+    return $ mayGetMarkB [c] >>= \case
+        Nothing -> fail $ "Mark " <> show c <> " not set"
+        Just mark -> use (markPointA mark)
+
+-- | Parse selection marks.
+parseSelMark :: P.GenParser Char s (BufferM Point)
+parseSelMark = do
+    c <- P.oneOf "<>" 
+    return $ if c == '<' then getSelectionMarkPointB else pointB
+
+-- | Parses end of line, $, only valid for 2nd point.
+parseEndOfLine :: BufferM Point -> P.GenParser Char s (BufferM Point)
+parseEndOfLine ptB = P.char '$' *> return (ptB >>= eolPointB)
+
+-- | Parses a numeric line or ".+k", k relative to current
+parseLinePoint :: P.GenParser Char s (BufferM Point)
+parseLinePoint = parseCurrentLinePoint <|> parseNormalLinePoint
+
+-- | Parses .+-k
+parseCurrentLinePoint :: P.GenParser Char s (BufferM Point)
+parseCurrentLinePoint = do
+    void $ P.char '.'
+    relative <- P.optionMaybe $ do
+        c <- P.oneOf "+-"
+        (i :: Int) <- read <$> P.many1 P.digit
+        return $ if c == '+' then i else -i
+    case relative of
+        Nothing -> return $ pointB >>= solPointB
+        Just offset -> return $ do
+            ln <- curLn
+            savingPointB $ gotoLn (ln + offset) >> pointB
+
+-- | Parses a line number
+parseNormalLinePoint :: P.GenParser Char s (BufferM Point)
+parseNormalLinePoint = do
+    ln <- read <$> P.many1 P.digit
+    return . savingPointB $ gotoLn ln >> pointB
 
 data OptionAction = Set !Bool | Invert | Ask
 
