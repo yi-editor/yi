@@ -562,7 +562,7 @@ diredRefresh = do
       insertN $ R.fromString dir <> ":\n"
       p <- pointB
       -- paint header
-      addOverlayB $ mkOverlay UserLayer (mkRegion 0 (p-2)) headStyle
+      addOverlayB $ mkOverlay "dired" (mkRegion 0 (p-2)) headStyle
       ptsList <- mapM insertDiredLine $ zip3 strss' stys strs
       putBufferDyn $ diredFilePointsA .~ ptsList $ diredNameColA .~ namecol $ ds
 
@@ -603,7 +603,7 @@ insertDiredLine (fields, sty, filenm) = bypassReadOnly $ do
   insertN  $ ' ' `R.cons` last fields
   p2 <- pointB
   newlineB
-  addOverlayB (mkOverlay UserLayer (mkRegion p1 p2) sty)
+  addOverlayB (mkOverlay "dired" (mkRegion p1 p2) sty)
   return (p1, p2, R.toString filenm)
 
 data DRStrings = DRPerms {undrs :: R.YiString}
@@ -816,7 +816,7 @@ diredRefreshMark = do
           moveTo pos >> moveToSol >> insertB mark >> deleteN 1
           e <- pointB
           addOverlayB $
-            mkOverlay UserLayer (mkRegion (e - 1) e) (styleOfMark mark)
+            mkOverlay "dired" (mkRegion (e - 1) e) (styleOfMark mark)
         Nothing ->
           -- for deleted marks
           moveTo pos >> moveToSol >> insertN " " >> deleteN 1

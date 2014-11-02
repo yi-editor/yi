@@ -28,7 +28,7 @@ module Yi.Buffer.Implementation
   , Size
   , Direction (..)
   , BufferImpl
-  , Overlay, OvlLayer (..)
+  , Overlay
   , mkOverlay
   , overlayUpdate
   , applyUpdateI
@@ -51,7 +51,7 @@ module Yi.Buffer.Implementation
   , setSyntaxBI
   , addOverlayBI
   , delOverlayBI
-  , delOverlayLayer
+  , delOverlaysOfOwnerBI
   , updateSyntax
   , getAst, focusAst
   , strokesRangesBI
@@ -105,15 +105,13 @@ type Marks = M.Map Mark MarkValue
 
 data HLState syntax = forall cache. HLState !(Highlighter cache syntax) !cache
 
-data OvlLayer = UserLayer | HintLayer
-  deriving (Ord, Eq)
-data Overlay = Overlay {
-                        overlayLayer :: OvlLayer,
-                        -- underscores to avoid 'defined but not used'. Remove if desired
-                        _overlayBegin :: MarkValue,
-                        _overlayEnd :: MarkValue,
-                        _overlayStyle :: StyleName
-                       }
+data Overlay = Overlay
+    { overlayOwner :: R.YiString
+    , _overlayBegin :: MarkValue
+    , _overlayEnd :: MarkValue
+    , _overlayStyle :: StyleName
+    }
+
 instance Eq Overlay where
     Overlay a b c _ == Overlay a' b' c' _ = a == a' && b == b' && c == c'
 
@@ -121,17 +119,16 @@ instance Ord Overlay where
     compare (Overlay a b c _) (Overlay a' b' c' _)
         = compare a a' `mappend` compare b b' `mappend` compare c c'
 
-
-data BufferImpl syntax =
-        FBufferData { mem        :: !YiString          -- ^ buffer text
-                    , marks      :: !Marks                 -- ^ Marks for this buffer
-                    , markNames  :: !(M.Map String Mark)
-                    , hlCache    :: !(HLState syntax)       -- ^ syntax highlighting state
-                    , overlays   :: !(Set.Set Overlay) -- ^ set of (non overlapping) visual overlay regions
-                    , dirtyOffset :: !Point -- ^ Lowest modified offset since last recomputation of syntax
-                    }
-        deriving Typeable
-
+data BufferImpl syntax = FBufferData
+    { mem        :: !YiString -- ^ buffer text
+    , marks      :: !Marks -- ^ Marks for this buffer
+    , markNames  :: !(M.Map String Mark)
+    , hlCache    :: !(HLState syntax) -- ^ syntax highlighting state
+    , overlays   :: !(Set.Set Overlay)
+    -- ^ set of (non overlapping) visual overlay regions
+    , dirtyOffset :: !Point
+    -- ^ Lowest modified offset since last recomputation of syntax
+    } deriving Typeable
 
 dummyHlState :: HLState syntax
 dummyHlState = HLState noHighlighter (hlStartState noHighlighter)
@@ -141,8 +138,6 @@ dummyHlState = HLState noHighlighter (hlStartState noHighlighter)
 instance Binary (BufferImpl ()) where
     put b = put (mem b) >> put (marks b) >> put (markNames b)
     get = FBufferData <$> get <*> get <*> get <*> pure dummyHlState <*> pure Set.empty <*> pure 0
-
-
 
 -- | Mutation actions (also used the undo or redo list)
 --
@@ -251,12 +246,16 @@ getIndexedStream Backward (Point p) = zip (dF (pred (Point p))) . R.toReverseStr
       dF n = n : dF (pred n)
 
 -- | Create an "overlay" for the style @sty@ between points @s@ and @e@
-mkOverlay :: OvlLayer -> Region -> StyleName -> Overlay
-mkOverlay l r = Overlay l (MarkValue (regionStart r) Backward) (MarkValue (regionEnd r) Forward)
+mkOverlay :: R.YiString -> Region -> StyleName -> Overlay
+mkOverlay owner r =
+    Overlay owner
+        (MarkValue (regionStart r) Backward)
+        (MarkValue (regionEnd r) Forward)
 
 -- | Obtain a style-update for a specific overlay
 overlayUpdate :: Overlay -> UIUpdate
-overlayUpdate (Overlay _l (MarkValue s _) (MarkValue e _) _) = StyleUpdate s (e ~- s)
+overlayUpdate (Overlay _owner (MarkValue s _) (MarkValue e _) _) =
+    StyleUpdate s (e ~- s)
 
 -- | Add a style "overlay" between the given points.
 addOverlayBI :: Overlay -> BufferImpl syntax -> BufferImpl syntax
@@ -266,8 +265,9 @@ addOverlayBI ov fb = fb{overlays = Set.insert ov (overlays fb)}
 delOverlayBI :: Overlay -> BufferImpl syntax -> BufferImpl syntax
 delOverlayBI ov fb = fb{overlays = Set.delete ov (overlays fb)}
 
-delOverlayLayer :: OvlLayer -> BufferImpl syntax -> BufferImpl syntax
-delOverlayLayer layer fb = fb{overlays = Set.filter ((/= layer) . overlayLayer) (overlays fb)}
+delOverlaysOfOwnerBI :: R.YiString -> BufferImpl syntax -> BufferImpl syntax
+delOverlaysOfOwnerBI owner fb =
+    fb{overlays = Set.filter ((/= owner) . overlayOwner) (overlays fb)}
 -- FIXME: this can be really inefficient.
 
 -- | Return style information for the range @(i,j)@ Style information
@@ -291,7 +291,7 @@ strokesRangesBI getStrokes regex rgn  point fb = result
     -- zero-length spans seem to break stroking in general, so filter them out!
     syntaxHlLayer = filter (\(Span b _m a) -> b /= a)  $ getStrokes point i j
 
-    layers2 = map (map overlayStroke) $ groupBy ((==) `on` overlayLayer) $  Set.toList $ overlays fb
+    layers2 = map (map overlayStroke) $ groupBy ((==) `on` overlayOwner) $  Set.toList $ overlays fb
     layer3 = case regex of
                Just re -> takeIn $ map hintStroke $ regexRegionBI re (mkRegion i j) fb
                Nothing -> []

@@ -53,7 +53,7 @@ module Yi.Buffer.Misc
   , lineDown
   , newB
   , MarkValue(..)
-  , Overlay, OvlLayer(..)
+  , Overlay
   , mkOverlay
   , gotoLn
   , gotoLnFrom
@@ -104,7 +104,7 @@ module Yi.Buffer.Misc
   , markSavedB
   , addOverlayB
   , delOverlayB
-  , delOverlayLayerB
+  , delOverlaysOfOwnerB
   , savingExcursionB
   , savingPointB
   , savingPositionB
@@ -390,9 +390,9 @@ delOverlayB ov = do
   pendingUpdatesA %= (++ [overlayUpdate ov])
   modifyBuffer $ delOverlayBI ov
 
-delOverlayLayerB :: OvlLayer -> BufferM ()
-delOverlayLayerB l =
-  modifyBuffer $ delOverlayLayer l
+delOverlaysOfOwnerB :: R.YiString -> BufferM ()
+delOverlaysOfOwnerB owner =
+  modifyBuffer $ delOverlaysOfOwnerBI owner
 
 -- | Execute a @BufferM@ value on a given buffer and window.  The new state of
 -- the buffer is returned alongside the result of the computation.
