@@ -1,5 +1,7 @@
+{-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE TemplateHaskell #-}
 {-# OPTIONS_HADDOCK show-extensions #-}
 
 -- |
@@ -24,19 +26,25 @@ module Yi.File (
 
   -- * Helper functions
   setFileName,
-  deservesSave
+  deservesSave,
+
+  -- * Configuration
+  preSaveHooks
  ) where
 
 import           Control.Applicative
-import           Control.Lens hiding (act)
+import           Control.Lens hiding (act, Action)
 import           Control.Monad (void)
 import           Control.Monad.Base
+import           Data.Default
 import           Data.Monoid
 import qualified Data.Text as T
+import           Data.Typeable
 import           Data.Time
 import           System.Directory
 import           System.FriendlyPath
 import           Yi.Buffer
+import           Yi.Config.Simple.Types (customVariable, Field)
 import           Yi.Core
 import           Yi.Dired
 import           Yi.Editor
@@ -44,7 +52,21 @@ import           Yi.Keymap
 import           Yi.Monad
 import qualified Yi.Rope as R
 import           Yi.String
+import           Yi.Types
 import           Yi.Utils
+
+newtype PreSaveHooks = PreSaveHooks { _unPreSaveHooks :: [Action] }
+    deriving Typeable
+
+instance Default PreSaveHooks where
+    def = PreSaveHooks []
+
+instance YiConfigVariable PreSaveHooks
+
+makeLenses ''PreSaveHooks
+
+preSaveHooks :: Field [Action]
+preSaveHooks = customVariable . unPreSaveHooks
 
 -- | Tries to open a new buffer with 'editFile' and runs the given
 -- action on the buffer handle if it succeeds.
@@ -123,6 +145,8 @@ fwriteBufferE bufferKey = do
     (Just f, contents, conv) -> io (doesDirectoryExist f) >>= \case
       True -> printMsg "Can't save over a directory, doing nothing."
       False -> do
+        hooks <- view preSaveHooks <$> askCfg
+        sequence_ $ map runAction hooks
         liftBase $ case conv of
           Nothing -> R.writeFileUsingText f contents
           Just cn -> R.writeFile f contents cn
