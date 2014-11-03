@@ -121,7 +121,7 @@ askIndividualSave hasQuit allBuffers@(firstBuffer : others) =
                         >>! closeBufferAndWindowE
                         -- cancel
                       ] ++ [char 'q' ?>>! quitEditor | hasQuit])
-  yesAction = do fwriteBufferE (bkey firstBuffer)
+  yesAction = do void $ fwriteBufferE (bkey firstBuffer)
                  withEditor closeBufferAndWindowE
                  continue
 

@@ -35,7 +35,7 @@ module Yi.File (
 
 import           Control.Applicative
 import           Control.Lens hiding (act, Action)
-import           Control.Monad (void)
+import           Control.Monad (when, void)
 import           Control.Monad.Base
 import           Data.Default
 import           Data.Monoid
@@ -108,22 +108,22 @@ viWrite = do
    Just f  -> do
        bufInfo <- withCurrentBuffer bufInfoB
        let s   = bufInfoFileName bufInfo
-       fwriteE
+       succeed <- fwriteE
        let message = (showT f <>) (if f == s
                          then " written"
                          else " " <> showT s <> " written")
-       printMsg message
+       when succeed $ printMsg message
 
 -- | Try to write to a named file in the manner of vi/vim
 viWriteTo :: T.Text -> YiM ()
 viWriteTo f = do
   bufInfo <- withCurrentBuffer bufInfoB
   let s   = T.pack $ bufInfoFileName bufInfo
-  fwriteToE f
+  succeed <- fwriteToE f
   let message = f `T.append` if f == s
                              then " written"
                              else ' ' `T.cons` s `T.append` " written"
-  printMsg message
+  when succeed $ printMsg message
 
 -- | Try to write to a named file if it doesn't exist. Error out if it does.
 viSafeWriteTo :: T.Text -> YiM ()
@@ -134,11 +134,11 @@ viSafeWriteTo f = do
     else viWriteTo f
 
 -- | Write current buffer to disk, if this buffer is associated with a file
-fwriteE :: YiM ()
+fwriteE :: YiM Bool
 fwriteE = fwriteBufferE =<< gets currentBuffer
 
 -- | Write a given buffer to disk if it is associated with a file.
-fwriteBufferE :: BufferRef -> YiM ()
+fwriteBufferE :: BufferRef -> YiM Bool
 fwriteBufferE bufferKey = do
   nameContents <- withGivenBuffer bufferKey $ do
     fl <- gets file
@@ -148,29 +148,32 @@ fwriteBufferE bufferKey = do
 
   case nameContents of
     (Just f, contents, conv) -> io (doesDirectoryExist f) >>= \case
-      True -> printMsg "Can't save over a directory, doing nothing."
+      True -> printMsg "Can't save over a directory, doing nothing." >> return False
       False -> do
         hooks <- view preSaveHooks <$> askCfg
         sequence_ $ map runAction hooks
-        liftBase $ case conv of
-          Nothing -> R.writeFileUsingText f contents
+        mayErr <- liftBase $ case conv of
+          Nothing -> R.writeFileUsingText f contents >> return Nothing
           Just cn -> R.writeFile f contents cn
-        io getCurrentTime >>= withGivenBuffer bufferKey . markSavedB
-    (Nothing, _, _)      -> printMsg "Buffer not associated with a file"
+        case mayErr of
+          Just err -> printMsg err >> return False
+          Nothing -> io getCurrentTime >>= withGivenBuffer bufferKey . markSavedB
+                     >> return True
+    (Nothing, _, _) -> printMsg "Buffer not associated with a file" >> return False
 
 -- | Write current buffer to disk as @f@. The file is also set to @f@.
-fwriteToE :: T.Text -> YiM ()
+fwriteToE :: T.Text -> YiM Bool
 fwriteToE f = do
   b <- gets currentBuffer
   setFileName b (T.unpack f)
   fwriteBufferE b
 
 -- | Write all open buffers
-fwriteAllE :: YiM ()
+fwriteAllE :: YiM Bool
 fwriteAllE =
   do allBuffs <- gets bufferSet
      let modifiedBuffers = filter (not . isUnchangedBuffer) allBuffs
-     mapM_ fwriteBufferE (fmap bkey modifiedBuffers)
+     all id <$> mapM fwriteBufferE (fmap bkey modifiedBuffers)
 
 -- | Make a backup copy of file
 backupE :: FilePath -> YiM ()

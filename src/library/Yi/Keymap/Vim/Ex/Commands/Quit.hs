@@ -96,4 +96,6 @@ quitAllE = do
                         <> " (add ! to override)"
 
 saveAndQuitAllE :: YiM ()
-saveAndQuitAllE = Common.forAllBuffers fwriteBufferE >> quitEditor
+saveAndQuitAllE = do
+    succeed <- fwriteAllE
+    when succeed $ quitEditor

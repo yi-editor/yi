@@ -268,7 +268,7 @@ emacsKeys univArg =
                  , ctrlCh 'q'    ?>>!
                      ((withCurrentBuffer (readOnlyA %= not)) :: EditorM ())
                  , ctrlCh 's'    ?>>! fwriteE
-                 , ctrlCh 'w'    ?>>! promptFile "Write file:" fwriteToE
+                 , ctrlCh 'w'    ?>>! promptFile "Write file:" (void . fwriteToE)
                  , ctrlCh 'x'    ?>>! (exchangePointAndMarkB >>
                                        assign highlightSelectionA True)
                  , char 'b'      ?>>! switchBufferE

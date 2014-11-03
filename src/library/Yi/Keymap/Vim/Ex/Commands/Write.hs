@@ -53,4 +53,4 @@ writeAsCmd filename = Common.impureExCommand {
 tryWriteBuffer :: BufferRef -> YiM ()
 tryWriteBuffer buf = do
     ns <- Common.needsSaving buf
-    when ns $ fwriteBufferE buf
+    when ns . void $ fwriteBufferE buf

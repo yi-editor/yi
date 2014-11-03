@@ -422,7 +422,7 @@ ghciSend cmd = do
 -- | Load current buffer in GHCi
 ghciLoadBuffer :: YiM ()
 ghciLoadBuffer = do
-    fwriteE
+    void $ fwriteE
     f <- withCurrentBuffer (gets file)
     case f of
       Nothing -> error "Couldn't get buffer filename in ghciLoadBuffer"
