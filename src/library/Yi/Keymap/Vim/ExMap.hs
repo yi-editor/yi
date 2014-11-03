@@ -89,6 +89,7 @@ exitEx success = do
     resetCountE
     switchModeE Normal
     closeBufferAndWindowE
+    withCurrentBuffer $ setVisibleSelection False
 
 exitBinding :: VimBinding
 exitBinding = VimBindingE f
