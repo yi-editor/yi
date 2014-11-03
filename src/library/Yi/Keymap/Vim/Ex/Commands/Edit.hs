@@ -36,7 +36,7 @@ edit tab f = Common.impureExCommand {
     cmdShow = showEdit tab f
   , cmdAction = YiA $ do
         when tab $ withEditor newTabE
-        void . editFile $ T.unpack f
+        openNewFile $ T.unpack f
   , cmdComplete = (fmap . fmap)
                     (showEdit tab) (Common.filenameComplete f)
   }

@@ -15,6 +15,7 @@ module Yi.File (
   -- * File-based actions
   editFile,
   openingNewFile,
+  openNewFile,
 
   viWrite, viWriteTo, viSafeWriteTo,
   fwriteE,        -- :: YiM ()
@@ -76,6 +77,10 @@ openingNewFile :: FilePath -> BufferM a -> YiM ()
 openingNewFile fp act = editFile fp >>= \case
   Left m -> printMsg m
   Right ref -> void $ withGivenBuffer ref act
+
+-- | Same as @openingNewFile@ with no action to run after.
+openNewFile :: FilePath -> YiM ()
+openNewFile = flip openingNewFile $ return ()
 
 -- | Revert to the contents of the file on disk
 revertE :: YiM ()

@@ -27,7 +27,7 @@ import           Yi.Buffer.Adjusted hiding (Insert)
 import           Yi.Core (quitEditor, closeWindow)
 import           Yi.Editor
 import           Yi.Event
-import           Yi.File (editFile, fwriteE)
+import           Yi.File (openNewFile, fwriteE)
 import           Yi.History
 import           Yi.Keymap
 import           Yi.Keymap.Keys
@@ -456,7 +456,7 @@ openFileUnderCursor editorAction = do
   fileExists <- io $ doesFileExist =<< expandTilda fileName
   if fileExists then do
       maybeM withEditor editorAction
-      void . editFile $ fileName
+      openNewFile $ fileName
   else
       withEditor . fail $ "Can't find file \"" <> fileName <> "\""
 
