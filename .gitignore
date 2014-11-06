@@ -20,3 +20,5 @@ dist_yi/
 hsenv.log
 cabal.sandbox.config
 .cabal-sandbox
+tags
+TAGS
