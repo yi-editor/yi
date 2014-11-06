@@ -177,6 +177,7 @@ library
     Yi.Keymap.Vim.Ex.Commands.Shell
     Yi.Keymap.Vim.Ex.Commands.Substitute
     Yi.Keymap.Vim.Ex.Commands.Tag
+    Yi.Keymap.Vim.Ex.Commands.Undo
     Yi.Keymap.Vim.Ex.Commands.Write
     Yi.Keymap.Vim.Ex.Commands.Yi
     Yi.Keymap.Vim.Ex.Types

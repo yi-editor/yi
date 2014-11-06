@@ -32,6 +32,7 @@ import qualified Yi.Keymap.Vim.Ex.Commands.Reload as Reload
 import qualified Yi.Keymap.Vim.Ex.Commands.Shell as Shell
 import qualified Yi.Keymap.Vim.Ex.Commands.Substitute as Substitute
 import qualified Yi.Keymap.Vim.Ex.Commands.Tag as Tag
+import qualified Yi.Keymap.Vim.Ex.Commands.Undo as Undo
 import qualified Yi.Keymap.Vim.Ex.Commands.Write as Write
 import qualified Yi.Keymap.Vim.Ex.Commands.Yi as Yi
 import           Yi.Keymap.Vim.Ex.Eval
@@ -56,5 +57,6 @@ defExCommandParsers =
     , Shell.parse
     , Tag.parse
     , Write.parse
+    , Undo.parse
     , Yi.parse
     ]
