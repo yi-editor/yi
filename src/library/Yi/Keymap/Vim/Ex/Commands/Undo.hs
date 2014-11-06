@@ -10,6 +10,7 @@
 
 module Yi.Keymap.Vim.Ex.Commands.Undo (parse) where
 
+import           Data.Monoid
 import           Yi.Buffer.Adjusted
 import           Yi.Keymap
 import           Yi.Keymap.Vim.Common
@@ -19,7 +20,8 @@ import           Yi.Keymap.Vim.Ex.Types
 parse :: EventString -> Maybe ExCommand
 parse (Ev s) | s `elem` ["u", "undo"] =  
          Just pureExCommand {
-             cmdAction = BufferA undoB
-           , cmdShow   = "undo"
+             cmdAction   = BufferA undoB
+           , cmdShow     =         "undo"
+           , cmdComplete = return ["undo"]
          }
 parse _                               = Nothing 
