@@ -56,6 +56,7 @@ module Yi.Buffer.HighLevel
     , lastNonSpaceB
     , leftEdgesOfRegionB
     , leftOnEol
+    , lineMoveVisRel
     , linePrefixSelectionB
     , lineStreamB
     , lowercaseWordB
@@ -1152,3 +1153,39 @@ testHexB = savingPointB $ do
     if leftChar == 'x' && leftToLeftChar == '0'
     then return True
     else return False
+
+-- | Move point down by @n@ lines
+-- If line extends past width of window, count moving
+-- a single line as moving width points to the right.
+lineMoveVisRel :: Int -> BufferM ()
+lineMoveVisRel = movingToPrefVisCol . lineMoveVisRelUp
+
+lineMoveVisRelUp :: Int -> BufferM ()
+lineMoveVisRelUp 0 = return ()
+lineMoveVisRelUp n | n < 0 = lineMoveVisRelDown $ negate n
+                   | otherwise = do
+    wid <- width <$> use lastActiveWindowA
+    col <- curCol
+    len <- pointB >>= eolPointB >>= colOf
+    let jumps = (len `div` wid) - (col `div` wid)
+        next = n - jumps
+    if next <= 0
+        then moveXorEol (n * wid)
+        else do moveXorEol (jumps * wid)
+                void $ gotoLnFrom 1
+                lineMoveVisRelUp $ next - 1
+
+lineMoveVisRelDown :: Int -> BufferM ()
+lineMoveVisRelDown 0 = return ()
+lineMoveVisRelDown n | n < 0 = lineMoveVisRelUp $ negate n
+                     | otherwise = do
+    wid <- width <$> use lastActiveWindowA
+    col <- curCol
+    let jumps = col `div` wid
+        next = n - jumps
+    if next <= 0
+        then leftN (n * wid)
+        else do leftN (jumps * wid)
+                void $ gotoLnFrom $ -1
+                moveToEol
+                lineMoveVisRelDown $ next - 1

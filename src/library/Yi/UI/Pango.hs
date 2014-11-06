@@ -597,7 +597,7 @@ getDimensionsInTab ui f e tab = do
     let metrics = winMetrics wi
         lineHeight = ascent metrics + descent metrics
         charWidth = max (approximateCharWidth metrics) (approximateDigitWidth metrics)
-        width = round $ fromIntegral wid / charWidth
+        width = round $ fromIntegral wid / charWidth - 1
         height = round $ fromIntegral h / lineHeight
         b0 = findBufferWith (bufkey win) e
     rgn <- shownRegion ui f wi b0

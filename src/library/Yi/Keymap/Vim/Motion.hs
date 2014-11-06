@@ -89,6 +89,8 @@ changeMoveStyle smod (Move s j m) = Move (smod s) j m
 linewiseMotions :: [(EventString, Bool, Maybe Int -> BufferM ())]
 linewiseMotions = fmap withDefaultCount
     [ ("j", False, void . lineMoveRel)
+    , ("gj", False, void . lineMoveVisRel)
+    , ("gk", False, void . lineMoveVisRel . negate)
     , ("k", False, void . lineMoveRel . negate)
     , ("<Down>", False, void . lineMoveRel)
     , ("<Up>", False, void . lineMoveRel . negate)
