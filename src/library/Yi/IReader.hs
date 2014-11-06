@@ -22,6 +22,7 @@ module Yi.IReader where
 
 import           Control.Exception
 import           Control.Monad
+import           Data.Functor ( (<$>) )
 import           Data.Binary
 import qualified Data.ByteString.Char8 as B (pack, unpack, readFile, ByteString)
 import qualified Data.ByteString.Lazy.Char8 as BL (fromChunks)
@@ -103,7 +104,7 @@ readDB = io $ (getArticleDbFilename >>= r) `catch` returnDefault
 oldDbNewArticle :: YiM (ArticleDB, Article)
 oldDbNewArticle = do
   saveddb <- withCurrentBuffer getBufferDyn
-  newarticle <- fmap (B.pack . R.toString) $ withCurrentBuffer elemsB
+  newarticle <- B.pack . R.toString <$> withCurrentBuffer elemsB
   if not $ S.null (unADB saveddb)
     then return (saveddb, newarticle)
     else readDB >>= \olddb -> return (olddb, newarticle)

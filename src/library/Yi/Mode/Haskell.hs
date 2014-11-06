@@ -180,14 +180,19 @@ insideGroup :: Token -> Bool
 insideGroup (Special c) = T.any (== c) "',;})]"
 insideGroup _ = True
 
-cleverAutoIndentHaskellB :: Paren.Tree TT -> IndentBehaviour -> BufferM ()
-cleverAutoIndentHaskellB e behaviour = do
-  indentSettings <- indentSettingsB
-  let indentLevel = shiftWidth indentSettings
+-- | Helper method for taking information needed for both Haskell auto-indenters:
+indentInfoB :: BufferM (Int, Int, Int, Point, Point)
+indentInfoB = do
+  indentLevel    <- shiftWidth <$> indentSettingsB
   previousIndent <- indentOfB =<< getNextNonBlankLineB Backward
   nextIndent     <- indentOfB =<< getNextNonBlankLineB Forward
-  solPnt <- pointAt moveToSol
-  eolPnt <- pointAt moveToEol
+  solPnt         <- pointAt moveToSol
+  eolPnt         <- pointAt moveToEol
+  return (indentLevel, previousIndent, nextIndent, solPnt, eolPnt)
+
+cleverAutoIndentHaskellB :: Paren.Tree TT -> IndentBehaviour -> BufferM ()
+cleverAutoIndentHaskellB e behaviour = do
+  (indentLevel, previousIndent, nextIndent, solPnt, eolPnt) <- indentInfoB
   let onThisLine ofs = ofs >= solPnt && ofs <= eolPnt
       firstTokNotOnLine = listToMaybe .
                               filter (not . onThisLine . posnOfs . tokPosn) .
@@ -232,12 +237,7 @@ cleverAutoIndentHaskellB e behaviour = do
 
 cleverAutoIndentHaskellC :: Exp TT -> IndentBehaviour -> BufferM ()
 cleverAutoIndentHaskellC e behaviour = do
-  indentSettings <- indentSettingsB
-  let indentLevel = shiftWidth indentSettings
-  previousIndent <- indentOfB =<< getNextNonBlankLineB Backward
-  nextIndent     <- indentOfB =<< getNextNonBlankLineB Forward
-  solPnt <- pointAt moveToSol
-  eolPnt <- pointAt moveToEol
+  (indentLevel, previousIndent, nextIndent, solPnt, eolPnt) <- indentInfoB
   let onThisLine ofs = ofs >= solPnt && ofs <= eolPnt
       firstTokNotOnLine = listToMaybe .
                               filter (not . onThisLine . posnOfs . tokPosn) .
@@ -422,7 +422,7 @@ ghciSend cmd = do
 -- | Load current buffer in GHCi
 ghciLoadBuffer :: YiM ()
 ghciLoadBuffer = do
-    void $ fwriteE
+    void fwriteE
     f <- withCurrentBuffer (gets file)
     case f of
       Nothing -> error "Couldn't get buffer filename in ghciLoadBuffer"
@@ -460,12 +460,12 @@ ghciSetProcessArgs = do
   g <- getEditorDyn
   let nm = g ^. GHCi.ghciProcessName
       args = g ^. GHCi.ghciProcessArgs
-      prompt = T.unwords $ [ "List of args to call "
-                           , T.pack nm
-                           , "with, currently"
-                           , T.pack $ show args
-                           , ":"
-                           ]
+      prompt = T.unwords [ "List of args to call "
+                         , T.pack nm
+                         , "with, currently"
+                         , T.pack $ show args
+                         , ":"
+                         ]
   withMinibufferFree prompt $ \arg ->
     case readMaybe $ T.unpack arg of
       Nothing -> printMsg "Could not parse as [String], keep old args."

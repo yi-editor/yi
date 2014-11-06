@@ -187,7 +187,7 @@ ghciEvaluator = Evaluator { execEditorActionImpl = execAction
 
     getNames :: YiM [String]
     getNames = do
-      NamesCache cache <- withEditor $ getEditorDyn
+      NamesCache cache <- getEditorDyn
       result <- if null cache
                 then do
                   res <- io $ LHI.runInterpreter $ do
@@ -197,6 +197,7 @@ ghciEvaluator = Evaluator { execEditorActionImpl = execAction
                     Left err ->[show err]
                     Right exports -> flattenExports exports
                 else return $ sort cache
+      --withEditor $ putEditorDyn $ NamesCache result
       withEditor $ putEditorDyn $ NamesCache result
       return result
 

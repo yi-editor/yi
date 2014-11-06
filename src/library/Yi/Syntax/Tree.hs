@@ -1,7 +1,7 @@
 {-# LANGUAGE CPP #-}
-{-# LANGUAGE DeriveFoldable #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE DeriveFoldable #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 
  -- the CPP seems to confuse GHC; we have uniplate patterns

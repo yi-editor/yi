@@ -54,13 +54,13 @@ parse parser (Ev s) =
 parseWithBangAndCount :: P.GenParser Char () a
                       -- ^ The command name parser.
                       -> (a -> Bool
-                          -> (Maybe Int)
+                          -> Maybe Int
                           -> P.GenParser Char () ExCommand)
                       -- ^ A parser for the remaining command arguments.
                       -> EventString
                       -- ^ The string to parse.
                       -> Maybe ExCommand
-parseWithBangAndCount nameParser argumentParser (Ev s) = do
+parseWithBangAndCount nameParser argumentParser (Ev s) =
     either (const Nothing) Just (P.parse parser "" $ T.unpack s)
   where
     parser = do
@@ -76,7 +76,7 @@ parseWithBang :: P.GenParser Char () a
               -> EventString
               -- ^ The string to parse.
               -> Maybe ExCommand
-parseWithBang nameParser argumentParser (Ev s) = do
+parseWithBang nameParser argumentParser (Ev s) =
     either (const Nothing) Just (P.parse parser "" $ T.unpack s)
   where
     parser = do
@@ -91,8 +91,7 @@ parseRange :: P.GenParser Char () LineRange
 parseRange = return CurrentLineRange
 
 parseCount :: P.GenParser Char () (Maybe Int)
-parseCount = do
-    readMaybe <$> P.many P.digit
+parseCount = readMaybe <$> P.many P.digit
 
 data OptionAction = Set !Bool | Invert | Ask
 
@@ -127,8 +126,8 @@ removePwd path = do
             else path
 
 filenameComplete :: T.Text -> YiM [T.Text]
-filenameComplete f = case f == "%" of
-  True -> do
+filenameComplete f = if f == "%"
+  then
     -- current buffer is minibuffer
     -- actual file is in the second buffer in bufferStack
     gets bufferStack >>= \case
@@ -145,7 +144,7 @@ filenameComplete f = case f == "%" of
 
         return <$> removePwd sanitizedFileName
 
-  False -> do
+  else do
     files <- matchingFileNames Nothing f
     case files of
         [] -> return []
@@ -199,7 +198,7 @@ normArg = P.many1 $
 -- normal, as well as allowing escaping of space (is this normal behavior?).
 quoteArg :: Char -> P.GenParser Char () T.Text
 quoteArg delim = fmap T.pack $ P.char delim 
-    *> (P.many1 $ P.noneOf (delim:"\\") <|> escapeChar)
+    *> P.many1 (P.noneOf (delim:"\\") <|> escapeChar)
     <* P.char delim
 
 -- | Parser for a single escape character
