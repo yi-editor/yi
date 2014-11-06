@@ -91,8 +91,7 @@ parseRange :: P.GenParser Char () LineRange
 parseRange = return CurrentLineRange
 
 parseCount :: P.GenParser Char () (Maybe Int)
-parseCount =
-    readMaybe <$> P.many P.digit
+parseCount = readMaybe <$> P.many P.digit
 
 data OptionAction = Set !Bool | Invert | Ask
 

@@ -104,7 +104,7 @@ readDB = io $ (getArticleDbFilename >>= r) `catch` returnDefault
 oldDbNewArticle :: YiM (ArticleDB, Article)
 oldDbNewArticle = do
   saveddb <- withCurrentBuffer getBufferDyn
-  newarticle <- (B.pack . R.toString) <$> withCurrentBuffer elemsB
+  newarticle <- B.pack . R.toString <$> withCurrentBuffer elemsB
   if not $ S.null (unADB saveddb)
     then return (saveddb, newarticle)
     else readDB >>= \olddb -> return (olddb, newarticle)

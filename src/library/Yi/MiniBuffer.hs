@@ -112,7 +112,7 @@ commentRegion =
         withCurrentBuffer $ do
           let toggle = toggleCommentB (R.fromText cString)
           void toggle
-          modifyMode (\x -> x { modeToggleCommentSelection = Just toggle })
+          modifyMode $ \x -> x { modeToggleCommentSelection = Just toggle }
     Just b -> withCurrentBuffer b
 
 -- | Open a minibuffer window with the given prompt and keymap
