@@ -72,12 +72,16 @@ rawPrintable = VimBindingE f
           | vsPaste s && evs `notElem` ["<Esc>", "<C-c>"]
               = WholeMatch . withCurrentBuffer $ do
             case evs of
-              "<lt>" -> insertB '<'
-              "<CR>" -> newlineB
-              "<Tab>" -> insertB '\t'
-              "<BS>"  -> bdeleteB
-              "<C-h>" -> bdeleteB
-              "<Del>" -> deleteB Character Forward
+              "<lt>"       -> insertB '<'
+              "<CR>"       -> newlineB
+              "<Tab>"      -> insertB '\t'
+              "<BS>"       -> bdeleteB
+              "<C-h>"      -> bdeleteB
+              "<Del>"      -> deleteB Character Forward
+              "<Home>"     -> moveToSol
+              "<End>"      -> moveToEol
+              "<PageUp>"   -> scrollScreensB (-1)
+              "<PageDown>" -> scrollScreensB   1
               c -> insertN (R.fromText $ _unEv c)
             return Continue
     f _ _ = NoMatch
@@ -183,17 +187,21 @@ printableAction evs = do
               if et
               then insertN' . R.fromString $ replicate sw ' '
               else insertB' '\t'
-          "<C-t>" -> shiftIndentOfRegionB 1 =<< regionOfB Line
-          "<C-d>" -> shiftIndentOfRegionB (-1) =<< regionOfB Line
-          "<C-e>" -> insertCharWithBelowB
-          "<C-y>" -> insertCharWithAboveB
-          "<BS>"  -> bdeleteB'
-          "<C-h>" -> bdeleteB'
-          "<Del>" -> deleteB' Character Forward
-          "<C-w>" -> deleteRegionB' =<< regionOfPartNonEmptyB unitViWordOnLine Backward
-          "<C-u>" -> bdeleteLineB
-          "<lt>" -> insertB' '<'
-          evs' -> error $ "Unhandled event " <> show evs' <> " in insert mode"
+          "<C-t>"      -> shiftIndentOfRegionB 1 =<< regionOfB Line
+          "<C-d>"      -> shiftIndentOfRegionB (-1) =<< regionOfB Line
+          "<C-e>"      -> insertCharWithBelowB
+          "<C-y>"      -> insertCharWithAboveB
+          "<BS>"       -> bdeleteB'
+          "<C-h>"      -> bdeleteB'
+          "<Home>"     -> moveToSol
+          "<End>"      -> moveToEol >> leftOnEol
+          "<PageUp>"   -> scrollScreensB (-1)
+          "<PageDown>" -> scrollScreensB   1
+          "<Del>"      -> deleteB' Character Forward
+          "<C-w>"      -> deleteRegionB' =<< regionOfPartNonEmptyB unitViWordOnLine Backward
+          "<C-u>"      -> bdeleteLineB
+          "<lt>"       -> insertB' '<'
+          evs'         -> error $ "Unhandled event " <> show evs' <> " in insert mode"
 
     updatedCursors <- withCurrentBuffer $ do
         updatedCursors <- forM' marks $ \mark -> do
