@@ -52,7 +52,7 @@ tag Nothing = Common.impureExCommand {
 tag (Just (Tag t)) = Common.impureExCommand {
     cmdShow = "tag " <> t
   , cmdAction = YiA $ gotoTag (Tag t) 0 Nothing
-  , cmdComplete = fmap (mappend "tag ") <$> completeVimTag t
+  , cmdComplete = map ("tag " <>) <$> completeVimTag t
   }
 
 next :: ExCommand
