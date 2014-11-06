@@ -703,13 +703,17 @@ diredScanDir dir = do
 
 -- | Needed on Mac OS X 10.4
 scanForUid :: UserID -> [UserEntry] -> UserEntry
-scanForUid uid entries = fromMaybe (UserEntry "?" mempty uid 0 mempty mempty mempty) $
-                                   find ((== uid) . userID) entries
+scanForUid uid entries = fromMaybe missingEntry $
+                                   find ((uid ==) . userID) entries
+  where
+    missingEntry = UserEntry "?" mempty uid 0 mempty mempty mempty
 
 -- | Needed on Mac OS X 10.4
 scanForGid :: GroupID -> [GroupEntry] -> GroupEntry
-scanForGid gid entries = fromMaybe (GroupEntry "?" mempty gid mempty) $
-                                   find ((== gid) . groupID) entries
+scanForGid gid entries = fromMaybe missingEntry $
+                                   find ((gid ==) . groupID) entries
+  where
+    missingEntry = GroupEntry "?" mempty gid mempty
 
 
 modeString :: FileMode -> R.YiString
