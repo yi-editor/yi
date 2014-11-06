@@ -103,7 +103,7 @@ savePersistentState :: YiM ()
 savePersistentState = do
     MaxHistoryEntries histLimit <- withEditor askConfigVariableA
     pStateFilename      <- getPersistentStateFilename
-    (hist :: Histories) <- withEditor $ getEditorDyn
+    (hist :: Histories) <- withEditor   getEditorDyn
     kr                  <- withEditor $ use killringA
     curRe               <- withEditor   getRegexE
     let pState = PersistentState {

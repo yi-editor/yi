@@ -285,7 +285,7 @@ drawText wsty h w tabWidth bufData
 
     -- the number of lines that taking wrapping into account,
     -- we use this to calculate the number of lines displayed.
-    wrapped = concatMap (wrapLine w) $ map addSpace $ map (concatMap expandGraphic) $ take h $ lines' bufData
+    wrapped = concatMap (wrapLine w . addSpace . concatMap expandGraphic) $ take h $ lines' bufData
     lns0 = take h wrapped
 
     -- fill lines with blanks, so the selection looks ok.
@@ -302,7 +302,7 @@ drawText wsty h w tabWidth bufData
 
     addSpace :: [(Char, Vty.Attr)] -> [(Char, Vty.Attr)]
     addSpace [] = [(' ', wsty)]
-    addSpace l = case (mod lineLength w) of
+    addSpace l = case mod lineLength w of
                     0 -> l
                     _ -> l ++ [(' ', wsty)]
                  where

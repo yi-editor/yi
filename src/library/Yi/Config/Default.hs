@@ -61,8 +61,7 @@ availableFrontends =
 #ifdef FRONTEND_PANGO
    ("pango", Yi.UI.Pango.start) :
 #endif
-   ("batch", Yi.UI.Batch.start) :
-   []
+  [("batch", Yi.UI.Batch.start)]
 
 -- | List of published Actions
 

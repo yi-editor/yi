@@ -73,7 +73,7 @@ debugBufferContentUsing b = do
   mv <- io $ newIORef mempty
   keepGoing <- io $ newIORef True
   let delay = threadDelay 100000 >> readIORef keepGoing
-  void . forkAction delay NoNeedToRefresh $ do
+  void . forkAction delay NoNeedToRefresh $
     findBuffer b >>= \case
       Nothing -> io $ writeIORef keepGoing True
       Just _ -> do
@@ -107,12 +107,12 @@ promptingForBuffer prompt act hh = do
 commentRegion :: YiM ()
 commentRegion =
   withCurrentBuffer (gets $ withMode0 modeToggleCommentSelection) >>= \case
-    Nothing -> do
+    Nothing ->
       withMinibufferFree "No comment syntax is defined. Use: " $ \cString ->
         withCurrentBuffer $ do
           let toggle = toggleCommentB (R.fromText cString)
-          _ <- toggle
-          modifyMode $ (\x -> x { modeToggleCommentSelection = Just toggle })
+          void toggle
+          modifyMode (\x -> x { modeToggleCommentSelection = Just toggle })
     Just b -> withCurrentBuffer b
 
 -- | Open a minibuffer window with the given prompt and keymap
@@ -214,7 +214,7 @@ withMinibufferGen proposal getHint prompt completer onTyping act = do
                         windowsA %= fromJust . PL.find initialWindow
       showMatchings = showMatchingsOf . R.toText =<< withCurrentBuffer elemsB
       showMatchingsOf userInput =
-        printStatus =<< withDefaultStyle <$> (getHint userInput)
+        printStatus =<< withDefaultStyle <$> getHint userInput
       withDefaultStyle msg = (msg, defaultStyle)
       typing = onTyping . R.toText =<< withCurrentBuffer elemsB
 
@@ -276,9 +276,7 @@ withMinibufferFin prompt possibilities act
     -- may have for example two possibilities which share a long
     -- prefix and hence we wish to press tab to complete up to the
     -- point at which they differ.
-    completer s = return $ case commonTPrefix $ catMaybes $ fmap (infixMatch s) possibilities of
-        Nothing -> s
-        Just p  -> p
+    completer s = return $ fromMaybe s $ commonTPrefix $ catMaybes (infixMatch s <$> possibilities)
 
 -- | TODO: decide whether we should be keeping 'T.Text' here or moving
 -- to 'YiString'.

@@ -52,6 +52,7 @@ import           Control.Monad.Reader hiding (mapM)
 import           Data.Binary
 import           Data.Char (toLower)
 import           Data.Default
+import           Data.Maybe
 #if __GLASGOW_HASKELL__ < 708
 import           Data.DeriveTH
 #else
@@ -279,7 +280,7 @@ incDiredOpSucCnt =
   withCurrentBuffer $ getBufferDyn >>= putBufferDyn . (diredOpSucCnt %~ succ)
 
 getDiredOpState :: YiM DiredOpState
-getDiredOpState = withCurrentBuffer $ getBufferDyn
+getDiredOpState = withCurrentBuffer getBufferDyn
 
 modDiredOpState :: (DiredOpState -> DiredOpState) -> YiM ()
 modDiredOpState f = withCurrentBuffer $ getBufferDyn >>= putBufferDyn . f
@@ -387,7 +388,7 @@ procDiredOp counting r@(DOChoice prompt op:ops) = do
                          proceedYes
           quit = cleanUp >> printMsg "Quit"
           help = do
-            printMsg $
+            printMsg
               "y: yes, n: no, !: yes on all remaining items, q: quit, h: help"
             cleanUp
             procDiredOp counting r -- repeat
@@ -702,15 +703,14 @@ diredScanDir dir = do
 
 -- | Needed on Mac OS X 10.4
 scanForUid :: UserID -> [UserEntry] -> UserEntry
-scanForUid uid entries = case find ((== uid) . userID) entries of
-  Nothing -> UserEntry "?" mempty uid 0 mempty mempty mempty
-  Just x -> x
+scanForUid uid entries = fromMaybe (UserEntry "?" mempty uid 0 mempty mempty mempty) $
+                                   find ((== uid) . userID) entries
 
 -- | Needed on Mac OS X 10.4
 scanForGid :: GroupID -> [GroupEntry] -> GroupEntry
-scanForGid gid entries = case find ((== gid) . groupID) entries of
-  Nothing -> GroupEntry "?" mempty gid mempty
-  Just x -> x
+scanForGid gid entries = fromMaybe (GroupEntry "?" mempty gid mempty) $
+                                   find ((== gid) . groupID) entries
+
 
 modeString :: FileMode -> R.YiString
 modeString fm = ""
@@ -796,7 +796,7 @@ deleteKeys :: Ord k => M.Map k v -> [k] -> M.Map k v
 deleteKeys = foldl' (flip M.delete)
 
 diredMarkWithChar :: Char -> BufferM () -> BufferM ()
-diredMarkWithChar c mv = bypassReadOnly $ do
+diredMarkWithChar c mv = bypassReadOnly $
   fileFromPoint >>= \case
     Just (fn, _de) -> do
       state <- getBufferDyn
@@ -851,7 +851,7 @@ diredUnmarkAll = bypassReadOnly $ do
                    diredRefreshMark
 
 currentDir :: YiM FilePath
-currentDir = fmap diredPath $ withCurrentBuffer $ getBufferDyn
+currentDir = diredPath <$> withCurrentBuffer getBufferDyn
 
 -- | move selected files in a given directory to the target location given
 -- by user input
@@ -871,11 +871,11 @@ currentDir = fmap diredPath $ withCurrentBuffer $ getBufferDyn
 --           else error
 askRenameFiles :: FilePath -> [(FilePath, DiredEntry)] -> YiM ()
 askRenameFiles dir fs = case fs of
-  (_x:[]) -> do resetDiredOpState
-                procDiredOp True [DOInput prompt sOpIsDir]
-  (_x:_)  -> do resetDiredOpState
-                procDiredOp True [DOInput prompt mOpIsDirAndExists]
-  []      -> procDiredOp True [DOFeedback showNothing]
+  [_x] -> do resetDiredOpState
+             procDiredOp True [DOInput prompt sOpIsDir]
+  _x:_ -> do resetDiredOpState
+             procDiredOp True [DOInput prompt mOpIsDirAndExists]
+  []   ->    procDiredOp True [DOFeedback showNothing]
   where
     mkErr t = return . DOFeedback . const $ errorEditor t
     prompt = "Move " <> R.fromString (show total) <> " item(s) to:"
@@ -917,11 +917,11 @@ askRenameFiles dir fs = case fs of
 askCopyFiles :: FilePath -> [(FilePath, DiredEntry)] -> YiM ()
 askCopyFiles dir fs =
   case fs of
-    (_x:[]) -> do resetDiredOpState
-                  procDiredOp True [DOInput prompt sOpIsDir]
-    (_x:_)  -> do resetDiredOpState
-                  procDiredOp True [DOInput prompt mOpIsDirAndExists]
-    []      -> procDiredOp True [DOFeedback showNothing]
+    [_x] -> do resetDiredOpState
+               procDiredOp True [DOInput prompt sOpIsDir]
+    _x:_ -> do resetDiredOpState
+               procDiredOp True [DOInput prompt mOpIsDirAndExists]
+    []   ->    procDiredOp True [DOFeedback showNothing]
   where
     prompt = "Copy " <> R.fromString (show total) <> " item(s) to:"
     mOpIsDirAndExists t = [DOCheck (doesDirectoryExist t) posOps negOps]

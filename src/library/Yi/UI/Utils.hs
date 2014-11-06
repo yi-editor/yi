@@ -112,4 +112,4 @@ arrangeItems' items' maxWidth numberOfLines = (fittedItems,theLines)
           totalWidths = scanl (\x y -> 1 + x + y) 0 columnsWidth
           shownItems = scanl (+) 0 (fmap length columns)
           fittedItems = snd $ last $ takeWhile ((<= maxWidth) . fst) $ zip totalWidths shownItems
-          theLines = fmap (T.pack . unwords . zipWith padLeft columnsWidth) $ transpose columns
+          theLines = T.pack . unwords . zipWith padLeft columnsWidth <$> transpose columns
