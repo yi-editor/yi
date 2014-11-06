@@ -2,6 +2,10 @@
 *.hi-boot
 *.o
 *.o-boot
+*.dyn_hi
+*.dyn_hi-boot
+*.dyn_o
+*.dyn_o-boot
 *.o.cmd
 *.swp
 *.prof
