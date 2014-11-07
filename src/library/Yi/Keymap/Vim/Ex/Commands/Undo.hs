@@ -10,7 +10,6 @@
 
 module Yi.Keymap.Vim.Ex.Commands.Undo (parse) where
 
-import           Data.Monoid
 import           Yi.Buffer.Adjusted
 import           Yi.Keymap
 import           Yi.Keymap.Vim.Common
