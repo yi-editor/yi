@@ -1,3 +1,15 @@
+0.11.1
+-------
+
+ * As usual, more vim keymap enhancements (#676, #673, #674, #661,
+   gj/gk and more)
+ * Make persistent search optional (#685)
+ * Re-use hint sessions, greatly improving M-x &c performance
+ * Make tag lists easier to configure
+ * Add presave hook, mostly for vim keymap convenience
+ * Fix vty issue where line length = screen width (#647)
+ * Further improvements to encoding (#689)
+
 0.11.0
 -------
 
