@@ -2,7 +2,7 @@
 {-# OPTIONS_HADDOCK show-extensions #-}
 
 -- |
--- Module      :  Yi.Keymap.Vim.Ex.Commands.GotoLine
+-- Module      :  Yi.Keymap.Vim.Ex.Commands.Undo
 -- License     :  GPL-2
 -- Maintainer  :  yi-devel@googlegroups.com
 -- Stability   :  experimental
@@ -22,5 +22,11 @@ parse (Ev s) | s `elem` ["u", "undo"] =
              cmdAction   = BufferA undoB
            , cmdShow     =         "undo"
            , cmdComplete = return ["undo"]
+         }
+parse (Ev s) | s `elem` ["redo"] =
+         Just pureExCommand {
+             cmdAction   = BufferA redoB
+           , cmdShow     =         "redo"
+           , cmdComplete = return ["redo"]
          }
 parse _                               = Nothing 
