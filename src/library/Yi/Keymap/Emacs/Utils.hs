@@ -53,12 +53,11 @@ where
 import           Control.Applicative
 import           Control.Lens hiding (re,act)
 import           Control.Monad
-import           Control.Monad.Base
+import           Control.Monad.Base()
 import           Data.List ((\\))
 import           Data.Maybe (fromMaybe)
 import           Data.Monoid
 import qualified Data.Text as T
-import           System.Directory (doesDirectoryExist)
 import           System.FilePath (takeDirectory, takeFileName, (</>))
 import           System.FriendlyPath ()
 import           Yi.Buffer

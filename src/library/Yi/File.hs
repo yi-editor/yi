@@ -84,7 +84,7 @@ openNewFile = flip openingNewFile $ return ()
 
 -- | Revert to the contents of the file on disk
 revertE :: YiM ()
-revertE = do
+revertE =
   withCurrentBuffer (gets file) >>= \case
     Just fp -> do
       now <- io getCurrentTime
@@ -102,17 +102,17 @@ revertE = do
 -- | Try to write a file in the manner of vi/vim
 -- Need to catch any exception to avoid losing bindings
 viWrite :: YiM ()
-viWrite = do
+viWrite =
   withCurrentBuffer (gets file) >>= \case
-   Nothing -> errorEditor "no file name associate with buffer"
-   Just f  -> do
-       bufInfo <- withCurrentBuffer bufInfoB
-       let s   = bufInfoFileName bufInfo
-       succeed <- fwriteE
-       let message = (showT f <>) (if f == s
-                         then " written"
-                         else " " <> showT s <> " written")
-       when succeed $ printMsg message
+    Nothing -> errorEditor "no file name associate with buffer"
+    Just f  -> do
+      bufInfo <- withCurrentBuffer bufInfoB
+      let s   = bufInfoFileName bufInfo
+      succeed <- fwriteE
+      let message = (showT f <>) (if f == s
+                        then " written"
+                        else " " <> showT s <> " written")
+      when succeed $ printMsg message
 
 -- | Try to write to a named file in the manner of vi/vim
 viWriteTo :: T.Text -> YiM ()
@@ -151,7 +151,7 @@ fwriteBufferE bufferKey = do
       True -> printMsg "Can't save over a directory, doing nothing." >> return False
       False -> do
         hooks <- view preSaveHooks <$> askCfg
-        sequence_ $ map runAction hooks
+        mapM_ runAction hooks
         mayErr <- liftBase $ case conv of
           Nothing -> R.writeFileUsingText f contents >> return Nothing
           Just cn -> R.writeFile f contents cn
@@ -173,7 +173,7 @@ fwriteAllE :: YiM Bool
 fwriteAllE =
   do allBuffs <- gets bufferSet
      let modifiedBuffers = filter (not . isUnchangedBuffer) allBuffs
-     all id <$> mapM fwriteBufferE (fmap bkey modifiedBuffers)
+     and <$> mapM fwriteBufferE (fmap bkey modifiedBuffers)
 
 -- | Make a backup copy of file
 backupE :: FilePath -> YiM ()

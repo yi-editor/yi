@@ -134,10 +134,10 @@ import           Yi.Utils hiding ((+~))
 import           Yi.Window
 
 instance Binary Editor where
-  put (Editor bss bs supply ts dv _sl msh kr re _dir _ev _cwa ) =
+  put (Editor bss bs supply ts dv _sl msh kr regex _dir _ev _cwa ) =
     let putNE (x :| xs) = put x >> put xs
     in putNE bss >> put bs >> put supply >> put ts
-       >> put dv >> put msh >> put kr >> put re
+       >> put dv >> put msh >> put kr >> put regex
   get = do
     bss <- (:|) <$> get <*> get
     bs <- get
@@ -146,7 +146,7 @@ instance Binary Editor where
     dv <- get
     msh <- get
     kr <- get
-    re <- get
+    regex <- get
     return $ emptyEditor { bufferStack = bss
                          , buffers = bs
                          , refSupply = supply
@@ -154,7 +154,7 @@ instance Binary Editor where
                          , dynamic = dv
                          , maxStatusHeight = msh
                          , killring = kr
-                         , currentRegex = re
+                         , currentRegex = regex
                          }
 
 -- | The initial state
@@ -314,9 +314,9 @@ findBuffer k = withEditor (gets (M.lookup k . buffers))
 
 -- | Find buffer with this key
 findBufferWith :: BufferRef -> Editor -> FBuffer
-findBufferWith k e = case M.lookup k (buffers e) of
-  Just x -> x
-  Nothing -> error "Editor.findBufferWith: no buffer has this key"
+findBufferWith k e = fromMaybe errMsg $ M.lookup k $ buffers e
+  where
+    errMsg = error "Editor.findBufferWith: no buffer has this key"
 
 -- | Find buffers with this name
 findBufferWithName :: T.Text -> Editor -> [BufferRef]
@@ -514,9 +514,10 @@ closeBufferE nm = deleteBuffer =<< getBufferWithNameOrCurrent nm
 
 getBufferWithNameOrCurrent :: MonadEditor m => T.Text -> m BufferRef
 getBufferWithNameOrCurrent t = withEditor $
-    case T.null t of
-        True -> gets currentBuffer
-        False -> getBufferWithName t
+    if T.null t then
+      gets currentBuffer
+    else
+      getBufferWithName t
 
 
 ------------------------------------------------------------------------
@@ -821,6 +822,6 @@ newTempBufferE = do
             []      -> currentName
       find_next _ [] = error "Looks like nearly infinite list has just ended."
       next_tmp_name = find_next name names
-      (name : names) = (fmap (("tmp-" Mon.<>) . T.pack . show) [0 :: Int ..])
+      (name : names) = (("tmp-" Mon.<>) . T.pack . show) <$> [0 :: Int ..]
 
   newEmptyBufferE (MemBuffer next_tmp_name)

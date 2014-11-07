@@ -53,7 +53,7 @@ error :: T.Text -> a
 error s = unsafePerformIO $ logPutStrLn s >> Prelude.error (T.unpack s)
 
 logPutStrLn :: MonadBase IO m => T.Text -> m ()
-logPutStrLn s = liftBase $ do
+logPutStrLn s = liftBase $
   readIORef dbgHandle >>= \case
     Nothing -> return ()
     Just h -> do

@@ -45,7 +45,7 @@ parse = Common.parseWithBangAndCount nameParser $ \ _ bang mcount -> do
 
 
 nameParser :: P.GenParser Char () ()
-nameParser = do
+nameParser =
     void $ P.try ( P.string "buffer") <|>
            P.try ( P.string "buf")    <|>
            P.try ( P.string "bu")     <|>

@@ -13,14 +13,15 @@
 -- This module acts as a facade for the Buffer.* modules.
 
 module Yi.Buffer
-  ( module Yi.Buffer.Basic
+  ( module Yi.Buffer.Basic    
   , module Yi.Buffer.HighLevel
-  , module Yi.Buffer.Indent
-  , module Yi.Buffer.Misc
-  , module Yi.Buffer.Normal
-  , module Yi.Buffer.Region
-  , module Yi.Buffer.TextUnit
-  , module Yi.Buffer.Undo
+  , module Yi.Buffer.Indent   
+  , module Yi.Buffer.Misc     
+  , module Yi.Buffer.Normal   
+  , module Yi.Buffer.Region   
+  , module Yi.Buffer.TextUnit 
+  , module Yi.Buffer.Undo     
+
   -- Implementation re-exports (move out of implementation?)
   , UIUpdate (..)
   , Update (..)
@@ -30,13 +31,13 @@ module Yi.Buffer
   )
 where
 
-import Yi.Buffer.Basic
+import Yi.Buffer.Basic    
 import Yi.Buffer.HighLevel
-import Yi.Buffer.Indent
-import Yi.Buffer.Misc
-import Yi.Buffer.Normal
-import Yi.Buffer.Region
-import Yi.Buffer.TextUnit
-import Yi.Buffer.Undo
+import Yi.Buffer.Indent   
+import Yi.Buffer.Misc     
+import Yi.Buffer.Normal   
+import Yi.Buffer.Region   
+import Yi.Buffer.TextUnit 
+import Yi.Buffer.Undo     
 
 import Yi.Buffer.Implementation

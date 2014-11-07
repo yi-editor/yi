@@ -95,7 +95,6 @@ import Yi.Regex
 import Yi.String (showT)
 import System.FilePath
 import qualified Yi.UI.Common as Common
-import qualified Yi.Rope as R
 
 data Control = Control
     { controlYi :: Yi
@@ -799,7 +798,7 @@ handleMove view p0 event = do
   -- Relies on uiActionCh being synchronous
   selection <- liftBase $ newIORef ""
   let yiAction = do
-      txt <- (withCurrentBuffer (readRegionB =<< getSelectRegionB))
+      txt <- withCurrentBuffer (readRegionB =<< getSelectRegionB)
              :: YiM R.YiString
       liftBase $ writeIORef selection txt
   runAction $ makeAction yiAction
@@ -826,17 +825,17 @@ gtkToYiEvent :: Gdk.Events.Event -> Maybe Event
 gtkToYiEvent (Gdk.Events.Key {Gdk.Events.eventKeyName = key
                              , Gdk.Events.eventModifier = evModifier
                              , Gdk.Events.eventKeyChar = char})
-    = fmap (\k -> Event k $ (nub $ (if isShift
-                                    then filter (/= MShift)
-                                    else id) $ concatMap modif evModifier)) key'
+    = (\k -> Event k $ nub $ notMShift $ concatMap modif evModifier) <$> key'
       where (key',isShift) =
                 case char of
-                  Just c -> (Just $ KASCII c, True)
+                  Just c  -> (Just $ KASCII c, True)
                   Nothing -> (Map.lookup key keyTable, False)
             modif Gdk.Events.Control = [MCtrl]
-            modif Gdk.Events.Alt = [MMeta]
-            modif Gdk.Events.Shift = [MShift]
+            modif Gdk.Events.Alt     = [MMeta]
+            modif Gdk.Events.Shift   = [MShift]
             modif _ = []
+            notMShift | isShift   = filter (/= MShift)
+                      | otherwise = id
 gtkToYiEvent _ = Nothing
 
 -- | Map GTK long names to Keys

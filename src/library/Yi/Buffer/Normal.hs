@@ -1,4 +1,4 @@
-{-# LANGUAGE TemplateHaskell, CPP, StandaloneDeriving #-}
+{-# LANGUAGE CPP #-}
 
 -- | A normalized API to many buffer operations.
 
