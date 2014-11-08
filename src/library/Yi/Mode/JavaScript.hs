@@ -112,7 +112,7 @@ instance YiVariable JSBuffer
 -- | The "compiler."
 jsCompile :: Tree TT -> YiM ()
 jsCompile tree = do
-  fwriteE
+  _ <- fwriteE
   Just filename <- withCurrentBuffer $ gets file
   buf <- getJSBuffer
   withOtherWindow $ withEditor $ switchToBufferE buf

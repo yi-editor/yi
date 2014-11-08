@@ -38,7 +38,7 @@ import           Yi.Window (bufkey)
 parse :: EventString -> Maybe ExCommand
 parse = Common.parse $ P.choice
     [ do
-        _ <- (P.try ( P.string "xit") <|> P.string "x")
+        void $ P.try ( P.string "xit") <|> P.string "x"
         bangs <- P.many (P.char '!')
         return (quit True (not $ null bangs) False)
     , do
@@ -98,4 +98,4 @@ quitAllE = do
 saveAndQuitAllE :: YiM ()
 saveAndQuitAllE = do
     succeed <- fwriteAllE
-    when succeed $ quitEditor
+    when succeed quitEditor

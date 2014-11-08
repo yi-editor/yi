@@ -134,10 +134,10 @@ import           Yi.Utils hiding ((+~))
 import           Yi.Window
 
 instance Binary Editor where
-  put (Editor bss bs supply ts dv _sl msh kr re _dir _ev _cwa ) =
+  put (Editor bss bs supply ts dv _sl msh kr regex _dir _ev _cwa ) =
     let putNE (x :| xs) = put x >> put xs
     in putNE bss >> put bs >> put supply >> put ts
-       >> put dv >> put msh >> put kr >> put re
+       >> put dv >> put msh >> put kr >> put regex
   get = do
     bss <- (:|) <$> get <*> get
     bs <- get
@@ -146,7 +146,7 @@ instance Binary Editor where
     dv <- get
     msh <- get
     kr <- get
-    re <- get
+    regex <- get
     return $ emptyEditor { bufferStack = bss
                          , buffers = bs
                          , refSupply = supply
@@ -154,7 +154,7 @@ instance Binary Editor where
                          , dynamic = dv
                          , maxStatusHeight = msh
                          , killring = kr
-                         , currentRegex = re
+                         , currentRegex = regex
                          }
 
 -- | The initial state

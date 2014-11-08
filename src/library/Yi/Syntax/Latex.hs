@@ -140,7 +140,7 @@ tokenToStyle t =
     End _ -> keywordStyle
     NewCommand -> keywordStyle
 
-isSpecial :: [Char] -> Token -> Bool
+isSpecial :: String -> Token -> Bool
 isSpecial cs (Special c) = c `elem` cs
 isSpecial _  _ = False
 

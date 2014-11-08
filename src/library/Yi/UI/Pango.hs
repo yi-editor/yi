@@ -646,9 +646,9 @@ updatePango ui font w b layout = do
     Nothing -> return font
     Just defSize -> fontDescriptionGetSize font >>= \case
       Nothing -> fontDescriptionSetSize font defSize >> return font
-      Just currentSize -> let fsv = fontsizeVariation $ attributes b
-                              newSize = max 1 (fromIntegral fsv + defSize) in do
-        if (newSize == currentSize)
+      Just currentSize -> let fsv     = fontsizeVariation $ attributes b
+                              newSize = max 1 (fromIntegral fsv + defSize) in
+        if newSize == currentSize
           then return font
           else do
           -- This seems like it would be very expensive but I'm
@@ -741,9 +741,9 @@ updatePango ui font w b layout = do
 -- happens, only the line-wrapping case doesn't suck. Fortunately it
 -- is the default.
 takeContent :: UIConfig -> Int -> R.YiString -> R.YiString
-takeContent cf cl t = case configLineWrap cf of
-  True -> R.take cl t
-  False -> t
+takeContent cf cl t = if configLineWrap cf
+                        then R.take cl t
+                        else t
 
 -- | Wraps the layout according to the given 'LayoutWrapMode', using
 -- the specified width.

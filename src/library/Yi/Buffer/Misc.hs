@@ -272,7 +272,7 @@ instance Binary FBuffer where
           put binmode
           put strippedRaw
           put attributes_
-    get = do
+    get =
         FBuffer <$> get <*> getStripped <*> get
       where getStripped :: Get (BufferImpl ())
             getStripped = get

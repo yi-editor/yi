@@ -1053,7 +1053,7 @@ flipRectangleB p0 p1 = savingPointB $ do
     (_, c1) <- getLineAndColOfPoint p1
     case compare c0 c1 of
         EQ -> return (p0, p1)
-        GT -> fmap swap $ flipRectangleB p1 p0
+        GT -> swap <$> flipRectangleB p1 p0
         LT -> do
             -- now we know that c0 < c1
             moveTo p0
@@ -1099,11 +1099,11 @@ findMatchingPairB = do
 incrementNextNumberByB :: Int -> BufferM ()
 incrementNextNumberByB n = do
     start <- pointB
-    untilB_ (not <$> isNumberB) (moveXorSol 1)
-    untilB_ (isNumberB) (moveXorEol 1)
+    untilB_ (not <$> isNumberB) $ moveXorSol 1
+    untilB_          isNumberB  $ moveXorEol 1
     begin <- pointB
     beginIsEol <- atEol
-    untilB_ (not <$> isNumberB) (moveXorEol 1)
+    untilB_ (not <$> isNumberB) $ moveXorEol 1
     end <- pointB
     if beginIsEol then moveTo start
     else do modifyRegionB (increment n) (mkRegion begin end)
@@ -1113,9 +1113,9 @@ incrementNextNumberByB n = do
 increment :: Int -> R.YiString -> R.YiString
 increment n l = R.fromString $ go (R.toString l)
   where
-    go ('0':'x':xs) = ((\ys -> '0':'x':ys) . (flip showHex "") . (+ n) . (fst . head . readHex)) xs
-    go ('0':'o':xs) = ((\ys -> '0':'o':ys) . (flip showOct "") . (+ n) . (fst . head . readOct)) xs
-    go s            = (show . (+ n) . (\x -> read x :: Int)) s
+    go ('0':'x':xs) = (\ys -> '0':'x':ys) . (`showHex` "") . (+ n) . fst . head . readHex $ xs
+    go ('0':'o':xs) = (\ys -> '0':'o':ys) . (`showOct` "") . (+ n) . fst . head . readOct $ xs
+    go s            = show . (+ n) . (\x -> read x :: Int) $ s
 
 -- | Is character under cursor a number.
 isNumberB :: BufferM Bool

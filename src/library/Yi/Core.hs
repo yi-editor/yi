@@ -309,7 +309,7 @@ checkFileChanges e0 = do
   where msg1 = (1, (["File was changed by a concurrent process, reloaded!"], strongHintStyle))
         msg2 = (1, (["Disk version changed by a concurrent process"], strongHintStyle))
         msg3 x = (1, (["File changed on disk to unknown encoding, not updating buffer: " <> x], strongHintStyle))
-        visibleBuffers = fmap bufkey $ windows e0
+        visibleBuffers = bufkey <$> windows e0
         fileModTime f = posixSecondsToUTCTime . realToFrac . modificationTime <$> getFileStatus f
         runDummy b act = snd $ runBuffer (dummyWindow $ bkey b) b act
 
@@ -355,7 +355,7 @@ refreshEditor = onYiVar $ \yi var -> do
              UI.layout (yiUi yi) >>=
              scroll >>=
              -- Adjust point according to the current layout;
-             return . (fst . runOnWins snapInsB) >>=
+             return . fst . runOnWins snapInsB >>=
              return . focusAllSyntax >>=
              -- Clear "pending updates" and "followUp" from buffers.
              return . (buffersA %~ fmap (clearUpdates . clearFollow))

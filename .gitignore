@@ -2,6 +2,10 @@
 *.hi-boot
 *.o
 *.o-boot
+*.dyn_hi
+*.dyn_hi-boot
+*.dyn_o
+*.dyn_o-boot
 *.o.cmd
 *.swp
 *.prof
@@ -16,3 +20,5 @@ dist_yi/
 hsenv.log
 cabal.sandbox.config
 .cabal-sandbox
+tags
+TAGS

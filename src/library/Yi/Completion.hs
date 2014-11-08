@@ -25,6 +25,7 @@ import           Control.Applicative
 import           Data.List
 import           Data.Maybe
 import           Data.Monoid
+import           Data.Function (on)
 import qualified Data.Text as T
 import           Yi.Editor (EditorM, printMsg, printMsgs)
 import           Yi.String (commonTPrefix', showT)
@@ -40,7 +41,7 @@ mkIsPrefixOf :: Bool -- ^ Is case-sensitive?
              -> T.Text
              -> Bool
 mkIsPrefixOf True = T.isPrefixOf
-mkIsPrefixOf False = \x y -> T.toCaseFold x `T.isPrefixOf` T.toCaseFold y
+mkIsPrefixOf False = T.isPrefixOf `on` T.toCaseFold
 
 -- | Prefix matching function, for use with 'completeInList'
 prefixMatch :: T.Text -> T.Text -> Maybe T.Text
