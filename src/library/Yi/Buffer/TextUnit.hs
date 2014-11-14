@@ -92,9 +92,12 @@ genBoundary ofs len condition dir = condition <$> peekB
 
 -- | a word as in use in Emacs (fundamental mode)
 unitWord :: TextUnit
-unitWord = GenUnit Document $ \direction -> checkPeekB (-1) [isWordChar, not . isWordChar] direction
+unitWord =
+  GenUnit Document $
+  \direction -> checkPeekB (-1) [isWordChar, not . isWordChar] direction
 
--- ^ delimited on the left and right by given characters, boolean argument tells if whether those are included.
+-- | delimited on the left and right by given characters, boolean
+-- argument tells if whether those are included.
 unitDelimited :: Char -> Char -> Bool -> TextUnit
 unitDelimited left right included = GenUnit Document $ \direction ->
    case (included,direction) of
