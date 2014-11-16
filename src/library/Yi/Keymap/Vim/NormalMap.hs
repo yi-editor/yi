@@ -304,9 +304,18 @@ nonrepeatableBindings = fmap (mkBindingE Normal Drop)
     , ("<C-w>o", closeOtherE, resetCount)
     , ("<C-w>s", splitE, resetCount)
     , ("<C-w>w", nextWinE, resetCount)
+    , ("<C-w><Down>", nextWinE, resetCount) -- TODO: please implement downWinE
+    , ("<C-w><Right>", nextWinE, resetCount) -- TODO: please implement rightWinE
     , ("<C-w><C-w>", nextWinE, resetCount)
     , ("<C-w>W", prevWinE, resetCount)
     , ("<C-w>p", prevWinE, resetCount)
+    , ("<C-w><Up>", prevWinE, resetCount) -- TODO: please implement upWinE
+    , ("<C-w><Left>", prevWinE, resetCount) -- TODO: please implement leftWinE
+    , ("<C-w>l", layoutManagersNextE, resetCount)
+    , ("<C-w>L", layoutManagersPreviousE, resetCount)
+    --, ("<C-w> ", layoutManagersNextE, resetCount)
+    , ("<C-w>v", layoutManagerNextVariantE, resetCount)
+    , ("<C-w>V", layoutManagerPreviousVariantE, resetCount)
     , ("<C-a>", getCountE >>= withCurrentBuffer . incrementNextNumberByB, resetCount)
     , ("<C-x>", getCountE >>= withCurrentBuffer . incrementNextNumberByB . negate, resetCount)
 

@@ -24,6 +24,7 @@ import qualified Yi.Keymap.Vim.Ex.Commands.Delete as Delete
 import qualified Yi.Keymap.Vim.Ex.Commands.Edit as Edit
 import qualified Yi.Keymap.Vim.Ex.Commands.Global as Global
 import qualified Yi.Keymap.Vim.Ex.Commands.GotoLine as GotoLine
+import qualified Yi.Keymap.Vim.Ex.Commands.Help as Help
 import qualified Yi.Keymap.Vim.Ex.Commands.Make as Make
 import qualified Yi.Keymap.Vim.Ex.Commands.Nohl as Nohl
 import qualified Yi.Keymap.Vim.Ex.Commands.Paste as Paste
@@ -33,6 +34,7 @@ import qualified Yi.Keymap.Vim.Ex.Commands.Shell as Shell
 import qualified Yi.Keymap.Vim.Ex.Commands.Sort as Sort
 import qualified Yi.Keymap.Vim.Ex.Commands.Substitute as Substitute
 import qualified Yi.Keymap.Vim.Ex.Commands.Tag as Tag
+import qualified Yi.Keymap.Vim.Ex.Commands.Undo as Undo
 import qualified Yi.Keymap.Vim.Ex.Commands.Write as Write
 import qualified Yi.Keymap.Vim.Ex.Commands.Yi as Yi
 import           Yi.Keymap.Vim.Ex.Eval
@@ -48,6 +50,7 @@ defExCommandParsers =
     , Edit.parse
     , Global.parse
     , GotoLine.parse
+    , Help.parse
     , Make.parse
     , Nohl.parse
     , Paste.parse
@@ -57,6 +60,7 @@ defExCommandParsers =
     , Substitute.parse
     , Shell.parse
     , Tag.parse
+    , Undo.parse
     , Write.parse
     , Yi.parse
     ]

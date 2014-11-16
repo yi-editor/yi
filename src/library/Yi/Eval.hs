@@ -20,6 +20,7 @@ module Yi.Eval (
         -- * Main (generic) evaluation interface
         execEditorAction,
         getAllNamesInScope,
+        describeNamedAction,
         Evaluator(..),
         evaluator,
         -- ** Standard evaluators
@@ -77,12 +78,20 @@ import           Yi.Utils
 execEditorAction :: String -> YiM ()
 execEditorAction = runHook execEditorActionImpl
 
--- | Lists the action names in scope, for use by 'execEditorAction'.
+-- | Lists the action names in scope, for use by 'execEditorAction',
+-- and 'help' index.
 --
 -- The behaviour of this function can be customised by modifying the
 -- 'Evaluator' variable.
 getAllNamesInScope :: YiM [String]
 getAllNamesInScope = runHook getAllNamesInScopeImpl
+
+-- | Describes the named action in scope, for use by 'help'.
+--
+-- The behaviour of this function can be customised by modifying the
+-- 'Evaluator' variable.
+describeNamedAction :: String -> YiM String
+describeNamedAction = runHook describeNamedActionImpl
 
 -- | Config variable for customising the behaviour of
 -- 'execEditorAction' and 'getAllNamesInScope'.
@@ -94,6 +103,8 @@ data Evaluator = Evaluator
     -- ^ implementation of 'execEditorAction'
   , getAllNamesInScopeImpl :: YiM [String]
     -- ^ implementation of 'getAllNamesInScope'
+  , describeNamedActionImpl :: String -> YiM String
+    -- ^ describe named action (or at least its type.), simplest implementation is at least @return@.
   } deriving (Typeable)
 
 -- | The evaluator to use for 'execEditorAction' and
@@ -105,12 +116,19 @@ instance Default Evaluator where def = ghciEvaluator
 instance YiConfigVariable Evaluator
 
 -- * Evaluator based on GHCi
-
+-- | Cached variable for getAllNamesInScopeImpl
 newtype NamesCache = NamesCache [String] deriving (Typeable, Binary)
 
 instance Default NamesCache where
     def = NamesCache []
 instance YiVariable NamesCache
+
+-- | Cached dictioary for describeNameImpl
+newtype HelpCache = HelpCache (M.HashMap String String) deriving (Typeable, Binary)
+
+instance Default HelpCache where
+    def = HelpCache M.empty
+instance YiVariable HelpCache
 
 type HintRequest = (String, MVar (Either LHI.InterpreterError Action))
 newtype HintThreadVar = HintThreadVar (Maybe (MVar HintRequest))
@@ -171,6 +189,7 @@ hintEvaluatorThread request contextFile = do
 ghciEvaluator :: Evaluator
 ghciEvaluator = Evaluator { execEditorActionImpl = execAction
                           , getAllNamesInScopeImpl = getNames
+                          , describeNamedActionImpl = describeName -- TODO: use haddock to add docs
                           }
   where
     execAction :: String -> YiM ()
@@ -197,8 +216,7 @@ ghciEvaluator = Evaluator { execEditorActionImpl = execAction
                     Left err ->[show err]
                     Right exports -> flattenExports exports
                 else return $ sort cache
-      --withEditor $ putEditorDyn $ NamesCache result
-      withEditor $ putEditorDyn $ NamesCache result
+      putEditorDyn $ NamesCache result
       return result
 
     flattenExports :: [LHI.ModuleElem] -> [String]
@@ -208,6 +226,24 @@ ghciEvaluator = Evaluator { execEditorActionImpl = execAction
     flattenExport (LHI.Fun x) = [x]
     flattenExport (LHI.Class _ xs) = xs
     flattenExport (LHI.Data _ xs) = xs
+      
+    describeName :: String -> YiM String
+    describeName name = do
+      HelpCache cache <- getEditorDyn
+      description <- case name `M.lookup` cache of
+                       Nothing -> do
+                         result <- io $ LHI.runInterpreter $ do
+                           LHI.set [LHI.searchPath LHI.:= []]
+                           -- when haveUserContext $ do
+                           --   LHI.loadModules [contextFile]
+                           --   LHI.setTopLevelModules ["Env"]
+                           LHI.setImportsQ [("Yi", Nothing), ("Yi.Keymap",Just "Yi.Keymap")]
+                           LHI.typeOf name
+                         let newDescription = either show id result
+                         putEditorDyn $ HelpCache $ M.insert name newDescription cache
+                         return newDescription
+                       Just description -> return description
+      return $ name ++ " :: " ++ description
 
 -- * 'PublishedActions' evaluator
 
@@ -245,6 +281,7 @@ publishedActionsEvaluator = Evaluator
   { getAllNamesInScopeImpl = askCfg <&> M.keys . (^. publishedActions)
   , execEditorActionImpl = \s ->
       askCfg <&> M.lookup s . (^. publishedActions) >>= mapM_ runAction
+  , describeNamedActionImpl = return -- TODO: try to show types using TemplateHaskell!
   }
 
 -- * Miscellaneous interpreter

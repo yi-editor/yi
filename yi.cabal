@@ -127,6 +127,7 @@ library
     Yi.Buffer.TextUnit
     Yi.Buffer.Undo
     Yi.Command
+    Yi.Command.Help
     Yi.Completion
     Yi.Config
     Yi.Config.Default
@@ -170,6 +171,7 @@ library
     Yi.Keymap.Vim.Ex.Commands.Edit
     Yi.Keymap.Vim.Ex.Commands.Global
     Yi.Keymap.Vim.Ex.Commands.GotoLine
+    Yi.Keymap.Vim.Ex.Commands.Help
     Yi.Keymap.Vim.Ex.Commands.Make
     Yi.Keymap.Vim.Ex.Commands.Nohl
     Yi.Keymap.Vim.Ex.Commands.Paste
@@ -179,6 +181,7 @@ library
     Yi.Keymap.Vim.Ex.Commands.Sort
     Yi.Keymap.Vim.Ex.Commands.Substitute
     Yi.Keymap.Vim.Ex.Commands.Tag
+    Yi.Keymap.Vim.Ex.Commands.Undo
     Yi.Keymap.Vim.Ex.Commands.Write
     Yi.Keymap.Vim.Ex.Commands.Yi
     Yi.Keymap.Vim.Ex.Types
