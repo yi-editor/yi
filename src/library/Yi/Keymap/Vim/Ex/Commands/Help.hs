@@ -30,7 +30,7 @@ parse = Common.parse $ do
     return $! Common.impureExCommand {
         cmdAction   = YiA $ displayHelpFor cmd
       , cmdShow     = "help" `T.append`
-                      (if cmd == ""
+                      if cmd == ""
                          then ""
-                         else " " `T.append` cmd)
+                         else " " `T.append` cmd
       }
