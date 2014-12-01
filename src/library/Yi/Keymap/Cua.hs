@@ -127,7 +127,9 @@ moveKeys = [
  (spec KUp            , moveB VLine Backward),
  (spec KDown          , moveB VLine Forward),
  (spec KRight         , moveB Character Forward),
- (spec KLeft          , moveB Character Backward)
+ (spec KLeft          , moveB Character Backward),
+ (spec KPageUp        , scrollScreensB (-1)),
+ (spec KPageDown      , scrollScreensB 1)
  ]
 
 
