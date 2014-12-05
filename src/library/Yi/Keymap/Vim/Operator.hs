@@ -23,9 +23,11 @@ module Yi.Keymap.Vim.Operator
     , lastCharForOperator
     ) where
 
+import           Control.Applicative ((<$>))
 import           Control.Monad
-import           Data.Char (toLower, toUpper)
+import           Data.Char (toLower, toUpper, isSpace)
 import           Data.Foldable (find)
+import           Data.Maybe (fromJust)
 import           Data.Monoid
 import qualified Data.Text as T
 import           Yi.Buffer.Adjusted hiding (Insert)
@@ -37,6 +39,8 @@ import           Yi.Keymap.Vim.StyledRegion
 import           Yi.Keymap.Vim.TextObject
 import           Yi.Keymap.Vim.Utils
 import           Yi.Misc
+import           Yi.Rope (YiString)
+import qualified Yi.Rope as R
 
 data VimOperator = VimOperator {
     operatorName :: !OperatorName
@@ -127,23 +131,60 @@ opFormat = VimOperator {
 formatRegionB :: RegionStyle -> Region -> BufferM ()
 formatRegionB Block _reg = return ()
 formatRegionB _style reg = do
-    -- TODO: handle indentation
-    -- TODO: break words
-    let (start, end) = (regionStart reg, regionEnd reg)
+    start <- solPointB $ regionStart reg
+    end <- eolPointB $ regionEnd reg
     moveTo start
-    let go = do
-            rightB
-            p <- pointB
-            col <- curCol
-            char <- readB
-            unless (p >= end) $
-                if col < 80 && char == '\n'
-                then writeB ' ' >> go
-                else if col == 80 && char /= '\n'
-                then writeB '\n' >> go
-                else go
-    go
-    moveTo start
+    -- Don't use firstNonSpaceB since paragraphs can start with lines made
+    -- completely of whitespace (which should be fixed)
+    untilB_ ((not . isSpace) <$> readB) rightB
+    indent <- curCol
+    modifyRegionB (formatStringWithIndent indent) $ reg { regionStart = start
+                                                        , regionEnd = end
+                                                        }
+    -- Emulate vim behaviour
+    moveTo =<< solPointB end
+    firstNonSpaceB
+
+formatStringWithIndent :: Int -> YiString -> YiString
+formatStringWithIndent indent str
+    | R.null str = R.empty
+    | otherwise = let spaces = R.replicateChar indent ' '
+                      (formattedLine, textToFormat) = getNextLine (80 - indent) str
+                      lineEnd = if R.null textToFormat
+                                then R.empty
+                                else '\n' `R.cons` formatStringWithIndent indent textToFormat
+                  in R.concat [ spaces
+                              , formattedLine
+                              , lineEnd
+                              ]
+
+getNextLine :: Int -> YiString -> (YiString, YiString)
+getNextLine maxLength str = let firstSplit = takeBlock (R.empty, R.dropWhile isSpace str)
+                                isMaxLength (l, r) = R.length l > maxLength || R.null r
+                            in if isMaxLength firstSplit
+                               then firstSplit
+                               else let (line, remainingText) = until isMaxLength
+                                                                      takeBlock
+                                                                      firstSplit
+                                    in if R.length line <= maxLength
+                                       then (R.dropWhileEnd isSpace line, remainingText)
+                                       else let (beginL, endL) = breakAtLastItem line
+                                            in if isSpace $ fromJust $ R.head endL
+                                               then (beginL, remainingText)
+                                               else (R.dropWhileEnd isSpace beginL, endL `R.append` remainingText)
+                            where
+                                isMatch (Just x) y = isSpace x == isSpace y
+                                isMatch Nothing _ = False
+
+                                -- Gets the next block of either whitespace, or non-whitespace,
+                                -- characters
+                                takeBlock (cur, rest) =
+                                    let (word, line) = R.span (isMatch $ R.head rest) rest
+                                    in (cur `R.append` R.map (\c -> if c == '\n' then ' ' else c) word, line)
+                                breakAtLastItem s =
+                                    let y = R.takeWhileEnd (isMatch $ R.last s) s
+                                        (x, _) = R.splitAt (R.length s - R.length y) s
+                                    in (x, y)
 
 mkCharTransformOperator :: OperatorName -> (Char -> Char) -> VimOperator
 mkCharTransformOperator name f = VimOperator {

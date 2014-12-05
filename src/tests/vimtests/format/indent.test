@@ -1,0 +1,9 @@
+-- Input
+(1,1)
+    Lorem ipsum dolor sit amet, consectetur adipiscing elit.  Donec a diam lectus.
+-- Output
+(2,5)
+    Lorem ipsum dolor sit amet, consectetur adipiscing elit.  Donec a diam
+    lectus.
+-- Events
+gqip
