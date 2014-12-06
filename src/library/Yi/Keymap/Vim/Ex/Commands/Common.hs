@@ -17,8 +17,10 @@ module Yi.Keymap.Vim.Ex.Commands.Common
     , parseWithBang
     , parseWithBangAndCount
     , parseRange
-    , OptionAction(..)
-    , parseOption
+    , BoolOptionAction(..)
+    , TextOptionAction(..)
+    , parseBoolOption
+    , parseTextOption
     , filenameComplete
     , forAllBuffers
     , pureExCommand
@@ -51,7 +53,6 @@ import           Yi.Utils
 parse :: P.GenParser Char () ExCommand -> EventString -> Maybe ExCommand
 parse parser (Ev s) =
   either (const Nothing) Just (P.parse parser "" $ T.unpack s)
-
 
 parseWithBangAndCount :: P.GenParser Char () a
                       -- ^ The command name parser.
@@ -166,29 +167,50 @@ parseNormalLinePoint = do
     ln <- read <$> P.many1 P.digit
     return . savingPointB $ gotoLn ln >> pointB
 
-data OptionAction = Set !Bool | Invert | Ask
+data BoolOptionAction = BoolOptionSet !Bool | BoolOptionInvert | BoolOptionAsk
 
-parseOption :: String -> (OptionAction -> Action) -> EventString -> Maybe ExCommand
-parseOption name action = parse $ do
+parseBoolOption :: T.Text -> (BoolOptionAction -> Action) -> EventString
+    -> Maybe ExCommand
+parseBoolOption name action = parse $ do
     void $ P.string "set "
     nos <- P.many (P.string "no")
     invs <- P.many (P.string "inv")
-    void $ P.string name
+    void $ P.string (T.unpack name)
     bangs <- P.many (P.string "!")
     qs <- P.many (P.string "?")
     return $ pureExCommand {
         cmdShow = T.concat [ "set "
                            , T.pack $ concat nos
-                           , T.pack name
+                           , name
                            , T.pack $ concat bangs
                            , T.pack $ concat qs ]
       , cmdAction = action $
           case fmap (not . null) [qs, bangs, invs, nos] of
-              [True, _, _, _] -> Ask
-              [_, True, _, _] -> Invert
-              [_, _, True, _] -> Invert
-              [_, _, _, True] -> Set False
-              _ -> Set True
+              [True, _, _, _] -> BoolOptionAsk
+              [_, True, _, _] -> BoolOptionInvert
+              [_, _, True, _] -> BoolOptionInvert
+              [_, _, _, True] -> BoolOptionSet False
+              _ -> BoolOptionSet True
+      }
+
+data TextOptionAction = TextOptionSet !T.Text | TextOptionAsk
+
+parseTextOption :: T.Text -> (TextOptionAction -> Action) -> EventString
+    -> Maybe ExCommand
+parseTextOption name action = parse $ do
+    void $ P.string "set "
+    void $ P.string (T.unpack name)
+    maybeNewValue <- P.optionMaybe $ do
+        void $ P.many1 P.space
+        void $ P.char '='
+        void $ P.many1 P.space
+        T.pack <$> P.many P.anyChar
+    return $ pureExCommand
+      { cmdShow = T.concat [ "set "
+                           , name
+                           , maybe "" (" = " <>) maybeNewValue
+                           ]
+      , cmdAction = action $ maybe TextOptionAsk TextOptionSet maybeNewValue
       }
 
 removePwd :: T.Text -> YiM T.Text

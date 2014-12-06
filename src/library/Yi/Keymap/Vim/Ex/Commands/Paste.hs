@@ -23,14 +23,14 @@ import Yi.Keymap.Vim.StateUtils
 import Yi.String (showT)
 
 parse :: EventString -> Maybe ExCommand
-parse = parseOption "paste" action
+parse = parseBoolOption "paste" action
 
-action :: OptionAction -> Action
-action Ask = EditorA $ do
+action :: BoolOptionAction -> Action
+action BoolOptionAsk = EditorA $ do
     value <- vsPaste <$> getEditorDyn
     printMsg $ "paste = " <> showT value
-action (Set b) = modPaste $ const b
-action Invert = modPaste not
+action (BoolOptionSet b) = modPaste $ const b
+action BoolOptionInvert = modPaste not
 
 modPaste :: (Bool -> Bool) -> Action
 modPaste f = EditorA . modifyStateE $ \s -> s { vsPaste = f (vsPaste s) }
