@@ -18,12 +18,12 @@ module Yi.File (
   openNewFile,
 
   viWrite, viWriteTo, viSafeWriteTo,
-  fwriteE,        -- :: YiM ()
-  fwriteBufferE,  -- :: BufferM ()
-  fwriteAllE,     -- :: YiM ()
-  fwriteToE,      -- :: String -> YiM ()
-  backupE,        -- :: FilePath -> YiM ()
-  revertE,        -- :: YiM ()
+  fwriteE,
+  fwriteBufferE,
+  fwriteAllY,
+  fwriteToE,
+  backupE,
+  revertE,
 
   -- * Helper functions
   setFileName,
@@ -35,7 +35,7 @@ module Yi.File (
 
 import           Control.Applicative
 import           Control.Lens hiding (act, Action)
-import           Control.Monad (when, void)
+import           Control.Monad (filterM, when, void)
 import           Control.Monad.Base
 import           Data.Default
 import           Data.Monoid
@@ -169,11 +169,10 @@ fwriteToE f = do
   fwriteBufferE b
 
 -- | Write all open buffers
-fwriteAllE :: YiM Bool
-fwriteAllE =
-  do allBuffs <- gets bufferSet
-     let modifiedBuffers = filter (not . isUnchangedBuffer) allBuffs
-     and <$> mapM fwriteBufferE (fmap bkey modifiedBuffers)
+fwriteAllY :: YiM Bool
+fwriteAllY = do
+    modifiedBuffers <- filterM deservesSave =<< gets bufferSet
+    and <$> mapM fwriteBufferE (fmap bkey modifiedBuffers)
 
 -- | Make a backup copy of file
 backupE :: FilePath -> YiM ()

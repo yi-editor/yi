@@ -97,5 +97,5 @@ quitAllE = do
 
 saveAndQuitAllE :: YiM ()
 saveAndQuitAllE = do
-    succeed <- fwriteAllE
+    succeed <- fwriteAllY
     when succeed quitEditor
