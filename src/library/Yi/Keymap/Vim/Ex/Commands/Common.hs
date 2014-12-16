@@ -201,9 +201,9 @@ parseTextOption name action = parse $ do
     void $ P.string "set "
     void $ P.string (T.unpack name)
     maybeNewValue <- P.optionMaybe $ do
-        void $ P.many1 P.space
+        void $ P.many P.space
         void $ P.char '='
-        void $ P.many1 P.space
+        void $ P.many P.space
         T.pack <$> P.many P.anyChar
     return $ pureExCommand
       { cmdShow = T.concat [ "set "
