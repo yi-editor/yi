@@ -149,6 +149,7 @@ defaultConfig =
                         AnyMode cppMode,
                         AnyMode Haskell.literateMode,
                         AnyMode cabalMode,
+                        AnyMode clojureMode,
                         AnyMode gnuMakeMode,
                         AnyMode srmcMode,
                         AnyMode ocamlMode,

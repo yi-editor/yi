@@ -12,7 +12,7 @@
 -- Definitions for the bulk of modes shipped with Yi.
 
 module Yi.Modes (TokenBasedMode, fundamentalMode,
-                 cMode, objectiveCMode, cppMode, cabalMode,
+                 cMode, objectiveCMode, cppMode, cabalMode,  clojureMode,
                  srmcMode, ocamlMode, ottMode, gnuMakeMode,
                  perlMode, pythonMode, javaMode, jsonMode, anyExtension,
                  extensionOrContentsMatch, linearSyntaxMode,
@@ -34,6 +34,7 @@ import           Yi.Keymap
 import           Yi.Lexer.Alex
 import qualified Yi.Lexer.C          as C
 import qualified Yi.Lexer.Cabal      as Cabal
+import qualified Yi.Lexer.Clojure    as Clojure
 import qualified Yi.Lexer.Cplusplus  as Cplusplus
 import qualified Yi.Lexer.GNUMake    as GNUMake
 import qualified Yi.Lexer.GitCommit  as GitCommit
@@ -130,6 +131,10 @@ cabalMode = styleMode Cabal.lexer
   & modeAppliesA .~ anyExtension [ "cabal" ]
   & modeToggleCommentSelectionA .~ Just (toggleCommentB "--")
 
+clojureMode :: StyleBasedMode
+clojureMode = styleMode Clojure.lexer
+  & modeNameA .~ "clojure"
+  & modeAppliesA .~ anyExtension [ "clj", "edn" ]
 
 srmcMode :: StyleBasedMode
 srmcMode = styleMode Srmc.lexer
