@@ -1,3 +1,4 @@
+{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# OPTIONS_HADDOCK show-extensions #-}
 
@@ -24,6 +25,7 @@ module Yi.Buffer.Indent
     , indentOfCurrentPosB
     , indentSettingsB
     , indentToB
+    , modifyIndentB
     , newlineAndIndentB
     , shiftIndentOfRegionB
     , tabB
@@ -39,6 +41,7 @@ import           Yi.Buffer.HighLevel
 import           Yi.Buffer.Misc
 import           Yi.Buffer.Normal
 import           Yi.Buffer.Region
+import           Yi.Buffer.TextUnit
 import           Yi.Rope (YiString)
 import qualified Yi.Rope as R
 import           Yi.String
@@ -253,9 +256,17 @@ lastOpenBracketHint input =
   isClosing _   = False
 
 -- | Returns the indentation of a given string. Note that this depends
---on the current indentation settings.
+-- on the current indentation settings.
 indentOfB :: YiString -> BufferM Int
 indentOfB = spacingOfB . R.takeWhile isSpace
+
+makeIndentString :: Int -> BufferM YiString
+makeIndentString level = do
+  IndentSettings et _ sw <- indentSettingsB
+  let (q, r) = level `quotRem` sw
+  if et
+  then return (R.replicate level " ")
+  else return (R.replicate q "\t" <> R.replicate r " ")
 
 -- | Returns the length of a given string taking into account the
 -- white space and the indentation settings.
@@ -273,11 +284,19 @@ spacingOfB text = do
     of the line then we wish to remain pointing to the same character.
 -}
 indentToB :: Int -> BufferM ()
-indentToB level = do
-  indentSettings <- indentSettingsB
-  r <- regionOfB Line
-  when (regionDirection r == Forward) $
-    modifyRegionB (rePadString indentSettings level) r
+indentToB = modifyIndentB . const
+
+-- | Modifies current line indent measured in visible spaces.
+-- Respects indent settings. Calling this with value (+ 4)
+-- will turn "\t" into "\t\t" if shiftwidth is 4 and into
+-- "\t    " if shiftwidth is 8
+-- If current line is empty nothing happens.
+modifyIndentB :: (Int -> Int) -> BufferM ()
+modifyIndentB f = do
+  leadingSpaces <- regionWithTwoMovesB moveToSol firstNonSpaceB
+  newLeadinSpaces <-
+    readRegionB leadingSpaces >>= indentOfB >>= makeIndentString . f
+  modifyRegionB (const newLeadinSpaces) leadingSpaces
 
 -- | Indent as much as the previous line
 indentAsPreviousB :: BufferM ()

@@ -1,0 +1,8 @@
+-- Input
+(1,6)
+    foo
+-- Output
+(1,2)
+foo
+-- Events
+i<C-d>

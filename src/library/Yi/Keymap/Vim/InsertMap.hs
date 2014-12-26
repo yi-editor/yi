@@ -152,6 +152,7 @@ printableAction :: EventString -> EditorM RepeatToken
 printableAction evs = do
     saveInsertEventStringE evs
     currentCursor <- withCurrentBuffer pointB
+    IndentSettings et ts sw <- withCurrentBuffer indentSettingsB
     secondaryCursors <- fmap vsSecondaryCursors getEditorDyn
     let allCursors = currentCursor :| secondaryCursors
     marks <- withCurrentBuffer $ forM' allCursors $ \cursor -> do
@@ -183,12 +184,11 @@ printableAction evs = do
                   indentAsTheMostIndentedNeighborLineB
               firstNonSpaceB
           "<Tab>" -> do
-              IndentSettings et _ts sw <- indentSettingsB
               if et
               then insertN' . R.fromString $ replicate sw ' '
               else insertB' '\t'
-          "<C-t>"      -> shiftIndentOfRegionB 1 =<< regionOfB Line
-          "<C-d>"      -> shiftIndentOfRegionB (-1) =<< regionOfB Line
+          "<C-t>"      -> modifyIndentB (+ sw)
+          "<C-d>"      -> modifyIndentB (max 0 . subtract sw)
           "<C-e>"      -> insertCharWithBelowB
           "<C-y>"      -> insertCharWithAboveB
           "<BS>"       -> bdeleteB'
