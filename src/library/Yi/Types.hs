@@ -249,7 +249,7 @@ instance Binary Yi.Types.Attributes where
 
 data BufferId = MemBuffer T.Text
               | FileBuffer FilePath
-              deriving (Show, Eq)
+              deriving (Show, Eq, Ord)
 
 instance Binary BufferId where
   get = B.get >>= \case
