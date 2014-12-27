@@ -11,6 +11,7 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE TupleSections #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 {-# OPTIONS_HADDOCK show-extensions #-}
@@ -103,6 +104,7 @@ module Yi.Buffer.Misc
   , movingToPrefVisCol
   , preferColA
   , markSavedB
+  , retroactivelyAtSavePointB
   , addOverlayB
   , delOverlayB
   , delOverlaysOfOwnerB
@@ -486,25 +488,36 @@ undoRedo :: (forall syntax. Mark -> URList -> BufferImpl syntax
              -> (BufferImpl syntax, (URList, [Update])))
          -> BufferM ()
 undoRedo f = do
-  m <- getInsMark
-  ur <- use undosA
-  (ur', updates) <- queryAndModify (f m ur)
-  assign undosA ur'
-  tell updates
+  isTransacPresent <- use updateTransactionInFlightA
+  if isTransacPresent
+  then error "Can't undo while undo transaction is in progress"
+  else do
+      m <- getInsMark
+      ur <- use undosA
+      (ur', updates) <- queryAndModify (f m ur)
+      assign undosA ur'
+      tell updates
 
 undoB :: BufferM ()
-undoB = do
-    isTransacPresent <- use updateTransactionInFlightA
-    if isTransacPresent
-    then error "Can't undo while undo transaction is in progress"
-    else undoRedo undoU
+undoB = undoRedo undoU
 
 redoB :: BufferM ()
-redoB = do
-    isTransacPresent <- use updateTransactionInFlightA
-    if isTransacPresent
-    then error "Can't undo while undo transaction is in progress"
-    else undoRedo redoU
+redoB = undoRedo redoU
+
+-- | Undo all updates that happened since last save,
+-- perform a given action and redo all updates again.
+-- Given action must not modify undo history.
+retroactivelyAtSavePointB :: BufferM a -> BufferM a
+retroactivelyAtSavePointB action = do
+    (undoDepth, result) <- go 0
+    replicateM_ undoDepth redoB
+    return result
+    where
+        go step = do
+            atSavedPoint <- gets isUnchangedBuffer
+            if atSavedPoint
+            then (step,) <$> action
+            else undoB >> go (step + 1)
 
 
 -- | Analogous to const, but returns a function that takes two parameters,

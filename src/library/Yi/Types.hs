@@ -206,30 +206,35 @@ instance Binary a => Binary (MarkSet a) where
   put (MarkSet f i s) = B.put f >> B.put i >> B.put s
   get = liftM3 MarkSet B.get B.get B.get
 
-data Attributes = Attributes
-                { ident :: !BufferId
-                , bkey__   :: !BufferRef          -- ^ immutable unique key
-                , undos  :: !URList               -- ^ undo/redo list
-                , bufferDynamic :: !DynamicState.DynamicState  -- ^ dynamic components
-                , preferCol :: !(Maybe Int)       -- ^ prefered column to arrive at when we do a lineDown / lineUp
-                , preferVisCol :: !(Maybe Int)    -- ^ prefered column to arrive at visually (ie, respecting wrap)
-                , pendingUpdates :: ![UIUpdate]   -- ^ updates that haven't been synched in the UI yet
-                , selectionStyle :: !SelectionStyle
-                , keymapProcess :: !KeymapProcess
-                , winMarks :: !(M.Map WindowRef WinMarks)
-                , lastActiveWindow :: !Window
-                , lastSyncTime :: !UTCTime        -- ^ time of the last synchronization with disk
-                , readOnly :: !Bool               -- ^ read-only flag
-                , inserting                 :: !Bool -- ^ the keymap is ready for insertion into this buffer
-                , directoryContent          :: !Bool -- ^ does buffer contain directory contents
-                , pointFollowsWindow        :: !(WindowRef -> Bool)
-                , updateTransactionInFlight :: !Bool
-                , updateTransactionAccum    :: ![Update]
-                , fontsizeVariation         :: !Int
-                , encodingConverterName     :: Maybe R.ConverterName
-                  -- ^ How many points (frontend-specific) to change
-                  -- the font by in this buffer
-                } deriving Typeable
+data Attributes
+    = Attributes
+    { ident :: !BufferId
+    , bkey__   :: !BufferRef -- ^ immutable unique key
+    , undos  :: !URList -- ^ undo/redo list
+    , bufferDynamic :: !DynamicState.DynamicState -- ^ dynamic components
+    , preferCol :: !(Maybe Int)
+    -- ^ prefered column to arrive at when we do a lineDown / lineUp
+    , preferVisCol :: !(Maybe Int)
+    -- ^ prefered column to arrive at visually (ie, respecting wrap)
+    , pendingUpdates :: ![UIUpdate]
+    -- ^ updates that haven't been synched in the UI yet
+    , selectionStyle :: !SelectionStyle
+    , keymapProcess :: !KeymapProcess
+    , winMarks :: !(M.Map WindowRef WinMarks)
+    , lastActiveWindow :: !Window
+    , lastSyncTime :: !UTCTime
+    -- ^ time of the last synchronization with disk
+    , readOnly :: !Bool -- ^ read-only flag
+    , inserting :: !Bool -- ^ the keymap is ready for insertion into this buffer
+    , directoryContent :: !Bool -- ^ does buffer contain directory contents
+    , pointFollowsWindow :: !(WindowRef -> Bool)
+    , updateTransactionInFlight :: !Bool
+    , updateTransactionAccum :: ![Update]
+    , fontsizeVariation :: !Int
+    , encodingConverterName :: Maybe R.ConverterName
+      -- ^ How many points (frontend-specific) to change
+      -- the font by in this buffer
+    } deriving Typeable
 
 
 instance Binary Yi.Types.Attributes where
