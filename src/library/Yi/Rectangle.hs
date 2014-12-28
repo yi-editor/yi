@@ -30,9 +30,9 @@ alignRegion str = do
   modifyRegionB (R.fromText . alignText str . R.toText) s
   where
     regexSplit :: T.Text -> T.Text -> [T.Text]
-    regexSplit r l = case ICU.find (ICU.regex [] r) l of
-      Just m  -> drop 1 $ ICU.unfold ICU.group m
-      Nothing -> error "regexSplit: text does not match"
+    regexSplit pattern l = case ICU.find (ICU.regex [] pattern) l of
+        Nothing -> error "regexSplit: text does not match"
+        Just m  -> drop 1 $ ICU.unfold ICU.group m
 
     alignText :: T.Text -> T.Text -> T.Text
     alignText regex text = unlines' ls'
