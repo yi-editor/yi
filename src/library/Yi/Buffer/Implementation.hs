@@ -77,6 +77,7 @@ import           Data.List (groupBy)
 import qualified Data.Map as M
 import           Data.Maybe
 import           Data.Monoid
+import           Text.Regex.TDFA
 import           Yi.Rope (YiString)
 import qualified Yi.Rope as R
 import qualified Data.Set as Set

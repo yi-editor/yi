@@ -53,6 +53,7 @@ import qualified Language.Haskell.Interpreter as LHI
 import           Prelude hiding (error, mapM_)
 import           System.Directory (doesFileExist)
 import           Text.Read (readMaybe)
+import           Text.Regex.TDFA
 import           Yi.Boot.Internal (reload)
 import           Yi.Buffer
 import           Yi.Config.Simple.Types
