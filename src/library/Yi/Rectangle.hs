@@ -18,7 +18,7 @@ import           Control.Monad
 import           Data.List (sort, transpose)
 import           Data.Monoid
 import qualified Data.Text as T
-import "regex-tdfa" Text.Regex.TDFA
+import qualified Data.Text.ICU as ICU
 import           Yi.Buffer
 import           Yi.Editor
 import qualified Yi.Rope as R
@@ -29,17 +29,17 @@ alignRegion str = do
   s <- getSelectRegionB >>= unitWiseRegion Line
   modifyRegionB (R.fromText . alignText str . R.toText) s
   where
-    regexSplit :: String -> String -> [T.Text]
-    regexSplit regex l = case l =~ regex of
-        AllTextSubmatches (_:matches) -> T.pack <$> matches
-        _ -> error "regexSplit: text does not match"
+    regexSplit :: T.Text -> T.Text -> [T.Text]
+    regexSplit pattern l = case ICU.find (ICU.regex [] pattern) l of
+        Nothing -> error "regexSplit: text does not match"
+        Just m  -> drop 1 $ ICU.unfold ICU.group m
 
     alignText :: T.Text -> T.Text -> T.Text
     alignText regex text = unlines' ls'
       where ls, ls' :: [T.Text]
             ls = lines' text
             columns :: [[T.Text]]
-            columns = regexSplit (T.unpack regex) <$> (T.unpack <$> ls)
+            columns = regexSplit regex <$> ls
 
             columnsWidth :: [Int]
             columnsWidth = fmap (maximum . fmap T.length) $ transpose columns

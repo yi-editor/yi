@@ -25,9 +25,9 @@ import           Control.Applicative
 import           Control.Lens
 import           Data.List (isPrefixOf)
 import           Data.Maybe
-import           Data.Text ()
+import qualified Data.Text as T (Text)
+import           Data.Text.ICU as ICU
 import           System.FilePath
-import "regex-tdfa" Text.Regex.TDFA ((=~))
 import           Yi.Buffer
 import qualified Yi.IncrementalParse as IncrParser
 import           Yi.Keymap
@@ -234,10 +234,12 @@ anyExtension extensions fileName _contents
 
 -- | When applied to an extensions list and regular expression pattern, creates
 -- a 'Mode.modeApplies' function.
-extensionOrContentsMatch :: [String] -> String -> FilePath -> R.YiString -> Bool
+extensionOrContentsMatch :: [String] -> T.Text -> FilePath -> R.YiString -> Bool
 extensionOrContentsMatch extensions pattern fileName contents
-    = extensionMatches extensions fileName || contentsMatch
-    where contentsMatch = R.toString contents =~ pattern :: Bool
+    = extensionMatches extensions fileName || isJust m
+    where
+        r = ICU.regex [] pattern
+        m = ICU.find r $ R.toText contents
 
 -- | Adds a hook to all matching hooks in a list
 hookModes :: (AnyMode -> Bool) -> BufferM () -> [AnyMode] -> [AnyMode]
