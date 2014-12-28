@@ -75,6 +75,7 @@ import           System.PosixCompat.Files
 import           System.PosixCompat.Types
 import           System.PosixCompat.User
 import           Text.Printf
+import           Text.Regex.TDFA
 import           Yi.Buffer
 import           Yi.Config
 import           Yi.Core
