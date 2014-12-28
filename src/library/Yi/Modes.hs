@@ -236,8 +236,10 @@ anyExtension extensions fileName _contents
 -- a 'Mode.modeApplies' function.
 extensionOrContentsMatch :: [String] -> T.Text -> FilePath -> R.YiString -> Bool
 extensionOrContentsMatch extensions pattern fileName contents
-    = extensionMatches extensions fileName || contentsMatch contents
-    where contentsMatch = isJust . ICU.find (ICU.regex [] pattern) . R.toText
+    = extensionMatches extensions fileName || isJust m
+    where
+        r = ICU.regex [] pattern
+        m = ICU.find r $ R.toText contents
 
 -- | Adds a hook to all matching hooks in a list
 hookModes :: (AnyMode -> Bool) -> BufferM () -> [AnyMode] -> [AnyMode]
