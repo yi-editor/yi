@@ -54,6 +54,7 @@ specList =
 
 stringToEvent :: String -> Event
 stringToEvent "<" = error "Invalid event string \"<\""
+stringToEvent "<C-@>" = (Event (KASCII ' ') [MCtrl])
 stringToEvent s@('<':'C':'-':_) = stringToEvent' 3 s ctrl
 stringToEvent s@('<':'M':'-':_) = stringToEvent' 3 s meta
 stringToEvent s@('<':'a':'-':_) = stringToEvent' 3 s meta
@@ -78,6 +79,7 @@ stringToEvent' toDrop inputString modifier =
 eventToEventString :: Event -> EventString
 eventToEventString e = case e of
   Event (KASCII '<') []       -> Ev "<lt>"
+  Event (KASCII ' ') [MCtrl]  -> Ev "<C-@>"
   Event (KASCII c)   []       -> Ev $ T.singleton c
   Event (KASCII c)   [MCtrl]  -> Ev $ mkMod MCtrl c
   Event (KASCII c)   [MMeta]  -> Ev $ mkMod MMeta c
