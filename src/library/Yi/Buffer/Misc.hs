@@ -54,7 +54,7 @@ module Yi.Buffer.Misc
   , lineDown
   , newB
   , MarkValue(..)
-  , Overlay
+  , Overlay (overlayAnnotation)
   , mkOverlay
   , gotoLn
   , gotoLnFrom
@@ -108,6 +108,8 @@ module Yi.Buffer.Misc
   , addOverlayB
   , delOverlayB
   , delOverlaysOfOwnerB
+  , getOverlaysOfOwnerB
+  , isPointInsideOverlay
   , savingExcursionB
   , savingPointB
   , savingPositionB
@@ -197,6 +199,7 @@ import           Data.Foldable
 import           Data.Function hiding ((.), id)
 import qualified Data.Map as M
 import           Data.Maybe
+import qualified Data.Set as Set
 import qualified Data.Text as T
 import qualified Data.Text.Encoding as E
 import           Data.Time
@@ -387,6 +390,9 @@ addOverlayB ov = do
   pendingUpdatesA %= (++ [overlayUpdate ov])
   modifyBuffer $ addOverlayBI ov
 
+getOverlaysOfOwnerB :: R.YiString -> BufferM (Set.Set Overlay)
+getOverlaysOfOwnerB owner = queryBuffer (getOverlaysOfOwnerBI owner)
+
 -- | Remove an existing "overlay"
 delOverlayB :: Overlay -> BufferM ()
 delOverlayB ov = do
@@ -396,6 +402,11 @@ delOverlayB ov = do
 delOverlaysOfOwnerB :: R.YiString -> BufferM ()
 delOverlaysOfOwnerB owner =
   modifyBuffer $ delOverlaysOfOwnerBI owner
+
+isPointInsideOverlay :: Point -> Overlay -> Bool
+isPointInsideOverlay point overlay =
+    let Overlay _ (MarkValue start _) (MarkValue finish _) _ _ = overlay
+    in start <= point && point <= finish
 
 -- | Execute a @BufferM@ value on a given buffer and window.  The new state of
 -- the buffer is returned alongside the result of the computation.

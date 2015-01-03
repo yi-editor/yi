@@ -28,7 +28,7 @@ module Yi.Buffer.Implementation
   , Size
   , Direction (..)
   , BufferImpl
-  , Overlay
+  , Overlay (..)
   , mkOverlay
   , overlayUpdate
   , applyUpdateI
@@ -52,6 +52,7 @@ module Yi.Buffer.Implementation
   , addOverlayBI
   , delOverlayBI
   , delOverlaysOfOwnerBI
+  , getOverlaysOfOwnerBI
   , updateSyntax
   , getAst, focusAst
   , strokesRangesBI
@@ -110,14 +111,21 @@ data Overlay = Overlay
     , _overlayBegin :: MarkValue
     , _overlayEnd :: MarkValue
     , _overlayStyle :: StyleName
+    , overlayAnnotation :: R.YiString
     }
 
 instance Eq Overlay where
-    Overlay a b c _ == Overlay a' b' c' _ = a == a' && b == b' && c == c'
+    Overlay a b c _ msg == Overlay a' b' c' _ msg' =
+        a == a' && b == b' && c == c' && msg == msg'
 
 instance Ord Overlay where
-    compare (Overlay a b c _) (Overlay a' b' c' _)
-        = compare a a' `mappend` compare b b' `mappend` compare c c'
+    compare (Overlay a b c _ msg) (Overlay a' b' c' _ msg')
+        = mconcat
+            [ compare a a'
+            , compare b b'
+            , compare c c'
+            , compare msg msg'
+            ]
 
 data BufferImpl syntax = FBufferData
     { mem        :: !YiString -- ^ buffer text
@@ -217,7 +225,7 @@ shiftMarkValue from by (MarkValue p gravity) = MarkValue shifted gravity
               where p' = max from (p +~ by)
 
 mapOvlMarks :: (MarkValue -> MarkValue) -> Overlay -> Overlay
-mapOvlMarks f (Overlay l s e v) = Overlay l (f s) (f e) v
+mapOvlMarks f (Overlay _owner s e v msg) = Overlay _owner (f s) (f e) v msg
 
 -------------------------------------
 -- * "high-level" (exported) operations
@@ -246,7 +254,7 @@ getIndexedStream Backward (Point p) = zip (dF (pred (Point p))) . R.toReverseStr
       dF n = n : dF (pred n)
 
 -- | Create an "overlay" for the style @sty@ between points @s@ and @e@
-mkOverlay :: R.YiString -> Region -> StyleName -> Overlay
+mkOverlay :: R.YiString -> Region -> StyleName -> R.YiString -> Overlay
 mkOverlay owner r =
     Overlay owner
         (MarkValue (regionStart r) Backward)
@@ -254,7 +262,7 @@ mkOverlay owner r =
 
 -- | Obtain a style-update for a specific overlay
 overlayUpdate :: Overlay -> UIUpdate
-overlayUpdate (Overlay _owner (MarkValue s _) (MarkValue e _) _) =
+overlayUpdate (Overlay _owner (MarkValue s _) (MarkValue e _) _ _ann) =
     StyleUpdate s (e ~- s)
 
 -- | Add a style "overlay" between the given points.
@@ -268,6 +276,11 @@ delOverlayBI ov fb = fb{overlays = Set.delete ov (overlays fb)}
 delOverlaysOfOwnerBI :: R.YiString -> BufferImpl syntax -> BufferImpl syntax
 delOverlaysOfOwnerBI owner fb =
     fb{overlays = Set.filter ((/= owner) . overlayOwner) (overlays fb)}
+
+getOverlaysOfOwnerBI :: R.YiString -> BufferImpl syntax -> Set.Set Overlay
+getOverlaysOfOwnerBI owner fb =
+    Set.filter ((== owner) . overlayOwner) (overlays fb)
+
 -- FIXME: this can be really inefficient.
 
 -- | Return style information for the range @(i,j)@ Style information
@@ -296,7 +309,8 @@ strokesRangesBI getStrokes regex rgn  point fb = result
                Just re -> takeIn $ map hintStroke $ regexRegionBI re (mkRegion i j) fb
                Nothing -> []
     result = map (map clampStroke . takeIn . dropBefore) (layer3 : layers2 ++ [syntaxHlLayer, groundLayer])
-    overlayStroke (Overlay _ sm  em a) = Span (markPoint sm) a (markPoint em)
+    overlayStroke (Overlay _owner sm  em a _msg) =
+        Span (markPoint sm) a (markPoint em)
     clampStroke (Span l x r) = Span (max i l) x (min j r)
     hintStroke r = Span (regionStart r) (if point `nearRegion` r then strongHintStyle else hintStyle) (regionEnd r)
 
