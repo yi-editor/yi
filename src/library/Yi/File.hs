@@ -104,7 +104,7 @@ revertE =
 viWrite :: YiM ()
 viWrite =
   withCurrentBuffer (gets file) >>= \case
-    Nothing -> errorEditor "no file name associate with buffer"
+    Nothing -> errorEditor "no file name associated with buffer"
     Just f  -> do
       bufInfo <- withCurrentBuffer bufInfoB
       let s   = bufInfoFileName bufInfo
