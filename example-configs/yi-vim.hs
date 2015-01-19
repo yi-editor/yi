@@ -46,7 +46,6 @@ myBindings eval =
                                     _ -> V2.NoMatch)
     in [ nmap "<C-h>" previousTabE
        , nmap "<C-l>" nextTabE
-       , nmap "<C-l>" nextTabE
 
          -- Press space to clear incremental search highlight
        , nmap " " (eval ":nohlsearch<CR>")
