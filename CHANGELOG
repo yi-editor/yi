@@ -1,8 +1,13 @@
+
 0.11.2
 -------
 
+ * Clojure syntax highlighting
+ * Vim operator gq (reflow text) now works
  * Vim insert keymap now includes page up/page down/end/home, and <C-w>←↑→↓ for navigating between windows.
- * Added :help, and :undo commands in Ex mode. With no arguments :help displays all visible :yi commands.
+ * CUA keymap got page up and page down too
+ * New ex commands for vim keymap: :sort, :help, :undo.
+   With no arguments :help displays all visible :yi commands.
    Given an argument, it displays type of this command or identifier.
  * Yi's own HLint rules are expanded.
 
