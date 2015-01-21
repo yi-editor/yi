@@ -282,11 +282,15 @@ prevNParagraphs n = replicateM_ n $ moveB unitEmacsParagraph Backward
 -- @goUnmatchedB Forward '{' '}'@
 -- Move to the next unmatched '}'
 goUnmatchedB :: Direction -> Char -> Char -> BufferM ()
-goUnmatchedB dir cStart' cStop' = stepB >> readB >>= go (0::Int)
-  where go opened c | c == cStop && opened == 0 = return ()
-                    | c == cStop                = stepB >> readB >>= go (opened-1)
-                    | c == cStart               = stepB >> readB >>= go (opened+1)
-                    | otherwise                 = stepB >> readB >>= go opened
+goUnmatchedB dir cStart' cStop' = getLineAndCol >>= \position ->
+  stepB >> readB >>= go position (0::Int)
+  where go pos opened c
+           | c == cStop && opened == 0 = return ()
+           | c == cStop       = stepB >> readB >>= go pos (opened-1)
+           | c == cStart      = stepB >> readB >>= go pos (opened+1)
+           | otherwise        = atEof >>= \eof -> if not eof
+                              then stepB >> readB >>= go pos opened
+                              else gotoLn (fst pos) >> moveToColB (snd pos)
         (stepB, cStart, cStop) | dir == Forward = (rightB, cStart', cStop')
                                | otherwise      = (leftB, cStop', cStart')
 
