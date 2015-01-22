@@ -357,12 +357,13 @@ indentString is numOfShifts i = rePadString is newCount i
 shiftIndentOfRegionB :: Int -> Region -> BufferM ()
 shiftIndentOfRegionB shiftCount region = do
     is <- indentSettingsB
-    let i :: R.YiString -> R.YiString
-        i = indentString is shiftCount `unless` R.null
+    let indentFn :: R.YiString -> R.YiString
+        indentFn line = if not (R.null line) && line /= R.fromString "\n"
+            then indentString is shiftCount line
+            else line
     modifyRegionB (mapLines i) region
     moveTo $ regionStart region
     firstNonSpaceB
-  where (f `unless` c) x = if c x then x else f x
 
 -- | Return the number of spaces at the beginning of the line, up to
 -- the point.
