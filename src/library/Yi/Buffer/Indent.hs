@@ -358,7 +358,7 @@ shiftIndentOfRegionB :: Int -> Region -> BufferM ()
 shiftIndentOfRegionB shiftCount region = do
     is <- indentSettingsB
     let indentFn :: R.YiString -> R.YiString
-        indentFn line = if not (R.null line) && line /= R.fromString "\n"
+        indentFn line = if not (R.null line) && line /= "\n"
             then indentString is shiftCount line
             else line
     modifyRegionB (mapLines indentFn) region
