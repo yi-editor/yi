@@ -361,7 +361,7 @@ shiftIndentOfRegionB shiftCount region = do
         indentFn line = if not (R.null line) && line /= R.fromString "\n"
             then indentString is shiftCount line
             else line
-    modifyRegionB (mapLines i) region
+    modifyRegionB (mapLines indentFn) region
     moveTo $ regionStart region
     firstNonSpaceB
 
