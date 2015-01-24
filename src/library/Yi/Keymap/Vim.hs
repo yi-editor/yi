@@ -155,7 +155,7 @@ genericHandleEvent getBindings pick config unconvertedEvent needsToConvertEvents
             _ -> return ()
 
         performEvalIfNecessary config
-        updateModeIndicatorE prevMode
+        updateModeIndicatorE currentState
 
 performEvalIfNecessary :: VimConfig -> EditorM ()
 performEvalIfNecessary config = do

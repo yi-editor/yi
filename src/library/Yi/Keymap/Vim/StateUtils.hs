@@ -37,7 +37,7 @@ module Yi.Keymap.Vim.StateUtils
 import           Control.Applicative
 import           Control.Monad
 import qualified Data.HashMap.Strict as HM
-import           Data.Maybe (fromMaybe)
+import           Data.Maybe (fromMaybe, isJust)
 import           Data.Monoid
 import qualified Data.Text as T
 import           Yi.Buffer.Normal
@@ -144,12 +144,16 @@ maybeMult Nothing  b       = b
 setStickyEolE :: Bool -> EditorM ()
 setStickyEolE b = modifyStateE $ \s -> s { vsStickyEol = b }
 
-updateModeIndicatorE :: VimMode -> EditorM ()
-updateModeIndicatorE prevMode = do
+updateModeIndicatorE :: VimState -> EditorM ()
+updateModeIndicatorE prevState = do
   currentState <- getEditorDyn
-  let mode = vsMode currentState
+  let mode     = vsMode currentState
+      prevMode = vsMode prevState
       paste = vsPaste currentState
-  when (mode /= prevMode) $ do
+      isRecording   = isJust . vsCurrentMacroRecording $ currentState
+      prevRecording = isJust . vsCurrentMacroRecording $ prevState
+
+  when (mode /= prevMode || isRecording /= prevRecording) $ do
       let modeName = case mode of
             Insert _ -> "INSERT" <> if paste then " (paste) " else ""
             InsertNormal -> "(insert)"
@@ -159,9 +163,14 @@ updateModeIndicatorE prevMode = do
             Visual LineWise -> "VISUAL LINE"
             Visual _ -> "VISUAL"
             _ -> ""
-          decoratedModeName = if T.null modeName
+
+          decoratedModeName' = if T.null modeName
                               then mempty
                               else "-- " <> modeName <> " --"
+          decoratedModeName = if isRecording
+                              then decoratedModeName' <> "recording"
+                              else decoratedModeName'
+
       setStatus ([decoratedModeName], defaultStyle)
 
 saveInsertEventStringE :: EventString -> EditorM ()
