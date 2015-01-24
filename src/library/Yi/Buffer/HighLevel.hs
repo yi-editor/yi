@@ -17,6 +17,7 @@ module Yi.Buffer.HighLevel
     , atEol
     , atLastLine
     , atSol
+    , atSof
     , bdeleteB
     , bdeleteLineB
     , bkillWordB
