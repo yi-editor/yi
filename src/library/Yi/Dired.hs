@@ -63,14 +63,15 @@ import           Data.List hiding (find, maximum, concat)
 import qualified Data.Map as M
 import           Data.Monoid
 import qualified Data.Text as T
-import           Data.Time
+import           Data.Time hiding (defaultTimeLocale)
+import qualified Data.Time
 import           Data.Time.Clock.POSIX
 import           Data.Typeable
 import           System.CanonicalizePath (canonicalizePath)
 import           System.Directory hiding (canonicalizePath)
 import           System.FilePath
 import           System.FriendlyPath
-import           System.Locale
+import qualified System.Locale
 import           System.PosixCompat.Files
 import           System.PosixCompat.Types
 import           System.PosixCompat.User
@@ -729,6 +730,13 @@ modeString fm = ""
                 <> strIfSet "x" otherExecuteMode
     where
     strIfSet s mode = if fm == (fm `unionFileModes` mode) then s else "-"
+
+defaultTimeLocale =
+#if __GLASGOW_HASKELL__ < 710
+    System.Locale.defaultTimeLocale
+#else
+    Data.Time.defaultTimeLocale
+#endif
 
 shortCalendarTimeToString :: UTCTime -> String
 shortCalendarTimeToString = formatTime defaultTimeLocale "%b %d %H:%M"

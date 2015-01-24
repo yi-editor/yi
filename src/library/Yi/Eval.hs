@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE LambdaCase #-}
@@ -24,7 +25,9 @@ module Yi.Eval (
         Evaluator(..),
         evaluator,
         -- ** Standard evaluators
+#ifdef HINT
         ghciEvaluator,
+#endif
         publishedActionsEvaluator,
         publishedActions,
         publishAction,
@@ -49,10 +52,14 @@ import qualified Data.HashMap.Strict as M
 import           Data.List
 import           Data.Monoid
 import           Data.Typeable
-import qualified Language.Haskell.Interpreter as LHI
-import           Prelude hiding (error, mapM_)
+import           Prelude hiding (mapM_)
 import           System.Directory (doesFileExist)
 import           Text.Read (readMaybe)
+
+#ifdef HINT
+import qualified Language.Haskell.Interpreter as LHI
+#endif
+
 import           Yi.Boot.Internal (reload)
 import           Yi.Buffer
 import           Yi.Config.Simple.Types
@@ -112,7 +119,6 @@ data Evaluator = Evaluator
 evaluator :: Field Evaluator
 evaluator = customVariable
 
-instance Default Evaluator where def = ghciEvaluator
 instance YiConfigVariable Evaluator
 
 -- * Evaluator based on GHCi
@@ -130,6 +136,7 @@ instance Default HelpCache where
     def = HelpCache M.empty
 instance YiVariable HelpCache
 
+#ifdef HINT
 type HintRequest = (String, MVar (Either LHI.InterpreterError Action))
 newtype HintThreadVar = HintThreadVar (Maybe (MVar HintRequest))
   deriving (Typeable, Default)
@@ -245,6 +252,8 @@ ghciEvaluator = Evaluator { execEditorActionImpl = execAction
                        Just description -> return description
       return $ name ++ " :: " ++ description
 
+#endif
+
 -- * 'PublishedActions' evaluator
 
 newtype PublishedActions = PublishedActions {
@@ -345,3 +354,10 @@ consoleKeymap = do
         bm <- getBookmarkB "errorInsert"
         markPointA bm .= pt
       execEditorAction . R.toString $ takeCommand x
+
+instance Default Evaluator where
+#ifdef HINT
+    def = ghciEvaluator
+#else
+    def = publishedActionsEvaluator
+#endif
