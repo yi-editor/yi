@@ -1,0 +1,18 @@
+-- Input
+(1,1)
+        foo
+        bar
+
+        baz
+        123
+
+-- Output
+(1,5)
+    foo
+    bar
+
+    baz
+    123
+
+-- Events
+<lt>4j

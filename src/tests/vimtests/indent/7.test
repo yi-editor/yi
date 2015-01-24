@@ -1,0 +1,18 @@
+-- Input
+(1,1)
+    foo
+    bar
+
+    baz
+    123
+
+-- Output
+(1,9)
+        foo
+        bar
+
+        baz
+        123
+
+-- Events
+5>>
