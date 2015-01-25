@@ -466,7 +466,7 @@ diredDoDel = do
 diredDoMarkedDel :: YiM ()
 diredDoMarkedDel = do
   dir <- currentDir
-  fs <- markedFiles (`Data.List.elem` "D")
+  fs <- markedFiles (== 'D')
   askDelFiles dir fs
 
 diredKeymap :: Keymap -> Keymap
@@ -739,7 +739,7 @@ defaultTimeLocale =
 #endif
 
 shortCalendarTimeToString :: UTCTime -> String
-shortCalendarTimeToString = formatTime defaultTimeLocale "%b %d %H:%M"
+shortCalendarTimeToString = formatTime Data.Time.defaultTimeLocale "%b %d %H:%M"
 
 -- Default Filter: omit files ending in '~' or '#' and also '.' and '..'.
 -- TODO: customizable filters?
@@ -973,7 +973,7 @@ askCopyFiles dir fs =
 diredRename :: YiM ()
 diredRename = do
   dir <- currentDir
-  fs <- markedFiles (`Data.List.elem` "*")
+  fs <- markedFiles (== '*')
   if null fs then do maybefile <- withCurrentBuffer fileFromPoint
                      case maybefile of
                        Just (fn, de) -> askRenameFiles dir [(fn, de)]
@@ -983,7 +983,7 @@ diredRename = do
 diredCopy :: YiM ()
 diredCopy = do
   dir <- currentDir
-  fs <- markedFiles (`Data.List.elem` "*")
+  fs <- markedFiles (== '*')
   if null fs then do maybefile <- withCurrentBuffer fileFromPoint
                      case maybefile of
                        Just (fn, de) -> askCopyFiles dir [(fn, de)]

@@ -68,7 +68,7 @@ logPutStrLn s = liftBase $
       time <-  Data.Time.getCurrentTime
       tId <- myThreadId
       let m = show tId ++ " " ++ T.unpack s
-      hPutStrLn h $ formatTime defaultTimeLocale rfc822DateFormat' time ++ m
+      hPutStrLn h $ formatTime Data.Time.defaultTimeLocale rfc822DateFormat' time ++ m
       hFlush h
   where
     -- A bug in rfc822DateFormat makes us use our own format string

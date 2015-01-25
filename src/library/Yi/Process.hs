@@ -74,8 +74,8 @@ createSubprocess cmd args bufref = do
     (inp,out,err,handle) <- runInteractiveProcess cmd args Nothing Nothing
     let separate = True
 #else
-    (inpReadFd,inpWriteFd) <- createPipe
-    (outReadFd,outWriteFd) <- createPipe
+    (inpReadFd,inpWriteFd) <- System.Posix.IO.createPipe
+    (outReadFd,outWriteFd) <- System.Posix.IO.createPipe
     [inpRead,inpWrite,outRead,outWrite] <- mapM fdToHandle [inpReadFd,inpWriteFd,outReadFd,outWriteFd]
 
     handle <- runProcess cmd args Nothing Nothing (Just inpRead) (Just outWrite) (Just outWrite)

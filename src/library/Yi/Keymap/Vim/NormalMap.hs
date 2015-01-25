@@ -390,7 +390,7 @@ searchWordE wholeWord dir = do
 
 searchBinding :: VimBinding
 searchBinding = VimBindingE (f . T.unpack . _unEv)
-    where f evs (VimState { vsMode = Normal }) | evs `elem` group "/?"
+    where f evs (VimState { vsMode = Normal }) | evs `elem` group ['/', '?']
             = WholeMatch $ do
                   state <- fmap vsMode getEditorDyn
                   let dir = if evs == "/" then Forward else Backward
@@ -452,7 +452,7 @@ cutCharE dir count = do
 tabTraversalBinding :: VimBinding
 tabTraversalBinding = VimBindingE (f . T.unpack . _unEv)
     where f "g" (VimState { vsMode = Normal }) = PartialMatch
-          f ('g':c:[]) (VimState { vsMode = Normal }) | c `elem` "tT" = WholeMatch $ do
+          f ('g':c:[]) (VimState { vsMode = Normal }) | c `elem` ['t', 'T'] = WholeMatch $ do
               count <- getCountE
               replicateM_ count $ if c == 'T' then previousTabE else nextTabE
               resetCountE
