@@ -213,7 +213,7 @@ continuingBindings = fmap (mkStringBindingE Normal Continue)
     , ("i", return (), switchMode $ Insert 'i')
     , ("<Ins>", return (), switchMode $ Insert 'i')
     , ("I", withCurrentBuffer firstNonSpaceB, switchMode $ Insert 'I')
-    , ("a", withCurrentBuffer rightB, switchMode $ Insert 'a')
+    , ("a", withCurrentBuffer $ moveXorEol 1, switchMode $ Insert 'a')
     , ("A", withCurrentBuffer moveToEol, switchMode $ Insert 'A')
     , ("o", withCurrentBuffer $ do
           moveToEol
