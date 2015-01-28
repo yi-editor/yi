@@ -4,6 +4,7 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE OverloadedStrings #-}
 {-# OPTIONS_HADDOCK show-extensions #-}
 
 -- |
@@ -22,7 +23,6 @@ module Yi.Tag ( lookupTag
               , hintTags
               , completeTag
               , Tag(..)
-              , mkTag
               , unTag'
               , TagTable(..)
               , getTags
@@ -35,7 +35,6 @@ import           Control.Applicative
 import           Control.Lens
 import           Data.Binary
 import qualified Data.ByteString as BS
-import qualified Data.ByteString.UTF8 as BS8
 #if __GLASGOW_HASKELL__ < 708
 import           Data.DeriveTH
 #else
@@ -48,6 +47,7 @@ import           Data.Map (Map, fromListWith, lookup, keys)
 import           Data.Maybe (mapMaybe)
 import qualified Data.Text as T
 import qualified Data.Text.Encoding as E
+import qualified Data.Text.Read as R (decimal)
 import qualified Data.Trie as Trie
 import           Data.Typeable
 import           System.FilePath (takeFileName, takeDirectory, (</>))
@@ -78,12 +78,8 @@ instance YiVariable Tags
 
 newtype Tag = Tag { _unTag :: T.Text } deriving (Show, Eq, Ord)
 
--- | Helper
-mkTag :: String -> Tag
-mkTag = Tag . T.pack
-
-unTag' :: Tag -> String
-unTag' = T.unpack . _unTag
+unTag' :: Tag -> T.Text
+unTag' =  _unTag
 
 instance Binary Tag where
   put (Tag t) = put (E.encodeUtf8 t)
@@ -110,20 +106,21 @@ lookupTag tag tagTable = do
 
 -- | Super simple parsing CTag format 1 parsing algorithm
 -- TODO: support search patterns in addition to lineno
-readCTags :: String -> Map Tag [(FilePath, Int)]
+readCTags :: T.Text -> Map Tag [(FilePath, Int)]
 readCTags =
-    fromListWith (++) . mapMaybe (parseTagLine . words) . lines
+    fromListWith (++) . mapMaybe (parseTagLine . T.words) . T.lines
     where parseTagLine (tag:tagfile:lineno:_) =
               -- remove ctag control lines
-              if "!_TAG_" `isPrefixOf` tag then Nothing
-              else Just (mkTag tag, [(tagfile, fst . head . reads $ lineno)])
+              if "!_TAG_" `T.isPrefixOf` tag then Nothing
+              else Just (Tag tag, [(T.unpack tagfile, getLineNumber lineno)])
+              where getLineNumber = (\(Right x) -> x) . fmap fst . R.decimal
           parseTagLine _ = Nothing
 
 -- | Read in a tag file from the system
 importTagTable :: FilePath -> IO TagTable
 importTagTable filename = do
   friendlyName <-  expandTilda filename
-  tagStr <- fmap BS8.toString $ BS.readFile friendlyName
+  tagStr <- E.decodeUtf8 <$> BS.readFile friendlyName
   let cts = readCTags tagStr
   return TagTable { tagFileName = takeFileName filename
                   , tagBaseDir  = takeDirectory filename
