@@ -739,7 +739,7 @@ defaultTimeLocale =
 #endif
 
 shortCalendarTimeToString :: UTCTime -> String
-shortCalendarTimeToString = formatTime Data.Time.defaultTimeLocale "%b %d %H:%M"
+shortCalendarTimeToString = formatTime defaultTimeLocale "%b %d %H:%M"
 
 -- Default Filter: omit files ending in '~' or '#' and also '.' and '..'.
 -- TODO: customizable filters?
