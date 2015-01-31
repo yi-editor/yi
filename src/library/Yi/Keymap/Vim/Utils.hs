@@ -169,7 +169,7 @@ indentBlockRegionB count reg = do
   indentSettings <- indentSettingsB
   (start, lengths) <- shapeOfBlockRegionB reg
   moveTo start
-  forM_ (zip [1..] lengths) $ \(i, _) ->
+  forM_ (zip [1..] lengths) $ \(i, _) -> do
       whenM (not <$> atEol) $ do
         let w = shiftWidth indentSettings
         if count > 0
@@ -181,8 +181,8 @@ indentBlockRegionB count reg = do
                     when (c == ' ') $
                         deleteN 1 >> go (n - 1)
             go (abs count * w)
-        moveTo start
-        void $ lineMoveRel i
+      moveTo start
+      void $ lineMoveRel i
   moveTo start
 
 pasteInclusiveB :: YiString -> RegionStyle -> BufferM ()
