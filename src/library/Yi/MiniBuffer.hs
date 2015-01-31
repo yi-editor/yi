@@ -30,35 +30,104 @@ module Yi.MiniBuffer ( spawnMinibufferE, withMinibufferFree, withMinibuffer
                      , commentRegion, promptingForBuffer, debugBufferContent
                      ) where
 
-import           Control.Applicative
-import           Control.Concurrent
-import           Control.Lens hiding (act)
-import           Control.Monad
-import           Data.Foldable (find, toList)
-import           Data.IORef
+import Control.Applicative ( (<$>) )
+import Control.Concurrent ( threadDelay )
+import Control.Lens ( (%=), use )
+import Control.Monad ( when, forM, (>=>), (<=<), void )
+import Data.Foldable ( find, toList )
+import Data.IORef ( newIORef, readIORef, writeIORef )
 import qualified Data.List.PointedList.Circular as PL
-import           Data.Maybe
-import           Data.Monoid (mempty)
-import           Data.Proxy
-import           Data.String (IsString)
+    ( find, insertRight )
+import Data.Maybe ( catMaybes, fromMaybe, fromJust )
+import Data.Monoid ( mempty )
+import Data.Proxy ( Proxy )
+import Data.String ( IsString )
 import qualified Data.Text as T
-import           Data.Typeable
-import           System.CanonicalizePath (replaceShorthands)
-import           Yi.Buffer
-import           Yi.Completion (infixMatch, prefixMatch, containsMatch',
-                                completeInList, completeInList')
-import           Yi.Config
-import           Yi.Core
-import           Yi.Editor
-import           Yi.History
-import           Yi.Keymap
-import           Yi.Keymap.Keys
-import           Yi.Monad
-import qualified Yi.Rope as R
-import           Yi.Style (defaultStyle)
-import           Yi.String (commonTPrefix)
-import           Yi.Utils
-import           Yi.Window (bufkey)
+    ( Text, words, unpack, pack, head, null, append, isInfixOf, snoc )
+import Data.Typeable ( Typeable )
+import System.CanonicalizePath ( replaceShorthands )
+import Yi.Buffer
+    ( BufferRef,
+      bkey,
+      elemsB,
+      modeToggleCommentSelection,
+      toggleCommentB,
+      BufferId(MemBuffer),
+      shortIdentString,
+      AnyMode(..),
+      Point(..),
+      TextUnit(Line, Character, Document),
+      unitWord,
+      unitViWord,
+      Direction,
+      replaceRegionB,
+      mkRegion,
+      pointB,
+      readRegionB,
+      replaceBufferContent,
+      unitParagraph,
+      modeName,
+      modifyMode,
+      withMode0,
+      modeKeymap )
+import Yi.Completion
+    ( infixMatch,
+      prefixMatch,
+      containsMatch',
+      completeInList,
+      completeInList' )
+import Yi.Config ( modeTable )
+import Yi.Core ( runAction, forkAction )
+import Yi.Editor
+    ( withEditor,
+      getBufferStack,
+      withGivenBuffer,
+      findBuffer,
+      withCurrentBuffer,
+      stringToNewBuffer,
+      newWindowE,
+      windowsA,
+      closeBufferAndWindowE,
+      EditorM,
+      switchToBufferE,
+      askCfg,
+      getBufferWithNameOrCurrent,
+      bufferSet,
+      commonNamePrefix,
+      findBufferWith,
+      getBufferWithName,
+      currentBuffer,
+      printStatus,
+      currentWindowA )
+import Yi.History
+    ( historyStartGen, historyMove, historyFinishGen )
+import Yi.Keymap
+    ( YiAction,
+      YiM,
+      makeAction,
+      Action(YiA),
+      IsRefreshNeeded(NoNeedToRefresh),
+      insertKeymap,
+      topKeymap,
+      write,
+      KeymapEndo )
+import Yi.Keymap.Keys
+    ( Key(KTab, KDown, KUp, KEnter),
+      meta,
+      char,
+      spec,
+      ctrl,
+      choice,
+      oneOf,
+      (>>!),
+      (?>>!),
+      (<||) )
+import Yi.Monad ( gets )
+import qualified Yi.Rope as R ( YiString, fromText, toText )
+import Yi.Style ( defaultStyle )
+import Yi.String ( commonTPrefix )
+import Yi.Utils ( io )
+import Yi.Window ( bufkey )
 
 -- | Prints out the rope of the current buffer as-is to stdout.
 --

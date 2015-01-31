@@ -11,6 +11,7 @@
 module Yi.Keymap.Vim.MatchResult where
 
 import Control.Applicative
+    ( Applicative((<*>), pure), Alternative((<|>), empty) )
 
 data MatchResult a = NoMatch
                    | PartialMatch

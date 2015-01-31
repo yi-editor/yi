@@ -20,17 +20,24 @@ module Yi.Tab
  )  where
 
 import Prelude hiding (foldr, foldl)
-import Control.Lens
-import qualified Data.Binary as Binary
-import Data.Default
-import Data.Typeable
-import Data.Foldable
-import qualified Data.List.PointedList as PL
-import Control.Applicative
 
-import Yi.Buffer.Basic(WindowRef)
+import Control.Lens ( Lens', (^.), lens, over )
+import qualified Data.Binary as Binary ( get, put, Binary )
+import Data.Default ( def )
+import Data.Typeable ( Typeable )
+import Data.Foldable ( foldl, foldr, toList )
+import qualified Data.List.PointedList as PL
+    ( PointedList, _focus, singleton )
+import Control.Applicative ( (<$>), (<*>) )
+import Yi.Buffer.Basic ( WindowRef )
 import Yi.Layout
-import Yi.Window
+    ( AnyLayoutManager,
+      DividerPosition,
+      DividerRef,
+      dividerPositionA,
+      Layout,
+      pureLayout )
+import Yi.Window ( Window, isMini, wkey )
 
 type TabRef = Int
 

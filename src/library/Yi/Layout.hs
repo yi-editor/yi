@@ -43,14 +43,15 @@ module Yi.Layout
   )
  where
 
-import Control.Applicative
-import Control.Arrow (first)
-import Control.Lens hiding (set')
-import Data.Typeable
-import Data.Maybe
-import Data.Default
-import Data.List (mapAccumL, foldl')
+import Control.Applicative ( (<$>), (<*>), pure, (<|>) )
+import Control.Arrow ( first )
+import Control.Lens ( Lens', lens )
+import Data.Typeable ( Typeable, cast, typeOf )
+import Data.Maybe ( fromMaybe )
+import Data.Default ( Default, def )
+import Data.List ( mapAccumL, foldl' )
 import qualified Control.Monad.State.Strict as Monad
+    ( State, evalState, put, get )
 
 -------------------------------- Some design notes ----------------------
 -- [Treatment of mini windows]

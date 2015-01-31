@@ -41,15 +41,44 @@ module Yi.Buffer.TextUnit
     , deleteUnitB
     ) where
 
-import           Control.Applicative
-import           Control.Monad
-import           Data.Char
-import           Data.Typeable
-import           Yi.Buffer.Basic
-import           Yi.Buffer.Misc
-import           Yi.Buffer.Region
-import           Yi.Rope (YiString)
-import qualified Yi.Rope as R
+
+import Control.Applicative ( Applicative((<*>)), (<$>) )
+import Control.Monad ( when, void, (<=<) )
+import Data.Char
+    ( isSpace,
+      GeneralCategory(LineSeparator, ParagraphSeparator, Space),
+      isAlphaNum,
+      isSeparator,
+      generalCategory )
+import Data.Typeable ( Typeable )
+import Yi.Buffer.Basic
+    ( Point(Point), Direction(..), reverseDir, mayReverse )
+import Yi.Buffer.Misc
+    ( BufferM,
+      sizeB,
+      pointB,
+      moveTo,
+      leftB,
+      rightB,
+      lineMoveRel,
+      lineUp,
+      betweenB,
+      readB,
+      solPointB,
+      eolPointB,
+      savingPointB,
+      destinationOfMoveB )
+import Yi.Buffer.Region
+    ( Region,
+      mkRegion,
+      deleteRegionB,
+      readRegionB,
+      replaceRegionB,
+      swapRegionsB )
+import Yi.Rope ( YiString )
+import qualified Yi.Rope as R ( toString, tail, reverse, head )
+
+
 
 -- | Designate a given "unit" of text.
 data TextUnit = Character -- ^ a single character

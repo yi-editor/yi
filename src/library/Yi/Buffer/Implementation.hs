@@ -65,29 +65,66 @@ module Yi.Buffer.Implementation
   , mem
   ) where
 
-import           Control.Applicative
-import           Data.Array
-import           Data.Binary
 #if __GLASGOW_HASKELL__ < 708
 import           Data.DeriveTH
 #else
 import           GHC.Generics (Generic)
 #endif
-import           Data.Function
-import           Data.List (groupBy)
+
+import Control.Applicative ( Applicative((<*>), pure), (<$>) )
+import Data.Array ( (!) )
+import Data.Binary ( Binary(..), putWord8, getWord8 )
+import Data.Function ( on )
+import Data.List ( groupBy )
 import qualified Data.Map as M
-import           Data.Maybe
-import           Data.Monoid
-import           Yi.Rope (YiString)
+    ( Map,
+      lookup,
+      insert,
+      delete,
+      maxViewWithKey,
+      map,
+      findMax,
+      empty )
+import Data.Maybe ( fromMaybe )
+import Data.Monoid ( Monoid(mconcat, mempty) )
+import Yi.Rope ( YiString )
 import qualified Yi.Rope as R
+    ( YiString,
+      toString,
+      toReverseString,
+      take,
+      splitAtLine,
+      splitAt,
+      reverse,
+      length,
+      last,
+      drop,
+      countNewLines,
+      append )
 import qualified Data.Set as Set
-import           Data.Typeable
-import           Yi.Buffer.Basic
-import           Yi.Regex
-import           Yi.Region
-import           Yi.Style
-import           Yi.Syntax
-import           Yi.Utils
+    ( Set, insert, toList, map, filter, empty, delete )
+import Data.Typeable ( Typeable )
+import Yi.Buffer.Basic
+    ( WindowRef,
+      Size(Size),
+      Point(Point),
+      Mark(..),
+      Direction(..),
+      reverseDir )
+import Yi.Regex ( SearchExp, RegexLike(matchAll), searchRegex )
+import Yi.Region
+    ( Region(..), regionSize, nearRegion, mkRegion, fmapRegion )
+import Yi.Style ( StyleName, UIStyle(hintStyle, strongHintStyle) )
+import Yi.Syntax
+    ( Stroke,
+      Span(Span, spanBegin, spanEnd),
+      Scanner(Scanner),
+      Highlighter(..),
+      ExtHL(..),
+      noHighlighter )
+import Yi.Utils
+    ( SemiNum((+~), (~-)), mapAdjust', makeLensesWithSuffix )
+
 
 data MarkValue = MarkValue { markPoint :: !Point
                            , markGravity :: !Direction}

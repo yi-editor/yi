@@ -15,29 +15,45 @@
 
 module Yi.Command where
 
-import           Control.Applicative
-import           Control.Exception(SomeException)
-import           Control.Lens
-import           Control.Monad
-import           Control.Monad.Base
-import           Data.Binary
-import           Data.Default
-import qualified Data.Text as T
-import           Data.Typeable
-import           System.Exit (ExitCode(..))
-import           Yi.Buffer
-import           Yi.Core (startSubprocess)
-import           Yi.Types (YiVariable)
-import           Yi.Editor
-import           Yi.Keymap
-import           Yi.MiniBuffer
-import qualified Yi.Mode.Compilation as Compilation
+import Control.Applicative ( (<$>) )
+import Control.Exception ( SomeException )
+import Control.Lens ( assign )
+import Control.Monad ( void )
+import Control.Monad.Base ( liftBase )
+import Data.Binary ( Binary )
+import Data.Default ( Default )
+import qualified Data.Text as T ( unpack, Text, pack, init, last )
+import Data.Typeable ( Typeable )
+import System.Exit ( ExitCode(..) )
+import Yi.Buffer
+    ( BufferRef, identA, BufferId(MemBuffer), setMode )
+import Yi.Core ( startSubprocess )
+import Yi.Types ( YiVariable )
+import Yi.Editor
+    ( withCurrentBuffer,
+      withOtherWindow,
+      getEditorDyn,
+      putEditorDyn,
+      deleteBuffer,
+      withEditor,
+      newBufferE,
+      printMsg )
+import Yi.Keymap ( YiM, withUI )
+import Yi.MiniBuffer
+    ( CommandArguments(..),
+      withMinibufferFree,
+      RegexTag,
+      type (:::)(Doc),
+      FilePatternTag )
+import qualified Yi.Mode.Compilation as Compilation ( mode )
 import qualified Yi.Mode.Interactive as Interactive
-import           Yi.Monad
-import           Yi.Process
-import qualified Yi.Rope as R
-import           Yi.UI.Common
-import           Yi.Utils
+    ( spawnProcess )
+import Yi.Monad ( maybeM )
+import Yi.Process ( runShellCommand, shellFileName )
+import qualified Yi.Rope as R ( fromString )
+import Yi.UI.Common ( reloadProject )
+import Yi.Utils ( io )
+
 
 ---------------------------
 -- | Changing the buffer name quite useful if you have

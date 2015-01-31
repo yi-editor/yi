@@ -27,49 +27,57 @@
 
 module Yi.Types where
 
-import           Control.Applicative
-import           Control.Concurrent
-import           Control.Monad.Base
-import           Control.Monad.RWS.Strict (RWS, MonadWriter)
-import           Control.Monad.Reader
-import           Control.Monad.State
-import qualified Data.DynamicState as ConfigState
-import qualified Data.DynamicState.Serializable as DynamicState
-import           Data.Binary (Binary)
-import qualified Data.Binary as B
-import           Data.Default
-import qualified Data.DelayList as DelayList
-import           Data.Foldable
-import           Data.Function (on)
-import           Data.List.NonEmpty
-import           Data.List.PointedList
-import qualified Data.Map as M
-import qualified Data.Text as T
-import qualified Data.Text.Encoding as E
-import           Data.Time
-import           Data.Traversable
-import           Data.Typeable
-import           Data.Word
 #ifdef FRONTEND_VTY
-import qualified Graphics.Vty as Vty
+import qualified Graphics.Vty as Vty (Config)
 #endif
-import           Yi.Buffer.Basic (BufferRef, WindowRef)
-import           Yi.Buffer.Implementation
-import           Yi.Buffer.Undo
-import           Yi.Config.Misc
-import           Yi.Event
-import qualified Yi.Interact as I
-import           Yi.KillRing
-import           Yi.Layout
-import           Yi.Monad
-import           Yi.Process (SubprocessInfo, SubprocessId)
-import qualified Yi.Rope as R
-import           Yi.Style
-import           Yi.Style.Library
-import           Yi.Syntax
-import           Yi.Tab
-import           Yi.UI.Common
-import           Yi.Window
+
+import Control.Applicative ( Applicative, (<$>), pure, (<*>) )
+import Control.Concurrent
+    ( MVar, readMVar, modifyMVar, modifyMVar_ )
+import Control.Monad.Base ( liftBase, MonadBase )
+import Control.Monad.RWS.Strict
+    ( RWS, MonadWriter, ap, liftM3, void )
+import Control.Monad.Reader
+    ( ReaderT, MonadReader, ask, asks, runReaderT )
+import Control.Monad.State
+    ( MonadState(..), runState, forever, State )
+import qualified Data.DynamicState as ConfigState ( DynamicState )
+import qualified Data.DynamicState.Serializable as DynamicState
+    ( DynamicState )
+import Data.Binary ( Binary )
+import qualified Data.Binary as B ( get, put )
+import Data.Default ( Default, def )
+import qualified Data.DelayList as DelayList ( DelayList )
+import Data.Foldable ( Foldable )
+import Data.Function ( on )
+import Data.List.NonEmpty ( NonEmpty )
+import Data.List.PointedList ( PointedList )
+import qualified Data.Map as M ( Map )
+import qualified Data.Text as T ( Text )
+import qualified Data.Text.Encoding as E ( encodeUtf8, decodeUtf8 )
+import Data.Time ( UTCTime(..) )
+import Data.Traversable ( Traversable )
+import Data.Typeable ( Typeable, Typeable1 )
+import Data.Word ( Word8 )
+import qualified Graphics.Vty as Vty ( Config )
+import Yi.Buffer.Basic ( BufferRef, WindowRef )
+import Yi.Buffer.Implementation
+    ( Point, Direction, BufferImpl, Update, Mark, UIUpdate, SearchExp )
+import Yi.Buffer.Undo ( URList )
+import Yi.Config.Misc ( ScrollStyle )
+import Yi.Event ( Event )
+import qualified Yi.Interact as I ( I, P(End) )
+import Yi.KillRing ( Killring )
+import Yi.Layout ( AnyLayoutManager )
+import Yi.Monad ( getsAndModify )
+import Yi.Process ( SubprocessInfo, SubprocessId )
+import qualified Yi.Rope as R ( YiString, ConverterName )
+import Yi.Style ( StyleName )
+import Yi.Style.Library ( Theme )
+import Yi.Syntax ( ExtHL, Stroke )
+import Yi.Tab ( Tab )
+import Yi.UI.Common ( UI )
+import Yi.Window ( Window )
 
 
 -- Yi.Keymap

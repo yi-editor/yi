@@ -10,8 +10,8 @@
 
 module Yi.Snippets.Haskell where
 
-import qualified Yi.Rope as R
-import           Yi.Snippets
+import qualified Yi.Rope as R ( singleton )
+import Yi.Snippets ( SnippetCmd, cursor, cursorWith, (&), snippet )
 
 hsFunction :: SnippetCmd ()
 hsFunction = snippet $

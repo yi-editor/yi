@@ -44,6 +44,8 @@ import           Yi.Style.Library
 import qualified Yi.UI.Batch
 import           Yi.Utils
 
+import Yi.Types (withEditor_)
+
 #ifdef FRONTEND_VTY
 import qualified Graphics.Vty.Config as Vty
 import qualified Yi.UI.Vty

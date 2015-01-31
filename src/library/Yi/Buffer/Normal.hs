@@ -42,12 +42,61 @@ module Yi.Buffer.Normal (TextUnit(Character, Line, VLine, Document, GenUnit),
                          , putRegionStyle
                          ) where
 
-import Data.List (sort)
-import Yi.Buffer.Basic
+import Data.List ( sort )
+import Yi.Buffer.Basic ( Point, Direction(Backward, Forward) )
 import Yi.Buffer.Misc
+    ( BufferM,
+      pointB,
+      moveTo,
+      getBufferDyn,
+      putBufferDyn,
+      savingPointB )
 import Yi.Buffer.Region
+    ( Region(..), mkRegion', mkRegion, inclusiveRegionB )
 import Yi.Buffer.TextUnit
-import Yi.Types (RegionStyle(..))
+    ( BoundarySide(..),
+      TextUnit(..),
+      outsideUnit,
+      unitWord,
+      unitDelimited,
+      isWordChar,
+      checkPeekB,
+      unitViWord,
+      unitViWORD,
+      unitViWordAnyBnd,
+      unitViWORDAnyBnd,
+      unitViWordOnLine,
+      unitViWORDOnLine,
+      isAnySep,
+      unitSep,
+      unitSepThisLine,
+      atBoundaryB,
+      unitEmacsParagraph,
+      unitParagraph,
+      unitSentence,
+      leftBoundaryUnit,
+      genAtBoundaryB,
+      numberOfB,
+      whileB,
+      untilB,
+      doUntilB_,
+      untilB_,
+      doIfCharB,
+      genMoveB,
+      genMaybeMoveB,
+      moveB,
+      maybeMoveB,
+      transposeB,
+      transformB,
+      deleteB,
+      regionOfB,
+      regionOfNonEmptyB,
+      regionOfPartB,
+      regionOfPartNonEmptyB,
+      regionOfPartNonEmptyAtB,
+      readPrevUnitB,
+      readUnitB )
+import Yi.Types ( RegionStyle(..) )
 
 getRegionStyle :: BufferM RegionStyle
 getRegionStyle = getBufferDyn

@@ -12,9 +12,10 @@
 
 module Yi.Keymap.Vim.Eval (scheduleActionStringForEval) where
 
-import Yi.Editor
+import Yi.Editor ( EditorM )
 import Yi.Keymap.Vim.Common
-import Yi.Keymap.Vim.StateUtils
+    ( EventString, VimState(vsStringToEval) )
+import Yi.Keymap.Vim.StateUtils ( modifyStateE )
 
 scheduleActionStringForEval :: EventString -> EditorM ()
 scheduleActionStringForEval s = modifyStateE $ \st -> st { vsStringToEval = s }

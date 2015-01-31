@@ -58,27 +58,73 @@ module Yi.Search (
         qrFinish
                  ) where
 
-import           Control.Applicative
-import           Control.Lens hiding (re, from, to, act)
-import           Control.Monad
-import           Data.Binary
-import           Data.Char
-import           Data.Default
-import           Data.Maybe
-import           Data.Monoid
+import Control.Applicative ( (<$>) )
+import Control.Lens ( assign )
+import Control.Monad ( when, void )
+import Data.Binary ( Binary, get, put )
+import Data.Char ( isUpper, isAlpha )
+import Data.Default ( Default, def )
+import Data.Maybe ( listToMaybe )
+import Data.Monoid ( (<>) )
 import qualified Data.Text as T
-import qualified Data.Text.Encoding as E
-import           Data.Typeable
-import           Yi.Buffer
-import           Yi.Types (YiVariable)
-import           Yi.Editor
-import           Yi.History
-import           Yi.Regex
-import qualified Yi.Rope as R
-import           Yi.Search.Internal
-import           Yi.String (showT)
-import           Yi.Utils
-import           Yi.Window
+    ( Text, empty, null, unpack, length, break, takeWhile, any )
+import qualified Data.Text.Encoding as E ( encodeUtf8, decodeUtf8 )
+import Data.Typeable ( Typeable )
+import Yi.Buffer
+    ( Region,
+      Direction(Forward, Backward),
+      savingPointB,
+      moveB,
+      regexB,
+      TextUnit(Document, Character),
+      reverseDir,
+      moveTo,
+      regionStart,
+      BufferM,
+      getSelectRegionB,
+      regionOfB,
+      mayReverse,
+      replaceRegionB,
+      pointB,
+      mkRegion,
+      moveN,
+      regexB,
+      sizeB,
+      moveTo,
+      regionEnd,
+      regexRegionB,
+      regionDirection,
+      nelemsB,
+      setSelectionMarkPointB,
+      BufferRef,
+      setSelectRegionB,
+      getRawestSelectRegionB,
+      regionOfPartB,
+      exchangePointAndMarkB )
+import Yi.Types ( YiVariable )
+import Yi.Editor
+    ( EditorM,
+      withCurrentBuffer,
+      searchDirectionA,
+      printMsg,
+      getEditorDyn,
+      putEditorDyn,
+      searchDirectionA,
+      withGivenBufferAndWindow,
+      closeBufferAndWindowE,
+      currentRegexA )
+import Yi.History
+    ( historyStartGen, historyMoveGen, historyFinishGen )
+import Yi.Regex
+    ( SearchExp(..),
+      makeSearchOptsM,
+      emptyRegex,
+      SearchOption(QuoteRegex, IgnoreCase) )
+import qualified Yi.Rope as R ( YiString, toText, null, toString )
+import Yi.Search.Internal ( getRegexE, setRegexE, resetRegexE )
+import Yi.String ( showT )
+import Yi.Utils ( fst3 )
+import Yi.Window ( Window )
 
 -- ---------------------------------------------------------------------
 --

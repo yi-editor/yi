@@ -10,15 +10,17 @@
 
 module Yi.Keymap.Vim.Ex.Commands.Delete (parse) where
 
-import           Control.Applicative
-import           Control.Monad
-import           Data.Text ()
-import qualified Text.ParserCombinators.Parsec as P
-import           Yi.Buffer.Adjusted hiding (Delete)
-import           Yi.Keymap
-import           Yi.Keymap.Vim.Common
+import Control.Applicative ( Alternative((<|>)) )
+import Control.Monad ( void )
+import Data.Text ()
+import qualified Text.ParserCombinators.Parsec as P ( try, string )
+import Yi.Buffer.Adjusted
+    ( Direction(Forward), TextUnit(Line), deleteUnitB, deleteN )
+import Yi.Keymap ( Action(BufferA) )
+import Yi.Keymap.Vim.Common ( EventString )
 import qualified Yi.Keymap.Vim.Ex.Commands.Common as Common
-import           Yi.Keymap.Vim.Ex.Types
+    ( parse, pureExCommand )
+import Yi.Keymap.Vim.Ex.Types ( ExCommand(cmdAction, cmdShow) )
 
 parse :: EventString -> Maybe ExCommand
 parse = Common.parse $ do

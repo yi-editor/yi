@@ -10,22 +10,34 @@
 
 module Yi.Keymap.Vim.Ex.Commands.Global (parse) where
 
-import           Control.Applicative
-import           Control.Lens
-import           Control.Monad
-import           Data.Monoid
-import qualified Data.Text as T
+import Control.Applicative ( Alternative((<|>)), (<$>) )
+import Control.Lens ( use )
+import Control.Monad ( when, void, forM_ )
+import Data.Monoid ( (<>) )
+import qualified Data.Text as T ( Text, snoc, pack, isInfixOf )
 import qualified Text.ParserCombinators.Parsec as P
-import           Yi.Buffer.Adjusted
-import           Yi.Editor
-import           Yi.Keymap
-import           Yi.Keymap.Vim.Common
+    ( char, many, try, string, noneOf, anyChar )
+import Yi.Buffer.Adjusted
+    ( deleteMarkB,
+      moveTo,
+      gotoLn,
+      setMarkHereB,
+      lineCountB,
+      markPointA,
+      readLnB )
+import Yi.Editor ( withCurrentBuffer )
+import Yi.Keymap ( Action(BufferA, EditorA) )
+import Yi.Keymap.Vim.Common ( EventString(Ev) )
 import qualified Yi.Keymap.Vim.Ex.Commands.Common as Common
+    ( parse, pureExCommand )
 import qualified Yi.Keymap.Vim.Ex.Commands.Delete as Delete
+    ( parse )
 import qualified Yi.Keymap.Vim.Ex.Commands.Substitute as Substitute
-import           Yi.Keymap.Vim.Ex.Types
-import qualified Yi.Rope as R
-import           Yi.String (showT)
+    ( parse )
+import Yi.Keymap.Vim.Ex.Types
+    ( ExCommand(cmdAction, cmdShow), evStringToExCommand )
+import qualified Yi.Rope as R ( toText )
+import Yi.String ( showT )
 
 parse :: EventString -> Maybe ExCommand
 parse = Common.parse $ do

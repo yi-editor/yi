@@ -25,14 +25,35 @@ module Yi.Keymap.Keys
 
 import Prelude hiding (error)
 
-import Control.Monad (unless)
-import Data.Char
-import Data.List (sort, nub)
-
+import Control.Monad ( unless )
+import Data.Char ( toUpper, isPrint, isAlpha )
+import Data.List ( sort, nub )
 import Yi.Event
-import Yi.Debug
-import Yi.Keymap
-import Yi.Interact hiding (write)
+    ( Event(..), Key(..), Modifier(..), prettyEvent, eventToChar )
+import Yi.Debug ( error )
+import Yi.Keymap ( KeymapM, Action, YiAction, write )
+import Yi.Interact
+    ( InteractState(..),
+      P(..),
+      I,
+      MonadInteract(adjustPriority, eventBounds),
+      deprioritize,
+      (<||),
+      (||>),
+      important,
+      accepted,
+      runWrite,
+      processOneEvent,
+      computeState,
+      oneOf,
+      anyEvent,
+      eventBetween,
+      event,
+      events,
+      choice,
+      option,
+      mkAutomaton,
+      idAutomaton )
 
 printableChar :: (MonadInteract m w Event) => m Char
 printableChar = do

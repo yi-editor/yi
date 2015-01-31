@@ -30,16 +30,39 @@ module Yi.Syntax.Haskell ( PModule
                          ) where
 
 import Control.Applicative
-import Data.Foldable hiding (elem, notElem)
-import Data.Maybe
-import Data.List ((\\))
+    ( Applicative(..),
+      Alternative((<|>), empty, many, some),
+      (<$>),
+      optional )
+import Data.Foldable ( Foldable )
+import Data.Maybe ( isNothing, fromJust )
+import Data.List ( (\\) )
 import Yi.IncrementalParse
+    ( AlexState,
+      Parser(Enter, Yuck),
+      symbol,
+      eof,
+      testNext,
+      lookNext,
+      recoverWith,
+      P )
 import Yi.Lexer.Alex
+    ( Tok(Tok, tokT), Posn(Posn, posnOfs), tokBegin, startPosn )
 import Yi.Lexer.Haskell
-import Yi.Syntax.Layout
-import Yi.Syntax.Tree
-import Yi.Syntax
-import Control.Arrow ((&&&))
+    ( Token(ConsIdent, ConsOperator, CppDirective, Operator, Reserved,
+            ReservedOp, Special, VarIdent),
+      TT,
+      ReservedType(As, Class, Data, Deriving, Do, Forall, Hiding, Import,
+                   In, Instance, Let, Module, NewType, Of, Other, Qualified, Type,
+                   Where),
+      OpType(BackSlash, DoubleColon, DoubleDot, DoubleRightArrow, Equal,
+             LeftArrow, Pipe, RightArrow),
+      startsLayout,
+      isComment )
+import Yi.Syntax.Layout ( State, layoutHandler )
+import Yi.Syntax.Tree ( IsTree(emptyNode, uniplate), sepBy1 )
+import Yi.Syntax ( Scanner )
+import Control.Arrow ( (&&&) )
 
 indentScanner :: Scanner (AlexState lexState) TT
               -> Scanner (Yi.Syntax.Layout.State Token lexState) TT

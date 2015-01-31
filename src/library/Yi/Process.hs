@@ -2,21 +2,24 @@
 module Yi.Process (runProgCommand, runShellCommand, shellFileName,
                    createSubprocess, readAvailable, SubprocessInfo(..), SubprocessId) where
 
-import System.Exit (ExitCode(ExitFailure))
-import System.Directory (findExecutable)
+import System.Exit ( ExitCode(ExitFailure) )
+import System.Directory ( findExecutable )
 import System.IO
+    ( hSetBuffering,
+      BufferMode(NoBuffering),
+      hGetBufNonBlocking,
+      Handle )
 import System.Process
+    ( readProcessWithExitCode, ProcessHandle, runProcess )
 import System.Environment ( getEnv )
-
-import Foreign.Marshal.Alloc(allocaBytes)
-import Foreign.C.String
-
-import Control.Exc(orException)
-import Yi.Buffer.Basic (BufferRef)
-import Yi.Monad
+import Foreign.Marshal.Alloc ( allocaBytes )
+import Foreign.C.String ( peekCStringLen )
+import Control.Exc ( orException )
+import Yi.Buffer.Basic ( BufferRef )
+import Yi.Monad ( repeatUntilM )
 
 #ifndef mingw32_HOST_OS
-import System.Posix.IO
+import System.Posix.IO (createPipe, fdToHandle)
 #endif
 
 runProgCommand :: String -> [String] -> IO (ExitCode,String,String)
@@ -92,11 +95,11 @@ createSubprocess cmd args bufref = do
 
 -- Read as much as possible from handle without blocking
 readAvailable :: Handle -> IO String
-readAvailable handle = fmap concat $ repeatUntilM $ read_chunk handle
+readAvailable handle = fmap concat $ repeatUntilM $ readChunk handle
 
 -- Read a chunk from a handle, bool indicates if there is potentially more data available
-read_chunk :: Handle -> IO (Bool,String)
-read_chunk handle = do
+readChunk :: Handle -> IO (Bool,String)
+readChunk handle = do
     let bufferSize = 1024
     allocaBytes bufferSize $ \buffer -> do
                  bytesRead <- hGetBufNonBlocking handle buffer bufferSize

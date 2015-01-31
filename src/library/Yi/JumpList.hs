@@ -8,16 +8,16 @@ module Yi.JumpList
     , jumpForward
     ) where
 
-import Yi.Buffer.Basic
-
-import Data.Binary
 #if __GLASGOW_HASKELL__ < 708
-import Data.DeriveTH
+import Data.DeriveTH (derive, makeBinary)
 #else
 import GHC.Generics (Generic)
 #endif
 
-import Data.List.PointedList as PL
+import Yi.Buffer.Basic ( Mark, BufferRef )
+import Data.Binary ( Binary, get, put )
+import Data.List.PointedList as PL ( PointedList(..), next, previous )
+
 
 type JumpList = Maybe (PL.PointedList Jump)
 

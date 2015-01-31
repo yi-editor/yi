@@ -66,14 +66,16 @@ module Yi.Interact
      accepted
     ) where
 
-import           Control.Applicative
-import           Control.Arrow (first)
-import           Control.Lens
-import           Control.Monad.State hiding ( get, mapM )
-import           Data.Function (on)
-import           Data.List (groupBy)
-import           Data.Monoid
-import qualified Data.Text as T
+import Control.Applicative
+    ( Applicative((<*>), pure), Alternative((<|>), empty) )
+import Control.Arrow ( first )
+import Control.Lens ( Field2(_2), Field1(_1), view )
+import Control.Monad.State
+    ( MonadPlus(..), MonadTrans(lift), StateT )
+import Data.Function ( on )
+import Data.List ( groupBy )
+import Data.Monoid ( Monoid(mappend, mempty) )
+import qualified Data.Text as T ( Text, pack, append )
 
 ------------------------------------------------
 -- Classes

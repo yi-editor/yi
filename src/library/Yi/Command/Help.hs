@@ -21,18 +21,25 @@
 
 module Yi.Command.Help(displayHelpFor) where
 
-import           Control.Applicative
-import           Data.Binary
-import           Data.Default
-import           Data.Typeable
-import           Yi.Buffer
-import           Yi.Editor
-import           Yi.Monad
-import qualified Yi.Rope as R
-import qualified Data.Text as T
-import           Yi.Eval (getAllNamesInScope, describeNamedAction)
-import           Yi.Keymap
-import           Yi.Types(YiVariable)
+import Control.Applicative ( (<$>) )
+import Data.Binary ( Binary )
+import Data.Default ( Default )
+import Data.Typeable ( Typeable )
+import Yi.Buffer ( BufferRef, BufferId(MemBuffer) )
+import Yi.Editor
+    ( MonadEditor(withEditor),
+      deleteBuffer,
+      getEditorDyn,
+      putEditorDyn,
+      newBufferE,
+      withOtherWindow )
+import Yi.Monad ( maybeM )
+import qualified Yi.Rope as R ( fromText )
+import qualified Data.Text as T ( Text, unpack, unlines, pack )
+import Yi.Eval ( getAllNamesInScope, describeNamedAction )
+import Yi.Keymap ( YiM )
+import Yi.Types ( YiVariable )
+
 
 -- | Displays help for a given name, or help index, if no name is given
 displayHelpFor :: T.Text -> YiM ()

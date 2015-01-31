@@ -9,15 +9,29 @@
 
 module Yi.Keymap.Emacs.KillRing where
 
-import           Control.Lens
-import           Control.Monad (replicateM_)
-import           Data.List.NonEmpty
-import           Prelude hiding (tail, head)
-import           Yi.Buffer
-import           Yi.Editor
-import           Yi.Keymap
-import           Yi.KillRing
-import qualified Yi.Rope as R
+import Control.Lens ( assign, (.=), (%=), uses, use )
+import Control.Monad ( replicateM_ )
+import Data.List.NonEmpty ( NonEmpty((:|)) )
+import Yi.Buffer
+    ( Region(regionDirection, regionEnd, regionStart),
+      Direction,
+      BufferM,
+      highlightSelectionA,
+      pointB,
+      insertN,
+      deleteN,
+      deleteRegionB,
+      readRegionB,
+      atEol,
+      bkillWordB,
+      deleteToEol,
+      setSelectionMarkPointB,
+      getRawestSelectRegionB,
+      getSelectRegionB )
+import Yi.Editor ( EditorM, killringA, withCurrentBuffer )
+import Yi.Keymap ( YiM )
+import Yi.KillRing ( Killring(_krContents), krKilled, krPut )
+import qualified Yi.Rope as R ( YiString )
 
 -- * Killring actions
 

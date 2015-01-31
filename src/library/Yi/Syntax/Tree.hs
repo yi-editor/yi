@@ -30,19 +30,27 @@ module Yi.Syntax.Tree (IsTree(..), toksAfter, allToks, tokAtOrBefore,
 -- Some of this might be replaced by a generic package
 -- such as multirec, uniplace, emgm, ...
 
-import           Control.Applicative
-import           Control.Arrow (first)
-import           Data.Foldable
-import           Data.List.NonEmpty (NonEmpty(..))
-import qualified Data.List.NonEmpty as NE
-import           Data.Maybe
-import           Data.Monoid
 import           Prelude hiding (concatMap, error)
-import           Yi.Buffer.Basic
-import           Yi.Debug
-import           Yi.Lexer.Alex
-import           Yi.Region
-import           Yi.String
+
+import Control.Applicative
+    ( Applicative((*>), (<*>), pure), Alternative((<|>), many), (<$>) )
+import Control.Arrow ( first )
+import Data.Foldable ( Foldable(foldMap), toList, concatMap )
+import Data.List.NonEmpty ( NonEmpty(..) )
+import qualified Data.List.NonEmpty as NE ( toList, reverse, (<|) )
+import Data.Maybe ( Maybe(..), maybe, listToMaybe, catMaybes )
+import Data.Monoid
+    ( Last(Last, getLast), First(First, getFirst), (<>) )
+import Yi.Buffer.Basic ( Point )
+import Yi.Debug ( trace, error )
+import Yi.Lexer.Alex
+    ( Tok(Tok, tokPosn),
+      Posn(Posn, posnLine, posnOfs),
+      tokEnd,
+      tokBegin )
+import Yi.Region
+    ( Region(regionEnd, regionStart), mkRegion, includedRegion )
+import Yi.String ( showT )
 
 #ifdef TESTING
 import           Test.QuickCheck

@@ -31,30 +31,32 @@ module Yi.Tag ( lookupTag
               , tagsFileList
               ) where
 
-import           Control.Applicative
-import           Control.Lens
-import           Data.Binary
-import qualified Data.ByteString as BS
 #if __GLASGOW_HASKELL__ < 708
-import           Data.DeriveTH
+import           Data.DeriveTH (derive, makeBinary)
 #else
 import           GHC.Generics (Generic)
 #endif
-import           Data.Default
-import qualified Data.Foldable as F
-import           Data.List (isPrefixOf)
-import           Data.Map (Map, fromListWith, lookup, keys)
-import           Data.Maybe (mapMaybe)
+
+import Control.Applicative ( (<$>) )
+import Control.Lens ( makeLenses )
+import Data.Binary ( Binary, get, put )
+import qualified Data.ByteString as BS ( readFile )
+import Data.Default ( Default, def )
+import qualified Data.Foldable as F ( concat )
+import Data.Map ( Map, fromListWith, lookup, keys )
+import Data.Maybe ( mapMaybe )
 import qualified Data.Text as T
-import qualified Data.Text.Encoding as E
-import qualified Data.Text.Read as R (decimal)
+    ( Text, words, lines, isPrefixOf, unpack, append, pack )
+import qualified Data.Text.Encoding as E ( encodeUtf8, decodeUtf8 )
+import qualified Data.Text.Read as R ( decimal )
 import qualified Data.Trie as Trie
-import           Data.Typeable
-import           System.FilePath (takeFileName, takeDirectory, (</>))
-import           System.FriendlyPath
-import           Yi.Editor
-import           Yi.Config.Simple.Types (Field, customVariable)
-import           Yi.Types (YiVariable, YiConfigVariable)
+    ( Trie, fromList, possibleSuffixes, certainSuffix )
+import Data.Typeable ( Typeable )
+import System.FilePath ( takeFileName, takeDirectory, (</>) )
+import System.FriendlyPath ( expandTilda )
+import Yi.Editor ( EditorM, putEditorDyn, getEditorDyn )
+import Yi.Config.Simple.Types ( Field, customVariable )
+import Yi.Types ( YiVariable, YiConfigVariable )
 
 newtype TagsFileList  = TagsFileList { _unTagsFileList :: [FilePath] }
     deriving Typeable

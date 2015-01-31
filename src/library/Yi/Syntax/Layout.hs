@@ -3,10 +3,11 @@
 -- code might be left outside of the blocks
 module Yi.Syntax.Layout (layoutHandler, State) where
 
-import Yi.Syntax
+import Yi.Syntax ( Scanner(..) )
 import Yi.Lexer.Alex
-import Data.Maybe (isJust)
-import Data.List (find)
+    ( Tok(Tok, tokPosn, tokT), Posn(Posn), AlexState(..), startPosn )
+import Data.Maybe ( isJust )
+import Data.List ( find )
 
 data BlockOpen t = Indent Int -- block opened because of indentation; parameter is the column of it.
                  | Paren t      -- block opened because of parentheses

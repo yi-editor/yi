@@ -13,11 +13,11 @@
 
 module Yi.Config.Lens where
 
-import Yi.Types (Config(..), UIConfig(..), YiConfigVariable)
-import Yi.Utils (makeLensesWithSuffix)
-import Control.Lens
-import Data.DynamicState (_dyn)
-import Data.Default
+import Yi.Types ( Config(..), UIConfig(..), YiConfigVariable )
+import Yi.Utils ( makeLensesWithSuffix )
+import Control.Lens ( Lens )
+import Data.DynamicState ( _dyn )
+import Data.Default ( Default(def) )
 
 makeLensesWithSuffix "A" ''Config
 makeLensesWithSuffix "A" ''UIConfig

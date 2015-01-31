@@ -23,31 +23,49 @@ module Yi.Keymap.Vim.Tag
     , unpopTag
     ) where
 
-import           Control.Applicative
-import           Control.Lens (view)
-import           Control.Monad
-import           Data.Binary
-import           Data.Default
 #if __GLASGOW_HASKELL__ < 708
 import           Data.DeriveTH
 #else
 import           GHC.Generics (Generic)
 #endif
-import           Data.Maybe
-import           Data.Monoid
-import qualified Data.Text as T
-import           Data.Typeable
-import           System.Directory (doesFileExist)
-import           System.FilePath
-import           System.FriendlyPath
-import           Yi.Buffer
-import           Yi.Core (errorEditor)
-import           Yi.Types (YiVariable)
-import           Yi.Editor
-import           Yi.File
-import           Yi.Keymap
-import           Yi.Tag
-import           Yi.Utils
+
+import Control.Applicative ( (<$>) )
+import Control.Lens ( view )
+import Control.Monad ( void, foldM )
+import Data.Binary ( Binary(..) )
+import Data.Default ( Default(..) )
+import Data.Maybe ( maybeToList )
+import Data.Monoid ( (<>) )
+import qualified Data.Text as T ( Text )
+import Data.Typeable ( Typeable )
+import System.Directory ( doesFileExist )
+import System.FilePath ( takeDirectory, (</>) )
+import System.FriendlyPath ( userToCanonPath )
+import Yi.Buffer
+    ( gotoLn,
+      moveToLineColB,
+      BufferFileInfo(bufInfoColNo, bufInfoFileName, bufInfoLineNo),
+      bufInfoB )
+import Yi.Core ( errorEditor )
+import Yi.Types ( YiVariable )
+import Yi.Editor
+    ( MonadEditor(askCfg, withEditor),
+      EditorM,
+      withCurrentBuffer,
+      getEditorDyn,
+      putEditorDyn )
+import Yi.File ( openingNewFile )
+import Yi.Keymap ( YiM )
+import Yi.Tag
+    ( TagTable,
+      Tag(_unTag),
+      tagsFileList,
+      lookupTag,
+      importTagTable,
+      completeTag,
+      setTags,
+      getTags )
+import Yi.Utils ( io )
 
 -- | List of tags and the file/line/char that they originate from.
 -- (the location that :tag or Ctrl-[ was called from).

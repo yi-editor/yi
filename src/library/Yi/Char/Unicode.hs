@@ -1,7 +1,8 @@
 module Yi.Char.Unicode (greek, symbols, subscripts, superscripts, checkAmbs, disamb) where
 
-import Data.List (isPrefixOf)
-import Control.Applicative
+import Data.List ( isPrefixOf )
+import Control.Applicative ( Applicative(pure) )
+
 {-# ANN module "HLint: ignore Use string literal" #-}
 
 greek :: [(String, String)]

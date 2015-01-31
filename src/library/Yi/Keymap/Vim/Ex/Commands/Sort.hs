@@ -10,13 +10,20 @@
 
 module Yi.Keymap.Vim.Ex.Commands.Sort (parse) where
 
-import           Control.Monad
-import qualified Text.ParserCombinators.Parsec as P
-import           Yi.Buffer
-import           Yi.Keymap
-import           Yi.Keymap.Vim.Common
+import Control.Monad ( void )
+import qualified Text.ParserCombinators.Parsec as P ( string )
+import Yi.Buffer
+    ( Region,
+      BufferM,
+      TextUnit(Document),
+      regionOfB,
+      sortLinesWithRegion )
+import Yi.Keymap ( Action(BufferA) )
+import Yi.Keymap.Vim.Common ( EventString )
 import qualified Yi.Keymap.Vim.Ex.Commands.Common as Common
-import           Yi.Keymap.Vim.Ex.Types
+    ( parse, parseRange, pureExCommand )
+import Yi.Keymap.Vim.Ex.Types
+    ( ExCommand(cmdAction, cmdComplete, cmdShow) )
 
 parse :: EventString -> Maybe ExCommand
 parse = Common.parse $ do

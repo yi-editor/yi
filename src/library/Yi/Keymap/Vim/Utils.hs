@@ -27,25 +27,66 @@ module Yi.Keymap.Vim.Utils
   , addVimJumpHereE
   ) where
 
-import           Control.Applicative
-import           Control.Lens hiding (snoc)
-import           Control.Monad
-import           Data.Char (isSpace)
-import           Data.Foldable (asum)
-import           Data.List (group)
-import qualified Data.Text as T
-import           Safe (headDef)
-import           Yi.Buffer.Adjusted hiding (Insert)
-import           Yi.Editor
-import           Yi.Event
-import           Yi.Keymap
-import           Yi.Keymap.Vim.Common
-import           Yi.Keymap.Vim.EventUtils
-import           Yi.Keymap.Vim.Motion
-import           Yi.Keymap.Vim.StateUtils
-import           Yi.Monad
-import           Yi.Rope (YiString, last, countNewLines)
-import qualified Yi.Rope as R
+import Control.Applicative ( (<$), (<$>) )
+import Control.Lens ( (.=) )
+import Control.Monad ( when, void, forM_ )
+import Data.Char ( isSpace )
+import Data.Foldable ( asum )
+import Data.List ( group )
+import qualified Data.Text as T ( unpack )
+import Safe ( headDef )
+import Yi.Buffer.Adjusted
+    ( Region,
+      Point,
+      Direction(Backward, Forward),
+      RegionStyle(Exclusive, Inclusive),
+      IndentSettings(shiftWidth),
+      BufferM,
+      pointB,
+      indexedStreamB,
+      moveTo,
+      getMarkB,
+      leftB,
+      lineMoveRel,
+      readB,
+      indentSettingsB,
+      solPointB,
+      markPointA,
+      moveToEol,
+      leftOnEol,
+      moveXorSol,
+      atEol,
+      shapeOfBlockRegionB,
+      insertRopeWithStyleB,
+      insertN,
+      deleteN )
+import Yi.Editor
+    ( MonadEditor(withEditor),
+      EditorM,
+      withCurrentBuffer,
+      getEditorDyn,
+      addJumpHereE,
+      addJumpAtE )
+import Yi.Event ( Event )
+import Yi.Keymap ( YiM )
+import Yi.Keymap.Vim.Common
+    ( MatchResult(..),
+      EventString(_unEv),
+      VimState(vsActiveRegister, vsLastGotoCharCommand, vsMode,
+               vsStickyEol),
+      GotoCharCommand(GotoCharCommand),
+      VimMode,
+      matchesString,
+      VimBinding(..),
+      RepeatToken(Continue, Drop) )
+import Yi.Keymap.Vim.EventUtils
+    ( eventToEventString, splitCountedCommand )
+import Yi.Keymap.Vim.Motion ( Move(Move), stringToMove )
+import Yi.Keymap.Vim.StateUtils
+    ( modifyStateE, resetCountE, getMaybeCountE, setStickyEolE )
+import Yi.Monad ( whenM )
+import Yi.Rope ( YiString, last, countNewLines )
+import qualified Yi.Rope as R ( snoc, replicateChar )
 
 -- 'mkBindingE' and 'mkBindingY' are helper functions for bindings
 -- where VimState mutation is not dependent on action performed

@@ -20,31 +20,36 @@ module Yi.PersistentState(loadPersistentState,
                           persistentSearch)
 where
 
-import Control.Monad
-import Data.Typeable
-import Data.Binary
 #if __GLASGOW_HASKELL__ < 708
-import Data.DeriveTH
+import Data.DeriveTH (makeBinary, derive)
 #else
 import GHC.Generics (Generic)
 #endif
-import Data.Default
-import System.Directory(doesFileExist)
-import qualified Data.Map as M
 
-import Control.Exc(ignoringException)
-import Control.Lens
-
-import Yi.Config.Simple.Types(customVariable, Field)
+import Control.Monad ( when )
+import Data.Typeable ( Typeable )
+import Data.Binary ( Binary, put, get, decodeFile, encodeFile )
+import Data.Default ( Default, def )
+import System.Directory ( doesFileExist )
+import qualified Data.Map as M ( map )
+import Control.Exc ( ignoringException )
+import Control.Lens ( makeLenses, use, assign )
+import Yi.Config.Simple.Types ( customVariable, Field )
 import Yi.Editor
-import Yi.History
-import Yi.Keymap(YiM)
-import Yi.KillRing(Killring(..))
-import Yi.Paths(getPersistentStateFilename)
-import Yi.Regex(SearchExp(..))
-import Yi.Search.Internal (getRegexE, setRegexE)
-import Yi.Utils
-import Yi.Types (YiConfigVariable)
+    ( withEditor,
+      askConfigVariableA,
+      killringA,
+      putEditorDyn,
+      getEditorDyn,
+      withEditor )
+import Yi.History ( Histories(..), History(..) )
+import Yi.Keymap ( YiM )
+import Yi.KillRing ( Killring(..) )
+import Yi.Paths ( getPersistentStateFilename )
+import Yi.Regex ( SearchExp(..) )
+import Yi.Search.Internal ( getRegexE, setRegexE )
+import Yi.Utils ( io )
+import Yi.Types ( YiConfigVariable )
 
 data PersistentState = PersistentState { histories     :: !Histories
                                        , aKillring     :: !Killring

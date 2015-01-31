@@ -12,17 +12,40 @@
 
 module Yi.Mode.Buffers (listBuffers) where
 
-import           Control.Applicative ((<$>))
-import           Control.Category ((>>>))
-import           Control.Lens
-import           Data.List.NonEmpty (toList)
-import qualified Data.Text as T
-import           System.FilePath (takeFileName)
-import           Yi.Buffer
-import           Yi.Editor
-import           Yi.Keymap
-import           Yi.Keymap.Keys
-import qualified Yi.Rope as R
+import Control.Applicative ( (<$>) )
+import Control.Category ( (>>>) )
+import Control.Lens ( assign, (.~), (%~) )
+import Data.List.NonEmpty ( toList )
+import qualified Data.Text as T ( pack, intercalate )
+import System.FilePath ( takeFileName )
+import Yi.Buffer
+    ( BufferId(MemBuffer),
+      readOnlyA,
+      identString,
+      modifyMode,
+      lineUp,
+      lineDown,
+      modeKeymapA,
+      modeNameA,
+      readLnB )
+import Yi.Editor
+    ( MonadEditor(withEditor),
+      stringToNewBuffer,
+      getBufferStack,
+      withCurrentBuffer,
+      switchToBufferE,
+      switchToBufferWithNameE )
+import Yi.Keymap ( YiM, Keymap, topKeymapA )
+import Yi.Keymap.Keys
+    ( Key(KEnter),
+      important,
+      oneOf,
+      choice,
+      char,
+      spec,
+      (>>!),
+      (?>>!) )
+import qualified Yi.Rope as R ( toString, fromText )
 
 -- | Retrieve buffer list and open a them in buffer mode using the
 -- 'bufferKeymap'.

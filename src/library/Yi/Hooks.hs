@@ -65,12 +65,12 @@ module Yi.Hooks(
  )
   where
 
-import Control.Lens
-import Yi.Config
-import Yi.Editor
-import Yi.Keymap
-import Yi.Config.Simple.Types(customVariable, Field)
-import Yi.Types (YiConfigVariable)
+import Control.Lens ( (^.) )
+import Yi.Config ( configVariable )
+import Yi.Editor ( EditorM, askCfg )
+import Yi.Keymap ( YiM )
+import Yi.Config.Simple.Types ( customVariable, Field )
+import Yi.Types ( YiConfigVariable )
 
 -- | Looks up the configured value for the hook, and runs it. The
 -- argument to 'runHook' will typically be a record accessor. See

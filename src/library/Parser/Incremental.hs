@@ -14,8 +14,8 @@ module Parser.Incremental (Process,
                            evalL'
                           ) where
 
-import Control.Applicative
-import Data.Tree
+import Control.Applicative ( Applicative((<*>), pure), Alternative((<|>), empty) )
+import Data.Tree ( Tree(Node) )
 
 -- Local versions of our Control.Arrow friends (also make sure they are lazy enough)
 first :: forall t t1 t2. (t -> t2) -> (t, t1) -> (t2, t1)

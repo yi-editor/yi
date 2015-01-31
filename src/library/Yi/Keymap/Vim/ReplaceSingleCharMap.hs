@@ -11,18 +11,32 @@ module Yi.Keymap.Vim.ReplaceSingleCharMap
     ( defReplaceSingleMap
     ) where
 
-import           Control.Monad
-
-import           Data.Maybe (fromMaybe)
-
-import qualified Data.Text as T
-import           Yi.Buffer.Adjusted
-import           Yi.Editor
-import           Yi.Keymap.Keys
-import           Yi.Keymap.Vim.Common
-import           Yi.Keymap.Vim.StateUtils
-import           Yi.Keymap.Vim.Utils
-import           Yi.Utils
+import Control.Monad ( when, replicateM_ )
+import Data.Maybe ( fromMaybe )
+import qualified Data.Text as T ( unpack )
+import Yi.Buffer.Adjusted
+    ( Size(fromSize),
+      pointB,
+      moveTo,
+      leftB,
+      rightB,
+      replaceCharB,
+      replaceCharWithBelowB,
+      replaceCharWithAboveB,
+      moveToEol )
+import Yi.Editor ( withCurrentBuffer, getEditorDyn )
+import Yi.Keymap.Keys ( Key(KEsc), spec )
+import Yi.Keymap.Vim.Common
+    ( MatchResult(NoMatch, WholeMatch),
+      EventString(_unEv),
+      VimState(vsCount, vsMode),
+      VimMode(Normal, ReplaceSingleChar),
+      VimBinding(VimBindingE),
+      RepeatToken(Drop, Finish) )
+import Yi.Keymap.Vim.StateUtils
+    ( switchMode, switchModeE, resetCount, resetCountE )
+import Yi.Keymap.Vim.Utils ( mkBindingE )
+import Yi.Utils ( SemiNum((~-)) )
 
 defReplaceSingleMap :: [VimBinding]
 defReplaceSingleMap = [escBinding, actualReplaceBinding]

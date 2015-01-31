@@ -23,24 +23,69 @@ module Yi.Keymap.Vim.Operator
     , lastCharForOperator
     ) where
 
-import           Control.Applicative ((<$>))
-import           Control.Monad
-import           Data.Char (toLower, toUpper, isSpace)
-import           Data.Foldable (find)
-import           Data.Maybe (fromJust)
-import           Data.Monoid
-import qualified Data.Text as T
-import           Yi.Buffer.Adjusted hiding (Insert)
-import           Yi.Editor
-import           Yi.Keymap.Vim.Common
-import           Yi.Keymap.Vim.EventUtils
-import           Yi.Keymap.Vim.StateUtils
-import           Yi.Keymap.Vim.StyledRegion
-import           Yi.Keymap.Vim.TextObject
-import           Yi.Keymap.Vim.Utils
-import           Yi.Misc
-import           Yi.Rope (YiString)
+import Control.Applicative ( (<$>) )
+import Control.Monad ( when )
+import Data.Char ( toLower, toUpper, isSpace )
+import Data.Foldable ( find )
+import Data.Maybe ( fromJust )
+import Data.Monoid ( (<>) )
+import qualified Data.Text as T ( unpack )
+import Yi.Buffer.Adjusted
+    ( Region(regionEnd, regionStart),
+      RegionStyle(Block, LineWise),
+      BufferM,
+      moveTo,
+      leftB,
+      rightB,
+      readB,
+      curCol,
+      solPointB,
+      eolPointB,
+      modifyRegionB,
+      untilB_,
+      convertRegionToStyleB,
+      moveToSol,
+      leftOnEol,
+      firstNonSpaceB,
+      atEof,
+      switchCaseChar,
+      readRegionRopeWithStyleB,
+      shiftIndentOfRegionB,
+      insertB,
+      deleteN,
+      deleteRegionWithStyleB )
+import Yi.Editor ( EditorM, withCurrentBuffer, getEditorDyn )
+import Yi.Keymap.Vim.Common
+    ( OperatorName(_unOp),
+      EventString(Ev, _unEv),
+      VimState(vsActiveRegister),
+      VimMode(Insert, Normal),
+      RepeatToken(Continue, Finish) )
+import Yi.Keymap.Vim.EventUtils ( eventToEventString, parseEvents )
+import Yi.Keymap.Vim.StateUtils ( switchModeE, setRegisterE )
+import Yi.Keymap.Vim.StyledRegion
+    ( StyledRegion(..), transformCharactersInRegionB )
+import Yi.Keymap.Vim.TextObject
+    ( CountedTextObject, regionOfTextObjectB )
+import Yi.Keymap.Vim.Utils ( indentBlockRegionB )
+import Yi.Misc ( rot13Char )
+import Yi.Rope ( YiString )
 import qualified Yi.Rope as R
+    ( takeWhileEnd,
+      splitAt,
+      span,
+      replicateChar,
+      null,
+      map,
+      length,
+      last,
+      head,
+      empty,
+      dropWhileEnd,
+      dropWhile,
+      cons,
+      concat,
+      append )
 
 data VimOperator = VimOperator {
     operatorName :: !OperatorName

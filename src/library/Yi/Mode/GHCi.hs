@@ -18,26 +18,37 @@
 
 module Yi.Mode.GHCi where
 
-import           Control.Lens
-import           Data.Binary
-import           Data.Default
 #if __GLASGOW_HASKELL__ < 708
 import           Data.DeriveTH
 #else
 import           GHC.Generics (Generic)
 #endif
-import           Data.Text ()
-import qualified Data.Text as T
-import           Data.Typeable
-import           Yi.Buffer
-import           Yi.Types (YiVariable)
-import           Yi.Keymap
-import           Yi.Keymap.Keys
-import           Yi.Lexer.Alex (Tok)
-import           Yi.Lexer.Compilation (Token())
+
+import Control.Lens ( makeLenses, (.~), (%~), (&) )
+import Data.Binary ( Binary(..) )
+import Data.Default ( Default(..) )
+import Data.Text ()
+import qualified Data.Text as T ( findIndex )
+import Data.Typeable ( Typeable )
+import Yi.Buffer
+    ( BufferRef,
+      Mode,
+      BufferM,
+      modeKeymapA,
+      modeNameA,
+      moveToSol,
+      moveXorEol,
+      getLineAndCol,
+      readLnB )
+import Yi.Types ( YiVariable )
+import Yi.Keymap ( YiM, topKeymapA )
+import Yi.Keymap.Keys ( Key(KHome), important, spec, (?>>!) )
+import Yi.Lexer.Alex ( Tok )
+import Yi.Lexer.Compilation ( Token() )
 import qualified Yi.Mode.Interactive as I
-import qualified Yi.Rope as R
-import           Yi.Syntax.OnlineTree (Tree)
+    ( mode, spawnProcessMode )
+import qualified Yi.Rope as R ( toText )
+import Yi.Syntax.OnlineTree ( Tree )
 
 -- | The process name to use to spawn GHCi.
 data GhciProcessName = GhciProcessName

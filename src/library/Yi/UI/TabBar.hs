@@ -11,15 +11,17 @@
 
 module Yi.UI.TabBar where
 
-import           Control.Applicative
-import           Control.Lens
+import Control.Applicative ( (<$>) )
+import Control.Lens ( (^.) )
 import qualified Data.List.PointedList.Circular as PL
-import qualified Data.Text as T
-import           System.FilePath
-import           Yi.Buffer (shortIdentString)
-import           Yi.Editor (Editor(..), commonNamePrefix, findBufferWith, tabsA)
-import           Yi.Tab
-import           Yi.Window
+    ( PointedList(_focus), withFocus )
+import qualified Data.Text as T ( Text, unpack, pack )
+import System.FilePath ( splitPath, isValid )
+import Yi.Buffer ( shortIdentString )
+import Yi.Editor
+    ( Editor(..), commonNamePrefix, findBufferWith, tabsA )
+import Yi.Tab ( tabWindowsA )
+import Yi.Window ( Window(bufkey) )
 
 -- | A TabDescr describes the properties of a UI tab independent of
 -- the particular GUI in use.

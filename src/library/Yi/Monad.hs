@@ -7,9 +7,9 @@ module Yi.Monad (
                  with,
                 ) where
 
-import Control.Monad.Reader
-import Control.Monad.State
-import Control.Monad.Base
+import Control.Monad.Reader ( ask, MonadReader )
+import Control.Monad.State ( get, when, put, MonadState, gets )
+import Control.Monad.Base ( MonadBase, liftBase )
 
 -- | Combination of the Control.Monad.State 'modify' and 'gets'
 getsAndModify :: MonadState s m => (s -> (s,a)) -> m a

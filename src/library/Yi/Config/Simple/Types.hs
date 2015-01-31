@@ -5,12 +5,12 @@
 module Yi.Config.Simple.Types
  where
 
-import Control.Monad.State hiding (modify, get)
-import Control.Monad.Base
-import Control.Applicative
-import Control.Lens
-import Yi.Config
-import Yi.Types
+import Control.Monad.State ( MonadState, StateT )
+import Control.Monad.Base ( MonadBase )
+import Control.Applicative ( Applicative )
+import Control.Lens ( Lens' )
+import Yi.Config ( Config, configVariable )
+import Yi.Types ( YiConfigVariable )
 
 -- | The configuration monad. Run it with 'configMain'.
 newtype ConfigM a = ConfigM {

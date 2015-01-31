@@ -30,27 +30,29 @@ module Yi.Keymap.Vim.Common
     , lookupBestMatch, matchesString
     ) where
 
-import           Control.Applicative
-import           Control.Lens
-import           Data.Binary
 #if __GLASGOW_HASKELL__ < 708
 import           Data.DeriveTH
 #else
 import           GHC.Generics (Generic)
 #endif
-import           Data.Default
-import qualified Data.HashMap.Strict as HM
-import           Data.Monoid
-import           Data.String (IsString(..))
-import qualified Data.Text as T
-import qualified Data.Text.Encoding as E
-import           Data.Typeable
-import           Yi.Buffer.Adjusted hiding (Insert)
-import           Yi.Editor
-import           Yi.Keymap
-import           Yi.Keymap.Vim.MatchResult
-import           Yi.Rope (YiString)
-import           Yi.Types (YiVariable)
+
+import Control.Applicative ( Alternative((<|>)), (<$>) )
+import Control.Lens ( makeLenses )
+import Data.Binary ( Binary(..), putWord8, getWord8 )
+import Data.Default ( Default(..) )
+import qualified Data.HashMap.Strict as HM ( HashMap )
+import Data.Monoid ( Monoid(mappend, mempty), (<>) )
+import Data.String ( IsString(..) )
+import qualified Data.Text as T ( Text, pack, isPrefixOf )
+import qualified Data.Text.Encoding as E ( encodeUtf8, decodeUtf8 )
+import Data.Typeable ( Typeable )
+import Yi.Buffer.Adjusted ( Point, Direction, RegionStyle )
+import Yi.Editor ( EditorM )
+import Yi.Keymap ( YiM )
+import Yi.Keymap.Vim.MatchResult ( MatchResult(..) )
+import Yi.Rope ( YiString )
+import Yi.Types ( YiVariable )
+
 
 newtype EventString = Ev { _unEv :: T.Text } deriving (Show, Eq, Ord)
 

@@ -31,20 +31,46 @@ module Yi.Buffer.Indent
     , tabB
     ) where
 
-import           Control.Applicative
-import           Control.Monad (when)
-import           Data.Char
-import           Data.List (sort, nub)
-import           Data.Monoid
-import           Yi.Buffer.Basic
-import           Yi.Buffer.HighLevel
-import           Yi.Buffer.Misc
-import           Yi.Buffer.Normal
-import           Yi.Buffer.Region
-import           Yi.Buffer.TextUnit
-import           Yi.Rope (YiString)
+import Control.Applicative ( (<$>) )
+import Control.Monad ()
+import Data.Char ( isSpace )
+import Data.List ( sort, nub )
+import Data.Monoid ( (<>) )
+import Yi.Buffer.Basic ( Direction(..) )
+import Yi.Buffer.HighLevel
+    ( moveToSol,
+      firstNonSpaceB,
+      readLnB,
+      getNextLineB,
+      getNextNonBlankLineB )
+import Yi.Buffer.Misc
+    ( IndentBehaviour(..),
+      IndentSettings(..),
+      BufferM,
+      pointB,
+      moveTo,
+      newlineB,
+      lineMoveRel,
+      indentSettingsB,
+      savingExcursionB )
+import Yi.Buffer.Normal ()
+import Yi.Buffer.Region
+    ( Region(regionStart), mkRegion, readRegionB, modifyRegionB )
+import Yi.Buffer.TextUnit ( regionWithTwoMovesB )
+import Yi.Rope ( YiString )
 import qualified Yi.Rope as R
-import           Yi.String
+    ( YiString,
+      takeWhile,
+      span,
+      reverse,
+      replicateChar,
+      replicate,
+      null,
+      head,
+      foldl',
+      drop,
+      any )
+import Yi.String ( mapLines )
 
 {- |
   Return either a \t or the number of spaces specified by tabSize in the

@@ -27,18 +27,48 @@ module Yi.Buffer.Region
   )
 where
 
-import           Control.Applicative
-import           Control.Monad
-import           Data.Char (isSpace)
-import           Data.Monoid (mconcat)
-import           Data.List (sort)
-import           Yi.Buffer.Misc
-import           Yi.Region
-import           Yi.Rope (YiString)
+import Control.Applicative ( Applicative((<*>), pure), (<$>) )
+import Control.Monad ( when )
+import Data.Char ( isSpace )
+import Data.Monoid ( mconcat )
+import Data.List ( sort )
+import Yi.Buffer.Misc
+    ( BufferM,
+      nelemsB,
+      insertNAt,
+      deleteNAt,
+      pointOfLineColB,
+      colOf,
+      lineOf,
+      savingPointB,
+      pointAfterCursorB,
+      askWindow )
+import Yi.Region
+    ( Region(..),
+      unionRegion,
+      regionsOverlap,
+      regionSize,
+      regionLast,
+      regionIsEmpty,
+      regionFirst,
+      nearRegion,
+      mkSizeRegion,
+      mkRegion',
+      mkRegion,
+      intersectRegion,
+      includedRegion,
+      inRegion,
+      fmapRegion,
+      emptyRegion )
+import Yi.Rope ( YiString )
 import qualified Yi.Rope as R
-import           Yi.String (overInit)
-import           Yi.Utils
-import           Yi.Window (winRegion)
+    ( YiString, null, map, lines, filter, dropWhile, cons )
+import Yi.String ( overInit )
+import Yi.Utils ( SemiNum((~-)) )
+import Yi.Window ( winRegion )
+
+
+
 
 winRegionB :: BufferM Region
 winRegionB = askWindow winRegion

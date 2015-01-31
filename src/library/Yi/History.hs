@@ -17,20 +17,28 @@
 
 module Yi.History where
 
-import           Control.Applicative
-import           Control.Lens
-import           Data.Binary
-import           Data.Default
-import           Data.List
+import Control.Applicative ( liftA3, (<$>) )
+import Control.Lens ( (^.), lens, Lens', set )
+import Data.Binary ( Binary, put, get )
+import Data.Default ( Default, def )
+import Data.List ( nub )
 import qualified Data.Map as M
-import           Data.Monoid
+    ( mapKeys, Map, insert, findWithDefault )
+import Data.Monoid ( (<>), mempty )
 import qualified Data.Text as T
-import qualified Data.Text.Encoding as E
-import           Data.Typeable
-import           Yi.Buffer
-import           Yi.Editor
-import qualified Yi.Rope as R
-import           Yi.Types (YiVariable)
+    ( pack, unpack, Text, isPrefixOf, null )
+import qualified Data.Text.Encoding as E ( decodeUtf8, encodeUtf8 )
+import Data.Typeable ( Typeable )
+import Yi.Buffer ( replaceBufferContent, elemsB )
+import Yi.Editor
+    ( MonadEditor,
+      EditorM,
+      printMsg,
+      withCurrentBuffer,
+      getEditorDyn,
+      putEditorDyn )
+import qualified Yi.Rope as R ( fromText, toText )
+import Yi.Types ( YiVariable )
 
 newtype Histories = Histories (M.Map T.Text History)
                   deriving (Show, Eq, Typeable)

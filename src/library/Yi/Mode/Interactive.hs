@@ -12,25 +12,55 @@
 
 module Yi.Mode.Interactive where
 
-import           Control.Applicative
-import           Control.Concurrent (threadDelay)
-import           Control.Lens
-import           Data.Monoid
-import qualified Data.Text as T
-import           Yi.Buffer
-import           Yi.Core (sendToProcess, startSubprocess, withSyntax)
-import           Yi.Editor
-import           Yi.History
-import           Yi.Keymap
-import           Yi.Keymap.Keys
-import           Yi.Lexer.Alex (Tok)
-import           Yi.Lexer.Compilation (Token)
-import qualified Yi.Mode.Compilation as Compilation
-import           Yi.Modes
-import           Yi.Monad
+import Control.Applicative ( (<$>) )
+import Control.Concurrent ( threadDelay )
+import Control.Lens ( (.=), (%~), use )
+import Data.Monoid ( (<>) )
+import qualified Data.Text as T ( Text )
+import Yi.Buffer
+    ( Region,
+      Direction(Backward),
+      BufferRef,
+      mkRegion,
+      MarkValue(markGravity),
+      Mode(modeApplies, modeFollow, modeKeymap, modeName),
+      AnyMode(AnyMode),
+      BufferM,
+      modeNeverApplies,
+      pointB,
+      newlineB,
+      setAnyMode,
+      modifyMarkB,
+      getMarkB,
+      leftB,
+      markPointA,
+      pointAt,
+      readRegionB,
+      replaceRegionB,
+      moveToSol,
+      botB,
+      atLastLine )
+import Yi.Core ( sendToProcess, startSubprocess, withSyntax )
+import Yi.Editor
+    ( MonadEditor(withEditor),
+      EditorM,
+      withGivenBuffer,
+      withCurrentBuffer,
+      currentBuffer )
+import Yi.History
+    ( historyStartGen, historyFinishGen, historyMoveGen )
+import Yi.Keymap ( YiM, topKeymapA )
+import Yi.Keymap.Keys
+    ( Key(KEnter, KHome), (<||), choice, meta, char, spec, (?>>!) )
+import Yi.Lexer.Alex ( Tok )
+import Yi.Lexer.Compilation ( Token )
+import qualified Yi.Mode.Compilation as Compilation ( mode )
+import Yi.Modes ( lookupMode )
+import Yi.Monad ( gets )
 import qualified Yi.Rope as R
-import qualified Yi.Syntax.OnlineTree as OnlineTree
-import           Yi.Utils
+    ( YiString, toText, toString, fromText )
+import qualified Yi.Syntax.OnlineTree as OnlineTree ( Tree )
+import Yi.Utils ( io )
 
 
 mode :: Mode (OnlineTree.Tree (Tok Token))

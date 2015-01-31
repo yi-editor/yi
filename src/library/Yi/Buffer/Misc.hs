@@ -136,6 +136,7 @@ module Yi.Buffer.Misc
   , modeToggleCommentSelectionA
   , modeGetStrokesA
   , modeOnLoadA
+  , modeGotoDeclarationA
   , modeModeLineA
   , AnyMode (..)
   , IndentBehaviour (..)
@@ -188,38 +189,132 @@ module Yi.Buffer.Misc
   , encodingConverterNameA
   ) where
 
-import           Control.Applicative
-import           Control.Lens hiding ((+~), Action, reversed, at, act)
-import           Control.Monad.RWS.Strict hiding (mapM_, mapM, get, put,
-                                                  forM_, forM)
-import           Data.Binary
-import           Data.Char(ord)
-import           Data.Default
-import           Data.Foldable
-import           Data.Function hiding ((.), id)
-import qualified Data.Map as M
-import           Data.Maybe
-import qualified Data.Set as Set
+import Prelude hiding (foldr, mapM, notElem)
+
+import Control.Applicative ( Applicative((*>), (<*>)), (<$>) )
+import Control.Lens
+    ( Lens', assign, (.=), (%~), (%=), lens, view, uses, use, (^.) )
+import Control.Monad.RWS.Strict
+    ( Monad((>>), (>>=), fail, return),
+      Functor(..),
+      (=<<),
+      Monoid(mconcat, mempty),
+      when,
+      void,
+      replicateM_,
+      join,
+      Endo(Endo, appEndo),
+      (<>),
+      gets,
+      MonadState,
+      asks,
+      MonadReader(ask),
+      MonadWriter(tell),
+      runRWS,
+      modify )
+import Data.Binary ( Get, Binary(..) )
+import Data.Char ( ord )
+import Data.Default ( Default(def) )
+import Data.Foldable ( Foldable(foldr), notElem, forM_ )
+import Data.Function ( ($), flip, const )
+import qualified Data.Map as M ( Map, lookup, insert, empty )
+import Data.Maybe ( Maybe(..), maybe, isNothing, fromMaybe )
+import qualified Data.Set as Set ( Set )
 import qualified Data.Text as T
-import qualified Data.Text.Encoding as E
-import           Data.Time
-import           Data.Traversable
-import           Data.DynamicState.Serializable
-import           Numeric(showHex)
-import           Prelude hiding (foldr, mapM, notElem)
-import           System.FilePath
-import           Yi.Buffer.Basic
-import           Yi.Buffer.Implementation
-import           Yi.Buffer.Undo
-import           Yi.Interact as I
-import           Yi.Monad
-import           Yi.Region
-import           Yi.Rope (YiString)
+    ( Text, unpack, snoc, pack, justifyRight, concat )
+import qualified Data.Text.Encoding as E ( encodeUtf8, decodeUtf8 )
+import Data.Time ( UTCTime(UTCTime) )
+import Data.Traversable ( Traversable(mapM), forM )
+import Data.DynamicState.Serializable ( putDyn, getDyn )
+import Numeric ( showHex )
+import System.FilePath ( splitPath, joinPath )
+import Yi.Buffer.Basic
+    ( WindowRef,
+      Size(Size),
+      Point(..),
+      Mark,
+      Direction(..),
+      BufferRef )
+import Yi.Buffer.Implementation
+    ( SearchExp,
+      MarkValue(..),
+      Update(Delete, Insert),
+      BufferImpl(..),
+      Overlay(Overlay, overlayAnnotation),
+      UIUpdate(TextUpdate),
+      newBI,
+      sizeBI,
+      getStream,
+      getIndexedStream,
+      mkOverlay,
+      overlayUpdate,
+      addOverlayBI,
+      delOverlayBI,
+      delOverlaysOfOwnerBI,
+      getOverlaysOfOwnerBI,
+      strokesRangesBI,
+      isValidUpdate,
+      applyUpdateI,
+      reverseUpdateI,
+      lineAt,
+      solPoint,
+      eolPoint',
+      solPoint',
+      charsFromSolBI,
+      regexRegionBI,
+      newMarkBI,
+      getMarkValueBI,
+      deleteMarkValueBI,
+      getMarkBI,
+      modifyMarkBI,
+      setSyntaxBI,
+      updateSyntax,
+      getMarkDefaultPosBI,
+      getAst,
+      focusAst )
+import Yi.Buffer.Undo
+    ( Change(AtomicChange, InteractivePoint),
+      URList,
+      emptyU,
+      addChangeU,
+      setSavedFilePointU,
+      undoU,
+      redoU,
+      isAtSavedFilePointU )
+import Yi.Interact as I ( P(End) )
+import Yi.Monad ( getsAndModify )
+import Yi.Region ( Region, mkRegion )
+import Yi.Rope ( YiString )
 import qualified Yi.Rope as R
-import           Yi.Syntax
-import           Yi.Types
-import           Yi.Utils
-import           Yi.Window
+    ( YiString,
+      unCn,
+      toString,
+      take,
+      splitAt,
+      singleton,
+      length,
+      head,
+      foldl' )
+import Yi.Syntax ( Stroke, ExtHL(ExtHL), noHighlighter )
+import Yi.Types
+    ( IndentBehaviour(..),
+      Mode(..),
+      AnyMode(..),
+      SelectionStyle(SelectionStyle, highlightSelection,
+                     rectangleSelection),
+      BufferId(..),
+      Attributes(..),
+      MarkSet(..),
+      WinMarks,
+      FBuffer(..),
+      IndentSettings(..),
+      BufferM(..),
+      YiVariable,
+      emptyAction )
+import Yi.Utils
+    ( SemiNum((+~)), makeLensesWithSuffix, makeClassyWithSuffix )
+import Yi.Window ( Window(width, wkey), dummyWindow )
+
 
 -- In addition to Buffer's text, this manages (among others):
 --  * Log of updates mades

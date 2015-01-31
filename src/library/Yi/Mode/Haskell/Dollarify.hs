@@ -11,23 +11,33 @@
 
 module Yi.Mode.Haskell.Dollarify where
 
-import           Control.Applicative
-import           Control.Monad
-import           Data.Function (on)
-import           Data.List (sortBy)
-import           Data.Maybe (fromMaybe)
-import           Data.Monoid
-import           Data.Text ()
-import           Yi.Buffer hiding (Block)
-import           Yi.Debug
-import           Yi.Lexer.Alex (posnOfs, Tok(..))
-import           Yi.Lexer.Haskell (isComment, TT, Token(..))
-import qualified Yi.Rope as R
-import           Yi.String
-import qualified Yi.Syntax.Haskell as H (Tree, Exp(..))
-import           Yi.Syntax.Paren (Expr, Tree(..))
-import           Yi.Syntax.Tree (getAllSubTrees, getFirstOffset,
-                                 getLastOffset, getLastPath)
+import Control.Applicative ( Applicative((<*>)), (<$>) )
+import Control.Monad ( unless )
+import Data.Function ( on )
+import Data.List ( sortBy )
+import Data.Maybe ( fromMaybe )
+import Data.Monoid ( (<>) )
+import Data.Text ()
+import Yi.Buffer
+    ( Region,
+      Point,
+      Direction(Forward),
+      regionLast,
+      mkRegion,
+      includedRegion,
+      BufferM,
+      insertNAt,
+      deleteNAt,
+      getSelectRegionB )
+import Yi.Debug ( trace )
+import Yi.Lexer.Alex ( posnOfs, Tok(..) )
+import Yi.Lexer.Haskell ( isComment, TT, Token(..) )
+import qualified Yi.Rope as R ( YiString, null )
+import Yi.String ( showT )
+import qualified Yi.Syntax.Haskell as H ( Tree, Exp(..) )
+import Yi.Syntax.Paren ( Expr, Tree(..) )
+import Yi.Syntax.Tree
+    ( getAllSubTrees, getFirstOffset, getLastOffset, getLastPath )
 
 dollarify :: Tree TT -> BufferM ()
 dollarify t = maybe (return ()) dollarifyWithin . selectedTree [t] =<< getSelectRegionB

@@ -15,15 +15,27 @@
 module Yi.Syntax.Latex where
 
 import Control.Applicative
-import Data.Foldable (Foldable, foldMap)
-import Data.Monoid
-import Data.Traversable
-import Yi.IncrementalParse
-import Yi.Lexer.Alex hiding (tokenToStyle)
-import Yi.Lexer.Latex
+    ( Applicative((<*), (<*>), pure),
+      Alternative((<|>), empty, many),
+      (<$>) )
+import Data.Foldable ( Foldable, foldMap )
+import Data.Monoid ( Monoid(mappend, mempty), Endo(..), (<>) )
+import Data.Traversable ( Traversable(sequenceA) )
+import Yi.IncrementalParse ( symbol, eof, recoverWith, P )
+import Yi.Lexer.Alex
+    ( Stroke,
+      Tok(Tok, tokPosn, tokT),
+      Posn(posnOfs),
+      tokToSpan,
+      tokFromT )
+import Yi.Lexer.Latex ( Token(..), tokenToText )
 import Yi.Style
-import Yi.Syntax
-import Yi.Syntax.Tree
+    ( StyleName,
+      UIStyle(commentStyle, errorStyle, hintStyle, keywordStyle,
+              typeStyle),
+      defaultStyle )
+import Yi.Syntax ( Span, Point )
+import Yi.Syntax.Tree ( IsTree(emptyNode, uniplate) )
 
 isNoise :: Token -> Bool
 isNoise Text = True

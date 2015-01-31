@@ -10,16 +10,37 @@
 
 module Yi.Keymap.Vim.ReplaceMap (defReplaceMap) where
 
-import           Control.Monad
-import           Data.Monoid
-import qualified Data.Text as T
-import           Yi.Buffer.Adjusted
-import           Yi.Editor
-import           Yi.Keymap.Keys
-import           Yi.Keymap.Vim.Common
-import           Yi.Keymap.Vim.EventUtils
-import           Yi.Keymap.Vim.StateUtils
-import           Yi.Keymap.Vim.Utils
+import Control.Monad ( when, replicateM_ )
+import Data.Monoid ( Monoid(mempty), (<>) )
+import qualified Data.Text as T ( unpack )
+import Yi.Buffer.Adjusted
+    ( BufferM,
+      rightB,
+      readB,
+      replaceCharB,
+      replaceCharWithBelowB,
+      replaceCharWithAboveB,
+      insertCharWithBelowB,
+      insertCharWithAboveB,
+      moveXorSol,
+      insertB )
+import Yi.Editor ( EditorM, withCurrentBuffer, getEditorDyn )
+import Yi.Keymap.Keys ( Key(KEsc), ctrlCh, spec )
+import Yi.Keymap.Vim.Common
+    ( MatchResult(NoMatch, WholeMatch),
+      EventString(_unEv),
+      VimState(vsMode, vsOngoingInsertEvents),
+      VimMode(Normal, Replace),
+      VimBinding(VimBindingE),
+      RepeatToken(Continue, Finish) )
+import Yi.Keymap.Vim.EventUtils ( eventToEventString, parseEvents )
+import Yi.Keymap.Vim.StateUtils
+    ( switchMode,
+      modifyStateE,
+      resetCount,
+      getCountE,
+      saveInsertEventStringE )
+import Yi.Keymap.Vim.Utils ( mkBindingE )
 
 defReplaceMap :: [VimBinding]
 defReplaceMap = specials <> [printable]

@@ -9,13 +9,13 @@
 
 module Yi.Keymap.Vim.Ex.Commands.GotoLine (parse) where
 
-import           Data.Char (isDigit)
-import qualified Data.Text as T
-import           Yi.Buffer.Adjusted
-import           Yi.Keymap
-import           Yi.Keymap.Vim.Common
-import           Yi.Keymap.Vim.Ex.Commands.Common (pureExCommand)
-import           Yi.Keymap.Vim.Ex.Types
+import Data.Char ( isDigit )
+import qualified Data.Text as T ( unpack, null, all )
+import Yi.Buffer.Adjusted ( gotoLn, firstNonSpaceB )
+import Yi.Keymap ( Action(BufferA) )
+import Yi.Keymap.Vim.Common ( EventString(Ev) )
+import Yi.Keymap.Vim.Ex.Commands.Common ( pureExCommand )
+import Yi.Keymap.Vim.Ex.Types ( ExCommand(cmdAction, cmdShow) )
 
 parse :: EventString -> Maybe ExCommand
 parse (Ev s) = if not (T.null s) && T.all isDigit s

@@ -4,11 +4,13 @@ module System.FriendlyPath
   , isAbsolute'
   ) where
 
-import Control.Applicative
-import System.FilePath
-import System.PosixCompat.User (getUserEntryForName, homeDirectory)
-import System.CanonicalizePath
-import System.Directory hiding (canonicalizePath)
+import Control.Applicative ( (<$>) )
+import System.FilePath ( normalise, pathSeparator, isAbsolute )
+import System.PosixCompat.User
+    ( getUserEntryForName, homeDirectory )
+import System.CanonicalizePath ( canonicalizePath )
+import System.Directory ( getHomeDirectory )
+
 
 -- canonicalizePath follows symlinks, and does not work if the directory does not exist.
 

@@ -14,18 +14,34 @@
 
 module Yi.Syntax.Strokes.Haskell (getStrokes, tokenToAnnot) where
 
-import Data.Foldable hiding (elem)
-import Data.Monoid
-import Data.Traversable
 import Prelude hiding (error,any,exp)
-import Yi.Debug
-import Yi.Lexer.Alex hiding (tokenToStyle)
+
+import Data.Foldable ( Foldable(foldMap), any )
+import Data.Monoid ( Monoid(mappend), Endo(..), (<>) )
+import Data.Traversable ( Traversable(sequenceA) )
+import Yi.Debug ( trace, error )
+import Yi.Lexer.Alex
+    ( Stroke, Tok(tokPosn, tokT), Posn(posnOfs), tokToSpan )
 import Yi.Lexer.Haskell
+    ( Token(ConsIdent, Reserved),
+      TT,
+      ReservedType(As, Hiding, Qualified),
+      tokenToText,
+      tokenToStyle,
+      isErrorTok )
 import Yi.Style
-import Yi.Syntax
+    ( StyleName,
+      UIStyle(dataConstructorStyle, errorStyle, hintStyle, importStyle,
+              keywordStyle, variableStyle) )
+import Yi.Syntax ( Span, Point )
 import Yi.Syntax.Haskell
-import Yi.Syntax.Tree (subtrees)
-import Yi.String (showT)
+    ( Exp(Bin, DC, Modid, Opt, PAtom, PClass, PData, PError, PGuard',
+          PImport, PIn, PModule, PModuleDecl, Paren, TC, TS),
+      PImport,
+      PModuleDecl,
+      Tree )
+import Yi.Syntax.Tree ( subtrees )
+import Yi.String ( showT )
 
 -- TODO: (optimization) make sure we take in account the begin, so we
 -- don't return useless strokes
@@ -123,7 +139,8 @@ isErr :: TT -> Bool
 isErr = isErrorTok . tokT
 
 isErrN :: (Foldable v) => v TT -> Bool
-isErrN t = any isErr t
+isErrN = any isErr
+--
 --         || not $ null $ isError' t
 
 errStyle :: TT -> Endo [Stroke]

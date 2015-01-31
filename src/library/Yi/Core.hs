@@ -44,53 +44,169 @@ module Yi.Core
   , forkAction
   ) where
 
-import           Control.Applicative
-import           Control.Concurrent
-import           Control.Exc
-import           Control.Exception
-import           Control.Lens hiding (Action,act,acts)
-import           Control.Monad hiding (mapM_,forM_,forM)
-import           Control.Monad.Base
-import           Control.Monad.Error ()
-import           Control.Monad.Reader hiding (mapM_,forM_,forM)
-import qualified Data.DelayList as DelayList
-import           Data.Foldable
-import           Data.List (partition)
-import           Data.List.NonEmpty (NonEmpty(..))
+import Prelude hiding (mapM_, elem, or)
+
+import Control.Applicative ( Applicative(pure), (<$>) )
+import Control.Concurrent
+    ( ThreadId,
+      forkIO,
+      newMVar,
+      threadDelay,
+      readMVar,
+      modifyMVar_,
+      modifyMVar,
+      forkOS )
+import Control.Exc ( ignoringException )
+import Control.Exception ( SomeException, handle )
+import Control.Lens
+    ( mapped,
+      assign,
+      (.~),
+      (.=),
+      (%~),
+      (%=),
+      (&),
+      view,
+      uses,
+      use,
+      (^.) )
+import Control.Monad
+    ( Monad((>>), (>>=), return),
+      Functor(fmap),
+      (=<<),
+      when,
+      void,
+      forever )
+import Control.Monad.Base ( MonadBase(liftBase) )
+import Control.Monad.Error ()
+import Control.Monad.Reader
+    ( asks, MonadReader(ask), ReaderT(runReaderT) )
+import qualified Data.DelayList as DelayList ( insert, decrease )
+import Data.Foldable
+    ( Foldable(foldMap), toList, or, mapM_, forM_, find, elem )
+import Data.List ( partition )
+import Data.List.NonEmpty ( NonEmpty(..) )
 import qualified Data.List.PointedList.Circular as PL
-import           Data.List.Split (splitOn)
+    ( PointedList(_focus), length )
+import Data.List.Split ( splitOn )
 import qualified Data.Map as M
-import           Data.Maybe
-import           Data.Monoid
-import qualified Data.Text as T
-import           Data.Time
-import           Data.Time.Clock.POSIX
-import           Data.Traversable
-import           GHC.Conc (labelThread)
-import           Prelude hiding (elem,or,mapM_)
-import           System.Directory (doesFileExist)
-import           System.Exit
-import           System.IO (Handle, hWaitForInput, hPutStr)
-import           System.PosixCompat.Files
-import           System.Process (terminateProcess, getProcessExitCode,
-                                 ProcessHandle, readProcessWithExitCode)
-import           Yi.Buffer
-import           Yi.Config
-import           Yi.Debug
-import           Yi.Editor
-import           Yi.Keymap
-import           Yi.Keymap.Keys
-import           Yi.KillRing (krEndCmd)
-import           Yi.Monad
-import           Yi.Process (createSubprocess, readAvailable,
-                             SubprocessId, SubprocessInfo(..))
-import qualified Yi.Rope as R
-import           Yi.String
-import           Yi.Style (errorStyle, strongHintStyle)
+    ( insert, fromList, delete, member, empty, assocs )
+import Data.Maybe ( Maybe(..), isNothing, fromMaybe )
+import Data.Monoid ( First(First, getFirst), (<>) )
+import qualified Data.Text as T ( Text, unwords, pack )
+import Data.Time ( getCurrentTime )
+import Data.Time.Clock.POSIX ( posixSecondsToUTCTime )
+import Data.Traversable ( forM )
+import GHC.Conc ( labelThread )
+import System.Directory ( doesFileExist )
+import System.Exit ( ExitCode )
+import System.IO ( Handle, hWaitForInput, hPutStr )
+import System.PosixCompat.Files ( modificationTime, getFileStatus )
+import System.Process
+    ( terminateProcess,
+      getProcessExitCode,
+      ProcessHandle,
+      readProcessWithExitCode )
+import Yi.Buffer
+    ( Direction(Backward, Forward),
+      BufferRef,
+      markGravityAA,
+      Change(InteractivePoint),
+      addChangeU,
+      Mode(modeKeymap, modeName),
+      AnyMode(..),
+      BufferId(FileBuffer, MemBuffer),
+      FBuffer(..),
+      identA,
+      keymapProcessA,
+      lastSyncTimeA,
+      pendingUpdatesA,
+      pointFollowsWindowA,
+      readOnlyA,
+      undosA,
+      clearSyntax,
+      highlightSelectionA,
+      runBuffer,
+      bkey,
+      isUnchangedBuffer,
+      emptyMode,
+      insertNAt,
+      setMode0,
+      withMode0,
+      withSyntaxB,
+      focusSyntax,
+      modifyMarkB,
+      getMarkB,
+      markPointA,
+      snapInsB,
+      snapScreenB,
+      revertB )
+import Yi.Config
+    ( Config(configCheckExternalChangesObsessively,
+             configInputPreprocess, configUI, defaultKm, initialActions,
+             modeTable, startActions, startFrontEnd),
+      UIConfig(configScrollStyle) )
+import Yi.Debug ( logPutStrLn )
+import Yi.Editor
+    ( MonadEditor(withEditor),
+      EditorM,
+      Editor(buffers),
+      runEditor,
+      emptyEditor,
+      buffersA,
+      killringA,
+      pendingEventsA,
+      statusLinesA,
+      windows,
+      windowsA,
+      tabsA,
+      findBufferWithName,
+      withGivenBuffer,
+      withCurrentBuffer,
+      currentBuffer,
+      printMsg,
+      printStatus,
+      newEmptyBufferE,
+      switchToBufferWithNameE,
+      withWindowE,
+      splitE,
+      tryCloseE )
+import Yi.Keymap
+    ( YiM(runYiM),
+      YiVar(..),
+      Yi(Yi, yiConfig, yiOutput, yiUi, yiVar),
+      IsRefreshNeeded(..),
+      Action(..),
+      extractTopKeymap,
+      YiAction(..),
+      withUI,
+      yiEditorA,
+      yiSubprocessIdSupplyA,
+      yiSubprocessesA )
+import Yi.Keymap.Keys
+    ( Event,
+      prettyEvent,
+      InteractState(Ambiguous, Dead),
+      P(Chain),
+      processOneEvent,
+      computeState,
+      mkAutomaton )
+import Yi.KillRing ( krEndCmd )
+import Yi.Monad ( gets )
+import Yi.Process
+    ( createSubprocess,
+      readAvailable,
+      SubprocessId,
+      SubprocessInfo(..) )
+import qualified Yi.Rope as R ( YiString, readFile, fromString )
+import Yi.String ( showT, chomp )
+import Yi.Style ( errorStyle, strongHintStyle )
 import qualified Yi.UI.Common as UI
-import           Yi.Utils
-import           Yi.Window (dummyWindow, bufkey, wkey, winRegion, isMini)
-import           Yi.PersistentState (loadPersistentState, savePersistentState)
+    ( UI(end, layout, main, refresh, suspend, userForceRefresh) )
+import Yi.Utils ( io )
+import Yi.Window ( dummyWindow, bufkey, wkey, winRegion, isMini )
+import Yi.PersistentState
+    ( loadPersistentState, savePersistentState )
 
 -- | Make an action suitable for an interactive run.
 -- UI will be refreshed.

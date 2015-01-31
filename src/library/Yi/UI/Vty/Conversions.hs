@@ -5,11 +5,35 @@ module Yi.UI.Vty.Conversions
     , fromVtyMod
     ) where
 
-import Data.List (nub, sort)
+import Data.List ( nub, sort )
 import qualified Graphics.Vty as Vty
-
+    ( Modifier(..),
+      Key(KBS, KBackTab, KBegin, KCenter, KChar, KDel, KDown, KEnd,
+          KEnter, KEsc, KFun, KHome, KIns, KLeft, KMenu, KPageDown, KPageUp,
+          KPause, KPrtScr, KRight, KUp),
+      Event(EvKey),
+      Color,
+      Attr,
+      rgbColor,
+      yellow,
+      white,
+      red,
+      magenta,
+      green,
+      cyan,
+      brightYellow,
+      brightWhite,
+      brightRed,
+      brightMagenta,
+      brightGreen,
+      brightCyan,
+      brightBlue,
+      brightBlack,
+      blue,
+      black )
 import qualified Yi.Event
-import qualified Yi.Style
+    ( Event(..), Key(..), Modifier(MCtrl, MMeta, MShift) )
+import qualified Yi.Style ( Color(..) )
 
 fromVtyEvent :: Vty.Event -> Yi.Event.Event
 fromVtyEvent (Vty.EvKey Vty.KBackTab mods) =

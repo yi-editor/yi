@@ -12,16 +12,19 @@
 
 module Yi.Keymap.Vim.Ex.Commands.Edit (parse) where
 
-import           Control.Applicative
-import           Control.Monad
-import qualified Data.Text as T
+import Control.Applicative ( Alternative((<|>)), (<$>) )
+import Control.Monad ( when, void )
+import qualified Data.Text as T ( Text, unpack, pack, append )
 import qualified Text.ParserCombinators.Parsec as P
-import           Yi.Editor
-import           Yi.File
-import           Yi.Keymap
-import           Yi.Keymap.Vim.Common
+    ( many, try, many1, string, space, anyChar )
+import Yi.Editor ( MonadEditor(withEditor), newTabE )
+import Yi.File ( openNewFile )
+import Yi.Keymap ( Action(YiA) )
+import Yi.Keymap.Vim.Common ( EventString )
 import qualified Yi.Keymap.Vim.Ex.Commands.Common as Common
-import           Yi.Keymap.Vim.Ex.Types
+    ( parse, filenameComplete, impureExCommand )
+import Yi.Keymap.Vim.Ex.Types
+    ( ExCommand(cmdAction, cmdComplete, cmdShow) )
 
 parse :: EventString -> Maybe ExCommand
 parse = Common.parse $ do

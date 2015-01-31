@@ -11,21 +11,44 @@
 
 module Yi.Keymap.Vim.Ex.Commands.Substitute (parse) where
 
-import           Control.Applicative
-import           Control.Monad
-import           Data.Monoid
-import qualified Data.Text as T
+import Control.Applicative ( Alternative((<|>)), (<$>) )
+import Control.Monad ( void )
+import Data.Monoid ( (<>) )
+import qualified Data.Text as T ( snoc, cons )
 import qualified Text.ParserCombinators.Parsec as P
-import           Yi.Buffer.Adjusted hiding (Delete)
-import           Yi.Editor
-import           Yi.MiniBuffer
-import           Yi.Keymap
-import           Yi.Keymap.Keys
-import           Yi.Keymap.Vim.Common
+    ( char, many, try, string, oneOf, noneOf )
+import Yi.Buffer.Adjusted
+    ( Region(regionEnd, regionStart),
+      mkRegion,
+      SearchExp,
+      BufferM,
+      moveTo,
+      gotoLn,
+      regexRegionB,
+      lineCountB,
+      withEveryLineB,
+      readRegionB,
+      replaceRegionB,
+      TextUnit(Line),
+      regionOfB,
+      moveToSol )
+import Yi.Editor
+    ( EditorM, withCurrentBuffer, printMsg, closeBufferAndWindowE )
+import Yi.MiniBuffer ( spawnMinibufferE )
+import Yi.Keymap ( Keymap, Action(EditorA) )
+import Yi.Keymap.Keys ( choice, char, (?>>!) )
+import Yi.Keymap.Vim.Common ( EventString )
 import qualified Yi.Keymap.Vim.Ex.Commands.Common as Common
-import           Yi.Keymap.Vim.Ex.Types
+    ( parse, pureExCommand )
+import Yi.Keymap.Vim.Ex.Types ( ExCommand(cmdAction, cmdShow) )
 import qualified Yi.Rope as R
-import           Yi.Search
+    ( YiString, toText, null, length, fromString )
+import Yi.Search
+    ( setRegexE,
+      resetRegexE,
+      getRegexE,
+      searchAndRepRegion0,
+      makeSimpleSearch )
 
 parse :: EventString -> Maybe ExCommand
 parse = Common.parse $ do

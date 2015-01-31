@@ -17,22 +17,114 @@ module Yi.UI.Vty
     ) where
 
 import Prelude hiding (error, concatMap, reverse)
-import Control.Applicative hiding ((<|>))
+
+import Control.Applicative ( Applicative((<*>)), (<$>) )
 import Control.Concurrent
-import Control.Exception
-import Control.Lens
-import Control.Monad
-import Data.Char
-import qualified Data.DList as D
-import Data.Foldable (toList, concatMap)
-import Data.IORef
+    ( MVar,
+      myThreadId,
+      forkIO,
+      tryTakeMVar,
+      tryPutMVar,
+      takeMVar,
+      newEmptyMVar,
+      readChan,
+      isEmptyChan )
+import Control.Exception ( IOException, handle )
+import Control.Lens ( use )
+import Control.Monad ( when, void )
+import Data.Char ( ord, chr )
+import qualified Data.DList as D ( toList, snoc, empty )
+import Data.Foldable ( toList, concatMap )
+import Data.IORef ( IORef, writeIORef, readIORef, newIORef )
 import qualified Data.List.PointedList.Circular as PL
-import qualified Data.Map.Strict as M
-import Data.Maybe
-import Data.Monoid
+    ( PointedList(_focus), withFocus )
+import qualified Data.Map.Strict as M ( (!) )
+import Data.Maybe ( maybeToList )
+import Data.Monoid ( Endo(appEndo), (<>) )
 import qualified Data.Text as T
+    ( Text,
+      empty,
+      unpack,
+      take,
+      snoc,
+      singleton,
+      pack,
+      length,
+      justifyLeft,
+      cons )
 import qualified Graphics.Vty as Vty
-import GHC.Conc (labelThread)
+    ( Picture(picCursor),
+      Cursor(Cursor, NoCursor),
+      Output(displayBounds),
+      Input(_eventChannel),
+      Event(EvResize),
+      Image,
+      Attr,
+      Vty(inputIface, outputIface, refresh, shutdown, update),
+      picForLayers,
+      vertCat,
+      translate,
+      text',
+      horizCat,
+      emptyImage,
+      charFill,
+      char,
+      (<|>),
+      withStyle,
+      withForeColor,
+      withBackColor,
+      underline,
+      reverseVideo,
+      defAttr,
+      bold,
+      mkVty )
+import GHC.Conc ( labelThread )
+import Yi.Buffer
+    ( Size(Size),
+      Point(Point),
+      Direction(Forward),
+      mkSizeRegion,
+      MarkSet(MarkSet),
+      IndentSettings(tabSize),
+      miniIdentString,
+      getModeLine,
+      runBuffer,
+      getMarks,
+      pointB,
+      indexedStreamB,
+      indentSettingsB,
+      markPointA )
+import Yi.Config
+    ( Config(configUI),
+      UIBoot,
+      UIConfig(configVty, configWindowFill),
+      configStyle )
+import Yi.Debug ( logPutStrLn, logError )
+import Yi.Editor
+    ( Editor(currentRegex, maxStatusHeight),
+      windows,
+      commonNamePrefix,
+      findBufferWith,
+      statusLineInfo )
+import Yi.Event ( Event )
+import Yi.Style
+    ( UIStyle(baseAttributes, eofStyle, modelineAttributes,
+              modelineFocusStyle, tabBarAttributes, tabInFocusStyle,
+              tabNotFocusedStyle),
+      Attributes(Attributes) )
+import qualified Yi.UI.Common as Common
+    ( UI(end, layout, main, refresh, userForceRefresh), dummyUI )
+import qualified Yi.UI.SimpleLayout as SL
+    ( Size2D(Size2D),
+      Point2D(Point2D),
+      Rect(Rect, offsetX, offsetY, sizeX),
+      Layout(Layout),
+      layout,
+      coordsOfCharacterB )
+import Yi.UI.Vty.Conversions ( fromVtyEvent, colorToAttr )
+import Yi.UI.TabBar ( TabDescr(TabDescr), tabBarDescr )
+import Yi.UI.Utils ( attributesPictureAndSelB, arrangeItems )
+import Yi.Window ( Window(bufkey, isMini, wkey) )
 
 import Yi.Buffer
 import Yi.Config

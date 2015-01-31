@@ -49,16 +49,65 @@ module Yi.Keymap.Vim.Motion
     , changeMoveStyle
     ) where
 
-import           Control.Applicative
-import           Control.Lens
-import           Control.Monad
-import           Data.Maybe (fromMaybe)
-import           Data.Monoid
-import qualified Data.Text as T
-import           Prelude hiding (repeat)
-import           Yi.Buffer.Adjusted
-import           Yi.Keymap.Vim.Common
-import           Yi.Keymap.Vim.StyledRegion
+import Prelude hiding (repeat)
+
+import Control.Applicative
+    ( Applicative((<*>)), Alternative((<|>)), (<$>) )
+import Control.Lens ( Field3(_3), over, use )
+import Control.Monad
+    ( Monad((>>), fail, return),
+      Functor(fmap),
+      (=<<),
+      when,
+      void,
+      replicateM_,
+      (<=<) )
+import Data.Maybe ( fromMaybe )
+import Data.Monoid ( (<>) )
+import qualified Data.Text as T ( unpack )
+import Yi.Buffer.Adjusted
+    ( Direction(Backward, Forward),
+      mkRegion,
+      RegionStyle(Exclusive, Inclusive, LineWise),
+      BufferM,
+      pointB,
+      moveTo,
+      gotoLn,
+      mayGetMarkB,
+      lineMoveRel,
+      markPointA,
+      destinationOfMoveB,
+      BoundarySide(InsideBound),
+      TextUnit(Character),
+      unitViWord,
+      unitViWORD,
+      unitEmacsParagraph,
+      unitSentence,
+      genMoveB,
+      moveB,
+      moveToSol,
+      moveToEol,
+      botB,
+      leftOnEol,
+      moveXorSol,
+      moveXorEol,
+      nextCInLineInc,
+      nextCInLineExc,
+      prevCInLineInc,
+      prevCInLineExc,
+      firstNonSpaceB,
+      lastNonSpaceB,
+      scrollScreensB,
+      downFromTosB,
+      upFromBosB,
+      middleB,
+      movePercentageFileB,
+      findMatchingPairB,
+      lineMoveVisRel )
+import Yi.Keymap.Vim.Common
+    ( MatchResult(..), EventString(_unEv), lookupBestMatch )
+import Yi.Keymap.Vim.StyledRegion
+    ( StyledRegion(..), normalizeRegion )
 
 data Move = Move {
     moveStyle :: !RegionStyle

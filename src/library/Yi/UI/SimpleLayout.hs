@@ -15,16 +15,42 @@ module Yi.UI.SimpleLayout
 
 import Prelude hiding (concatMap, mapM)
 
-import Control.Lens
-import Control.Monad.State (evalState, get, put)
-import Data.Foldable
-import Data.List (partition)
-import Data.Maybe (fromJust)
+import Control.Lens ( (.~), use )
+import Control.Monad.State ( evalState, get, put )
+import Data.Foldable ( toList, find )
+import Data.List ( partition )
+import Data.Maybe ( fromJust )
 import qualified Data.List.PointedList.Circular as PL
-import qualified Data.Map.Strict as M
-import Data.Monoid
-import qualified Data.Text as T
-import Data.Traversable (mapM)
+    ( PointedList )
+import qualified Data.Map.Strict as M ( Map, fromList )
+import Data.Monoid ( (<>) )
+import qualified Data.Text as T ( uncons )
+import Data.Traversable ( mapM )
+import Yi.Buffer
+    ( WindowRef,
+      Point(Point),
+      Direction(Forward),
+      mkRegion,
+      MarkSet(MarkSet),
+      IndentSettings(tabSize),
+      BufferM,
+      runBuffer,
+      getMarks,
+      streamB,
+      indentSettingsB,
+      markPointA,
+      savingPointB )
+import Yi.Editor
+    ( Editor(maxStatusHeight),
+      windows,
+      windowsA,
+      findBufferWith,
+      statusLineInfo )
+import qualified Yi.Rope as R ( toText, toString, take )
+import Yi.UI.Utils ( arrangeItems )
+import Yi.Window
+    ( Window(Window, actualLines, bufkey, height, isMini, width,
+             winRegion, wkey) )
 
 
 import Yi.Buffer

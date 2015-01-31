@@ -59,7 +59,17 @@ import Data.DeriveTH
 #else
 import GHC.Generics (Generic)
 #endif
+
+import Data.Binary ( Binary(..), putWord8, getWord8 )
 import Yi.Buffer.Implementation
+    ( Mark,
+      Direction(Backward, Forward),
+      MarkValue(markPoint),
+      Update(updateDirection, updatePoint),
+      BufferImpl,
+      applyUpdateI,
+      reverseUpdateI,
+      modifyMarkBI )
 
 data Change = SavedFilePoint
             | InteractivePoint

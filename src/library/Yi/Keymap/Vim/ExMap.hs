@@ -12,23 +12,58 @@
 
 module Yi.Keymap.Vim.ExMap (defExMap) where
 
-import           Control.Applicative
-import           Control.Monad (when)
-import           Data.Char (isSpace)
-import           Data.Maybe (fromJust)
-import           Data.Monoid
+import Control.Applicative ( (<$), (<$>) )
+import Control.Monad ( when )
+import Data.Char ( isSpace )
+import Data.Maybe ( fromJust )
+import Data.Monoid ( (<>) )
 import qualified Data.Text as T
-import           System.FilePath (isPathSeparator)
-import           Yi.Buffer.Adjusted hiding (Insert)
-import           Yi.Editor
-import           Yi.History
-import           Yi.Keymap
-import           Yi.Keymap.Vim.Common
-import           Yi.Keymap.Vim.Ex
-import           Yi.Keymap.Vim.StateUtils
-import           Yi.Keymap.Vim.Utils
-import qualified Yi.Rope as R
-import           Yi.String
+    ( Text, unwords, split, length, head, drop )
+import System.FilePath ( isPathSeparator )
+import Yi.Buffer.Adjusted
+    ( Direction(Backward, Forward),
+      setVisibleSelection,
+      elemsB,
+      TextUnit(Character),
+      unitViWordOnLine,
+      regionOfPartNonEmptyB,
+      moveToSol,
+      moveToEol,
+      moveXorSol,
+      moveXorEol,
+      deleteToEol,
+      replaceBufferContent,
+      insertB,
+      deleteB,
+      bdeleteB,
+      deleteRegionB )
+import Yi.Editor
+    ( MonadEditor(withEditor),
+      EditorM,
+      withCurrentBuffer,
+      printMsg,
+      getEditorDyn,
+      closeBufferAndWindowE )
+import Yi.History
+    ( historyUp, historyDown, historyFinish, historyPrefixSet )
+import Yi.Keymap ( YiM )
+import Yi.Keymap.Vim.Common
+    ( MatchResult(NoMatch, WholeMatch),
+      EventString(..),
+      VimState(VimState, vsMode, vsOngoingInsertEvents),
+      VimMode(Ex, Normal),
+      VimBinding(..),
+      RepeatToken(Drop) )
+import Yi.Keymap.Vim.Ex
+    ( ExCommand(cmdComplete, cmdIsPure),
+      evStringToExCommand,
+      exEvalE,
+      exEvalY )
+import Yi.Keymap.Vim.StateUtils
+    ( switchModeE, modifyStateE, resetCountE )
+import Yi.Keymap.Vim.Utils ( matchFromBool )
+import qualified Yi.Rope as R ( toText, fromText )
+import Yi.String ( commonTPrefix' )
 
 defExMap :: [EventString -> Maybe ExCommand] -> [VimBinding]
 defExMap cmdParsers =

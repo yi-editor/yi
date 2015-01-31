@@ -24,25 +24,51 @@ module Yi.TextCompletion (
         CompletionScope(..)
 ) where
 
-import           Control.Applicative
-import           Control.Monad
-import           Data.Binary
-import           Data.Char
-import           Data.Default
-import           Data.Function (on)
-import           Data.List (findIndex)
-import           Data.List.NonEmpty (NonEmpty(..))
-import           Data.Maybe
+import Control.Applicative ( (<$>) )
+import Control.Monad ( forM )
+import Data.Binary ( Binary, put, get )
+import Data.Char
+    ( generalCategory,
+      GeneralCategory(UppercaseLetter, LowercaseLetter, TitlecaseLetter,
+                      ModifierLetter, OtherLetter, ConnectorPunctuation, NonSpacingMark,
+                      SpacingCombiningMark, EnclosingMark, DecimalNumber, LetterNumber,
+                      OtherNumber, MathSymbol, CurrencySymbol, ModifierSymbol,
+                      OtherSymbol) )
+import Data.Default ( Default, def )
+import Data.Function ( on )
+import Data.List ( findIndex )
+import Data.List.NonEmpty ( NonEmpty(..) )
+import Data.Maybe ( isJust )
 import qualified Data.Text as T
-import qualified Data.Text.Encoding as E
-import           Data.Typeable
-import           Yi.Buffer
-import           Yi.Completion
-import           Yi.Types (YiVariable)
-import           Yi.Editor
-import           Yi.Keymap
-import qualified Yi.Rope as R
-import           Yi.Utils
+    ( Text, isPrefixOf, null, drop, length, head, groupBy )
+import qualified Data.Text.Encoding as E ( encodeUtf8, decodeUtf8 )
+import Data.Typeable ( Typeable )
+import Yi.Buffer
+    ( readRegionB,
+      replaceRegionB,
+      regionOfPartB,
+      unitWord,
+      Direction(Forward, Backward),
+      elemsB,
+      insertN,
+      BufferM,
+      TextUnit(Document),
+      bkey )
+import Yi.Completion ( mkIsPrefixOf, completeInList )
+import Yi.Types ( YiVariable )
+import Yi.Editor
+    ( putEditorDyn,
+      withEditor,
+      getEditorDyn,
+      withCurrentBuffer,
+      EditorM,
+      printMsg,
+      withEveryBuffer,
+      withGivenBuffer,
+      getBufferStack )
+import Yi.Keymap ( YiM )
+import qualified Yi.Rope as R ( toText, fromText )
+import Yi.Utils ( nubSet )
 
 -- ---------------------------------------------------------------------
 -- | Word completion

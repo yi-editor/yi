@@ -33,28 +33,54 @@ module Yi.File (
   preSaveHooks
  ) where
 
-import           Control.Applicative
-import           Control.Lens hiding (act, Action)
-import           Control.Monad (filterM, when, void)
-import           Control.Monad.Base
-import           Data.Default
-import           Data.Monoid
+import Control.Applicative ( (<$>) )
+import Control.Lens ( makeLenses, assign, view, use, (^.) )
+import Control.Monad ( filterM, when, void )
+import Control.Monad.Base ( liftBase )
+import Data.Default ( Default, def )
+import Data.Monoid ( (<>) )
 import qualified Data.Text as T
-import           Data.Typeable
-import           Data.Time
-import           System.Directory
-import           System.FriendlyPath
-import           Yi.Buffer
-import           Yi.Config.Simple.Types (customVariable, Field)
-import           Yi.Core
-import           Yi.Dired
-import           Yi.Editor
-import           Yi.Keymap
-import           Yi.Monad
+    ( unpack, Text, append, cons, pack )
+import Data.Typeable ( Typeable )
+import Data.Time ( getCurrentTime )
+import System.Directory ( doesFileExist, doesDirectoryExist )
+import System.FriendlyPath ( userToCanonPath )
+import Yi.Buffer
+    ( isUnchangedBuffer,
+      bkey,
+      markSavedB,
+      revertB,
+      bufInfoB,
+      bufInfoFileName,
+      streamB,
+      BufferRef,
+      file,
+      Direction(Forward),
+      encodingConverterNameA,
+      identA )
+import Yi.Config.Simple.Types ( customVariable, Field )
+import Yi.Core ( errorEditor, runAction )
+import Yi.Dired ( editFile )
+import Yi.Editor
+    ( printMsg,
+      withGivenBuffer,
+      withCurrentBuffer,
+      currentBuffer,
+      bufferSet )
+import Yi.Keymap ()
+import Yi.Monad ( gets )
 import qualified Yi.Rope as R
-import           Yi.String
-import           Yi.Types
-import           Yi.Utils
+    ( writeFile, readFile, writeFileUsingText )
+import Yi.String ( showT )
+import Yi.Types
+    ( YiConfigVariable,
+      Action,
+      BufferId(..),
+      YiM,
+      FBuffer,
+      askCfg,
+      BufferM )
+import Yi.Utils ( io )
 
 newtype PreSaveHooks = PreSaveHooks { _unPreSaveHooks :: [Action] }
     deriving Typeable

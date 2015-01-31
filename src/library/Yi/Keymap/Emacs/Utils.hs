@@ -50,34 +50,130 @@ module Yi.Keymap.Emacs.Utils
   )
 where
 
-import           Control.Applicative
-import           Control.Lens hiding (re,act)
-import           Control.Monad
-import           Control.Monad.Base()
-import           Data.List ((\\))
-import           Data.Maybe (fromMaybe)
-import           Data.Monoid
+import Control.Applicative
+    ( Applicative(pure),
+      Alternative((<|>), many, some),
+      (<$>),
+      optional )
+import Control.Lens ( (.=), use )
+import Control.Monad ( void, replicateM_, filterM )
+import Control.Monad.Base ()
+import Data.List ( (\\) )
+import Data.Maybe ( fromMaybe )
+import Data.Monoid ( (<>) )
 import qualified Data.Text as T
-import           System.FilePath (takeDirectory, takeFileName, (</>))
-import           System.FriendlyPath ()
-import           Yi.Buffer
-import           Yi.Command (cabalConfigureE, cabalBuildE, reloadProjectE)
-import           Yi.Core (quitEditor)
-import           Yi.Editor
-import           Yi.Eval
-import           Yi.File
-import           Yi.Keymap
-import           Yi.Keymap.Keys
-import           Yi.MiniBuffer
-import           Yi.Misc (promptFile)
-import           Yi.Monad
-import           Yi.Rectangle
-import           Yi.Regex
+    ( Text, unwords, unpack, snoc, singleton, pack, null, concat )
+import System.FilePath ( takeDirectory, takeFileName, (</>) )
+import System.FriendlyPath ()
+import Yi.Buffer
+    ( Point(Point),
+      Direction(..),
+      BufferRef,
+      FBuffer,
+      BufferM,
+      readOnlyA,
+      identString,
+      bkey,
+      pointB,
+      insertN,
+      insertB,
+      gotoLn,
+      readB,
+      readAtB,
+      readRegionB,
+      BoundarySide(InsideBound),
+      TextUnit(Character, VLine),
+      unitWord,
+      isAnySep,
+      unitSepThisLine,
+      doIfCharB,
+      genMaybeMoveB,
+      moveB,
+      transformB,
+      deleteB,
+      readUnitB,
+      moveToSol,
+      upScreenB,
+      downScreenB,
+      scrollB,
+      getSelectRegionB )
+import Yi.Command ( cabalConfigureE, cabalBuildE, reloadProjectE )
+import Yi.Core ( quitEditor )
+import Yi.Editor
+    ( MonadEditor(withEditor),
+      deleteBuffer,
+      bufferSet,
+      findBufferWith,
+      withCurrentBuffer,
+      currentWindowA,
+      currentBuffer,
+      printMsg,
+      switchToBufferE,
+      closeBufferAndWindowE,
+      newTabE )
+import Yi.Eval ( execEditorAction, getAllNamesInScope )
+import Yi.File
+    ( editFile, openingNewFile, fwriteBufferE, deservesSave )
+import Yi.Keymap ( YiM, Keymap, KeymapM, write )
+import Yi.Keymap.Keys
+    ( Event(..),
+      Key(KASCII, KBS, KEnter),
+      eventToChar,
+      (<||),
+      oneOf,
+      anyEvent,
+      event,
+      choice,
+      charOf,
+      ctrl,
+      meta,
+      char,
+      ctrlCh,
+      metaCh,
+      spec,
+      (>>!),
+      (?>>),
+      (?>>!) )
+import Yi.MiniBuffer
+    ( promptingForBuffer,
+      spawnMinibufferE,
+      withMinibuffer,
+      withMinibufferFree,
+      withMinibufferGen )
+import Yi.Misc ( promptFile )
+import Yi.Monad ( gets )
+import Yi.Rectangle ( getRectangle )
+import Yi.Regex ( makeSearchOptsM )
 import qualified Yi.Rope as R
-import           Yi.Search
-import           Yi.String
-import           Yi.Tag
-import           Yi.Utils
+    ( words, toText, replicateChar, length, fromText, countNewLines )
+import Yi.Search
+    ( setRegexE,
+      resetRegexE,
+      isearchInitE,
+      isearchAddE,
+      isearchDelE,
+      isearchHistory,
+      isearchPrevE,
+      isearchNextE,
+      isearchWordE,
+      isearchFinishE,
+      isearchCancelE,
+      isearchFinishWithE,
+      qrNext,
+      qrReplaceAll,
+      qrFinish,
+      qrReplaceOne )
+import Yi.String ( showT )
+import Yi.Tag
+    ( TagTable,
+      Tag(..),
+      lookupTag,
+      importTagTable,
+      hintTags,
+      completeTag,
+      setTags,
+      getTags )
+import Yi.Utils ( io )
 
 type UnivArgument = Maybe Int
 

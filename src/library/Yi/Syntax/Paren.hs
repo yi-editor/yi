@@ -13,19 +13,42 @@
 
 module Yi.Syntax.Paren where
 
-import Control.Applicative
-import Data.Foldable
-import Data.Maybe
-import Data.Monoid
-import Data.Traversable
 import Prelude hiding (elem)
+
+import Control.Applicative
+    ( Applicative((*>), (<*), (<*>)), Alternative((<|>), many), (<$>) )
+import Data.Foldable ( Foldable(foldMap), toList, elem )
+import Data.Maybe ( Maybe(..), listToMaybe )
+import Data.Monoid ( Monoid(mappend), Endo(Endo, appEndo), (<>) )
+import Data.Traversable ( Traversable(sequenceA) )
 import Yi.IncrementalParse
-import Yi.Lexer.Alex hiding (tokenToStyle)
+    ( AlexState, Parser, symbol, eof, lookNext, recoverWith, P )
+import Yi.Lexer.Alex
+    ( Stroke,
+      Tok(Tok, tokPosn, tokT),
+      Posn(posnLine, posnOfs),
+      tokToSpan,
+      tokFromT,
+      tokBegin,
+      startPosn )
 import Yi.Lexer.Haskell
-import Yi.Style (hintStyle, errorStyle, StyleName)
-import Yi.Syntax
-import Yi.Syntax.Layout
+    ( Token(CppDirective, Special),
+      TT,
+      tokenToText,
+      tokenToStyle,
+      startsLayout,
+      isSpecial,
+      isErrorTok,
+      isComment )
+import Yi.Style ( hintStyle, errorStyle, StyleName )
+import Yi.Syntax ( Span, Scanner, Point )
+import Yi.Syntax.Layout ( State, layoutHandler )
 import Yi.Syntax.Tree
+    ( IsTree(emptyNode, uniplate),
+      getAllSubTrees,
+      getFirstElement,
+      getLastElement,
+      sepBy1 )
 
 indentScanner :: Scanner (AlexState lexState) TT
               -> Scanner (Yi.Syntax.Layout.State Token lexState) TT

@@ -1,8 +1,8 @@
 
 module Yi.UI.Batch (start) where
 
-import Yi.UI.Common
-import Yi.Config
+import Yi.UI.Common ( dummyUI )
+import Yi.Config ( UIBoot )
 
 -- | Initialise the ui
 start :: UIBoot

@@ -59,16 +59,37 @@ module Yi.Keymap
     , yiVarA
     ) where
 
-import           Control.Exception
-import           Control.Monad.Reader hiding (mapM_)
-import           Control.Monad.State hiding (mapM_)
-import           Yi.Buffer
-import qualified Yi.Editor as Editor
-import qualified Yi.Interact as I
-import           Yi.Monad
-import           Yi.Types
-import           Yi.UI.Common
-import           Yi.Utils
+import Control.Exception ( Exception, catch, catchJust )
+import Control.Monad.Reader ( ReaderT(ReaderT, runReaderT) )
+import Control.Monad.State ( gets )
+import Yi.Buffer ( FBuffer(..) )
+import qualified Yi.Editor as Editor ( findBuffer, currentBuffer )
+import qualified Yi.Interact as I ( MonadInteract, write )
+import Yi.Monad ( with )
+import Yi.Types
+    ( Editor,
+      Action(..),
+      withEditor,
+      YiM(..),
+      BufferM,
+      EditorM,
+      MonadEditor,
+      yiUi,
+      KeymapSet(..),
+      Keymap,
+      Mode,
+      YiVar(..),
+      Yi(..),
+      emptyAction,
+      Interact,
+      KeymapM,
+      KeymapEndo,
+      KeymapProcess,
+      extractTopKeymap,
+      unsafeWithEditor,
+      IsRefreshNeeded(..) )
+import Yi.UI.Common ( UI )
+import Yi.Utils ( io, makeLensesWithSuffix )
 
 
 -----------------------

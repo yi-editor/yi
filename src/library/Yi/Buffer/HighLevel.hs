@@ -114,31 +114,140 @@ module Yi.Buffer.HighLevel
     , vimScrollByB
     ) where
 
-import           Control.Applicative
-import           Control.Lens hiding ((-~), (+~), re, transform)
-import           Control.Lens.Cons (_last)
-import           Control.Monad
-import           Control.Monad.RWS.Strict (ask)
-import           Control.Monad.State hiding (forM, forM_, sequence_)
-import           Data.Char (isDigit, isHexDigit, isOctDigit,
-                            toUpper, isUpper, toLower, isSpace)
-import           Data.List (sort, intersperse)
-import           Data.Maybe (fromMaybe, listToMaybe, catMaybes, fromJust)
-import           Data.Monoid
+import Control.Applicative ( Applicative((<*>)), (<$>) )
+import Control.Lens ( (.=), (%=), use, assign, over )
+import Control.Lens.Cons ( _last )
+import Control.Monad
+    ( liftM, when, void, unless, replicateM_, forM_, forM )
+import Control.Monad.RWS.Strict ( ask )
+import Control.Monad.State ( gets )
+import Data.Char
+    ( isDigit,
+      isHexDigit,
+      isOctDigit,
+      toUpper,
+      isUpper,
+      toLower,
+      isSpace )
+import Data.List ( sort, intersperse )
+import Data.Maybe ( fromMaybe, listToMaybe, catMaybes )
+import Data.Monoid ( Monoid(mempty), (<>) )
 import qualified Data.Text as T
-import           Data.Time (UTCTime)
-import           Data.Tuple (swap)
-import           Numeric (showOct, showHex, readOct, readHex)
-import           Yi.Buffer.Basic
-import           Yi.Buffer.Misc
-import           Yi.Buffer.Normal
-import           Yi.Buffer.Region
-import           Yi.Config.Misc (ScrollStyle(SingleLine))
-import           Yi.Rope (YiString)
+    ( Text, unpack, toUpper, toLower, map )
+import Data.Time ( UTCTime )
+import Data.Tuple ( swap )
+import Numeric ( showOct, showHex, readOct, readHex )
+import Yi.Buffer.Basic
+    ( Size(Size), Point(..), Mark, Direction(..) )
+import Yi.Buffer.Misc
+    ( MarkSet(MarkSet, fromMark, selMark),
+      BufferM,
+      encodingConverterNameA,
+      lastActiveWindowA,
+      pointFollowsWindowA,
+      identString,
+      highlightSelectionA,
+      getPercent,
+      markSavedB,
+      isUnchangedBuffer,
+      sizeB,
+      pointB,
+      streamB,
+      moveTo,
+      newlineB,
+      insertN,
+      curLn,
+      markLines,
+      gotoLn,
+      askMarks,
+      getMarkB,
+      leftB,
+      leftN,
+      rightB,
+      lineMoveRel,
+      movingToPrefVisCol,
+      moveToColB,
+      pointOfLineColB,
+      savingPrefCol,
+      lineUp,
+      lineDown,
+      readB,
+      readAtB,
+      deleteN,
+      curCol,
+      colOf,
+      lineOf,
+      lineCountB,
+      eolPointB,
+      gotoLnFrom,
+      markPointA,
+      savingPointB,
+      savingPositionB,
+      pointAt,
+      askWindow )
+import Yi.Buffer.Normal
+    ( RegionStyle(..),
+      TextUnit(Character, Document, Line),
+      unitWord,
+      unitViWordOnLine,
+      atBoundaryB,
+      unitEmacsParagraph,
+      unitParagraph,
+      whileB,
+      doUntilB_,
+      untilB_,
+      moveB,
+      maybeMoveB,
+      transposeB,
+      transformB,
+      deleteB,
+      regionOfB,
+      regionOfPartB,
+      readPrevUnitB,
+      readUnitB,
+      getRegionStyle,
+      convertRegionToStyleB,
+      unitWiseRegion )
+import Yi.Buffer.Region
+    ( Region(regionEnd, regionStart),
+      unionRegion,
+      nearRegion,
+      mkRegion,
+      winRegionB,
+      deleteRegionB,
+      readRegionB,
+      replaceRegionB,
+      modifyRegionB )
+import Yi.Config.Misc ( ScrollStyle(SingleLine) )
+import Yi.Rope ( YiString )
 import qualified Yi.Rope as R
-import           Yi.String
-import           Yi.Utils
-import           Yi.Window
+    ( YiString,
+      ConverterName,
+      withText,
+      unlines,
+      toString,
+      takeWhile,
+      take,
+      splitAt,
+      snoc,
+      reverse,
+      replicateChar,
+      null,
+      lines,
+      length,
+      last,
+      intersperse,
+      init,
+      head,
+      fromString,
+      empty,
+      dropWhileEnd,
+      dropWhile,
+      all )
+import Yi.String
+    ( capitalizeFirst, isBlank, fillText, overInit, mapLines, onLines )
+import Yi.Utils ( SemiNum((+~), (-~)) )
+import Yi.Window ( Window(actualLines, height, width, wkey) )
 
 -- ---------------------------------------------------------------------
 -- Movement operations

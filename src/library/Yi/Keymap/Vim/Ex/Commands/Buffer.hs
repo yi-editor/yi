@@ -12,18 +12,35 @@
 
 module Yi.Keymap.Vim.Ex.Commands.Buffer (parse) where
 
-import           Control.Applicative
-import           Control.Monad
-import           Control.Monad.State
-import qualified Data.Text as T
+import Control.Applicative
+    ( Applicative((*>)), Alternative((<|>)), (<$>) )
+import Control.Monad ( void )
+import Control.Monad.State ( gets )
+import qualified Data.Text as T ( pack )
 import qualified Text.ParserCombinators.Parsec as P
-import           Yi.Buffer.Basic
-import           Yi.Buffer.Misc
-import           Yi.Editor
-import           Yi.Keymap
-import           Yi.Keymap.Vim.Common
+    ( parse,
+      many,
+      GenParser,
+      try,
+      many1,
+      eof,
+      string,
+      space,
+      digit,
+      anyChar )
+import Yi.Buffer.Basic ( BufferRef(..) )
+import Yi.Buffer.Misc ( bkey, isUnchangedBuffer )
+import Yi.Editor
+    ( EditorM,
+      findBuffer,
+      withCurrentBuffer,
+      switchToBufferE,
+      switchToBufferWithNameE )
+import Yi.Keymap ( Action(EditorA) )
+import Yi.Keymap.Vim.Common ( EventString )
 import qualified Yi.Keymap.Vim.Ex.Commands.Common as Common
-import           Yi.Keymap.Vim.Ex.Types
+    ( parseWithBangAndCount, pureExCommand, errorNoWrite )
+import Yi.Keymap.Vim.Ex.Types ( ExCommand(cmdAction, cmdShow) )
 
 parse :: EventString -> Maybe ExCommand
 parse = Common.parseWithBangAndCount nameParser $ \ _ bang mcount -> do

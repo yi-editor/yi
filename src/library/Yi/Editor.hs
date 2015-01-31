@@ -14,7 +14,7 @@
 -- The top level editor state, and operations on it. This is inside an
 -- internal module for easy re-export with Yi.Types bits.
 
-module Yi.Editor ( Editor(..), EditorM(..), MonadEditor(..)
+module Yi.Editor ( Editor(..), EditorM, MonadEditor(..)
                  , runEditor
                  , acceptedInputsOtherWindow
                  , addJumpAtE
@@ -95,43 +95,169 @@ module Yi.Editor ( Editor(..), EditorM(..), MonadEditor(..)
                  , withWindowE
                  ) where
 
-import           Control.Applicative
-import           Control.Lens
-import           Control.Monad
-import           Control.Monad.Reader hiding (mapM, forM_ )
-import           Control.Monad.State hiding (get, put, mapM, forM_)
-import           Data.Binary
-import           Data.Default
-import qualified Data.DelayList as DelayList
-import           Data.DynamicState.Serializable
-import           Data.Foldable hiding (forM_)
-import           Data.List (delete, (\\))
-import           Data.List.NonEmpty (fromList, NonEmpty(..), nub)
+import Prelude hiding (foldr, all, foldl, concatMap)
+
+import Control.Applicative ( (<$>), (<*>) )
+import Control.Lens
+    ( (^.),
+      Lens',
+      (%=),
+      (&),
+      (%~),
+      (.~),
+      view,
+      assign,
+      lens,
+      (.=),
+      uses,
+      use,
+      mapped )
+import Control.Monad ( forM_ )
+import Control.Monad.Reader
+    ( liftM,
+      Monad((>>), (>>=), fail, return),
+      Functor(..),
+      (=<<),
+      when,
+      unless,
+      asks,
+      MonadReader(ask) )
+import Control.Monad.State ( gets, modify )
+import Data.Binary ( Binary, put, get )
+import Data.Default ( def, Default )
+import qualified Data.DelayList as DelayList ( insert )
+import Data.DynamicState.Serializable ( getDyn, putDyn )
+import Data.Foldable
+    ( Foldable(foldl, foldr), toList, concatMap, all )
+import Data.List ( delete, (\\) )
+import Data.List.NonEmpty ( fromList, NonEmpty(..), nub )
 import qualified Data.List.NonEmpty as NE
-import qualified Data.List.PointedList as PL (atEnd, moveTo)
+    ( toList, head, (<|), length, filter )
+import qualified Data.List.PointedList as PL ( atEnd, moveTo )
 import qualified Data.List.PointedList.Circular as PL
+    ( PointedList(..),
+      singleton,
+      focus,
+      next,
+      previous,
+      _focus,
+      deleteLeft,
+      deleteRight,
+      deleteOthers,
+      insertRight,
+      delete,
+      insertLeft,
+      length )
 import qualified Data.Map as M
-import           Data.Maybe
-import qualified Data.Monoid as Mon
-import           Data.Semigroup
+    ( singleton,
+      empty,
+      insert,
+      lookup,
+      delete,
+      (!),
+      elems,
+      insertWith' )
+import Data.Maybe ( fromMaybe, fromJust, isNothing )
+import qualified Data.Monoid as Mon ( (<>) )
+import Data.Semigroup ( mempty, (<>) )
 import qualified Data.Text as T
-import           Prelude hiding (foldl,concatMap,foldr,all)
-import           System.FilePath (splitPath)
-import           Yi.Buffer
-import           Yi.Config
-import           Yi.Interact as I
-import           Yi.JumpList
-import           Yi.KillRing
-import           Yi.Layout
-import           Yi.Monad
-import           Yi.Rope (YiString, fromText, empty)
-import qualified Yi.Rope as R
-import           Yi.String
-import           Yi.Style (defaultStyle)
-import           Yi.Tab
-import           Yi.Types
-import           Yi.Utils hiding ((+~))
-import           Yi.Window
+    ( Text, unpack, null, unwords, unlines, pack )
+import System.FilePath ( splitPath )
+import Yi.Buffer
+    ( BufferId(MemBuffer),
+      newB,
+      Direction(Forward),
+      WindowRef(..),
+      bkey,
+      BufferRef(..),
+      FBuffer,
+      insertN,
+      identA,
+      markPointA,
+      moveTo,
+      pointB,
+      putRegionStyle,
+      setAnyMode,
+      shortIdentString,
+      lastActiveWindowA,
+      runBufferFull,
+      updateIsDelete,
+      Update(Delete),
+      botB,
+      setMarkHereB,
+      emptyRegion,
+      withMode0,
+      modeKeymap,
+      Point )
+import Yi.Config
+    ( configVariable,
+      configRegionStyle,
+      configFundamentalMode,
+      defaultKm )
+import Yi.Interact as I ( mkAutomaton, accepted )
+import Yi.JumpList
+    ( Jump, JumpList, jumpForward, jumpBack, addJump, Jump(..) )
+import Yi.KillRing ( krEmpty, krPut, krSet, krGet )
+import Yi.Layout
+    ( AnyLayoutManager,
+      layoutManagerSameType,
+      nextVariant,
+      DividerPosition,
+      DividerRef,
+      previousVariant )
+import Yi.Monad ( getsAndModify )
+import Yi.Rope ( YiString, fromText, empty )
+import qualified Yi.Rope as R ( snoc, fromText, YiString )
+import Yi.String ( listify )
+import Yi.Style ( defaultStyle )
+import Yi.Tab
+    ( makeTab1,
+      Tab,
+      tabWindowsA,
+      forceTab,
+      mapWindows,
+      tabLayoutManagerA,
+      tabDividerPositionA )
+import Yi.Types
+    ( Editor(..),
+      bufferStack,
+      buffers,
+      refSupply,
+      tabs_,
+      dynamic,
+      maxStatusHeight,
+      currentRegex,
+      onCloseActions,
+      YiConfigVariable,
+      MonadEditor,
+      askCfg,
+      withEditor,
+      EditorM,
+      YiVariable,
+      BufferId(FileBuffer),
+      BufferM,
+      configKillringAccumulate,
+      bufferUpdateHandler,
+      extractTopKeymap,
+      Status,
+      layoutManagers,
+      runEditor )
+import Yi.Utils
+    ( swapFocus,
+      mapAdjust',
+      makeLensesWithSuffix,
+      findPL,
+      commonPrefix )
+import Yi.Window
+    ( isMini,
+      dummyWindow,
+      wkey,
+      Window(..),
+      bufkey,
+      bufAccessList,
+      bufAccessListA,
+      bufkeyA,
+      jumpListA )
 
 instance Binary Editor where
   put (Editor bss bs supply ts dv _sl msh kr regex _dir _ev _cwa ) =

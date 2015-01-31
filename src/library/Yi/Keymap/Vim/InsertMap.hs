@@ -10,27 +10,86 @@
 
 module Yi.Keymap.Vim.InsertMap (defInsertMap) where
 
-import           Control.Applicative
-import           Control.Lens
-import           Control.Monad
-import           Data.Char (isDigit)
-import           Data.List.NonEmpty hiding (drop, span, dropWhile)
-import           Data.Monoid
-import qualified Data.Text as T
-import           Prelude hiding (head)
+import Prelude hiding (head)
+
+import Control.Applicative ( (<$) )
+import Control.Lens ( use )
+import Control.Monad
+    ( Monad((>>), return),
+      Functor(fmap),
+      mapM_,
+      (=<<),
+      when,
+      void,
+      replicateM_,
+      liftM2,
+      forM )
+import Data.Char ( isDigit )
+import Data.List.NonEmpty ( NonEmpty(..), toList, head )
+import Data.Monoid ( Monoid(mempty), (<>) )
+import qualified Data.Text as T ( unpack, pack )
 import qualified Yi.Buffer as B
-import           Yi.Buffer.Adjusted as BA hiding (Insert)
-import           Yi.Editor
-import           Yi.Event
-import           Yi.Keymap.Vim.Common
-import           Yi.Keymap.Vim.Digraph
-import           Yi.Keymap.Vim.EventUtils
-import           Yi.Keymap.Vim.Motion
-import           Yi.Keymap.Vim.StateUtils
-import           Yi.Keymap.Vim.Utils
-import           Yi.Monad
-import qualified Yi.Rope as R
-import           Yi.TextCompletion (completeWordB, CompletionScope(..))
+    ( insertN, insertB, deleteRegionB, deleteB, bdeleteB )
+import Yi.Buffer.Adjusted as BA
+    ( Direction(Backward, Forward),
+      RegionStyle(Inclusive),
+      IndentSettings(IndentSettings),
+      deleteMarkB,
+      pointB,
+      moveTo,
+      newlineB,
+      getMarkB,
+      insertCharWithBelowB,
+      insertCharWithAboveB,
+      indentSettingsB,
+      markPointA,
+      savingPointB,
+      TextUnit(Character),
+      unitViWordOnLine,
+      regionOfPartNonEmptyB,
+      moveToSol,
+      moveToEol,
+      leftOnEol,
+      moveXorSol,
+      firstNonSpaceB,
+      isCurrentLineEmptyB,
+      isCurrentLineAllWhiteSpaceB,
+      bdeleteLineB,
+      deleteToEol,
+      scrollScreensB,
+      insertRopeWithStyleB,
+      modifyIndentB,
+      indentAsTheMostIndentedNeighborLineB,
+      insertN,
+      insertB,
+      deleteB,
+      bdeleteB,
+      deleteRegionB )
+import Yi.Editor ( EditorM, withCurrentBuffer, getEditorDyn )
+import Yi.Event ( Event )
+import Yi.Keymap.Vim.Common
+    ( MatchResult(..),
+      EventString(..),
+      VimState(VimState, vsMode, vsOngoingInsertEvents, vsPaste,
+               vsSecondaryCursors),
+      VimMode(Insert, Normal),
+      Register(Register),
+      VimBinding(VimBindingE),
+      RepeatToken(Continue, Finish) )
+import Yi.Keymap.Vim.Digraph ( charFromDigraph )
+import Yi.Keymap.Vim.EventUtils ( eventToEventString, parseEvents )
+import Yi.Keymap.Vim.Motion ( Move(Move), stringToMove )
+import Yi.Keymap.Vim.StateUtils
+    ( switchModeE,
+      modifyStateE,
+      resetCountE,
+      getCountE,
+      getRegisterE,
+      saveInsertEventStringE )
+import Yi.Keymap.Vim.Utils ( selectPureBinding, selectBinding )
+import Yi.Monad ( whenM )
+import qualified Yi.Rope as R ( fromText, fromString )
+import Yi.TextCompletion ( completeWordB, CompletionScope(..) )
 
 defInsertMap :: [(String, Char)] -> [VimBinding]
 defInsertMap digraphs =

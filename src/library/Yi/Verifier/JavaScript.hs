@@ -6,15 +6,19 @@
 
 module Yi.Verifier.JavaScript where
 
-import Control.Monad.Writer.Lazy (Writer, MonadWriter, tell)
-import Control.Monad
-import Data.List (intercalate)
-import Data.Foldable (toList)
-import Data.Function (on)
-import qualified Data.DList as D
-import Yi.Lexer.Alex (Posn, Tok, tokT, tokPosn)
-import Yi.Lexer.JavaScript (Token(..), TT)
-import Yi.Syntax.JavaScript hiding (res)
+import Control.Monad.Writer.Lazy ( Writer, MonadWriter, tell )
+import Control.Monad ( unless )
+import Data.List ( intercalate )
+import Data.Foldable ( toList )
+import Data.Function ( on )
+import qualified Data.DList as D ( DList, singleton )
+import Yi.Lexer.Alex ( Posn, Tok, tokT, tokPosn )
+import Yi.Lexer.JavaScript ( Token(..), TT )
+import Yi.Syntax.JavaScript
+    ( Block(Block, BlockOne),
+      Statement(FunDecl, Return),
+      Tree,
+      firstTok )
 
 
 -- * Types

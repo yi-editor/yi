@@ -15,11 +15,44 @@ module Yi.Config ( Config(..), UIConfig(..), UIBoot, CursorStyle(..)
                  , configStyle, configFundamentalMode, configTopLevelKeymap
                  ) where
 
-import Data.Prototype
-import Yi.Style
-import Yi.Types (Config(..), UIConfig(..), UIBoot, CursorStyle(..),
-                 Keymap, extractTopKeymap, AnyMode)
+import Data.Prototype ( extractValue )
+import Yi.Style ( UIStyle )
+import Yi.Types
+    ( Config(..),
+      UIConfig(..),
+      UIBoot,
+      CursorStyle(..),
+      Keymap,
+      extractTopKeymap,
+      AnyMode )
 import Yi.Config.Lens
+    ( bufferUpdateHandlerA,
+      configCheckExternalChangesObsessivelyA,
+      configInputPreprocessA,
+      configKillringAccumulateA,
+      configRegionStyleA,
+      configUIA,
+      configVarsA,
+      debugModeA,
+      defaultKmA,
+      initialActionsA,
+      layoutManagersA,
+      modeTableA,
+      startActionsA,
+      startFrontEndA,
+      configAutoHideScrollBarA,
+      configAutoHideTabBarA,
+      configCursorStyleA,
+      configFontNameA,
+      configFontSizeA,
+      configLeftSideScrollBarA,
+      configLineWrapA,
+      configScrollStyleA,
+      configScrollWheelAmountA,
+      configThemeA,
+      configVtyA,
+      configWindowFillA,
+      configVariable )
 
 configStyle :: UIConfig -> UIStyle
 configStyle = extractValue . configTheme

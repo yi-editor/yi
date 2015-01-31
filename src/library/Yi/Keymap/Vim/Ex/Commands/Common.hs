@@ -30,25 +30,73 @@ module Yi.Keymap.Vim.Ex.Commands.Common
     , needsSaving
     ) where
 
-import           Control.Applicative
-import           Control.Lens (use)
-import           Control.Monad
-import           Data.List.NonEmpty (NonEmpty(..))
-import           Data.Monoid
+import Control.Applicative
+    ( Applicative((*>), (<*)), Alternative((<|>)), (<$>) )
+import Control.Lens ( use )
+import Control.Monad ( void, (>=>) )
+import Data.List.NonEmpty ( NonEmpty(..) )
+import Data.Monoid ( Monoid(mconcat), (<>) )
 import qualified Data.Text as T
-import           System.Directory
+    ( Text,
+      unpack,
+      snoc,
+      singleton,
+      pack,
+      length,
+      isPrefixOf,
+      drop,
+      cons,
+      concat )
+import System.Directory ( getCurrentDirectory )
 import qualified Text.ParserCombinators.Parsec as P
-import           Text.Read (readMaybe)
-import           Yi.Buffer
-import           Yi.Editor
-import           Yi.File
-import           Yi.Keymap
-import           Yi.Keymap.Vim.Common
-import           Yi.Keymap.Vim.Ex.Types
-import           Yi.Misc
-import           Yi.Monad
-import           Yi.Style (errorStyle)
-import           Yi.Utils
+    ( char,
+      parse,
+      many,
+      GenParser,
+      optionMaybe,
+      many1,
+      string,
+      space,
+      oneOf,
+      noneOf,
+      digit,
+      anyChar )
+import Text.Read ( readMaybe )
+import Yi.Buffer
+    ( Region,
+      Point,
+      BufferRef,
+      mkRegion,
+      BufferM,
+      pointB,
+      curLn,
+      gotoLn,
+      mayGetMarkB,
+      solPointB,
+      eolPointB,
+      markPointA,
+      savingPointB,
+      TextUnit(Document),
+      regionOfB,
+      BufferFileInfo(bufInfoFileName),
+      getSelectionMarkPointB,
+      bufInfoB )
+import Yi.Editor
+    ( MonadEditor,
+      EditorM,
+      Editor(bufferStack),
+      findBuffer,
+      withGivenBuffer,
+      printMsg,
+      printStatus )
+import Yi.File ( deservesSave )
+import Yi.Keymap ( YiM, Action, readEditor )
+import Yi.Keymap.Vim.Common ( EventString(Ev) )
+import Yi.Keymap.Vim.Ex.Types ( ExCommand(..) )
+import Yi.Misc ( matchingFileNames )
+import Yi.Monad ( gets )
+import Yi.Style ( errorStyle )
+import Yi.Utils ( io )
 
 parse :: P.GenParser Char () ExCommand -> EventString -> Maybe ExCommand
 parse parser (Ev s) =

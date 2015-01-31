@@ -11,23 +11,65 @@
 module Yi.Keymap.Vim.NormalOperatorPendingMap
        (defNormalOperatorPendingMap) where
 
-import           Control.Applicative
-import           Control.Monad
-import           Data.Char (isDigit)
-import           Data.List (isPrefixOf)
-import           Data.Maybe (fromMaybe, fromJust)
-import           Data.Monoid
-import qualified Data.Text as T
-import           Yi.Buffer.Adjusted hiding (Insert)
-import           Yi.Editor
-import           Yi.Keymap.Keys
-import           Yi.Keymap.Vim.Common
-import           Yi.Keymap.Vim.Motion
-import           Yi.Keymap.Vim.Operator
-import           Yi.Keymap.Vim.StateUtils
-import           Yi.Keymap.Vim.StyledRegion
-import           Yi.Keymap.Vim.TextObject
-import           Yi.Keymap.Vim.Utils
+import Control.Applicative ( (<$>) )
+import Control.Monad ( when, void )
+import Data.Char ( isDigit )
+import Data.List ( isPrefixOf )
+import Data.Maybe ( fromMaybe, fromJust )
+import Data.Monoid ( (<>) )
+import qualified Data.Text as T ( unpack, snoc, pack, last, init )
+import Yi.Buffer.Adjusted
+    ( mkRegion,
+      RegionStyle(..),
+      BufferM,
+      pointB,
+      moveTo,
+      rightB,
+      lineMoveRel,
+      savingPointB,
+      moveToSol,
+      moveToEol,
+      firstNonSpaceB )
+import Yi.Editor ( withCurrentBuffer, getEditorDyn )
+import Yi.Keymap.Keys ( Key(KEsc), spec )
+import Yi.Keymap.Vim.Common
+    ( MatchResult(NoMatch, PartialMatch, WholeMatch),
+      OperatorName(Op),
+      EventString(..),
+      VimState(vsMode, vsTextObjectAccumulator),
+      VimMode(Normal, NormalOperatorPending, ReplaceSingleChar),
+      VimBinding(VimBindingE),
+      RepeatToken(Continue, Drop) )
+import Yi.Keymap.Vim.Motion
+    ( CountedMove(..),
+      Move(Move),
+      stringToMove,
+      changeMoveStyle,
+      regionOfMoveB )
+import Yi.Keymap.Vim.Operator
+    ( VimOperator(operatorApplyToRegionE),
+      stringToOperator,
+      operatorApplyToTextObjectE,
+      lastCharForOperator )
+import Yi.Keymap.Vim.StateUtils
+    ( switchMode,
+      switchModeE,
+      resetCount,
+      resetCountE,
+      getMaybeCountE,
+      getCountE,
+      accumulateTextObjectEventE,
+      dropTextObjectAccumulatorE,
+      normalizeCountE,
+      maybeMult )
+import Yi.Keymap.Vim.StyledRegion
+    ( StyledRegion(..), normalizeRegion )
+import Yi.Keymap.Vim.TextObject
+    ( CountedTextObject(..),
+      changeTextObjectCount,
+      changeTextObjectStyle,
+      stringToTextObject )
+import Yi.Keymap.Vim.Utils ( mkBindingE )
 
 defNormalOperatorPendingMap :: [VimOperator] -> [VimBinding]
 defNormalOperatorPendingMap operators = [textObject operators, escBinding]

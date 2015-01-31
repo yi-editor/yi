@@ -13,13 +13,15 @@ module Yi.Keymap.Vim.Ex.Eval
     , exEvalY
     ) where
 
-import           Control.Monad
-import           Data.Monoid
-import qualified Data.Text as T
-import           Yi.Editor
-import           Yi.Keymap
-import           Yi.Keymap.Vim.Common
-import           Yi.Keymap.Vim.Ex.Types
+import Control.Monad ( void )
+import Data.Monoid ( (<>) )
+import qualified Data.Text as T ( unpack )
+import Yi.Editor
+    ( MonadEditor(withEditor), EditorM, withCurrentBuffer )
+import Yi.Keymap ( YiM, Action(BufferA, EditorA, YiA) )
+import Yi.Keymap.Vim.Common ( EventString(_unEv) )
+import Yi.Keymap.Vim.Ex.Types
+    ( ExCommand(cmdAction), evStringToExCommand )
 
 exEvalE :: [EventString -> Maybe ExCommand] -> EventString -> EditorM ()
 exEvalE cmds cmdString = evalHelper id (const $ error msg) cmds cmdString
