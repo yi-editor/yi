@@ -174,16 +174,17 @@ indentBlockRegionB count reg = do
         let w = shiftWidth indentSettings
         if count > 0
         then insertN $ R.replicateChar (count * w) ' '
-        else do
-            let go 0 = return ()
-                go n = do
-                    c <- readB
-                    when (c == ' ') $
-                        deleteN 1 >> go (n - 1)
-            go (abs count * w)
+        else go (abs count * w)
       moveTo start
       void $ lineMoveRel i
   moveTo start
+  where
+      go 0 = return ()
+      go n = do
+          c <- readB
+          when (c == ' ') $
+              deleteN 1 >> go (n - 1)
+
 
 pasteInclusiveB :: YiString -> RegionStyle -> BufferM ()
 pasteInclusiveB rope style = do
