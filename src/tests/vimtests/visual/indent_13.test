@@ -9,7 +9,7 @@ def main():
         quux()
 
 -- Output
-(3,5)
+(3,1)
 
 def main():
     foo()
