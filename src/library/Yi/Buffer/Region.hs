@@ -11,8 +11,7 @@
 -- This module defines buffer operation on regions
 
 module Yi.Buffer.Region
-  (
-   module Yi.Region
+  ( module Yi.Region
   , swapRegionsB
   , deleteRegionB
   , replaceRegionB
@@ -24,49 +23,20 @@ module Yi.Buffer.Region
   , blockifyRegion
   , joinLinesB
   , concatLinesB
-  )
-where
+  ) where
 
-import Control.Applicative ( Applicative((<*>), pure), (<$>) )
-import Control.Monad ( when )
-import Data.Char ( isSpace )
-import Data.Monoid ( mconcat )
-import Data.List ( sort )
-import Yi.Buffer.Misc
-    ( BufferM,
-      nelemsB,
-      insertNAt,
-      deleteNAt,
-      pointOfLineColB,
-      colOf,
-      lineOf,
-      savingPointB,
-      pointAfterCursorB,
-      askWindow )
-import Yi.Region
-    ( Region(..),
-      unionRegion,
-      regionsOverlap,
-      regionSize,
-      regionLast,
-      regionIsEmpty,
-      regionFirst,
-      nearRegion,
-      mkSizeRegion,
-      mkRegion',
-      mkRegion,
-      intersectRegion,
-      includedRegion,
-      inRegion,
-      fmapRegion,
-      emptyRegion )
-import Yi.Rope ( YiString )
-import qualified Yi.Rope as R
-    ( YiString, null, map, lines, filter, dropWhile, cons )
-import Yi.String ( overInit )
-import Yi.Utils ( SemiNum((~-)) )
-import Yi.Window ( winRegion )
-
+import           Control.Applicative (Applicative ((<*>), pure), (<$>))
+import           Control.Monad       (when)
+import           Data.Char           (isSpace)
+import           Data.List           (sort)
+import           Data.Monoid         (mconcat)
+import           Yi.Buffer.Misc
+import           Yi.Region
+import           Yi.Rope             (YiString)
+import qualified Yi.Rope             as R (YiString, cons, dropWhile, filter, lines, map, null)
+import           Yi.String           (overInit)
+import           Yi.Utils            (SemiNum ((~-)))
+import           Yi.Window           (winRegion)
 
 
 

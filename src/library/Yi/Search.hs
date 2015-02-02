@@ -1,7 +1,7 @@
-{-# LANGUAGE DeriveDataTypeable #-}
+{-# LANGUAGE DeriveDataTypeable         #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
-{-# LANGUAGE LambdaCase #-}
-{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE LambdaCase                 #-}
+{-# LANGUAGE OverloadedStrings          #-}
 {-# OPTIONS_HADDOCK show-extensions #-}
 
 -- |
@@ -58,73 +58,27 @@ module Yi.Search (
         qrFinish
                  ) where
 
-import Control.Applicative ( (<$>) )
-import Control.Lens ( assign )
-import Control.Monad ( when, void )
-import Data.Binary ( Binary, get, put )
-import Data.Char ( isUpper, isAlpha )
-import Data.Default ( Default, def )
-import Data.Maybe ( listToMaybe )
-import Data.Monoid ( (<>) )
-import qualified Data.Text as T
-    ( Text, empty, null, unpack, length, break, takeWhile, any )
-import qualified Data.Text.Encoding as E ( encodeUtf8, decodeUtf8 )
-import Data.Typeable ( Typeable )
-import Yi.Buffer
-    ( Region,
-      Direction(Forward, Backward),
-      savingPointB,
-      moveB,
-      regexB,
-      TextUnit(Document, Character),
-      reverseDir,
-      moveTo,
-      regionStart,
-      BufferM,
-      getSelectRegionB,
-      regionOfB,
-      mayReverse,
-      replaceRegionB,
-      pointB,
-      mkRegion,
-      moveN,
-      regexB,
-      sizeB,
-      moveTo,
-      regionEnd,
-      regexRegionB,
-      regionDirection,
-      nelemsB,
-      setSelectionMarkPointB,
-      BufferRef,
-      setSelectRegionB,
-      getRawestSelectRegionB,
-      regionOfPartB,
-      exchangePointAndMarkB )
-import Yi.Types ( YiVariable )
-import Yi.Editor
-    ( EditorM,
-      withCurrentBuffer,
-      searchDirectionA,
-      printMsg,
-      getEditorDyn,
-      putEditorDyn,
-      searchDirectionA,
-      withGivenBufferAndWindow,
-      closeBufferAndWindowE,
-      currentRegexA )
-import Yi.History
-    ( historyStartGen, historyMoveGen, historyFinishGen )
-import Yi.Regex
-    ( SearchExp(..),
-      makeSearchOptsM,
-      emptyRegex,
-      SearchOption(QuoteRegex, IgnoreCase) )
-import qualified Yi.Rope as R ( YiString, toText, null, toString )
-import Yi.Search.Internal ( getRegexE, setRegexE, resetRegexE )
-import Yi.String ( showT )
-import Yi.Utils ( fst3 )
-import Yi.Window ( Window )
+import           Control.Applicative ((<$>))
+import           Control.Lens        (assign)
+import           Control.Monad       (void, when)
+import           Data.Binary         (Binary, get, put)
+import           Data.Char           (isAlpha, isUpper)
+import           Data.Default        (Default, def)
+import           Data.Maybe          (listToMaybe)
+import           Data.Monoid         ((<>))
+import qualified Data.Text           as T (Text, any, break, empty, length, null, takeWhile, unpack)
+import qualified Data.Text.Encoding  as E (decodeUtf8, encodeUtf8)
+import           Data.Typeable       (Typeable)
+import           Yi.Buffer
+import           Yi.Editor
+import           Yi.History          (historyFinishGen, historyMoveGen, historyStartGen)
+import           Yi.Regex
+import qualified Yi.Rope             as R (YiString, null, toString, toText)
+import           Yi.Search.Internal  (getRegexE, resetRegexE, setRegexE)
+import           Yi.String           (showT)
+import           Yi.Types            (YiVariable)
+import           Yi.Utils            (fst3)
+import           Yi.Window           (Window)
 
 -- ---------------------------------------------------------------------
 --

@@ -1,18 +1,18 @@
-{-# LANGUAGE CPP #-}
-{-# LANGUAGE DeriveDataTypeable #-}
-{-# LANGUAGE DeriveFoldable #-}
-{-# LANGUAGE DeriveFunctor #-}
-{-# LANGUAGE DeriveTraversable #-}
-{-# LANGUAGE ExistentialQuantification #-}
+{-# LANGUAGE CPP                        #-}
+{-# LANGUAGE DeriveDataTypeable         #-}
+{-# LANGUAGE DeriveFoldable             #-}
+{-# LANGUAGE DeriveFunctor              #-}
+{-# LANGUAGE DeriveTraversable          #-}
+{-# LANGUAGE ExistentialQuantification  #-}
+{-# LANGUAGE FlexibleContexts           #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
-{-# LANGUAGE ImpredicativeTypes #-}
-{-# LANGUAGE LambdaCase #-}
-{-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE StandaloneDeriving #-}
-{-# LANGUAGE TemplateHaskell #-}
-{-# LANGUAGE TupleSections #-}
-{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE ImpredicativeTypes         #-}
+{-# LANGUAGE LambdaCase                 #-}
+{-# LANGUAGE OverloadedStrings          #-}
+{-# LANGUAGE ScopedTypeVariables        #-}
+{-# LANGUAGE StandaloneDeriving         #-}
+{-# LANGUAGE TemplateHaskell            #-}
+{-# LANGUAGE TupleSections              #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 {-# OPTIONS_HADDOCK show-extensions #-}
 
@@ -189,131 +189,45 @@ module Yi.Buffer.Misc
   , encodingConverterNameA
   ) where
 
-import Prelude hiding (foldr, mapM, notElem)
+import           Prelude                        hiding (foldr, mapM, notElem)
 
-import Control.Applicative ( Applicative((*>), (<*>)), (<$>) )
-import Control.Lens
-    ( Lens', assign, (.=), (%~), (%=), lens, view, uses, use, (^.) )
-import Control.Monad.RWS.Strict
-    ( Monad((>>), (>>=), fail, return),
-      Functor(..),
-      (=<<),
-      Monoid(mconcat, mempty),
-      when,
-      void,
-      replicateM_,
-      join,
-      Endo(Endo, appEndo),
-      (<>),
-      gets,
-      MonadState,
-      asks,
-      MonadReader(ask),
-      MonadWriter(tell),
-      runRWS,
-      modify )
-import Data.Binary ( Get, Binary(..) )
-import Data.Char ( ord )
-import Data.Default ( Default(def) )
-import Data.Foldable ( Foldable(foldr), notElem, forM_ )
-import Data.Function ( ($), flip, const )
-import qualified Data.Map as M ( Map, lookup, insert, empty )
-import Data.Maybe ( Maybe(..), maybe, isNothing, fromMaybe )
-import qualified Data.Set as Set ( Set )
-import qualified Data.Text as T
-    ( Text, unpack, snoc, pack, justifyRight, concat )
-import qualified Data.Text.Encoding as E ( encodeUtf8, decodeUtf8 )
-import Data.Time ( UTCTime(UTCTime) )
-import Data.Traversable ( Traversable(mapM), forM )
-import Data.DynamicState.Serializable ( putDyn, getDyn )
-import Numeric ( showHex )
-import System.FilePath ( splitPath, joinPath )
-import Yi.Buffer.Basic
-    ( WindowRef,
-      Size(Size),
-      Point(..),
-      Mark,
-      Direction(..),
-      BufferRef )
-import Yi.Buffer.Implementation
-    ( SearchExp,
-      MarkValue(..),
-      Update(Delete, Insert),
-      BufferImpl(..),
-      Overlay(Overlay, overlayAnnotation),
-      UIUpdate(TextUpdate),
-      newBI,
-      sizeBI,
-      getStream,
-      getIndexedStream,
-      mkOverlay,
-      overlayUpdate,
-      addOverlayBI,
-      delOverlayBI,
-      delOverlaysOfOwnerBI,
-      getOverlaysOfOwnerBI,
-      strokesRangesBI,
-      isValidUpdate,
-      applyUpdateI,
-      reverseUpdateI,
-      lineAt,
-      solPoint,
-      eolPoint',
-      solPoint',
-      charsFromSolBI,
-      regexRegionBI,
-      newMarkBI,
-      getMarkValueBI,
-      deleteMarkValueBI,
-      getMarkBI,
-      modifyMarkBI,
-      setSyntaxBI,
-      updateSyntax,
-      getMarkDefaultPosBI,
-      getAst,
-      focusAst )
-import Yi.Buffer.Undo
-    ( Change(AtomicChange, InteractivePoint),
-      URList,
-      emptyU,
-      addChangeU,
-      setSavedFilePointU,
-      undoU,
-      redoU,
-      isAtSavedFilePointU )
-import Yi.Interact as I ( P(End) )
-import Yi.Monad ( getsAndModify )
-import Yi.Region ( Region, mkRegion )
-import Yi.Rope ( YiString )
-import qualified Yi.Rope as R
-    ( YiString,
-      unCn,
-      toString,
-      take,
-      splitAt,
-      singleton,
-      length,
-      head,
-      foldl' )
-import Yi.Syntax ( Stroke, ExtHL(ExtHL), noHighlighter )
-import Yi.Types
-    ( IndentBehaviour(..),
-      Mode(..),
-      AnyMode(..),
-      SelectionStyle(SelectionStyle, highlightSelection,
-                     rectangleSelection),
-      BufferId(..),
-      Attributes(..),
-      MarkSet(..),
-      WinMarks,
-      FBuffer(..),
-      IndentSettings(..),
-      BufferM(..),
-      YiVariable,
-      emptyAction )
-import Yi.Utils
-    ( SemiNum((+~)), makeLensesWithSuffix, makeClassyWithSuffix )
-import Yi.Window ( Window(width, wkey), dummyWindow )
+import           Control.Applicative            (Applicative ((*>), (<*>)), (<$>))
+import           Control.Lens                   (Lens', assign, lens, use, uses, view, (%=), (%~), (.=), (^.))
+import           Control.Monad.RWS.Strict       (Endo (Endo, appEndo),
+                                                 Functor (..), Monad ((>>), (>>=), fail, return),
+                                                 MonadReader (ask), MonadState,
+                                                 MonadWriter (tell),
+                                                 Monoid (mconcat, mempty), asks,
+                                                 gets, join, modify,
+                                                 replicateM_, runRWS, void,
+                                                 when, (<>), (=<<))
+import           Data.Binary                    (Binary (..), Get)
+import           Data.Char                      (ord)
+import           Data.Default                   (Default (def))
+import           Data.DynamicState.Serializable (getDyn, putDyn)
+import           Data.Foldable                  (Foldable (foldr), forM_, notElem)
+import           Data.Function                  (const, flip, ($))
+import qualified Data.Map                       as M (Map, empty, insert, lookup)
+import           Data.Maybe                     (Maybe (..), fromMaybe, isNothing, maybe)
+import qualified Data.Set                       as Set (Set)
+import qualified Data.Text                      as T (Text, concat, justifyRight, pack, snoc, unpack)
+import qualified Data.Text.Encoding             as E (decodeUtf8, encodeUtf8)
+import           Data.Time                      (UTCTime (UTCTime))
+import           Data.Traversable               (Traversable (mapM), forM)
+import           Numeric                        (showHex)
+import           System.FilePath                (joinPath, splitPath)
+import           Yi.Buffer.Basic                (BufferRef, Direction (..), Mark, Point (..), Size (Size), WindowRef)
+import           Yi.Buffer.Implementation
+import           Yi.Buffer.Undo
+import           Yi.Interact                    as I (P (End))
+import           Yi.Monad                       (getsAndModify)
+import           Yi.Region                      (Region, mkRegion)
+import           Yi.Rope                        (YiString)
+import qualified Yi.Rope                        as R
+import           Yi.Syntax                      (ExtHL (ExtHL), Stroke, noHighlighter)
+import           Yi.Types
+import           Yi.Utils                       (SemiNum ((+~)), makeClassyWithSuffix, makeLensesWithSuffix)
+import           Yi.Window                      (Window (width, wkey), dummyWindow)
 
 
 -- In addition to Buffer's text, this manages (among others):

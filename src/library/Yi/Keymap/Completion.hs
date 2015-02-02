@@ -5,8 +5,8 @@ module Yi.Keymap.Completion (
         stepTree, obvious, mergeTrees, listToTree, complete)
    where
 
-import Control.Arrow ( first )
-import Data.List ( sortBy, intercalate, groupBy, find )
+import Control.Arrow (first)
+import Data.List     (find, groupBy, intercalate, sortBy)
 
 -- inside a completion tree, the a's must be unique on each level
 

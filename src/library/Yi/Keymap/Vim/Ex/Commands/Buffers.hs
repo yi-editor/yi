@@ -11,27 +11,21 @@
 -- :buffers or :ls ex command to list buffers.
 module Yi.Keymap.Vim.Ex.Commands.Buffers (parse) where
 
-import Control.Applicative ( Alternative((<|>)) )
-import Control.Lens ( view )
-import Control.Monad ( void )
-import qualified Data.Map as M ( mapWithKey, elems )
-import qualified Data.Text as T ( unlines, pack, intercalate )
-import qualified Text.ParserCombinators.Parsec as P ( try, string )
-import Yi.Buffer.Basic ( BufferRef(BufferRef) )
-import Yi.Buffer.Misc ( BufferId(MemBuffer), identA )
-import Yi.Editor
-    ( MonadEditor(withEditor),
-      EditorM,
-      Editor(buffers),
-      printMsgs,
-      newBufferE )
-import Yi.Keymap ( Action(EditorA) )
-import Yi.Keymap.Vim.Common ( EventString )
-import qualified Yi.Keymap.Vim.Ex.Commands.Common as Common
-    ( parse, pureExCommand )
-import Yi.Keymap.Vim.Ex.Types ( ExCommand(cmdAction, cmdShow) )
-import Yi.Monad ( gets )
-import Yi.Rope ( fromText )
+import           Control.Applicative              (Alternative ((<|>)))
+import           Control.Lens                     (view)
+import           Control.Monad                    (void)
+import qualified Data.Map                         as M (elems, mapWithKey)
+import qualified Data.Text                        as T (intercalate, pack, unlines)
+import qualified Text.ParserCombinators.Parsec    as P (string, try)
+import           Yi.Buffer.Basic                  (BufferRef (BufferRef))
+import           Yi.Buffer.Misc                   (BufferId (MemBuffer), identA)
+import           Yi.Editor
+import           Yi.Keymap                        (Action (EditorA))
+import           Yi.Keymap.Vim.Common             (EventString)
+import qualified Yi.Keymap.Vim.Ex.Commands.Common as Common (parse, pureExCommand)
+import           Yi.Keymap.Vim.Ex.Types           (ExCommand (cmdAction, cmdShow))
+import           Yi.Monad                         (gets)
+import           Yi.Rope                          (fromText)
 
 parse :: EventString -> Maybe ExCommand
 parse = Common.parse $ do

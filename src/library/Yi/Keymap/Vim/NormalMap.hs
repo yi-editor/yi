@@ -1,4 +1,4 @@
-{-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE LambdaCase        #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# OPTIONS_HADDOCK show-extensions #-}
 
@@ -11,169 +11,48 @@
 
 module Yi.Keymap.Vim.NormalMap (defNormalMap) where
 
-import Prelude hiding (lookup)
+import           Prelude                    hiding (lookup)
 
-import Control.Applicative ( (<$>) )
-import Control.Lens ( assign, (.=), use )
-import Control.Monad
-    ( Monad((>>), (>>=), fail, return),
-      Functor(fmap),
-      (=<<),
-      when,
-      void,
-      unless,
-      replicateM_ )
-import Data.Char ( Char, ord )
-import Data.HashMap.Strict ( singleton, lookup )
-import Data.List ( group )
-import Data.Maybe ( fromMaybe )
-import Data.Monoid ( Monoid(mempty), (<>) )
-import qualified Data.Text as T
-    ( empty, unpack, replicate, pack, drop )
-import System.Directory ( doesFileExist )
-import System.FriendlyPath ( expandTilda )
-import Yi.Buffer.Adjusted
-    ( Direction(..),
-      reverseDir,
-      mkRegion,
-      RegionStyle(..),
-      Mode(modeGotoDeclaration),
-      BufferM,
-      rectangleSelectionA,
-      undoB,
-      redoB,
-      sizeB,
-      pointB,
-      moveTo,
-      newlineB,
-      withModeB,
-      setNamedMarkHereB,
-      setVisibleSelection,
-      leftB,
-      rightB,
-      lineMoveRel,
-      readB,
-      savingPointB,
-      readRegionB,
-      joinLinesB,
-      TextUnit(Character),
-      unitViWORD,
-      moveB,
-      regionWithTwoMovesB,
-      readUnitB,
-      putRegionStyle,
-      convertRegionToStyleB,
-      moveToSol,
-      moveToEol,
-      leftOnEol,
-      moveXorSol,
-      moveXorEol,
-      gotoCharacterB,
-      firstNonSpaceB,
-      atEol,
-      atEof,
-      readCurrentWordB,
-      switchCaseChar,
-      setSelectionMarkPointB,
-      upScreensB,
-      downScreensB,
-      vimScrollB,
-      vimScrollByB,
-      scrollToCursorB,
-      scrollCursorToTopB,
-      scrollCursorToBottomB,
-      scrollToLineAboveWindowB,
-      scrollToLineBelowWindowB,
-      insertRopeWithStyleB,
-      incrementNextNumberByB,
-      indentAsNextB,
-      indentAsTheMostIndentedNeighborLineB,
-      insertB,
-      deleteN,
-      deleteRegionB )
-import Yi.Core ( quitEditor, closeWindow )
-import Yi.Editor
-    ( MonadEditor(withEditor),
-      EditorM,
-      searchDirectionA,
-      withCurrentBuffer,
-      printMsg,
-      getEditorDyn,
-      alternateBufferE,
-      nextWinE,
-      prevWinE,
-      splitE,
-      layoutManagersNextE,
-      layoutManagersPreviousE,
-      layoutManagerNextVariantE,
-      layoutManagerPreviousVariantE,
-      newTabE,
-      nextTabE,
-      previousTabE,
-      tryCloseE,
-      closeOtherE,
-      jumpBackE,
-      jumpForwardE )
-import Yi.Event
-    ( Event(Event), Key(KASCII, KEnter, KEsc, KTab), Modifier(MCtrl) )
-import Yi.File ( openNewFile, fwriteE )
-import Yi.History ( historyStart, historyPrefixSet )
-import Yi.Keymap ( YiM )
-import Yi.Keymap.Keys ( char, ctrlCh, spec )
-import Yi.Keymap.Vim.Common
-    ( MatchResult(NoMatch, PartialMatch, WholeMatch),
-      OperatorName(Op),
-      EventString(Ev, _unEv),
-      VimState(VimState, vsActiveRegister, vsCount,
-               vsCurrentMacroRecording, vsLastGotoCharCommand, vsMode,
-               vsRegisterMap, vsRepeatableAction),
-      GotoCharCommand(GotoCharCommand),
-      VimMode(Ex, Insert, Normal, NormalOperatorPending, Replace,
-              ReplaceSingleChar, Search, Visual),
-      Register(Register),
-      RepeatableAction(RepeatableAction),
-      VimBinding(VimBindingE),
-      RepeatToken(Continue, Drop, Finish) )
-import Yi.Keymap.Vim.Eval ( scheduleActionStringForEval )
-import Yi.Keymap.Vim.Motion
-    ( CountedMove(CountedMove), stringToMove, regionOfMoveB )
-import Yi.Keymap.Vim.Operator
-    ( VimOperator(..), opYank, opDelete, opChange )
-import Yi.Keymap.Vim.Search ( doVimSearch )
-import Yi.Keymap.Vim.StateUtils
-    ( switchMode,
-      switchModeE,
-      modifyStateE,
-      resetCount,
-      resetCountE,
-      getCountE,
-      setCountE,
-      getRegisterE,
-      setRegisterE,
-      setStickyEolE )
-import Yi.Keymap.Vim.StyledRegion
-    ( StyledRegion(StyledRegion), transformCharactersInLineN )
-import Yi.Keymap.Vim.Tag ( gotoTag, popTag )
-import Yi.Keymap.Vim.Utils
-    ( mkStringBindingE,
-      mkStringBindingY,
-      mkBindingE,
-      mkBindingY,
-      addVimJumpHereE,
-      mkMotionBinding,
-      mkChooseRegisterBinding,
-      pasteInclusiveB,
-      addNewLineIfNecessary )
-import Yi.MiniBuffer ( spawnMinibufferE )
-import Yi.Misc ( printFileInfoE )
-import Yi.Monad ( whenM, maybeM )
-import Yi.Regex ( seInput, makeSearchOptsM )
-import qualified Yi.Rope as R ( toText, toString, null, fromText )
-import Yi.Search
-    ( getRegexE, isearchInitE, setRegexE, makeSimpleSearch )
-import Yi.String ( showT )
-import Yi.Tag ( Tag(..) )
-import Yi.Utils ( io )
+import           Control.Applicative        ((<$>))
+import           Control.Lens               (assign, use, (.=))
+import           Control.Monad              (Functor (fmap),
+                                             Monad ((>>), (>>=), fail, return),
+                                             replicateM_, unless, void, when,
+                                             (=<<))
+import           Data.Char                  (Char, ord)
+import           Data.HashMap.Strict        (lookup, singleton)
+import           Data.List                  (group)
+import           Data.Maybe                 (fromMaybe)
+import           Data.Monoid                (Monoid (mempty), (<>))
+import qualified Data.Text                  as T (drop, empty, pack, replicate, unpack)
+import           System.Directory           (doesFileExist)
+import           System.FriendlyPath        (expandTilda)
+import           Yi.Buffer.Adjusted         hiding (Insert)
+import           Yi.Core                    (closeWindow, quitEditor)
+import           Yi.Editor
+import           Yi.Event                   (Event (Event), Key (KASCII, KEnter, KEsc, KTab), Modifier (MCtrl))
+import           Yi.File                    (fwriteE, openNewFile)
+import           Yi.History                 (historyPrefixSet, historyStart)
+import           Yi.Keymap                  (YiM)
+import           Yi.Keymap.Keys             (char, ctrlCh, spec)
+import           Yi.Keymap.Vim.Common
+import           Yi.Keymap.Vim.Eval         (scheduleActionStringForEval)
+import           Yi.Keymap.Vim.Motion       (CountedMove (CountedMove), regionOfMoveB, stringToMove)
+import           Yi.Keymap.Vim.Operator     (VimOperator (..), opChange, opDelete, opYank)
+import           Yi.Keymap.Vim.Search       (doVimSearch)
+import           Yi.Keymap.Vim.StateUtils
+import           Yi.Keymap.Vim.StyledRegion (StyledRegion (StyledRegion), transformCharactersInLineN)
+import           Yi.Keymap.Vim.Tag          (gotoTag, popTag)
+import           Yi.Keymap.Vim.Utils
+import           Yi.MiniBuffer              (spawnMinibufferE)
+import           Yi.Misc                    (printFileInfoE)
+import           Yi.Monad                   (maybeM, whenM)
+import           Yi.Regex                   (makeSearchOptsM, seInput)
+import qualified Yi.Rope                    as R (fromText, null, toString, toText)
+import           Yi.Search                  (getRegexE, isearchInitE, makeSimpleSearch, setRegexE)
+import           Yi.String                  (showT)
+import           Yi.Tag                     (Tag (..))
+import           Yi.Utils                   (io)
 
 mkDigitBinding :: Char -> VimBinding
 mkDigitBinding c = mkBindingE Normal Continue (char c, return (), mutate)

@@ -1,13 +1,12 @@
-{-# LANGUAGE
-  TemplateHaskell,
-  ScopedTypeVariables,
-  NoMonomorphismRestriction,
-  Haskell2010,
-  GeneralizedNewtypeDeriving,
-  DeriveDataTypeable,
-  CPP,
-  StandaloneDeriving,
-  DeriveGeneric #-}
+{-# LANGUAGE CPP                        #-}
+{-# LANGUAGE DeriveDataTypeable         #-}
+{-# LANGUAGE DeriveGeneric              #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE Haskell2010                #-}
+{-# LANGUAGE NoMonomorphismRestriction  #-}
+{-# LANGUAGE ScopedTypeVariables        #-}
+{-# LANGUAGE StandaloneDeriving         #-}
+{-# LANGUAGE TemplateHaskell            #-}
 
 -- | This module implements persistence across different Yi runs.
 --   It includes minibuffer command history, marks etc.
@@ -26,30 +25,24 @@ import Data.DeriveTH (makeBinary, derive)
 import GHC.Generics (Generic)
 #endif
 
-import Control.Monad ( when )
-import Data.Typeable ( Typeable )
-import Data.Binary ( Binary, put, get, decodeFile, encodeFile )
-import Data.Default ( Default, def )
-import System.Directory ( doesFileExist )
-import qualified Data.Map as M ( map )
-import Control.Exc ( ignoringException )
-import Control.Lens ( makeLenses, use, assign )
-import Yi.Config.Simple.Types ( customVariable, Field )
-import Yi.Editor
-    ( withEditor,
-      askConfigVariableA,
-      killringA,
-      putEditorDyn,
-      getEditorDyn,
-      withEditor )
-import Yi.History ( Histories(..), History(..) )
-import Yi.Keymap ( YiM )
-import Yi.KillRing ( Killring(..) )
-import Yi.Paths ( getPersistentStateFilename )
-import Yi.Regex ( SearchExp(..) )
-import Yi.Search.Internal ( getRegexE, setRegexE )
-import Yi.Utils ( io )
-import Yi.Types ( YiConfigVariable )
+import           Control.Exc            (ignoringException)
+import           Control.Lens           (assign, makeLenses, use)
+import           Control.Monad          (when)
+import           Data.Binary            (Binary, decodeFile, encodeFile, get, put)
+import           Data.Default           (Default, def)
+import qualified Data.Map               as M (map)
+import           Data.Typeable          (Typeable)
+import           System.Directory       (doesFileExist)
+import           Yi.Config.Simple.Types (Field, customVariable)
+import           Yi.Editor
+import           Yi.History             (Histories (..), History (..))
+import           Yi.Keymap              (YiM)
+import           Yi.KillRing            (Killring (..))
+import           Yi.Paths               (getPersistentStateFilename)
+import           Yi.Regex               (SearchExp (..))
+import           Yi.Search.Internal     (getRegexE, setRegexE)
+import           Yi.Types               (YiConfigVariable)
+import           Yi.Utils               (io)
 
 data PersistentState = PersistentState { histories     :: !Histories
                                        , aKillring     :: !Killring

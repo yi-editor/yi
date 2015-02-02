@@ -1,7 +1,7 @@
 {-# LANGUAGE DeriveDataTypeable #-}
-{-# LANGUAGE LambdaCase #-}
-{-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE LambdaCase         #-}
+{-# LANGUAGE OverloadedStrings  #-}
+{-# LANGUAGE TemplateHaskell    #-}
 {-# OPTIONS_HADDOCK show-extensions #-}
 
 -- |
@@ -33,54 +33,28 @@ module Yi.File (
   preSaveHooks
  ) where
 
-import Control.Applicative ( (<$>) )
-import Control.Lens ( makeLenses, assign, view, use, (^.) )
-import Control.Monad ( filterM, when, void )
-import Control.Monad.Base ( liftBase )
-import Data.Default ( Default, def )
-import Data.Monoid ( (<>) )
-import qualified Data.Text as T
-    ( unpack, Text, append, cons, pack )
-import Data.Typeable ( Typeable )
-import Data.Time ( getCurrentTime )
-import System.Directory ( doesFileExist, doesDirectoryExist )
-import System.FriendlyPath ( userToCanonPath )
-import Yi.Buffer
-    ( isUnchangedBuffer,
-      bkey,
-      markSavedB,
-      revertB,
-      bufInfoB,
-      bufInfoFileName,
-      streamB,
-      BufferRef,
-      file,
-      Direction(Forward),
-      encodingConverterNameA,
-      identA )
-import Yi.Config.Simple.Types ( customVariable, Field )
-import Yi.Core ( errorEditor, runAction )
-import Yi.Dired ( editFile )
-import Yi.Editor
-    ( printMsg,
-      withGivenBuffer,
-      withCurrentBuffer,
-      currentBuffer,
-      bufferSet )
-import Yi.Keymap ()
-import Yi.Monad ( gets )
-import qualified Yi.Rope as R
-    ( writeFile, readFile, writeFileUsingText )
-import Yi.String ( showT )
-import Yi.Types
-    ( YiConfigVariable,
-      Action,
-      BufferId(..),
-      YiM,
-      FBuffer,
-      askCfg,
-      BufferM )
-import Yi.Utils ( io )
+import           Control.Applicative    ((<$>))
+import           Control.Lens           (assign, makeLenses, use, view, (^.))
+import           Control.Monad          (filterM, void, when)
+import           Control.Monad.Base     (liftBase)
+import           Data.Default           (Default, def)
+import           Data.Monoid            ((<>))
+import qualified Data.Text              as T (Text, append, cons, pack, unpack)
+import           Data.Time              (getCurrentTime)
+import           Data.Typeable          (Typeable)
+import           System.Directory       (doesDirectoryExist, doesFileExist)
+import           System.FriendlyPath    (userToCanonPath)
+import           Yi.Buffer
+import           Yi.Config.Simple.Types (Field, customVariable)
+import           Yi.Core                (errorEditor, runAction)
+import           Yi.Dired               (editFile)
+import           Yi.Editor
+import           Yi.Keymap              ()
+import           Yi.Monad               (gets)
+import qualified Yi.Rope                as R (readFile, writeFile, writeFileUsingText)
+import           Yi.String              (showT)
+import           Yi.Types
+import           Yi.Utils               (io)
 
 newtype PreSaveHooks = PreSaveHooks { _unPreSaveHooks :: [Action] }
     deriving Typeable

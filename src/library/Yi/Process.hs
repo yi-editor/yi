@@ -1,22 +1,19 @@
-{-# LANGUAGE CPP, ScopedTypeVariables #-}
+{-# LANGUAGE CPP                 #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+
 module Yi.Process (runProgCommand, runShellCommand, shellFileName,
                    createSubprocess, readAvailable, SubprocessInfo(..), SubprocessId) where
 
-import System.Exit ( ExitCode(ExitFailure) )
-import System.Directory ( findExecutable )
-import System.IO
-    ( hSetBuffering,
-      BufferMode(NoBuffering),
-      hGetBufNonBlocking,
-      Handle )
-import System.Process
-    ( readProcessWithExitCode, ProcessHandle, runProcess )
-import System.Environment ( getEnv )
-import Foreign.Marshal.Alloc ( allocaBytes )
-import Foreign.C.String ( peekCStringLen )
-import Control.Exc ( orException )
-import Yi.Buffer.Basic ( BufferRef )
-import Yi.Monad ( repeatUntilM )
+import           Control.Exc           (orException)
+import           Foreign.C.String      (peekCStringLen)
+import           Foreign.Marshal.Alloc (allocaBytes)
+import           System.Directory      (findExecutable)
+import           System.Environment    (getEnv)
+import           System.Exit           (ExitCode (ExitFailure))
+import           System.IO             (BufferMode (NoBuffering), Handle, hGetBufNonBlocking, hSetBuffering)
+import           System.Process        (ProcessHandle, readProcessWithExitCode, runProcess)
+import           Yi.Buffer.Basic       (BufferRef)
+import           Yi.Monad              (repeatUntilM)
 
 #ifndef mingw32_HOST_OS
 import System.Posix.IO (createPipe, fdToHandle)

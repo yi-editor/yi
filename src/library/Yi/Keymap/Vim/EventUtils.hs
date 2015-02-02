@@ -17,22 +17,16 @@ module Yi.Keymap.Vim.EventUtils
   , splitCountedCommand
   ) where
 
-import Data.Char ( toUpper, isDigit )
-import Data.List ( foldl' )
-import qualified Data.Map as M ( Map, lookup, fromList )
-import Data.Monoid ( (<>) )
-import qualified Data.Text as T
-    ( unpack, span, snoc, singleton, pack, null, cons, break )
-import Data.Tuple ( swap )
-import Yi.Event
-    ( Event(..),
-      Key(KASCII, KBS, KDel, KDown, KEnd, KEnter, KEsc, KFun, KHome,
-          KIns, KLeft, KPageDown, KPageUp, KRight, KTab, KUp),
-      Modifier(MCtrl, MMeta, MShift) )
-import Yi.Keymap.Keys ( char, spec, ctrl, meta )
-import Yi.Keymap.Vim.Common
-    ( EventString(Ev), RepeatableAction(RepeatableAction) )
-import Yi.String ( showT )
+import           Data.Char            (isDigit, toUpper)
+import           Data.List            (foldl')
+import qualified Data.Map             as M (Map, fromList, lookup)
+import           Data.Monoid          ((<>))
+import qualified Data.Text            as T (break, cons, null, pack, singleton, snoc, span, unpack)
+import           Data.Tuple           (swap)
+import           Yi.Event
+import           Yi.Keymap.Keys       (char, ctrl, meta, spec)
+import           Yi.Keymap.Vim.Common (EventString (Ev), RepeatableAction (RepeatableAction))
+import           Yi.String            (showT)
 
 specMap :: M.Map EventString Key
 specMap = M.fromList specList

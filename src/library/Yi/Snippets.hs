@@ -1,14 +1,14 @@
-{-# LANGUAGE CPP #-}
-{-# LANGUAGE DeriveDataTypeable #-}
-{-# LANGUAGE DeriveGeneric #-}
-{-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE FunctionalDependencies #-}
+{-# LANGUAGE CPP                        #-}
+{-# LANGUAGE DeriveDataTypeable         #-}
+{-# LANGUAGE DeriveGeneric              #-}
+{-# LANGUAGE FlexibleContexts           #-}
+{-# LANGUAGE FlexibleInstances          #-}
+{-# LANGUAGE FunctionalDependencies     #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
-{-# LANGUAGE LambdaCase #-}
-{-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE StandaloneDeriving #-}
-{-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE LambdaCase                 #-}
+{-# LANGUAGE OverloadedStrings          #-}
+{-# LANGUAGE StandaloneDeriving         #-}
+{-# LANGUAGE TemplateHaskell            #-}
 {-# OPTIONS_HADDOCK show-extensions #-}
 
 -- |
@@ -26,106 +26,30 @@ import           Data.DeriveTH (derive, makeBinary)
 import           GHC.Generics (Generic)
 #endif
 
-import Control.Applicative ( some )
-import Control.Arrow ( second )
-import Control.Lens ( use, (.=) )
-import Control.Monad.RWS
-    ( liftM,
-      MonadPlus(mplus),
-      Monoid(mappend, mempty),
-      when,
-      unless,
-      liftM2,
-      forM_,
-      forM,
-      filterM,
-      MonadTrans(..),
-      (<>),
-      MonadState,
-      MonadReader(ask),
-      MonadWriter(tell),
-      RWST,
-      evalRWST )
-import Data.Binary ( Binary, get, getWord8, put, putWord8 )
-import Data.Char ( isSpace )
-import Data.Default ( Default, def )
-import Data.Foldable ( find )
-import Data.List ( sort, nub, intersperse, groupBy, foldl' )
-import Data.Maybe ( catMaybes )
-import qualified Data.Text as T ( Text )
-import Data.Typeable ( Typeable )
-import Yi.Buffer
-    ( BufferM,
-      Mark,
-      insertN,
-      insertB,
-      hasWhiteSpaceBefore,
-      bkillWordB,
-      readPrevWordB,
-      tabB,
-      atSol,
-      deleteRegionB,
-      moveTo,
-      deleteMarkB,
-      putBufferDyn,
-      getBufferDyn,
-      markPointA,
-      mkRegion,
-      FBuffer,
-      Region,
-      regionsOverlap,
-      Point(..),
-      regionEnd,
-      readRegionB,
-      Direction(Forward, Backward),
-      unitViWordOnLine,
-      regionOfPartNonEmptyAtB,
-      isWordChar,
-      readAtB,
-      regionStart,
-      modifyRegionB,
-      insertNAt,
-      inRegion,
-      nearRegion,
-      updatePoint,
-      Update,
-      indentOfCurrentPosB,
-      pointB,
-      tabSize,
-      IndentSettings,
-      indentSettingsB,
-      newMarkB,
-      updateIsDelete,
-      lineOf,
-      indentToB,
-      newlineB,
-      MarkValue(..),
-      expandTabs )
-import Yi.Editor ( withCurrentBuffer )
-import Yi.Keymap ( Action )
-import Yi.Keymap.Keys
-    ( MonadInteract,
-      (>>!),
-      (?>>!),
-      deprioritize,
-      Event,
-      spec,
-      Key(KTab) )
-import qualified Yi.Rope as R
-    ( YiString,
-      fromText,
-      length,
-      takeWhile,
-      cons,
-      drop,
-      reverse,
-      head,
-      lines,
-      replicateChar,
-      last,
-      fromString )
-import Yi.TextCompletion ( wordCompleteString', resetComplete )
-import Yi.Types ( YiVariable )
+import           Control.Applicative (some)
+import           Control.Arrow       (second)
+import           Control.Lens        (use, (.=))
+import           Control.Monad.RWS   (MonadPlus (mplus), MonadReader (ask),
+                                      MonadState, MonadTrans (..),
+                                      MonadWriter (tell),
+                                      Monoid (mappend, mempty), RWST, evalRWST,
+                                      filterM, forM, forM_, liftM, liftM2,
+                                      unless, when, (<>))
+import           Data.Binary         (Binary, get, getWord8, put, putWord8)
+import           Data.Char           (isSpace)
+import           Data.Default        (Default, def)
+import           Data.Foldable       (find)
+import           Data.List           (foldl', groupBy, intersperse, nub, sort)
+import           Data.Maybe          (catMaybes)
+import qualified Data.Text           as T (Text)
+import           Data.Typeable       (Typeable)
+import           Yi.Buffer
+import           Yi.Editor           (withCurrentBuffer)
+import           Yi.Keymap           (Action)
+import           Yi.Keymap.Keys
+import qualified Yi.Rope             as R
+import           Yi.TextCompletion   (resetComplete, wordCompleteString')
+import           Yi.Types            (YiVariable)
 
 type SnippetCmd = RWST (Int, Int) [MarkInfo] () BufferM
 

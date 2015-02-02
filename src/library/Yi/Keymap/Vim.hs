@@ -22,61 +22,39 @@ module Yi.Keymap.Vim
     , relayoutFromTo
     ) where
 
-import Control.Applicative ( (<$>) )
-import Data.Char ( toUpper )
-import Data.List ( find )
-import Data.Monoid ( Monoid(mempty), (<>) )
-import Data.Prototype ( Proto(Proto), extractValue )
-import Yi.Buffer.Adjusted
-    ( startUpdateTransactionB, commitUpdateTransactionB )
+import Control.Applicative                    ((<$>))
+import Data.Char                              (toUpper)
+import Data.List                              (find)
+import Data.Monoid                            (Monoid (mempty), (<>))
+import Data.Prototype                         (Proto (Proto), extractValue)
+import Yi.Buffer.Adjusted                     (commitUpdateTransactionB, startUpdateTransactionB)
 import Yi.Editor
-    ( MonadEditor(withEditor),
-      EditorM,
-      withCurrentBuffer,
-      getEditorDyn )
-import Yi.Event ( Event(..), Key(KASCII), Modifier(MCtrl, MMeta) )
-import Yi.Keymap
-    ( KeymapSet, YiM, Keymap, KeymapM, write, modelessKeymapSet )
-import Yi.Keymap.Keys ( anyEvent )
+import Yi.Event                               (Event (..), Key (KASCII), Modifier (MCtrl, MMeta))
+import Yi.Keymap                              (Keymap, KeymapM, KeymapSet, YiM, modelessKeymapSet, write)
+import Yi.Keymap.Keys                         (anyEvent)
 import Yi.Keymap.Vim.Common
-    ( MatchResult(..),
-      EventString,
-      VimState(vsBindingAccumulator, vsMode, vsStringToEval),
-      VimMode(Ex, Insert, InsertNormal, InsertVisual, Replace,
-              ReplaceSingleChar, Search),
-      VimBinding(..),
-      RepeatToken(..) )
-import Yi.Keymap.Vim.Digraph ( defDigraphs )
-import Yi.Keymap.Vim.EventUtils ( eventToEventString, parseEvents )
-import Yi.Keymap.Vim.Ex ( ExCommand, defExCommandParsers )
-import Yi.Keymap.Vim.ExMap ( defExMap )
-import Yi.Keymap.Vim.InsertMap ( defInsertMap )
-import Yi.Keymap.Vim.NormalMap ( defNormalMap )
-import Yi.Keymap.Vim.NormalOperatorPendingMap
-    ( defNormalOperatorPendingMap )
-import Yi.Keymap.Vim.Operator ( VimOperator(..), defOperators )
-import Yi.Keymap.Vim.ReplaceMap ( defReplaceMap )
-import Yi.Keymap.Vim.ReplaceSingleCharMap ( defReplaceSingleMap )
-import Yi.Keymap.Vim.SearchMotionMap ( defSearchMotionMap )
+import Yi.Keymap.Vim.Digraph                  (defDigraphs)
+import Yi.Keymap.Vim.EventUtils               (eventToEventString, parseEvents)
+import Yi.Keymap.Vim.Ex                       (ExCommand, defExCommandParsers)
+import Yi.Keymap.Vim.ExMap                    (defExMap)
+import Yi.Keymap.Vim.InsertMap                (defInsertMap)
+import Yi.Keymap.Vim.NormalMap                (defNormalMap)
+import Yi.Keymap.Vim.NormalOperatorPendingMap (defNormalOperatorPendingMap)
+import Yi.Keymap.Vim.Operator                 (VimOperator (..), defOperators)
+import Yi.Keymap.Vim.ReplaceMap               (defReplaceMap)
+import Yi.Keymap.Vim.ReplaceSingleCharMap     (defReplaceSingleMap)
+import Yi.Keymap.Vim.SearchMotionMap          (defSearchMotionMap)
 import Yi.Keymap.Vim.StateUtils
-    ( modifyStateE,
-      accumulateBindingEventE,
-      accumulateEventE,
-      flushAccumulatorE,
-      dropAccumulatorE,
-      dropBindingAccumulatorE,
-      updateModeIndicatorE,
-      resetActiveRegisterE )
-import Yi.Keymap.Vim.Utils ( selectPureBinding, selectBinding )
-import Yi.Keymap.Vim.VisualMap ( defVisualMap )
+import Yi.Keymap.Vim.Utils                    (selectBinding, selectPureBinding)
+import Yi.Keymap.Vim.VisualMap                (defVisualMap)
 
 data VimConfig = VimConfig {
-    vimKeymap :: Keymap
-  , vimBindings :: [VimBinding]
-  , vimOperators :: [VimOperator]
+    vimKeymap           :: Keymap
+  , vimBindings         :: [VimBinding]
+  , vimOperators        :: [VimOperator]
   , vimExCommandParsers :: [EventString -> Maybe ExCommand]
-  , vimDigraphs :: [(String, Char)]
-  , vimRelayout :: Char -> Char
+  , vimDigraphs         :: [(String, Char)]
+  , vimRelayout         :: Char -> Char
   }
 
 mkKeymapSet :: Proto VimConfig -> KeymapSet

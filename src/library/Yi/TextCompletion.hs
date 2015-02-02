@@ -1,6 +1,6 @@
-{-# LANGUAGE DeriveDataTypeable #-}
+{-# LANGUAGE DeriveDataTypeable         #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
-{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE OverloadedStrings          #-}
 {-# OPTIONS_HADDOCK show-extensions #-}
 
 -- |
@@ -24,51 +24,25 @@ module Yi.TextCompletion (
         CompletionScope(..)
 ) where
 
-import Control.Applicative ( (<$>) )
-import Control.Monad ( forM )
-import Data.Binary ( Binary, put, get )
-import Data.Char
-    ( generalCategory,
-      GeneralCategory(UppercaseLetter, LowercaseLetter, TitlecaseLetter,
-                      ModifierLetter, OtherLetter, ConnectorPunctuation, NonSpacingMark,
-                      SpacingCombiningMark, EnclosingMark, DecimalNumber, LetterNumber,
-                      OtherNumber, MathSymbol, CurrencySymbol, ModifierSymbol,
-                      OtherSymbol) )
-import Data.Default ( Default, def )
-import Data.Function ( on )
-import Data.List ( findIndex )
-import Data.List.NonEmpty ( NonEmpty(..) )
-import Data.Maybe ( isJust )
-import qualified Data.Text as T
-    ( Text, isPrefixOf, null, drop, length, head, groupBy )
-import qualified Data.Text.Encoding as E ( encodeUtf8, decodeUtf8 )
-import Data.Typeable ( Typeable )
-import Yi.Buffer
-    ( readRegionB,
-      replaceRegionB,
-      regionOfPartB,
-      unitWord,
-      Direction(Forward, Backward),
-      elemsB,
-      insertN,
-      BufferM,
-      TextUnit(Document),
-      bkey )
-import Yi.Completion ( mkIsPrefixOf, completeInList )
-import Yi.Types ( YiVariable )
-import Yi.Editor
-    ( putEditorDyn,
-      withEditor,
-      getEditorDyn,
-      withCurrentBuffer,
-      EditorM,
-      printMsg,
-      withEveryBuffer,
-      withGivenBuffer,
-      getBufferStack )
-import Yi.Keymap ( YiM )
-import qualified Yi.Rope as R ( toText, fromText )
-import Yi.Utils ( nubSet )
+import           Control.Applicative ((<$>))
+import           Control.Monad       (forM)
+import           Data.Binary         (Binary, get, put)
+import           Data.Char           (GeneralCategory (..), generalCategory)
+import           Data.Default        (Default, def)
+import           Data.Function       (on)
+import           Data.List           (findIndex)
+import           Data.List.NonEmpty  (NonEmpty (..))
+import           Data.Maybe          (isJust)
+import qualified Data.Text           as T (Text, drop, groupBy, head, isPrefixOf, length, null)
+import qualified Data.Text.Encoding  as E (decodeUtf8, encodeUtf8)
+import           Data.Typeable       (Typeable)
+import           Yi.Buffer
+import           Yi.Completion       (completeInList, mkIsPrefixOf)
+import           Yi.Editor
+import           Yi.Keymap           (YiM)
+import qualified Yi.Rope             as R (fromText, toText)
+import           Yi.Types            (YiVariable)
+import           Yi.Utils            (nubSet)
 
 -- ---------------------------------------------------------------------
 -- | Word completion

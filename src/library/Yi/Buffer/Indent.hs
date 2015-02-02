@@ -1,4 +1,4 @@
-{-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE LambdaCase        #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# OPTIONS_HADDOCK show-extensions #-}
 
@@ -31,46 +31,20 @@ module Yi.Buffer.Indent
     , tabB
     ) where
 
-import Control.Applicative ( (<$>) )
-import Control.Monad ()
-import Data.Char ( isSpace )
-import Data.List ( sort, nub )
-import Data.Monoid ( (<>) )
-import Yi.Buffer.Basic ( Direction(..) )
-import Yi.Buffer.HighLevel
-    ( moveToSol,
-      firstNonSpaceB,
-      readLnB,
-      getNextLineB,
-      getNextNonBlankLineB )
-import Yi.Buffer.Misc
-    ( IndentBehaviour(..),
-      IndentSettings(..),
-      BufferM,
-      pointB,
-      moveTo,
-      newlineB,
-      lineMoveRel,
-      indentSettingsB,
-      savingExcursionB )
-import Yi.Buffer.Normal ()
-import Yi.Buffer.Region
-    ( Region(regionStart), mkRegion, readRegionB, modifyRegionB )
-import Yi.Buffer.TextUnit ( regionWithTwoMovesB )
-import Yi.Rope ( YiString )
-import qualified Yi.Rope as R
-    ( YiString,
-      takeWhile,
-      span,
-      reverse,
-      replicateChar,
-      replicate,
-      null,
-      head,
-      foldl',
-      drop,
-      any )
-import Yi.String ( mapLines )
+import           Control.Applicative ((<$>))
+import           Control.Monad       ()
+import           Data.Char           (isSpace)
+import           Data.List           (nub, sort)
+import           Data.Monoid         ((<>))
+import           Yi.Buffer.Basic     (Direction (..))
+import           Yi.Buffer.HighLevel (firstNonSpaceB, getNextLineB, getNextNonBlankLineB, moveToSol, readLnB)
+import           Yi.Buffer.Misc
+import           Yi.Buffer.Normal    ()
+import           Yi.Buffer.Region    (Region (regionStart), mkRegion, modifyRegionB, readRegionB)
+import           Yi.Buffer.TextUnit  (regionWithTwoMovesB)
+import           Yi.Rope             (YiString)
+import qualified Yi.Rope             as R
+import           Yi.String           (mapLines)
 
 {- |
   Return either a \t or the number of spaces specified by tabSize in the

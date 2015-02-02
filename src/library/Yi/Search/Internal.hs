@@ -11,9 +11,9 @@
 
 module Yi.Search.Internal where
 
-import Control.Lens ( assign, use )
-import Yi.Editor ( EditorM, currentRegexA )
-import Yi.Regex ( SearchExp )
+import           Control.Lens (assign, use)
+import           Yi.Editor    (EditorM, currentRegexA)
+import           Yi.Regex     (SearchExp)
 
 -- ---------------------------------------------------------------------
 -- Searching and substitutions with regular expressions

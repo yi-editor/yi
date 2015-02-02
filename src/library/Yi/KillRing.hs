@@ -1,7 +1,7 @@
-{-# LANGUAGE CPP #-}
-{-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE CPP                #-}
+{-# LANGUAGE DeriveGeneric      #-}
 {-# LANGUAGE StandaloneDeriving #-}
-{-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE TemplateHaskell    #-}
 {-# OPTIONS_HADDOCK show-extensions #-}
 
 -- |
@@ -32,15 +32,15 @@ import           Data.DeriveTH (derive, makeBinary)
 import           GHC.Generics (Generic)
 #endif
 
-import Prelude hiding (head, tail, take)
+import           Prelude             hiding (head, tail, take)
 
-import Control.Applicative ( (<$>), (<*>) )
-import Control.Lens ( makeLenses, (^.) )
-import Data.Binary ( Binary, get, put )
-import Data.List.NonEmpty ( NonEmpty(..), take, head )
-import Data.Monoid ( (<>), mempty )
-import Yi.Buffer.Basic ( Direction(..) )
-import qualified Yi.Rope as R ( YiString, length )
+import           Control.Applicative ((<$>), (<*>))
+import           Control.Lens        (makeLenses, (^.))
+import           Data.Binary         (Binary, get, put)
+import           Data.List.NonEmpty  (NonEmpty (..), head, take)
+import           Data.Monoid         (mempty, (<>))
+import           Yi.Buffer.Basic     (Direction (..))
+import qualified Yi.Rope             as R (YiString, length)
 
 
 data Killring = Killring { _krKilled :: Bool

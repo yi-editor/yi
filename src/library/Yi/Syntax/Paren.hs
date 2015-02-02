@@ -1,5 +1,5 @@
 {-# LANGUAGE DeriveFoldable #-}
-{-# LANGUAGE DeriveFunctor #-}
+{-# LANGUAGE DeriveFunctor  #-}
 {-# OPTIONS_HADDOCK show-extensions #-}
 
 -- |
@@ -15,40 +15,19 @@ module Yi.Syntax.Paren where
 
 import Prelude hiding (elem)
 
-import Control.Applicative
-    ( Applicative((*>), (<*), (<*>)), Alternative((<|>), many), (<$>) )
-import Data.Foldable ( Foldable(foldMap), toList, elem )
-import Data.Maybe ( Maybe(..), listToMaybe )
-import Data.Monoid ( Monoid(mappend), Endo(Endo, appEndo), (<>) )
-import Data.Traversable ( Traversable(sequenceA) )
-import Yi.IncrementalParse
-    ( AlexState, Parser, symbol, eof, lookNext, recoverWith, P )
-import Yi.Lexer.Alex
-    ( Stroke,
-      Tok(Tok, tokPosn, tokT),
-      Posn(posnLine, posnOfs),
-      tokToSpan,
-      tokFromT,
-      tokBegin,
-      startPosn )
-import Yi.Lexer.Haskell
-    ( Token(CppDirective, Special),
-      TT,
-      tokenToText,
-      tokenToStyle,
-      startsLayout,
-      isSpecial,
-      isErrorTok,
-      isComment )
-import Yi.Style ( hintStyle, errorStyle, StyleName )
-import Yi.Syntax ( Span, Scanner, Point )
-import Yi.Syntax.Layout ( State, layoutHandler )
-import Yi.Syntax.Tree
-    ( IsTree(emptyNode, uniplate),
-      getAllSubTrees,
-      getFirstElement,
-      getLastElement,
-      sepBy1 )
+import           Control.Applicative (Alternative ((<|>), many),
+                                      Applicative ((*>), (<*), (<*>)), (<$>))
+import           Data.Foldable       (Foldable (foldMap), elem, toList)
+import           Data.Maybe          (Maybe (..), listToMaybe)
+import           Data.Monoid         (Endo (Endo, appEndo), Monoid (mappend), (<>))
+import           Data.Traversable    (Traversable (sequenceA))
+import           Yi.IncrementalParse (AlexState, P, Parser, eof, lookNext, recoverWith, symbol)
+import           Yi.Lexer.Alex       hiding (tokenToStyle)
+import           Yi.Lexer.Haskell
+import           Yi.Style            (StyleName, errorStyle, hintStyle)
+import           Yi.Syntax           (Point, Scanner, Span)
+import           Yi.Syntax.Layout    (State, layoutHandler)
+import           Yi.Syntax.Tree
 
 indentScanner :: Scanner (AlexState lexState) TT
               -> Scanner (Yi.Syntax.Layout.State Token lexState) TT

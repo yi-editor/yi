@@ -16,128 +16,57 @@ module Yi.UI.Vty
     ( start
     ) where
 
-import Prelude hiding (error, concatMap, reverse)
+import           Prelude                        hiding (concatMap, error,
+                                                 reverse)
 
-import Control.Applicative ( Applicative((<*>)), (<$>) )
-import Control.Concurrent
-    ( MVar,
-      myThreadId,
-      forkIO,
-      tryTakeMVar,
-      tryPutMVar,
-      takeMVar,
-      newEmptyMVar,
-      readChan,
-      isEmptyChan )
-import Control.Exception ( IOException, handle )
-import Control.Lens ( use )
-import Control.Monad ( when, void )
-import Data.Char ( ord, chr )
-import qualified Data.DList as D ( toList, snoc, empty )
-import Data.Foldable ( toList, concatMap )
-import Data.IORef ( IORef, writeIORef, readIORef, newIORef )
-import qualified Data.List.PointedList.Circular as PL
-    ( PointedList(_focus), withFocus )
-import qualified Data.Map.Strict as M ( (!) )
-import Data.Maybe ( maybeToList )
-import Data.Monoid ( Endo(appEndo), (<>) )
-import qualified Data.Text as T
-    ( Text,
-      empty,
-      unpack,
-      take,
-      snoc,
-      singleton,
-      pack,
-      length,
-      justifyLeft,
-      cons )
-import qualified Graphics.Vty as Vty
-    ( Picture(picCursor),
-      Cursor(Cursor, NoCursor),
-      Output(displayBounds),
-      Input(_eventChannel),
-      Event(EvResize),
-      Image,
-      Attr,
-      Vty(inputIface, outputIface, refresh, shutdown, update),
-      picForLayers,
-      vertCat,
-      translate,
-      text',
-      horizCat,
-      emptyImage,
-      charFill,
-      char,
-      (<|>),
-      withStyle,
-      withForeColor,
-      withBackColor,
-      underline,
-      reverseVideo,
-      defAttr,
-      bold,
-      mkVty )
-import GHC.Conc ( labelThread )
-import Yi.Buffer
-    ( Size(Size),
-      Point(Point),
-      Direction(Forward),
-      mkSizeRegion,
-      MarkSet(MarkSet),
-      IndentSettings(tabSize),
-      miniIdentString,
-      getModeLine,
-      runBuffer,
-      getMarks,
-      pointB,
-      indexedStreamB,
-      indentSettingsB,
-      markPointA )
-import Yi.Config
-    ( Config(configUI),
-      UIBoot,
-      UIConfig(configVty, configWindowFill),
-      configStyle )
-import Yi.Debug ( logPutStrLn, logError )
-import Yi.Editor
-    ( Editor(currentRegex, maxStatusHeight),
-      windows,
-      commonNamePrefix,
-      findBufferWith,
-      statusLineInfo )
-import Yi.Event ( Event )
-import Yi.Style
-    ( UIStyle(baseAttributes, eofStyle, modelineAttributes,
-              modelineFocusStyle, tabBarAttributes, tabInFocusStyle,
-              tabNotFocusedStyle),
-      Attributes(Attributes) )
-import qualified Yi.UI.Common as Common
-    ( UI(end, layout, main, refresh, userForceRefresh), dummyUI )
-import qualified Yi.UI.SimpleLayout as SL
-    ( Size2D(Size2D),
-      Point2D(Point2D),
-      Rect(Rect, offsetX, offsetY, sizeX),
-      Layout(Layout),
-      layout,
-      coordsOfCharacterB )
-import Yi.UI.Vty.Conversions ( fromVtyEvent, colorToAttr )
-import Yi.UI.TabBar ( TabDescr(TabDescr), tabBarDescr )
-import Yi.UI.Utils ( attributesPictureAndSelB, arrangeItems )
-import Yi.Window ( Window(bufkey, isMini, wkey) )
+import           Control.Applicative            (Applicative ((<*>)), (<$>))
+import           Control.Concurrent             (MVar, forkIO, isEmptyChan,
+                                                 myThreadId, newEmptyMVar,
+                                                 readChan, takeMVar, tryPutMVar,
+                                                 tryTakeMVar)
+import           Control.Exception              (IOException, handle)
+import           Control.Lens                   (use)
+import           Control.Monad                  (void, when)
+import           Data.Char                      (chr, ord)
+import qualified Data.DList                     as D (empty, snoc, toList)
+import           Data.Foldable                  (concatMap, toList)
+import           Data.IORef                     (IORef, newIORef, readIORef, writeIORef)
+import qualified Data.List.PointedList.Circular as PL (PointedList (_focus), withFocus)
+import qualified Data.Map.Strict                as M ((!))
+import           Data.Maybe                     (maybeToList)
+import           Data.Monoid                    (Endo (appEndo), (<>))
+import qualified Data.Text                      as T (Text, cons, empty,
+                                                      justifyLeft, length, pack,
+                                                      singleton, snoc, take,
+                                                      unpack)
+import           GHC.Conc                       (labelThread)
+import qualified Graphics.Vty                   as Vty (Attr, Cursor (Cursor, NoCursor),
+                                                        Event (EvResize), Image,
+                                                        Input (_eventChannel),
+                                                        Output (displayBounds),
+                                                        Picture (picCursor), Vty (inputIface, outputIface, refresh, shutdown, update),
+                                                        bold, char, charFill,
+                                                        defAttr, emptyImage,
+                                                        horizCat, mkVty,
+                                                        picForLayers,
+                                                        reverseVideo, text',
+                                                        translate, underline,
+                                                        vertCat, withBackColor,
+                                                        withForeColor,
+                                                        withStyle, (<|>))
+import           Yi.Buffer
+import           Yi.Config
+import           Yi.Debug                       (logError, logPutStrLn)
+import           Yi.Editor
+import           Yi.Event                       (Event)
+import           Yi.Style
+import qualified Yi.UI.Common                   as Common
+import qualified Yi.UI.SimpleLayout             as SL
+import           Yi.UI.TabBar                   (TabDescr (TabDescr), tabBarDescr)
+import           Yi.UI.Utils                    (arrangeItems, attributesPictureAndSelB)
+import           Yi.UI.Vty.Conversions          (colorToAttr, fromVtyEvent)
+import           Yi.Window                      (Window (bufkey, isMini, wkey))
 
-import Yi.Buffer
-import Yi.Config
-import Yi.Debug
-import Yi.Editor
-import Yi.Event
-import Yi.Style
-import qualified Yi.UI.Common as Common
-import qualified Yi.UI.SimpleLayout as SL
-import Yi.UI.Vty.Conversions
-import Yi.UI.TabBar
-import Yi.UI.Utils
-import Yi.Window
 
 data Rendered = Rendered
     { picture :: !Vty.Image

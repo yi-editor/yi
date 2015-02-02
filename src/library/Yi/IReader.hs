@@ -20,36 +20,26 @@
 
 module Yi.IReader where
 
-import Control.Exception ( catch, SomeException )
-import Control.Monad ( void, join )
-import Data.Functor ( (<$>) )
-import Data.Binary ( Binary, encodeFile, decode )
-import qualified Data.ByteString.Char8 as B
-    ( pack, unpack, readFile, ByteString )
-import qualified Data.ByteString.Lazy.Char8 as BL ( fromChunks )
-import Data.Default ( Default, def )
-import Data.Sequence as S
-    ( Seq,
-      empty,
-      (|>),
-      length,
-      splitAt,
-      viewr,
-      null,
-      ViewL(EmptyL, (:<)),
-      viewl,
-      (><),
-      (<|),
-      ViewR((:>)) )
-import Data.Typeable ( Typeable )
-import Yi.Buffer.HighLevel ( replaceBufferContent, topB )
-import Yi.Buffer.Misc ( getBufferDyn, putBufferDyn, elemsB )
-import Yi.Editor ( withCurrentBuffer )
-import Yi.Keymap ( YiM )
-import Yi.Paths ( getArticleDbFilename )
-import qualified Yi.Rope as R ( toString, fromString )
-import Yi.Utils ( io )
-import Yi.Types ( YiVariable )
+import           Control.Exception          (SomeException, catch)
+import           Control.Monad              (join, void)
+import           Data.Binary                (Binary, decode, encodeFile)
+import qualified Data.ByteString.Char8      as B (ByteString, pack, readFile, unpack)
+import qualified Data.ByteString.Lazy.Char8 as BL (fromChunks)
+import           Data.Default               (Default, def)
+import           Data.Functor               ((<$>))
+import           Data.Sequence              as S (Seq, ViewL (EmptyL, (:<)),
+                                                  ViewR ((:>)), empty, length,
+                                                  null, splitAt, viewl, viewr,
+                                                  (<|), (><), (|>))
+import           Data.Typeable              (Typeable)
+import           Yi.Buffer.HighLevel        (replaceBufferContent, topB)
+import           Yi.Buffer.Misc             (elemsB, getBufferDyn, putBufferDyn)
+import           Yi.Editor                  (withCurrentBuffer)
+import           Yi.Keymap                  (YiM)
+import           Yi.Paths                   (getArticleDbFilename)
+import qualified Yi.Rope                    as R (fromString, toString)
+import           Yi.Types                   (YiVariable)
+import           Yi.Utils                   (io)
 
 -- | TODO: Why 'B.ByteString'?
 type Article = B.ByteString

@@ -7,26 +7,9 @@ module Yi.Keymap.Vim.TextObject
   , stringToTextObject
   ) where
 
-import Control.Monad ( replicateM_, (<=<) )
+import Control.Monad              (replicateM_, (<=<))
 import Yi.Buffer.Adjusted
-    ( Direction(Backward, Forward),
-      RegionStyle(Exclusive),
-      BufferM,
-      BoundarySide(..),
-      TextUnit,
-      unitDelimited,
-      unitViWord,
-      unitViWORD,
-      unitViWordAnyBnd,
-      unitViWORDAnyBnd,
-      unitEmacsParagraph,
-      unitSentence,
-      leftBoundaryUnit,
-      moveB,
-      maybeMoveB,
-      regionWithTwoMovesB )
-import Yi.Keymap.Vim.StyledRegion
-    ( StyledRegion(..), normalizeRegion )
+import Yi.Keymap.Vim.StyledRegion (StyledRegion (..), normalizeRegion)
 
 data TextObject = TextObject !RegionStyle !TextUnit
 data CountedTextObject = CountedTextObject !Int !TextObject

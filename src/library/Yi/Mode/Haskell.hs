@@ -1,6 +1,6 @@
-{-# LANGUAGE DeriveDataTypeable #-}
+{-# LANGUAGE DeriveDataTypeable         #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
-{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE OverloadedStrings          #-}
 {-# OPTIONS_HADDOCK show-extensions #-}
 
 -- |
@@ -30,149 +30,46 @@ module Yi.Mode.Haskell
    ghciSetProcessArgs
   ) where
 
-import Prelude hiding (concatMap, elem, notElem, all, error)
+import           Prelude                   hiding (all, concatMap, elem, error, notElem)
 
-import Control.Applicative ( Applicative((*>)), (<$>) )
-import Control.Lens ( (.~), (&), (^.) )
-import Control.Monad
-    ( Monad(return), Functor(fmap), mapM, (=<<), when, void, unless )
-import Data.Binary ( Binary )
-import Data.Default ( Default )
-import Data.Foldable
-    ( Foldable, notElem, forM_, elem, concatMap, all )
-import Data.Maybe ( listToMaybe, isJust )
-import Data.Monoid ( (<>) )
-import qualified Data.Text as T
-    ( unwords, unpack, pack, drop, concat, any )
-import Data.Typeable ( Typeable )
-import Text.Read ( readMaybe )
-import Yi.Buffer
-    ( Region,
-      Point,
-      Direction(Backward, Forward),
-      BufferRef,
-      mkRegion,
-      IndentBehaviour,
-      Mode,
-      IndentSettings(shiftWidth),
-      BufferM,
-      file,
-      emptyMode,
-      pointB,
-      insertN,
-      insertB,
-      curLn,
-      leftB,
-      leftN,
-      rightB,
-      lineDown,
-      deleteN,
-      indentSettingsB,
-      curCol,
-      savingExcursionB,
-      pointAt,
-      modeAdjustBlockA,
-      modeAppliesA,
-      modeGetStrokesA,
-      modeHLA,
-      modeIndentA,
-      modeNameA,
-      modePrettifyA,
-      modeToggleCommentSelectionA,
-      readRegionB,
-      modifyRegionB,
-      unitWord,
-      readUnitB,
-      moveToSol,
-      moveToEol,
-      botB,
-      readLnB,
-      getNextNonBlankLineB,
-      toggleCommentB,
-      cycleIndentsB,
-      indentOfB )
-import Yi.Core ( sendToProcess )
-import Yi.Debug ( trace, error )
-import Yi.Types ( YiVariable )
-import Yi.Editor
-    ( MonadEditor(withEditor),
-      findBuffer,
-      withGivenBuffer,
-      withCurrentBuffer,
-      printMsg,
-      getEditorDyn,
-      putEditorDyn,
-      switchToBufferE,
-      withOtherWindow )
-import Yi.File ( fwriteE )
-import qualified Yi.IncrementalParse as IncrParser
-    ( State, scanner )
-import Yi.Keymap ( YiM )
-import Yi.Lexer.Alex
-    ( Tok(..),
-      Posn(..),
-      tokBegin,
-      tokEnd,
-      commonLexer,
-      AlexState,
-      lexScanner,
-      CharScanner )
-import Yi.Lexer.Haskell as Haskell
-    ( Token(Comment, Operator, Reserved, ReservedOp, Special),
-      TT,
-      ReservedType(Deriving, Where, In),
-      OpType(RightArrow, Equal, Pipe),
-      HlState,
-      CommentType(Line),
-      startsLayout,
-      isErrorTok,
-      initState,
-      alexScanToken )
-import qualified Yi.Lexer.LiterateHaskell as LiterateHaskell
-    ( HlState, initState, alexScanToken )
-import Yi.MiniBuffer
-    ( noHint, withMinibufferFree, withMinibufferGen )
-import qualified Yi.Mode.GHCi as GHCi
-    ( ghciProcessArgs, ghciProcessName, spawnProcess )
-import qualified Yi.Mode.Interactive as Interactive ( queryReply )
-import Yi.Modes ( anyExtension, extensionOrContentsMatch )
-import Yi.Monad ( gets )
-import qualified Yi.Rope as R
-    ( YiString,
-      unlines,
-      toText,
-      toString,
-      replicateChar,
-      null,
-      fromText,
-      append )
-import Yi.String ( showT, fillText )
-import Yi.Syntax ( Stroke, Scanner, ExtHL(..), skipScanner )
-import qualified Yi.Syntax.Driver as Driver ( mkHighlighter )
-import Yi.Syntax.Haskell as Hask
-    ( Exp(Block, PAtom, PData, PGuard', PLet, Paren, RHS),
-      Tree,
-      indentScanner,
-      parse )
-import Yi.Syntax.Layout ( State )
-import Yi.Syntax.OnlineTree as OnlineTree ( Tree, manyToks )
-import Yi.Syntax.Paren as Paren
-    ( Tree(Atom, Block, Paren),
-      indentScanner,
-      getIndentingSubtree,
-      getSubtreeSpan,
-      parse,
-      getStrokes,
-      tokenToStroke )
-import Yi.Syntax.Strokes.Haskell as HS ( getStrokes )
-import Yi.Syntax.Tree
-    ( IsTree,
-      allToks,
-      tokenBasedStrokes,
-      getLastPath,
-      getFirstElement,
-      getLastOffset )
-import Yi.Utils ( groupBy' )
+import           Control.Applicative       (Applicative ((*>)), (<$>))
+import           Control.Lens              ((&), (.~), (^.))
+import           Control.Monad             (Functor (fmap), Monad (return), mapM, unless, void, when, (=<<))
+import           Data.Binary               (Binary)
+import           Data.Default              (Default)
+import           Data.Foldable             (Foldable, all, concatMap, elem, forM_, notElem)
+import           Data.Maybe                (isJust, listToMaybe)
+import           Data.Monoid               ((<>))
+import qualified Data.Text                 as T (any, concat, drop, pack, unpack, unwords)
+import           Data.Typeable             (Typeable)
+import           Text.Read                 (readMaybe)
+import           Yi.Buffer
+import           Yi.Core                   (sendToProcess)
+import           Yi.Debug                  (error, trace)
+import           Yi.Editor
+import           Yi.File                   (fwriteE)
+import qualified Yi.IncrementalParse       as IncrParser (State, scanner)
+import           Yi.Keymap                 (YiM)
+import           Yi.Lexer.Alex
+import           Yi.Lexer.Haskell          as Haskell
+import qualified Yi.Lexer.LiterateHaskell  as LiterateHaskell (HlState, alexScanToken, initState)
+import           Yi.MiniBuffer             (noHint, withMinibufferFree, withMinibufferGen)
+import qualified Yi.Mode.GHCi              as GHCi (ghciProcessArgs, ghciProcessName, spawnProcess)
+import qualified Yi.Mode.Interactive       as Interactive (queryReply)
+import           Yi.Modes                  (anyExtension, extensionOrContentsMatch)
+import           Yi.Monad                  (gets)
+import qualified Yi.Rope                   as R
+import           Yi.String                 (fillText, showT)
+import           Yi.Syntax                 (ExtHL (..), Scanner, Stroke, skipScanner)
+import qualified Yi.Syntax.Driver          as Driver (mkHighlighter)
+import           Yi.Syntax.Haskell         as Hask
+import           Yi.Syntax.Layout          (State)
+import           Yi.Syntax.OnlineTree      as OnlineTree (Tree, manyToks)
+import           Yi.Syntax.Paren           as Paren
+import           Yi.Syntax.Strokes.Haskell as HS (getStrokes)
+import           Yi.Syntax.Tree
+import           Yi.Types                  (YiVariable)
+import           Yi.Utils                  (groupBy')
 
 -- | General ‘template’ for actual Haskell modes.
 --

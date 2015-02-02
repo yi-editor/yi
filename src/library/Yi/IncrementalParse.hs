@@ -3,21 +3,12 @@
 module Yi.IncrementalParse (recoverWith, symbol, eof, lookNext, testNext,
                             State, P, Parser(..), AlexState (..), scanner) where
 
-import Parser.Incremental
-    ( Process,
-      Parser(..),
-      symbol,
-      eof,
-      evalL,
-      pushSyms,
-      pushEof,
-      mkProcess,
-      testNext,
-      lookNext,
-      recoverWith,
-      evalR )
-import Yi.Lexer.Alex ( AlexState(..) )
-import Yi.Syntax ( Scanner(..) )
+import           Parser.Incremental (Parser (..), Process, eof, evalL, evalR,
+                                     lookNext, mkProcess, pushEof, pushSyms,
+                                     recoverWith, symbol, testNext)
+
+import           Yi.Lexer.Alex      (AlexState (..))
+import           Yi.Syntax          (Scanner (..))
 
 type P s a = Parser s a
 

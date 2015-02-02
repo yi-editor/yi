@@ -49,65 +49,20 @@ module Yi.Keymap.Vim.Motion
     , changeMoveStyle
     ) where
 
-import Prelude hiding (repeat)
+import           Prelude                    hiding (repeat)
 
-import Control.Applicative
-    ( Applicative((<*>)), Alternative((<|>)), (<$>) )
-import Control.Lens ( Field3(_3), over, use )
-import Control.Monad
-    ( Monad((>>), fail, return),
-      Functor(fmap),
-      (=<<),
-      when,
-      void,
-      replicateM_,
-      (<=<) )
-import Data.Maybe ( fromMaybe )
-import Data.Monoid ( (<>) )
-import qualified Data.Text as T ( unpack )
-import Yi.Buffer.Adjusted
-    ( Direction(Backward, Forward),
-      mkRegion,
-      RegionStyle(Exclusive, Inclusive, LineWise),
-      BufferM,
-      pointB,
-      moveTo,
-      gotoLn,
-      mayGetMarkB,
-      lineMoveRel,
-      markPointA,
-      destinationOfMoveB,
-      BoundarySide(InsideBound),
-      TextUnit(Character),
-      unitViWord,
-      unitViWORD,
-      unitEmacsParagraph,
-      unitSentence,
-      genMoveB,
-      moveB,
-      moveToSol,
-      moveToEol,
-      botB,
-      leftOnEol,
-      moveXorSol,
-      moveXorEol,
-      nextCInLineInc,
-      nextCInLineExc,
-      prevCInLineInc,
-      prevCInLineExc,
-      firstNonSpaceB,
-      lastNonSpaceB,
-      scrollScreensB,
-      downFromTosB,
-      upFromBosB,
-      middleB,
-      movePercentageFileB,
-      findMatchingPairB,
-      lineMoveVisRel )
-import Yi.Keymap.Vim.Common
-    ( MatchResult(..), EventString(_unEv), lookupBestMatch )
-import Yi.Keymap.Vim.StyledRegion
-    ( StyledRegion(..), normalizeRegion )
+import           Control.Applicative        (Alternative ((<|>)), Applicative ((<*>)), (<$>))
+import           Control.Lens               (Field3 (_3), over, use)
+import           Control.Monad              (Functor (fmap),
+                                             Monad ((>>), fail, return),
+                                             replicateM_, void, when, (<=<),
+                                             (=<<))
+import           Data.Maybe                 (fromMaybe)
+import           Data.Monoid                ((<>))
+import qualified Data.Text                  as T (unpack)
+import           Yi.Buffer.Adjusted
+import           Yi.Keymap.Vim.Common       (EventString (_unEv), MatchResult (..), lookupBestMatch)
+import           Yi.Keymap.Vim.StyledRegion (StyledRegion (..), normalizeRegion)
 
 data Move = Move {
     moveStyle :: !RegionStyle

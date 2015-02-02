@@ -1,4 +1,4 @@
-{-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE LambdaCase        #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# OPTIONS_HADDOCK show-extensions #-}
 
@@ -11,44 +11,21 @@
 
 module Yi.Keymap.Vim.Ex.Commands.Substitute (parse) where
 
-import Control.Applicative ( Alternative((<|>)), (<$>) )
-import Control.Monad ( void )
-import Data.Monoid ( (<>) )
-import qualified Data.Text as T ( snoc, cons )
-import qualified Text.ParserCombinators.Parsec as P
-    ( char, many, try, string, oneOf, noneOf )
-import Yi.Buffer.Adjusted
-    ( Region(regionEnd, regionStart),
-      mkRegion,
-      SearchExp,
-      BufferM,
-      moveTo,
-      gotoLn,
-      regexRegionB,
-      lineCountB,
-      withEveryLineB,
-      readRegionB,
-      replaceRegionB,
-      TextUnit(Line),
-      regionOfB,
-      moveToSol )
-import Yi.Editor
-    ( EditorM, withCurrentBuffer, printMsg, closeBufferAndWindowE )
-import Yi.MiniBuffer ( spawnMinibufferE )
-import Yi.Keymap ( Keymap, Action(EditorA) )
-import Yi.Keymap.Keys ( choice, char, (?>>!) )
-import Yi.Keymap.Vim.Common ( EventString )
-import qualified Yi.Keymap.Vim.Ex.Commands.Common as Common
-    ( parse, pureExCommand )
-import Yi.Keymap.Vim.Ex.Types ( ExCommand(cmdAction, cmdShow) )
-import qualified Yi.Rope as R
-    ( YiString, toText, null, length, fromString )
-import Yi.Search
-    ( setRegexE,
-      resetRegexE,
-      getRegexE,
-      searchAndRepRegion0,
-      makeSimpleSearch )
+import           Control.Applicative              (Alternative ((<|>)), (<$>))
+import           Control.Monad                    (void)
+import           Data.Monoid                      ((<>))
+import qualified Data.Text                        as T (cons, snoc)
+import qualified Text.ParserCombinators.Parsec    as P (char, many, noneOf, oneOf, string, try)
+import           Yi.Buffer.Adjusted
+import           Yi.Editor                        (EditorM, closeBufferAndWindowE, printMsg, withCurrentBuffer)
+import           Yi.Keymap                        (Action (EditorA), Keymap)
+import           Yi.Keymap.Keys                   (char, choice, (?>>!))
+import           Yi.Keymap.Vim.Common             (EventString)
+import qualified Yi.Keymap.Vim.Ex.Commands.Common as Common (parse, pureExCommand)
+import           Yi.Keymap.Vim.Ex.Types           (ExCommand (cmdAction, cmdShow))
+import           Yi.MiniBuffer                    (spawnMinibufferE)
+import qualified Yi.Rope                          as R (YiString, fromString, length, null, toText)
+import           Yi.Search
 
 parse :: EventString -> Maybe ExCommand
 parse = Common.parse $ do

@@ -1,4 +1,4 @@
-{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE FlexibleContexts  #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# OPTIONS_HADDOCK show-extensions #-}
 
@@ -23,37 +23,15 @@ module Yi.Keymap.Keys
      pString
     ) where
 
-import Prelude hiding (error)
+import Prelude       hiding (error)
 
-import Control.Monad ( unless )
-import Data.Char ( toUpper, isPrint, isAlpha )
-import Data.List ( sort, nub )
-import Yi.Event
-    ( Event(..), Key(..), Modifier(..), prettyEvent, eventToChar )
-import Yi.Debug ( error )
-import Yi.Keymap ( KeymapM, Action, YiAction, write )
+import Control.Monad (unless)
+import Data.Char     (isAlpha, isPrint, toUpper)
+import Data.List     (nub, sort)
+import Yi.Debug      (error)
+import Yi.Event      (Event (..), Key (..), Modifier (..), eventToChar, prettyEvent)
 import Yi.Interact
-    ( InteractState(..),
-      P(..),
-      I,
-      MonadInteract(adjustPriority, eventBounds),
-      deprioritize,
-      (<||),
-      (||>),
-      important,
-      accepted,
-      runWrite,
-      processOneEvent,
-      computeState,
-      oneOf,
-      anyEvent,
-      eventBetween,
-      event,
-      events,
-      choice,
-      option,
-      mkAutomaton,
-      idAutomaton )
+import Yi.Keymap     (Action, KeymapM, YiAction, write)
 
 printableChar :: (MonadInteract m w Event) => m Char
 printableChar = do

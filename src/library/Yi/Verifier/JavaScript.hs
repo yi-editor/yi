@@ -1,4 +1,5 @@
-{-# LANGUAGE FlexibleInstances, FlexibleContexts #-}
+{-# LANGUAGE FlexibleContexts  #-}
+{-# LANGUAGE FlexibleInstances #-}
 
 -- TODO:
 -- ! User configuration.
@@ -6,19 +7,15 @@
 
 module Yi.Verifier.JavaScript where
 
-import Control.Monad.Writer.Lazy ( Writer, MonadWriter, tell )
-import Control.Monad ( unless )
-import Data.List ( intercalate )
-import Data.Foldable ( toList )
-import Data.Function ( on )
-import qualified Data.DList as D ( DList, singleton )
-import Yi.Lexer.Alex ( Posn, Tok, tokT, tokPosn )
-import Yi.Lexer.JavaScript ( Token(..), TT )
-import Yi.Syntax.JavaScript
-    ( Block(Block, BlockOne),
-      Statement(FunDecl, Return),
-      Tree,
-      firstTok )
+import           Control.Monad             (unless)
+import           Control.Monad.Writer.Lazy (MonadWriter, Writer, tell)
+import qualified Data.DList                as D (DList, singleton)
+import           Data.Foldable             (toList)
+import           Data.Function             (on)
+import           Data.List                 (intercalate)
+import           Yi.Lexer.Alex             (Posn, Tok, tokPosn, tokT)
+import           Yi.Lexer.JavaScript       (TT, Token (..))
+import           Yi.Syntax.JavaScript      hiding (res)
 
 
 -- * Types

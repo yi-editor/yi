@@ -14,34 +14,19 @@
 
 module Yi.Syntax.Strokes.Haskell (getStrokes, tokenToAnnot) where
 
-import Prelude hiding (error,any,exp)
+import           Prelude           hiding (any, error, exp)
 
-import Data.Foldable ( Foldable(foldMap), any )
-import Data.Monoid ( Monoid(mappend), Endo(..), (<>) )
-import Data.Traversable ( Traversable(sequenceA) )
-import Yi.Debug ( trace, error )
-import Yi.Lexer.Alex
-    ( Stroke, Tok(tokPosn, tokT), Posn(posnOfs), tokToSpan )
-import Yi.Lexer.Haskell
-    ( Token(ConsIdent, Reserved),
-      TT,
-      ReservedType(As, Hiding, Qualified),
-      tokenToText,
-      tokenToStyle,
-      isErrorTok )
-import Yi.Style
-    ( StyleName,
-      UIStyle(dataConstructorStyle, errorStyle, hintStyle, importStyle,
-              keywordStyle, variableStyle) )
-import Yi.Syntax ( Span, Point )
-import Yi.Syntax.Haskell
-    ( Exp(Bin, DC, Modid, Opt, PAtom, PClass, PData, PError, PGuard',
-          PImport, PIn, PModule, PModuleDecl, Paren, TC, TS),
-      PImport,
-      PModuleDecl,
-      Tree )
-import Yi.Syntax.Tree ( subtrees )
-import Yi.String ( showT )
+import           Data.Foldable     (Foldable (foldMap), any)
+import           Data.Monoid       (Endo (..), Monoid (mappend), (<>))
+import           Data.Traversable  (Traversable (sequenceA))
+import           Yi.Debug          (error, trace)
+import           Yi.Lexer.Alex     (Posn (posnOfs), Stroke, Tok (tokPosn, tokT), tokToSpan)
+import           Yi.Lexer.Haskell
+import           Yi.String         (showT)
+import           Yi.Style
+import           Yi.Syntax         (Point, Span)
+import           Yi.Syntax.Haskell
+import           Yi.Syntax.Tree    (subtrees)
 
 -- TODO: (optimization) make sure we take in account the begin, so we
 -- don't return useless strokes

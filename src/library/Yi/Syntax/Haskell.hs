@@ -1,6 +1,6 @@
-{-# LANGUAGE DeriveFoldable #-}
+{-# LANGUAGE DeriveFoldable    #-}
 {-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE TypeFamilies      #-}
 
 -- we have lots of parsers which don't want signatures; and we have
 -- uniplate patterns
@@ -29,40 +29,19 @@ module Yi.Syntax.Haskell ( PModule
                          , indentScanner
                          ) where
 
-import Control.Applicative
-    ( Applicative(..),
-      Alternative((<|>), empty, many, some),
-      (<$>),
-      optional )
-import Data.Foldable ( Foldable )
-import Data.Maybe ( isNothing, fromJust )
-import Data.List ( (\\) )
-import Yi.IncrementalParse
-    ( AlexState,
-      Parser(Enter, Yuck),
-      symbol,
-      eof,
-      testNext,
-      lookNext,
-      recoverWith,
-      P )
-import Yi.Lexer.Alex
-    ( Tok(Tok, tokT), Posn(Posn, posnOfs), tokBegin, startPosn )
-import Yi.Lexer.Haskell
-    ( Token(ConsIdent, ConsOperator, CppDirective, Operator, Reserved,
-            ReservedOp, Special, VarIdent),
-      TT,
-      ReservedType(As, Class, Data, Deriving, Do, Forall, Hiding, Import,
-                   In, Instance, Let, Module, NewType, Of, Other, Qualified, Type,
-                   Where),
-      OpType(BackSlash, DoubleColon, DoubleDot, DoubleRightArrow, Equal,
-             LeftArrow, Pipe, RightArrow),
-      startsLayout,
-      isComment )
-import Yi.Syntax.Layout ( State, layoutHandler )
-import Yi.Syntax.Tree ( IsTree(emptyNode, uniplate), sepBy1 )
-import Yi.Syntax ( Scanner )
-import Control.Arrow ( (&&&) )
+import           Control.Applicative (Alternative ((<|>), empty, many, some),
+                                      Applicative (..), optional, (<$>))
+import           Control.Arrow       ((&&&))
+import           Data.Foldable       (Foldable)
+import           Data.List           ((\\))
+import           Data.Maybe          (fromJust, isNothing)
+import           Yi.IncrementalParse
+import           Yi.Lexer.Alex       (Posn (Posn, posnOfs), Tok (Tok, tokT),
+                                      startPosn, tokBegin)
+import           Yi.Lexer.Haskell
+import           Yi.Syntax           (Scanner)
+import           Yi.Syntax.Layout    (State, layoutHandler)
+import           Yi.Syntax.Tree      (IsTree (emptyNode, uniplate), sepBy1)
 
 indentScanner :: Scanner (AlexState lexState) TT
               -> Scanner (Yi.Syntax.Layout.State Token lexState) TT

@@ -1,4 +1,4 @@
-{-# LANGUAGE CPP #-}
+{-# LANGUAGE CPP               #-}
 {-# LANGUAGE OverloadedStrings #-}
 
 module Yi.Config.Default ( defaultConfig, availableFrontends, defaultEmacsConfig
@@ -6,45 +6,46 @@ module Yi.Config.Default ( defaultConfig, availableFrontends, defaultEmacsConfig
                          , toEmacsStyleConfig, toCuaStyleConfig) where
 
 import           Control.Applicative
-import           Control.Lens hiding (Action)
+import           Control.Lens        hiding (Action)
 import           Control.Monad
 import           Data.Default
 import qualified Data.HashMap.Strict as HM
-import qualified Data.Map as M
+import qualified Data.Map            as M
 import           Data.Monoid
 import           Paths_yi
 import           System.FilePath
 
 import           Yi.Buffer
-import           Yi.Command (cabalBuildE, cabalConfigureE, grepFind, makeBuild,
-                             reloadProjectE, searchSources, shell)
+import           Yi.Command          (cabalBuildE, cabalConfigureE, grepFind,
+                                      makeBuild, reloadProjectE, searchSources,
+                                      shell)
 import           Yi.Config
 import           Yi.Config.Misc
-import           Yi.Core (errorEditor, quitEditor)
+import           Yi.Core             (errorEditor, quitEditor)
 import           Yi.Editor
-import           Yi.Eval(publishedActions)
+import           Yi.Eval             (publishedActions)
 import           Yi.File
-import           Yi.IReader (saveAsNewArticle)
-import qualified Yi.Interact as I
+import qualified Yi.Interact         as I
+import           Yi.IReader          (saveAsNewArticle)
 import           Yi.Keymap
-import qualified Yi.Keymap.Cua  as Cua
-import qualified Yi.Keymap.Emacs  as Emacs
+import qualified Yi.Keymap.Cua       as Cua
+import qualified Yi.Keymap.Emacs     as Emacs
 import           Yi.Keymap.Keys
-import qualified Yi.Keymap.Vim  as Vim
+import qualified Yi.Keymap.Vim       as Vim
 import           Yi.Layout
-import qualified Yi.Mode.Abella as Abella
-import qualified Yi.Mode.Haskell as Haskell
-import           Yi.Mode.IReader (ireaderMode, ireadMode)
-import qualified Yi.Mode.JavaScript as JS
-import qualified Yi.Mode.Latex as Latex
+import qualified Yi.Mode.Abella      as Abella
+import qualified Yi.Mode.Haskell     as Haskell
+import           Yi.Mode.IReader     (ireadMode, ireaderMode)
+import qualified Yi.Mode.JavaScript  as JS
+import qualified Yi.Mode.Latex       as Latex
 import           Yi.Modes
-import qualified Yi.Rope as R
+import qualified Yi.Rope             as R
 import           Yi.Search
 import           Yi.Style.Library
 import qualified Yi.UI.Batch
 import           Yi.Utils
 
-import Yi.Types (withEditor_)
+import           Yi.Types            (withEditor_)
 
 #ifdef FRONTEND_VTY
 import qualified Graphics.Vty.Config as Vty

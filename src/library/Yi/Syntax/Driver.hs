@@ -5,17 +5,12 @@
 
 module Yi.Syntax.Driver where
 
-import qualified Data.Map as M
-    ( Map, fromList, findWithDefault, empty, assocs )
-import Data.Map ( Map )
-import Yi.Buffer.Basic ( WindowRef )
-import Yi.Lexer.Alex ( Tok )
-import Yi.Syntax
-    ( Scanner(scanEmpty, scanInit, scanLooked, scanRun),
-      Highlighter(..),
-      Point,
-      emptyFileScan )
-import Yi.Syntax.Tree ( IsTree, fromNodeToFinal )
+import           Data.Map        (Map)
+import qualified Data.Map        as M (Map, assocs, empty, findWithDefault, fromList)
+import           Yi.Buffer.Basic (WindowRef)
+import           Yi.Lexer.Alex   (Tok)
+import           Yi.Syntax       hiding (Cache)
+import           Yi.Syntax.Tree  (IsTree, fromNodeToFinal)
 
 type Path = [Int]
 

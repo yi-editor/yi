@@ -21,16 +21,15 @@ module Yi.Completion
   )
 where
 
-import Control.Applicative ( (<$>) )
-import Data.List ( nub, find )
-import Data.Maybe ( catMaybes )
-import Data.Monoid ( (<>) )
-import Data.Function ( on )
-import qualified Data.Text as T
-    ( Text, length, breakOn, null, isPrefixOf, toCaseFold, tails )
-import Yi.Editor ( EditorM, printMsg, printMsgs )
-import Yi.String ( commonTPrefix', showT )
-import Yi.Utils ( commonPrefix )
+import           Control.Applicative ((<$>))
+import           Data.Function       (on)
+import           Data.List           (find, nub)
+import           Data.Maybe          (catMaybes)
+import           Data.Monoid         ((<>))
+import qualified Data.Text           as T (Text, breakOn, isPrefixOf, length, null, tails, toCaseFold)
+import           Yi.Editor           (EditorM, printMsg, printMsgs)
+import           Yi.String           (commonTPrefix', showT)
+import           Yi.Utils            (commonPrefix)
 
 
 -------------------------------------------

@@ -1,4 +1,3 @@
-
 {-# OPTIONS_HADDOCK show-extensions #-}
 
 -- |
@@ -10,8 +9,8 @@
 
 module Yi.Snippets.Haskell where
 
-import qualified Yi.Rope as R ( singleton )
-import Yi.Snippets ( SnippetCmd, cursor, cursorWith, (&), snippet )
+import qualified Yi.Rope     as R (singleton)
+import           Yi.Snippets (SnippetCmd, cursor, cursorWith, snippet, (&))
 
 hsFunction :: SnippetCmd ()
 hsFunction = snippet $

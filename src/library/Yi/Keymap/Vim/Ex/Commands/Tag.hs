@@ -10,21 +10,19 @@
 
 module Yi.Keymap.Vim.Ex.Commands.Tag (parse) where
 
-import Control.Applicative ( Alternative((<|>)), (<$>) )
-import Control.Monad ( void )
-import Data.Monoid ( (<>) )
-import qualified Data.Text as T ( pack )
-import qualified Text.ParserCombinators.Parsec as P
-    ( GenParser, optionMaybe, many1, eof, string, space, anyChar )
-import Yi.Keymap ( Action(YiA) )
-import Yi.Keymap.Vim.Common ( EventString )
-import qualified Yi.Keymap.Vim.Ex.Commands.Common as Common
-    ( parse, impureExCommand )
-import Yi.Keymap.Vim.Ex.Types
-    ( ExCommand(cmdAction, cmdComplete, cmdShow) )
-import Yi.Keymap.Vim.Tag
-    ( gotoTag, nextTag, unpopTag, completeVimTag )
-import Yi.Tag ( Tag(Tag) )
+import           Control.Applicative              (Alternative ((<|>)), (<$>))
+import           Control.Monad                    (void)
+import           Data.Monoid                      ((<>))
+import qualified Data.Text                        as T (pack)
+import qualified Text.ParserCombinators.Parsec    as P (GenParser, anyChar, eof,
+                                                        many1, optionMaybe,
+                                                        space, string)
+import           Yi.Keymap                        (Action (YiA))
+import           Yi.Keymap.Vim.Common             (EventString)
+import qualified Yi.Keymap.Vim.Ex.Commands.Common as Common (impureExCommand, parse)
+import           Yi.Keymap.Vim.Ex.Types           (ExCommand (cmdAction, cmdComplete, cmdShow))
+import           Yi.Keymap.Vim.Tag                (completeVimTag, gotoTag, nextTag, unpopTag)
+import           Yi.Tag                           (Tag (Tag))
 
 parse :: EventString -> Maybe ExCommand
 parse = Common.parse $ do

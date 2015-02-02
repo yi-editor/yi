@@ -1,10 +1,10 @@
-{-# LANGUAGE CPP #-}
-{-# LANGUAGE DeriveDataTypeable #-}
-{-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE CPP                        #-}
+{-# LANGUAGE DeriveDataTypeable         #-}
+{-# LANGUAGE DeriveGeneric              #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
-{-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE StandaloneDeriving #-}
-{-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE OverloadedStrings          #-}
+{-# LANGUAGE StandaloneDeriving         #-}
+{-# LANGUAGE TemplateHaskell            #-}
 {-# OPTIONS_HADDOCK show-extensions #-}
 
 -- |
@@ -24,31 +24,21 @@ import           Data.DeriveTH
 import           GHC.Generics (Generic)
 #endif
 
-import Control.Lens ( makeLenses, (.~), (%~), (&) )
-import Data.Binary ( Binary(..) )
-import Data.Default ( Default(..) )
-import Data.Text ()
-import qualified Data.Text as T ( findIndex )
-import Data.Typeable ( Typeable )
-import Yi.Buffer
-    ( BufferRef,
-      Mode,
-      BufferM,
-      modeKeymapA,
-      modeNameA,
-      moveToSol,
-      moveXorEol,
-      getLineAndCol,
-      readLnB )
-import Yi.Types ( YiVariable )
-import Yi.Keymap ( YiM, topKeymapA )
-import Yi.Keymap.Keys ( Key(KHome), important, spec, (?>>!) )
-import Yi.Lexer.Alex ( Tok )
-import Yi.Lexer.Compilation ( Token() )
-import qualified Yi.Mode.Interactive as I
-    ( mode, spawnProcessMode )
-import qualified Yi.Rope as R ( toText )
-import Yi.Syntax.OnlineTree ( Tree )
+import           Control.Lens         (makeLenses, (%~), (&), (.~))
+import           Data.Binary          (Binary (..))
+import           Data.Default         (Default (..))
+import           Data.Text            ()
+import qualified Data.Text            as T (findIndex)
+import           Data.Typeable        (Typeable)
+import           Yi.Buffer
+import           Yi.Keymap            (YiM, topKeymapA)
+import           Yi.Keymap.Keys       (Key (KHome), important, spec, (?>>!))
+import           Yi.Lexer.Alex        (Tok)
+import           Yi.Lexer.Compilation (Token ())
+import qualified Yi.Mode.Interactive  as I (mode, spawnProcessMode)
+import qualified Yi.Rope              as R (toText)
+import           Yi.Syntax.OnlineTree (Tree)
+import           Yi.Types             (YiVariable)
 
 -- | The process name to use to spawn GHCi.
 data GhciProcessName = GhciProcessName

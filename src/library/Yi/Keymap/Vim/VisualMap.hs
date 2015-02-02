@@ -12,75 +12,26 @@
 
 module Yi.Keymap.Vim.VisualMap ( defVisualMap ) where
 
-import Control.Applicative ( (<$), (<$>) )
-import Control.Lens ( (.=) )
-import Control.Monad ( void, forM_ )
-import Data.Char ( ord )
-import Data.List ( group )
-import Data.Maybe ( fromJust )
-import qualified Data.Text as T ( unpack )
-import Yi.Buffer.Adjusted
-    ( Region(regionEnd, regionStart),
-      Size(Size),
-      mkRegion,
-      RegionStyle(Block, Exclusive, Inclusive, LineWise),
-      BufferM,
-      rectangleSelectionA,
-      pointB,
-      moveTo,
-      writeN,
-      setNamedMarkHereB,
-      setVisibleSelection,
-      lineMoveRel,
-      curCol,
-      savingPointB,
-      readRegionB,
-      putRegionStyle,
-      convertRegionToStyleB,
-      mkRegionOfStyleB,
-      moveToSol,
-      leftOnEol,
-      deleteToEol,
-      setSelectionMarkPointB,
-      getSelectionMarkPointB,
-      shapeOfBlockRegionB,
-      leftEdgesOfRegionB,
-      rightEdgesOfRegionB,
-      flipRectangleB )
-import Yi.Editor
-    ( MonadEditor(withEditor),
-      EditorM,
-      withCurrentBuffer,
-      clrStatus,
-      getEditorDyn )
-import Yi.Keymap.Vim.Common
-    ( MatchResult(NoMatch, PartialMatch, WholeMatch),
-      OperatorName(_unOp),
-      EventString(Ev, _unEv),
-      VimState(VimState, vsCount, vsMode, vsSecondaryCursors),
-      VimMode(Ex, Insert, Normal, Visual),
-      matchesString,
-      VimBinding(..),
-      RepeatToken(..) )
-import Yi.Keymap.Vim.Operator
-    ( VimOperator(..), stringToOperator, opDelete )
-import Yi.Keymap.Vim.StateUtils
-    ( switchModeE,
-      modifyStateE,
-      resetCountE,
-      getCountE,
-      setCountE,
-      setStickyEolE )
-import Yi.Keymap.Vim.StyledRegion
-    ( StyledRegion(StyledRegion), transformCharactersInRegionB )
-import Yi.Keymap.Vim.Tag ( gotoTag )
-import Yi.Keymap.Vim.Utils
-    ( matchFromBool, mkMotionBinding, mkChooseRegisterBinding )
-import Yi.MiniBuffer ( spawnMinibufferE )
-import Yi.Monad ( whenM )
-import qualified Yi.Rope as R ( toText )
-import Yi.Tag ( Tag(Tag) )
-import Yi.Utils ( SemiNum((-~)) )
+import           Control.Applicative        ((<$), (<$>))
+import           Control.Lens               ((.=))
+import           Control.Monad              (forM_, void)
+import           Data.Char                  (ord)
+import           Data.List                  (group)
+import           Data.Maybe                 (fromJust)
+import qualified Data.Text                  as T (unpack)
+import           Yi.Buffer.Adjusted         hiding (Insert)
+import           Yi.Editor
+import           Yi.Keymap.Vim.Common
+import           Yi.Keymap.Vim.Operator     (VimOperator (..), opDelete, stringToOperator)
+import           Yi.Keymap.Vim.StateUtils
+import           Yi.Keymap.Vim.StyledRegion (StyledRegion (StyledRegion), transformCharactersInRegionB)
+import           Yi.Keymap.Vim.Tag          (gotoTag)
+import           Yi.Keymap.Vim.Utils        (matchFromBool, mkChooseRegisterBinding, mkMotionBinding)
+import           Yi.MiniBuffer              (spawnMinibufferE)
+import           Yi.Monad                   (whenM)
+import qualified Yi.Rope                    as R (toText)
+import           Yi.Tag                     (Tag (Tag))
+import           Yi.Utils                   (SemiNum ((-~)))
 
 defVisualMap :: [VimOperator] -> [VimBinding]
 defVisualMap operators =

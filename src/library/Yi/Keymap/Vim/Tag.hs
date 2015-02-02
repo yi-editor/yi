@@ -1,11 +1,11 @@
-{-# LANGUAGE CPP #-}
+{-# LANGUAGE CPP                #-}
 {-# LANGUAGE DeriveDataTypeable #-}
-{-# LANGUAGE DeriveGeneric #-}
-{-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE LambdaCase #-}
-{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE DeriveGeneric      #-}
+{-# LANGUAGE FlexibleContexts   #-}
+{-# LANGUAGE LambdaCase         #-}
+{-# LANGUAGE OverloadedStrings  #-}
 {-# LANGUAGE StandaloneDeriving #-}
-{-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE TemplateHaskell    #-}
 {-# OPTIONS_HADDOCK show-extensions #-}
 
 -- |
@@ -29,43 +29,26 @@ import           Data.DeriveTH
 import           GHC.Generics (Generic)
 #endif
 
-import Control.Applicative ( (<$>) )
-import Control.Lens ( view )
-import Control.Monad ( void, foldM )
-import Data.Binary ( Binary(..) )
-import Data.Default ( Default(..) )
-import Data.Maybe ( maybeToList )
-import Data.Monoid ( (<>) )
-import qualified Data.Text as T ( Text )
-import Data.Typeable ( Typeable )
-import System.Directory ( doesFileExist )
-import System.FilePath ( takeDirectory, (</>) )
-import System.FriendlyPath ( userToCanonPath )
-import Yi.Buffer
-    ( gotoLn,
-      moveToLineColB,
-      BufferFileInfo(bufInfoColNo, bufInfoFileName, bufInfoLineNo),
-      bufInfoB )
-import Yi.Core ( errorEditor )
-import Yi.Types ( YiVariable )
-import Yi.Editor
-    ( MonadEditor(askCfg, withEditor),
-      EditorM,
-      withCurrentBuffer,
-      getEditorDyn,
-      putEditorDyn )
-import Yi.File ( openingNewFile )
-import Yi.Keymap ( YiM )
-import Yi.Tag
-    ( TagTable,
-      Tag(_unTag),
-      tagsFileList,
-      lookupTag,
-      importTagTable,
-      completeTag,
-      setTags,
-      getTags )
-import Yi.Utils ( io )
+import           Control.Applicative ((<$>))
+import           Control.Lens        (view)
+import           Control.Monad       (foldM, void)
+import           Data.Binary         (Binary (..))
+import           Data.Default        (Default (..))
+import           Data.Maybe          (maybeToList)
+import           Data.Monoid         ((<>))
+import qualified Data.Text           as T (Text)
+import           Data.Typeable       (Typeable)
+import           System.Directory    (doesFileExist)
+import           System.FilePath     (takeDirectory, (</>))
+import           System.FriendlyPath (userToCanonPath)
+import           Yi.Buffer
+import           Yi.Core             (errorEditor)
+import           Yi.Editor
+import           Yi.File             (openingNewFile)
+import           Yi.Keymap           (YiM)
+import           Yi.Tag
+import           Yi.Types            (YiVariable)
+import           Yi.Utils            (io)
 
 -- | List of tags and the file/line/char that they originate from.
 -- (the location that :tag or Ctrl-[ was called from).

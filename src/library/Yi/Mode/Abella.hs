@@ -1,6 +1,6 @@
+{-# LANGUAGE DeriveDataTypeable         #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
-{-# LANGUAGE DeriveDataTypeable #-}
-{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE OverloadedStrings          #-}
 {-# OPTIONS_HADDOCK show-extensions #-}
 
 -- |
@@ -23,61 +23,26 @@ module Yi.Mode.Abella
   , abellaSend
   ) where
 
-import Control.Applicative ( Applicative((<*>)), (<$>) )
-import Control.Lens ( assign, (.~), (.=), (%~), (&), use )
-import Control.Monad ( when, join )
-import Data.Binary ( Binary )
-import Data.Char ( isSpace )
-import Data.Default ( Default )
-import Data.Maybe ( isJust )
-import qualified Data.Text as T ( unpack, snoc, isInfixOf )
-import Data.Typeable ( Typeable )
-import Yi.Buffer
-    ( Mark,
-      Direction(Backward, Forward),
-      BufferRef,
-      mkRegion,
-      BufferM,
-      pointB,
-      moveTo,
-      getMarkB,
-      leftB,
-      rightB,
-      readB,
-      markPointA,
-      savingPointB,
-      modeAppliesA,
-      modeKeymapA,
-      modeNameA,
-      modeToggleCommentSelectionA,
-      readRegionB,
-      unitSentence,
-      untilB_,
-      moveB,
-      regionOfNonEmptyB,
-      moveToEol,
-      botB,
-      firstNonSpaceB,
-      toggleCommentB )
-import Yi.Core ( sendToProcess )
-import Yi.Types ( YiVariable )
-import Yi.Editor
-    ( MonadEditor(withEditor),
-      findBuffer,
-      withGivenBuffer,
-      withCurrentBuffer,
-      getEditorDyn,
-      putEditorDyn,
-      switchToBufferE,
-      withOtherWindow )
-import Yi.Keymap ( YiM, topKeymapA )
-import Yi.Keymap.Keys ( Event, (<||), choice, ctrlCh, (?*>>!) )
-import qualified Yi.Lexer.Abella as Abella ( Token, lexer )
-import Yi.MiniBuffer ( CommandArguments(..) )
-import qualified Yi.Mode.Interactive as Interactive
-    ( spawnProcess )
-import Yi.Modes ( TokenBasedMode, styleMode, anyExtension )
-import qualified Yi.Rope as R ( YiString, toText )
+import           Control.Applicative (Applicative ((<*>)), (<$>))
+import           Control.Lens        (assign, use, (%~), (&), (.=), (.~))
+import           Control.Monad       (join, when)
+import           Data.Binary         (Binary)
+import           Data.Char           (isSpace)
+import           Data.Default        (Default)
+import           Data.Maybe          (isJust)
+import qualified Data.Text           as T (isInfixOf, snoc, unpack)
+import           Data.Typeable       (Typeable)
+import           Yi.Buffer
+import           Yi.Core             (sendToProcess)
+import           Yi.Editor
+import           Yi.Keymap           (YiM, topKeymapA)
+import           Yi.Keymap.Keys      (Event, choice, ctrlCh, (<||), (?*>>!))
+import qualified Yi.Lexer.Abella     as Abella (Token, lexer)
+import           Yi.MiniBuffer       (CommandArguments (..))
+import qualified Yi.Mode.Interactive as Interactive (spawnProcess)
+import           Yi.Modes            (TokenBasedMode, anyExtension, styleMode)
+import qualified Yi.Rope             as R (YiString, toText)
+import           Yi.Types            (YiVariable)
 
 abellaModeGen :: (Char -> [Event]) -> TokenBasedMode Abella.Token
 abellaModeGen abellaBinding = styleMode Abella.lexer

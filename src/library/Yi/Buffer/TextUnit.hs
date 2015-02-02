@@ -42,41 +42,16 @@ module Yi.Buffer.TextUnit
     ) where
 
 
-import Control.Applicative ( Applicative((<*>)), (<$>) )
-import Control.Monad ( when, void, (<=<) )
-import Data.Char
-    ( isSpace,
-      GeneralCategory(LineSeparator, ParagraphSeparator, Space),
-      isAlphaNum,
-      isSeparator,
-      generalCategory )
-import Data.Typeable ( Typeable )
-import Yi.Buffer.Basic
-    ( Point(Point), Direction(..), reverseDir, mayReverse )
-import Yi.Buffer.Misc
-    ( BufferM,
-      sizeB,
-      pointB,
-      moveTo,
-      leftB,
-      rightB,
-      lineMoveRel,
-      lineUp,
-      betweenB,
-      readB,
-      solPointB,
-      eolPointB,
-      savingPointB,
-      destinationOfMoveB )
-import Yi.Buffer.Region
-    ( Region,
-      mkRegion,
-      deleteRegionB,
-      readRegionB,
-      replaceRegionB,
-      swapRegionsB )
-import Yi.Rope ( YiString )
-import qualified Yi.Rope as R ( toString, tail, reverse, head )
+import           Control.Applicative (Applicative ((<*>)), (<$>))
+import           Control.Monad       (void, when, (<=<))
+import           Data.Char           (GeneralCategory (LineSeparator, ParagraphSeparator, Space),
+                                      generalCategory, isAlphaNum, isSeparator, isSpace)
+import           Data.Typeable       (Typeable)
+import           Yi.Buffer.Basic     (Direction (..), Point (Point), mayReverse, reverseDir)
+import           Yi.Buffer.Misc
+import           Yi.Buffer.Region
+import           Yi.Rope             (YiString)
+import qualified Yi.Rope             as R (head, reverse, tail, toString)
 
 
 
@@ -86,7 +61,7 @@ data TextUnit = Character -- ^ a single character
               | VLine -- ^ a "vertical" line of text (area of text between two characters at the same column number)
               | Document -- ^ the whole document
               | GenUnit {genEnclosingUnit :: TextUnit,
-                         genUnitBoundary :: Direction -> BufferM Bool}
+                         genUnitBoundary  :: Direction -> BufferM Bool}
       -- there could be more text units, like Page, Searched, etc. it's probably a good
       -- idea to use GenUnit though.
                 deriving Typeable

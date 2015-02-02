@@ -28,35 +28,15 @@ module Yi.String (isBlank,
                   overInit, overTail
                  ) where
 
-import Data.Char ( toUpper, toLower, isSpace, isAlphaNum )
-import Data.List ( isSuffixOf )
-import Data.Maybe ( fromMaybe )
-import Data.Monoid ( mconcat, (<>) )
-import qualified Data.Text as T
-    ( Text,
-      splitOn,
-      intercalate,
-      toUpper,
-      splitAt,
-      break,
-      empty,
-      commonPrefixes,
-      pack )
-import qualified Yi.Rope as R
-    ( YiString,
-      cons,
-      tail,
-      head,
-      init,
-      last,
-      snoc,
-      length,
-      all,
-      withText,
-      intercalate,
-      unwords,
-      words,
-      lines' )
+import           Data.Char   (isAlphaNum, isSpace, toLower, toUpper)
+import           Data.List   (isSuffixOf)
+import           Data.Maybe  (fromMaybe)
+import           Data.Monoid (mconcat, (<>))
+import qualified Data.Text   as T (Text, break, commonPrefixes, empty,
+                                   intercalate, pack, splitAt, splitOn, toUpper)
+import qualified Yi.Rope     as R (YiString, all, cons, head, init, intercalate,
+                                   last, length, lines', snoc, tail, unwords,
+                                   withText, words)
 
 -- | Helper that shows then packs the 'Text', for all those cases
 -- where we use 'show'.

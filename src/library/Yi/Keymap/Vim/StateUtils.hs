@@ -34,32 +34,20 @@ module Yi.Keymap.Vim.StateUtils
     , resetActiveRegisterE
     ) where
 
-import Control.Applicative ( (<$>) )
-import Control.Monad ( when )
-import qualified Data.HashMap.Strict as HM ( insert, lookup )
-import Data.Maybe ( fromMaybe, isJust )
-import Data.Monoid ( Monoid(mempty), (<>) )
-import qualified Data.Text as T ( null )
-import Yi.Buffer.Normal ( RegionStyle(Block, LineWise) )
-import Yi.Editor ( EditorM, setStatus, getEditorDyn, putEditorDyn )
-import Yi.Event ( Event )
-import Yi.Keymap.Vim.Common
-    ( EventString(Ev),
-      VimState(vsAccumulator, vsActiveRegister, vsBindingAccumulator,
-               vsCount, vsCurrentMacroRecording, vsMode, vsOngoingInsertEvents,
-               vsPaste, vsRegisterMap, vsRepeatableAction, vsStickyEol,
-               vsTextObjectAccumulator),
-      VimMode(Insert, InsertNormal, InsertVisual, Replace, Visual),
-      Register(Register),
-      RegisterName )
-import Yi.Keymap.Vim.EventUtils
-    ( eventToEventString,
-      stringToRepeatableAction,
-      splitCountedCommand,
-      normalizeCount )
-import Yi.Rope ( YiString )
-import Yi.String ( showT )
-import Yi.Style ( defaultStyle )
+import           Control.Applicative      ((<$>))
+import           Control.Monad            (when)
+import qualified Data.HashMap.Strict      as HM (insert, lookup)
+import           Data.Maybe               (fromMaybe, isJust)
+import           Data.Monoid              (Monoid (mempty), (<>))
+import qualified Data.Text                as T (null)
+import           Yi.Buffer.Normal         (RegionStyle (Block, LineWise))
+import           Yi.Editor                (EditorM, getEditorDyn, putEditorDyn, setStatus)
+import           Yi.Event                 (Event)
+import           Yi.Keymap.Vim.Common
+import           Yi.Keymap.Vim.EventUtils
+import           Yi.Rope                  (YiString)
+import           Yi.String                (showT)
+import           Yi.Style                 (defaultStyle)
 
 switchMode :: VimMode -> VimState -> VimState
 switchMode mode state = state { vsMode = mode }

@@ -10,86 +10,30 @@
 
 module Yi.Keymap.Vim.InsertMap (defInsertMap) where
 
-import Prelude hiding (head)
+import           Prelude                  hiding (head)
 
-import Control.Applicative ( (<$) )
-import Control.Lens ( use )
-import Control.Monad
-    ( Monad((>>), return),
-      Functor(fmap),
-      mapM_,
-      (=<<),
-      when,
-      void,
-      replicateM_,
-      liftM2,
-      forM )
-import Data.Char ( isDigit )
-import Data.List.NonEmpty ( NonEmpty(..), toList, head )
-import Data.Monoid ( Monoid(mempty), (<>) )
-import qualified Data.Text as T ( unpack, pack )
-import qualified Yi.Buffer as B
-    ( insertN, insertB, deleteRegionB, deleteB, bdeleteB )
-import Yi.Buffer.Adjusted as BA
-    ( Direction(Backward, Forward),
-      RegionStyle(Inclusive),
-      IndentSettings(IndentSettings),
-      deleteMarkB,
-      pointB,
-      moveTo,
-      newlineB,
-      getMarkB,
-      insertCharWithBelowB,
-      insertCharWithAboveB,
-      indentSettingsB,
-      markPointA,
-      savingPointB,
-      TextUnit(Character),
-      unitViWordOnLine,
-      regionOfPartNonEmptyB,
-      moveToSol,
-      moveToEol,
-      leftOnEol,
-      moveXorSol,
-      firstNonSpaceB,
-      isCurrentLineEmptyB,
-      isCurrentLineAllWhiteSpaceB,
-      bdeleteLineB,
-      deleteToEol,
-      scrollScreensB,
-      insertRopeWithStyleB,
-      modifyIndentB,
-      indentAsTheMostIndentedNeighborLineB,
-      insertN,
-      insertB,
-      deleteB,
-      bdeleteB,
-      deleteRegionB )
-import Yi.Editor ( EditorM, withCurrentBuffer, getEditorDyn )
-import Yi.Event ( Event )
-import Yi.Keymap.Vim.Common
-    ( MatchResult(..),
-      EventString(..),
-      VimState(VimState, vsMode, vsOngoingInsertEvents, vsPaste,
-               vsSecondaryCursors),
-      VimMode(Insert, Normal),
-      Register(Register),
-      VimBinding(VimBindingE),
-      RepeatToken(Continue, Finish) )
-import Yi.Keymap.Vim.Digraph ( charFromDigraph )
-import Yi.Keymap.Vim.EventUtils ( eventToEventString, parseEvents )
-import Yi.Keymap.Vim.Motion ( Move(Move), stringToMove )
-import Yi.Keymap.Vim.StateUtils
-    ( switchModeE,
-      modifyStateE,
-      resetCountE,
-      getCountE,
-      getRegisterE,
-      saveInsertEventStringE )
-import Yi.Keymap.Vim.Utils ( selectPureBinding, selectBinding )
-import Yi.Monad ( whenM )
-import qualified Yi.Rope as R ( fromText, fromString )
-import Yi.TextCompletion ( completeWordB, CompletionScope(..) )
+import           Control.Applicative      ((<$))
+import           Control.Lens             (use)
+import           Control.Monad            (Functor (fmap), Monad ((>>), return),
+                                           forM, liftM2, mapM_, replicateM_,
+                                           void, when, (=<<))
+import           Data.Char                (isDigit)
+import           Data.List.NonEmpty       (NonEmpty (..), head, toList)
+import           Data.Monoid              (Monoid (mempty), (<>))
+import qualified Data.Text                as T (pack, unpack)
+import qualified Yi.Buffer                as B (bdeleteB, deleteB, deleteRegionB, insertB, insertN)
+import           Yi.Buffer.Adjusted       as BA hiding (Insert)
+import           Yi.Editor                (EditorM, getEditorDyn, withCurrentBuffer)
+import           Yi.Event                 (Event)
+import           Yi.Keymap.Vim.Common
+import           Yi.Keymap.Vim.Digraph    (charFromDigraph)
+import           Yi.Keymap.Vim.EventUtils (eventToEventString, parseEvents)
+import           Yi.Keymap.Vim.Motion     (Move (Move), stringToMove)
+import           Yi.Keymap.Vim.StateUtils
+import           Yi.Keymap.Vim.Utils      (selectBinding, selectPureBinding)
+import           Yi.Monad                 (whenM)
+import qualified Yi.Rope                  as R (fromString, fromText)
+import           Yi.TextCompletion        (CompletionScope (..), completeWordB)
 
 defInsertMap :: [(String, Char)] -> [VimBinding]
 defInsertMap digraphs =

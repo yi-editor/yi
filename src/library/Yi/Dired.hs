@@ -1,10 +1,10 @@
-{-# LANGUAGE CPP #-}
+{-# LANGUAGE CPP                #-}
 {-# LANGUAGE DeriveDataTypeable #-}
-{-# LANGUAGE DeriveGeneric #-}
-{-# LANGUAGE LambdaCase #-}
-{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE DeriveGeneric      #-}
+{-# LANGUAGE LambdaCase         #-}
+{-# LANGUAGE OverloadedStrings  #-}
 {-# LANGUAGE StandaloneDeriving #-}
-{-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE TemplateHaskell    #-}
 {-# OPTIONS_HADDOCK show-extensions #-}
 
 {-|
@@ -45,207 +45,77 @@ module Yi.Dired
   ) where
 
 #if __GLASGOW_HASKELL__ < 708
-import           Data.DeriveTH (derive, makeBinary)
+import           Data.DeriveTH            (derive, makeBinary)
 #else
-import           GHC.Generics (Generic)
+import           GHC.Generics             (Generic)
 #endif
 
-import Control.Category ( (>>>) )
-import Control.Applicative ( (<$>), (<|>) )
-import Control.Exc ( printingException, orException )
-import Control.Lens
-    ( makeLenses, (.=), assign, (%~), (^.), (.~), (&), use )
-import Control.Monad.Reader
-    ( liftM, void, foldM, when, unless, asks )
-import Data.Binary ( Binary, get, put, putWord8, getWord8 )
-import Data.Char ( toLower )
-import Data.Default ( Default, def )
-import Data.Maybe ( fromMaybe )
-import Data.Foldable ( find, foldl' )
-import Data.List ( any, elem, transpose, sum )
-import qualified Data.Map as M
-    ( Map,
-      (!),
-      assocs,
-      findWithDefault,
-      empty,
-      delete,
-      insert,
-      map,
-      keys,
-      union,
-      fromList,
-      lookup,
-      mapKeys )
-import Data.Monoid ( mempty, (<>) )
-import qualified Data.Text as T ( Text, pack, unpack )
-import Data.Time ( getCurrentTime, formatTime, UTCTime )
-import Data.Time.Clock.POSIX ( posixSecondsToUTCTime )
-import Data.Typeable ( Typeable )
-import System.CanonicalizePath ( canonicalizePath )
-import System.Directory
-    ( doesDirectoryExist,
-      doesFileExist,
-      removeDirectoryRecursive,
-      createDirectoryIfMissing,
-      getDirectoryContents,
-      getPermissions,
-      copyFile,
-      writable )
-import System.FilePath
-    ( equalFilePath,
-      takeFileName,
-      (</>),
-      isAbsolute,
-      dropTrailingPathSeparator,
-      takeDirectory )
-import System.FriendlyPath ( userToCanonPath )
-import System.Locale ( defaultTimeLocale )
-import System.PosixCompat.Files
-    ( rename,
-      unionFileModes,
-      otherExecuteMode,
-      otherWriteMode,
-      otherReadMode,
-      groupExecuteMode,
-      groupReadMode,
-      ownerExecuteMode,
-      ownerWriteMode,
-      ownerReadMode,
-      groupWriteMode,
-      fileSize,
-      fileMode,
-      readSymbolicLink,
-      isSymbolicLink,
-      fileGroup,
-      fileOwner,
-      modificationTime,
-      isNamedPipe,
-      isBlockDevice,
-      isCharacterDevice,
-      isSocket,
-      isRegularFile,
-      isDirectory,
-      readSymbolicLink,
-      getSymbolicLinkStatus,
-      FileStatus,
-      fileExist,
-      removeLink,
-      linkCount )
-import System.PosixCompat.Types ( FileMode, GroupID, UserID )
-import System.PosixCompat.User
-    ( GroupEntry,
-      groupID,
-      GroupEntry(..),
-      UserEntry(..),
-      userID,
-      getAllGroupEntries,
-      getGroupEntryForID,
-      getAllUserEntries,
-      getUserEntryForID )
-import Text.Printf ( printf )
-import Yi.Buffer
-    ( Point,
-      BufferRef,
-      bkey,
-      BufferId(FileBuffer),
-      encodingConverterNameA,
-      markSavedB,
-      AnyMode(..),
-      modeName,
-      modeApplies,
-      setMode,
-      BufferM,
-      elemsB,
-      emptyMode,
-      deleteRegionB,
-      regionOfB,
-      insertN,
-      TextUnit(Document),
-      addOverlayB,
-      mkRegion,
-      modifyMode,
-      getBufferDyn,
-      putBufferDyn,
-      lineUp,
-      lineDown,
-      pointB,
-      Direction(..),
-      moveTo,
-      deleteN,
-      moveToSol,
-      mkOverlay,
-      deleteN,
-      insertB,
-      newlineB,
-      readOnlyA,
-      readOnlyA,
-      modeKeymapA,
-      modeNameA,
-      preferColA,
-      directoryContentA,
-      file )
-import Yi.Config ( modeTable )
-import Yi.Core ( errorEditor )
-import Yi.Types ( YiVariable, withEditor_, yiConfig )
-import Yi.Editor
-    ( withEditor,
-      switchToBufferE,
-      addJumpHereE,
-      bufferSet,
-      withGivenBuffer,
-      stringToNewBuffer,
-      withCurrentBuffer,
-      printMsg,
-      closeBufferAndWindowE,
-      withOtherWindow,
-      deleteBuffer,
-      EditorM,
-      currentBuffer )
-import Yi.Keymap ( YiM, Keymap, topKeymapA )
-import Yi.Keymap.Keys
-    ( choice,
-      char,
-      (?>>!),
-      ctrlCh,
-      (?>>),
-      oneOf,
-      spec,
-      (>>!),
-      Key(KBS, KEnter),
-      ctrl,
-      important )
-import Yi.MiniBuffer
-    ( spawnMinibufferE, withMinibufferFree, noHint, withMinibuffer )
-import Yi.Misc ( getFolder, promptFile )
-import Yi.Monad ( gets )
-import Yi.Regex ( AllTextSubmatches(..), (=~) )
-import qualified Yi.Rope as R
-    ( YiString,
-      readFile,
-      take,
-      toString,
-      toText,
-      fromString,
-      length,
-      cons,
-      unwords,
-      replicate,
-      concat )
-import Yi.String ( showT )
-import Yi.Style
-    ( defaultStyle,
-      red,
-      withFg,
-      green,
-      brown,
-      yellow,
-      magenta,
-      cyan,
-      blue,
-      StyleName,
-      grey )
-import Yi.Utils ( makeLensesWithSuffix, io )
+import           Control.Applicative      ((<$>), (<|>))
+import           Control.Category         ((>>>))
+import           Control.Exc              (orException, printingException)
+import           Control.Lens             (assign, makeLenses, use, (%~), (&), (.=), (.~), (^.))
+import           Control.Monad.Reader     (asks, foldM, liftM, unless, void, when)
+import           Data.Binary              (Binary, get, getWord8, put, putWord8)
+import           Data.Char                (toLower)
+import           Data.Default             (Default, def)
+import           Data.Foldable            (find, foldl')
+import           Data.List                (any, elem, sum, transpose)
+import qualified Data.Map                 as M (Map, assocs, delete, empty,
+                                                findWithDefault, fromList,
+                                                insert, keys, lookup, map,
+                                                mapKeys, union, (!))
+import           Data.Maybe               (fromMaybe)
+import           Data.Monoid              (mempty, (<>))
+import qualified Data.Text                as T (Text, pack, unpack)
+import           Data.Time                (UTCTime, formatTime, getCurrentTime)
+import           Data.Time.Clock.POSIX    (posixSecondsToUTCTime)
+import           Data.Typeable            (Typeable)
+import           System.CanonicalizePath  (canonicalizePath)
+import           System.Directory         (copyFile, createDirectoryIfMissing,
+                                           doesDirectoryExist, doesFileExist,
+                                           getDirectoryContents, getPermissions,
+                                           removeDirectoryRecursive, writable)
+import           System.FilePath          (dropTrailingPathSeparator,
+                                           equalFilePath, isAbsolute,
+                                           takeDirectory, takeFileName, (</>))
+import           System.FriendlyPath      (userToCanonPath)
+import           System.Locale            (defaultTimeLocale)
+import           System.PosixCompat.Files (FileStatus, fileExist, fileGroup,
+                                           fileMode, fileOwner, fileSize,
+                                           getSymbolicLinkStatus,
+                                           groupExecuteMode, groupReadMode,
+                                           groupWriteMode, isBlockDevice,
+                                           isCharacterDevice, isDirectory,
+                                           isNamedPipe, isRegularFile, isSocket,
+                                           isSymbolicLink, linkCount,
+                                           modificationTime, otherExecuteMode,
+                                           otherReadMode, otherWriteMode,
+                                           ownerExecuteMode, ownerReadMode,
+                                           ownerWriteMode, readSymbolicLink,
+                                           readSymbolicLink, removeLink, rename,
+                                           unionFileModes)
+import           System.PosixCompat.Types (FileMode, GroupID, UserID)
+import           System.PosixCompat.User  (GroupEntry, GroupEntry (..),
+                                           UserEntry (..), getAllGroupEntries,
+                                           getAllUserEntries,
+                                           getGroupEntryForID,
+                                           getUserEntryForID, groupID, userID)
+import           Text.Printf              (printf)
+import           Yi.Buffer
+import           Yi.Config                (modeTable)
+import           Yi.Core                  (errorEditor)
+import           Yi.Editor
+import           Yi.Keymap                (Keymap, YiM, topKeymapA)
+import           Yi.Keymap.Keys
+import           Yi.MiniBuffer            (noHint, spawnMinibufferE, withMinibuffer, withMinibufferFree)
+import           Yi.Misc                  (getFolder, promptFile)
+import           Yi.Monad                 (gets)
+import           Yi.Regex                 (AllTextSubmatches (..), (=~))
+import qualified Yi.Rope                  as R
+import           Yi.String                (showT)
+import           Yi.Style
+import           Yi.Types                 (YiVariable, withEditor_, yiConfig)
+import           Yi.Utils                 (io, makeLensesWithSuffix)
 
 -- Have no idea how to keep track of this state better, so here it is ...
 data DiredOpState = DiredOpState
@@ -268,11 +138,11 @@ instance YiVariable DiredOpState
 
 makeLenses ''DiredOpState
 
-data DiredFileInfo = DiredFileInfo {  permString :: R.YiString
-                                    , numLinks :: Integer
-                                    , owner :: R.YiString
-                                    , grp :: R.YiString
-                                    , sizeInBytes :: Integer
+data DiredFileInfo = DiredFileInfo {  permString             :: R.YiString
+                                    , numLinks               :: Integer
+                                    , owner                  :: R.YiString
+                                    , grp                    :: R.YiString
+                                    , sizeInBytes            :: Integer
                                     , modificationTimeString :: R.YiString
                                  }
                 deriving (Show, Eq, Typeable)
@@ -296,17 +166,17 @@ type DiredFilePath = R.YiString
 type DiredEntries = M.Map DiredFilePath DiredEntry
 
 data DiredState = DiredState
-  { diredPath :: FilePath -- ^ The full path to the directory being viewed
+  { diredPath        :: FilePath -- ^ The full path to the directory being viewed
     -- FIXME Choose better data structure for Marks...
-   , diredMarks :: M.Map FilePath Char
+   , diredMarks      :: M.Map FilePath Char
      -- ^ Map values are just leafnames, not full paths
-   , diredEntries :: DiredEntries
+   , diredEntries    :: DiredEntries
      -- ^ keys are just leafnames, not full paths
    , diredFilePoints :: [(Point,Point,FilePath)]
      -- ^ position in the buffer where filename is
-   , diredNameCol :: Int
+   , diredNameCol    :: Int
      -- ^ position on line where filename is (all pointA are this col)
-   , diredCurrFile :: FilePath
+   , diredCurrFile   :: FilePath
      -- ^ keep the position of pointer (for refreshing dired buffer)
   } deriving (Show, Eq, Typeable)
 

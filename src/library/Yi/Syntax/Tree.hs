@@ -1,7 +1,7 @@
-{-# LANGUAGE CPP #-}
-{-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE DeriveFoldable #-}
+{-# LANGUAGE CPP                 #-}
+{-# LANGUAGE DeriveFoldable      #-}
+{-# LANGUAGE FlexibleInstances   #-}
+{-# LANGUAGE OverloadedStrings   #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 
  -- the CPP seems to confuse GHC; we have uniplate patterns
@@ -30,27 +30,23 @@ module Yi.Syntax.Tree (IsTree(..), toksAfter, allToks, tokAtOrBefore,
 -- Some of this might be replaced by a generic package
 -- such as multirec, uniplace, emgm, ...
 
-import           Prelude hiding (concatMap, error)
+import           Prelude             hiding (concatMap, error)
 
-import Control.Applicative
-    ( Applicative((*>), (<*>), pure), Alternative((<|>), many), (<$>) )
-import Control.Arrow ( first )
-import Data.Foldable ( Foldable(foldMap), toList, concatMap )
-import Data.List.NonEmpty ( NonEmpty(..) )
-import qualified Data.List.NonEmpty as NE ( toList, reverse, (<|) )
-import Data.Maybe ( Maybe(..), maybe, listToMaybe, catMaybes )
-import Data.Monoid
-    ( Last(Last, getLast), First(First, getFirst), (<>) )
-import Yi.Buffer.Basic ( Point )
-import Yi.Debug ( trace, error )
-import Yi.Lexer.Alex
-    ( Tok(Tok, tokPosn),
-      Posn(Posn, posnLine, posnOfs),
-      tokEnd,
-      tokBegin )
-import Yi.Region
-    ( Region(regionEnd, regionStart), mkRegion, includedRegion )
-import Yi.String ( showT )
+import           Control.Applicative (Alternative ((<|>), many),
+                                      Applicative ((*>), (<*>), pure), (<$>))
+import           Control.Arrow       (first)
+import           Data.Foldable       (Foldable (foldMap), concatMap, toList)
+import           Data.List.NonEmpty  (NonEmpty (..))
+import qualified Data.List.NonEmpty  as NE (reverse, toList, (<|))
+import           Data.Maybe          (Maybe (..), catMaybes, listToMaybe, maybe)
+import           Data.Monoid         (First (First, getFirst), Last (Last, getLast), (<>))
+import           Yi.Buffer.Basic     (Point)
+import           Yi.Debug            (error, trace)
+import           Yi.Lexer.Alex       (Posn (Posn, posnLine, posnOfs),
+                                      Tok (Tok, tokPosn), tokBegin, tokEnd)
+import           Yi.Region           (Region (regionEnd, regionStart),
+                                      includedRegion, mkRegion)
+import           Yi.String           (showT)
 
 #ifdef TESTING
 import           Test.QuickCheck

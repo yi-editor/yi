@@ -1,7 +1,7 @@
-{-# LANGUAGE DeriveDataTypeable #-}
+{-# LANGUAGE DeriveDataTypeable         #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
-{-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE TypeOperators #-}
+{-# LANGUAGE OverloadedStrings          #-}
+{-# LANGUAGE TypeOperators              #-}
 {-# OPTIONS_HADDOCK show-extensions #-}
 
 -- |
@@ -15,44 +15,29 @@
 
 module Yi.Command where
 
-import Control.Applicative ( (<$>) )
-import Control.Exception ( SomeException )
-import Control.Lens ( assign )
-import Control.Monad ( void )
-import Control.Monad.Base ( liftBase )
-import Data.Binary ( Binary )
-import Data.Default ( Default )
-import qualified Data.Text as T ( unpack, Text, pack, init, last )
-import Data.Typeable ( Typeable )
-import System.Exit ( ExitCode(..) )
-import Yi.Buffer
-    ( BufferRef, identA, BufferId(MemBuffer), setMode )
-import Yi.Core ( startSubprocess )
-import Yi.Types ( YiVariable )
-import Yi.Editor
-    ( withCurrentBuffer,
-      withOtherWindow,
-      getEditorDyn,
-      putEditorDyn,
-      deleteBuffer,
-      withEditor,
-      newBufferE,
-      printMsg )
-import Yi.Keymap ( YiM, withUI )
-import Yi.MiniBuffer
-    ( CommandArguments(..),
-      withMinibufferFree,
-      RegexTag,
-      type (:::)(Doc),
-      FilePatternTag )
-import qualified Yi.Mode.Compilation as Compilation ( mode )
-import qualified Yi.Mode.Interactive as Interactive
-    ( spawnProcess )
-import Yi.Monad ( maybeM )
-import Yi.Process ( runShellCommand, shellFileName )
-import qualified Yi.Rope as R ( fromString )
-import Yi.UI.Common ( reloadProject )
-import Yi.Utils ( io )
+import           Control.Applicative ((<$>))
+import           Control.Exception   (SomeException)
+import           Control.Lens        (assign)
+import           Control.Monad       (void)
+import           Control.Monad.Base  (liftBase)
+import           Data.Binary         (Binary)
+import           Data.Default        (Default)
+import qualified Data.Text           as T (Text, init, last, pack, unpack)
+import           Data.Typeable       (Typeable)
+import           System.Exit         (ExitCode (..))
+import           Yi.Buffer           (BufferId (MemBuffer), BufferRef, identA, setMode)
+import           Yi.Core             (startSubprocess)
+import           Yi.Editor
+import           Yi.Keymap           (YiM, withUI)
+import           Yi.MiniBuffer
+import qualified Yi.Mode.Compilation as Compilation (mode)
+import qualified Yi.Mode.Interactive as Interactive (spawnProcess)
+import           Yi.Monad            (maybeM)
+import           Yi.Process          (runShellCommand, shellFileName)
+import qualified Yi.Rope             as R (fromString)
+import           Yi.Types            (YiVariable)
+import           Yi.UI.Common        (reloadProject)
+import           Yi.Utils            (io)
 
 
 ---------------------------

@@ -9,17 +9,16 @@
 
 module Yi.Keymap.Vim.Ex.Commands.Cabal (parse) where
 
-import Control.Applicative ( Alternative((<|>)) )
-import Control.Monad ( void )
-import qualified Data.Text as T ( pack )
-import qualified Text.ParserCombinators.Parsec as P ( try, string )
-import Yi.Command ( cabalBuildE )
-import Yi.Keymap ( Action(YiA) )
-import Yi.Keymap.Vim.Common ( EventString )
-import qualified Yi.Keymap.Vim.Ex.Commands.Common as Common
-    ( parse, impureExCommand, commandArgs )
-import Yi.Keymap.Vim.Ex.Types ( ExCommand(cmdAction, cmdShow) )
-import Yi.MiniBuffer ( CommandArguments(CommandArguments) )
+import           Control.Applicative              (Alternative ((<|>)))
+import           Control.Monad                    (void)
+import qualified Data.Text                        as T (pack)
+import qualified Text.ParserCombinators.Parsec    as P (string, try)
+import           Yi.Command                       (cabalBuildE)
+import           Yi.Keymap                        (Action (YiA))
+import           Yi.Keymap.Vim.Common             (EventString)
+import qualified Yi.Keymap.Vim.Ex.Commands.Common as Common (commandArgs, impureExCommand, parse)
+import           Yi.Keymap.Vim.Ex.Types           (ExCommand (cmdAction, cmdShow))
+import           Yi.MiniBuffer                    (CommandArguments (CommandArguments))
 
 -- TODO: Either hack Text into these parsec parsers or use Attoparsec.
 -- Attoparsec is faster anyway and backtracks by default so we may

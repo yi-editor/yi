@@ -1,5 +1,5 @@
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE PackageImports #-}
+{-# LANGUAGE PackageImports    #-}
 {-# OPTIONS_HADDOCK show-extensions #-}
 
 -- |
@@ -21,88 +21,42 @@ module Yi.Modes (TokenBasedMode, fundamentalMode,
                  gitCommitMode, rubyMode, styleMode
                 ) where
 
-import Control.Applicative ( (<$>) )
-import Control.Lens ( (%~), (&), (.~), (^.) )
-import Data.List ( isPrefixOf )
-import Data.Maybe ( fromMaybe )
-import System.FilePath
-    ( takeExtension, takeFileName, takeDirectory )
-import "regex-tdfa" Text.Regex.TDFA ( (=~) )
-import Yi.Buffer
-    ( BufferM,
-      onMode,
-      AnyMode(..),
-      modeName,
-      modeOnLoadA,
-      insertB,
-      modeAppliesA,
-      modeIndentA,
-      modeNameA,
-      tabSize,
-      expandTabs,
-      modeIndentSettingsA,
-      toggleCommentB,
-      modeToggleCommentSelectionA,
-      shiftWidth,
-      modeGetStrokesA,
-      modeHLA,
-      moveTo,
-      Direction(Forward),
-      regexB,
-      gotoLn,
-      unitWord,
-      regionOfB,
-      regionStart,
-      readCurrentWordB,
-      pointB,
-      modeGotoDeclaration,
-      fillParagraph,
-      autoIndentB,
-      modeIndent,
-      modeApplies,
-      emptyMode,
-      Mode,
-      modePrettify,
-      modeAlwaysApplies )
-import qualified Yi.IncrementalParse as IncrParser ( scanner )
-import Yi.Keymap ( YiM )
-import Yi.Lexer.Alex
-    ( StyleLexer,
-      tokenToStyle,
-      styleLexer,
-      commonLexer,
-      AlexInput,
-      Tok,
-      TokenLexer,
-      lexScanner,
-      AlexState,
-      tokToSpan,
-      Lexer )
-import qualified Yi.Lexer.C as C ( lexer )
-import qualified Yi.Lexer.Cabal as Cabal ( lexer )
-import qualified Yi.Lexer.Clojure as Clojure ( lexer )
-import qualified Yi.Lexer.Cplusplus as Cplusplus ( lexer )
-import qualified Yi.Lexer.GNUMake as GNUMake ( lexer )
-import qualified Yi.Lexer.GitCommit as GitCommit ( Token, lexer )
-import qualified Yi.Lexer.JSON as JSON ( lexer )
-import qualified Yi.Lexer.Java as Java ( lexer )
-import qualified Yi.Lexer.OCaml as OCaml ( Token, lexer )
-import qualified Yi.Lexer.ObjectiveC as ObjectiveC ( lexer )
-import qualified Yi.Lexer.Ott as Ott ( lexer )
-import qualified Yi.Lexer.Perl as Perl ( lexer )
-import qualified Yi.Lexer.Python as Python ( lexer )
-import qualified Yi.Lexer.Ruby as Ruby ( lexer )
-import qualified Yi.Lexer.SVNCommit as SVNCommit ( lexer )
-import qualified Yi.Lexer.Srmc as Srmc ( lexer )
-import qualified Yi.Lexer.Whitespace as Whitespace ( lexer )
-import Yi.MiniBuffer ( anyModeByNameM )
-import qualified Yi.Rope as R ( toString, YiString )
-import Yi.Style ( StyleName )
-import Yi.Syntax ( ExtHL(ExtHL) )
-import Yi.Syntax.Driver ( mkHighlighter )
-import Yi.Syntax.OnlineTree ( manyToks, Tree )
-import Yi.Syntax.Tree ( tokenBasedStrokes )
-import Yi.Search ( makeSimpleSearch )
+import "regex-tdfa" Text.Regex.TDFA  ((=~))
+
+import           Control.Applicative ((<$>))
+import           Control.Lens        ((%~), (&), (.~), (^.))
+import           Data.List           (isPrefixOf)
+import           Data.Maybe          (fromMaybe)
+import           System.FilePath     (takeDirectory, takeExtension, takeFileName)
+import           Yi.Buffer
+import qualified Yi.IncrementalParse  as IncrParser (scanner)
+import           Yi.Keymap            (YiM)
+import           Yi.Lexer.Alex
+import qualified Yi.Lexer.C           as C (lexer)
+import qualified Yi.Lexer.Cabal       as Cabal (lexer)
+import qualified Yi.Lexer.Clojure     as Clojure (lexer)
+import qualified Yi.Lexer.Cplusplus   as Cplusplus (lexer)
+import qualified Yi.Lexer.GitCommit   as GitCommit (Token, lexer)
+import qualified Yi.Lexer.GNUMake     as GNUMake (lexer)
+import qualified Yi.Lexer.Java        as Java (lexer)
+import qualified Yi.Lexer.JSON        as JSON (lexer)
+import qualified Yi.Lexer.ObjectiveC  as ObjectiveC (lexer)
+import qualified Yi.Lexer.OCaml       as OCaml (Token, lexer)
+import qualified Yi.Lexer.Ott         as Ott (lexer)
+import qualified Yi.Lexer.Perl        as Perl (lexer)
+import qualified Yi.Lexer.Python      as Python (lexer)
+import qualified Yi.Lexer.Ruby        as Ruby (lexer)
+import qualified Yi.Lexer.Srmc        as Srmc (lexer)
+import qualified Yi.Lexer.SVNCommit   as SVNCommit (lexer)
+import qualified Yi.Lexer.Whitespace  as Whitespace (lexer)
+import           Yi.MiniBuffer        (anyModeByNameM)
+import qualified Yi.Rope              as R (YiString, toString)
+import           Yi.Search            (makeSimpleSearch)
+import           Yi.Style             (StyleName)
+import           Yi.Syntax            (ExtHL (ExtHL))
+import           Yi.Syntax.Driver     (mkHighlighter)
+import           Yi.Syntax.OnlineTree (Tree, manyToks)
+import           Yi.Syntax.Tree       (tokenBasedStrokes)
 
 type TokenBasedMode tok = Mode (Tree (Tok tok))
 type StyleBasedMode = TokenBasedMode StyleName

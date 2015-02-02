@@ -1,14 +1,14 @@
-{-# LANGUAGE DeriveDataTypeable #-}
-{-# LANGUAGE ExistentialQuantification #-}
-{-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE FunctionalDependencies #-}
+{-# LANGUAGE DeriveDataTypeable         #-}
+{-# LANGUAGE ExistentialQuantification  #-}
+{-# LANGUAGE FlexibleContexts           #-}
+{-# LANGUAGE FlexibleInstances          #-}
+{-# LANGUAGE FunctionalDependencies     #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
-{-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE Rank2Types #-}
-{-# LANGUAGE StandaloneDeriving #-}
-{-# LANGUAGE TemplateHaskell #-}
-{-# LANGUAGE TypeSynonymInstances #-}
+{-# LANGUAGE MultiParamTypeClasses      #-}
+{-# LANGUAGE Rank2Types                 #-}
+{-# LANGUAGE StandaloneDeriving         #-}
+{-# LANGUAGE TemplateHaskell            #-}
+{-# LANGUAGE TypeSynonymInstances       #-}
 {-# OPTIONS_HADDOCK show-extensions #-}
 
 -- |
@@ -59,37 +59,16 @@ module Yi.Keymap
     , yiVarA
     ) where
 
-import Control.Exception ( Exception, catch, catchJust )
-import Control.Monad.Reader ( ReaderT(ReaderT, runReaderT) )
-import Control.Monad.State ( gets )
-import Yi.Buffer ( FBuffer(..) )
-import qualified Yi.Editor as Editor ( findBuffer, currentBuffer )
-import qualified Yi.Interact as I ( MonadInteract, write )
-import Yi.Monad ( with )
-import Yi.Types
-    ( Editor,
-      Action(..),
-      withEditor,
-      YiM(..),
-      BufferM,
-      EditorM,
-      MonadEditor,
-      yiUi,
-      KeymapSet(..),
-      Keymap,
-      Mode,
-      YiVar(..),
-      Yi(..),
-      emptyAction,
-      Interact,
-      KeymapM,
-      KeymapEndo,
-      KeymapProcess,
-      extractTopKeymap,
-      unsafeWithEditor,
-      IsRefreshNeeded(..) )
-import Yi.UI.Common ( UI )
-import Yi.Utils ( io, makeLensesWithSuffix )
+import           Control.Exception    (Exception, catch, catchJust)
+import           Control.Monad.Reader (ReaderT (ReaderT, runReaderT))
+import           Control.Monad.State  (gets)
+import           Yi.Buffer            (FBuffer (..))
+import qualified Yi.Editor            as Editor (currentBuffer, findBuffer)
+import qualified Yi.Interact          as I (MonadInteract, write)
+import           Yi.Monad             (with)
+import           Yi.Types
+import           Yi.UI.Common         (UI)
+import           Yi.Utils             (io, makeLensesWithSuffix)
 
 
 -----------------------

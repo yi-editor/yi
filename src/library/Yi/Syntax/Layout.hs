@@ -1,13 +1,14 @@
-{-# LANGUAGE PatternGuards, ScopedTypeVariables #-}
+{-# LANGUAGE PatternGuards       #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+
 -- Note: If the first line of the file has wrong indentation, some of the
 -- code might be left outside of the blocks
 module Yi.Syntax.Layout (layoutHandler, State) where
 
-import Yi.Syntax ( Scanner(..) )
-import Yi.Lexer.Alex
-    ( Tok(Tok, tokPosn, tokT), Posn(Posn), AlexState(..), startPosn )
-import Data.Maybe ( isJust )
-import Data.List ( find )
+import           Data.List     (find)
+import           Data.Maybe    (isJust)
+import           Yi.Lexer.Alex (AlexState (..), Posn (Posn), Tok (Tok, tokPosn, tokT), startPosn)
+import           Yi.Syntax     (Scanner (..))
 
 data BlockOpen t = Indent Int -- block opened because of indentation; parameter is the column of it.
                  | Paren t      -- block opened because of parentheses

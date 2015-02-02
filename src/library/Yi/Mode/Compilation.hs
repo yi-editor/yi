@@ -11,30 +11,18 @@
 -- A 'Mode' for working with buffers showing the results of compilations.
 module Yi.Mode.Compilation where
 
-import Control.Lens ( (.~), (%~), (&) )
-import Data.Text ()
-import Yi.Buffer
-    ( Mode(modeFollow),
-      modeNeverApplies,
-      pointB,
-      moveTo,
-      gotoLn,
-      rightN,
-      modeAppliesA,
-      modeFollowA,
-      modeKeymapA,
-      modeNameA )
-import Yi.Core ( withSyntax )
-import Yi.Editor ( withCurrentBuffer, shiftOtherWindow )
-import Yi.File ( openingNewFile )
-import Yi.Lexer.Alex ( Tok(..), Posn(..) )
-import qualified Yi.Lexer.Compilation as Compilation
-    ( Token(Report), lexer )
-import Yi.Keymap ( Action(YiA), topKeymapA )
-import Yi.Keymap.Keys ( Key(KEnter), (<||), spec, (?>>!) )
-import Yi.Modes ( styleMode, TokenBasedMode )
-import qualified Yi.Syntax.OnlineTree as OnlineTree
-    ( tokAtOrBefore )
+import           Control.Lens         ((%~), (&), (.~))
+import           Data.Text            ()
+import           Yi.Buffer
+import           Yi.Core              (withSyntax)
+import           Yi.Editor            (shiftOtherWindow, withCurrentBuffer)
+import           Yi.File              (openingNewFile)
+import           Yi.Keymap            (Action (YiA), topKeymapA)
+import           Yi.Keymap.Keys       (Key (KEnter), spec, (<||), (?>>!))
+import           Yi.Lexer.Alex        (Posn (..), Tok (..))
+import qualified Yi.Lexer.Compilation as Compilation (Token (Report), lexer)
+import           Yi.Modes             (TokenBasedMode, styleMode)
+import qualified Yi.Syntax.OnlineTree as OnlineTree (tokAtOrBefore)
 
 mode :: TokenBasedMode Compilation.Token
 mode = styleMode Compilation.lexer

@@ -1,13 +1,13 @@
-{-# LANGUAGE CPP #-}
-{-# LANGUAGE DeriveDataTypeable #-}
-{-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE CPP                       #-}
+{-# LANGUAGE DeriveDataTypeable        #-}
+{-# LANGUAGE DeriveGeneric             #-}
 {-# LANGUAGE ExistentialQuantification #-}
-{-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE PatternGuards #-}
-{-# LANGUAGE Rank2Types #-}
-{-# LANGUAGE StandaloneDeriving #-}
-{-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE FlexibleContexts          #-}
+{-# LANGUAGE FlexibleInstances         #-}
+{-# LANGUAGE PatternGuards             #-}
+{-# LANGUAGE Rank2Types                #-}
+{-# LANGUAGE StandaloneDeriving        #-}
+{-# LANGUAGE TemplateHaskell           #-}
 {-# OPTIONS_HADDOCK show-extensions #-}
 
 -- |
@@ -68,65 +68,30 @@ module Yi.Buffer.Implementation
 #if __GLASGOW_HASKELL__ < 708
 import           Data.DeriveTH
 #else
-import           GHC.Generics (Generic)
+import           GHC.Generics        (Generic)
 #endif
 
-import Control.Applicative ( Applicative((<*>), pure), (<$>) )
-import Data.Array ( (!) )
-import Data.Binary ( Binary(..), putWord8, getWord8 )
-import Data.Function ( on )
-import Data.List ( groupBy )
-import qualified Data.Map as M
-    ( Map,
-      lookup,
-      insert,
-      delete,
-      maxViewWithKey,
-      map,
-      findMax,
-      empty )
-import Data.Maybe ( fromMaybe )
-import Data.Monoid ( Monoid(mconcat, mempty) )
-import Yi.Rope ( YiString )
-import qualified Yi.Rope as R
-    ( YiString,
-      toString,
-      toReverseString,
-      take,
-      splitAtLine,
-      splitAt,
-      reverse,
-      length,
-      last,
-      drop,
-      countNewLines,
-      append )
-import qualified Data.Set as Set
-    ( Set, insert, toList, map, filter, empty, delete )
-import Data.Typeable ( Typeable )
-import Yi.Buffer.Basic
-    ( WindowRef,
-      Size(Size),
-      Point(Point),
-      Mark(..),
-      Direction(..),
-      reverseDir )
-import Yi.Regex ( SearchExp, RegexLike(matchAll), searchRegex )
-import Yi.Region
-    ( Region(..), regionSize, nearRegion, mkRegion, fmapRegion )
-import Yi.Style ( StyleName, UIStyle(hintStyle, strongHintStyle) )
-import Yi.Syntax
-    ( Stroke,
-      Span(Span, spanBegin, spanEnd),
-      Scanner(Scanner),
-      Highlighter(..),
-      ExtHL(..),
-      noHighlighter )
-import Yi.Utils
-    ( SemiNum((+~), (~-)), mapAdjust', makeLensesWithSuffix )
+import           Control.Applicative (Applicative ((<*>), pure), (<$>))
+import           Data.Array          ((!))
+import           Data.Binary         (Binary (..), getWord8, putWord8)
+import           Data.Function       (on)
+import           Data.List           (groupBy)
+import qualified Data.Map            as M (Map, delete, empty, findMax, insert, lookup, map, maxViewWithKey)
+import           Data.Maybe          (fromMaybe)
+import           Data.Monoid         (Monoid (mconcat, mempty))
+import qualified Data.Set            as Set (Set, delete, empty, filter, insert, map, toList)
+import           Data.Typeable       (Typeable)
+import           Yi.Buffer.Basic     (Direction (..), Mark (..), Point (Point), Size (Size), WindowRef, reverseDir)
+import           Yi.Regex            (RegexLike (matchAll), SearchExp, searchRegex)
+import           Yi.Region           (Region (..), fmapRegion, mkRegion, nearRegion, regionSize)
+import           Yi.Rope             (YiString)
+import qualified Yi.Rope             as R
+import           Yi.Style            (StyleName, UIStyle (hintStyle, strongHintStyle))
+import           Yi.Syntax
+import           Yi.Utils            (SemiNum ((+~), (~-)), makeLensesWithSuffix, mapAdjust')
 
 
-data MarkValue = MarkValue { markPoint :: !Point
+data MarkValue = MarkValue { markPoint   :: !Point
                            , markGravity :: !Direction}
                deriving (Ord, Eq, Show, Typeable)
 
@@ -144,10 +109,10 @@ type Marks = M.Map Mark MarkValue
 data HLState syntax = forall cache. HLState !(Highlighter cache syntax) !cache
 
 data Overlay = Overlay
-    { overlayOwner :: R.YiString
-    , _overlayBegin :: MarkValue
-    , _overlayEnd :: MarkValue
-    , _overlayStyle :: StyleName
+    { overlayOwner      :: R.YiString
+    , _overlayBegin     :: MarkValue
+    , _overlayEnd       :: MarkValue
+    , _overlayStyle     :: StyleName
     , overlayAnnotation :: R.YiString
     }
 
@@ -165,11 +130,11 @@ instance Ord Overlay where
             ]
 
 data BufferImpl syntax = FBufferData
-    { mem        :: !YiString -- ^ buffer text
-    , marks      :: !Marks -- ^ Marks for this buffer
-    , markNames  :: !(M.Map String Mark)
-    , hlCache    :: !(HLState syntax) -- ^ syntax highlighting state
-    , overlays   :: !(Set.Set Overlay)
+    { mem         :: !YiString -- ^ buffer text
+    , marks       :: !Marks -- ^ Marks for this buffer
+    , markNames   :: !(M.Map String Mark)
+    , hlCache     :: !(HLState syntax) -- ^ syntax highlighting state
+    , overlays    :: !(Set.Set Overlay)
     -- ^ set of (non overlapping) visual overlay regions
     , dirtyOffset :: !Point
     -- ^ Lowest modified offset since last recomputation of syntax

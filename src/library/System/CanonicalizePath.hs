@@ -1,4 +1,4 @@
-{-# LANGUAGE CPP #-}
+{-# LANGUAGE CPP               #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# OPTIONS_HADDOCK show-extensions #-}
 
@@ -18,25 +18,20 @@ module System.CanonicalizePath
 
 
 #ifdef mingw32_HOST_OS
-import qualified System.Win32 as Win32
-import           System.FilePath (normalise)
+import           System.FilePath          (normalise)
+import qualified System.Win32             as Win32
 #endif
 
-import Control.Applicative ( (<$>) )
-import Control.Exc ( ignoringException )
-import Control.Monad ( foldM )
-import Data.List.Split ( splitOneOf )
-import Data.Monoid ( (<>) )
-import qualified Data.Text as T ( Text, empty, splitOn )
-import System.Directory ( getCurrentDirectory )
-import System.FilePath
-    ( (</>),
-      isDrive,
-      isAbsolute,
-      takeDirectory,
-      pathSeparator,
-      pathSeparators )
-import System.PosixCompat.Files ( readSymbolicLink )
+import           Control.Applicative      ((<$>))
+import           Control.Exc              (ignoringException)
+import           Control.Monad            (foldM)
+import           Data.List.Split          (splitOneOf)
+import           Data.Monoid              ((<>))
+import qualified Data.Text                as T (Text, empty, splitOn)
+import           System.Directory         (getCurrentDirectory)
+import           System.FilePath          (isAbsolute, isDrive, pathSeparator,
+                                           pathSeparators, takeDirectory, (</>))
+import           System.PosixCompat.Files (readSymbolicLink)
 
 -- | Removes `/./` `//` and `/../` sequences from path,
 -- doesn't follow symlinks

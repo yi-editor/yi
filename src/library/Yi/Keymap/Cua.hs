@@ -18,64 +18,21 @@ module Yi.Keymap.Cua ( keymap
                      , del
                      ) where
 
-import Control.Applicative ( Alternative((<|>)), (<$>) )
-import Control.Lens ( assign, use )
-import Control.Monad ( when, unless )
-import qualified Data.Text as T ( take, drop )
-import Yi.Buffer
-    ( Direction(Backward, Forward),
-      IndentBehaviour(DecreaseOnly, IncreaseOnly),
-      BufferM,
-      highlightSelectionA,
-      rectangleSelectionA,
-      undoB,
-      redoB,
-      pointB,
-      insertN,
-      deleteN,
-      deleteRegionB,
-      readRegionB,
-      replaceRegionB,
-      TextUnit(Character, Document, Line, VLine),
-      unitWord,
-      moveB,
-      maybeMoveB,
-      bdeleteB,
-      setSelectionMarkPointB,
-      scrollScreensB,
-      getSelectRegionB,
-      autoIndentB )
-import Yi.Editor
-    ( MonadEditor(withEditor),
-      EditorM,
-      withCurrentBuffer,
-      setRegE,
-      getRegE )
-import Yi.File ( fwriteE )
-import Yi.Keymap
-    ( KeymapSet, YiM, Keymap, write, modelessKeymapSet )
-import Yi.Keymap.Emacs.Utils
-    ( askQuitEditor, isearchKeymap, findFile )
-import Yi.Keymap.Keys
-    ( Event,
-      Key(KBS, KDel, KDown, KEnd, KEnter, KHome, KIns, KLeft, KPageDown,
-          KPageUp, KRight, KUp),
-      choice,
-      printableChar,
-      shift,
-      ctrl,
-      meta,
-      super,
-      char,
-      spec,
-      (?>>),
-      (?>>!) )
-import Yi.MiniBuffer ( commentRegion )
-import Yi.Misc ( adjBlock, selectAll )
-import Yi.Rectangle ( getRectangle, killRectangle, yankRectangle )
-import qualified Yi.Rope as R
-    ( YiString, withText, singleton, length )
-import Yi.String ( unlines', lines' )
+import           Control.Applicative   (Alternative ((<|>)), (<$>))
+import           Control.Lens          (assign, use)
+import           Control.Monad         (unless, when)
+import qualified Data.Text             as T (drop, take)
+import           Yi.Buffer
+import           Yi.Editor
+import           Yi.File               (fwriteE)
+import           Yi.Keymap             (Keymap, KeymapSet, YiM, modelessKeymapSet, write)
+import           Yi.Keymap.Emacs.Utils (askQuitEditor, findFile, isearchKeymap)
+import           Yi.Keymap.Keys
+import           Yi.MiniBuffer         (commentRegion)
+import           Yi.Misc               (adjBlock, selectAll)
+import           Yi.Rectangle          (getRectangle, killRectangle, yankRectangle)
+import qualified Yi.Rope               as R (YiString, length, singleton, withText)
+import           Yi.String             (lines', unlines')
 
 customizedCuaKeymapSet :: Keymap -> KeymapSet
 customizedCuaKeymapSet userKeymap =

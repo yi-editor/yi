@@ -1,4 +1,7 @@
-{-# LANGUAGE TemplateHaskell, CPP, StandaloneDeriving, DeriveGeneric #-}
+{-# LANGUAGE CPP                #-}
+{-# LANGUAGE DeriveGeneric      #-}
+{-# LANGUAGE StandaloneDeriving #-}
+{-# LANGUAGE TemplateHaskell    #-}
 
 -- | An implementation of restricted, linear undo, as described in:
 --
@@ -53,23 +56,14 @@ module Yi.Buffer.Undo (
   , Change(AtomicChange, InteractivePoint)
    ) where
 
-import Data.Binary
 #if __GLASGOW_HASKELL__ < 708
-import Data.DeriveTH
+import           Data.DeriveTH
 #else
-import GHC.Generics (Generic)
+import           GHC.Generics             (Generic)
 #endif
 
-import Data.Binary ( Binary(..), putWord8, getWord8 )
-import Yi.Buffer.Implementation
-    ( Mark,
-      Direction(Backward, Forward),
-      MarkValue(markPoint),
-      Update(updateDirection, updatePoint),
-      BufferImpl,
-      applyUpdateI,
-      reverseUpdateI,
-      modifyMarkBI )
+import           Data.Binary              (Binary (..), getWord8, putWord8)
+import           Yi.Buffer.Implementation
 
 data Change = SavedFilePoint
             | InteractivePoint

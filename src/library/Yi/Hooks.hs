@@ -55,6 +55,7 @@ automatically.
 
 See "Yi.Eval" for a real example of hooks.
 -}
+
 module Yi.Hooks(
   -- * Convenience function 'runHook'
   runHook,
@@ -65,12 +66,12 @@ module Yi.Hooks(
  )
   where
 
-import Control.Lens ( (^.) )
-import Yi.Config ( configVariable )
-import Yi.Editor ( EditorM, askCfg )
-import Yi.Keymap ( YiM )
-import Yi.Config.Simple.Types ( customVariable, Field )
-import Yi.Types ( YiConfigVariable )
+import Control.Lens           ((^.))
+import Yi.Config              (configVariable)
+import Yi.Config.Simple.Types (Field, customVariable)
+import Yi.Editor              (EditorM, askCfg)
+import Yi.Keymap              (YiM)
+import Yi.Types               (YiConfigVariable)
 
 -- | Looks up the configured value for the hook, and runs it. The
 -- argument to 'runHook' will typically be a record accessor. See
