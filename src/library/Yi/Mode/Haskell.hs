@@ -30,11 +30,11 @@ module Yi.Mode.Haskell
    ghciSetProcessArgs
   ) where
 
-import           Prelude                   hiding (all, concatMap, elem, error, notElem)
+import           Prelude                   hiding (all, concatMap, elem, error, notElem, exp)
 
 import           Control.Applicative       (Applicative ((*>)), (<$>))
 import           Control.Lens              ((&), (.~), (^.))
-import           Control.Monad             (Functor (fmap), Monad (return), mapM, unless, void, when, (=<<))
+import           Control.Monad             (unless, void, when)
 import           Data.Binary               (Binary)
 import           Data.Default              (Default)
 import           Data.Foldable             (Foldable, all, concatMap, elem, forM_, notElem)
@@ -60,7 +60,7 @@ import           Yi.Modes                  (anyExtension, extensionOrContentsMat
 import           Yi.Monad                  (gets)
 import qualified Yi.Rope                   as R
 import           Yi.String                 (fillText, showT)
-import           Yi.Syntax                 (ExtHL (..), Scanner, Stroke, skipScanner)
+import           Yi.Syntax                 (ExtHL (..), Scanner, skipScanner)
 import qualified Yi.Syntax.Driver          as Driver (mkHighlighter)
 import           Yi.Syntax.Haskell         as Hask
 import           Yi.Syntax.Layout          (State)

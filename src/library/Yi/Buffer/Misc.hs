@@ -194,21 +194,19 @@ import           Prelude                        hiding (foldr, mapM, notElem)
 import           Control.Applicative            (Applicative ((*>), (<*>)), (<$>))
 import           Control.Lens                   (Lens', assign, lens, use, uses, view, (%=), (%~), (.=), (^.))
 import           Control.Monad.RWS.Strict       (Endo (Endo, appEndo),
-                                                 Functor (..), Monad ((>>), (>>=), fail, return),
                                                  MonadReader (ask), MonadState,
                                                  MonadWriter (tell),
                                                  Monoid (mconcat, mempty), asks,
                                                  gets, join, modify,
                                                  replicateM_, runRWS, void,
-                                                 when, (<>), (=<<))
+                                                 when, (<>))
 import           Data.Binary                    (Binary (..), Get)
 import           Data.Char                      (ord)
 import           Data.Default                   (Default (def))
 import           Data.DynamicState.Serializable (getDyn, putDyn)
 import           Data.Foldable                  (Foldable (foldr), forM_, notElem)
-import           Data.Function                  (const, flip, ($))
 import qualified Data.Map                       as M (Map, empty, insert, lookup)
-import           Data.Maybe                     (Maybe (..), fromMaybe, isNothing, maybe)
+import           Data.Maybe                     (fromMaybe, isNothing)
 import qualified Data.Set                       as Set (Set)
 import qualified Data.Text                      as T (Text, concat, justifyRight, pack, snoc, unpack)
 import qualified Data.Text.Encoding             as E (decodeUtf8, encodeUtf8)
@@ -216,7 +214,7 @@ import           Data.Time                      (UTCTime (UTCTime))
 import           Data.Traversable               (Traversable (mapM), forM)
 import           Numeric                        (showHex)
 import           System.FilePath                (joinPath, splitPath)
-import           Yi.Buffer.Basic                (BufferRef, Direction (..), Mark, Point (..), Size (Size), WindowRef)
+import           Yi.Buffer.Basic                (BufferRef, Point (..), Size (Size), WindowRef)
 import           Yi.Buffer.Implementation
 import           Yi.Buffer.Undo
 import           Yi.Interact                    as I (P (End))

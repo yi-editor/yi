@@ -18,7 +18,7 @@ import           Data.List           (sortBy)
 import           Data.Maybe          (fromMaybe)
 import           Data.Monoid         ((<>))
 import           Data.Text           ()
-import           Yi.Buffer
+import           Yi.Buffer           hiding (Block)
 import           Yi.Debug            (trace)
 import           Yi.Lexer.Alex       (Tok (..), posnOfs)
 import           Yi.Lexer.Haskell    (TT, Token (..), isComment)

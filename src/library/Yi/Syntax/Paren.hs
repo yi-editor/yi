@@ -18,10 +18,10 @@ import Prelude hiding (elem)
 import           Control.Applicative (Alternative ((<|>), many),
                                       Applicative ((*>), (<*), (<*>)), (<$>))
 import           Data.Foldable       (Foldable (foldMap), elem, toList)
-import           Data.Maybe          (Maybe (..), listToMaybe)
+import           Data.Maybe          (listToMaybe)
 import           Data.Monoid         (Endo (Endo, appEndo), Monoid (mappend), (<>))
 import           Data.Traversable    (Traversable (sequenceA))
-import           Yi.IncrementalParse (AlexState, P, Parser, eof, lookNext, recoverWith, symbol)
+import           Yi.IncrementalParse (P, Parser, eof, lookNext, recoverWith, symbol)
 import           Yi.Lexer.Alex       hiding (tokenToStyle)
 import           Yi.Lexer.Haskell
 import           Yi.Style            (StyleName, errorStyle, hintStyle)

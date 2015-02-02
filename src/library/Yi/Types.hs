@@ -28,7 +28,7 @@
 module Yi.Types where
 
 #ifdef FRONTEND_VTY
-import qualified Graphics.Vty as Vty (Config)
+import qualified Graphics.Vty as Vty ()
 #endif
 
 import           Control.Applicative            (Applicative, pure, (<$>), (<*>))

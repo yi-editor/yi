@@ -55,9 +55,7 @@ import           Control.Exception              (SomeException, handle)
 import           Control.Lens                   (assign, mapped, use, uses,
                                                  view, (%=), (%~), (&), (.=),
                                                  (.~), (^.))
-import           Control.Monad                  (Functor (fmap),
-                                                 Monad ((>>), (>>=), return),
-                                                 forever, void, when, (=<<))
+import           Control.Monad                  (forever, void, when)
 import           Control.Monad.Base             (MonadBase (liftBase))
 import           Control.Monad.Error            ()
 import           Control.Monad.Reader           (MonadReader (ask), ReaderT (runReaderT), asks)
@@ -68,7 +66,7 @@ import           Data.List.NonEmpty             (NonEmpty (..))
 import qualified Data.List.PointedList.Circular as PL (PointedList (_focus), length)
 import           Data.List.Split                (splitOn)
 import qualified Data.Map                       as M (assocs, delete, empty, fromList, insert, member)
-import           Data.Maybe                     (Maybe (..), fromMaybe, isNothing)
+import           Data.Maybe                     (fromMaybe, isNothing)
 import           Data.Monoid                    (First (First, getFirst), (<>))
 import qualified Data.Text                      as T (Text, pack, unwords)
 import           Data.Time                      (getCurrentTime)

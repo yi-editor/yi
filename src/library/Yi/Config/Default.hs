@@ -6,7 +6,7 @@ module Yi.Config.Default ( defaultConfig, availableFrontends, defaultEmacsConfig
                          , toEmacsStyleConfig, toCuaStyleConfig) where
 
 import           Control.Applicative
-import           Control.Lens        hiding (Action)
+import           Control.Lens
 import           Control.Monad
 import           Data.Default
 import qualified Data.HashMap.Strict as HM
@@ -45,7 +45,7 @@ import           Yi.Style.Library
 import qualified Yi.UI.Batch
 import           Yi.Utils
 
-import           Yi.Types            (withEditor_)
+import           Yi.Types            ()
 
 #ifdef FRONTEND_VTY
 import qualified Graphics.Vty.Config as Vty

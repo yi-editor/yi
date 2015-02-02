@@ -102,9 +102,8 @@ import           Control.Lens                   (Lens', assign, lens, mapped,
                                                  use, uses, view, (%=), (%~),
                                                  (&), (.=), (.~), (^.))
 import           Control.Monad                  (forM_)
-import           Control.Monad.Reader           (Functor (..), Monad ((>>), (>>=), fail, return),
-                                                 MonadReader (ask), asks, liftM,
-                                                 unless, when, (=<<))
+import           Control.Monad.Reader           (MonadReader (ask), asks, liftM,
+                                                 unless, when)
 import           Control.Monad.State            (gets, modify)
 import           Data.Binary                    (Binary, get, put)
 import           Data.Default                   (Default, def)

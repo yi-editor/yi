@@ -337,7 +337,7 @@ drawText wsty h w tabWidth bufData
     lines' [] =  []
     lines' s  = case s' of
                   []          -> [l]
-                  ((_,x):s'') -> l : lines' s''
+                  ((_,_):s'') -> l : lines' s''
                 where
                 (l, s') = break ((== '\n') . fst) s
 

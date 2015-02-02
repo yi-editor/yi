@@ -62,7 +62,7 @@ module Yi.Keymap
 import           Control.Exception    (Exception, catch, catchJust)
 import           Control.Monad.Reader (ReaderT (ReaderT, runReaderT))
 import           Control.Monad.State  (gets)
-import           Yi.Buffer            (FBuffer (..))
+import           Yi.Buffer            ()
 import qualified Yi.Editor            as Editor (currentBuffer, findBuffer)
 import qualified Yi.Interact          as I (MonadInteract, write)
 import           Yi.Monad             (with)

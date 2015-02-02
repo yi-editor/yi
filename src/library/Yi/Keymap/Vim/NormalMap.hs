@@ -15,11 +15,8 @@ import           Prelude                    hiding (lookup)
 
 import           Control.Applicative        ((<$>))
 import           Control.Lens               (assign, use, (.=))
-import           Control.Monad              (Functor (fmap),
-                                             Monad ((>>), (>>=), fail, return),
-                                             replicateM_, unless, void, when,
-                                             (=<<))
-import           Data.Char                  (Char, ord)
+import           Control.Monad              (replicateM_, unless, void, when)
+import           Data.Char                  (ord)
 import           Data.HashMap.Strict        (lookup, singleton)
 import           Data.List                  (group)
 import           Data.Maybe                 (fromMaybe)

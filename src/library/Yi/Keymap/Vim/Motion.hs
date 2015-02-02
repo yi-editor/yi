@@ -53,10 +53,7 @@ import           Prelude                    hiding (repeat)
 
 import           Control.Applicative        (Alternative ((<|>)), Applicative ((<*>)), (<$>))
 import           Control.Lens               (Field3 (_3), over, use)
-import           Control.Monad              (Functor (fmap),
-                                             Monad ((>>), fail, return),
-                                             replicateM_, void, when, (<=<),
-                                             (=<<))
+import           Control.Monad              (replicateM_, void, when, (<=<))
 import           Data.Maybe                 (fromMaybe)
 import           Data.Monoid                ((<>))
 import qualified Data.Text                  as T (unpack)

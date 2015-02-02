@@ -14,9 +14,7 @@ import           Prelude                  hiding (head)
 
 import           Control.Applicative      ((<$))
 import           Control.Lens             (use)
-import           Control.Monad            (Functor (fmap), Monad ((>>), return),
-                                           forM, liftM2, mapM_, replicateM_,
-                                           void, when, (=<<))
+import           Control.Monad            (forM, liftM2, replicateM_, void, when)
 import           Data.Char                (isDigit)
 import           Data.List.NonEmpty       (NonEmpty (..), head, toList)
 import           Data.Monoid              (Monoid (mempty), (<>))
@@ -155,7 +153,7 @@ printableAction :: EventString -> EditorM RepeatToken
 printableAction evs = do
     saveInsertEventStringE evs
     currentCursor <- withCurrentBuffer pointB
-    IndentSettings et ts sw <- withCurrentBuffer indentSettingsB
+    IndentSettings et _ sw <- withCurrentBuffer indentSettingsB
     secondaryCursors <- fmap vsSecondaryCursors getEditorDyn
     let allCursors = currentCursor :| secondaryCursors
     marks <- withCurrentBuffer $ forM' allCursors $ \cursor -> do

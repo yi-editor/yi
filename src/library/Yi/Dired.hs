@@ -114,7 +114,7 @@ import           Yi.Regex                 (AllTextSubmatches (..), (=~))
 import qualified Yi.Rope                  as R
 import           Yi.String                (showT)
 import           Yi.Style
-import           Yi.Types                 (YiVariable, withEditor_, yiConfig)
+import           Yi.Types                 (YiVariable, yiConfig)
 import           Yi.Utils                 (io, makeLensesWithSuffix)
 
 -- Have no idea how to keep track of this state better, so here it is ...

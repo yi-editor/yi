@@ -30,7 +30,7 @@ import Data.Char     (isAlpha, isPrint, toUpper)
 import Data.List     (nub, sort)
 import Yi.Debug      (error)
 import Yi.Event      (Event (..), Key (..), Modifier (..), eventToChar, prettyEvent)
-import Yi.Interact
+import Yi.Interact   hiding (write)
 import Yi.Keymap     (Action, KeymapM, YiAction, write)
 
 printableChar :: (MonadInteract m w Event) => m Char
