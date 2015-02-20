@@ -65,7 +65,7 @@ Our channel is #yi at Freenode. Please note that it is rather slow (very slow co
 
 Yi uses the [Dyre][dyre] package to have dynamic reconfiguration. You can configure Yi by creating `~/.config/yi/yi.hs`, and then Yi is reconfigured whenever you update this file. Example configuration files are in `yi/examples/` (copy any of these into `~/.config/yi/` as `yi.hs` and restart Yi).
 
-You can also use the sample user configs in the `yi-contrib` package (see the [list of user configs][userconfigs] in the source repository on GitHub). To use one of these configurations, install the package and then create a configuration file `~/.config/yi/yi.hs` like this:
+You can find some [sample user configs][userconfigs] in the source repository on GitHub. To use one of these configurations, install the package and then create a configuration file `~/.config/yi/yi.hs` like this:
 
     import Yi
     import Yi.Config.Users.Anders
@@ -126,7 +126,7 @@ on Yi, it's very recommended that you read these
 [issueslist]: https://github.com/yi-editor/yi/issues
 [yi-devel]: http://groups.google.com/group/yi-devel
 [dyre]: http://hackage.haskell.org/package/dyre
-[userconfigs]: https://github.com/yi-editor/yi/tree/master/yi-contrib/src/Yi/Config/Users
+[userconfigs]: https://github.com/yi-editor/yi/tree/master/example-configs
 [profiling-discussion]: https://groups.google.com/forum/?fromgroups=#!topic/yi-devel/2dUXKJMSFsM
 [small-yi]: http://publications.lib.chalmers.se/records/fulltext/local_72549.pdf
 [lazy-parsing]: http://publications.lib.chalmers.se/records/fulltext/local_94979.pdf
