@@ -1,3 +1,4 @@
+{-# LANGUAGE FlexibleContexts #-}
 {-# OPTIONS_HADDOCK show-extensions #-}
 
 -- |

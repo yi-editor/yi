@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedStrings #-}
@@ -20,11 +21,18 @@ import           Control.Monad.Base
 import           Data.IORef
 import           Data.Monoid
 import qualified Data.Text as T
-import           Data.Time
+import qualified Data.Time
 import           GHC.Conc (labelThread)
 import           System.IO
 import           System.IO.Unsafe (unsafePerformIO)
-import           System.Locale
+import qualified System.Locale
+
+defaultTimeLocale =
+#if __GLASGOW_HASKELL__ < 710
+    System.Locale.defaultTimeLocale
+#else
+    Data.Time.defaultTimeLocale
+#endif
 
 dbgHandle :: IORef (Maybe Handle)
 dbgHandle = unsafePerformIO $ newIORef Nothing
@@ -57,10 +65,10 @@ logPutStrLn s = liftBase $
   readIORef dbgHandle >>= \case
     Nothing -> return ()
     Just h -> do
-      time <-  getCurrentTime
+      time <-  Data.Time.getCurrentTime
       tId <- myThreadId
       let m = show tId ++ " " ++ T.unpack s
-      hPutStrLn h $ formatTime defaultTimeLocale rfc822DateFormat' time ++ m
+      hPutStrLn h $ Data.Time.formatTime defaultTimeLocale rfc822DateFormat' time ++ m
       hFlush h
   where
     -- A bug in rfc822DateFormat makes us use our own format string

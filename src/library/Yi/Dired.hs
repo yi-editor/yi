@@ -63,14 +63,15 @@ import           Data.List hiding (find, maximum, concat)
 import qualified Data.Map as M
 import           Data.Monoid
 import qualified Data.Text as T
-import           Data.Time
+import           Data.Time hiding (defaultTimeLocale)
+import qualified Data.Time
 import           Data.Time.Clock.POSIX
 import           Data.Typeable
 import           System.CanonicalizePath (canonicalizePath)
 import           System.Directory hiding (canonicalizePath)
 import           System.FilePath
 import           System.FriendlyPath
-import           System.Locale
+import qualified System.Locale
 import           System.PosixCompat.Files
 import           System.PosixCompat.Types
 import           System.PosixCompat.User
@@ -465,7 +466,7 @@ diredDoDel = do
 diredDoMarkedDel :: YiM ()
 diredDoMarkedDel = do
   dir <- currentDir
-  fs <- markedFiles (`Data.List.elem` "D")
+  fs <- markedFiles (== 'D')
   askDelFiles dir fs
 
 diredKeymap :: Keymap -> Keymap
@@ -730,6 +731,13 @@ modeString fm = ""
     where
     strIfSet s mode = if fm == (fm `unionFileModes` mode) then s else "-"
 
+defaultTimeLocale =
+#if __GLASGOW_HASKELL__ < 710
+    System.Locale.defaultTimeLocale
+#else
+    Data.Time.defaultTimeLocale
+#endif
+
 shortCalendarTimeToString :: UTCTime -> String
 shortCalendarTimeToString = formatTime defaultTimeLocale "%b %d %H:%M"
 
@@ -965,7 +973,7 @@ askCopyFiles dir fs =
 diredRename :: YiM ()
 diredRename = do
   dir <- currentDir
-  fs <- markedFiles (`Data.List.elem` "*")
+  fs <- markedFiles (== '*')
   if null fs then do maybefile <- withCurrentBuffer fileFromPoint
                      case maybefile of
                        Just (fn, de) -> askRenameFiles dir [(fn, de)]
@@ -975,7 +983,7 @@ diredRename = do
 diredCopy :: YiM ()
 diredCopy = do
   dir <- currentDir
-  fs <- markedFiles (`Data.List.elem` "*")
+  fs <- markedFiles (== '*')
   if null fs then do maybefile <- withCurrentBuffer fileFromPoint
                      case maybefile of
                        Just (fn, de) -> askCopyFiles dir [(fn, de)]

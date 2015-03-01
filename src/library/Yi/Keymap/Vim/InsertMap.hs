@@ -53,7 +53,7 @@ exitBinding digraphs = VimBindingE f
         when (count > 1) $ do
             inputEvents <- fmap (parseEvents . vsOngoingInsertEvents) getEditorDyn
             replicateM_ (count - 1) $ do
-                when (starter `elem` "Oo") $ withCurrentBuffer $ insertB '\n'
+                when (starter `elem` ['O', 'o']) $ withCurrentBuffer $ insertB '\n'
                 replay digraphs inputEvents
         modifyStateE $ \s -> s { vsOngoingInsertEvents = mempty }
         withCurrentBuffer $ moveXorSol 1

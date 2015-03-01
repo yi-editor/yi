@@ -103,6 +103,13 @@ flag eventlog
 flag testing
   Description: bake-in the self-checks
 
+flag hint
+  Default: False
+  -- TODO: figure out how to write this
+  -- if impl(ghc < 7.10.1)
+  --   Default: True
+  Description: Include hint (haskell interpreter) in yi
+
 library
   hs-source-dirs: src/library
   default-language: Haskell2010
@@ -112,6 +119,9 @@ library
 
   if flag(eventlog)
     CPP-options: -DEVENTLOG
+
+  if flag(hint)
+    CPP-options: -DHINT
 
   exposed-modules:
     Yi
@@ -255,6 +265,10 @@ library
     build-depends: derive >=2.4 && <2.7, binary >= 0.5, tagged
   else
     build-depends: binary >= 0.7
+
+  if flag(hint)
+    build-depends: hint > 0.3.1
+
   build-depends:
     Cabal >= 1.10,
     array,
@@ -272,7 +286,6 @@ library
     dyre >=0.8.11,
     filepath>=1.1 && <1.4,
     hashable >=1.1.2.5,
-    hint > 0.3.1,
     mtl >= 0.1.0.1,
     parsec >= 3.0,
     pointedlist >= 0.5,

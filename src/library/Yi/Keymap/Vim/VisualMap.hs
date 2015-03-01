@@ -218,7 +218,7 @@ replaceBinding = VimBindingE (f . T.unpack . _unEv)
 
 switchEdgeBinding :: VimBinding
 switchEdgeBinding = VimBindingE (f . T.unpack . _unEv)
-    where f [c] (VimState { vsMode = (Visual _) }) | c `elem` "oO"
+    where f [c] (VimState { vsMode = (Visual _) }) | c `elem` ['o', 'O']
               = WholeMatch $ do
                   (Visual style) <- vsMode <$> getEditorDyn
                   withCurrentBuffer $ do

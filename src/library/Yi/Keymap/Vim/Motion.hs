@@ -189,7 +189,7 @@ withDefaultCount :: (EventString, Bool, Int -> BufferM ()) -> (EventString, Bool
 withDefaultCount = over _3 (. fromMaybe 1)
 
 matchGotoMarkMove :: String -> MatchResult Move
-matchGotoMarkMove (m:_) | m `notElem` "'`" = NoMatch
+matchGotoMarkMove (m:_) | m `notElem` ['\'', '`'] = NoMatch
 matchGotoMarkMove (_:[]) = PartialMatch
 matchGotoMarkMove (m:c:[]) = WholeMatch $ Move style True action
     where style = if m == '`' then Inclusive else LineWise
@@ -201,9 +201,9 @@ matchGotoMarkMove (m:c:[]) = WholeMatch $ Move style True action
 matchGotoMarkMove _ = NoMatch
 
 matchGotoCharMove :: String -> MatchResult Move
-matchGotoCharMove (m:[]) | m `elem` "fFtT" = PartialMatch
-matchGotoCharMove (m:"<lt>") | m `elem` "fFtT" = matchGotoCharMove (m:"<")
-matchGotoCharMove (m:c:[]) | m `elem` "fFtT" = WholeMatch $ Move style False action
+matchGotoCharMove (m:[]) | m `elem` ('f' : "FtT") = PartialMatch
+matchGotoCharMove (m:"<lt>") | m `elem` ('f' : "FtT") = matchGotoCharMove (m:"<")
+matchGotoCharMove (m:c:[]) | m `elem` ('f' : "FtT") = WholeMatch $ Move style False action
     where (dir, style, move) =
               case m of
                   'f' -> (Forward, Inclusive, nextCInLineInc c)

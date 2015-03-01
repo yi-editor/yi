@@ -142,7 +142,7 @@ mkMotionBinding token condition = VimBindingE f
         when (evs `notElem` group "jk$") $ setStickyEolE False
 
         let m = head evs
-        when (m `elem` "fFtT") $ do
+        when (m `elem` ('f' : "FtT")) $ do
             let c = Prelude.last evs
                 (dir, style) =
                     case m of

@@ -60,7 +60,9 @@ module Yi.Config.Simple (
   modifyModeByName,
   -- * Evaluation of commands
   evaluator,
+#ifdef HINT
   ghciEvaluator,
+#endif
   publishedActionsEvaluator,
   publishAction,
   publishedActions,
