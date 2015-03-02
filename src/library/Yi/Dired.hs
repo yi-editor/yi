@@ -79,7 +79,6 @@ import           System.FilePath          (dropTrailingPathSeparator,
                                            equalFilePath, isAbsolute,
                                            takeDirectory, takeFileName, (</>))
 import           System.FriendlyPath      (userToCanonPath)
-import           System.Locale            (defaultTimeLocale)
 import           System.PosixCompat.Files (FileStatus, fileExist, fileGroup,
                                            fileMode, fileOwner, fileSize,
                                            getSymbolicLinkStatus,
@@ -116,6 +115,13 @@ import           Yi.String                (showT)
 import           Yi.Style
 import           Yi.Types                 (YiVariable, yiConfig)
 import           Yi.Utils                 (io, makeLensesWithSuffix)
+
+
+#if __GLASGOW_HASKELL__ < 710
+import System.Locale (defaultTimeLocale)
+#else
+import Data.Time (defaultTimeLocale)
+#endif
 
 -- Have no idea how to keep track of this state better, so here it is ...
 data DiredOpState = DiredOpState
@@ -755,12 +761,6 @@ modeString fm = ""
     where
     strIfSet s mode = if fm == (fm `unionFileModes` mode) then s else "-"
 
-defaultTimeLocale =
-#if __GLASGOW_HASKELL__ < 710
-    System.Locale.defaultTimeLocale
-#else
-    Data.Time.defaultTimeLocale
-#endif
 
 shortCalendarTimeToString :: UTCTime -> String
 shortCalendarTimeToString = formatTime defaultTimeLocale "%b %d %H:%M"

@@ -28,11 +28,10 @@ import System.IO
     ( hFlush, hPutStrLn, IOMode(WriteMode), openFile, Handle )
 import System.IO.Unsafe ( unsafePerformIO )
 
-defaultTimeLocale =
 #if __GLASGOW_HASKELL__ < 710
-    System.Locale.defaultTimeLocale
+import System.Locale (defaultTimeLocale)
 #else
-    Data.Time.defaultTimeLocale
+import Data.Time (defaultTimeLocale)
 #endif
 
 dbgHandle :: IORef (Maybe Handle)
