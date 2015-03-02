@@ -67,7 +67,6 @@ import qualified Data.Map                 as M (Map, assocs, delete, empty,
 import           Data.Maybe               (fromMaybe)
 import           Data.Monoid              (mempty, (<>))
 import qualified Data.Text                as T (Text, pack, unpack)
-import           Data.Time                (UTCTime, formatTime, getCurrentTime)
 import           Data.Time.Clock.POSIX    (posixSecondsToUTCTime)
 import           Data.Typeable            (Typeable)
 import           System.CanonicalizePath  (canonicalizePath)
@@ -119,8 +118,9 @@ import           Yi.Utils                 (io, makeLensesWithSuffix)
 
 #if __GLASGOW_HASKELL__ < 710
 import System.Locale (defaultTimeLocale)
+import Data.Time     (UTCTime, formatTime, getCurrentTime)
 #else
-import Data.Time (defaultTimeLocale)
+import Data.Time     (UTCTime, formatTime, getCurrentTime, defaultTimeLocale)
 #endif
 
 -- Have no idea how to keep track of this state better, so here it is ...
