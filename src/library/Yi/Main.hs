@@ -112,7 +112,7 @@ versinfo = "yi " ++ display version
 do_args :: Config -> [String] -> Either Err (Config, ConsoleConfig)
 do_args cfg args =
     case getOpt (ReturnInOrder File) options args of
-        (os, [], []) -> foldM (getConfig shouldOpenInTabs) (cfg, defaultConsoleConfig) os
+        (os, [], []) -> foldM (getConfig shouldOpenInTabs) (cfg, defaultConsoleConfig) (reverse os)
         (_, _, errs) -> fail (concat errs)
     where
         shouldOpenInTabs = ("--" ++ openInTabsLong) `elem` args
