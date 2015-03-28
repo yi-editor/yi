@@ -284,7 +284,7 @@ library
     lens >= 4.4.0.1,
     dlist >=0.4.1,
     dyre >=0.8.11,
-    filepath>=1.1 && <1.4,
+    filepath >= 1.1,
     hashable >=1.1.2.5,
     mtl >= 0.1.0.1,
     parsec >= 3.0,
