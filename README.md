@@ -20,7 +20,6 @@ Other information (much of it old) is available on the [Haskell wiki][haskellwik
 
 ## Contents
 * [Installing](#installing)
-  * [Installing inside a Cabal sandbox](#installing-inside-a-cabal-sandbox)
 * [Getting Source](#getting-source)
 * [Reporting Bugs](#reporting-bugs)
 * [Mailing List](#mailing-list)
