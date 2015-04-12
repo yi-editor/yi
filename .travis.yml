@@ -42,8 +42,8 @@ install:
  - travis_retry cabal-$CABALVER install -j2 gtk2hs-buildtools
 
 script:
- - travis_retry cabal-$CABALVER install -j2 -fpango --enable-tests -ftesting --only-dependencies --reorder-goals --force-reinstalls
- - cabal-$CABALVER install -j1 -fpango --enable-tests -ftesting
+ - travis_retry cabal-$CABALVER install -j2 -fvty -fpango --enable-tests -ftesting --only-dependencies --reorder-goals --force-reinstalls
+ - cabal-$CABALVER install -j1 -fvty -fpango --enable-tests -ftesting
  - cabal-$CABALVER test
  # - cd ../yi/example-configs
  # - for config in yi-*.hs;
