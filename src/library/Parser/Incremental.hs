@@ -17,18 +17,9 @@ module Parser.Incremental (Process,
                            evalL'
                           ) where
 
+import Control.Arrow       (first, second, (***))
 import Control.Applicative (Alternative ((<|>), empty), Applicative ((<*>), pure))
 import Data.Tree           (Tree (Node))
-
--- Local versions of our Control.Arrow friends (also make sure they are lazy enough)
-first :: forall t t1 t2. (t -> t2) -> (t, t1) -> (t2, t1)
-first f ~(a,b) = (f a,b)
-
-second :: forall t t1 t2. (t1 -> t2) -> (t, t1) -> (t, t2)
-second f ~(a,b) = (a,f b)
-
-(***) :: forall t t1 t2 t3. (t -> t2) -> (t1 -> t3) -> (t, t1) -> (t2, t3)
-(f *** g) ~(a,b) = (f a,g b)
 
 data a :< b = (:<) {top :: a, _rest :: b}
 infixr :<
