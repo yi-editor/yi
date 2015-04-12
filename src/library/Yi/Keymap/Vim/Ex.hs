@@ -15,30 +15,30 @@ module Yi.Keymap.Vim.Ex
     , defExCommandParsers
     ) where
 
-import           Yi.Keymap.Vim.Common
-import qualified Yi.Keymap.Vim.Ex.Commands.Buffer as Buffer
-import qualified Yi.Keymap.Vim.Ex.Commands.BufferDelete as BufferDelete
-import qualified Yi.Keymap.Vim.Ex.Commands.Buffers as Buffers
-import qualified Yi.Keymap.Vim.Ex.Commands.Cabal as Cabal
-import qualified Yi.Keymap.Vim.Ex.Commands.Delete as Delete
-import qualified Yi.Keymap.Vim.Ex.Commands.Edit as Edit
-import qualified Yi.Keymap.Vim.Ex.Commands.Global as Global
-import qualified Yi.Keymap.Vim.Ex.Commands.GotoLine as GotoLine
-import qualified Yi.Keymap.Vim.Ex.Commands.Help as Help
-import qualified Yi.Keymap.Vim.Ex.Commands.Make as Make
-import qualified Yi.Keymap.Vim.Ex.Commands.Nohl as Nohl
-import qualified Yi.Keymap.Vim.Ex.Commands.Paste as Paste
-import qualified Yi.Keymap.Vim.Ex.Commands.Quit as Quit
-import qualified Yi.Keymap.Vim.Ex.Commands.Reload as Reload
-import qualified Yi.Keymap.Vim.Ex.Commands.Shell as Shell
-import qualified Yi.Keymap.Vim.Ex.Commands.Sort as Sort
-import qualified Yi.Keymap.Vim.Ex.Commands.Substitute as Substitute
-import qualified Yi.Keymap.Vim.Ex.Commands.Tag as Tag
-import qualified Yi.Keymap.Vim.Ex.Commands.Undo as Undo
-import qualified Yi.Keymap.Vim.Ex.Commands.Write as Write
-import qualified Yi.Keymap.Vim.Ex.Commands.Yi as Yi
-import           Yi.Keymap.Vim.Ex.Eval
-import           Yi.Keymap.Vim.Ex.Types
+import           Yi.Keymap.Vim.Common                   (EventString)
+import qualified Yi.Keymap.Vim.Ex.Commands.Buffer       as Buffer (parse)
+import qualified Yi.Keymap.Vim.Ex.Commands.BufferDelete as BufferDelete (parse)
+import qualified Yi.Keymap.Vim.Ex.Commands.Buffers      as Buffers (parse)
+import qualified Yi.Keymap.Vim.Ex.Commands.Cabal        as Cabal (parse)
+import qualified Yi.Keymap.Vim.Ex.Commands.Delete       as Delete (parse)
+import qualified Yi.Keymap.Vim.Ex.Commands.Edit         as Edit (parse)
+import qualified Yi.Keymap.Vim.Ex.Commands.Global       as Global (parse)
+import qualified Yi.Keymap.Vim.Ex.Commands.GotoLine     as GotoLine (parse)
+import qualified Yi.Keymap.Vim.Ex.Commands.Help         as Help (parse)
+import qualified Yi.Keymap.Vim.Ex.Commands.Make         as Make (parse)
+import qualified Yi.Keymap.Vim.Ex.Commands.Nohl         as Nohl (parse)
+import qualified Yi.Keymap.Vim.Ex.Commands.Paste        as Paste (parse)
+import qualified Yi.Keymap.Vim.Ex.Commands.Quit         as Quit (parse)
+import qualified Yi.Keymap.Vim.Ex.Commands.Reload       as Reload (parse)
+import qualified Yi.Keymap.Vim.Ex.Commands.Shell        as Shell (parse)
+import qualified Yi.Keymap.Vim.Ex.Commands.Sort         as Sort (parse)
+import qualified Yi.Keymap.Vim.Ex.Commands.Substitute   as Substitute (parse)
+import qualified Yi.Keymap.Vim.Ex.Commands.Tag          as Tag (parse)
+import qualified Yi.Keymap.Vim.Ex.Commands.Undo         as Undo (parse)
+import qualified Yi.Keymap.Vim.Ex.Commands.Write        as Write (parse)
+import qualified Yi.Keymap.Vim.Ex.Commands.Yi           as Yi (parse)
+import           Yi.Keymap.Vim.Ex.Eval                  (exEvalE, exEvalY)
+import           Yi.Keymap.Vim.Ex.Types                 (ExCommand (..), evStringToExCommand)
 
 defExCommandParsers :: [EventString -> Maybe ExCommand]
 defExCommandParsers =

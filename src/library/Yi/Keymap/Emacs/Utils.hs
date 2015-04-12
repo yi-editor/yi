@@ -1,11 +1,11 @@
-{-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE FlexibleContexts      #-}
+{-# LANGUAGE FlexibleInstances     #-}
+{-# LANGUAGE LambdaCase            #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE TypeOperators #-}
-{-# LANGUAGE UndecidableInstances #-}
+{-# LANGUAGE OverloadedStrings     #-}
+{-# LANGUAGE ScopedTypeVariables   #-}
+{-# LANGUAGE TypeOperators         #-}
+{-# LANGUAGE UndecidableInstances  #-}
 {-# OPTIONS_HADDOCK show-extensions #-}
 
 -- |
@@ -50,34 +50,34 @@ module Yi.Keymap.Emacs.Utils
   )
 where
 
-import           Control.Applicative
-import           Control.Lens hiding (re,act)
-import           Control.Monad
-import           Control.Monad.Base()
-import           Data.List ((\\))
-import           Data.Maybe (fromMaybe)
-import           Data.Monoid
-import qualified Data.Text as T
-import           System.FilePath (takeDirectory, takeFileName, (</>))
+import           Control.Applicative (Alternative ((<|>), many, some), Applicative (pure), optional, (<$>))
+import           Control.Lens        (use, (.=))
+import           Control.Monad       (filterM, replicateM_, void)
+import           Control.Monad.Base  ()
+import           Data.List           ((\\))
+import           Data.Maybe          (fromMaybe)
+import           Data.Monoid         ((<>))
+import qualified Data.Text           as T (Text, concat, null, pack, singleton, snoc, unpack, unwords)
+import           System.FilePath     (takeDirectory, takeFileName, (</>))
 import           System.FriendlyPath ()
 import           Yi.Buffer
-import           Yi.Command (cabalConfigureE, cabalBuildE, reloadProjectE)
-import           Yi.Core (quitEditor)
+import           Yi.Command          (cabalBuildE, cabalConfigureE, reloadProjectE)
+import           Yi.Core             (quitEditor)
 import           Yi.Editor
-import           Yi.Eval
-import           Yi.File
-import           Yi.Keymap
+import           Yi.Eval             (execEditorAction, getAllNamesInScope)
+import           Yi.File             (deservesSave, editFile, fwriteBufferE, openingNewFile)
+import           Yi.Keymap           (Keymap, KeymapM, YiM, write)
 import           Yi.Keymap.Keys
 import           Yi.MiniBuffer
-import           Yi.Misc (promptFile)
-import           Yi.Monad
-import           Yi.Rectangle
-import           Yi.Regex
-import qualified Yi.Rope as R
+import           Yi.Misc             (promptFile)
+import           Yi.Monad            (gets)
+import           Yi.Rectangle        (getRectangle)
+import           Yi.Regex            (makeSearchOptsM)
+import qualified Yi.Rope             as R (countNewLines, fromText, length, replicateChar, toText, words)
 import           Yi.Search
-import           Yi.String
+import           Yi.String           (showT)
 import           Yi.Tag
-import           Yi.Utils
+import           Yi.Utils            (io)
 
 type UnivArgument = Maybe Int
 

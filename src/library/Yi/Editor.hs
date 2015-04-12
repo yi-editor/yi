@@ -1,6 +1,6 @@
-{-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE LambdaCase        #-}
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE TemplateHaskell   #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 {-# OPTIONS_HADDOCK show-extensions #-}
 
@@ -14,7 +14,7 @@
 -- The top level editor state, and operations on it. This is inside an
 -- internal module for easy re-export with Yi.Types bits.
 
-module Yi.Editor ( Editor(..), EditorM(..), MonadEditor(..)
+module Yi.Editor ( Editor(..), EditorM, MonadEditor(..)
                  , runEditor
                  , acceptedInputsOtherWindow
                  , addJumpAtE
@@ -95,42 +95,53 @@ module Yi.Editor ( Editor(..), EditorM(..), MonadEditor(..)
                  , withWindowE
                  ) where
 
-import           Control.Applicative
-import           Control.Lens
-import           Control.Monad
-import           Control.Monad.Reader hiding (mapM, forM_ )
-import           Control.Monad.State hiding (get, put, mapM, forM_)
-import           Data.Binary
-import           Data.Default
-import qualified Data.DelayList as DelayList
-import           Data.DynamicState.Serializable
-import           Data.Foldable hiding (forM_)
-import           Data.List (delete, (\\))
-import           Data.List.NonEmpty (fromList, NonEmpty(..), nub)
-import qualified Data.List.NonEmpty as NE
-import qualified Data.List.PointedList as PL (atEnd, moveTo)
-import qualified Data.List.PointedList.Circular as PL
-import qualified Data.Map as M
-import           Data.Maybe
-import qualified Data.Monoid as Mon
-import           Data.Semigroup
-import qualified Data.Text as T
-import           Prelude hiding (foldl,concatMap,foldr,all)
-import           System.FilePath (splitPath)
+import           Prelude                        hiding (all, concatMap, foldl, foldr)
+
+import           Control.Applicative            ((<$>), (<*>))
+import           Control.Lens                   (Lens', assign, lens, mapped,
+                                                 use, uses, view, (%=), (%~),
+                                                 (&), (.=), (.~), (^.))
+import           Control.Monad                  (forM_)
+import           Control.Monad.Reader           (MonadReader (ask), asks, liftM,
+                                                 unless, when)
+import           Control.Monad.State            (gets, modify)
+import           Data.Binary                    (Binary, get, put)
+import           Data.Default                   (Default, def)
+import qualified Data.DelayList                 as DelayList (insert)
+import           Data.DynamicState.Serializable (getDyn, putDyn)
+import           Data.Foldable                  (Foldable (foldl, foldr), all, concatMap, toList)
+import           Data.List                      (delete, (\\))
+import           Data.List.NonEmpty             (NonEmpty (..), fromList, nub)
+import qualified Data.List.NonEmpty             as NE (filter, head, length, toList, (<|))
+import qualified Data.List.PointedList          as PL (atEnd, moveTo)
+import qualified Data.List.PointedList.Circular as PL (PointedList (..), delete,
+                                                       deleteLeft, deleteOthers,
+                                                       deleteRight, focus,
+                                                       insertLeft, insertRight,
+                                                       length, next, previous,
+                                                       singleton, _focus)
+import qualified Data.Map                       as M (delete, elems, empty,
+                                                      insert, insertWith',
+                                                      lookup, singleton, (!))
+import           Data.Maybe                     (fromJust, fromMaybe, isNothing)
+import qualified Data.Monoid                    as Mon ((<>))
+import           Data.Semigroup                 (mempty, (<>))
+import qualified Data.Text                      as T (Text, null, pack, unlines, unpack, unwords)
+import           System.FilePath                (splitPath)
 import           Yi.Buffer
 import           Yi.Config
-import           Yi.Interact as I
-import           Yi.JumpList
-import           Yi.KillRing
+import           Yi.Interact                    as I (accepted, mkAutomaton)
+import           Yi.JumpList                    (Jump, Jump (..), JumpList, addJump, jumpBack, jumpForward)
+import           Yi.KillRing                    (krEmpty, krGet, krPut, krSet)
 import           Yi.Layout
-import           Yi.Monad
-import           Yi.Rope (YiString, fromText, empty)
-import qualified Yi.Rope as R
-import           Yi.String
-import           Yi.Style (defaultStyle)
+import           Yi.Monad                       (getsAndModify)
+import           Yi.Rope                        (YiString, empty, fromText)
+import qualified Yi.Rope                        as R (YiString, fromText, snoc)
+import           Yi.String                      (listify)
+import           Yi.Style                       (defaultStyle)
 import           Yi.Tab
 import           Yi.Types
-import           Yi.Utils hiding ((+~))
+import           Yi.Utils
 import           Yi.Window
 
 instance Binary Editor where

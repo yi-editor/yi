@@ -12,24 +12,25 @@
 
 module Yi.UI.Utils where
 
-import           Control.Applicative
-import           Control.Arrow (second)
-import           Control.Lens
-import           Control.Monad.State (evalState,modify)
+import           Prelude                   hiding (mapM)
+
+import           Control.Applicative       ((<$>))
+import           Control.Arrow             (second)
+import           Control.Lens              (Traversable, use)
+import           Control.Monad.State       (evalState, modify)
 import           Control.Monad.State.Class (gets)
-import           Data.Foldable (maximumBy)
-import           Data.Function (on)
-import           Data.List (transpose)
-import           Data.List.Split (chunksOf)
-import           Data.Monoid
-import qualified Data.Text as T
-import           Data.Traversable (mapM)
-import           Prelude hiding (mapM)
+import           Data.Foldable             (maximumBy)
+import           Data.Function             (on)
+import           Data.List                 (transpose)
+import           Data.List.Split           (chunksOf)
+import           Data.Monoid               (Endo (appEndo))
+import qualified Data.Text                 as T (Text, null, pack, unpack)
+import           Data.Traversable          (mapM)
 import           Yi.Buffer
-import           Yi.String (padLeft)
-import           Yi.Style
-import           Yi.Syntax (Span(..))
-import           Yi.Window
+import           Yi.String                 (padLeft)
+import           Yi.Style                  (Attributes, StyleName, UIStyle (baseAttributes, selectedStyle))
+import           Yi.Syntax                 (Span (..))
+import           Yi.Window                 (Window (height, isMini))
 
 applyHeights :: Traversable t => [Int] -> t Window -> t Window
 applyHeights heights ws = evalState (mapM distribute ws) heights

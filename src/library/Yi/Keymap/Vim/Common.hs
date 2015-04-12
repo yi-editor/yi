@@ -1,8 +1,8 @@
-{-# LANGUAGE CPP #-}
+{-# LANGUAGE CPP                #-}
 {-# LANGUAGE DeriveDataTypeable #-}
-{-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE DeriveGeneric      #-}
 {-# LANGUAGE StandaloneDeriving #-}
-{-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE TemplateHaskell    #-}
 {-# OPTIONS_HADDOCK show-extensions #-}
 
 -- |
@@ -30,27 +30,29 @@ module Yi.Keymap.Vim.Common
     , lookupBestMatch, matchesString
     ) where
 
-import           Control.Applicative
-import           Control.Lens
-import           Data.Binary
 #if __GLASGOW_HASKELL__ < 708
 import           Data.DeriveTH
 #else
-import           GHC.Generics (Generic)
+import           GHC.Generics              (Generic)
 #endif
-import           Data.Default
-import qualified Data.HashMap.Strict as HM
-import           Data.Monoid
-import           Data.String (IsString(..))
-import qualified Data.Text as T
-import qualified Data.Text.Encoding as E
-import           Data.Typeable
-import           Yi.Buffer.Adjusted hiding (Insert)
-import           Yi.Editor
-import           Yi.Keymap
-import           Yi.Keymap.Vim.MatchResult
-import           Yi.Rope (YiString)
-import           Yi.Types (YiVariable)
+
+import           Control.Applicative       (Alternative ((<|>)), (<$>))
+import           Control.Lens              (makeLenses)
+import           Data.Binary               (Binary (..), getWord8, putWord8)
+import           Data.Default              (Default (..))
+import qualified Data.HashMap.Strict       as HM (HashMap)
+import           Data.Monoid               (Monoid (mappend, mempty), (<>))
+import           Data.String               (IsString (..))
+import qualified Data.Text                 as T (Text, isPrefixOf, pack)
+import qualified Data.Text.Encoding        as E (decodeUtf8, encodeUtf8)
+import           Data.Typeable             (Typeable)
+import           Yi.Buffer.Adjusted        (Direction, Point, RegionStyle)
+import           Yi.Editor                 (EditorM)
+import           Yi.Keymap                 (YiM)
+import           Yi.Keymap.Vim.MatchResult (MatchResult (..))
+import           Yi.Rope                   (YiString)
+import           Yi.Types                  (YiVariable)
+
 
 newtype EventString = Ev { _unEv :: T.Text } deriving (Show, Eq, Ord)
 
@@ -98,13 +100,13 @@ type MacroName = Char
 
 data RepeatableAction = RepeatableAction {
           raPreviousCount :: !Int
-        , raActionString :: !EventString
+        , raActionString  :: !EventString
     }
     deriving (Typeable, Eq, Show)
 
 data Register = Register {
           regRegionStyle :: RegionStyle
-        , regContent :: YiString
+        , regContent     :: YiString
     }
 
 data VimMode = Normal
@@ -122,20 +124,20 @@ data VimMode = Normal
 data GotoCharCommand = GotoCharCommand !Char !Direction !RegionStyle
 
 data VimState = VimState {
-          vsMode :: !VimMode
-        , vsCount :: !(Maybe Int)
-        , vsAccumulator :: !EventString -- ^ for repeat and potentially macros
+          vsMode                  :: !VimMode
+        , vsCount                 :: !(Maybe Int)
+        , vsAccumulator           :: !EventString -- ^ for repeat and potentially macros
         , vsTextObjectAccumulator :: !EventString
-        , vsRegisterMap :: !(HM.HashMap RegisterName Register)
-        , vsActiveRegister :: !RegisterName
-        , vsRepeatableAction :: !(Maybe RepeatableAction)
-        , vsStringToEval :: !EventString -- ^ see Yi.Keymap.Vim.vimEval comment
-        , vsStickyEol :: !Bool -- ^ is set on $, allows j and k walk the right edge of lines
-        , vsOngoingInsertEvents :: !EventString
-        , vsLastGotoCharCommand :: !(Maybe GotoCharCommand)
-        , vsBindingAccumulator :: !EventString
-        , vsSecondaryCursors :: ![Point]
-        , vsPaste :: !Bool -- ^ like vim's :help paste
+        , vsRegisterMap           :: !(HM.HashMap RegisterName Register)
+        , vsActiveRegister        :: !RegisterName
+        , vsRepeatableAction      :: !(Maybe RepeatableAction)
+        , vsStringToEval          :: !EventString -- ^ see Yi.Keymap.Vim.vimEval comment
+        , vsStickyEol             :: !Bool -- ^ is set on $, allows j and k walk the right edge of lines
+        , vsOngoingInsertEvents   :: !EventString
+        , vsLastGotoCharCommand   :: !(Maybe GotoCharCommand)
+        , vsBindingAccumulator    :: !EventString
+        , vsSecondaryCursors      :: ![Point]
+        , vsPaste                 :: !Bool -- ^ like vim's :help paste
         , vsCurrentMacroRecording :: !(Maybe (MacroName, EventString))
     } deriving (Typeable)
 

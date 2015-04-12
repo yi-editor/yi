@@ -1,7 +1,7 @@
-{-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE LambdaCase        #-}
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE TupleSections #-}
-{-# LANGUAGE TypeOperators #-}
+{-# LANGUAGE TupleSections     #-}
+{-# LANGUAGE TypeOperators     #-}
 {-# OPTIONS_HADDOCK show-extensions #-}
 
 -- |
@@ -19,32 +19,33 @@ module Yi.Misc ( getAppropriateFiles, getFolder, cd, pwd, matchingFileNames
                , printFileInfoE, debugBufferContent
                ) where
 
-import           Control.Applicative
-import           Control.Lens (assign)
-import           Control.Monad ((>=>), filterM)
-import           Control.Monad.Base
-import           Data.Char (chr, isAlpha, isLower, isUpper, ord)
-import           Data.List ((\\))
-import           Data.Maybe (isNothing)
-import qualified Data.Text as T
-import           System.CanonicalizePath (canonicalizePath, replaceShorthands,
-                                          replaceShorthands)
-import           System.Directory (doesDirectoryExist, getDirectoryContents,
-                                   getCurrentDirectory, setCurrentDirectory)
-import           System.Environment (lookupEnv)
-import           System.FilePath (takeDirectory, (</>), takeFileName,
-                                  addTrailingPathSeparator,
-                                  hasTrailingPathSeparator)
-import           System.FriendlyPath (expandTilda, isAbsolute')
+import           Control.Applicative     ((<$>))
+import           Control.Lens            (assign)
+import           Control.Monad           (filterM, (>=>))
+import           Control.Monad.Base      (liftBase)
+import           Data.Char               (chr, isAlpha, isLower, isUpper, ord)
+import           Data.List               ((\\))
+import           Data.Maybe              (isNothing)
+import qualified Data.Text               as T (Text, append, concat, isPrefixOf,
+                                               pack, stripPrefix, unpack)
+import           System.CanonicalizePath (canonicalizePath, replaceShorthands, replaceShorthands)
+import           System.Directory        (doesDirectoryExist,
+                                          getCurrentDirectory,
+                                          getDirectoryContents,
+                                          setCurrentDirectory)
+import           System.Environment      (lookupEnv)
+import           System.FilePath         (addTrailingPathSeparator,
+                                          hasTrailingPathSeparator,
+                                          takeDirectory, takeFileName, (</>))
+import           System.FriendlyPath     (expandTilda, isAbsolute')
 import           Yi.Buffer
-import           Yi.Completion (completeInList')
-import           Yi.Editor
-import           Yi.Keymap
-import           Yi.MiniBuffer (withMinibufferGen, mkCompleteFn,
-                                debugBufferContent)
-import           Yi.Monad
-import qualified Yi.Rope as R
-import           Yi.Utils (io)
+import           Yi.Completion           (completeInList')
+import           Yi.Editor               (EditorM, printMsg, withCurrentBuffer)
+import           Yi.Keymap               (YiM)
+import           Yi.MiniBuffer           (debugBufferContent, mkCompleteFn, withMinibufferGen)
+import           Yi.Monad                (gets)
+import qualified Yi.Rope                 as R (fromText)
+import           Yi.Utils                (io)
 
 -- | Given a possible starting path (which if not given defaults to
 -- the current directory) and a fragment of a path we find all files

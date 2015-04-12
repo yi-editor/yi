@@ -1,5 +1,9 @@
-{-# LANGUAGE DeriveDataTypeable, ExistentialQuantification, DeriveFunctor, TupleSections, ViewPatterns #-}
-{-# LANGUAGE Rank2Types #-}
+{-# LANGUAGE DeriveDataTypeable        #-}
+{-# LANGUAGE DeriveFunctor             #-}
+{-# LANGUAGE ExistentialQuantification #-}
+{-# LANGUAGE Rank2Types                #-}
+{-# LANGUAGE TupleSections             #-}
+{-# LANGUAGE ViewPatterns              #-}
 {-# OPTIONS_GHC -funbox-strict-fields #-} -- we might as well unbox our Ints.
 
 -- | This module defines the layout manager interface (see 'LayoutManager'). To desgin a new layout manager, just make an instance of this class.
@@ -43,14 +47,14 @@ module Yi.Layout
   )
  where
 
-import Control.Applicative
-import Control.Arrow (first)
-import Control.Lens hiding (set')
-import Data.Typeable
-import Data.Maybe
-import Data.Default
-import Data.List (mapAccumL, foldl')
-import qualified Control.Monad.State.Strict as Monad
+import           Control.Applicative        (pure, (<$>), (<*>), (<|>))
+import           Control.Arrow              (first)
+import           Control.Lens               (Lens', lens)
+import qualified Control.Monad.State.Strict as Monad (State, evalState, get, put)
+import           Data.Default               (Default, def)
+import           Data.List                  (foldl', mapAccumL)
+import           Data.Maybe                 (fromMaybe)
+import           Data.Typeable              (Typeable, cast, typeOf)
 
 -------------------------------- Some design notes ----------------------
 -- [Treatment of mini windows]

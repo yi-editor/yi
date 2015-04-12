@@ -1,4 +1,4 @@
-{-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE LambdaCase        #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# OPTIONS_HADDOCK show-extensions #-}
 
@@ -11,18 +11,18 @@
 
 module Yi.Keymap.Vim.SearchMotionMap (defSearchMotionMap) where
 
-import           Control.Applicative
-import           Control.Monad
-import           Data.Maybe (fromMaybe)
-import qualified Data.Text as T
-import           Yi.Buffer.Adjusted
-import           Yi.Editor
-import           Yi.History
+import           Control.Applicative      ((<$))
+import           Control.Monad            (replicateM_)
+import           Data.Maybe               (fromMaybe)
+import qualified Data.Text                as T (pack, unpack)
+import           Yi.Buffer.Adjusted       (Direction (Backward, Forward), elemsB)
+import           Yi.Editor                (getEditorDyn, withCurrentBuffer)
+import           Yi.History               (historyFinish, historyPrefixSet)
 import           Yi.Keymap.Vim.Common
-import           Yi.Keymap.Vim.Search
-import           Yi.Keymap.Vim.StateUtils
-import           Yi.Keymap.Vim.Utils
-import qualified Yi.Rope as R
+import           Yi.Keymap.Vim.Search     (continueVimSearch)
+import           Yi.Keymap.Vim.StateUtils (getCountE, switchModeE)
+import           Yi.Keymap.Vim.Utils      (matchFromBool)
+import qualified Yi.Rope                  as R (toText)
 import           Yi.Search
 
 defSearchMotionMap :: [VimBinding]

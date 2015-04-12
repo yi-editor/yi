@@ -1,14 +1,14 @@
-{-# LANGUAGE CPP #-}
-{-# LANGUAGE DeriveDataTypeable #-}
-{-# LANGUAGE DeriveGeneric #-}
-{-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE FunctionalDependencies #-}
+{-# LANGUAGE CPP                        #-}
+{-# LANGUAGE DeriveDataTypeable         #-}
+{-# LANGUAGE DeriveGeneric              #-}
+{-# LANGUAGE FlexibleContexts           #-}
+{-# LANGUAGE FlexibleInstances          #-}
+{-# LANGUAGE FunctionalDependencies     #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
-{-# LANGUAGE LambdaCase #-}
-{-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE StandaloneDeriving #-}
-{-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE LambdaCase                 #-}
+{-# LANGUAGE OverloadedStrings          #-}
+{-# LANGUAGE StandaloneDeriving         #-}
+{-# LANGUAGE TemplateHaskell            #-}
 {-# OPTIONS_HADDOCK show-extensions #-}
 
 -- |
@@ -20,31 +20,36 @@
 
 module Yi.Snippets where
 
-import           Control.Applicative
-import           Control.Arrow
-import           Control.Lens hiding (Action)
-import           Control.Monad
-import           Control.Monad.RWS hiding (mapM, mapM_, sequence, get, put)
-import           Data.Binary
-import           Data.Char (isSpace)
-import           Data.Default
 #if __GLASGOW_HASKELL__ < 708
-import           Data.DeriveTH
+import           Data.DeriveTH (derive, makeBinary)
 #else
 import           GHC.Generics (Generic)
 #endif
-import           Data.Foldable (find)
-import           Data.List hiding (find, elem, concat, concatMap)
-import           Data.Maybe (catMaybes)
-import qualified Data.Text as T
-import           Data.Typeable
+
+import           Control.Applicative (some)
+import           Control.Arrow       (second)
+import           Control.Lens        (use, (.=))
+import           Control.Monad.RWS   (MonadPlus (mplus), MonadReader (ask),
+                                      MonadState, MonadTrans (..),
+                                      MonadWriter (tell),
+                                      Monoid (mappend, mempty), RWST, evalRWST,
+                                      filterM, forM, forM_, liftM, liftM2,
+                                      unless, when, (<>))
+import           Data.Binary         (Binary, get, getWord8, put, putWord8)
+import           Data.Char           (isSpace)
+import           Data.Default        (Default, def)
+import           Data.Foldable       (find)
+import           Data.List           (foldl', groupBy, intersperse, nub, sort)
+import           Data.Maybe          (catMaybes)
+import qualified Data.Text           as T (Text)
+import           Data.Typeable       (Typeable)
 import           Yi.Buffer
-import           Yi.Editor
-import           Yi.Keymap
+import           Yi.Editor           (withCurrentBuffer)
+import           Yi.Keymap           (Action)
 import           Yi.Keymap.Keys
-import qualified Yi.Rope as R
-import           Yi.TextCompletion
-import           Yi.Types (YiVariable)
+import qualified Yi.Rope             as R
+import           Yi.TextCompletion   (resetComplete, wordCompleteString')
+import           Yi.Types            (YiVariable)
 
 type SnippetCmd = RWST (Int, Int) [MarkInfo] () BufferM
 

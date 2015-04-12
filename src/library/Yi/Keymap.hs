@@ -1,14 +1,14 @@
-{-# LANGUAGE DeriveDataTypeable #-}
-{-# LANGUAGE ExistentialQuantification #-}
-{-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE FunctionalDependencies #-}
+{-# LANGUAGE DeriveDataTypeable         #-}
+{-# LANGUAGE ExistentialQuantification  #-}
+{-# LANGUAGE FlexibleContexts           #-}
+{-# LANGUAGE FlexibleInstances          #-}
+{-# LANGUAGE FunctionalDependencies     #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
-{-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE Rank2Types #-}
-{-# LANGUAGE StandaloneDeriving #-}
-{-# LANGUAGE TemplateHaskell #-}
-{-# LANGUAGE TypeSynonymInstances #-}
+{-# LANGUAGE MultiParamTypeClasses      #-}
+{-# LANGUAGE Rank2Types                 #-}
+{-# LANGUAGE StandaloneDeriving         #-}
+{-# LANGUAGE TemplateHaskell            #-}
+{-# LANGUAGE TypeSynonymInstances       #-}
 {-# OPTIONS_HADDOCK show-extensions #-}
 
 -- |
@@ -59,16 +59,16 @@ module Yi.Keymap
     , yiVarA
     ) where
 
-import           Control.Exception
-import           Control.Monad.Reader hiding (mapM_)
-import           Control.Monad.State hiding (mapM_)
-import           Yi.Buffer
-import qualified Yi.Editor as Editor
-import qualified Yi.Interact as I
-import           Yi.Monad
+import           Control.Exception    (Exception, catch, catchJust)
+import           Control.Monad.Reader (ReaderT (ReaderT, runReaderT))
+import           Control.Monad.State  (gets)
+import           Yi.Buffer            ()
+import qualified Yi.Editor            as Editor (currentBuffer, findBuffer)
+import qualified Yi.Interact          as I (MonadInteract, write)
+import           Yi.Monad             (with)
 import           Yi.Types
-import           Yi.UI.Common
-import           Yi.Utils
+import           Yi.UI.Common         (UI)
+import           Yi.Utils             (io, makeLensesWithSuffix)
 
 
 -----------------------

@@ -14,15 +14,15 @@
 
 module Yi.Mode.IReader where
 
-import Data.Text ()
-import Control.Lens
-import Data.Char (intToDigit)
+import Control.Lens   ((%~))
+import Data.Char      (intToDigit)
+import Data.Text      ()
 import Yi.Buffer.Misc
-import Yi.Editor
+import Yi.Editor      (printMsg, withCurrentBuffer)
 import Yi.IReader
-import Yi.Keymap
-import Yi.Keymap.Keys
-import Yi.Modes (anyExtension, fundamentalMode)
+import Yi.Keymap      (YiM, topKeymapA)
+import Yi.Keymap.Keys (choice, important, metaCh, (?>>!))
+import Yi.Modes       (anyExtension, fundamentalMode)
 
 abstract :: Mode syntax
 abstract = fundamentalMode { modeApplies = anyExtension ["irtxt"]

@@ -1,6 +1,6 @@
-{-# LANGUAGE DeriveFoldable #-}
+{-# LANGUAGE DeriveFoldable    #-}
 {-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE TypeFamilies      #-}
 
 -- we have lots of parsers which don't want signatures; and we have
 -- uniplate patterns
@@ -29,17 +29,19 @@ module Yi.Syntax.Haskell ( PModule
                          , indentScanner
                          ) where
 
-import Control.Applicative
-import Data.Foldable hiding (elem, notElem)
-import Data.Maybe
-import Data.List ((\\))
-import Yi.IncrementalParse
-import Yi.Lexer.Alex
-import Yi.Lexer.Haskell
-import Yi.Syntax.Layout
-import Yi.Syntax.Tree
-import Yi.Syntax
-import Control.Arrow ((&&&))
+import           Control.Applicative (Alternative ((<|>), empty, many, some),
+                                      Applicative (..), optional, (<$>))
+import           Control.Arrow       ((&&&))
+import           Data.Foldable       (Foldable)
+import           Data.List           ((\\))
+import           Data.Maybe          (fromJust, isNothing)
+import           Yi.IncrementalParse
+import           Yi.Lexer.Alex       (Posn (Posn, posnOfs), Tok (Tok, tokT),
+                                      startPosn, tokBegin)
+import           Yi.Lexer.Haskell
+import           Yi.Syntax           (Scanner)
+import           Yi.Syntax.Layout    (State, layoutHandler)
+import           Yi.Syntax.Tree      (IsTree (emptyNode, uniplate), sepBy1)
 
 indentScanner :: Scanner (AlexState lexState) TT
               -> Scanner (Yi.Syntax.Layout.State Token lexState) TT

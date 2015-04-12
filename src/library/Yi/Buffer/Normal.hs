@@ -6,48 +6,67 @@
 --  * the textual units they work on
 --  * the direction towards which they operate (if applicable)
 
-module Yi.Buffer.Normal (TextUnit(Character, Line, VLine, Document, GenUnit),
-                         outsideUnit,
-                         leftBoundaryUnit,
-                         unitWord,
-                         unitViWord,
-                         unitViWORD,
-                         unitViWordAnyBnd,
-                         unitViWORDAnyBnd,
-                         unitViWordOnLine,
-                         unitViWORDOnLine,
-                         unitDelimited,
-                         unitSentence, unitEmacsParagraph, unitParagraph,
-                         isAnySep, unitSep, unitSepThisLine, isWordChar,
+module Yi.Buffer.Normal ( TextUnit(Character, Line, VLine, Document, GenUnit)
+                        , isAnySep
+                        , isWordChar
+                        , leftBoundaryUnit
+                        , outsideUnit
+                        , unitDelimited
+                        , unitEmacsParagraph
+                        , unitParagraph
+                        , unitSentence
+                        , unitSep
+                        , unitSepThisLine
+                        , unitViWORD
+                        , unitViWORDAnyBnd
+                        , unitViWORDOnLine
+                        , unitViWord
+                        , unitViWordAnyBnd
+                        , unitViWordOnLine
+                        , unitWord
                          -- TextUnit is exported abstract intentionally:
                          -- we'd like to move more units to the GenUnit format.
-                         moveB, maybeMoveB,
-                         transformB, transposeB,
-                         regionOfB, regionOfNonEmptyB, regionOfPartB,
-                         regionOfPartNonEmptyB, regionOfPartNonEmptyAtB,
-                         readPrevUnitB, readUnitB,
-                         untilB, doUntilB_, untilB_, whileB, doIfCharB,
-                         atBoundaryB,
-                         numberOfB,
-                         deleteB, genMaybeMoveB,
-                         genMoveB, BoundarySide(..), genAtBoundaryB,
-                         genEnclosingUnit, genUnitBoundary,
-                         checkPeekB
-                         , RegionStyle(..)
-                         , mkRegionOfStyleB
-                         , convertRegionToStyleB
-                         , unitWiseRegion
-                         , extendRegionToBoundaries
-                         , getRegionStyle
-                         , putRegionStyle
-                         ) where
+                        , atBoundaryB
+                        , deleteB
+                        , doIfCharB
+                        , doUntilB_
+                        , genMaybeMoveB
+                        , genMoveB
+                        , maybeMoveB
+                        , moveB
+                        , numberOfB
+                        , readPrevUnitB
+                        , readUnitB
+                        , regionOfB
+                        , regionOfNonEmptyB
+                        , regionOfPartB
+                        , regionOfPartNonEmptyAtB
+                        , regionOfPartNonEmptyB
+                        , transformB
+                        , transposeB
+                        , untilB
+                        , untilB_
+                        , whileB
+                        , BoundarySide(..)
+                        , checkPeekB
+                        , genAtBoundaryB
+                        , genEnclosingUnit
+                        , genUnitBoundary
+                        , RegionStyle(..)
+                        , convertRegionToStyleB
+                        , extendRegionToBoundaries
+                        , getRegionStyle
+                        , mkRegionOfStyleB
+                        , putRegionStyle
+                        , unitWiseRegion
+                        ) where
 
-import Data.List (sort)
-import Yi.Buffer.Basic
-import Yi.Buffer.Misc
-import Yi.Buffer.Region
-import Yi.Buffer.TextUnit
-import Yi.Types (RegionStyle(..))
+import           Data.List          (sort)
+import           Yi.Buffer.Basic    (Direction (Backward, Forward), Point)
+import           Yi.Buffer.Misc     (BufferM, getBufferDyn, moveTo, pointB, putBufferDyn, savingPointB)
+import           Yi.Buffer.Region   (Region (..), inclusiveRegionB, mkRegion, mkRegion')
+import           Yi.Buffer.TextUnit
+import           Yi.Types           (RegionStyle (..))
 
 getRegionStyle :: BufferM RegionStyle
 getRegionStyle = getBufferDyn

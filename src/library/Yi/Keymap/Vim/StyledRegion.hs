@@ -16,11 +16,11 @@ module Yi.Keymap.Vim.StyledRegion
     , transformCharactersInLineN
     ) where
 
-import           Control.Monad
-import qualified Data.Text as T
+import           Control.Monad      (forM_)
+import qualified Data.Text          as T (map)
 import           Yi.Buffer.Adjusted
-import qualified Yi.Rope as R
-import           Yi.Utils
+import qualified Yi.Rope            as R (withText)
+import           Yi.Utils           (SemiNum ((-~)))
 
 data StyledRegion = StyledRegion !RegionStyle !Region
 

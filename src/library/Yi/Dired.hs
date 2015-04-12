@@ -1,10 +1,10 @@
-{-# LANGUAGE CPP #-}
+{-# LANGUAGE CPP                #-}
 {-# LANGUAGE DeriveDataTypeable #-}
-{-# LANGUAGE DeriveGeneric #-}
-{-# LANGUAGE LambdaCase #-}
-{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE DeriveGeneric      #-}
+{-# LANGUAGE LambdaCase         #-}
+{-# LANGUAGE OverloadedStrings  #-}
 {-# LANGUAGE StandaloneDeriving #-}
-{-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE TemplateHaskell    #-}
 {-# OPTIONS_HADDOCK show-extensions #-}
 
 {-|
@@ -44,54 +44,84 @@ module Yi.Dired
   , editFile
   ) where
 
-import           Control.Category ((>>>))
-import           Control.Applicative
-import           Control.Exc
-import           Control.Lens hiding (act, op, pre)
-import           Control.Monad.Reader hiding (mapM)
-import           Data.Binary
-import           Data.Char (toLower)
-import           Data.Default
-import           Data.Maybe
 #if __GLASGOW_HASKELL__ < 708
-import           Data.DeriveTH
+import           Data.DeriveTH            (derive, makeBinary)
 #else
-import           GHC.Generics (Generic)
+import           GHC.Generics             (Generic)
 #endif
-import           Data.Foldable (find)
-import           Data.List hiding (find, maximum, concat)
-import qualified Data.Map as M
-import           Data.Monoid
-import qualified Data.Text as T
-import           Data.Time hiding (defaultTimeLocale)
-import qualified Data.Time
-import           Data.Time.Clock.POSIX
-import           Data.Typeable
-import           System.CanonicalizePath (canonicalizePath)
-import           System.Directory hiding (canonicalizePath)
-import           System.FilePath
-import           System.FriendlyPath
-import qualified System.Locale
-import           System.PosixCompat.Files
-import           System.PosixCompat.Types
-import           System.PosixCompat.User
-import           Text.Printf
+
+import           Control.Applicative      ((<$>), (<|>))
+import           Control.Category         ((>>>))
+import           Control.Exc              (orException, printingException)
+import           Control.Lens             (assign, makeLenses, use, (%~), (&), (.=), (.~), (^.))
+import           Control.Monad.Reader     (asks, foldM, liftM, unless, void, when)
+import           Data.Binary              (Binary, get, getWord8, put, putWord8)
+import           Data.Char                (toLower)
+import           Data.Default             (Default, def)
+import           Data.Foldable            (find, foldl')
+import           Data.List                (any, elem, sum, transpose)
+import qualified Data.Map                 as M (Map, assocs, delete, empty,
+                                                findWithDefault, fromList,
+                                                insert, keys, lookup, map,
+                                                mapKeys, union, (!))
+import           Data.Maybe               (fromMaybe)
+import           Data.Monoid              (mempty, (<>))
+import qualified Data.Text                as T (Text, pack, unpack)
+import           Data.Time.Clock.POSIX    (posixSecondsToUTCTime)
+import           Data.Typeable            (Typeable)
+import           System.CanonicalizePath  (canonicalizePath)
+import           System.Directory         (copyFile, createDirectoryIfMissing,
+                                           doesDirectoryExist, doesFileExist,
+                                           getDirectoryContents, getPermissions,
+                                           removeDirectoryRecursive, writable)
+import           System.FilePath          (dropTrailingPathSeparator,
+                                           equalFilePath, isAbsolute,
+                                           takeDirectory, takeFileName, (</>))
+import           System.FriendlyPath      (userToCanonPath)
+import           System.PosixCompat.Files (FileStatus, fileExist, fileGroup,
+                                           fileMode, fileOwner, fileSize,
+                                           getSymbolicLinkStatus,
+                                           groupExecuteMode, groupReadMode,
+                                           groupWriteMode, isBlockDevice,
+                                           isCharacterDevice, isDirectory,
+                                           isNamedPipe, isRegularFile, isSocket,
+                                           isSymbolicLink, linkCount,
+                                           modificationTime, otherExecuteMode,
+                                           otherReadMode, otherWriteMode,
+                                           ownerExecuteMode, ownerReadMode,
+                                           ownerWriteMode, readSymbolicLink,
+                                           readSymbolicLink, removeLink, rename,
+                                           unionFileModes)
+import           System.PosixCompat.Types (FileMode, GroupID, UserID)
+import           System.PosixCompat.User  (GroupEntry, GroupEntry (..),
+                                           UserEntry (..), getAllGroupEntries,
+                                           getAllUserEntries,
+                                           getGroupEntryForID,
+                                           getUserEntryForID, groupID, userID)
+import           Text.Printf              (printf)
 import           Yi.Buffer
-import           Yi.Config
-import           Yi.Core
-import           Yi.Types (YiVariable)
+import           Yi.Config                (modeTable)
+import           Yi.Core                  (errorEditor)
 import           Yi.Editor
-import           Yi.Keymap
+import           Yi.Keymap                (Keymap, YiM, topKeymapA)
 import           Yi.Keymap.Keys
-import           Yi.MiniBuffer (spawnMinibufferE, withMinibufferFree, noHint,
-                                withMinibuffer)
-import           Yi.Misc (getFolder, promptFile)
-import           Yi.Monad
-import           Yi.Regex
-import qualified Yi.Rope as R
-import           Yi.String (showT)
+import           Yi.MiniBuffer            (noHint, spawnMinibufferE, withMinibuffer, withMinibufferFree)
+import           Yi.Misc                  (getFolder, promptFile)
+import           Yi.Monad                 (gets)
+import           Yi.Regex                 (AllTextSubmatches (..), (=~))
+import qualified Yi.Rope                  as R
+import           Yi.String                (showT)
 import           Yi.Style
-import           Yi.Utils
+import           Yi.Types                 (YiVariable, yiConfig)
+import           Yi.Utils                 (io, makeLensesWithSuffix)
+
+
+#if __GLASGOW_HASKELL__ < 710
+import System.Locale (defaultTimeLocale)
+import Data.Time     (UTCTime, formatTime, getCurrentTime)
+#else
+import Data.Time     (UTCTime, formatTime, getCurrentTime, defaultTimeLocale)
+#endif
 
 -- Have no idea how to keep track of this state better, so here it is ...
 data DiredOpState = DiredOpState
@@ -114,11 +144,11 @@ instance YiVariable DiredOpState
 
 makeLenses ''DiredOpState
 
-data DiredFileInfo = DiredFileInfo {  permString :: R.YiString
-                                    , numLinks :: Integer
-                                    , owner :: R.YiString
-                                    , grp :: R.YiString
-                                    , sizeInBytes :: Integer
+data DiredFileInfo = DiredFileInfo {  permString             :: R.YiString
+                                    , numLinks               :: Integer
+                                    , owner                  :: R.YiString
+                                    , grp                    :: R.YiString
+                                    , sizeInBytes            :: Integer
                                     , modificationTimeString :: R.YiString
                                  }
                 deriving (Show, Eq, Typeable)
@@ -142,17 +172,17 @@ type DiredFilePath = R.YiString
 type DiredEntries = M.Map DiredFilePath DiredEntry
 
 data DiredState = DiredState
-  { diredPath :: FilePath -- ^ The full path to the directory being viewed
+  { diredPath        :: FilePath -- ^ The full path to the directory being viewed
     -- FIXME Choose better data structure for Marks...
-   , diredMarks :: M.Map FilePath Char
+   , diredMarks      :: M.Map FilePath Char
      -- ^ Map values are just leafnames, not full paths
-   , diredEntries :: DiredEntries
+   , diredEntries    :: DiredEntries
      -- ^ keys are just leafnames, not full paths
    , diredFilePoints :: [(Point,Point,FilePath)]
      -- ^ position in the buffer where filename is
-   , diredNameCol :: Int
+   , diredNameCol    :: Int
      -- ^ position on line where filename is (all pointA are this col)
-   , diredCurrFile :: FilePath
+   , diredCurrFile   :: FilePath
      -- ^ keep the position of pointer (for refreshing dired buffer)
   } deriving (Show, Eq, Typeable)
 
@@ -731,12 +761,6 @@ modeString fm = ""
     where
     strIfSet s mode = if fm == (fm `unionFileModes` mode) then s else "-"
 
-defaultTimeLocale =
-#if __GLASGOW_HASKELL__ < 710
-    System.Locale.defaultTimeLocale
-#else
-    Data.Time.defaultTimeLocale
-#endif
 
 shortCalendarTimeToString :: UTCTime -> String
 shortCalendarTimeToString = formatTime defaultTimeLocale "%b %d %H:%M"

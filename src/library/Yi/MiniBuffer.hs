@@ -1,14 +1,14 @@
-{-# LANGUAGE DeriveDataTypeable #-}
-{-# LANGUAGE EmptyDataDecls #-}
-{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE DeriveDataTypeable         #-}
+{-# LANGUAGE EmptyDataDecls             #-}
+{-# LANGUAGE FlexibleInstances          #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
-{-# LANGUAGE LambdaCase #-}
-{-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE TypeOperators #-}
-{-# LANGUAGE TypeSynonymInstances #-}
-{-# LANGUAGE UndecidableInstances #-}
+{-# LANGUAGE LambdaCase                 #-}
+{-# LANGUAGE MultiParamTypeClasses      #-}
+{-# LANGUAGE OverloadedStrings          #-}
+{-# LANGUAGE ScopedTypeVariables        #-}
+{-# LANGUAGE TypeOperators              #-}
+{-# LANGUAGE TypeSynonymInstances       #-}
+{-# LANGUAGE UndecidableInstances       #-}
 {-# OPTIONS_HADDOCK show-extensions #-}
 
 -- |
@@ -30,35 +30,36 @@ module Yi.MiniBuffer ( spawnMinibufferE, withMinibufferFree, withMinibuffer
                      , commentRegion, promptingForBuffer, debugBufferContent
                      ) where
 
-import           Control.Applicative
-import           Control.Concurrent
-import           Control.Lens hiding (act)
-import           Control.Monad
-import           Data.Foldable (find, toList)
-import           Data.IORef
-import qualified Data.List.PointedList.Circular as PL
-import           Data.Maybe
-import           Data.Monoid (mempty)
-import           Data.Proxy
-import           Data.String (IsString)
-import qualified Data.Text as T
-import           Data.Typeable
-import           System.CanonicalizePath (replaceShorthands)
+import           Control.Applicative            ((<$>))
+import           Control.Concurrent             (threadDelay)
+import           Control.Lens                   (use, (%=))
+import           Control.Monad                  (forM, void, when, (<=<), (>=>))
+import           Data.Foldable                  (find, toList)
+import           Data.IORef                     (newIORef, readIORef, writeIORef)
+import qualified Data.List.PointedList.Circular as PL (find, insertRight)
+import           Data.Maybe                     (catMaybes, fromJust, fromMaybe)
+import           Data.Monoid                    (mempty)
+import           Data.Proxy                     (Proxy)
+import           Data.String                    (IsString)
+import qualified Data.Text                      as T (Text, append, head,
+                                                      isInfixOf, null, pack,
+                                                      snoc, unpack, words)
+import           Data.Typeable                  (Typeable)
+import           System.CanonicalizePath        (replaceShorthands)
 import           Yi.Buffer
-import           Yi.Completion (infixMatch, prefixMatch, containsMatch',
-                                completeInList, completeInList')
-import           Yi.Config
-import           Yi.Core
+import           Yi.Completion
+import           Yi.Config                      (modeTable)
+import           Yi.Core                        (forkAction, runAction)
 import           Yi.Editor
-import           Yi.History
+import           Yi.History                     (historyFinishGen, historyMove, historyStartGen)
 import           Yi.Keymap
 import           Yi.Keymap.Keys
-import           Yi.Monad
-import qualified Yi.Rope as R
-import           Yi.Style (defaultStyle)
-import           Yi.String (commonTPrefix)
-import           Yi.Utils
-import           Yi.Window (bufkey)
+import           Yi.Monad                       (gets)
+import qualified Yi.Rope                        as R (YiString, fromText, toText)
+import           Yi.String                      (commonTPrefix)
+import           Yi.Style                       (defaultStyle)
+import           Yi.Utils                       (io)
+import           Yi.Window                      (bufkey)
 
 -- | Prints out the rope of the current buffer as-is to stdout.
 --

@@ -11,23 +11,23 @@
 module Yi.Keymap.Vim.NormalOperatorPendingMap
        (defNormalOperatorPendingMap) where
 
-import           Control.Applicative
-import           Control.Monad
-import           Data.Char (isDigit)
-import           Data.List (isPrefixOf)
-import           Data.Maybe (fromMaybe, fromJust)
-import           Data.Monoid
-import qualified Data.Text as T
-import           Yi.Buffer.Adjusted hiding (Insert)
-import           Yi.Editor
-import           Yi.Keymap.Keys
+import           Control.Applicative        ((<$>))
+import           Control.Monad              (void, when)
+import           Data.Char                  (isDigit)
+import           Data.List                  (isPrefixOf)
+import           Data.Maybe                 (fromJust, fromMaybe)
+import           Data.Monoid                ((<>))
+import qualified Data.Text                  as T (init, last, pack, snoc, unpack)
+import           Yi.Buffer.Adjusted         hiding (Insert)
+import           Yi.Editor                  (getEditorDyn, withCurrentBuffer)
+import           Yi.Keymap.Keys             (Key (KEsc), spec)
 import           Yi.Keymap.Vim.Common
 import           Yi.Keymap.Vim.Motion
 import           Yi.Keymap.Vim.Operator
 import           Yi.Keymap.Vim.StateUtils
-import           Yi.Keymap.Vim.StyledRegion
+import           Yi.Keymap.Vim.StyledRegion (StyledRegion (..), normalizeRegion)
 import           Yi.Keymap.Vim.TextObject
-import           Yi.Keymap.Vim.Utils
+import           Yi.Keymap.Vim.Utils        (mkBindingE)
 
 defNormalOperatorPendingMap :: [VimOperator] -> [VimBinding]
 defNormalOperatorPendingMap operators = [textObject operators, escBinding]

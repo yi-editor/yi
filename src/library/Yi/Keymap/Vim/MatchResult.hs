@@ -10,7 +10,7 @@
 
 module Yi.Keymap.Vim.MatchResult where
 
-import Control.Applicative
+import           Control.Applicative (Alternative ((<|>), empty), Applicative ((<*>), pure))
 
 data MatchResult a = NoMatch
                    | PartialMatch

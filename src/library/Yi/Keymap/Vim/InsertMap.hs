@@ -10,27 +10,28 @@
 
 module Yi.Keymap.Vim.InsertMap (defInsertMap) where
 
-import           Control.Applicative
-import           Control.Lens
-import           Control.Monad
-import           Data.Char (isDigit)
-import           Data.List.NonEmpty hiding (drop, span, dropWhile)
-import           Data.Monoid
-import qualified Data.Text as T
-import           Prelude hiding (head)
-import qualified Yi.Buffer as B
-import           Yi.Buffer.Adjusted as BA hiding (Insert)
-import           Yi.Editor
-import           Yi.Event
+import           Prelude                  hiding (head)
+
+import           Control.Applicative      ((<$))
+import           Control.Lens             (use)
+import           Control.Monad            (forM, liftM2, replicateM_, void, when)
+import           Data.Char                (isDigit)
+import           Data.List.NonEmpty       (NonEmpty (..), head, toList)
+import           Data.Monoid              (Monoid (mempty), (<>))
+import qualified Data.Text                as T (pack, unpack)
+import qualified Yi.Buffer                as B (bdeleteB, deleteB, deleteRegionB, insertB, insertN)
+import           Yi.Buffer.Adjusted       as BA hiding (Insert)
+import           Yi.Editor                (EditorM, getEditorDyn, withCurrentBuffer)
+import           Yi.Event                 (Event)
 import           Yi.Keymap.Vim.Common
-import           Yi.Keymap.Vim.Digraph
-import           Yi.Keymap.Vim.EventUtils
-import           Yi.Keymap.Vim.Motion
+import           Yi.Keymap.Vim.Digraph    (charFromDigraph)
+import           Yi.Keymap.Vim.EventUtils (eventToEventString, parseEvents)
+import           Yi.Keymap.Vim.Motion     (Move (Move), stringToMove)
 import           Yi.Keymap.Vim.StateUtils
-import           Yi.Keymap.Vim.Utils
-import           Yi.Monad
-import qualified Yi.Rope as R
-import           Yi.TextCompletion (completeWordB, CompletionScope(..))
+import           Yi.Keymap.Vim.Utils      (selectBinding, selectPureBinding)
+import           Yi.Monad                 (whenM)
+import qualified Yi.Rope                  as R (fromString, fromText)
+import           Yi.TextCompletion        (CompletionScope (..), completeWordB)
 
 defInsertMap :: [(String, Char)] -> [VimBinding]
 defInsertMap digraphs =
@@ -152,7 +153,7 @@ printableAction :: EventString -> EditorM RepeatToken
 printableAction evs = do
     saveInsertEventStringE evs
     currentCursor <- withCurrentBuffer pointB
-    IndentSettings et ts sw <- withCurrentBuffer indentSettingsB
+    IndentSettings et _ sw <- withCurrentBuffer indentSettingsB
     secondaryCursors <- fmap vsSecondaryCursors getEditorDyn
     let allCursors = currentCursor :| secondaryCursors
     marks <- withCurrentBuffer $ forM' allCursors $ \cursor -> do

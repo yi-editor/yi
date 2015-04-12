@@ -10,11 +10,11 @@
 
 module Yi.Keymap.Vim.Search (doVimSearch, continueVimSearch) where
 
-import Data.Maybe (listToMaybe)
-import Data.Text ()
+import Data.Maybe         (listToMaybe)
+import Data.Text          ()
 import Yi.Buffer.Adjusted
-import Yi.Editor
-import Yi.Search
+import Yi.Editor          (EditorM, printMsg, withCurrentBuffer)
+import Yi.Search          (SearchOption, getRegexE, searchInit)
 
 doVimSearch :: Maybe String -> [SearchOption] -> Direction -> EditorM ()
 doVimSearch Nothing _ dir = do

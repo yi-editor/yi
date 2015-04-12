@@ -10,16 +10,16 @@
 
 module Yi.Keymap.Vim.ReplaceMap (defReplaceMap) where
 
-import           Control.Monad
-import           Data.Monoid
-import qualified Data.Text as T
+import           Control.Monad            (replicateM_, when)
+import           Data.Monoid              (Monoid (mempty), (<>))
+import qualified Data.Text                as T (unpack)
 import           Yi.Buffer.Adjusted
-import           Yi.Editor
-import           Yi.Keymap.Keys
+import           Yi.Editor                (EditorM, getEditorDyn, withCurrentBuffer)
+import           Yi.Keymap.Keys           (Key (KEsc), ctrlCh, spec)
 import           Yi.Keymap.Vim.Common
-import           Yi.Keymap.Vim.EventUtils
+import           Yi.Keymap.Vim.EventUtils (eventToEventString, parseEvents)
 import           Yi.Keymap.Vim.StateUtils
-import           Yi.Keymap.Vim.Utils
+import           Yi.Keymap.Vim.Utils      (mkBindingE)
 
 defReplaceMap :: [VimBinding]
 defReplaceMap = specials <> [printable]

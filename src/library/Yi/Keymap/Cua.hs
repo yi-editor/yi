@@ -18,21 +18,21 @@ module Yi.Keymap.Cua ( keymap
                      , del
                      ) where
 
-import           Control.Applicative
-import           Control.Lens hiding (act)
-import           Control.Monad
-import qualified Data.Text as T
+import           Control.Applicative   (Alternative ((<|>)), (<$>))
+import           Control.Lens          (assign, use)
+import           Control.Monad         (unless, when)
+import qualified Data.Text             as T (drop, take)
 import           Yi.Buffer
 import           Yi.Editor
-import           Yi.File
-import           Yi.Keymap
-import           Yi.Keymap.Emacs.Utils
+import           Yi.File               (fwriteE)
+import           Yi.Keymap             (Keymap, KeymapSet, YiM, modelessKeymapSet, write)
+import           Yi.Keymap.Emacs.Utils (askQuitEditor, findFile, isearchKeymap)
 import           Yi.Keymap.Keys
-import           Yi.MiniBuffer
-import           Yi.Misc (adjBlock, selectAll)
-import           Yi.Rectangle
-import qualified Yi.Rope as R
-import           Yi.String
+import           Yi.MiniBuffer         (commentRegion)
+import           Yi.Misc               (adjBlock, selectAll)
+import           Yi.Rectangle          (getRectangle, killRectangle, yankRectangle)
+import qualified Yi.Rope               as R (YiString, length, singleton, withText)
+import           Yi.String             (lines', unlines')
 
 customizedCuaKeymapSet :: Keymap -> KeymapSet
 customizedCuaKeymapSet userKeymap =

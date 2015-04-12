@@ -1,5 +1,5 @@
-{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE DeriveDataTypeable         #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE OverloadedStrings          #-}
 -- |
 -- Module      :  Yi.Command.Help
@@ -21,18 +21,19 @@
 
 module Yi.Command.Help(displayHelpFor) where
 
-import           Control.Applicative
-import           Data.Binary
-import           Data.Default
-import           Data.Typeable
-import           Yi.Buffer
+import           Control.Applicative ((<$>))
+import           Data.Binary         (Binary)
+import           Data.Default        (Default)
+import qualified Data.Text           as T (Text, pack, unlines, unpack)
+import           Data.Typeable       (Typeable)
+import           Yi.Buffer           (BufferId (MemBuffer), BufferRef)
 import           Yi.Editor
-import           Yi.Monad
-import qualified Yi.Rope as R
-import qualified Data.Text as T
-import           Yi.Eval (getAllNamesInScope, describeNamedAction)
-import           Yi.Keymap
-import           Yi.Types(YiVariable)
+import           Yi.Eval             (describeNamedAction, getAllNamesInScope)
+import           Yi.Keymap           (YiM)
+import           Yi.Monad            (maybeM)
+import qualified Yi.Rope             as R (fromText)
+import           Yi.Types            (YiVariable)
+
 
 -- | Displays help for a given name, or help index, if no name is given
 displayHelpFor :: T.Text -> YiM ()
@@ -41,7 +42,7 @@ displayHelpFor name = helpFor name >>= displayHelpBuffer
 -- | Finds help text to display, given a command argument
 helpFor :: T.Text -> YiM T.Text
 helpFor ""    = (T.unlines . map T.pack) <$> getAllNamesInScope
-helpFor name  = T.pack    <$> describeNamedAction (T.unpack name)          
+helpFor name  = T.pack    <$> describeNamedAction (T.unpack name)
 
 -- * To make help buffer unique:
 -- | Dynamic YiVariable to store the help buffer reference.

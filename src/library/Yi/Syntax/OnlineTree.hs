@@ -1,5 +1,5 @@
-{-# LANGUAGE DeriveFoldable #-}
-{-# LANGUAGE DeriveFunctor #-}
+{-# LANGUAGE DeriveFoldable    #-}
+{-# LANGUAGE DeriveFunctor     #-}
 {-# LANGUAGE DeriveTraversable #-}
 {-# OPTIONS_GHC -fno-warn-incomplete-patterns #-} -- uniplate patterns
 {-# OPTIONS_HADDOCK show-extensions #-}
@@ -16,12 +16,12 @@
 module Yi.Syntax.OnlineTree (Tree(..), manyToks,
                              tokAtOrBefore) where
 
-import Control.Applicative
-import Data.Foldable
-import Data.Traversable
-import Yi.IncrementalParse
-import Yi.Lexer.Alex
-import Yi.Syntax.Tree
+import Control.Applicative (Applicative ((<*>), pure), (<$>))
+import Data.Foldable       (Foldable)
+import Data.Traversable    (Traversable)
+import Yi.IncrementalParse (P, Parser (Look), symbol)
+import Yi.Lexer.Alex       (Tok)
+import Yi.Syntax.Tree      (IsTree (emptyNode, uniplate), tokAtOrBefore)
 
 data Tree a = Bin (Tree a) (Tree a)
             | Leaf a

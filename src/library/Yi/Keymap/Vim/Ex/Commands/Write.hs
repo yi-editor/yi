@@ -10,18 +10,18 @@
 
 module Yi.Keymap.Vim.Ex.Commands.Write (parse) where
 
-import           Control.Applicative
-import           Control.Monad
-import           Data.Monoid
-import qualified Data.Text as T
-import qualified Text.ParserCombinators.Parsec as P
-import           Yi.Buffer
-import           Yi.Editor
-import           Yi.File
-import           Yi.Keymap
-import           Yi.Keymap.Vim.Common
-import qualified Yi.Keymap.Vim.Ex.Commands.Common as Common
-import           Yi.Keymap.Vim.Ex.Types
+import           Control.Applicative              (Alternative ((<|>)), Applicative ((*>)), (<$>))
+import           Control.Monad                    (void, when)
+import           Data.Monoid                      ((<>))
+import qualified Data.Text                        as T (Text, pack)
+import qualified Text.ParserCombinators.Parsec    as P (anyChar, many, many1, space, string, try)
+import           Yi.Buffer                        (BufferRef)
+import           Yi.Editor                        (printMsg)
+import           Yi.File                          (fwriteBufferE, viWrite, viWriteTo)
+import           Yi.Keymap                        (Action (YiA), YiM)
+import           Yi.Keymap.Vim.Common             (EventString)
+import qualified Yi.Keymap.Vim.Ex.Commands.Common as Common (forAllBuffers, impureExCommand, needsSaving, parse)
+import           Yi.Keymap.Vim.Ex.Types           (ExCommand (cmdAction, cmdShow))
 
 parse :: EventString -> Maybe ExCommand
 parse = Common.parse $

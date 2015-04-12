@@ -1,7 +1,7 @@
-{-# LANGUAGE LambdaCase #-}
-{-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE Rank2Types #-}
-{-# LANGUAGE RecursiveDo #-}
+{-# LANGUAGE LambdaCase          #-}
+{-# LANGUAGE OverloadedStrings   #-}
+{-# LANGUAGE Rank2Types          #-}
+{-# LANGUAGE RecursiveDo         #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# OPTIONS_HADDOCK show-extensions #-}
 
@@ -44,53 +44,59 @@ module Yi.Core
   , forkAction
   ) where
 
-import           Control.Applicative
-import           Control.Concurrent
-import           Control.Exc
-import           Control.Exception
-import           Control.Lens hiding (Action,act,acts)
-import           Control.Monad hiding (mapM_,forM_,forM)
-import           Control.Monad.Base
-import           Control.Monad.Error ()
-import           Control.Monad.Reader hiding (mapM_,forM_,forM)
-import qualified Data.DelayList as DelayList
-import           Data.Foldable
-import           Data.List (partition)
-import           Data.List.NonEmpty (NonEmpty(..))
-import qualified Data.List.PointedList.Circular as PL
-import           Data.List.Split (splitOn)
-import qualified Data.Map as M
-import           Data.Maybe
-import           Data.Monoid
-import qualified Data.Text as T
-import           Data.Time
-import           Data.Time.Clock.POSIX
-import           Data.Traversable
-import           GHC.Conc (labelThread)
-import           Prelude hiding (elem,or,mapM_)
-import           System.Directory (doesFileExist)
-import           System.Exit
-import           System.IO (Handle, hWaitForInput, hPutStr)
-import           System.PosixCompat.Files
-import           System.Process (terminateProcess, getProcessExitCode,
-                                 ProcessHandle, readProcessWithExitCode)
+import           Prelude                        hiding (elem, mapM_, or)
+
+import           Control.Applicative            (Applicative (pure), (<$>))
+import           Control.Concurrent             (ThreadId, forkIO, forkOS,
+                                                 modifyMVar, modifyMVar_,
+                                                 newMVar, readMVar, threadDelay)
+import           Control.Exc                    (ignoringException)
+import           Control.Exception              (SomeException, handle)
+import           Control.Lens                   (assign, mapped, use, uses,
+                                                 view, (%=), (%~), (&), (.=),
+                                                 (.~), (^.))
+import           Control.Monad                  (forever, void, when)
+import           Control.Monad.Base             (MonadBase (liftBase))
+import           Control.Monad.Error            ()
+import           Control.Monad.Reader           (MonadReader (ask), ReaderT (runReaderT), asks)
+import qualified Data.DelayList                 as DelayList (decrease, insert)
+import           Data.Foldable                  (Foldable (foldMap), elem, find, forM_, mapM_, or, toList)
+import           Data.List                      (partition)
+import           Data.List.NonEmpty             (NonEmpty (..))
+import qualified Data.List.PointedList.Circular as PL (PointedList (_focus), length)
+import           Data.List.Split                (splitOn)
+import qualified Data.Map                       as M (assocs, delete, empty, fromList, insert, member)
+import           Data.Maybe                     (fromMaybe, isNothing)
+import           Data.Monoid                    (First (First, getFirst), (<>))
+import qualified Data.Text                      as T (Text, pack, unwords)
+import           Data.Time                      (getCurrentTime)
+import           Data.Time.Clock.POSIX          (posixSecondsToUTCTime)
+import           Data.Traversable               (forM)
+import           GHC.Conc                       (labelThread)
+import           System.Directory               (doesFileExist)
+import           System.Exit                    (ExitCode)
+import           System.IO                      (Handle, hPutStr, hWaitForInput)
+import           System.PosixCompat.Files       (getFileStatus, modificationTime)
+import           System.Process                 (ProcessHandle,
+                                                 getProcessExitCode,
+                                                 readProcessWithExitCode,
+                                                 terminateProcess)
 import           Yi.Buffer
 import           Yi.Config
-import           Yi.Debug
+import           Yi.Debug                       (logPutStrLn)
 import           Yi.Editor
 import           Yi.Keymap
 import           Yi.Keymap.Keys
-import           Yi.KillRing (krEndCmd)
-import           Yi.Monad
-import           Yi.Process (createSubprocess, readAvailable,
-                             SubprocessId, SubprocessInfo(..))
-import qualified Yi.Rope as R
-import           Yi.String
-import           Yi.Style (errorStyle, strongHintStyle)
-import qualified Yi.UI.Common as UI
-import           Yi.Utils
-import           Yi.Window (dummyWindow, bufkey, wkey, winRegion, isMini)
-import           Yi.PersistentState (loadPersistentState, savePersistentState)
+import           Yi.KillRing                    (krEndCmd)
+import           Yi.Monad                       (gets)
+import           Yi.PersistentState             (loadPersistentState, savePersistentState)
+import           Yi.Process
+import qualified Yi.Rope                        as R (YiString, fromString, readFile)
+import           Yi.String                      (chomp, showT)
+import           Yi.Style                       (errorStyle, strongHintStyle)
+import qualified Yi.UI.Common                   as UI (UI (end, layout, main, refresh, suspend, userForceRefresh))
+import           Yi.Utils                       (io)
+import           Yi.Window                      (bufkey, dummyWindow, isMini, winRegion, wkey)
 
 -- | Make an action suitable for an interactive run.
 -- UI will be refreshed.

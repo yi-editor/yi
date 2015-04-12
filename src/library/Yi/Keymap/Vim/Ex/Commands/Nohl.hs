@@ -10,12 +10,12 @@
 
 module Yi.Keymap.Vim.Ex.Commands.Nohl (parse) where
 
-import Data.Text ()
-import Yi.Keymap
-import Yi.Keymap.Vim.Common
-import Yi.Keymap.Vim.Ex.Commands.Common (pureExCommand)
-import Yi.Keymap.Vim.Ex.Types
-import Yi.Search
+import           Data.Text                        ()
+import           Yi.Keymap                        (Action (EditorA))
+import           Yi.Keymap.Vim.Common             (EventString)
+import           Yi.Keymap.Vim.Ex.Commands.Common (pureExCommand)
+import           Yi.Keymap.Vim.Ex.Types           (ExCommand (cmdAction, cmdShow))
+import           Yi.Search                        (resetRegexE)
 
 parse :: EventString -> Maybe ExCommand
 parse s = if s == "nohl" || s == "nohlsearch"

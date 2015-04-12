@@ -14,18 +14,19 @@
 
 module Yi.Syntax.Strokes.Haskell (getStrokes, tokenToAnnot) where
 
-import Data.Foldable hiding (elem)
-import Data.Monoid
-import Data.Traversable
-import Prelude hiding (error,any,exp)
-import Yi.Debug
-import Yi.Lexer.Alex hiding (tokenToStyle)
-import Yi.Lexer.Haskell
-import Yi.Style
-import Yi.Syntax
-import Yi.Syntax.Haskell
-import Yi.Syntax.Tree (subtrees)
-import Yi.String (showT)
+import           Prelude           hiding (any, error, exp)
+
+import           Data.Foldable     (Foldable (foldMap), any)
+import           Data.Monoid       (Endo (..), Monoid (mappend), (<>))
+import           Data.Traversable  (Traversable (sequenceA))
+import           Yi.Debug          (error, trace)
+import           Yi.Lexer.Alex     (Posn (posnOfs), Stroke, Tok (tokPosn, tokT), tokToSpan)
+import           Yi.Lexer.Haskell
+import           Yi.String         (showT)
+import           Yi.Style
+import           Yi.Syntax         (Point, Span)
+import           Yi.Syntax.Haskell
+import           Yi.Syntax.Tree    (subtrees)
 
 -- TODO: (optimization) make sure we take in account the begin, so we
 -- don't return useless strokes
@@ -123,7 +124,8 @@ isErr :: TT -> Bool
 isErr = isErrorTok . tokT
 
 isErrN :: (Foldable v) => v TT -> Bool
-isErrN t = any isErr t
+isErrN = any isErr
+--
 --         || not $ null $ isError' t
 
 errStyle :: TT -> Endo [Stroke]

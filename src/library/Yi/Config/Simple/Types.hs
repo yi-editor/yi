@@ -1,16 +1,16 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
-{-# LANGUAGE Rank2Types #-}
+{-# LANGUAGE Rank2Types                 #-}
 
 -- | exports from "Yi.Config.Simple" which are useful to \"core yi\" rather than just config files.
 module Yi.Config.Simple.Types
  where
 
-import Control.Monad.State hiding (modify, get)
-import Control.Monad.Base
-import Control.Applicative
-import Control.Lens
-import Yi.Config
-import Yi.Types
+import Control.Applicative (Applicative)
+import Control.Lens        (Lens')
+import Control.Monad.Base  (MonadBase)
+import Control.Monad.State (MonadState, StateT)
+import Yi.Config           (Config, configVariable)
+import Yi.Types            (YiConfigVariable)
 
 -- | The configuration monad. Run it with 'configMain'.
 newtype ConfigM a = ConfigM {

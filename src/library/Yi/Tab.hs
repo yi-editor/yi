@@ -1,5 +1,5 @@
 {-# LANGUAGE DeriveDataTypeable #-}
-{-# LANGUAGE Rank2Types #-}
+{-# LANGUAGE Rank2Types         #-}
 
 module Yi.Tab
  (
@@ -19,18 +19,18 @@ module Yi.Tab
   makeTab1,
  )  where
 
-import Prelude hiding (foldr, foldl)
-import Control.Lens
-import qualified Data.Binary as Binary
-import Data.Default
-import Data.Typeable
-import Data.Foldable
-import qualified Data.List.PointedList as PL
-import Control.Applicative
+import           Prelude               hiding (foldl, foldr)
 
-import Yi.Buffer.Basic(WindowRef)
-import Yi.Layout
-import Yi.Window
+import           Control.Applicative   ((<$>), (<*>))
+import           Control.Lens          (Lens', lens, over, (^.))
+import qualified Data.Binary           as Binary (Binary, get, put)
+import           Data.Default          (def)
+import           Data.Foldable         (foldl, foldr, toList)
+import qualified Data.List.PointedList as PL (PointedList, singleton, _focus)
+import           Data.Typeable         (Typeable)
+import           Yi.Buffer.Basic       (WindowRef)
+import           Yi.Layout
+import           Yi.Window             (Window, isMini, wkey)
 
 type TabRef = Int
 

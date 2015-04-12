@@ -1,5 +1,5 @@
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE PackageImports #-}
+{-# LANGUAGE PackageImports    #-}
 {-# OPTIONS_HADDOCK show-extensions #-}
 
 -- |
@@ -21,43 +21,42 @@ module Yi.Modes (TokenBasedMode, fundamentalMode,
                  gitCommitMode, rubyMode, styleMode
                 ) where
 
-import           Control.Applicative
-import           Control.Lens
-import           Data.List (isPrefixOf)
-import           Data.Maybe
-import           Data.Text ()
-import           System.FilePath
-import "regex-tdfa" Text.Regex.TDFA ((=~))
-import           Yi.Buffer
-import qualified Yi.IncrementalParse as IncrParser
-import           Yi.Keymap
-import           Yi.Lexer.Alex
-import qualified Yi.Lexer.C          as C
-import qualified Yi.Lexer.Cabal      as Cabal
-import qualified Yi.Lexer.Clojure    as Clojure
-import qualified Yi.Lexer.Cplusplus  as Cplusplus
-import qualified Yi.Lexer.GNUMake    as GNUMake
-import qualified Yi.Lexer.GitCommit  as GitCommit
-import qualified Yi.Lexer.JSON       as JSON
-import qualified Yi.Lexer.Java       as Java
-import qualified Yi.Lexer.OCaml      as OCaml
-import qualified Yi.Lexer.ObjectiveC as ObjectiveC
-import qualified Yi.Lexer.Ott        as Ott
-import qualified Yi.Lexer.Perl       as Perl
-import qualified Yi.Lexer.Python     as Python
-import qualified Yi.Lexer.Ruby       as Ruby
-import qualified Yi.Lexer.SVNCommit  as SVNCommit
-import qualified Yi.Lexer.Srmc       as Srmc
-import qualified Yi.Lexer.Whitespace as Whitespace
-import           Yi.MiniBuffer
-import qualified Yi.Rope as R
-import           Yi.Style
-import           Yi.Syntax hiding (mkHighlighter)
-import           Yi.Syntax.Driver (mkHighlighter)
-import           Yi.Syntax.OnlineTree (manyToks, Tree)
-import           Yi.Syntax.Tree
+import "regex-tdfa" Text.Regex.TDFA  ((=~))
 
-import Yi.Search (makeSimpleSearch)
+import           Control.Applicative ((<$>))
+import           Control.Lens        ((%~), (&), (.~), (^.))
+import           Data.List           (isPrefixOf)
+import           Data.Maybe          (fromMaybe)
+import           System.FilePath     (takeDirectory, takeExtension, takeFileName)
+import           Yi.Buffer
+import qualified Yi.IncrementalParse  as IncrParser (scanner)
+import           Yi.Keymap            (YiM)
+import           Yi.Lexer.Alex
+import qualified Yi.Lexer.C           as C (lexer)
+import qualified Yi.Lexer.Cabal       as Cabal (lexer)
+import qualified Yi.Lexer.Clojure     as Clojure (lexer)
+import qualified Yi.Lexer.Cplusplus   as Cplusplus (lexer)
+import qualified Yi.Lexer.GitCommit   as GitCommit (Token, lexer)
+import qualified Yi.Lexer.GNUMake     as GNUMake (lexer)
+import qualified Yi.Lexer.Java        as Java (lexer)
+import qualified Yi.Lexer.JSON        as JSON (lexer)
+import qualified Yi.Lexer.ObjectiveC  as ObjectiveC (lexer)
+import qualified Yi.Lexer.OCaml       as OCaml (Token, lexer)
+import qualified Yi.Lexer.Ott         as Ott (lexer)
+import qualified Yi.Lexer.Perl        as Perl (lexer)
+import qualified Yi.Lexer.Python      as Python (lexer)
+import qualified Yi.Lexer.Ruby        as Ruby (lexer)
+import qualified Yi.Lexer.Srmc        as Srmc (lexer)
+import qualified Yi.Lexer.SVNCommit   as SVNCommit (lexer)
+import qualified Yi.Lexer.Whitespace  as Whitespace (lexer)
+import           Yi.MiniBuffer        (anyModeByNameM)
+import qualified Yi.Rope              as R (YiString, toString)
+import           Yi.Search            (makeSimpleSearch)
+import           Yi.Style             (StyleName)
+import           Yi.Syntax            (ExtHL (ExtHL))
+import           Yi.Syntax.Driver     (mkHighlighter)
+import           Yi.Syntax.OnlineTree (Tree, manyToks)
+import           Yi.Syntax.Tree       (tokenBasedStrokes)
 
 type TokenBasedMode tok = Mode (Tree (Tok tok))
 type StyleBasedMode = TokenBasedMode StyleName

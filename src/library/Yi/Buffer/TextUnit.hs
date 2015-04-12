@@ -41,15 +41,19 @@ module Yi.Buffer.TextUnit
     , deleteUnitB
     ) where
 
-import           Control.Applicative
-import           Control.Monad
-import           Data.Char
-import           Data.Typeable
-import           Yi.Buffer.Basic
+
+import           Control.Applicative (Applicative ((<*>)), (<$>))
+import           Control.Monad       (void, when, (<=<))
+import           Data.Char           (GeneralCategory (LineSeparator, ParagraphSeparator, Space),
+                                      generalCategory, isAlphaNum, isSeparator, isSpace)
+import           Data.Typeable       (Typeable)
+import           Yi.Buffer.Basic     (Direction (..), Point (Point), mayReverse, reverseDir)
 import           Yi.Buffer.Misc
 import           Yi.Buffer.Region
-import           Yi.Rope (YiString)
-import qualified Yi.Rope as R
+import           Yi.Rope             (YiString)
+import qualified Yi.Rope             as R (head, reverse, tail, toString)
+
+
 
 -- | Designate a given "unit" of text.
 data TextUnit = Character -- ^ a single character
@@ -57,7 +61,7 @@ data TextUnit = Character -- ^ a single character
               | VLine -- ^ a "vertical" line of text (area of text between two characters at the same column number)
               | Document -- ^ the whole document
               | GenUnit {genEnclosingUnit :: TextUnit,
-                         genUnitBoundary :: Direction -> BufferM Bool}
+                         genUnitBoundary  :: Direction -> BufferM Bool}
       -- there could be more text units, like Page, Searched, etc. it's probably a good
       -- idea to use GenUnit though.
                 deriving Typeable

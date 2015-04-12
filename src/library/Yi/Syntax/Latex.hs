@@ -1,5 +1,5 @@
-{-# LANGUAGE DeriveFunctor #-}
 {-# LANGUAGE DeriveFoldable #-}
+{-# LANGUAGE DeriveFunctor  #-}
 {-# OPTIONS_GHC -fno-warn-incomplete-patterns #-} -- uniplate patterns
 {-# OPTIONS_HADDOCK show-extensions #-}
 
@@ -14,16 +14,17 @@
 
 module Yi.Syntax.Latex where
 
-import Control.Applicative
-import Data.Foldable (Foldable, foldMap)
-import Data.Monoid
-import Data.Traversable
-import Yi.IncrementalParse
-import Yi.Lexer.Alex hiding (tokenToStyle)
-import Yi.Lexer.Latex
-import Yi.Style
-import Yi.Syntax
-import Yi.Syntax.Tree
+import           Control.Applicative (Alternative ((<|>), empty, many),
+                                      Applicative ((<*), (<*>), pure), (<$>))
+import           Data.Foldable       (Foldable, foldMap)
+import           Data.Monoid         (Endo (..), Monoid (mappend, mempty), (<>))
+import           Data.Traversable    (Traversable (sequenceA))
+import           Yi.IncrementalParse (P, eof, recoverWith, symbol)
+import           Yi.Lexer.Alex       hiding (tokenToStyle)
+import           Yi.Lexer.Latex      (Token (..), tokenToText)
+import           Yi.Style
+import           Yi.Syntax           (Point, Span)
+import           Yi.Syntax.Tree      (IsTree (emptyNode, uniplate))
 
 isNoise :: Token -> Bool
 isNoise Text = True

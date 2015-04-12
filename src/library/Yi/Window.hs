@@ -1,5 +1,5 @@
 {-# LANGUAGE DeriveDataTypeable #-}
-{-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE TemplateHaskell    #-}
 {-# OPTIONS_HADDOCK show-extensions #-}
 
 -- |
@@ -13,14 +13,14 @@
 
 module Yi.Window where
 
-import Data.Binary
-import Data.Default
-import Data.Typeable
-import Control.Applicative
-import Yi.Buffer.Basic (BufferRef, WindowRef)
-import Yi.Region (Region,emptyRegion)
-import Yi.JumpList
-import Yi.Utils (makeLensesWithSuffix)
+import Control.Applicative (Applicative ((<*>)), (<$>))
+import Data.Binary         (Binary (..))
+import Data.Default        (Default (def))
+import Data.Typeable       (Typeable)
+import Yi.Buffer.Basic     (BufferRef, WindowRef)
+import Yi.JumpList         (JumpList)
+import Yi.Region           (Region, emptyRegion)
+import Yi.Utils            (makeLensesWithSuffix)
 
 ------------------------------------------------------------------------
 -- | A window onto a buffer.

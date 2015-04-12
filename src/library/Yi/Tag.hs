@@ -1,10 +1,10 @@
-{-# LANGUAGE CPP #-}
+{-# LANGUAGE CPP                #-}
 {-# LANGUAGE DeriveDataTypeable #-}
-{-# LANGUAGE DeriveGeneric #-}
-{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE DeriveGeneric      #-}
+{-# LANGUAGE FlexibleContexts   #-}
+{-# LANGUAGE OverloadedStrings  #-}
 {-# LANGUAGE StandaloneDeriving #-}
-{-# LANGUAGE TemplateHaskell #-}
-{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE TemplateHaskell    #-}
 {-# OPTIONS_HADDOCK show-extensions #-}
 
 -- |
@@ -31,30 +31,30 @@ module Yi.Tag ( lookupTag
               , tagsFileList
               ) where
 
-import           Control.Applicative
-import           Control.Lens
-import           Data.Binary
-import qualified Data.ByteString as BS
 #if __GLASGOW_HASKELL__ < 708
-import           Data.DeriveTH
+import           Data.DeriveTH (derive, makeBinary)
 #else
 import           GHC.Generics (Generic)
 #endif
-import           Data.Default
-import qualified Data.Foldable as F
-import           Data.List (isPrefixOf)
-import           Data.Map (Map, fromListWith, lookup, keys)
-import           Data.Maybe (mapMaybe)
-import qualified Data.Text as T
-import qualified Data.Text.Encoding as E
-import qualified Data.Text.Read as R (decimal)
-import qualified Data.Trie as Trie
-import           Data.Typeable
-import           System.FilePath (takeFileName, takeDirectory, (</>))
-import           System.FriendlyPath
-import           Yi.Editor
+
+import           Control.Applicative    ((<$>))
+import           Control.Lens           (makeLenses)
+import           Data.Binary            (Binary, get, put)
+import qualified Data.ByteString        as BS (readFile)
+import           Data.Default           (Default, def)
+import qualified Data.Foldable          as F (concat)
+import           Data.Map               (Map, fromListWith, keys, lookup)
+import           Data.Maybe             (mapMaybe)
+import qualified Data.Text              as T (Text, append, isPrefixOf, lines, pack, unpack, words)
+import qualified Data.Text.Encoding     as E (decodeUtf8, encodeUtf8)
+import qualified Data.Text.Read         as R (decimal)
+import qualified Data.Trie              as Trie (Trie, certainSuffix, fromList, possibleSuffixes)
+import           Data.Typeable          (Typeable)
+import           System.FilePath        (takeDirectory, takeFileName, (</>))
+import           System.FriendlyPath    (expandTilda)
 import           Yi.Config.Simple.Types (Field, customVariable)
-import           Yi.Types (YiVariable, YiConfigVariable)
+import           Yi.Editor              (EditorM, getEditorDyn, putEditorDyn)
+import           Yi.Types               (YiConfigVariable, YiVariable)
 
 newtype TagsFileList  = TagsFileList { _unTagsFileList :: [FilePath] }
     deriving Typeable

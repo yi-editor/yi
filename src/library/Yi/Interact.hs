@@ -1,9 +1,9 @@
-{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE FlexibleInstances      #-}
 {-# LANGUAGE FunctionalDependencies #-}
-{-# LANGUAGE GADTs #-}
-{-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE UndecidableInstances #-}
+{-# LANGUAGE GADTs                  #-}
+{-# LANGUAGE OverloadedStrings      #-}
+{-# LANGUAGE ScopedTypeVariables    #-}
+{-# LANGUAGE UndecidableInstances   #-}
 {-# OPTIONS_HADDOCK show-extensions #-}
 
 {-|
@@ -66,14 +66,14 @@ module Yi.Interact
      accepted
     ) where
 
-import           Control.Applicative
-import           Control.Arrow (first)
-import           Control.Lens
-import           Control.Monad.State hiding ( get, mapM )
-import           Data.Function (on)
-import           Data.List (groupBy)
-import           Data.Monoid
-import qualified Data.Text as T
+import           Control.Applicative (Alternative ((<|>), empty), Applicative ((<*>), pure))
+import           Control.Arrow       (first)
+import           Control.Lens        (Field1 (_1), Field2 (_2), view)
+import           Control.Monad.State (MonadPlus (..), MonadTrans (lift), StateT)
+import           Data.Function       (on)
+import           Data.List           (groupBy)
+import           Data.Monoid         (Monoid (mappend, mempty))
+import qualified Data.Text           as T (Text, append, pack)
 
 ------------------------------------------------
 -- Classes

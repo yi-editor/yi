@@ -1,6 +1,6 @@
-{-# LANGUAGE DeriveDataTypeable #-}
+{-# LANGUAGE DeriveDataTypeable         #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
-{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE OverloadedStrings          #-}
 {-# OPTIONS_HADDOCK show-extensions #-}
 
 -- |
@@ -15,43 +15,39 @@
 
 module Yi.Mode.JavaScript (javaScriptMode, hooks) where
 
-import           Control.Applicative
-import           Control.Lens
+import           Control.Applicative       ((<$>))
+import           Control.Lens              ((%~))
 import           Control.Monad.Writer.Lazy (execWriter)
-import           Data.Binary
-import           Data.DList as D (toList)
-import           Data.Default
-import           Data.Foldable as F (toList)
-import           Data.List (nub)
-import           Data.Maybe (isJust)
-import           Data.Monoid
-import qualified Data.Text as T
-import           Data.Typeable
-import           System.FilePath.Posix (takeBaseName)
+import           Data.Binary               (Binary)
+import           Data.Default              (Default)
+import           Data.DList                as D (toList)
+import           Data.Foldable             as F (toList)
+import           Data.List                 (nub)
+import           Data.Maybe                (isJust)
+import           Data.Monoid               (Monoid (mempty), (<>))
+import qualified Data.Text                 as T (unlines)
+import           Data.Typeable             (Typeable)
+import           System.FilePath.Posix     (takeBaseName)
 import           Yi.Buffer
-import           Yi.Core (withSyntax)
-import           Yi.Types (YiVariable)
-import           Yi.Editor (withEditor, withOtherWindow, getEditorDyn,
-                            stringToNewBuffer , findBuffer, switchToBufferE,
-                            withCurrentBuffer, withGivenBuffer)
-import           Yi.Event (Key(..), Event(..))
-import           Yi.File (fwriteE)
-import           Yi.IncrementalParse (scanner)
-import           Yi.Interact (choice)
-import           Yi.Keymap (YiM, Action(..), topKeymapA)
-import           Yi.Keymap.Keys (ctrlCh, (?>>), (?>>!), important)
-import           Yi.Lexer.Alex (AlexState, Tok, lexScanner,
-                                commonLexer, CharScanner)
-import           Yi.Lexer.JavaScript (alexScanToken, TT, initState,
-                                      HlState, Token)
-import           Yi.Modes (anyExtension)
-import           Yi.Monad
-import qualified Yi.Rope as R
-import           Yi.String
-import           Yi.Syntax (ExtHL(..), mkHighlighter, Scanner)
-import           Yi.Syntax.JavaScript (Tree, parse, getStrokes)
-import           Yi.Syntax.Tree (getLastPath)
-import           Yi.Verifier.JavaScript (verify)
+import           Yi.Core                   (withSyntax)
+import           Yi.Editor
+import           Yi.Event                  (Event (..), Key (..))
+import           Yi.File                   (fwriteE)
+import           Yi.IncrementalParse       (scanner)
+import           Yi.Interact               (choice)
+import           Yi.Keymap                 (Action (..), YiM, topKeymapA)
+import           Yi.Keymap.Keys            (ctrlCh, important, (?>>), (?>>!))
+import           Yi.Lexer.Alex             (AlexState, CharScanner, Tok, commonLexer, lexScanner)
+import           Yi.Lexer.JavaScript       (HlState, TT, Token, alexScanToken, initState)
+import           Yi.Modes                  (anyExtension)
+import           Yi.Monad                  (gets)
+import qualified Yi.Rope                   as R (fromString, fromText)
+import           Yi.String                 (showT)
+import           Yi.Syntax                 (ExtHL (..), Scanner, mkHighlighter)
+import           Yi.Syntax.JavaScript      (Tree, getStrokes, parse)
+import           Yi.Syntax.Tree            (getLastPath)
+import           Yi.Types                  (YiVariable)
+import           Yi.Verifier.JavaScript    (verify)
 
 javaScriptAbstract :: Mode syntax
 javaScriptAbstract = emptyMode

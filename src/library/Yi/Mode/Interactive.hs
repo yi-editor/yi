@@ -12,25 +12,25 @@
 
 module Yi.Mode.Interactive where
 
-import           Control.Applicative
-import           Control.Concurrent (threadDelay)
-import           Control.Lens
-import           Data.Monoid
-import qualified Data.Text as T
+import           Control.Applicative  ((<$>))
+import           Control.Concurrent   (threadDelay)
+import           Control.Lens         (use, (%~), (.=))
+import           Data.Monoid          ((<>))
+import qualified Data.Text            as T (Text)
 import           Yi.Buffer
-import           Yi.Core (sendToProcess, startSubprocess, withSyntax)
+import           Yi.Core              (sendToProcess, startSubprocess, withSyntax)
 import           Yi.Editor
-import           Yi.History
-import           Yi.Keymap
-import           Yi.Keymap.Keys
-import           Yi.Lexer.Alex (Tok)
+import           Yi.History           (historyFinishGen, historyMoveGen, historyStartGen)
+import           Yi.Keymap            (YiM, topKeymapA)
+import           Yi.Keymap.Keys       (Key (KEnter, KHome), char, choice, meta, spec, (<||), (?>>!))
+import           Yi.Lexer.Alex        (Tok)
 import           Yi.Lexer.Compilation (Token)
-import qualified Yi.Mode.Compilation as Compilation
-import           Yi.Modes
-import           Yi.Monad
-import qualified Yi.Rope as R
-import qualified Yi.Syntax.OnlineTree as OnlineTree
-import           Yi.Utils
+import qualified Yi.Mode.Compilation  as Compilation (mode)
+import           Yi.Modes             (lookupMode)
+import           Yi.Monad             (gets)
+import qualified Yi.Rope              as R (YiString, fromText, toString, toText)
+import qualified Yi.Syntax.OnlineTree as OnlineTree (Tree)
+import           Yi.Utils             (io)
 
 
 mode :: Mode (OnlineTree.Tree (Tok Token))

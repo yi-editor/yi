@@ -23,24 +23,24 @@ module Yi.Keymap.Vim.Operator
     , lastCharForOperator
     ) where
 
-import           Control.Applicative ((<$>))
-import           Control.Monad
-import           Data.Char (toLower, toUpper, isSpace)
-import           Data.Foldable (find)
-import           Data.Maybe (fromJust)
-import           Data.Monoid
-import qualified Data.Text as T
-import           Yi.Buffer.Adjusted hiding (Insert)
-import           Yi.Editor
+import           Control.Applicative        ((<$>))
+import           Control.Monad              (when)
+import           Data.Char                  (isSpace, toLower, toUpper)
+import           Data.Foldable              (find)
+import           Data.Maybe                 (fromJust)
+import           Data.Monoid                ((<>))
+import qualified Data.Text                  as T (unpack)
+import           Yi.Buffer.Adjusted         hiding (Insert)
+import           Yi.Editor                  (EditorM, getEditorDyn, withCurrentBuffer)
 import           Yi.Keymap.Vim.Common
-import           Yi.Keymap.Vim.EventUtils
-import           Yi.Keymap.Vim.StateUtils
-import           Yi.Keymap.Vim.StyledRegion
-import           Yi.Keymap.Vim.TextObject
-import           Yi.Keymap.Vim.Utils
-import           Yi.Misc
-import           Yi.Rope (YiString)
-import qualified Yi.Rope as R
+import           Yi.Keymap.Vim.EventUtils   (eventToEventString, parseEvents)
+import           Yi.Keymap.Vim.StateUtils   (setRegisterE, switchModeE)
+import           Yi.Keymap.Vim.StyledRegion (StyledRegion (..), transformCharactersInRegionB)
+import           Yi.Keymap.Vim.TextObject   (CountedTextObject, regionOfTextObjectB)
+import           Yi.Keymap.Vim.Utils        (indentBlockRegionB)
+import           Yi.Misc                    (rot13Char)
+import           Yi.Rope                    (YiString)
+import qualified Yi.Rope                    as R
 
 data VimOperator = VimOperator {
     operatorName :: !OperatorName

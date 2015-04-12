@@ -13,16 +13,17 @@
 
 module Yi.Rectangle where
 
-import           Control.Applicative
-import           Control.Monad
-import           Data.List (sort, transpose)
-import           Data.Monoid
-import qualified Data.Text as T
-import "regex-tdfa" Text.Regex.TDFA
+import "regex-tdfa" Text.Regex.TDFA ( (=~), AllTextSubmatches(..) )
+
+import           Control.Applicative ((<$>))
+import           Control.Monad       (forM_)
+import           Data.List           (sort, transpose)
+import           Data.Monoid         ((<>))
+import qualified Data.Text           as T (Text, concat, justifyLeft, length, pack, unpack)
 import           Yi.Buffer
-import           Yi.Editor
-import qualified Yi.Rope as R
-import           Yi.String
+import           Yi.Editor           (EditorM, getRegE, setRegE, withCurrentBuffer)
+import qualified Yi.Rope             as R
+import           Yi.String           (lines', mapLines, unlines')
 
 alignRegion :: T.Text -> BufferM ()
 alignRegion str = do

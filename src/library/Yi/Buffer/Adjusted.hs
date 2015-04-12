@@ -23,24 +23,15 @@ module Yi.Buffer.Adjusted
     , module Yi.Buffer
     ) where
 
-import Control.Applicative
-import Control.Monad
-
-import Yi.Buffer hiding
-    ( bdeleteB
-    , insertB
-    , insertN
-    , insertNAt
-    , deleteB
-    , deleteN
-    , deleteNAt
-    , deleteRegionB
-    , deleteRegionWithStyleB
-    )
-import qualified Yi.Buffer as B
-import Yi.Misc
-import Yi.Utils
-import qualified Yi.Rope as R
+import           Control.Applicative ((<$>))
+import           Control.Monad       (forM_, when)
+import           Yi.Buffer           hiding (bdeleteB, insertB, insertN, insertNAt
+                                            , deleteB, deleteN, deleteNAt
+                                            , deleteRegionB, deleteRegionWithStyleB)
+import qualified Yi.Buffer           as B (deleteN, insertB, insertNAt)
+import           Yi.Misc             (adjBlock)
+import qualified Yi.Rope             as R (YiString, countNewLines, length, take)
+import           Yi.Utils            (SemiNum ((~-)))
 
 insertNAt :: R.YiString -> Point -> BufferM ()
 insertNAt rope point | R.countNewLines rope > 0 = B.insertNAt rope point

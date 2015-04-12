@@ -16,36 +16,57 @@ module Yi.UI.Vty
     ( start
     ) where
 
-import Prelude hiding (error, concatMap, reverse)
-import Control.Applicative hiding ((<|>))
-import Control.Concurrent
-import Control.Exception
-import Control.Lens
-import Control.Monad
-import Data.Char
-import qualified Data.DList as D
-import Data.Foldable (toList, concatMap)
-import Data.IORef
-import qualified Data.List.PointedList.Circular as PL
-import qualified Data.Map.Strict as M
-import Data.Maybe
-import Data.Monoid
-import qualified Data.Text as T
-import qualified Graphics.Vty as Vty
-import GHC.Conc (labelThread)
+import           Prelude                        hiding (concatMap, error,
+                                                 reverse)
 
-import Yi.Buffer
-import Yi.Config
-import Yi.Debug
-import Yi.Editor
-import Yi.Event
-import Yi.Style
-import qualified Yi.UI.Common as Common
-import qualified Yi.UI.SimpleLayout as SL
-import Yi.UI.Vty.Conversions
-import Yi.UI.TabBar
-import Yi.UI.Utils
-import Yi.Window
+import           Control.Applicative            (Applicative ((<*>)), (<$>))
+import           Control.Concurrent             (MVar, forkIO, isEmptyChan,
+                                                 myThreadId, newEmptyMVar,
+                                                 readChan, takeMVar, tryPutMVar,
+                                                 tryTakeMVar)
+import           Control.Exception              (IOException, handle)
+import           Control.Lens                   (use)
+import           Control.Monad                  (void, when)
+import           Data.Char                      (chr, ord)
+import qualified Data.DList                     as D (empty, snoc, toList)
+import           Data.Foldable                  (concatMap, toList)
+import           Data.IORef                     (IORef, newIORef, readIORef, writeIORef)
+import qualified Data.List.PointedList.Circular as PL (PointedList (_focus), withFocus)
+import qualified Data.Map.Strict                as M ((!))
+import           Data.Maybe                     (maybeToList)
+import           Data.Monoid                    (Endo (appEndo), (<>))
+import qualified Data.Text                      as T (Text, cons, empty,
+                                                      justifyLeft, length, pack,
+                                                      singleton, snoc, take,
+                                                      unpack)
+import           GHC.Conc                       (labelThread)
+import qualified Graphics.Vty                   as Vty (Attr, Cursor (Cursor, NoCursor),
+                                                        Event (EvResize), Image,
+                                                        Input (_eventChannel),
+                                                        Output (displayBounds),
+                                                        Picture (picCursor), Vty (inputIface, outputIface, refresh, shutdown, update),
+                                                        bold, char, charFill,
+                                                        defAttr, emptyImage,
+                                                        horizCat, mkVty,
+                                                        picForLayers,
+                                                        reverseVideo, text',
+                                                        translate, underline,
+                                                        vertCat, withBackColor,
+                                                        withForeColor,
+                                                        withStyle, (<|>))
+import           Yi.Buffer
+import           Yi.Config
+import           Yi.Debug                       (logError, logPutStrLn)
+import           Yi.Editor
+import           Yi.Event                       (Event)
+import           Yi.Style
+import qualified Yi.UI.Common                   as Common
+import qualified Yi.UI.SimpleLayout             as SL
+import           Yi.UI.TabBar                   (TabDescr (TabDescr), tabBarDescr)
+import           Yi.UI.Utils                    (arrangeItems, attributesPictureAndSelB)
+import           Yi.UI.Vty.Conversions          (colorToAttr, fromVtyEvent)
+import           Yi.Window                      (Window (bufkey, isMini, wkey))
+
 
 data Rendered = Rendered
     { picture :: !Vty.Image
@@ -316,7 +337,7 @@ drawText wsty h w tabWidth bufData
     lines' [] =  []
     lines' s  = case s' of
                   []          -> [l]
-                  ((_,x):s'') -> l : lines' s''
+                  ((_,_):s'') -> l : lines' s''
                 where
                 (l, s') = break ((== '\n') . fst) s
 

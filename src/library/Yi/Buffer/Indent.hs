@@ -1,4 +1,4 @@
-{-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE LambdaCase        #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# OPTIONS_HADDOCK show-extensions #-}
 
@@ -31,20 +31,20 @@ module Yi.Buffer.Indent
     , tabB
     ) where
 
-import           Control.Applicative
-import           Control.Monad (when)
-import           Data.Char
-import           Data.List (sort, nub)
-import           Data.Monoid
-import           Yi.Buffer.Basic
-import           Yi.Buffer.HighLevel
+import           Control.Applicative ((<$>))
+import           Control.Monad       ()
+import           Data.Char           (isSpace)
+import           Data.List           (nub, sort)
+import           Data.Monoid         ((<>))
+import           Yi.Buffer.Basic     (Direction (..))
+import           Yi.Buffer.HighLevel (firstNonSpaceB, getNextLineB, getNextNonBlankLineB, moveToSol, readLnB)
 import           Yi.Buffer.Misc
-import           Yi.Buffer.Normal
-import           Yi.Buffer.Region
-import           Yi.Buffer.TextUnit
-import           Yi.Rope (YiString)
-import qualified Yi.Rope as R
-import           Yi.String
+import           Yi.Buffer.Normal    ()
+import           Yi.Buffer.Region    (Region (regionStart), mkRegion, modifyRegionB, readRegionB)
+import           Yi.Buffer.TextUnit  (regionWithTwoMovesB)
+import           Yi.Rope             (YiString)
+import qualified Yi.Rope             as R
+import           Yi.String           (mapLines)
 
 {- |
   Return either a \t or the number of spaces specified by tabSize in the

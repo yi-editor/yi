@@ -12,18 +12,17 @@
 
 module Yi.Mode.Latex (latexMode3, latexMode2, fastMode) where
 
-import           Data.Text ()
+import           Data.Text            ()
 import           Yi.Buffer
-import qualified Yi.IncrementalParse as IncrParser
-import           Yi.Lexer.Alex (lexScanner, commonLexer, CharScanner,
-                                Tok, AlexState)
-import qualified Yi.Lexer.Latex as Latex
-import           Yi.Modes (anyExtension, fundamentalMode)
-import           Yi.Syntax
-import qualified Yi.Syntax.Driver as Driver
-import qualified Yi.Syntax.Latex as Latex
-import           Yi.Syntax.OnlineTree (manyToks, Tree)
-import           Yi.Syntax.Tree
+import qualified Yi.IncrementalParse  as IncrParser (scanner)
+import           Yi.Lexer.Alex        (AlexState, CharScanner, Tok, commonLexer, lexScanner)
+import qualified Yi.Lexer.Latex       as Latex (HlState, Token, alexScanToken, initState)
+import           Yi.Modes             (anyExtension, fundamentalMode)
+import           Yi.Syntax            (ExtHL (ExtHL), Scanner, mkHighlighter)
+import qualified Yi.Syntax.Driver     as Driver (mkHighlighter)
+import qualified Yi.Syntax.Latex      as Latex (TT, Tree, getStrokes, parse, tokenToStroke)
+import           Yi.Syntax.OnlineTree (Tree, manyToks)
+import           Yi.Syntax.Tree       (tokenBasedStrokes)
 
 abstract :: Mode syntax
 abstract = fundamentalMode

@@ -6,7 +6,7 @@ module Yi.Keymap.Completion (
    where
 
 import Control.Arrow (first)
-import Data.List
+import Data.List     (find, groupBy, intercalate, sortBy)
 
 -- inside a completion tree, the a's must be unique on each level
 

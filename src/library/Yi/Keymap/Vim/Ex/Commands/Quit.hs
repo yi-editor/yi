@@ -1,6 +1,6 @@
-{-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE LambdaCase        #-}
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE TupleSections #-}
+{-# LANGUAGE TupleSections     #-}
 {-# OPTIONS_HADDOCK show-extensions #-}
 
 -- |
@@ -14,25 +14,25 @@
 
 module Yi.Keymap.Vim.Ex.Commands.Quit (parse) where
 
-import           Control.Applicative
-import           Control.Lens
-import           Control.Monad
-import           Data.Foldable (find)
-import qualified Data.List.PointedList.Circular as PL
-import           Data.Monoid
-import qualified Data.Text as T
-import qualified Text.ParserCombinators.Parsec as P
-import           Yi.Buffer
-import           Yi.Core (quitEditor, errorEditor, closeWindow)
+import           Control.Applicative              (Alternative ((<|>)), (<$>))
+import           Control.Lens                     (use, uses)
+import           Control.Monad                    (void, when)
+import           Data.Foldable                    (find)
+import qualified Data.List.PointedList.Circular   as PL (length)
+import           Data.Monoid                      ((<>))
+import qualified Data.Text                        as T (append)
+import qualified Text.ParserCombinators.Parsec    as P (char, choice, many, string, try)
+import           Yi.Buffer                        (bkey, file)
+import           Yi.Core                          (closeWindow, errorEditor, quitEditor)
 import           Yi.Editor
-import           Yi.File
-import           Yi.Keymap
-import           Yi.Keymap.Vim.Common
-import qualified Yi.Keymap.Vim.Ex.Commands.Common as Common
-import           Yi.Keymap.Vim.Ex.Types
-import           Yi.Monad
-import           Yi.String (showT)
-import           Yi.Window (bufkey)
+import           Yi.File                          (deservesSave, fwriteAllY, viWrite)
+import           Yi.Keymap                        (Action (YiA), YiM, readEditor)
+import           Yi.Keymap.Vim.Common             (EventString)
+import qualified Yi.Keymap.Vim.Ex.Commands.Common as Common (impureExCommand, needsSaving, parse)
+import           Yi.Keymap.Vim.Ex.Types           (ExCommand (cmdAction, cmdShow))
+import           Yi.Monad                         (gets)
+import           Yi.String                        (showT)
+import           Yi.Window                        (bufkey)
 
 
 parse :: EventString -> Maybe ExCommand

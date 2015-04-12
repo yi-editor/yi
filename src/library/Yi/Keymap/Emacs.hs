@@ -1,8 +1,8 @@
-{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE FlexibleContexts  #-}
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE TemplateHaskell #-}
-{-# LANGUAGE TypeOperators #-}
-{-# LANGUAGE UnicodeSyntax #-}
+{-# LANGUAGE TemplateHaskell   #-}
+{-# LANGUAGE TypeOperators     #-}
+{-# LANGUAGE UnicodeSyntax     #-}
 {-# OPTIONS_HADDOCK show-extensions #-}
 
 -- |
@@ -26,35 +26,29 @@ module Yi.Keymap.Emacs ( keymap
                        , completionCaseSensitive
                        ) where
 
-import Control.Applicative
-import Control.Lens
-import Control.Monad
-import Data.Char
-import Data.Maybe
-import Data.Prototype
-import Data.Text ()
+import Control.Applicative      (Alternative ((<|>), empty, some))
+import Control.Lens             (assign, makeLenses, (%=))
+import Control.Monad            (replicateM_, unless, void)
+import Data.Char                (digitToInt, isDigit)
+import Data.Maybe               (fromMaybe)
+import Data.Prototype           (Proto (Proto), extractValue)
+import Data.Text                ()
 import Yi.Buffer
-import Yi.Command (shellCommandE)
-import Yi.Core (closeWindowEmacs, runAction, suspendEditor,
-                userForceRefresh, withSyntax)
-import Yi.Dired
+import Yi.Command               (shellCommandE)
+import Yi.Core
+import Yi.Dired                 (dired)
 import Yi.Editor
-import Yi.File
-import Yi.Keymap
+import Yi.File                  (fwriteE, fwriteToE)
+import Yi.Keymap                (Keymap, KeymapSet, YiAction (..), YiM, modelessKeymapSet, write)
 import Yi.Keymap.Emacs.KillRing
 import Yi.Keymap.Emacs.Utils
-  (askQuitEditor, evalRegionE, executeExtendedCommandE, findFile,
-   findFileNewTab, promptFile, insertNextC, isearchKeymap, killBufferE,
-   queryReplaceE, readUniversalArg, scrollDownE, scrollUpE, switchBufferE,
-   askSaveEditor, argToInt, promptTag, justOneSep, joinLinesE, countWordsRegion,
-   findFileReadOnly)
 import Yi.Keymap.Keys
 import Yi.MiniBuffer
-import Yi.Misc (adjBlock, adjIndent, selectAll, placeMark)
-import Yi.Mode.Buffers ( listBuffers )
+import Yi.Misc                  (adjBlock, adjIndent, placeMark, selectAll)
+import Yi.Mode.Buffers          (listBuffers)
 import Yi.Rectangle
-import Yi.Search (isearchFinishWithE, resetRegexE)
-import Yi.TextCompletion
+import Yi.Search                (isearchFinishWithE, resetRegexE)
+import Yi.TextCompletion        (resetComplete, wordComplete')
 
 data ModeMap = ModeMap { _eKeymap :: Keymap
                        , _completionCaseSensitive :: Bool

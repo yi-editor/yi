@@ -13,16 +13,16 @@
 module Yi.Mode.Buffers (listBuffers) where
 
 import           Control.Applicative ((<$>))
-import           Control.Category ((>>>))
-import           Control.Lens
-import           Data.List.NonEmpty (toList)
-import qualified Data.Text as T
-import           System.FilePath (takeFileName)
+import           Control.Category    ((>>>))
+import           Control.Lens        (assign, (%~), (.~))
+import           Data.List.NonEmpty  (toList)
+import qualified Data.Text           as T (intercalate, pack)
+import           System.FilePath     (takeFileName)
 import           Yi.Buffer
 import           Yi.Editor
-import           Yi.Keymap
+import           Yi.Keymap           (Keymap, YiM, topKeymapA)
 import           Yi.Keymap.Keys
-import qualified Yi.Rope as R
+import qualified Yi.Rope             as R (fromText, toString)
 
 -- | Retrieve buffer list and open a them in buffer mode using the
 -- 'bufferKeymap'.

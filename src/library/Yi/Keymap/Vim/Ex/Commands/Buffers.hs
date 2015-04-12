@@ -11,21 +11,21 @@
 -- :buffers or :ls ex command to list buffers.
 module Yi.Keymap.Vim.Ex.Commands.Buffers (parse) where
 
-import           Control.Applicative
-import           Control.Lens
-import           Control.Monad
-import qualified Data.Map as M
-import qualified Data.Text as T
-import qualified Text.ParserCombinators.Parsec as P
-import           Yi.Buffer.Basic
-import           Yi.Buffer.Misc
+import           Control.Applicative              (Alternative ((<|>)))
+import           Control.Lens                     (view)
+import           Control.Monad                    (void)
+import qualified Data.Map                         as M (elems, mapWithKey)
+import qualified Data.Text                        as T (intercalate, pack, unlines)
+import qualified Text.ParserCombinators.Parsec    as P (string, try)
+import           Yi.Buffer.Basic                  (BufferRef (BufferRef))
+import           Yi.Buffer.Misc                   (BufferId (MemBuffer), identA)
 import           Yi.Editor
-import           Yi.Keymap
-import           Yi.Keymap.Vim.Common
-import qualified Yi.Keymap.Vim.Ex.Commands.Common as Common
-import           Yi.Keymap.Vim.Ex.Types
-import           Yi.Monad
-import           Yi.Rope (fromText)
+import           Yi.Keymap                        (Action (EditorA))
+import           Yi.Keymap.Vim.Common             (EventString)
+import qualified Yi.Keymap.Vim.Ex.Commands.Common as Common (parse, pureExCommand)
+import           Yi.Keymap.Vim.Ex.Types           (ExCommand (cmdAction, cmdShow))
+import           Yi.Monad                         (gets)
+import           Yi.Rope                          (fromText)
 
 parse :: EventString -> Maybe ExCommand
 parse = Common.parse $ do

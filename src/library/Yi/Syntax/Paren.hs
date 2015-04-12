@@ -1,5 +1,5 @@
 {-# LANGUAGE DeriveFoldable #-}
-{-# LANGUAGE DeriveFunctor #-}
+{-# LANGUAGE DeriveFunctor  #-}
 {-# OPTIONS_HADDOCK show-extensions #-}
 
 -- |
@@ -13,19 +13,21 @@
 
 module Yi.Syntax.Paren where
 
-import Control.Applicative
-import Data.Foldable
-import Data.Maybe
-import Data.Monoid
-import Data.Traversable
 import Prelude hiding (elem)
-import Yi.IncrementalParse
-import Yi.Lexer.Alex hiding (tokenToStyle)
-import Yi.Lexer.Haskell
-import Yi.Style (hintStyle, errorStyle, StyleName)
-import Yi.Syntax
-import Yi.Syntax.Layout
-import Yi.Syntax.Tree
+
+import           Control.Applicative (Alternative ((<|>), many),
+                                      Applicative ((*>), (<*), (<*>)), (<$>))
+import           Data.Foldable       (Foldable (foldMap), elem, toList)
+import           Data.Maybe          (listToMaybe)
+import           Data.Monoid         (Endo (Endo, appEndo), Monoid (mappend), (<>))
+import           Data.Traversable    (Traversable (sequenceA))
+import           Yi.IncrementalParse (P, Parser, eof, lookNext, recoverWith, symbol)
+import           Yi.Lexer.Alex       hiding (tokenToStyle)
+import           Yi.Lexer.Haskell
+import           Yi.Style            (StyleName, errorStyle, hintStyle)
+import           Yi.Syntax           (Point, Scanner, Span)
+import           Yi.Syntax.Layout    (State, layoutHandler)
+import           Yi.Syntax.Tree
 
 indentScanner :: Scanner (AlexState lexState) TT
               -> Scanner (Yi.Syntax.Layout.State Token lexState) TT

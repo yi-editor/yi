@@ -1,10 +1,9 @@
-{-# LANGUAGE CPP #-}
-{-# LANGUAGE DeriveDataTypeable #-}
+{-# LANGUAGE CPP                        #-}
+{-# LANGUAGE DeriveDataTypeable         #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
-{-# LANGUAGE LambdaCase #-}
-{-# LANGUAGE TemplateHaskell #-}
-{-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE LambdaCase                 #-}
+{-# LANGUAGE OverloadedStrings          #-}
+{-# LANGUAGE TemplateHaskell            #-}
 {-# OPTIONS_HADDOCK show-extensions #-}
 
 -- |
@@ -37,44 +36,80 @@ module Yi.Eval (
         consoleKeymap
 ) where
 
-import           Control.Applicative ((<$>), (<*>))
-import           Control.Concurrent
-import           Control.Monad.Catch (try)
-import           Control.Lens hiding (Action)
-import           Control.Monad hiding (mapM_)
-import           Control.Monad.Base
-import           Control.Monad.Trans (lift)
-import           Data.Array
-import           Data.Binary
-import           Data.Default
-import           Data.Foldable (mapM_)
-import qualified Data.HashMap.Strict as M
-import           Data.List
-import           Data.Monoid
-import           Data.Typeable
-import           Prelude hiding (mapM_)
-import           System.Directory (doesFileExist)
-import           Text.Read (readMaybe)
+import Prelude hiding (mapM_)
 
+import Control.Applicative ( (<$>), (<*>) )
+import Control.Concurrent
+    ( takeMVar, putMVar, newEmptyMVar, MVar, forkIO )
+import Control.Monad.Catch ( try )
+import Control.Lens ( (^.), (<&>), (.=), (%=) )
+import Control.Monad
+    ( Monad((>>), (>>=), return), when, void, forever )
+import Control.Monad.Base ( MonadBase )
+import Control.Monad.Trans ( lift )
+import Data.Array ( elems )
+import Data.Binary ( Binary, put, get )
+import Data.Default ( Default, def )
+import Data.Foldable ( mapM_ )
+import qualified Data.HashMap.Strict as M
+    ( HashMap, insert, lookup, empty, keys )
+import Data.List ( sort )
+import Data.Monoid ( mempty, Monoid, (<>) )
+import Data.Typeable ( Typeable )
 #ifdef HINT
 import qualified Language.Haskell.Interpreter as LHI
+    ( typeOf,
+      setImportsQ,
+      searchPath,
+      set,
+      runInterpreter,
+      ModuleElem(Data, Class, Fun),
+      getModuleExports,
+      as,
+      loadModules,
+      languageExtensions,
+      OptionVal((:=)),
+      InterpreterError,
+      Extension(OverloadedStrings, NoImplicitPrelude),
+      setTopLevelModules,
+      interpret )
 #endif
-
-import           Yi.Boot.Internal (reload)
-import           Yi.Buffer
-import           Yi.Config.Simple.Types
-import           Yi.Core (errorEditor, runAction)
-import           Yi.Types (YiVariable,YiConfigVariable)
-import           Yi.Editor
-import           Yi.File
-import           Yi.Hooks
-import           Yi.Keymap
-import           Yi.Keymap.Keys
-import qualified Yi.Paths (getEvaluatorContextFilename)
-import           Yi.Regex
+import System.Directory ( doesFileExist )
+import Text.Read ( readMaybe )
+import Yi.Boot.Internal ( reload )
+import Yi.Buffer
+    ( gotoLn,
+      moveXorEol,
+      BufferM,
+      readLnB,
+      pointB,
+      botB,
+      insertN,
+      getBookmarkB,
+      markPointA )
+import Yi.Config.Simple.Types ( customVariable, Field, ConfigM )
+import Yi.Core ( errorEditor, runAction )
+import Yi.Types ( YiVariable, YiConfigVariable )
+import Yi.Editor
+    ( getEditorDyn,
+      putEditorDyn,
+      MonadEditor,
+      printMsg,
+      askCfg,
+      withCurrentBuffer,
+      withCurrentBuffer )
+import Yi.File ( openingNewFile )
+import Yi.Hooks ( runHook )
+import Yi.Keymap
+    ( YiM, Action, YiAction, makeAction, Keymap, write )
+import Yi.Keymap.Keys ( event, Event(..), Key(KEnter) )
+import qualified Yi.Paths ( getEvaluatorContextFilename )
+import Yi.Regex ( Regex, makeRegex, matchOnceText )
 import qualified Yi.Rope as R
-import           Yi.String
-import           Yi.Utils
+    ( toString, YiString, splitAt, length )
+import Yi.String ( showT )
+import Yi.Utils ( io, makeLensesWithSuffix )
+
 
 -- TODO: should we be sticking Text here?
 

@@ -1,7 +1,7 @@
-{-# LANGUAGE DeriveDataTypeable #-}
+{-# LANGUAGE DeriveDataTypeable         #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
-{-# LANGUAGE LambdaCase #-}
-{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE LambdaCase                 #-}
+{-# LANGUAGE OverloadedStrings          #-}
 {-# OPTIONS_HADDOCK show-extensions #-}
 
 -- |
@@ -58,27 +58,27 @@ module Yi.Search (
         qrFinish
                  ) where
 
-import           Control.Applicative
-import           Control.Lens hiding (re, from, to, act)
-import           Control.Monad
-import           Data.Binary
-import           Data.Char
-import           Data.Default
-import           Data.Maybe
-import           Data.Monoid
-import qualified Data.Text as T
-import qualified Data.Text.Encoding as E
-import           Data.Typeable
+import           Control.Applicative ((<$>))
+import           Control.Lens        (assign)
+import           Control.Monad       (void, when)
+import           Data.Binary         (Binary, get, put)
+import           Data.Char           (isAlpha, isUpper)
+import           Data.Default        (Default, def)
+import           Data.Maybe          (listToMaybe)
+import           Data.Monoid         ((<>))
+import qualified Data.Text           as T (Text, any, break, empty, length, null, takeWhile, unpack)
+import qualified Data.Text.Encoding  as E (decodeUtf8, encodeUtf8)
+import           Data.Typeable       (Typeable)
 import           Yi.Buffer
-import           Yi.Types (YiVariable)
 import           Yi.Editor
-import           Yi.History
+import           Yi.History          (historyFinishGen, historyMoveGen, historyStartGen)
 import           Yi.Regex
-import qualified Yi.Rope as R
-import           Yi.Search.Internal
-import           Yi.String (showT)
-import           Yi.Utils
-import           Yi.Window
+import qualified Yi.Rope             as R (YiString, null, toString, toText)
+import           Yi.Search.Internal  (getRegexE, resetRegexE, setRegexE)
+import           Yi.String           (showT)
+import           Yi.Types            (YiVariable)
+import           Yi.Utils            (fst3)
+import           Yi.Window           (Window)
 
 -- ---------------------------------------------------------------------
 --

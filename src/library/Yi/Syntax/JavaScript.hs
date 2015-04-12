@@ -1,6 +1,6 @@
-{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE DeriveDataTypeable #-}
-{-# LANGUAGE DeriveFoldable #-}
+{-# LANGUAGE DeriveFoldable     #-}
+{-# LANGUAGE FlexibleInstances  #-}
 {-# OPTIONS_HADDOCK show-extensions #-}
 
 -- |
@@ -18,22 +18,21 @@
 module Yi.Syntax.JavaScript where
 
 import           Prelude hiding (elem,error,any,exp)
-import           Control.Applicative hiding (Const)
-import           Data.Data (Data)
-import           Data.Monoid
-import           Data.Foldable
-import           Data.Typeable
-import           Yi.Buffer.Basic (Point(..))
-import           Yi.IncrementalParse (P, eof, symbol, recoverWith)
-import           Yi.Lexer.Alex (Stroke, Tok(..), tokToSpan, tokFromT)
-import           Yi.Lexer.JavaScript (TT, Token(..), Reserved(..), Operator(..),
-                                      tokenToStyle, prefixOperators,
-                                      infixOperators, postfixOperators )
-import qualified Data.Text as T
-import           Yi.Debug hiding (error)
-import           Yi.String
-import           Yi.Style (errorStyle, StyleName)
-import           Yi.Syntax.Tree (IsTree(..), sepBy1, sepBy)
+
+import           Control.Applicative (Alternative ((<|>), many), Applicative ((<*), (<*>), pure), optional, (<$>))
+import           Data.Data           (Data)
+import           Data.Foldable       (Foldable (foldMap), any, elem, toList)
+import           Data.Monoid         (Endo (..), Monoid (mempty), (<>))
+import qualified Data.Text           as T (cons)
+import           Data.Typeable       (Typeable)
+import           Yi.Buffer.Basic     (Point (..))
+import           Yi.Debug            (trace)
+import           Yi.IncrementalParse (P, eof, recoverWith, symbol)
+import           Yi.Lexer.Alex       (Stroke, Tok (..), tokFromT, tokToSpan)
+import           Yi.Lexer.JavaScript
+import           Yi.String           (showT)
+import           Yi.Style            (StyleName, errorStyle)
+import           Yi.Syntax.Tree      (IsTree (..), sepBy, sepBy1)
 
 -- * Data types, classes and instances
 

@@ -1,4 +1,6 @@
-{-# LANGUAGE NoMonomorphismRestriction, FlexibleContexts #-}
+{-# LANGUAGE FlexibleContexts          #-}
+{-# LANGUAGE NoMonomorphismRestriction #-}
+
 module Yi.Paths ( getEvaluatorContextFilename
                 , getConfigFilename
                 , getConfigModules
@@ -10,13 +12,13 @@ module Yi.Paths ( getEvaluatorContextFilename
                 , getDataPath
                 ) where
 
-import System.Directory(getAppUserDataDirectory, -- TODO: phase out in favour of xdg-dir
-                        doesDirectoryExist,
-                        createDirectoryIfMissing)
-import System.FilePath((</>))
-import Control.Monad (liftM)
-import Control.Monad.Base
-import qualified System.Environment.XDG.BaseDir as XDG
+import           Control.Monad                  (liftM)
+import           Control.Monad.Base             (MonadBase, liftBase)
+import           System.Directory               (createDirectoryIfMissing,
+                                                 doesDirectoryExist,
+                                                 getAppUserDataDirectory)
+import qualified System.Environment.XDG.BaseDir as XDG (getUserConfigDir, getUserDataDir)
+import           System.FilePath                ((</>))
 
 appUserDataCond ::(MonadBase IO m) => (String -> IO FilePath) -> m FilePath
 appUserDataCond dirQuery = liftBase $

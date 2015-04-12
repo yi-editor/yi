@@ -12,15 +12,15 @@
 
 module Yi.Keymap.Vim.Ex.Commands.Paste (parse) where
 
-import Control.Applicative
-import Data.Monoid
-import Yi.Editor
-import Yi.Keymap
-import Yi.Keymap.Vim.Common
-import Yi.Keymap.Vim.Ex.Commands.Common hiding (parse)
-import Yi.Keymap.Vim.Ex.Types
-import Yi.Keymap.Vim.StateUtils
-import Yi.String (showT)
+import           Control.Applicative              ((<$>))
+import           Data.Monoid                      ((<>))
+import           Yi.Editor                        (getEditorDyn, printMsg)
+import           Yi.Keymap                        (Action (EditorA))
+import           Yi.Keymap.Vim.Common             (EventString, VimState (vsPaste))
+import           Yi.Keymap.Vim.Ex.Commands.Common (BoolOptionAction (..), parseBoolOption)
+import           Yi.Keymap.Vim.Ex.Types           (ExCommand)
+import           Yi.Keymap.Vim.StateUtils         (modifyStateE)
+import           Yi.String                        (showT)
 
 parse :: EventString -> Maybe ExCommand
 parse = parseBoolOption "paste" action

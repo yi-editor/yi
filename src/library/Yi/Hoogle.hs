@@ -13,19 +13,19 @@
 
 module Yi.Hoogle where
 
-import           Control.Applicative
-import           Control.Arrow ((&&&))
-import           Data.Char (isUpper)
-import           Data.List (nub)
-import qualified Data.Text as T
-import           System.Exit (ExitCode(ExitFailure))
-import           Yi.Buffer
-import           Yi.Editor
-import           Yi.Keymap
-import           Yi.Process (runProgCommand)
-import qualified Yi.Rope as R
-import           Yi.String (showT)
-import           Yi.Utils
+import           Control.Applicative ((<$>))
+import           Control.Arrow       ((&&&))
+import           Data.Char           (isUpper)
+import           Data.List           (nub)
+import qualified Data.Text           as T (isInfixOf, lines, pack)
+import           System.Exit         (ExitCode (ExitFailure))
+import           Yi.Buffer           (readRegionB, regionOfB, replaceRegionB, unitWord)
+import           Yi.Editor           (printMsgs, withCurrentBuffer)
+import           Yi.Keymap           (YiM)
+import           Yi.Process          (runProgCommand)
+import qualified Yi.Rope             as R (YiString, fromText, head, null, toString, toText, words)
+import           Yi.String           (showT)
+import           Yi.Utils            (io)
 
 -- | Remove anything starting with uppercase letter. These denote
 -- either module names or types.

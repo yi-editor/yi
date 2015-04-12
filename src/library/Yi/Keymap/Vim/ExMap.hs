@@ -12,23 +12,23 @@
 
 module Yi.Keymap.Vim.ExMap (defExMap) where
 
-import           Control.Applicative
-import           Control.Monad (when)
-import           Data.Char (isSpace)
-import           Data.Maybe (fromJust)
-import           Data.Monoid
-import qualified Data.Text as T
-import           System.FilePath (isPathSeparator)
-import           Yi.Buffer.Adjusted hiding (Insert)
+import           Control.Applicative      ((<$), (<$>))
+import           Control.Monad            (when)
+import           Data.Char                (isSpace)
+import           Data.Maybe               (fromJust)
+import           Data.Monoid              ((<>))
+import qualified Data.Text                as T (Text, drop, head, length, split, unwords)
+import           System.FilePath          (isPathSeparator)
+import           Yi.Buffer.Adjusted       hiding (Insert)
 import           Yi.Editor
-import           Yi.History
-import           Yi.Keymap
+import           Yi.History               (historyDown, historyFinish, historyPrefixSet, historyUp)
+import           Yi.Keymap                (YiM)
 import           Yi.Keymap.Vim.Common
 import           Yi.Keymap.Vim.Ex
-import           Yi.Keymap.Vim.StateUtils
-import           Yi.Keymap.Vim.Utils
-import qualified Yi.Rope as R
-import           Yi.String
+import           Yi.Keymap.Vim.StateUtils (modifyStateE, resetCountE, switchModeE)
+import           Yi.Keymap.Vim.Utils      (matchFromBool)
+import qualified Yi.Rope                  as R (fromText, toText)
+import           Yi.String                (commonTPrefix')
 
 defExMap :: [EventString -> Maybe ExCommand] -> [VimBinding]
 defExMap cmdParsers =

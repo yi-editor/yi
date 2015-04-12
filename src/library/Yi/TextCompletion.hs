@@ -1,6 +1,6 @@
-{-# LANGUAGE DeriveDataTypeable #-}
+{-# LANGUAGE DeriveDataTypeable         #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
-{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE OverloadedStrings          #-}
 {-# OPTIONS_HADDOCK show-extensions #-}
 
 -- |
@@ -24,25 +24,25 @@ module Yi.TextCompletion (
         CompletionScope(..)
 ) where
 
-import           Control.Applicative
-import           Control.Monad
-import           Data.Binary
-import           Data.Char
-import           Data.Default
-import           Data.Function (on)
-import           Data.List (findIndex)
-import           Data.List.NonEmpty (NonEmpty(..))
-import           Data.Maybe
-import qualified Data.Text as T
-import qualified Data.Text.Encoding as E
-import           Data.Typeable
+import           Control.Applicative ((<$>))
+import           Control.Monad       (forM)
+import           Data.Binary         (Binary, get, put)
+import           Data.Char           (GeneralCategory (..), generalCategory)
+import           Data.Default        (Default, def)
+import           Data.Function       (on)
+import           Data.List           (findIndex)
+import           Data.List.NonEmpty  (NonEmpty (..))
+import           Data.Maybe          (isJust)
+import qualified Data.Text           as T (Text, drop, groupBy, head, isPrefixOf, length, null)
+import qualified Data.Text.Encoding  as E (decodeUtf8, encodeUtf8)
+import           Data.Typeable       (Typeable)
 import           Yi.Buffer
-import           Yi.Completion
-import           Yi.Types (YiVariable)
+import           Yi.Completion       (completeInList, mkIsPrefixOf)
 import           Yi.Editor
-import           Yi.Keymap
-import qualified Yi.Rope as R
-import           Yi.Utils
+import           Yi.Keymap           (YiM)
+import qualified Yi.Rope             as R (fromText, toText)
+import           Yi.Types            (YiVariable)
+import           Yi.Utils            (nubSet)
 
 -- ---------------------------------------------------------------------
 -- | Word completion

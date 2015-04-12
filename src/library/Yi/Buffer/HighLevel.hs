@@ -1,7 +1,7 @@
-{-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE LambdaCase        #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# OPTIONS_HADDOCK show-extensions #-}
-{-# LANGUAGE MultiWayIf #-}
+{-# LANGUAGE MultiWayIf        #-}
 
 -- |
 -- Module      :  Yi.Buffer.HighLevel
@@ -114,31 +114,30 @@ module Yi.Buffer.HighLevel
     , vimScrollByB
     ) where
 
-import           Control.Applicative
-import           Control.Lens hiding ((-~), (+~), re, transform)
-import           Control.Lens.Cons (_last)
-import           Control.Monad
+import           Control.Applicative      (Applicative ((<*>)), (<$>))
+import           Control.Lens             (assign, over, use, (%=), (.=))
+import           Control.Lens.Cons        (_last)
+import           Control.Monad            (forM, forM_, liftM, replicateM_, unless, void, when)
 import           Control.Monad.RWS.Strict (ask)
-import           Control.Monad.State hiding (forM, forM_, sequence_)
-import           Data.Char (isDigit, isHexDigit, isOctDigit,
-                            toUpper, isUpper, toLower, isSpace)
-import           Data.List (sort, intersperse)
-import           Data.Maybe (fromMaybe, listToMaybe, catMaybes, fromJust)
-import           Data.Monoid
-import qualified Data.Text as T
-import           Data.Time (UTCTime)
-import           Data.Tuple (swap)
-import           Numeric (showOct, showHex, readOct, readHex)
-import           Yi.Buffer.Basic
+import           Control.Monad.State      (gets)
+import           Data.Char                (isDigit, isHexDigit, isOctDigit, isSpace, isUpper, toLower, toUpper)
+import           Data.List                (intersperse, sort)
+import           Data.Maybe               (catMaybes, fromMaybe, listToMaybe)
+import           Data.Monoid              (Monoid (mempty), (<>))
+import qualified Data.Text                as T (Text, map, toLower, toUpper, unpack)
+import           Data.Time                (UTCTime)
+import           Data.Tuple               (swap)
+import           Numeric                  (readHex, readOct, showHex, showOct)
+import           Yi.Buffer.Basic          (Direction (..), Mark, Point (..), Size (Size))
 import           Yi.Buffer.Misc
 import           Yi.Buffer.Normal
 import           Yi.Buffer.Region
-import           Yi.Config.Misc (ScrollStyle(SingleLine))
-import           Yi.Rope (YiString)
-import qualified Yi.Rope as R
-import           Yi.String
-import           Yi.Utils
-import           Yi.Window
+import           Yi.Config.Misc           (ScrollStyle (SingleLine))
+import           Yi.Rope                  (YiString)
+import qualified Yi.Rope                  as R
+import           Yi.String                (capitalizeFirst, fillText, isBlank, mapLines, onLines, overInit)
+import           Yi.Utils                 (SemiNum ((+~), (-~)))
+import           Yi.Window                (Window (actualLines, height, width, wkey))
 
 -- ---------------------------------------------------------------------
 -- Movement operations

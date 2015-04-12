@@ -1,4 +1,4 @@
-{-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE LambdaCase        #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# OPTIONS_HADDOCK show-extensions #-}
 
@@ -11,45 +11,45 @@
 
 module Yi.Keymap.Vim.NormalMap (defNormalMap) where
 
-import           Control.Applicative
-import           Control.Lens hiding (re)
-import           Control.Monad
-import           Data.Char
-import           Data.HashMap.Strict (singleton, lookup)
-import           Data.List (group)
-import           Data.Maybe (fromMaybe)
-import           Data.Monoid
-import qualified Data.Text as T
-import           Prelude hiding (null, lookup)
-import           System.Directory (doesFileExist)
-import           System.FriendlyPath (expandTilda)
-import           Yi.Buffer.Adjusted hiding (Insert)
-import           Yi.Core (quitEditor, closeWindow)
+import           Prelude                    hiding (lookup)
+
+import           Control.Applicative        ((<$>))
+import           Control.Lens               (assign, use, (.=))
+import           Control.Monad              (replicateM_, unless, void, when)
+import           Data.Char                  (ord)
+import           Data.HashMap.Strict        (lookup, singleton)
+import           Data.List                  (group)
+import           Data.Maybe                 (fromMaybe)
+import           Data.Monoid                (Monoid (mempty), (<>))
+import qualified Data.Text                  as T (drop, empty, pack, replicate, unpack)
+import           System.Directory           (doesFileExist)
+import           System.FriendlyPath        (expandTilda)
+import           Yi.Buffer.Adjusted         hiding (Insert)
+import           Yi.Core                    (closeWindow, quitEditor)
 import           Yi.Editor
-import           Yi.Event
-import           Yi.File (openNewFile, fwriteE)
-import           Yi.History
-import           Yi.Keymap
-import           Yi.Keymap.Keys
+import           Yi.Event                   (Event (Event), Key (KASCII, KEnter, KEsc, KTab), Modifier (MCtrl))
+import           Yi.File                    (fwriteE, openNewFile)
+import           Yi.History                 (historyPrefixSet, historyStart)
+import           Yi.Keymap                  (YiM)
+import           Yi.Keymap.Keys             (char, ctrlCh, spec)
 import           Yi.Keymap.Vim.Common
-import           Yi.Keymap.Vim.Eval
-import           Yi.Keymap.Vim.Motion
-import           Yi.Keymap.Vim.Operator
-import           Yi.Keymap.Vim.Search
+import           Yi.Keymap.Vim.Eval         (scheduleActionStringForEval)
+import           Yi.Keymap.Vim.Motion       (CountedMove (CountedMove), regionOfMoveB, stringToMove)
+import           Yi.Keymap.Vim.Operator     (VimOperator (..), opChange, opDelete, opYank)
+import           Yi.Keymap.Vim.Search       (doVimSearch)
 import           Yi.Keymap.Vim.StateUtils
-import           Yi.Keymap.Vim.StyledRegion
-import           Yi.Keymap.Vim.Tag
+import           Yi.Keymap.Vim.StyledRegion (StyledRegion (StyledRegion), transformCharactersInLineN)
+import           Yi.Keymap.Vim.Tag          (gotoTag, popTag)
 import           Yi.Keymap.Vim.Utils
-import           Yi.MiniBuffer
-import           Yi.Misc
-import           Yi.Monad
-import           Yi.Regex (seInput, makeSearchOptsM)
-import qualified Yi.Rope as R
-import           Yi.Search (getRegexE, isearchInitE,
-                            setRegexE, makeSimpleSearch)
-import           Yi.String
-import           Yi.Tag (Tag(..))
-import           Yi.Utils (io)
+import           Yi.MiniBuffer              (spawnMinibufferE)
+import           Yi.Misc                    (printFileInfoE)
+import           Yi.Monad                   (maybeM, whenM)
+import           Yi.Regex                   (makeSearchOptsM, seInput)
+import qualified Yi.Rope                    as R (fromText, null, toString, toText)
+import           Yi.Search                  (getRegexE, isearchInitE, makeSimpleSearch, setRegexE)
+import           Yi.String                  (showT)
+import           Yi.Tag                     (Tag (..))
+import           Yi.Utils                   (io)
 
 mkDigitBinding :: Char -> VimBinding
 mkDigitBinding c = mkBindingE Normal Continue (char c, return (), mutate)

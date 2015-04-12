@@ -1,8 +1,8 @@
-{-# LANGUAGE CPP #-}
-{-# LANGUAGE DeriveDataTypeable #-}
-{-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE Rank2Types #-}
+{-# LANGUAGE CPP                 #-}
+{-# LANGUAGE DeriveDataTypeable  #-}
+{-# LANGUAGE FlexibleInstances   #-}
+{-# LANGUAGE OverloadedStrings   #-}
+{-# LANGUAGE Rank2Types          #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# OPTIONS_HADDOCK show-extensions #-}
 
@@ -17,20 +17,20 @@
 
 module Yi.History where
 
-import           Control.Applicative
-import           Control.Lens
-import           Data.Binary
-import           Data.Default
-import           Data.List
-import qualified Data.Map as M
-import           Data.Monoid
-import qualified Data.Text as T
-import qualified Data.Text.Encoding as E
-import           Data.Typeable
-import           Yi.Buffer
+import           Control.Applicative (liftA3, (<$>))
+import           Control.Lens        (Lens', lens, set, (^.))
+import           Data.Binary         (Binary, get, put)
+import           Data.Default        (Default, def)
+import           Data.List           (nub)
+import qualified Data.Map            as M (Map, findWithDefault, insert, mapKeys)
+import           Data.Monoid         (mempty, (<>))
+import qualified Data.Text           as T (Text, isPrefixOf, null, pack, unpack)
+import qualified Data.Text.Encoding  as E (decodeUtf8, encodeUtf8)
+import           Data.Typeable       (Typeable)
+import           Yi.Buffer           (elemsB, replaceBufferContent)
 import           Yi.Editor
-import qualified Yi.Rope as R
-import           Yi.Types (YiVariable)
+import qualified Yi.Rope             as R (fromText, toText)
+import           Yi.Types            (YiVariable)
 
 newtype Histories = Histories (M.Map T.Text History)
                   deriving (Show, Eq, Typeable)
@@ -42,9 +42,9 @@ instance Binary Histories where
 instance Default Histories where
   def = Histories def
 
-data History = History { _historyCurrent :: Int
+data History = History { _historyCurrent  :: Int
                        , _historyContents :: [T.Text]
-                       , _historyPrefix :: T.Text
+                       , _historyPrefix   :: T.Text
                        } deriving (Show, Eq, Typeable)
 
 instance Default History where

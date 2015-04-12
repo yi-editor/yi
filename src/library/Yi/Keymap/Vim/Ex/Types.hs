@@ -9,10 +9,10 @@
 
 module Yi.Keymap.Vim.Ex.Types where
 
-import Data.Maybe
-import Data.Text (Text, unpack)
-import Yi.Keymap
-import Yi.Keymap.Vim.Common
+import Data.Maybe           (listToMaybe, mapMaybe)
+import Data.Text            (Text, unpack)
+import Yi.Keymap            (Action, YiM)
+import Yi.Keymap.Vim.Common (EventString)
 
 data ExCommand = ExCommand {
     cmdComplete :: YiM [Text]

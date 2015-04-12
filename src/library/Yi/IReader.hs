@@ -20,23 +20,26 @@
 
 module Yi.IReader where
 
-import           Control.Exception
-import           Control.Monad
-import           Data.Functor ( (<$>) )
-import           Data.Binary
-import qualified Data.ByteString.Char8 as B (pack, unpack, readFile, ByteString)
+import           Control.Exception          (SomeException, catch)
+import           Control.Monad              (join, void)
+import           Data.Binary                (Binary, decode, encodeFile)
+import qualified Data.ByteString.Char8      as B (ByteString, pack, readFile, unpack)
 import qualified Data.ByteString.Lazy.Char8 as BL (fromChunks)
-import           Data.Default
-import           Data.Sequence as S
-import           Data.Typeable
-import           Yi.Buffer.HighLevel (replaceBufferContent, topB)
-import           Yi.Buffer.Misc (getBufferDyn, putBufferDyn, elemsB)
-import           Yi.Editor (withCurrentBuffer)
-import           Yi.Keymap (YiM)
-import           Yi.Paths (getArticleDbFilename)
-import qualified Yi.Rope as R
-import           Yi.Utils
-import           Yi.Types (YiVariable)
+import           Data.Default               (Default, def)
+import           Data.Functor               ((<$>))
+import           Data.Sequence              as S (Seq, ViewL (EmptyL, (:<)),
+                                                  ViewR ((:>)), empty, length,
+                                                  null, splitAt, viewl, viewr,
+                                                  (<|), (><), (|>))
+import           Data.Typeable              (Typeable)
+import           Yi.Buffer.HighLevel        (replaceBufferContent, topB)
+import           Yi.Buffer.Misc             (elemsB, getBufferDyn, putBufferDyn)
+import           Yi.Editor                  (withCurrentBuffer)
+import           Yi.Keymap                  (YiM)
+import           Yi.Paths                   (getArticleDbFilename)
+import qualified Yi.Rope                    as R (fromString, toString)
+import           Yi.Types                   (YiVariable)
+import           Yi.Utils                   (io)
 
 -- | TODO: Why 'B.ByteString'?
 type Article = B.ByteString

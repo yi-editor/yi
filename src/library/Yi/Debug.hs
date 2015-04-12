@@ -1,6 +1,6 @@
-{-# LANGUAGE CPP #-}
-{-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE CPP               #-}
+{-# LANGUAGE FlexibleContexts  #-}
+{-# LANGUAGE LambdaCase        #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# OPTIONS_HADDOCK show-extensions #-}
 
@@ -16,22 +16,22 @@
 module Yi.Debug ( initDebug, trace, traceM, traceM_, logPutStrLn
                 , logError, logStream, Yi.Debug.error ) where
 
-import           Control.Concurrent
-import           Control.Monad.Base
-import           Data.IORef
-import           Data.Monoid
-import qualified Data.Text as T
-import qualified Data.Time
-import           GHC.Conc (labelThread)
-import           System.IO
-import           System.IO.Unsafe (unsafePerformIO)
-import qualified System.Locale
+import Control.Concurrent
+    ( dupChan, getChanContents, forkIO, myThreadId, Chan )
+import Control.Monad.Base ( liftBase, MonadBase )
+import Data.IORef ( readIORef, writeIORef, IORef, newIORef )
+import Data.Monoid ( (<>) )
+import qualified Data.Text as T ( pack, snoc, unpack, Text )
+import GHC.Conc ( labelThread )
+import System.IO
+    ( hFlush, hPutStrLn, IOMode(WriteMode), openFile, Handle )
+import System.IO.Unsafe ( unsafePerformIO )
 
-defaultTimeLocale =
 #if __GLASGOW_HASKELL__ < 710
-    System.Locale.defaultTimeLocale
+import Data.Time (formatTime, getCurrentTime)
+import System.Locale (defaultTimeLocale)
 #else
-    Data.Time.defaultTimeLocale
+import Data.Time (formatTime, getCurrentTime, defaultTimeLocale)
 #endif
 
 dbgHandle :: IORef (Maybe Handle)
@@ -65,10 +65,10 @@ logPutStrLn s = liftBase $
   readIORef dbgHandle >>= \case
     Nothing -> return ()
     Just h -> do
-      time <-  Data.Time.getCurrentTime
+      time <-  getCurrentTime
       tId <- myThreadId
       let m = show tId ++ " " ++ T.unpack s
-      hPutStrLn h $ Data.Time.formatTime defaultTimeLocale rfc822DateFormat' time ++ m
+      hPutStrLn h $ formatTime defaultTimeLocale rfc822DateFormat' time ++ m
       hFlush h
   where
     -- A bug in rfc822DateFormat makes us use our own format string
