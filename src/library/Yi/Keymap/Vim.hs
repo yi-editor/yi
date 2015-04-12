@@ -92,9 +92,6 @@ defVimKeymap config = do
 -- which contains '.', which needs to eval things
 -- So as a workaround '.' just saves a string that needs eval in VimState
 -- and the actual evaluation happens in impureHandleEvent
---
--- TODO: pass through untouched 'EventString' to 'parseEvents' instead
--- of converting to 'String'.
 pureEval :: VimConfig -> EventString -> EditorM ()
 pureEval config = sequence_ . map (pureHandleEvent config) . parseEvents
 
