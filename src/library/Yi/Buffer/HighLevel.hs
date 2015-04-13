@@ -401,20 +401,23 @@ deleteHorizontalSpaceB u = do
   c <- curCol
   reg <- regionOfB Line
   text <- readRegionB reg
-  let r = deleteSpaces c text
+  let (r, jb) = deleteSpaces c text
   modifyRegionB (const r) reg
-  -- If we only deleted before point, move back that many characters
-  -- too or it feels weird.
-  case u of
-    Just _ -> moveToColB (c - (R.length text - R.length r))
-    Nothing -> return ()
+  -- Jump backwards to where the now-deleted spaces have started so
+  -- it's consistent and feels natural instead of leaving us somewhere
+  -- in the text.
+  moveToColB $ c - jb
   where
-    deleteSpaces :: Int -> R.YiString -> R.YiString
+    deleteSpaces :: Int -> R.YiString -> (R.YiString, Int)
     deleteSpaces c l =
       let (f, b) = R.splitAt c l
-      in R.dropWhileEnd isSpace f <> case u of
-        Nothing -> R.dropWhile isSpace b
-        Just _ -> b
+          f' = R.dropWhileEnd isSpace f
+          cleaned = f' <> case u of
+            Nothing -> R.dropWhile isSpace b
+            Just _ -> b
+      -- We only want to jump back the number of spaces before the
+      -- point, not the total number of characters we're removing.
+      in (cleaned, R.length f - R.length f')
 
 ----------------------------------------
 -- Transform operations

@@ -315,7 +315,7 @@ killBufferE = promptingForBuffer "kill buffer:" k (\o b -> o ++ (b \\ o))
 
 -- | If on separators (space, tab, unicode seps), reduce multiple
 -- separators to just a single separator (or however many given
--- through 'UniversalArgument').
+-- through 'UnivArgument').
 --
 -- If we aren't looking at a separator, insert a single space. This is
 -- like emacs ‘just-one-space’ but doesn't deal with negative argument
