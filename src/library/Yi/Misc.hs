@@ -110,11 +110,12 @@ matchingFileNames start s = do
 
   return results
 
--- | Place mark at current point
+-- | Place mark at current point. If there's an existing mark at point
+-- already, deactivate mark.
 placeMark :: BufferM ()
-placeMark = do
-  assign highlightSelectionA True
-  pointB >>= setSelectionMarkPointB
+placeMark = (==) <$> pointB <*> getSelectionMarkPointB >>= \case
+  True -> setVisibleSelection False
+  False -> setVisibleSelection True >> pointB >>= setSelectionMarkPointB
 
 -- | Select the contents of the whole buffer
 selectAll :: BufferM ()
