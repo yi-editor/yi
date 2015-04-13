@@ -24,7 +24,8 @@ import           Yi.Keymap.Vim.Common             (EventString)
 import qualified Yi.Keymap.Vim.Ex.Commands.Common as Common (parse, pureExCommand)
 import           Yi.Keymap.Vim.Ex.Types           (ExCommand (cmdAction, cmdShow))
 import           Yi.MiniBuffer                    (spawnMinibufferE)
-import qualified Yi.Rope                          as R (YiString, fromString, length, null, toText)
+import           Yi.Regex                         (makeSearchOptsM)
+import qualified Yi.Rope                          as R (YiString, fromString, length, null, toText, toString)
 import           Yi.Search
 
 parse :: EventString -> Maybe ExCommand
@@ -54,9 +55,11 @@ substitute from to delimiter global caseInsensitive confirm allLines = Common.pu
               <>       (if caseInsensitive then "i" else "")
               <>       (if global then "g" else "")
   , cmdAction = EditorA $ do
+        let opts = QuoteRegex : if caseInsensitive then [IgnoreCase] else []
         regex <- if R.null from
                     then getRegexE
-                    else return . Just . makeSimpleSearch $ from
+                    else return . (either (const Nothing) Just) 
+                            . makeSearchOptsM opts . R.toString $ from
         case regex of
             Nothing -> printMsg "No previous search pattern"
             Just regex' -> if confirm
