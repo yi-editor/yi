@@ -29,6 +29,7 @@ module Yi.Keymap.Emacs ( keymap
 import Control.Applicative      (Alternative ((<|>), empty, some))
 import Control.Lens             (assign, makeLenses, (%=))
 import Control.Monad            (replicateM_, unless, void)
+import Control.Monad.State      (gets)
 import Data.Char                (digitToInt, isDigit)
 import Data.Maybe               (fromMaybe)
 import Data.Prototype           (Proto (Proto), extractValue)
@@ -101,10 +102,8 @@ emacsKeys univArg =
            spec KTab            ?>>! adjIndent IncreaseCycle
          , shift (spec KTab)    ?>>! adjIndent DecreaseCycle
          , spec KEnter          ?>>! repeatingArg newlineB
-         , spec KDel            ?>>! repeatingArg (blockKillring >> deleteB')
-         , spec KBS             ?>>! repeatingArg (blockKillring >>
-                                                    adjBlock (-1) >>
-                                                    bdeleteB)
+         , spec KDel            ?>>! deleteRegionOr deleteForward
+         , spec KBS             ?>>! deleteRegionOr deleteBack
          , spec KHome           ?>>! repeatingArg moveToSol
          , spec KEnd            ?>>! repeatingArg moveToEol
          , spec KLeft           ?>>! repeatingArg leftB
@@ -132,7 +131,7 @@ emacsKeys univArg =
          , ctrlCh '_'           ?>>! repeatingArg undoB
          , ctrlCh 'a'           ?>>! repeatingArg (maybeMoveB Line Backward)
          , ctrlCh 'b'           ?>>! repeatingArg leftB
-         , ctrlCh 'd'           ?>>! repeatingArg (blockKillring >> deleteB')
+         , ctrlCh 'd'           ?>>! deleteForward
          , ctrlCh 'e'           ?>>! repeatingArg (maybeMoveB Line Forward)
          , ctrlCh 'f'           ?>>! repeatingArg rightB
          , ctrlCh 'g'           ?>>! setVisibleSelection False
@@ -228,6 +227,21 @@ emacsKeys univArg =
   withIntArg :: YiAction (m ()) () => (Int -> m ()) -> YiM ()
   withIntArg cmd = withUnivArg $ \arg -> cmd (fromMaybe 1 arg)
 
+  deleteBack :: YiM ()
+  deleteBack = repeatingArg $ blockKillring >> adjBlock (-1) >> bdeleteB
+
+  deleteForward :: YiM ()
+  deleteForward = repeatingArg $ blockKillring >> deleteB'
+
+  -- Deletes current region if any, otherwise executes the given
+  -- action.
+  deleteRegionOr :: (Show a, YiAction (m a) a) => m a -> YiM ()
+  deleteRegionOr f = do
+    b <- gets currentBuffer
+    r <- withGivenBuffer b getSelectRegionB
+    if regionSize r == 0
+      then runAction $ makeAction f
+      else withGivenBuffer b $ deleteRegionB r
 
   ctrlC = choice [ ctrlCh 'c' ?>>! commentRegion ]
 
