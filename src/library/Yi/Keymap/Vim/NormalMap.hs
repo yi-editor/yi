@@ -51,6 +51,8 @@ import           Yi.String                  (showT)
 import           Yi.Tag                     (Tag (..))
 import           Yi.Utils                   (io)
 
+data EOLStickiness = Sticky | NonSticky deriving Eq
+
 mkDigitBinding :: Char -> VimBinding
 mkDigitBinding c = mkBindingE Normal Continue (char c, return (), mutate)
   where
@@ -133,9 +135,9 @@ jumpBindings = fmap (mkBindingE Normal Drop)
 
 finishingBingings :: [VimBinding]
 finishingBingings = fmap (mkStringBindingE Normal Finish)
-    [ ("x", cutCharE Forward =<< getCountE, resetCount)
-    , ("<Del>", cutCharE Forward =<< getCountE, resetCount)
-    , ("X", cutCharE Backward =<< getCountE, resetCount)
+    [ ("x", cutCharE Forward NonSticky =<< getCountE, resetCount)
+    , ("<Del>", cutCharE Forward NonSticky =<< getCountE, resetCount)
+    , ("X", cutCharE Backward NonSticky =<< getCountE, resetCount)
 
     , ("D",
         do region <- withCurrentBuffer $ regionWithTwoMovesB (return ()) moveToEol
@@ -243,7 +245,7 @@ nonrepeatableBindings = fmap (mkBindingE Normal Drop)
         do region <- withCurrentBuffer $ regionWithTwoMovesB (return ()) moveToEol
            void $ operatorApplyToRegionE opChange 1 $ StyledRegion Exclusive region
         , switchMode $ Insert 'C')
-    , (char 's', cutCharE Forward =<< getCountE, switchMode $ Insert 's')
+    , (char 's', cutCharE Forward Sticky =<< getCountE, switchMode $ Insert 's')
     , (char 'S',
         do region <- withCurrentBuffer $ regionWithTwoMovesB firstNonSpaceB moveToEol
            void $ operatorApplyToRegionE opDelete 1 $ StyledRegion Exclusive region
@@ -435,8 +437,8 @@ enableVisualE style = withCurrentBuffer $ do
     setVisibleSelection True
     pointB >>= setSelectionMarkPointB
 
-cutCharE :: Direction -> Int -> EditorM ()
-cutCharE dir count = do
+cutCharE :: Direction -> EOLStickiness -> Int -> EditorM ()
+cutCharE dir stickiness count = do
     r <- withCurrentBuffer $ do
         p0 <- pointB
         (if dir == Forward then moveXorEol else moveXorSol) count
@@ -444,7 +446,7 @@ cutCharE dir count = do
         let region = mkRegion p0 p1
         rope <- readRegionB region
         deleteRegionB $ mkRegion p0 p1
-        leftOnEol
+        when (stickiness == NonSticky) leftOnEol
         return rope
     regName <- fmap vsActiveRegister getEditorDyn
     setRegisterE regName Inclusive r
