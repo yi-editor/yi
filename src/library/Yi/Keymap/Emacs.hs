@@ -2,6 +2,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TemplateHaskell   #-}
 {-# LANGUAGE TypeOperators     #-}
+{-# LANGUAGE LambdaCase        #-}
 {-# OPTIONS_HADDOCK show-extensions #-}
 
 -- |
@@ -93,14 +94,10 @@ deleteB' = adjBlock (-1) >> deleteN 1
 -- | Wrapper around 'moveE' which also cancels incremental search. See
 -- issue #499 for details.
 moveE :: TextUnit -> Direction -> EditorM ()
-moveE u d = do
-    maybeSearching <- getRegexE
-
-    case maybeSearching of -- let's check whether searching is in progress (issues #738, #610)
-        Nothing -> return ()
-        _ -> isearchFinishWithE resetRegexE
-
-    withCurrentBuffer (moveB u d)
+moveE u d = getRegexE >>= (\case -- let's check whether searching is in progress (issues #738, #610)
+                               Nothing -> return ()
+                               _ -> isearchFinishWithE resetRegexE)
+                      >> withCurrentBuffer (moveB u d)
 
 emacsKeys :: Maybe Int -> Keymap
 emacsKeys univArg =
