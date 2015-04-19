@@ -2,7 +2,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TemplateHaskell   #-}
 {-# LANGUAGE TypeOperators     #-}
-{-# LANGUAGE UnicodeSyntax     #-}
+{-# LANGUAGE LambdaCase        #-}
 {-# OPTIONS_HADDOCK show-extensions #-}
 
 -- |
@@ -48,7 +48,7 @@ import Yi.MiniBuffer
 import Yi.Misc                  (adjBlock, adjIndent, placeMark, selectAll)
 import Yi.Mode.Buffers          (listBuffers)
 import Yi.Rectangle
-import Yi.Search                (isearchFinishWithE, resetRegexE)
+import Yi.Search                (isearchFinishWithE, resetRegexE, getRegexE)
 import Yi.TextCompletion        (resetComplete, wordComplete')
 
 data ModeMap = ModeMap { _eKeymap :: Keymap
@@ -93,8 +93,11 @@ deleteB' = adjBlock (-1) >> deleteN 1
 
 -- | Wrapper around 'moveE' which also cancels incremental search. See
 -- issue #499 for details.
-moveE ∷ TextUnit → Direction → EditorM ()
-moveE u d = isearchFinishWithE resetRegexE >> withCurrentBuffer (moveB u d)
+moveE :: TextUnit -> Direction -> EditorM ()
+moveE u d = getRegexE >>= (\case -- let's check whether searching is in progress (issues #738, #610)
+                               Nothing -> return ()
+                               _ -> isearchFinishWithE resetRegexE)
+                      >> withCurrentBuffer (moveB u d)
 
 emacsKeys :: Maybe Int -> Keymap
 emacsKeys univArg =
@@ -106,8 +109,8 @@ emacsKeys univArg =
          , spec KBS             ?>>! deleteRegionOr deleteBack
          , spec KHome           ?>>! repeatingArg moveToSol
          , spec KEnd            ?>>! repeatingArg moveToEol
-         , spec KLeft           ?>>! repeatingArg leftB
-         , spec KRight          ?>>! repeatingArg rightB
+         , spec KLeft           ?>>! repeatingArg $ moveE Character Backward
+         , spec KRight          ?>>! repeatingArg $ moveE Character Forward
          , spec KUp             ?>>! repeatingArg $ moveE VLine Backward
          , spec KDown           ?>>! repeatingArg $ moveE VLine Forward
          , spec KPageDown       ?>>! repeatingArg downScreenB
@@ -130,10 +133,10 @@ emacsKeys univArg =
          , ctrlCh '/'           ?>>! repeatingArg undoB
          , ctrlCh '_'           ?>>! repeatingArg undoB
          , ctrlCh 'a'           ?>>! repeatingArg (maybeMoveB Line Backward)
-         , ctrlCh 'b'           ?>>! repeatingArg leftB
+         , ctrlCh 'b'           ?>>! repeatingArg $ moveE Character Backward
          , ctrlCh 'd'           ?>>! deleteForward
          , ctrlCh 'e'           ?>>! repeatingArg (maybeMoveB Line Forward)
-         , ctrlCh 'f'           ?>>! repeatingArg rightB
+         , ctrlCh 'f'           ?>>! repeatingArg $ moveE Character Forward
          , ctrlCh 'g'           ?>>! setVisibleSelection False
          , ctrlCh 'h'           ?>> char 'b' ?>>! acceptedInputsOtherWindow
          , ctrlCh 'i'           ?>>! adjIndent IncreaseOnly
