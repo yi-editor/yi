@@ -112,8 +112,8 @@ emacsKeys univArg =
          , spec KBS             ?>>! deleteRegionOr deleteBack
          , spec KHome           ?>>! repeatingArg moveToSol
          , spec KEnd            ?>>! repeatingArg moveToEol
-         , spec KLeft           ?>>! repeatingArg $ moveE Character Backward -- leftB
-         , spec KRight          ?>>! repeatingArg $ moveE Character Forward -- rightB
+         , spec KLeft           ?>>! repeatingArg $ moveE Character Backward
+         , spec KRight          ?>>! repeatingArg $ moveE Character Forward
          , spec KUp             ?>>! repeatingArg $ moveE VLine Backward
          , spec KDown           ?>>! repeatingArg $ moveE VLine Forward
          , spec KPageDown       ?>>! repeatingArg downScreenB
@@ -136,10 +136,10 @@ emacsKeys univArg =
          , ctrlCh '/'           ?>>! repeatingArg undoB
          , ctrlCh '_'           ?>>! repeatingArg undoB
          , ctrlCh 'a'           ?>>! repeatingArg (maybeMoveB Line Backward)
-         , ctrlCh 'b'           ?>>! repeatingArg $ moveE Character Backward -- leftB
+         , ctrlCh 'b'           ?>>! repeatingArg $ moveE Character Backward
          , ctrlCh 'd'           ?>>! deleteForward
          , ctrlCh 'e'           ?>>! repeatingArg (maybeMoveB Line Forward)
-         , ctrlCh 'f'           ?>>! repeatingArg $ moveE Character Forward -- rightB
+         , ctrlCh 'f'           ?>>! repeatingArg $ moveE Character Forward
          , ctrlCh 'g'           ?>>! setVisibleSelection False
          , ctrlCh 'h'           ?>> char 'b' ?>>! acceptedInputsOtherWindow
          , ctrlCh 'i'           ?>>! adjIndent IncreaseOnly
