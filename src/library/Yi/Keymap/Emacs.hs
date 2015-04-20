@@ -196,6 +196,7 @@ emacsKeys univArg =
          , metaCh 'l'           ?>>! repeatingArg lowercaseWordB
          , metaCh 'm'           ?>>! firstNonSpaceB
          , metaCh 'q'           ?>>! withSyntax modePrettify
+         , metaCh 'r'           ?>>! repeatingArg moveToMTB
          , metaCh 'u'           ?>>! repeatingArg uppercaseWordB
          , metaCh 't'           ?>>! repeatingArg (transposeB unitWord Forward)
          , metaCh 'w'           ?>>! killRingSaveE

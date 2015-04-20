@@ -65,6 +65,7 @@ module Yi.Buffer.HighLevel
     , modifyExtendedSelectionB
     , moveNonspaceOrSol
     , movePercentageFileB
+    , moveToMTB
     , moveToEol
     , moveToSol
     , moveXorEol
@@ -141,6 +142,34 @@ import           Yi.Window                (Window (actualLines, height, width, w
 
 -- ---------------------------------------------------------------------
 -- Movement operations
+
+
+-- | Move point between the middle, top and bottom of the screen
+-- If the point stays at the middle, it'll be gone to the top
+-- else if the point stays at the top, it'll be gone to the bottom
+-- else it'll be gone to the middle
+moveToMTB :: BufferM ()
+moveToMTB = (==) <$> curLn <*> screenMidLn >>= \case
+    True -> moveToTopOfScreenB
+    _    -> (==) <$> curLn <*> screenTopLn >>= \case
+                True -> moveToBottomOfScreenB
+                _    -> moveToMiddleOfScreenB
+
+
+-- | Move point to the bottom of the screen
+moveToBottomOfScreenB :: BufferM ()
+moveToBottomOfScreenB = moveToTopOfScreenB >> (-) <$> screenBotLn <*> screenTopLn >>= flip replicateM_ lineDown
+
+
+-- | Move point to the middle of the screen
+moveToMiddleOfScreenB :: BufferM ()
+moveToMiddleOfScreenB = moveToTopOfScreenB >> (-) <$> screenMidLn <*> screenTopLn >>= flip replicateM_ lineDown
+
+
+-- | Move point to the top of the screen
+moveToTopOfScreenB ::BufferM ()
+moveToTopOfScreenB = moveTo =<< use . markPointA =<< fromMark <$> askMarks
+
 
 -- | Move point to start of line
 moveToSol :: BufferM ()
