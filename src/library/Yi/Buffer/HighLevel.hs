@@ -150,25 +150,10 @@ import           Yi.Window                (Window (actualLines, height, width, w
 -- else it'll be gone to the middle
 moveToMTB :: BufferM ()
 moveToMTB = (==) <$> curLn <*> screenMidLn >>= \case
-    True -> moveToTopOfScreenB
+    True -> downFromTosB 0
     _    -> (==) <$> curLn <*> screenTopLn >>= \case
-                True -> moveToBottomOfScreenB
-                _    -> moveToMiddleOfScreenB
-
-
--- | Move point to the bottom of the screen
-moveToBottomOfScreenB :: BufferM ()
-moveToBottomOfScreenB = moveToTopOfScreenB >> (-) <$> screenBotLn <*> screenTopLn >>= flip replicateM_ lineDown
-
-
--- | Move point to the middle of the screen
-moveToMiddleOfScreenB :: BufferM ()
-moveToMiddleOfScreenB = moveToTopOfScreenB >> (-) <$> screenMidLn <*> screenTopLn >>= flip replicateM_ lineDown
-
-
--- | Move point to the top of the screen
-moveToTopOfScreenB ::BufferM ()
-moveToTopOfScreenB = moveTo =<< use . markPointA =<< fromMark <$> askMarks
+                True -> upFromBosB 0
+                _    -> downFromTosB =<< (-) <$> screenMidLn <*> screenTopLn
 
 
 -- | Move point to start of line
