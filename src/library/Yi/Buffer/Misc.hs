@@ -35,6 +35,9 @@ module Yi.Buffer.Misc
   , runBuffer
   , runBufferFull
   , runBufferDummyWindow
+  , screenTopLn
+  , screenMidLn
+  , screenBotLn
   , curLn
   , curCol
   , colOf
@@ -192,7 +195,7 @@ module Yi.Buffer.Misc
 
 import           Prelude                        hiding (foldr, mapM, notElem)
 
-import           Control.Applicative            (Applicative ((*>), (<*>)), (<$>))
+import           Control.Applicative            (Applicative ((*>), (<*>), pure), (<$>))
 import           Control.Lens                   (Lens', assign, lens, use, uses, view, (%=), (%~), (.=), (^.))
 import           Control.Monad.RWS.Strict       (Endo (Endo, appEndo),
                                                  MonadReader (ask), MonadState,
@@ -226,7 +229,7 @@ import qualified Yi.Rope                        as R
 import           Yi.Syntax                      (ExtHL (ExtHL), Stroke, noHighlighter)
 import           Yi.Types
 import           Yi.Utils                       (SemiNum ((+~)), makeClassyWithSuffix, makeLensesWithSuffix)
-import           Yi.Window                      (Window (width, wkey), dummyWindow)
+import           Yi.Window                      (Window (width, wkey, actualLines), dummyWindow)
 
 
 -- In addition to Buffer's text, this manages (among others):
@@ -734,6 +737,29 @@ curLn :: BufferM Int
 curLn = do
     p <- pointB
     queryBuffer (lineAt p)
+
+
+-- | Top line of the screen
+screenTopLn :: BufferM Int
+screenTopLn = do
+    p <- use . markPointA =<< fromMark <$> askMarks
+    queryBuffer (lineAt p)
+
+
+-- | Middle line of the screen
+screenMidLn :: BufferM Int
+screenMidLn = (+) <$> screenTopLn <*> (div <$> screenLines <*> pure 2)
+
+
+-- | Bottom line of the screen
+screenBotLn :: BufferM Int
+screenBotLn = (+) <$> screenTopLn <*> screenLines
+
+
+-- | Amount of lines in the screen
+screenLines :: BufferM Int
+screenLines = pred <$> askWindow actualLines
+
 
 -- | Return line numbers of marks
 markLines :: BufferM (MarkSet Int)

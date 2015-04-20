@@ -65,6 +65,7 @@ module Yi.Buffer.HighLevel
     , modifyExtendedSelectionB
     , moveNonspaceOrSol
     , movePercentageFileB
+    , moveToMTB
     , moveToEol
     , moveToSol
     , moveXorEol
@@ -141,6 +142,19 @@ import           Yi.Window                (Window (actualLines, width, wkey))
 
 -- ---------------------------------------------------------------------
 -- Movement operations
+
+
+-- | Move point between the middle, top and bottom of the screen
+-- If the point stays at the middle, it'll be gone to the top
+-- else if the point stays at the top, it'll be gone to the bottom
+-- else it'll be gone to the middle
+moveToMTB :: BufferM ()
+moveToMTB = (==) <$> curLn <*> screenMidLn >>= \case
+    True -> downFromTosB 0
+    _    -> (==) <$> curLn <*> screenTopLn >>= \case
+                True -> upFromBosB 0
+                _    -> downFromTosB =<< (-) <$> screenMidLn <*> screenTopLn
+
 
 -- | Move point to start of line
 moveToSol :: BufferM ()
