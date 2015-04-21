@@ -137,7 +137,7 @@ import           Yi.Rope                  (YiString)
 import qualified Yi.Rope                  as R
 import           Yi.String                (capitalizeFirst, fillText, isBlank, mapLines, onLines, overInit)
 import           Yi.Utils                 (SemiNum ((+~), (-~)))
-import           Yi.Window                (Window (actualLines, height, width, wkey))
+import           Yi.Window                (Window (actualLines, width, wkey))
 
 -- ---------------------------------------------------------------------
 -- Movement operations
@@ -555,14 +555,14 @@ downScreenB = scrollScreensB 1
 -- | Scroll by n screens (negative for up)
 scrollScreensB :: Int -> BufferM ()
 scrollScreensB n = do
-    h <- askWindow height
-    scrollB $ n * max 0 (h - 3) -- subtract some amount to get some overlap (emacs-like).
+    h <- askWindow actualLines
+    scrollB $ n * max 0 (h - 1) -- subtract some amount to get some overlap (emacs-like).
 
 -- | Scroll according to function passed. The function takes the
 -- | Window height in lines, its result is passed to scrollB
 -- | (negative for up)
 scrollByB :: (Int -> Int) -> Int -> BufferM ()
-scrollByB f n = do h <- askWindow height
+scrollByB f n = do h <- askWindow actualLines
                    scrollB $ n * f h
 
 -- | Same as scrollB, but also moves the cursor
@@ -572,14 +572,14 @@ vimScrollB n = do scrollB n
 
 -- | Same as scrollByB, but also moves the cursor
 vimScrollByB :: (Int -> Int) -> Int -> BufferM ()
-vimScrollByB f n = do h <- askWindow height
+vimScrollByB f n = do h <- askWindow actualLines
                       vimScrollB $ n * f h
 
 -- | Move to middle line in screen
 scrollToCursorB :: BufferM ()
 scrollToCursorB = do
     MarkSet f i _ <- markLines
-    h <- askWindow height
+    h <- askWindow actualLines
     let m = f + (h `div` 2)
     scrollB $ i - m
 
@@ -690,7 +690,7 @@ middleB = do
   w <- ask
   f <- fromMark <$> askMarks
   moveTo =<< use (markPointA f)
-  replicateM_ (height w `div` 2) lineDown
+  replicateM_ (actualLines w `div` 2) lineDown
 
 pointInWindowB :: Point -> BufferM Bool
 pointInWindowB p = nearRegion p <$> winRegionB

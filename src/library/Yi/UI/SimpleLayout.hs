@@ -154,7 +154,7 @@ lastVisiblePointAndWrapCountB (Size2D w h) (Point topLeft) = savingPointB $ do
     ts <- fmap tabSize indentSettingsB
     text <- fmap (R.toText . R.take (w * h))
                  (streamB Forward (Point topLeft))
-    let go !x !y !wc !n t | x >= w = go (x - w) (y + 1) (wc + 1) n t
+    let go !x !y !wc !n t | x > w = go (x - w) (y + 1) (wc + 1) n t
         go _  !y !wc !n _ | y >= h = (Point (n - 1), wc)
         go !x !y !wc !n (T.uncons -> Just (c, t)) =
             case c of
