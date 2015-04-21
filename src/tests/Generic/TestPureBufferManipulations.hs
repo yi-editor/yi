@@ -154,7 +154,7 @@ discoverTests topdir ev = do
 optionalSettingAction :: OptionalSetting -> EditorM ()
 optionalSettingAction (WindowSize w h) = 
     let region = mkSizeRegion (Point 0) (Size (w*h))
-    in currentWindowA %= (\w -> w { height = h, winRegion = region })
+    in currentWindowA %= (\w -> w { height = h, actualLines = h, winRegion = region })
 
 mkTestCase :: Config -> KeymapTest -> TestTree
 mkTestCase cf t = testCase (ktName t) $ do
