@@ -113,6 +113,7 @@ module Yi.Buffer.HighLevel
     , upScreensB
     , vimScrollB
     , vimScrollByB
+    , markWord
     ) where
 
 import           Control.Applicative      (Applicative ((<*>)), (<$>))
@@ -1235,3 +1236,24 @@ lineMoveVisRelDown n | n < 0 = lineMoveVisRelUp $ negate n
                 void $ gotoLnFrom $ -1
                 moveToEol
                 lineMoveVisRelDown $ next - 1
+
+
+-- | Implements the same logic that emacs' `mark-word` does.
+-- Checks the mark point and moves it forth (or backward) for one word.
+markWord :: BufferM ()
+markWord = do
+    curPos <- pointB
+    curMark <- getSelectionMarkPointB
+    isVisible <- getVisibleSelection
+
+    savingPointB $ do
+        if not isVisible
+        then nextWordB
+        else do
+            moveTo curMark
+            if curMark < curPos
+            then prevWordB
+            else nextWordB
+
+        setVisibleSelection True
+        pointB >>= setSelectionMarkPointB
