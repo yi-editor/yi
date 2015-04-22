@@ -86,6 +86,7 @@ module Yi.Buffer.Misc
   , modifyMarkB
   , newMarkB
   , deleteMarkB
+  , getVisibleSelection
   , setVisibleSelection
   , isUnchangedBuffer
   , setAnyMode
@@ -830,6 +831,10 @@ setNamedMarkHereB name = do
 -- | Highlight the selection
 setVisibleSelection :: Bool -> BufferM ()
 setVisibleSelection = assign highlightSelectionA
+
+-- | Whether the selection is highlighted
+getVisibleSelection :: BufferM Bool
+getVisibleSelection = use highlightSelectionA
 
 getInsMark :: BufferM Mark
 getInsMark = insMark <$> askMarks
