@@ -47,7 +47,6 @@ module Yi.Keymap.Emacs.Utils
   , justOneSep
   , joinLinesE
   , countWordsRegion
-  , markWord
   )
 where
 
@@ -425,24 +424,3 @@ countWordsRegion = do
                         ]
   where
     p x w = if x == 1 then w else w <> "s"
-
-
--- | Implements the same logic that emacs' `mark-word` does.
--- Checks the mark point and moves it forth (or backward) for one word.
-markWord :: BufferM ()
-markWord = do
-    curPos <- pointB
-    curMark <- getSelectionMarkPointB
-    isVisible <- getVisibleSelection
-
-    savingPointB $ do
-        if not isVisible
-        then nextWordB
-        else do
-            moveTo curMark
-            if curMark < curPos
-            then prevWordB
-            else nextWordB
-
-        setVisibleSelection True
-        pointB >>= setSelectionMarkPointB
