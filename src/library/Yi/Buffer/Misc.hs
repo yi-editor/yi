@@ -53,8 +53,9 @@ module Yi.Buffer.Misc
   , lineUp
   , lineDown
   , newB
-  , MarkValue(..)
-  , Overlay (overlayAnnotation)
+  , MarkValue (..)
+  , Overlay
+      (overlayAnnotation, overlayBegin, overlayEnd, overlayOwner, overlayStyle)
   , mkOverlay
   , gotoLn
   , gotoLnFrom
@@ -167,7 +168,7 @@ module Yi.Buffer.Misc
   , miniIdentString
   , identA
   , directoryContentA
-  , BufferId(..)
+  , BufferId (..)
   , file
   , lastSyncTimeA
   , replaceCharB

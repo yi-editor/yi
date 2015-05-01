@@ -110,9 +110,9 @@ data HLState syntax = forall cache. HLState !(Highlighter cache syntax) !cache
 
 data Overlay = Overlay
     { overlayOwner      :: R.YiString
-    , _overlayBegin     :: MarkValue
-    , _overlayEnd       :: MarkValue
-    , _overlayStyle     :: StyleName
+    , overlayBegin     :: MarkValue
+    , overlayEnd       :: MarkValue
+    , overlayStyle     :: StyleName
     , overlayAnnotation :: R.YiString
     }
 
