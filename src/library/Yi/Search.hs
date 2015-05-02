@@ -387,7 +387,6 @@ isearchEndWith act accept = getEditorDyn >>= \case
     assign searchDirectionA dir
     if accept
        then do void act
-               withCurrentBuffer $ setSelectionMarkPointB $ regionStart p0
                printMsg "Quit"
        else do resetRegexE
                withCurrentBuffer $ moveTo $ regionStart p0
