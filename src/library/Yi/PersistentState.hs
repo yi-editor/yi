@@ -41,7 +41,6 @@ import           Yi.Search.Internal     (getRegexE, setRegexE)
 import           Yi.Types               (YiConfigVariable, BufferId, Attributes, FBuffer, attributes, ident, buffers)
 import           Yi.Utils               (io)
 
-<<<<<<< 5f6220d3d097815fd9e0b3635aae0b610eba168c
 data PersistentState = PersistentState
     { histories     :: !Histories
     , aKillring     :: !Killring
@@ -113,7 +112,6 @@ savePersistentState = do
                  , aCurrentRegex = curRe -- just a single value -> no need to trim
                  , currBuffers = getIds (buffers editor)
                  }
-
     io $ encodeFile pStateFilename pState
 
 -- | Reads and decodes a persistent state in both strict, and exception robust
