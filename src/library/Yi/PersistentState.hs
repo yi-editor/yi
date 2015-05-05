@@ -28,13 +28,13 @@ import GHC.Generics (Generic)
 import           Control.Exc            (ignoringException)
 import           Control.Lens           (assign, makeLenses, use)
 import           Control.Monad          (when)
-import           Control.Monad.State as St (get)
+import qualified Control.Monad.State as St (get)
 import           Data.Binary            (Binary, decodeFile, encodeFile, get, put)
 import           Data.Default           (Default, def)
-import qualified Data.Map               as M (map, Map, elems)
+import qualified Data.Map               as M (Map, map, elems)
 import           Data.Typeable          (Typeable)
 import           System.Directory       (doesFileExist)
-import           Yi.Buffer.Basic                (BufferRef)
+import           Yi.Buffer.Basic            (BufferRef)
 import           Yi.Config.Simple.Types (Field, customVariable)
 import           Yi.Editor
 import           Yi.History             (Histories (..), History (..))
@@ -49,7 +49,7 @@ import           Yi.Utils               (io)
 data PersistentState = PersistentState { histories     :: !Histories
                                        , aKillring     :: !Killring
                                        , aCurrentRegex :: Maybe SearchExp
-                                       , currBuffers       :: [BufferId]
+                                       , currBuffers     :: [BufferId]
                                        }
 
 #if __GLASGOW_HASKELL__ < 708
@@ -121,7 +121,6 @@ savePersistentState = do
                  , aCurrentRegex = curRe -- just a single value -> no need to trim
                  , currBuffers = getIds (buffers editor)
                  }
-
     io $ encodeFile pStateFilename pState
 
 -- | Reads and decodes a persistent state in both strict, and exception robust
