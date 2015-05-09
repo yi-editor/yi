@@ -1,7 +1,6 @@
 {-# LANGUAGE CPP                #-}
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DeriveGeneric      #-}
-{-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE TemplateHaskell    #-}
 {-# OPTIONS_HADDOCK show-extensions #-}
 
@@ -30,11 +29,7 @@ module Yi.Keymap.Vim.Common
     , lookupBestMatch, matchesString
     ) where
 
-#if __GLASGOW_HASKELL__ < 708
-import           Data.DeriveTH
-#else
 import           GHC.Generics              (Generic)
-#endif
 
 import           Control.Applicative       (Alternative ((<|>)), (<$>))
 import           Control.Lens              (makeLenses)
@@ -98,71 +93,58 @@ matchesString (Ev got) (Ev expected)
 type RegisterName = Char
 type MacroName = Char
 
-data RepeatableAction = RepeatableAction {
-          raPreviousCount :: !Int
-        , raActionString  :: !EventString
-    }
-    deriving (Typeable, Eq, Show)
+data RepeatableAction = RepeatableAction
+    { raPreviousCount :: !Int
+    , raActionString  :: !EventString
+    } deriving (Typeable, Eq, Show, Generic)
 
-data Register = Register {
-          regRegionStyle :: RegionStyle
-        , regContent     :: YiString
-    }
+data Register = Register
+    { regRegionStyle :: RegionStyle
+    , regContent     :: YiString
+    } deriving (Generic)
 
-data VimMode = Normal
-             | NormalOperatorPending OperatorName
-             | Insert Char -- ^ char denotes how state got into insert mode ('i', 'a', etc.)
-             | Replace
-             | ReplaceSingleChar
-             | InsertNormal -- ^ after C-o
-             | InsertVisual -- ^ after C-o and one of v, V, C-v
-             | Visual RegionStyle
-             | Ex
-             | Search { previousMode :: VimMode, direction :: Direction }
-    deriving (Typeable, Eq, Show)
+data VimMode
+    = Normal
+    | NormalOperatorPending OperatorName
+    | Insert Char -- ^ char denotes how state got into insert mode ('i', 'a', etc.)
+    | Replace
+    | ReplaceSingleChar
+    | InsertNormal -- ^ after C-o
+    | InsertVisual -- ^ after C-o and one of v, V, C-v
+    | Visual RegionStyle
+    | Ex
+    | Search { previousMode :: VimMode, direction :: Direction }
+    deriving (Typeable, Eq, Show, Generic)
 
 data GotoCharCommand = GotoCharCommand !Char !Direction !RegionStyle
+    deriving (Generic)
 
-data VimState = VimState {
-          vsMode                  :: !VimMode
-        , vsCount                 :: !(Maybe Int)
-        , vsAccumulator           :: !EventString -- ^ for repeat and potentially macros
-        , vsTextObjectAccumulator :: !EventString
-        , vsRegisterMap           :: !(HM.HashMap RegisterName Register)
-        , vsActiveRegister        :: !RegisterName
-        , vsRepeatableAction      :: !(Maybe RepeatableAction)
-        , vsStringToEval          :: !EventString -- ^ see Yi.Keymap.Vim.vimEval comment
-        , vsStickyEol             :: !Bool -- ^ is set on $, allows j and k walk the right edge of lines
-        , vsOngoingInsertEvents   :: !EventString
-        , vsLastGotoCharCommand   :: !(Maybe GotoCharCommand)
-        , vsBindingAccumulator    :: !EventString
-        , vsSecondaryCursors      :: ![Point]
-        , vsPaste                 :: !Bool -- ^ like vim's :help paste
-        , vsCurrentMacroRecording :: !(Maybe (MacroName, EventString))
-    } deriving (Typeable)
+data VimState = VimState
+    { vsMode                  :: !VimMode
+    , vsCount                 :: !(Maybe Int)
+    , vsAccumulator           :: !EventString -- ^ for repeat and potentially macros
+    , vsTextObjectAccumulator :: !EventString
+    , vsRegisterMap           :: !(HM.HashMap RegisterName Register)
+    , vsActiveRegister        :: !RegisterName
+    , vsRepeatableAction      :: !(Maybe RepeatableAction)
+    , vsStringToEval          :: !EventString -- ^ see Yi.Keymap.Vim.vimEval comment
+    , vsStickyEol             :: !Bool -- ^ is set on $, allows j and k walk the right edge of lines
+    , vsOngoingInsertEvents   :: !EventString
+    , vsLastGotoCharCommand   :: !(Maybe GotoCharCommand)
+    , vsBindingAccumulator    :: !EventString
+    , vsSecondaryCursors      :: ![Point]
+    , vsPaste                 :: !Bool -- ^ like vim's :help paste
+    , vsCurrentMacroRecording :: !(Maybe (MacroName, EventString))
+    } deriving (Typeable, Generic)
 
-#if __GLASGOW_HASKELL__ < 708
-$(derive makeBinary ''RepeatableAction)
-$(derive makeBinary ''Register)
-$(derive makeBinary ''GotoCharCommand)
-#else
-deriving instance Generic RepeatableAction
-deriving instance Generic Register
-deriving instance Generic GotoCharCommand
 instance Binary RepeatableAction
 instance Binary Register
 instance Binary GotoCharCommand
-#endif
 
 instance Default VimMode where
     def = Normal
 
-#if __GLASGOW_HASKELL__ < 708
-$(derive makeBinary ''VimMode)
-#else
-deriving instance Generic VimMode
 instance Binary VimMode
-#endif
 
 instance Default VimState where
     def = VimState
@@ -182,12 +164,7 @@ instance Default VimState where
             False -- :set paste
             Nothing -- current macro recording
 
-#if __GLASGOW_HASKELL__ < 708
-$(derive makeBinary ''VimState)
-#else
-deriving instance Generic VimState
 instance Binary VimState
-#endif
 
 instance YiVariable VimState
 

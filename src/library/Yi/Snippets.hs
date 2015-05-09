@@ -7,7 +7,6 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE LambdaCase                 #-}
 {-# LANGUAGE OverloadedStrings          #-}
-{-# LANGUAGE StandaloneDeriving         #-}
 {-# LANGUAGE TemplateHaskell            #-}
 {-# OPTIONS_HADDOCK show-extensions #-}
 
@@ -20,11 +19,7 @@
 
 module Yi.Snippets where
 
-#if __GLASGOW_HASKELL__ < 708
-import           Data.DeriveTH (derive, makeBinary)
-#else
 import           GHC.Generics (Generic)
-#endif
 
 import           Control.Applicative (some)
 import           Control.Arrow       (second)
@@ -66,14 +61,9 @@ data MarkInfo = SimpleMarkInfo { userIndex :: !Int
               | DependentMarkInfo { userIndex :: !Int
                                   , startMark :: !Mark
                                   , endMark :: !Mark }
-  deriving (Eq, Show)
+  deriving (Eq, Show, Generic)
 
-#if __GLASGOW_HASKELL__ < 708
-$(derive makeBinary ''MarkInfo)
-#else
-deriving instance Generic MarkInfo
 instance Binary MarkInfo
-#endif
 
 newtype BufferMarks = BufferMarks { bufferMarks :: [MarkInfo] }
   deriving (Eq, Show, Monoid, Typeable, Binary)

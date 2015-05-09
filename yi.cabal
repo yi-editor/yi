@@ -1,5 +1,5 @@
 name:           yi
-version:        0.11.2
+version:        0.12.0
 category:       Development, Editor
 synopsis:       The Haskell-Scriptable Editor
 description:
@@ -9,10 +9,10 @@ license:        GPL-2
 license-file:   LICENSE
 author:         AUTHORS
 maintainer:     yi-devel@googlegroups.com
-homepage:       http://haskell.org/haskellwiki/Yi
+homepage:       https://yi-editor.github.io
 bug-reports:    https://github.com/yi-editor/yi/issues
-Cabal-Version:  >= 1.10
-tested-with:    GHC==7.8.3
+Cabal-Version:  >= 1.20
+tested-with:    GHC==7.8.4, GHC==7.10.1
 build-type:     Simple
 data-files:
   art/*.png
@@ -261,17 +261,13 @@ library
     Yi.Window
     Yi.Char.Unicode
 
-  if impl(ghc < 7.8)
-    build-depends: derive >=2.4 && <2.7, binary >= 0.5, tagged
-  else
-    build-depends: binary >= 0.7
-
   if flag(hint)
     build-depends: hint > 0.3.1
 
   build-depends:
     Cabal >= 1.10,
     array,
+    binary >= 0.7,
     containers,
     directory,
     process >= 1.0.1.1,
