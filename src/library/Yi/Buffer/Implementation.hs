@@ -6,7 +6,6 @@
 {-# LANGUAGE FlexibleInstances         #-}
 {-# LANGUAGE PatternGuards             #-}
 {-# LANGUAGE Rank2Types                #-}
-{-# LANGUAGE StandaloneDeriving        #-}
 {-# LANGUAGE TemplateHaskell           #-}
 {-# OPTIONS_HADDOCK show-extensions #-}
 
@@ -65,11 +64,7 @@ module Yi.Buffer.Implementation
   , mem
   ) where
 
-#if __GLASGOW_HASKELL__ < 708
-import           Data.DeriveTH
-#else
 import           GHC.Generics        (Generic)
-#endif
 
 import           Control.Applicative (Applicative ((<*>), pure), (<$>))
 import           Data.Array          ((!))
@@ -93,16 +88,11 @@ import           Yi.Utils            (SemiNum ((+~), (~-)), makeLensesWithSuffix
 
 data MarkValue = MarkValue { markPoint   :: !Point
                            , markGravity :: !Direction}
-               deriving (Ord, Eq, Show, Typeable)
+               deriving (Ord, Eq, Show, Typeable, Generic)
 
 makeLensesWithSuffix "AA" ''MarkValue
 
-#if __GLASGOW_HASKELL__ < 708
-$(derive makeBinary ''MarkValue)
-#else
-deriving instance Generic MarkValue
 instance Binary MarkValue
-#endif
 
 type Marks = M.Map Mark MarkValue
 
@@ -157,20 +147,23 @@ instance Binary (BufferImpl ()) where
 -- Note that the update direction is only a hint for moving the cursor
 -- (mainly for undo purposes); the insertions and deletions are always
 -- applied Forward.
-data Update = Insert {updatePoint :: !Point, updateDirection :: !Direction, insertUpdateString :: !YiString}
-            | Delete {updatePoint :: !Point, updateDirection :: !Direction, deleteUpdateString :: !YiString}
-              -- Note that keeping the text does not cost much: we keep the updates in the undo list;
-              -- if it's a "Delete" it means we have just inserted the text in the buffer, so the update shares
-              -- the data with the buffer. If it's an "Insert" we have to keep the data any way.
+--
+-- Note that keeping the text does not cost much: we keep the updates in the undo list;
+-- if it's a "Delete" it means we have just inserted the text in the buffer, so the update shares
+-- the data with the buffer. If it's an "Insert" we have to keep the data any way.
+data Update
+    = Insert
+    { updatePoint :: !Point
+    , updateDirection :: !Direction
+    , _insertUpdateString :: !YiString
+    }
+    | Delete
+    { updatePoint :: !Point
+    , updateDirection :: !Direction
+    , _deleteUpdateString :: !YiString
+    } deriving (Show, Typeable, Generic)
 
-              deriving (Show, Typeable)
-
-#if __GLASGOW_HASKELL__ < 708
-$(derive makeBinary ''Update)
-#else
-deriving instance Generic Update
 instance Binary Update
-#endif
 
 updateIsDelete :: Update -> Bool
 updateIsDelete Delete {} = True
@@ -185,12 +178,8 @@ updateSize = Size . fromIntegral . R.length . updateString
 
 data UIUpdate = TextUpdate !Update
               | StyleUpdate !Point !Size
-#if __GLASGOW_HASKELL__ < 708
-$(derive makeBinary ''UIUpdate)
-#else
-deriving instance Generic UIUpdate
+    deriving (Generic)
 instance Binary UIUpdate
-#endif
 
 --------------------------------------------------
 -- Low-level primitives.

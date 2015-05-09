@@ -1,6 +1,5 @@
 {-# LANGUAGE CPP                #-}
 {-# LANGUAGE DeriveGeneric      #-}
-{-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE TemplateHaskell    #-}
 
 module Yi.JumpList
@@ -11,11 +10,7 @@ module Yi.JumpList
     , jumpForward
     ) where
 
-#if __GLASGOW_HASKELL__ < 708
-import           Data.DeriveTH         (derive, makeBinary)
-#else
 import           GHC.Generics          (Generic)
-#endif
 
 import           Data.Binary           (Binary, get, put)
 import           Data.List.PointedList as PL (PointedList (..), next, previous)
@@ -27,14 +22,9 @@ type JumpList = Maybe (PL.PointedList Jump)
 data Jump = Jump {
         jumpMark      :: Mark
       , jumpBufferRef :: BufferRef
-    }
+    } deriving (Generic)
 
-#if __GLASGOW_HASKELL__ < 708
-$(derive makeBinary ''Jump)
-#else
-deriving instance Generic Jump
 instance Binary Jump
-#endif
 
 instance Show Jump where
     show (Jump mark bufref) = "<Jump " ++ show mark ++ " " ++ show bufref ++ ">"

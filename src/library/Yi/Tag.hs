@@ -3,7 +3,6 @@
 {-# LANGUAGE DeriveGeneric      #-}
 {-# LANGUAGE FlexibleContexts   #-}
 {-# LANGUAGE OverloadedStrings  #-}
-{-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE TemplateHaskell    #-}
 {-# OPTIONS_HADDOCK show-extensions #-}
 
@@ -31,11 +30,7 @@ module Yi.Tag ( lookupTag
               , tagsFileList
               ) where
 
-#if __GLASGOW_HASKELL__ < 708
-import           Data.DeriveTH (derive, makeBinary)
-#else
 import           GHC.Generics (Generic)
-#endif
 
 import           Control.Applicative    ((<$>))
 import           Control.Lens           (makeLenses)
@@ -57,7 +52,7 @@ import           Yi.Editor              (EditorM, getEditorDyn, putEditorDyn)
 import           Yi.Types               (YiConfigVariable, YiVariable)
 
 newtype TagsFileList  = TagsFileList { _unTagsFileList :: [FilePath] }
-    deriving Typeable
+    deriving (Typeable, Generic)
 
 instance Default TagsFileList where
     def = TagsFileList ["tags"]
@@ -69,7 +64,7 @@ makeLenses ''TagsFileList
 tagsFileList :: Field [FilePath]
 tagsFileList = customVariable . unTagsFileList
 
-newtype Tags  = Tags (Maybe TagTable) deriving Typeable
+newtype Tags = Tags (Maybe TagTable) deriving (Typeable, Generic)
 
 instance Default Tags where
     def = Tags Nothing
@@ -85,17 +80,18 @@ instance Binary Tag where
   put (Tag t) = put (E.encodeUtf8 t)
   get = Tag . E.decodeUtf8 <$> get
 
-data TagTable = TagTable { tagFileName :: FilePath
-                           -- ^ local name of the tag file
-                           -- TODO: reload if this file is changed
-                           , tagBaseDir :: FilePath
-                           -- ^ path to the tag file directory
-                           -- tags are relative to this path
-                           , tagFileMap :: Map Tag [(FilePath, Int)]
-                           -- ^ map from tags to files
-                           , tagTrie :: Trie.Trie
-                           -- ^ trie to speed up tag hinting
-                         } deriving Typeable
+data TagTable = TagTable
+    { tagFileName :: FilePath
+    -- ^ local name of the tag file
+    -- TODO: reload if this file is changed
+    , tagBaseDir :: FilePath
+    -- ^ path to the tag file directory
+    -- tags are relative to this path
+    , tagFileMap :: Map Tag [(FilePath, Int)]
+    -- ^ map from tags to files
+    , tagTrie :: Trie.Trie
+    -- ^ trie to speed up tag hinting
+    } deriving (Typeable, Generic)
 
 -- | Find the location of a tag using the tag table.
 -- Returns a full path and line number
@@ -159,15 +155,6 @@ getTags = do
   Tags t <- getEditorDyn
   return t
 
-#if __GLASGOW_HASKELL__ < 708
-$(derive makeBinary ''Tags)
-$(derive makeBinary ''TagTable)
-$(derive makeBinary ''TagsFileList)
-#else
-deriving instance Generic Tags
-deriving instance Generic TagTable
-deriving instance Generic TagsFileList
 instance Binary Tags
 instance Binary TagTable
 instance Binary TagsFileList
-#endif
