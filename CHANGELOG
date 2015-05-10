@@ -1,4 +1,21 @@
 
+0.12.0
+------
+
+ * Yi can now be built with GHC 7.8 and 7.10, GHC 7.6 is no longer supported
+ * hint (haskell interpreter library) dependency is now optional
+ * Example configs are now checked for compilation errors by Travis CI
+ * Fixed #715: yi -p opens files in reverse order and with duplicates
+ * Fixed #744: Deleting text in marks (emacs mode)
+ * Fixed #739: Emacs keybindings: double C-space
+ * Fixed #737:
+ * Fixed #741: Scroll cursor with wrapped lines
+ * Fixed #738: Emacs mode, problems with selection
+ * Fixed #610: Selection and search marks get confused when used together
+ * Emacs keymap: M-r implementation
+ * Vim keymap: :substitute now supports /i flag
+ * Some refactoring and documentation fixes
+
 0.11.2
 -------
 
