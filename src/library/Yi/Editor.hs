@@ -51,6 +51,7 @@ module Yi.Editor ( Editor(..), EditorM, MonadEditor(..)
                  , layoutManagerPreviousVariantE
                  , layoutManagersNextE
                  , layoutManagersPreviousE
+                 , maxStatusHeightA
                  , moveTabE
                  , moveWinNextE
                  , moveWinPrevE
@@ -61,6 +62,7 @@ module Yi.Editor ( Editor(..), EditorM, MonadEditor(..)
                  , newWindowE
                  , nextTabE
                  , nextWinE
+                 , onCloseActionsA
                  , pendingEventsA
                  , prevWinE
                  , previousTabE
@@ -100,7 +102,7 @@ import           Prelude                        hiding (all, concatMap, foldl, f
 import           Control.Applicative            ((<$>), (<*>))
 import           Control.Lens                   (Lens', assign, lens, mapped,
                                                  use, uses, view, (%=), (%~),
-                                                 (&), (.=), (.~), (^.))
+                                                 (&), (.~), (^.))
 import           Control.Monad                  (forM_)
 import           Control.Monad.Reader           (MonadReader (ask), asks, liftM,
                                                  unless, when)
@@ -121,8 +123,7 @@ import qualified Data.List.PointedList.Circular as PL (PointedList (..), delete,
                                                        length, next, previous,
                                                        singleton, _focus)
 import qualified Data.Map                       as M (delete, elems, empty,
-                                                      insert, insertWith',
-                                                      lookup, singleton, (!))
+                                                      insert, lookup, singleton, (!))
 import           Data.Maybe                     (fromJust, fromMaybe, isNothing)
 import qualified Data.Monoid                    as Mon ((<>))
 import           Data.Semigroup                 (mempty, (<>))
@@ -131,7 +132,7 @@ import           System.FilePath                (splitPath)
 import           Yi.Buffer
 import           Yi.Config
 import           Yi.Interact                    as I (accepted, mkAutomaton)
-import           Yi.JumpList                    (Jump, Jump (..), JumpList, addJump, jumpBack, jumpForward)
+import           Yi.JumpList                    (Jump (..), JumpList, addJump, jumpBack, jumpForward)
 import           Yi.KillRing                    (krEmpty, krGet, krPut, krSet)
 import           Yi.Layout
 import           Yi.Monad                       (getsAndModify)
@@ -344,13 +345,6 @@ getBufferWithName bufName = withEditor $ do
     [] -> fail ("Buffer not found: " ++ T.unpack bufName)
     b:_ -> return b
 
--- | Make all buffers visible by splitting the current window list.
--- FIXME: rename to displayAllBuffersE; make sure buffers are not open twice.
-openAllBuffersE :: EditorM ()
-openAllBuffersE = do
-  bs <- gets bufferSet
-  forM_ bs $ ((%=) windowsA . PL.insertRight =<<) . newWindowE False . bkey
-
 ------------------------------------------------------------------------
 -- | Perform action with any given buffer, using the last window that
 -- was used for that buffer.
@@ -508,10 +502,6 @@ switchToBufferE bk = windowsA . PL.focus %= \w ->
   w & bufkeyA .~ bk
     & bufAccessListA %~ forceFold1 . (bufkey w:) . filter (bk /=)
 
--- | Attach the specified buffer to some other window than the current one
-switchToBufferOtherWindowE :: BufferRef -> EditorM ()
-switchToBufferOtherWindowE b = shiftOtherWindow >> switchToBufferE b
-
 -- | Switch to the buffer specified as parameter. If the buffer name
 -- is empty, switch to the next buffer.
 switchToBufferWithNameE :: T.Text -> EditorM ()
@@ -535,9 +525,8 @@ getBufferWithNameOrCurrent t = withEditor $
 -- | Close current buffer and window, unless it's the last one.
 closeBufferAndWindowE :: EditorM ()
 closeBufferAndWindowE = do
-  -- Fetch the current buffer *before* closing the window. Required
-  -- for the onCloseBufferE actions to work as expected by the
-  -- minibuffer. The tryCloseE, since it uses tabsA, will have the
+  -- Fetch the current buffer *before* closing the window.
+  -- The tryCloseE, since it uses tabsA, will have the
   -- current buffer "fixed" to the buffer of the window that is
   -- brought into focus. If the current buffer is accessed after the
   -- tryCloseE then the current buffer may not be the same as the
@@ -589,12 +578,6 @@ fixCurrentBufferA_ = lens id (\_old new -> let
   newBufferStack = nub (bkey b NE.<| bufferStack new)
   -- make sure we do not hold to old versions by seqing the length.
   in NE.length newBufferStack `seq` new & bufferStackA .~ newBufferStack)
-
--- | Counterpart of fixCurrentBufferA_: fix the current window to point to the
--- right buffer.
-fixCurrentWindowE :: EditorM ()
-fixCurrentWindowE =
-  gets currentBuffer >>= \b -> windowsA . PL.focus . bufkeyA .= b
 
 withWindowE :: Window -> BufferM a -> EditorM a
 withWindowE w = withGivenBufferAndWindow w (bufkey w)
@@ -765,23 +748,6 @@ acceptedInputsOtherWindow = do
   b <- stringToNewBuffer (MemBuffer "keybindings") (fromText $ T.unlines ai)
   w <- newWindowE False b
   windowsA %= PL.insertRight w
-
--- | Defines an action to be executed when the current buffer is closed.
---
--- Used by the minibuffer to assure the focus is restored to the
--- buffer that spawned the minibuffer.
---
--- todo: These actions are not restored on reload.
---
--- todo: These actions should probably be very careful at what they
--- do.
---
--- TODO: All in all, this is a very ugly way to achieve the purpose.
--- The nice way to proceed is to somehow attach the miniwindow to the
--- window that has spawned it.
-onCloseBufferE :: BufferRef -> EditorM () -> EditorM ()
-onCloseBufferE b a =
-  onCloseActionsA %= M.insertWith' (\_ old_a -> old_a >> a) b a
 
 addJumpHereE :: EditorM ()
 addJumpHereE = addJumpAtE =<< withCurrentBuffer pointB

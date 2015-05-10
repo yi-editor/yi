@@ -33,7 +33,7 @@ import           GHC.Generics              (Generic)
 
 import           Control.Applicative       (Alternative ((<|>)), (<$>))
 import           Control.Lens              (makeLenses)
-import           Data.Binary               (Binary (..), getWord8, putWord8)
+import           Data.Binary               (Binary (..))
 import           Data.Default              (Default (..))
 import qualified Data.HashMap.Strict       as HM (HashMap)
 import           Data.Monoid               (Monoid (mappend, mempty), (<>))

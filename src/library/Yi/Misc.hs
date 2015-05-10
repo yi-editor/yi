@@ -20,7 +20,6 @@ module Yi.Misc ( getAppropriateFiles, getFolder, cd, pwd, matchingFileNames
                ) where
 
 import           Control.Applicative     ((<$>), (<*>))
-import           Control.Lens            (assign)
 import           Control.Monad           (filterM, (>=>))
 import           Control.Monad.Base      (liftBase)
 import           Data.Char               (chr, isAlpha, isLower, isUpper, ord)

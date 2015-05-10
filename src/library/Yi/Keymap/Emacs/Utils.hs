@@ -69,7 +69,7 @@ import           Yi.File             (deservesSave, editFile, fwriteBufferE, ope
 import           Yi.Keymap           (Keymap, KeymapM, YiM, write)
 import           Yi.Keymap.Keys
 import           Yi.MiniBuffer
-import           Yi.Misc             (promptFile, placeMark)
+import           Yi.Misc             (promptFile)
 import           Yi.Monad            (gets)
 import           Yi.Rectangle        (getRectangle)
 import           Yi.Regex            (makeSearchOptsM)

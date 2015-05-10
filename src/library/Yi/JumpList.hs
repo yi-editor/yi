@@ -12,7 +12,7 @@ module Yi.JumpList
 
 import           GHC.Generics          (Generic)
 
-import           Data.Binary           (Binary, get, put)
+import           Data.Binary           (Binary)
 import           Data.List.PointedList as PL (PointedList (..), next, previous)
 import           Yi.Buffer.Basic       (BufferRef, Mark)
 
