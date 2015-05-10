@@ -68,7 +68,7 @@ import           GHC.Generics        (Generic)
 
 import           Control.Applicative (Applicative ((<*>), pure), (<$>))
 import           Data.Array          ((!))
-import           Data.Binary         (Binary (..), getWord8, putWord8)
+import           Data.Binary         (Binary (..))
 import           Data.Function       (on)
 import           Data.List           (groupBy)
 import qualified Data.Map            as M (Map, delete, empty, findMax, insert, lookup, map, maxViewWithKey)

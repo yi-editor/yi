@@ -30,7 +30,7 @@ import           Control.Monad.RWS   (MonadPlus (mplus), MonadReader (ask),
                                       Monoid (mappend, mempty), RWST, evalRWST,
                                       filterM, forM, forM_, liftM, liftM2,
                                       unless, when, (<>))
-import           Data.Binary         (Binary, get, getWord8, put, putWord8)
+import           Data.Binary         (Binary)
 import           Data.Char           (isSpace)
 import           Data.Default        (Default, def)
 import           Data.Foldable       (find)

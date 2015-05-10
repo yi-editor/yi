@@ -39,24 +39,26 @@ module Yi.Eval (
 import Prelude hiding (mapM_)
 
 import Control.Applicative ( (<$>), (<*>) )
-import Control.Concurrent
-    ( takeMVar, putMVar, newEmptyMVar, MVar, forkIO )
-import Control.Monad.Catch ( try )
 import Control.Lens ( (^.), (<&>), (.=), (%=) )
-import Control.Monad
-    ( Monad((>>), (>>=), return), when, void, forever )
-import Control.Monad.Base ( MonadBase )
-import Control.Monad.Trans ( lift )
+import Control.Monad (when)
 import Data.Array ( elems )
-import Data.Binary ( Binary, put, get )
+import Data.Binary ( Binary )
 import Data.Default ( Default, def )
 import Data.Foldable ( mapM_ )
 import qualified Data.HashMap.Strict as M
     ( HashMap, insert, lookup, empty, keys )
-import Data.List ( sort )
 import Data.Monoid ( mempty, Monoid, (<>) )
 import Data.Typeable ( Typeable )
 #ifdef HINT
+import Control.Concurrent
+    ( takeMVar, putMVar, newEmptyMVar, MVar, forkIO )
+import Control.Monad
+    ( Monad((>>), (>>=), return), void, forever )
+import Control.Monad.Base ( MonadBase )
+import Control.Monad.Catch ( try )
+import Control.Monad.Trans ( lift )
+import Data.Binary ( get, put )
+import Data.List ( sort )
 import qualified Language.Haskell.Interpreter as LHI
     ( typeOf,
       setImportsQ,
@@ -73,10 +75,18 @@ import qualified Language.Haskell.Interpreter as LHI
       Extension(OverloadedStrings, NoImplicitPrelude),
       setTopLevelModules,
       interpret )
-#endif
 import System.Directory ( doesFileExist )
-import Text.Read ( readMaybe )
 import Yi.Boot.Internal ( reload )
+import Yi.Core ( errorEditor )
+import Yi.Editor
+    ( getEditorDyn,
+      putEditorDyn,
+      MonadEditor)
+import qualified Yi.Paths ( getEvaluatorContextFilename )
+import Yi.String ( showT )
+import Yi.Utils ( io )
+#endif
+import Text.Read ( readMaybe )
 import Yi.Buffer
     ( gotoLn,
       moveXorEol,
@@ -88,13 +98,10 @@ import Yi.Buffer
       getBookmarkB,
       markPointA )
 import Yi.Config.Simple.Types ( customVariable, Field, ConfigM )
-import Yi.Core ( errorEditor, runAction )
+import Yi.Core ( runAction )
 import Yi.Types ( YiVariable, YiConfigVariable )
 import Yi.Editor
-    ( getEditorDyn,
-      putEditorDyn,
-      MonadEditor,
-      printMsg,
+    ( printMsg,
       askCfg,
       withCurrentBuffer,
       withCurrentBuffer )
@@ -103,12 +110,10 @@ import Yi.Hooks ( runHook )
 import Yi.Keymap
     ( YiM, Action, YiAction, makeAction, Keymap, write )
 import Yi.Keymap.Keys ( event, Event(..), Key(KEnter) )
-import qualified Yi.Paths ( getEvaluatorContextFilename )
 import Yi.Regex ( Regex, makeRegex, matchOnceText )
 import qualified Yi.Rope as R
     ( toString, YiString, splitAt, length )
-import Yi.String ( showT )
-import Yi.Utils ( io, makeLensesWithSuffix )
+import Yi.Utils ( makeLensesWithSuffix )
 
 
 -- TODO: should we be sticking Text here?

@@ -70,10 +70,14 @@ module Yi.Buffer.HighLevel
     , moveToSol
     , moveXorEol
     , moveXorSol
+    , nextCExc
+    , nextCInc
     , nextCInLineExc
     , nextCInLineInc
     , nextNParagraphs
     , nextWordB
+    , prevCExc
+    , prevCInc
     , prevCInLineExc
     , prevCInLineInc
     , prevNParagraphs
@@ -126,7 +130,7 @@ import           Data.Char                (isDigit, isHexDigit, isOctDigit, isSp
 import           Data.List                (intersperse, sort)
 import           Data.Maybe               (catMaybes, fromMaybe, listToMaybe)
 import           Data.Monoid              (Monoid (mempty), (<>))
-import qualified Data.Text                as T (Text, map, toLower, toUpper, unpack)
+import qualified Data.Text                as T (Text, toLower, toUpper, unpack)
 import           Data.Time                (UTCTime)
 import           Data.Tuple               (swap)
 import           Numeric                  (readHex, readOct, showHex, showOct)
@@ -348,13 +352,6 @@ getLineAndColOfPoint p = savingPointB $ moveTo p >> getLineAndCol
 readLnB :: BufferM YiString
 readLnB = readUnitB Line
 
-readCharB :: BufferM (Maybe Char)
-readCharB = fmap R.head (readUnitB Character)
-
--- | Read from point to end of line
-readRestOfLnB :: BufferM YiString
-readRestOfLnB = readRegionB =<< regionOfPartB Line Forward
-
 -- | Read from point to beginning of line
 readPreviousOfLnB :: BufferM YiString
 readPreviousOfLnB = readRegionB =<< regionOfPartB Line Backward
@@ -369,14 +366,6 @@ prevPointB = do
   if sof then pointB
          else do p <- pointB
                  return $ Point (fromPoint p - 1)
-
--- | Get the next point, unless at the end of the file
-nextPointB :: BufferM Point
-nextPointB = do
-  eof <- atEof
-  if eof then pointB
-         else do p <- pointB
-                 return $ Point (fromPoint p + 1)
 
 -- | Reads in word at point.
 readCurrentWordB :: BufferM YiString
@@ -449,25 +438,12 @@ lowercaseWordB = transformB (R.withText T.toLower) unitWord Forward
 capitaliseWordB :: BufferM ()
 capitaliseWordB = transformB capitalizeFirst unitWord Forward
 
--- | switch the case of the letter under the cursor
-switchCaseCharB :: BufferM ()
-switchCaseCharB =
-  transformB (R.withText $ T.map switchCaseChar) Character Forward
-
 switchCaseChar :: Char -> Char
 switchCaseChar c = if isUpper c then toLower c else toUpper c
 
 -- | Delete to the end of line, excluding it.
 deleteToEol :: BufferM ()
 deleteToEol = deleteRegionB =<< regionOfPartB Line Forward
-
--- | Delete whole line moving to the next line
-deleteLineForward :: BufferM ()
-deleteLineForward =
-  do moveToSol   -- Move to the start of the line
-     deleteToEol -- Delete the rest of the line not including the newline char
-     deleteN 1   -- Delete the newline character
-
 
 -- | Transpose two characters, (the Emacs C-t action)
 swapB :: BufferM ()
@@ -572,13 +548,6 @@ scrollScreensB :: Int -> BufferM ()
 scrollScreensB n = do
     h <- askWindow actualLines
     scrollB $ n * max 0 (h - 1) -- subtract some amount to get some overlap (emacs-like).
-
--- | Scroll according to function passed. The function takes the
--- | Window height in lines, its result is passed to scrollB
--- | (negative for up)
-scrollByB :: (Int -> Int) -> Int -> BufferM ()
-scrollByB f n = do h <- askWindow actualLines
-                   scrollB $ n * f h
 
 -- | Same as scrollB, but also moves the cursor
 vimScrollB :: Int -> BufferM ()
@@ -743,10 +712,6 @@ setSelectRegionB region = do
   setSelectionMarkPointB $ regionStart region
   moveTo $ regionEnd region
 
--- | Extend the selection mark using the given region.
-extendSelectRegionB :: Region -> BufferM ()
-extendSelectRegionB region = (setSelectRegionB . unionRegion region) =<< getSelectRegionB
-
 ------------------------------------------
 -- Some line related movements/operations
 
@@ -799,13 +764,6 @@ getNextNonBlankLineB dir =
 -- Some more utility functions involving
 -- regions (generally that which is selected)
 
--- | Uses a string modifying function to modify the current selection
--- Currently unsets the mark such that we have no selection, arguably
--- we could instead work out where the new positions should be
--- and move the mark and point accordingly.
-modifySelectionB :: (R.YiString -> R.YiString) -> BufferM ()
-modifySelectionB = modifyExtendedSelectionB Character
-
 modifyExtendedSelectionB :: TextUnit -> (R.YiString -> R.YiString) -> BufferM ()
 modifyExtendedSelectionB unit transform
     = modifyRegionB transform =<< unitWiseRegion unit =<< getSelectRegionB
@@ -848,34 +806,6 @@ toggleCommentSelectionB insPrefix delPrefix = do
   if delPrefix == R.take (R.length delPrefix) l
     then unLineCommentSelectionB insPrefix delPrefix
     else linePrefixSelectionB insPrefix
-
--- | Justifies all the lines of the selection to be the same as
--- the top line.
--- NOTE: if the selection begins part way along a line, the other
--- lines will be justified only with respect to the part of the indentation
--- which is selected.
-justifySelectionWithTopB :: BufferM ()
-justifySelectionWithTopB =
-  modifySelectionB justifyLines
-  where
-
-  justifyLines :: R.YiString -> R.YiString
-  justifyLines input =
-    case R.lines input of
-      []           -> ""
-      [ one ]      -> one
-      (top : _)    -> mapLines justifyLine input
-        where
-          -- The indentation of the top line.
-          topIndent = R.takeWhile isSpace top
-
-          -- Justify a single line by removing its current indentation
-          -- and replacing it with that of the top line. Note that
-          -- this will work even if the indentation contains tab
-          -- characters.
-          justifyLine :: R.YiString -> R.YiString
-          justifyLine "" = ""
-          justifyLine l  = topIndent <> R.dropWhile isSpace l
 
 -- | Replace the contents of the buffer with some string
 replaceBufferContent :: YiString -> BufferM ()
