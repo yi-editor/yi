@@ -1,6 +1,4 @@
 {-# LANGUAGE CPP                #-}
-{-# LANGUAGE DeriveGeneric      #-}
-{-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE TemplateHaskell    #-}
 {-# OPTIONS_HADDOCK show-extensions #-}
 
@@ -25,12 +23,6 @@ module Yi.KillRing ( Killring
                    , krLastYank
                    )
     where
-
-#if __GLASGOW_HASKELL__ < 708
-import           Data.DeriveTH (derive, makeBinary)
-#else
-import           GHC.Generics (Generic)
-#endif
 
 import           Prelude             hiding (head, tail, take)
 
@@ -57,12 +49,6 @@ instance Binary Killring where
         in Killring <$> get <*> get <*> getNE <*> get
 
 makeLenses ''Killring
-
-#if __GLASGOW_HASKELL__ < 708
-$(derive makeBinary ''NonEmpty)
-#else
-deriving instance Generic Killring
-#endif
 
 maxDepth :: Int
 maxDepth = 10

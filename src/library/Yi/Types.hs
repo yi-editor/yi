@@ -9,7 +9,6 @@
 {-# LANGUAGE LambdaCase                 #-}
 {-# LANGUAGE MultiParamTypeClasses      #-}
 {-# LANGUAGE ScopedTypeVariables        #-}
-{-# LANGUAGE StandaloneDeriving         #-}
 {-# OPTIONS_HADDOCK show-extensions #-}
 
 -- |
@@ -359,17 +358,11 @@ data Editor = Editor
 
 newtype EditorM a = EditorM {fromEditorM :: ReaderT Config (State Editor) a}
     deriving (Monad, Applicative, MonadState Editor,
-              MonadReader Config, Functor)
+              MonadReader Config, Functor, Typeable)
 
 instance MonadEditor EditorM where
     askCfg = ask
     withEditor = id
-
-#if __GLASGOW_HASKELL__ < 708
-deriving instance Typeable1 EditorM
-#else
-deriving instance Typeable EditorM
-#endif
 
 class (Monad m, MonadState Editor m) => MonadEditor m where
   askCfg :: m Config

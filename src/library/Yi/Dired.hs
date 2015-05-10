@@ -3,7 +3,6 @@
 {-# LANGUAGE DeriveGeneric      #-}
 {-# LANGUAGE LambdaCase         #-}
 {-# LANGUAGE OverloadedStrings  #-}
-{-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE TemplateHaskell    #-}
 {-# OPTIONS_HADDOCK show-extensions #-}
 
@@ -44,11 +43,7 @@ module Yi.Dired
   , editFile
   ) where
 
-#if __GLASGOW_HASKELL__ < 708
-import           Data.DeriveTH            (derive, makeBinary)
-#else
 import           GHC.Generics             (Generic)
-#endif
 
 import           Control.Applicative      ((<$>), (<|>))
 import           Control.Category         ((>>>))
@@ -127,41 +122,36 @@ import Data.Time     (UTCTime, formatTime, getCurrentTime, defaultTimeLocale)
 data DiredOpState = DiredOpState
     { _diredOpSucCnt :: !Int -- ^ keep track of the num of successful operations
     , _diredOpForAll :: Bool -- ^ if True, DOChoice will be bypassed
-    }
-    deriving (Show, Eq, Typeable)
+    } deriving (Show, Eq, Typeable, Generic)
 
 instance Default DiredOpState where
     def = DiredOpState { _diredOpSucCnt = 0, _diredOpForAll = False }
 
-#if __GLASGOW_HASKELL__ < 708
-$(derive makeBinary ''DiredOpState)
-#else
-deriving instance Generic DiredOpState
 instance Binary DiredOpState
-#endif
 
 instance YiVariable DiredOpState
 
 makeLenses ''DiredOpState
 
-data DiredFileInfo = DiredFileInfo {  permString             :: R.YiString
-                                    , numLinks               :: Integer
-                                    , owner                  :: R.YiString
-                                    , grp                    :: R.YiString
-                                    , sizeInBytes            :: Integer
-                                    , modificationTimeString :: R.YiString
-                                 }
-                deriving (Show, Eq, Typeable)
+data DiredFileInfo = DiredFileInfo
+    { permString             :: R.YiString
+    , numLinks               :: Integer
+    , owner                  :: R.YiString
+    , grp                    :: R.YiString
+    , sizeInBytes            :: Integer
+    , modificationTimeString :: R.YiString
+    } deriving (Show, Eq, Typeable, Generic)
 
-data DiredEntry = DiredFile DiredFileInfo
-                | DiredDir DiredFileInfo
-                | DiredSymLink DiredFileInfo R.YiString
-                | DiredSocket DiredFileInfo
-                | DiredBlockDevice DiredFileInfo
-                | DiredCharacterDevice DiredFileInfo
-                | DiredNamedPipe DiredFileInfo
-                | DiredNoInfo
-                deriving (Show, Eq, Typeable)
+data DiredEntry
+    = DiredFile DiredFileInfo
+    | DiredDir DiredFileInfo
+    | DiredSymLink DiredFileInfo R.YiString
+    | DiredSocket DiredFileInfo
+    | DiredBlockDevice DiredFileInfo
+    | DiredCharacterDevice DiredFileInfo
+    | DiredNamedPipe DiredFileInfo
+    | DiredNoInfo
+    deriving (Show, Eq, Typeable, Generic)
 
 -- | Alias serving as documentation of some arguments. We keep most
 -- paths as 'R.YiString' for the sole reason that we'll have to render
@@ -172,28 +162,23 @@ type DiredFilePath = R.YiString
 type DiredEntries = M.Map DiredFilePath DiredEntry
 
 data DiredState = DiredState
-  { diredPath        :: FilePath -- ^ The full path to the directory being viewed
-    -- FIXME Choose better data structure for Marks...
-   , diredMarks      :: M.Map FilePath Char
-     -- ^ Map values are just leafnames, not full paths
-   , diredEntries    :: DiredEntries
-     -- ^ keys are just leafnames, not full paths
-   , diredFilePoints :: [(Point,Point,FilePath)]
-     -- ^ position in the buffer where filename is
-   , diredNameCol    :: Int
-     -- ^ position on line where filename is (all pointA are this col)
-   , diredCurrFile   :: FilePath
-     -- ^ keep the position of pointer (for refreshing dired buffer)
-  } deriving (Show, Eq, Typeable)
+    { diredPath        :: FilePath -- ^ The full path to the directory being viewed
+     -- FIXME Choose better data structure for Marks...
+    , diredMarks      :: M.Map FilePath Char
+      -- ^ Map values are just leafnames, not full paths
+    , diredEntries    :: DiredEntries
+      -- ^ keys are just leafnames, not full paths
+    , diredFilePoints :: [(Point,Point,FilePath)]
+      -- ^ position in the buffer where filename is
+    , diredNameCol    :: Int
+      -- ^ position on line where filename is (all pointA are this col)
+    , diredCurrFile   :: FilePath
+      -- ^ keep the position of pointer (for refreshing dired buffer)
+    } deriving (Show, Eq, Typeable, Generic)
 
 makeLensesWithSuffix "A" ''DiredState
 
-#if __GLASGOW_HASKELL__ < 708
-$(derive makeBinary ''DiredState)
-#else
-deriving instance Generic DiredState
 instance Binary DiredState
-#endif
 
 instance Default DiredState where
     def = DiredState { diredPath       = mempty
@@ -206,15 +191,8 @@ instance Default DiredState where
 
 instance YiVariable DiredState
 
-#if __GLASGOW_HASKELL__ < 708
-$(derive makeBinary ''DiredEntry)
-$(derive makeBinary ''DiredFileInfo)
-#else
-deriving instance Generic DiredEntry
-deriving instance Generic DiredFileInfo
 instance Binary DiredEntry
 instance Binary DiredFileInfo
-#endif
 
 -- | If file exists, read contents of file into a new buffer, otherwise
 -- creating a new empty buffer. Replace the current window with a new

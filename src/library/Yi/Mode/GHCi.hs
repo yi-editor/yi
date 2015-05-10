@@ -3,7 +3,6 @@
 {-# LANGUAGE DeriveGeneric              #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE OverloadedStrings          #-}
-{-# LANGUAGE StandaloneDeriving         #-}
 {-# LANGUAGE TemplateHaskell            #-}
 {-# OPTIONS_HADDOCK show-extensions #-}
 
@@ -18,11 +17,7 @@
 
 module Yi.Mode.GHCi where
 
-#if __GLASGOW_HASKELL__ < 708
-import           Data.DeriveTH
-#else
 import           GHC.Generics (Generic)
-#endif
 
 import           Control.Lens         (makeLenses, (%~), (&), (.~))
 import           Data.Binary          (Binary (..))
@@ -46,7 +41,7 @@ data GhciProcessName = GhciProcessName
     -- ^ Command to run when spawning GHCi.
   , _ghciProcessArgs :: [String]
     -- ^ Args to pass to the process.
-  } deriving (Typeable, Show)
+  } deriving (Typeable, Show, Generic)
 
 -- | The process name defaults to @ghci@.
 instance Default GhciProcessName where
@@ -54,12 +49,7 @@ instance Default GhciProcessName where
                         , _ghciProcessArgs = []
                         }
 
-#if __GLASGOW_HASKELL__ < 708
-$(derive makeBinary ''GhciProcessName)
-#else
-deriving instance Generic GhciProcessName
 instance Binary GhciProcessName
-#endif
 
 makeLenses ''GhciProcessName
 

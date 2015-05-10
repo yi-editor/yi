@@ -5,7 +5,6 @@
 {-# LANGUAGE Haskell2010                #-}
 {-# LANGUAGE NoMonomorphismRestriction  #-}
 {-# LANGUAGE ScopedTypeVariables        #-}
-{-# LANGUAGE StandaloneDeriving         #-}
 {-# LANGUAGE TemplateHaskell            #-}
 
 -- | This module implements persistence across different Yi runs.
@@ -19,11 +18,7 @@ module Yi.PersistentState(loadPersistentState,
                           persistentSearch)
 where
 
-#if __GLASGOW_HASKELL__ < 708
-import Data.DeriveTH (makeBinary, derive)
-#else
 import GHC.Generics (Generic)
-#endif
 
 import           Control.Exc            (ignoringException)
 import           Control.Lens           (assign, makeLenses, use)
@@ -44,17 +39,13 @@ import           Yi.Search.Internal     (getRegexE, setRegexE)
 import           Yi.Types               (YiConfigVariable)
 import           Yi.Utils               (io)
 
-data PersistentState = PersistentState { histories     :: !Histories
-                                       , aKillring     :: !Killring
-                                       , aCurrentRegex :: Maybe SearchExp
-                                       }
+data PersistentState = PersistentState
+    { histories     :: !Histories
+    , aKillring     :: !Killring
+    , aCurrentRegex :: Maybe SearchExp
+    } deriving (Generic)
 
-#if __GLASGOW_HASKELL__ < 708
-$(derive makeBinary ''PersistentState)
-#else
-deriving instance Generic PersistentState
 instance Binary PersistentState
-#endif
 
 newtype MaxHistoryEntries = MaxHistoryEntries { _unMaxHistoryEntries :: Int }
   deriving(Typeable, Binary)
