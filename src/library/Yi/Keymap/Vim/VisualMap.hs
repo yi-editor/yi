@@ -142,6 +142,9 @@ operatorBindings :: [VimOperator] -> [VimBinding]
 operatorBindings operators = fmap mkOperatorBinding $ operators ++ visualOperators
     where visualOperators = fmap synonymOp
                                   [ ("x", "d")
+                                  , ("s", "c")
+                                  , ("S", "c")
+                                  , ("C", "c")
                                   , ("~", "g~")
                                   , ("Y", "y")
                                   , ("u", "gu")
