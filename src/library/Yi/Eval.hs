@@ -159,8 +159,6 @@ data Evaluator = Evaluator
 evaluator :: Field Evaluator
 evaluator = customVariable
 
-instance YiConfigVariable Evaluator
-
 -- * Evaluator based on GHCi
 -- | Cached variable for getAllNamesInScopeImpl
 newtype NamesCache = NamesCache [String] deriving (Typeable, Binary)
@@ -401,3 +399,5 @@ instance Default Evaluator where
 #else
     def = publishedActionsEvaluator
 #endif
+
+instance YiConfigVariable Evaluator
