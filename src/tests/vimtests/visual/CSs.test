@@ -1,0 +1,30 @@
+-- Input
+(1,1)
+0; nil       20; binil     40; quadnil
+1; un        21; biun      41; quadun
+2; bi        22; bibi      42; quadbi
+3; tri       23; bitri     43; quadtri
+4; quad      24; biquad    44; quadquad
+5; pent      25; bipent    45; quadpent
+6; hex       26; bihex     46; quadhex
+7; sept      27; bisept    47; quadsept
+8; oct       28; bioct     48; quadoct
+9; enn       29; bienn     49; quadenn
+X; dec       2X; bidec     4X; quaddec
+E; lev       2E; bilev     4E; quadlev
+-- Output
+(11,7)
+0; nil       20; binil     40; quadnil
+1; un        21; biun      41; quadun
+2; two       22; bibi      42; quadbi
+3; tri       23; bitri     43; quadtri
+4; quad      24; biquad    44; quadquad
+5; pent      25; bipent    45; quadpent
+6; six       26; bihex     46; quadhex
+7; sept      27; bisept    47; quadsept
+8; oct       28; bioct     48; quadoct
+9; nine      29; bienn     49; quadenn
+X; ten       2X; bidec     4X; quaddec
+E; lev       2E; bilev     4E; quadlev
+-- Events
+2j3lv3lstwo <Esc>4j03lvelcsix <Esc>3j03lv4lCnine <Esc>j03lvelSten <Esc>
