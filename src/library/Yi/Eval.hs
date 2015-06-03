@@ -4,6 +4,9 @@
 {-# LANGUAGE LambdaCase                 #-}
 {-# LANGUAGE OverloadedStrings          #-}
 {-# LANGUAGE TemplateHaskell            #-}
+#ifdef HINT
+{-# LANGUAGE FlexibleContexts #-}
+#endif
 {-# OPTIONS_HADDOCK show-extensions #-}
 
 -- |

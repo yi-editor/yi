@@ -104,10 +104,7 @@ flag testing
   Description: bake-in the self-checks
 
 flag hint
-  Default: False
-  -- TODO: figure out how to write this
-  -- if impl(ghc < 7.10.1)
-  --   Default: True
+  Default: True
   Description: Include hint (haskell interpreter) in yi
 
 library
