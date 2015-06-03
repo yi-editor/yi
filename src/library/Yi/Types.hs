@@ -27,7 +27,7 @@
 module Yi.Types where
 
 #ifdef FRONTEND_VTY
-import qualified Graphics.Vty as Vty ()
+import qualified Graphics.Vty as Vty (Config)
 #endif
 
 import           Control.Applicative            (Applicative, pure, (<$>), (<*>))
@@ -53,7 +53,6 @@ import           Data.Time                      (UTCTime (..))
 import           Data.Traversable               (Traversable)
 import           Data.Typeable                  (Typeable)
 import           Data.Word                      (Word8)
-import qualified Graphics.Vty                   as Vty (Config)
 import           Yi.Buffer.Basic                (BufferRef, WindowRef)
 import           Yi.Buffer.Implementation
 import           Yi.Buffer.Undo                 (URList)
