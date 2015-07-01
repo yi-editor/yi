@@ -21,13 +21,14 @@ module Yi.Modes (TokenBasedMode, fundamentalMode,
                  gitCommitMode, rubyMode, styleMode
                 ) where
 
-import "regex-tdfa" Text.Regex.TDFA  ((=~))
-
 import           Control.Applicative ((<$>))
 import           Control.Lens        ((%~), (&), (.~), (^.))
 import           Data.List           (isPrefixOf)
-import           Data.Maybe          (fromMaybe)
+import           Data.Maybe          (fromMaybe, isJust)
 import           System.FilePath     (takeDirectory, takeExtension, takeFileName)
+import qualified Data.Text           as T (Text)
+import qualified Data.Text.ICU       as ICU (regex, find, MatchOption(..))
+
 import           Yi.Buffer
 import qualified Yi.IncrementalParse  as IncrParser (scanner)
 import           Yi.Keymap            (YiM)
@@ -50,7 +51,7 @@ import qualified Yi.Lexer.Srmc        as Srmc (lexer)
 import qualified Yi.Lexer.SVNCommit   as SVNCommit (lexer)
 import qualified Yi.Lexer.Whitespace  as Whitespace (lexer)
 import           Yi.MiniBuffer        (anyModeByNameM)
-import qualified Yi.Rope              as R (YiString, toString)
+import qualified Yi.Rope              as R (YiString, toText)
 import           Yi.Search            (makeSimpleSearch)
 import           Yi.Style             (StyleName)
 import           Yi.Syntax            (ExtHL (ExtHL))
@@ -233,10 +234,10 @@ anyExtension extensions fileName _contents
 
 -- | When applied to an extensions list and regular expression pattern, creates
 -- a 'Mode.modeApplies' function.
-extensionOrContentsMatch :: [String] -> String -> FilePath -> R.YiString -> Bool
+extensionOrContentsMatch :: [String] -> T.Text -> FilePath -> R.YiString -> Bool
 extensionOrContentsMatch extensions pattern fileName contents
-    = extensionMatches extensions fileName || contentsMatch
-    where contentsMatch = R.toString contents =~ pattern :: Bool
+    = extensionMatches extensions fileName || contentsMatch contents
+    where contentsMatch = isJust . ICU.find (ICU.regex [] pattern) . R.toText
 
 -- | Adds a hook to all matching hooks in a list
 hookModes :: (AnyMode -> Bool) -> BufferM () -> [AnyMode] -> [AnyMode]
