@@ -261,9 +261,9 @@ editFile filename = do
           rx = ICU.regex [] "\\-\\*\\- *([^ ]*) *\\-\\*\\-"
           hmode = case ICU.find rx (R.toText header) of
               Nothing -> ""
-              Just m  -> case (ICU.unfold ICU.group m) of
-                           [_, n] -> n
-                           _      -> ""
+              Just m  -> case (ICU.group 1 m) of
+                           Just n  -> n
+                           Nothing -> ""
           Just mode = find (\(AnyMode m) -> modeName m == hmode) tbl <|>
                       find (\(AnyMode m) -> modeApplies m f header) tbl <|>
                       Just (AnyMode emptyMode)
