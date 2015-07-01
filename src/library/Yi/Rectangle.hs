@@ -13,13 +13,12 @@
 
 module Yi.Rectangle where
 
-import "regex-tdfa" Text.Regex.TDFA ( (=~), AllTextSubmatches(..) )
-
 import           Control.Applicative ((<$>))
 import           Control.Monad       (forM_)
 import           Data.List           (sort, transpose)
 import           Data.Monoid         ((<>))
 import qualified Data.Text           as T (Text, concat, justifyLeft, length, pack, unpack)
+import qualified Data.Text.ICU       as ICU (regex, find, unfold, group)
 import           Yi.Buffer
 import           Yi.Editor           (EditorM, getRegE, setRegE, withCurrentBuffer)
 import qualified Yi.Rope             as R
@@ -30,17 +29,17 @@ alignRegion str = do
   s <- getSelectRegionB >>= unitWiseRegion Line
   modifyRegionB (R.fromText . alignText str . R.toText) s
   where
-    regexSplit :: String -> String -> [T.Text]
-    regexSplit regex l = case l =~ regex of
-        AllTextSubmatches (_:matches) -> T.pack <$> matches
-        _ -> error "regexSplit: text does not match"
+    regexSplit :: T.Text -> T.Text -> [T.Text]
+    regexSplit r l = case ICU.find (ICU.regex [] r) l of
+      Just m  -> drop 1 $ ICU.unfold ICU.group m
+      Nothing -> error "regexSplit: text does not match"
 
     alignText :: T.Text -> T.Text -> T.Text
     alignText regex text = unlines' ls'
       where ls, ls' :: [T.Text]
             ls = lines' text
             columns :: [[T.Text]]
-            columns = regexSplit (T.unpack regex) <$> (T.unpack <$> ls)
+            columns = regexSplit regex <$> ls
 
             columnsWidth :: [Int]
             columnsWidth = fmap (maximum . fmap T.length) $ transpose columns

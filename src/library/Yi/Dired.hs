@@ -62,6 +62,7 @@ import qualified Data.Map                 as M (Map, assocs, delete, empty,
 import           Data.Maybe               (fromMaybe)
 import           Data.Monoid              (mempty, (<>))
 import qualified Data.Text                as T (Text, pack, unpack)
+import qualified Data.Text.ICU            as ICU (regex, find, unfold, group, MatchOption(..))
 import           Data.Time.Clock.POSIX    (posixSecondsToUTCTime)
 import           Data.Typeable            (Typeable)
 import           System.CanonicalizePath  (canonicalizePath)
@@ -103,7 +104,6 @@ import           Yi.Keymap.Keys
 import           Yi.MiniBuffer            (noHint, spawnMinibufferE, withMinibuffer, withMinibufferFree)
 import           Yi.Misc                  (getFolder, promptFile)
 import           Yi.Monad                 (gets)
-import           Yi.Regex                 (AllTextSubmatches (..), (=~))
 import qualified Yi.Rope                  as R
 import           Yi.String                (showT)
 import           Yi.Style
@@ -258,10 +258,12 @@ editFile filename = do
       content <- withGivenBuffer b elemsB
 
       let header = R.take 1024 content
-          rx = "\\-\\*\\- *([^ ]*) *\\-\\*\\-" :: String
-          hmode = case R.toString header =~ rx of
-              AllTextSubmatches [_,m] -> T.pack m
-              _ -> ""
+          rx = ICU.regex [] "\\-\\*\\- *([^ ]*) *\\-\\*\\-"
+          hmode = case ICU.find rx (R.toText header) of
+              Nothing -> ""
+              Just m  -> case (ICU.unfold ICU.group m) of
+                           [_, n] -> n
+                           _      -> ""
           Just mode = find (\(AnyMode m) -> modeName m == hmode) tbl <|>
                       find (\(AnyMode m) -> modeApplies m f header) tbl <|>
                       Just (AnyMode emptyMode)
