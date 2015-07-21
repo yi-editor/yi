@@ -923,11 +923,9 @@ rightEdgesOfRegionB Block reg = savingPointB $ do
     (l0, _) <- getLineAndColOfPoint $ regionStart reg
     (l1, _) <- getLineAndColOfPoint $ regionEnd reg
     moveTo $ 1 + regionEnd reg
-    fmap (reverse . catMaybes) $ forM [0 .. abs (l0 - l1)] $ \i -> savingPointB $ do
+    fmap reverse $ forM [0 .. abs (l0 - l1)] $ \i -> savingPointB $ do
         void $ lineMoveRel $ -i
-        p <- pointB
-        eol <- atEol
-        return (if not eol then Just p else Nothing)
+        pointB
 rightEdgesOfRegionB LineWise reg = savingPointB $ do
     lastEol <- do
         moveTo $ regionEnd reg

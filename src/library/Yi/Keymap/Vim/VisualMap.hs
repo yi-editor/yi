@@ -245,7 +245,8 @@ insertBinding = VimBindingE (f . T.unpack . _unEv)
                       "I" -> leftEdgesOfRegionB style region
                       "A" -> rightEdgesOfRegionB style region
                       _ -> error "Just silencing ghc's false positive warning."
-                  withCurrentBuffer $ moveTo $ head cursors
+                  case cursors of
+                      (mainCursor : _) -> withCurrentBuffer (moveTo mainCursor)
                   modifyStateE $ \s -> s { vsSecondaryCursors = drop 1 cursors }
                   switchModeE $ Insert (head evs)
                   return Continue
