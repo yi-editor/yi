@@ -1,0 +1,8 @@
+-- Input
+(1,1)
+123
+-- Output
+(1,7)
+123text
+-- Events
+<C-v>$Atext<Esc>
