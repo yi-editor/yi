@@ -1,4 +1,12 @@
 
+0.12.1
+------
+
+ * Add an upper bound on vty dependency to avoid build breakage with vty>=5.4 (#776)
+ * Fix build with ghc 7.10 and "-fhint" flag
+ * Fix build with -f-vty
+ * Fix visual block append
+
 0.12.0
 ------
 
