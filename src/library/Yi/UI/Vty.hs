@@ -20,10 +20,9 @@ import           Prelude                        hiding (concatMap, error,
                                                  reverse)
 
 import           Control.Applicative            (Applicative ((<*>)), (<$>))
-import           Control.Concurrent             (MVar, forkIO, isEmptyChan,
-                                                 myThreadId, newEmptyMVar,
-                                                 readChan, takeMVar, tryPutMVar,
-                                                 tryTakeMVar)
+import           Control.Concurrent             (MVar, forkIO, myThreadId, newEmptyMVar,
+                                                 takeMVar, tryPutMVar, tryTakeMVar)
+import           Control.Concurrent.STM         (atomically, isEmptyTChan, readTChan)
 import           Control.Exception              (IOException, handle)
 import           Control.Lens                   (use)
 import           Control.Monad                  (void, when)
@@ -98,7 +97,7 @@ start config submitEvents submitActions editor = do
                     maybe (do
                             let go evs = do
                                 e <- getEvent
-                                done <- isEmptyChan inputChan
+                                done <- atomically (isEmptyTChan inputChan)
                                 if done
                                 then submitEvents (D.toList (evs `D.snoc` e))
                                 else go (evs `D.snoc` e)
@@ -109,7 +108,7 @@ start config submitEvents submitActions editor = do
         -- | Read a key. UIs need to define a method for getting events.
         getEvent :: IO Yi.Event.Event
         getEvent = do
-          event <- readChan inputChan
+          event <- atomically (readTChan inputChan)
           case event of
             (Vty.EvResize _ _) -> do
                 submitActions []
