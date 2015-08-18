@@ -1,5 +1,5 @@
 name:           yi
-version:        0.12.1
+version:        0.12.2
 category:       Development, Editor
 synopsis:       The Haskell-Scriptable Editor
 description:
@@ -321,7 +321,7 @@ library
   if flag(testing)
     cpp-options: -DTESTING
     build-depends:
-      QuickCheck >= 2.7 && < 2.8,
+      QuickCheck >= 2.7 && < 2.9,
       random
 
   -- Frontends
@@ -343,8 +343,8 @@ library
       Yi.UI.Vty
       Yi.UI.Vty.Conversions
     build-depends:
-      unix-compat >=0.1 && <0.5,
-      vty >= 5.2.4 && < 5.4
+      vty >= 5.4,
+      stm >= 2.2
     cpp-options: -DFRONTEND_VTY
 
   other-modules:
