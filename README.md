@@ -27,7 +27,7 @@ We also want to simplify the core Yi package to make it more accessible, splitti
 * [Profiling](#profiling)
 * [Reading material](#reading-material)
 
-
+# Getting Started
 ## Installing
 If you have cabal installed with ghc>7.8,just run
     
@@ -38,9 +38,8 @@ See [this documentation page](http://yi-editor.github.io/pages/installing/)
 for installation instructions. Hacking instructions if you're using
 the nix package manager are also there.
 
-## Configuring Yi
+## Make your own Yi
 
-Yi uses the [Dyre][dyre] package to have dynamic reconfiguration. You can configure Yi by creating `~/.config/yi/yi.hs`, and then Yi is reconfigured whenever you update this file. Example configuration files are in `yi/examples/` (copy any of these into `~/.config/yi/` as `yi.hs` and restart Yi).
 
 You can find some [sample user configs][userconfigs] in the source repository on GitHub. To use one of these configurations, install the package and then create a configuration file `~/.config/yi/yi.hs` like this:
 
@@ -51,6 +50,10 @@ You can find some [sample user configs][userconfigs] in the source repository on
 
 It's possible to customize even these user configs in the same way as the example configurations.
 
+### dynamic reconfiguration
+Yi uses the [Dyre][dyre] package to have dynamic reconfiguration. You can configure Yi by creating `~/.config/yi/yi.hs`, and then Yi is reconfigured whenever you update this file. Example configuration files are in `yi/examples/` (copy any of these into `~/.config/yi/` as `yi.hs` and restart Yi).
+
+# More Info
 ## Getting Source
 
 Yi source repository is available on [GitHub][github].
@@ -96,12 +99,13 @@ cabal configure --enable-library-profiling && cabal install --reinstall
 ~/.cache/yi/yi-linux-x86_64 +RTS -Pa
 ```
 
-## Reading material
+## Documentation
 
-There are some papers which might interest you. If you plan on hacking
-on Yi, it's very recommended that you read these
+[hackage]: https://hackage.haskell.org/package/yi
 
-* [An editor in Haskell for Haskell][small-yi]
+There are some papers which might interest you. If you plan on hacking on Yi, it's very recommended that you read these
+
+* [An editor in Haskell for Haskell][small-yi] : introduce the fundamental principles and structure of Yi
 
 * [Lazy Functional Incremental Parsing][lazy-parsing] in Yi
 
