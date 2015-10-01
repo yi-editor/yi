@@ -17,7 +17,7 @@ The long term goal of the project is to make Yi the editor of choice for the has
 We also want to simplify the core Yi package to make it more accessible, splitting some parts into several packages.
 
 # Getting Started
-## Installing
+### Installing
 
 If you have cabal installed with ghc>7.8,just run
     
@@ -27,7 +27,7 @@ If you have cabal installed with ghc>7.8,just run
 See [this documentation page](http://yi-editor.github.io/pages/installing/)
 for installation instructions(Including Nix).
 
-## Make your own Yi
+### Make your own Yi
 Yi with indendation mode:
 
     import Yi
@@ -57,11 +57,11 @@ You can find some [sample user configs][userconfigs] in the source repository on
 
 It's possible to customize even these user configs in the same way as the example configurations.
 
-### dynamic reconfiguration
+#### dynamic reconfiguration
 Yi uses the [Dyre][dyre] package to have dynamic reconfiguration. You can configure Yi by creating `~/.config/yi/yi.hs`, and then *Yi is reconfigured whenever you update this file*. Example configuration files are in `yi/examples/` (copy any of these into `~/.config/yi/` as `yi.hs` and restart Yi).
 
 # More Info
-## Getting Source
+### Getting Source
 
 Yi source repository is available on [GitHub][github].
 
@@ -74,7 +74,7 @@ supporting repositories from the
 [GitHub project page][github]. You should
 cross-reference with the cabal file to see what you might need.
 
-## Frontend Compatibility
+### Frontend Compatibility
 
             |  Vty    Pango
     --------+----------------
@@ -86,7 +86,7 @@ Windows support for Vty may eventually come; patches on the vty package would ce
 
 The plan is to move the UI frontends into separate packages, but this has not yet happened.
 
-## Profiling
+### Profiling
 
 If you're interested in optimizing Yi, here is a [way to get profiling][profiling-discussion]:
 
@@ -106,7 +106,7 @@ cabal configure --enable-library-profiling && cabal install --reinstall
 ~/.cache/yi/yi-linux-x86_64 +RTS -Pa
 ```
 
-## Documentation
+### Documentation
 
 [hackage]: https://hackage.haskell.org/package/yi
 
@@ -136,15 +136,15 @@ There are some papers which might interest you. If you plan on hacking on Yi, it
 
 Other information (outdated) is available on the [Haskell wiki][haskellwiki].
 
-## Reporting Bugs
+### Reporting Bugs
 
 Please report issues on [GitHub][issueslist].
 
-## Mailing List
+### Mailing List
 
 Our mailing list is [yi-devel][], hosted at Google Groups. Please ask us questions on this list! All development discussion occurs on this list.
 
-## IRC channel
+### IRC channel
 
 Our channel is #yi at Freenode. Please note that it is rather slow (very slow compared to #haskell), so be prepared to stay for longer than 5 minutes.
 
