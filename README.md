@@ -16,8 +16,6 @@ The long term goal of the project is to make Yi the editor of choice for the has
 
 We also want to simplify the core Yi package to make it more accessible, splitting some parts into several packages.
 
-Other information (much of it old) is available on the [Haskell wiki][haskellwiki].
-
 ## Contents
 * [Installing](#installing)
 * [Getting Source](#getting-source)
@@ -29,36 +27,16 @@ Other information (much of it old) is available on the [Haskell wiki][haskellwik
 * [Profiling](#profiling)
 * [Reading material](#reading-material)
 
-## Installing
 
+## Installing
+If you have cabal installed with ghc>7.8,just run
+    
+    cabal update
+    cabal install yi
+    
 See [this documentation page](http://yi-editor.github.io/pages/installing/)
 for installation instructions. Hacking instructions if you're using
 the nix package manager are also there.
-
-## Getting Source
-
-Yi source repository is available on [GitHub][github].
-
-To get the git version,
-
-    $ git clone git://github.com/yi-editor/yi.git
-
-If you plan to do more serious hacking, you probably want the
-supporting repositories from the
-[GitHub project page][github]. You should
-cross-reference with the cabal file to see what you might need.
-
-## Reporting Bugs
-
-Please report issues on [GitHub][issueslist].
-
-## Mailing List
-
-Our mailing list is [yi-devel][], hosted at Google Groups. Please ask us questions on this list! All development discussion occurs on this list.
-
-## IRC channel
-
-Our channel is #yi at Freenode. Please note that it is rather slow (very slow compared to #haskell), so be prepared to stay for longer than 5 minutes.
 
 ## Configuring Yi
 
@@ -72,6 +50,19 @@ You can find some [sample user configs][userconfigs] in the source repository on
     main = yi config
 
 It's possible to customize even these user configs in the same way as the example configurations.
+
+## Getting Source
+
+Yi source repository is available on [GitHub][github].
+
+To get the git version,
+
+    $ git clone git://github.com/yi-editor/yi.git
+
+If you plan to do more serious hacking, you probably want the
+supporting repositories from the
+[GitHub project page][github]. You should
+cross-reference with the cabal file to see what you might need.
 
 ## Frontend Compatibility
 
@@ -131,3 +122,18 @@ on Yi, it's very recommended that you read these
 [lazy-parsing]: http://publications.lib.chalmers.se/records/fulltext/local_94979.pdf
 [js]: http://publications.lib.chalmers.se/records/fulltext/112284.pdf
 [precise-haskell]: http://publications.lib.chalmers.se/records/fulltext/117337.pdf
+
+Other information (outdated) is available on the [Haskell wiki][haskellwiki].
+
+## Reporting Bugs
+
+Please report issues on [GitHub][issueslist].
+
+## Mailing List
+
+Our mailing list is [yi-devel][], hosted at Google Groups. Please ask us questions on this list! All development discussion occurs on this list.
+
+## IRC channel
+
+Our channel is #yi at Freenode. Please note that it is rather slow (very slow compared to #haskell), so be prepared to stay for longer than 5 minutes.
+
