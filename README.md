@@ -27,6 +27,18 @@ If you have cabal installed with ghc>7.8,just run
 See [this documentation page](http://yi-editor.github.io/pages/installing/)
 for installation instructions(Including Nix).
 
+
+### A basic one
+
+    import Yi		
+    import Yi.Config.Users.Anders		
+		
+    main = yi config
+    
+save it as myi.hs,then open terminal under this directory and type
+    
+    runhaskell myi.hs
+    
 ### Make your own Yi
 Yi with indendation mode:
 
