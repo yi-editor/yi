@@ -6,7 +6,7 @@ Its features include
 
 * a purely functional editor core;
 * keybindings written as parsers of the input;
-* Emacs, Vim and Cua (subset) emulations provided by default;
+* Emacs, Vim and Cua (subset) emulations(keymap) provided by default;
 * Vty (terminal) and Gtk-based Pango UIs
 
 The long term goal of the project is to make Yi the editor of choice for the haskell hacker. The main short term goal is to maximize Yi's Fun Factor. This means that we want to
@@ -16,27 +16,16 @@ The long term goal of the project is to make Yi the editor of choice for the has
 
 We also want to simplify the core Yi package to make it more accessible, splitting some parts into several packages.
 
-## Contents
-* [Installing](#installing)
-* [Getting Source](#getting-source)
-* [Reporting Bugs](#reporting-bugs)
-* [Mailing List](#mailing-list)
-* [IRC channel](#irc-channel)
-* [Configuring Yi](#configuring-yi)
-* [Frontend Compatibility](#frontend-compatibility)
-* [Profiling](#profiling)
-* [Reading material](#reading-material)
-
 # Getting Started
 ## Installing
+
 If you have cabal installed with ghc>7.8,just run
     
     cabal update
     cabal install yi
     
 See [this documentation page](http://yi-editor.github.io/pages/installing/)
-for installation instructions. Hacking instructions if you're using
-the nix package manager are also there.
+for installation instructions(Including Nix).
 
 ## Make your own Yi
 Yi with indendation mode:
@@ -69,14 +58,14 @@ You can find some [sample user configs][userconfigs] in the source repository on
 It's possible to customize even these user configs in the same way as the example configurations.
 
 ### dynamic reconfiguration
-Yi uses the [Dyre][dyre] package to have dynamic reconfiguration. You can configure Yi by creating `~/.config/yi/yi.hs`, and then Yi is reconfigured whenever you update this file. Example configuration files are in `yi/examples/` (copy any of these into `~/.config/yi/` as `yi.hs` and restart Yi).
+Yi uses the [Dyre][dyre] package to have dynamic reconfiguration. You can configure Yi by creating `~/.config/yi/yi.hs`, and then *Yi is reconfigured whenever you update this file*. Example configuration files are in `yi/examples/` (copy any of these into `~/.config/yi/` as `yi.hs` and restart Yi).
 
 # More Info
 ## Getting Source
 
 Yi source repository is available on [GitHub][github].
 
-To get the git version,
+To get the latest version,
 
     $ git clone git://github.com/yi-editor/yi.git
 
