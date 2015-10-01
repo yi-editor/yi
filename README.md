@@ -39,14 +39,32 @@ for installation instructions. Hacking instructions if you're using
 the nix package manager are also there.
 
 ## Make your own Yi
-
-
-You can find some [sample user configs][userconfigs] in the source repository on GitHub. To use one of these configurations, install the package and then create a configuration file `~/.config/yi/yi.hs` like this:
+Yi with indendation mode:
 
     import Yi
-    import Yi.Config.Users.Anders
+    import qualified Yi.Rope as R
+    import           Yi.Keymap.Emacs as Emacs
+    import           Yi.String (mapLines)
+    
+    increaseIndent :: BufferM ()
+    increaseIndent = do
+       r <- getSelectRegionB
+       rf <- unitWiseRegion Line r -- extend the region to full lines.
+       modifyRegionB (mapLines (\x->R.append (R.fromString "     ") x)) rf
+       --modifyRegionB (mapLines (R.cons ' ')) rf
+    
+    
+    main :: IO ()
+    main = yi $ defaultEmacsConfig 
+           { defaultKm = Emacs.mkKeymap $
+                         override Emacs.defKeymap $
+                         \parent _ -> parent {_eKeymap = (_eKeymap parent) ||> (char '\t' ?>>! increaseIndent)}        
+                          --bind Tab(char 't') to increaseindent
+      }
+    
+Unlike the usual approach to customize editor like emacs and vim,which use a separate file like .emacs,we develop our own editor by utilize Yi as a library.You can look up the functions @ http://hayoo.fh-wedel.de
 
-    main = yi config
+You can find some [sample user configs][userconfigs] in the source repository on GitHub. To use one of these configurations, install the package and then create a configuration file `~/.config/yi/yi.hs` like this:
 
 It's possible to customize even these user configs in the same way as the example configurations.
 
