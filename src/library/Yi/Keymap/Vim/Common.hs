@@ -128,7 +128,6 @@ data VimState = VimState
     , vsActiveRegister        :: !RegisterName
     , vsRepeatableAction      :: !(Maybe RepeatableAction)
     , vsStringToEval          :: !EventString -- ^ see Yi.Keymap.Vim.vimEval comment
-    , vsStickyEol             :: !Bool -- ^ is set on $, allows j and k walk the right edge of lines
     , vsOngoingInsertEvents   :: !EventString
     , vsLastGotoCharCommand   :: !(Maybe GotoCharCommand)
     , vsBindingAccumulator    :: !EventString
@@ -156,7 +155,6 @@ instance Default VimState where
             '\0' -- active register
             Nothing -- repeatable action
             mempty -- string to eval
-            False -- sticky eol
             mempty -- ongoing insert events
             Nothing -- last goto char command
             mempty -- binding accumulator

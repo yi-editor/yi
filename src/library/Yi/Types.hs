@@ -216,6 +216,8 @@ data Attributes
     -- ^ prefered column to arrive at when we do a lineDown / lineUp
     , preferVisCol :: !(Maybe Int)
     -- ^ prefered column to arrive at visually (ie, respecting wrap)
+    , stickyEol :: !Bool
+    -- ^ stick to the end of line (used by vim bindings mostly)
     , pendingUpdates :: ![UIUpdate]
     -- ^ updates that haven't been synched in the UI yet
     , selectionStyle :: !SelectionStyle
@@ -238,14 +240,14 @@ data Attributes
 
 
 instance Binary Yi.Types.Attributes where
-    put (Yi.Types.Attributes n b u bd pc pv pu selectionStyle_
+    put (Yi.Types.Attributes n b u bd pc pv se pu selectionStyle_
          _proc wm law lst ro ins _dc _pfw isTransacPresent transacAccum fv cn) = do
       let putTime (UTCTime x y) = B.put (fromEnum x) >> B.put (fromEnum y)
       B.put n >> B.put b >> B.put u >> B.put bd
-      B.put pc >> B.put pv >> B.put pu >> B.put selectionStyle_ >> B.put wm
+      B.put pc >> B.put pv >> B.put se >> B.put pu >> B.put selectionStyle_ >> B.put wm
       B.put law >> putTime lst >> B.put ro >> B.put ins >> B.put _dc
       B.put isTransacPresent >> B.put transacAccum >> B.put fv >> B.put cn
-    get = Yi.Types.Attributes <$> B.get <*> B.get <*> B.get <*>
+    get = Yi.Types.Attributes <$> B.get <*> B.get <*> B.get <*> B.get <*>
           B.get <*> B.get <*> B.get <*> B.get <*> B.get <*> pure I.End <*> B.get <*> B.get
           <*> getTime <*> B.get <*> B.get <*> B.get
           <*> pure (const False) <*> B.get <*> B.get <*> B.get <*> B.get
