@@ -80,7 +80,7 @@ zeroBinding = VimBindingE f
                   Nothing -> do
                       withCurrentBuffer moveToSol
                       resetCountE
-                      setStickyEolE False
+                      withCurrentBuffer $ stickyEolA .= False
                       return Continue
           f _ _ = NoMatch
 
