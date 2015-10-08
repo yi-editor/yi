@@ -192,6 +192,7 @@ module Yi.Buffer.Misc
   , indentSettingsB
   , fontsizeVariationA
   , encodingConverterNameA
+  , stickyEolA
   ) where
 
 import           Prelude                        hiding (foldr, mapM, notElem)
@@ -590,6 +591,7 @@ newB unique nm s =
             , undos  = emptyU
             , preferCol = Nothing
             , preferVisCol = Nothing
+            , stickyEol = False
             , bufferDynamic = mempty
             , pendingUpdates = []
             , selectionStyle = SelectionStyle False False

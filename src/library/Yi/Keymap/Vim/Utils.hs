@@ -28,7 +28,7 @@ module Yi.Keymap.Vim.Utils
   ) where
 
 import           Control.Applicative      ((<$), (<$>))
-import           Control.Lens             ((.=))
+import           Control.Lens             ((.=), use)
 import           Control.Monad            (forM_, void, when)
 import           Data.Char                (isSpace)
 import           Data.Foldable            (asum)
@@ -42,7 +42,7 @@ import           Yi.Keymap                (YiM)
 import           Yi.Keymap.Vim.Common
 import           Yi.Keymap.Vim.EventUtils (eventToEventString, splitCountedCommand)
 import           Yi.Keymap.Vim.Motion     (Move (Move), stringToMove)
-import           Yi.Keymap.Vim.StateUtils (getMaybeCountE, modifyStateE, resetCountE, setStickyEolE)
+import           Yi.Keymap.Vim.StateUtils (getMaybeCountE, modifyStateE, resetCountE)
 import           Yi.Monad                 (whenM)
 import           Yi.Rope                  (YiString, countNewLines, last)
 import qualified Yi.Rope                  as R (replicateChar, snoc)
@@ -125,7 +125,6 @@ mkMotionBinding token condition = VimBindingE f
 
     go :: String -> Move -> EditorM RepeatToken
     go evs (Move _style isJump move) = do
-        state <- getEditorDyn
         count <- getMaybeCountE
         prevPoint <- withCurrentBuffer $ do
             p <- pointB
@@ -135,11 +134,13 @@ mkMotionBinding token condition = VimBindingE f
         when isJump $ addVimJumpAtE prevPoint
         resetCountE
 
+        sticky <- withCurrentBuffer $ use stickyEolA
+
         -- moving with j/k after $ sticks cursor to the right edge
-        when (evs == "$") $ setStickyEolE True
-        when (evs `elem` group "jk" && vsStickyEol state) $
+        when (evs == "$") . withCurrentBuffer $ stickyEolA .= True
+        when (evs `elem` group "jk" && sticky) $
             withCurrentBuffer $ moveToEol >> moveXorSol 1
-        when (evs `notElem` group "jk$") $ setStickyEolE False
+        when (evs `notElem` group "jk$") . withCurrentBuffer $ stickyEolA .= False
 
         let m = head evs
         when (m `elem` ('f' : "FtT")) $ do

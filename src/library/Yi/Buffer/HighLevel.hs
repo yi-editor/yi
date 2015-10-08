@@ -1165,7 +1165,6 @@ lineMoveVisRelDown n | n < 0 = lineMoveVisRelUp $ negate n
                 moveToEol
                 lineMoveVisRelDown $ next - 1
 
-
 -- | Implements the same logic that emacs' `mark-word` does.
 -- Checks the mark point and moves it forth (or backward) for one word.
 markWord :: BufferM ()

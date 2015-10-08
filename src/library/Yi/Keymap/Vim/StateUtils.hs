@@ -27,7 +27,6 @@ module Yi.Keymap.Vim.StateUtils
     , setRegisterE
     , getRegisterE
     , normalizeCountE
-    , setStickyEolE
     , maybeMult
     , updateModeIndicatorE
     , saveInsertEventStringE
@@ -140,9 +139,6 @@ maybeMult (Just a) (Just b) = Just (a * b)
 maybeMult Nothing  Nothing = Nothing
 maybeMult a        Nothing = a
 maybeMult Nothing  b       = b
-
-setStickyEolE :: Bool -> EditorM ()
-setStickyEolE b = modifyStateE $ \s -> s { vsStickyEol = b }
 
 updateModeIndicatorE :: VimState -> EditorM ()
 updateModeIndicatorE prevState = do
