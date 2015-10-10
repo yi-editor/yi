@@ -45,7 +45,7 @@ data PersistentState = PersistentState
     { histories     :: !Histories
     , aKillring     :: !Killring
     , aCurrentRegex :: Maybe SearchExp
-    , currBuffers     :: [BufferId]
+    , currBuffers       :: [BufferId]
     } deriving (Generic)
 
 instance Binary PersistentState
@@ -84,8 +84,8 @@ trimHistories maxHistory (Histories m) = Histories $ M.map trimH m
     trim content = drop (max 0 (length content - maxHistory)) content
 
 -- | From buffers of Editor gets list of BufferId.
-getIds :: (M.Map BufferRef FBuffer) -> [BufferId]
-getIds m = map ident attrs
+getOpenedBufferIds :: (M.Map BufferRef FBuffer) -> [BufferId]
+getOpenedBufferIds m = map ident attrs
   where
     attrs = map attributes fbuffs
     fbuffs = M.elems m
@@ -105,12 +105,12 @@ savePersistentState = do
     (hist :: Histories) <- withEditor   getEditorDyn
     kr                  <- withEditor $ use killringA
     curRe               <- withEditor   getRegexE
-    editor <- withEditor St.get
+    openedBufferIds <- getOpenedBufferIds . buffers <$> withEditor get
     let pState = PersistentState {
                    histories     = trimHistories histLimit hist
                  , aKillring     = kr    -- trimmed during normal operation
                  , aCurrentRegex = curRe -- just a single value -> no need to trim
-                 , currBuffers = getIds (buffers editor)
+                 , currBuffers = openedBufferIds
                  }
     io $ encodeFile pStateFilename pState
 
