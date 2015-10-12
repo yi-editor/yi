@@ -20,6 +20,7 @@ where
 
 import GHC.Generics (Generic)
 
+import           Control.Applicative    ((<$>))
 import           Control.Exc            (ignoringException)
 import           Control.Lens           (assign, makeLenses, use)
 import           Control.Monad          (when)
