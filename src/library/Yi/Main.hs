@@ -25,7 +25,7 @@ import System.Exit
 import Yi.Buffer
 import Yi.Config
 import Yi.Config.Default
-import Yi.Core (startEditor)
+import Yi.EditorActions (startEditor)
 import Yi.Debug
 import Yi.Editor
 import Yi.File

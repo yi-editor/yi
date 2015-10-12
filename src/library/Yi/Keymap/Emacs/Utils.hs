@@ -62,7 +62,7 @@ import           System.FilePath     (takeDirectory, takeFileName, (</>))
 import           System.FriendlyPath ()
 import           Yi.Buffer
 import           Yi.Command          (cabalBuildE, cabalConfigureE, reloadProjectE)
-import           Yi.Core             (quitEditor)
+import           Yi.EditorActions    (quitEditor)
 import           Yi.Editor
 import           Yi.Eval             (execEditorAction, getAllNamesInScope)
 import           Yi.File             (deservesSave, editFile, fwriteBufferE, openingNewFile)

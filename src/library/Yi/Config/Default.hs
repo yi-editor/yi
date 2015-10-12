@@ -21,8 +21,9 @@ import           Yi.Command          (cabalBuildE, cabalConfigureE, grepFind,
                                       shell)
 import           Yi.Config
 import           Yi.Config.Misc
-import           Yi.Core             (errorEditor, quitEditor)
+import           Yi.Core             (errorEditor)
 import           Yi.Editor
+import           Yi.EditorActions           (quitEditor)
 import           Yi.Eval             (publishedActions)
 import           Yi.File
 import qualified Yi.Interact         as I
