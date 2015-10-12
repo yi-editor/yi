@@ -146,6 +146,7 @@ library
     Yi.Debug
     Yi.Dired
     Yi.Editor
+    Yi.EditorActions
     Yi.Eval
     Yi.Event
     Yi.File
