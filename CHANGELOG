@@ -1,4 +1,10 @@
 
+0.12.3
+------
+
+ * Update gtk-related dependencies
+ * Make sticky eol local to buffer
+
 0.12.2
 ------
 
