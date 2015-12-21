@@ -333,9 +333,9 @@ library
       Yi.UI.Pango.Layouts
       Yi.UI.Pango.Utils
     build-depends:
-      gtk ==0.13.*,
-      glib ==0.13.*,
-      pango ==0.13.*
+      gtk   >= 0.13 && < 0.15,
+      glib  >= 0.13 && < 0.14,
+      pango >= 0.13 && < 0.14
     cpp-options: -DFRONTEND_PANGO
 
   if flag(vty)
