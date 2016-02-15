@@ -84,7 +84,7 @@ import qualified Graphics.UI.Gtk as Gtk
 import qualified Graphics.UI.Gtk.Gdk.Events as Gdk.Events
 import System.Glib.GError
 import Control.Monad.Reader (ask, asks, MonadReader(..))
-import Control.Monad.State (liftM, ap, get, put, modify)
+import Control.Monad.State (ap, get, put, modify)
 import Control.Monad.Base
 import Control.Concurrent (newMVar, modifyMVar, MVar, newEmptyMVar, putMVar,
                            readMVar, isEmptyMVar)
@@ -176,7 +176,7 @@ mkUI main yiMVar = Common.dummyUI
     , Common.end           = \_ -> void $ runControl' end yiMVar
     , Common.suspend       = void $ runControl' suspend yiMVar
     , Common.refresh       = \e -> void $ runControl' (refresh e) yiMVar
-    , Common.layout        = \e -> liftM (fromMaybe e) $
+    , Common.layout        = \e -> fmap (fromMaybe e) $
                                    runControl' (doLayout e) yiMVar
     , Common.reloadProject = \f -> void $ runControl' (reloadProject f) yiMVar
     }

@@ -28,8 +28,8 @@ import           Control.Monad.RWS   (MonadPlus (mplus), MonadReader (ask),
                                       MonadState, MonadTrans (..),
                                       MonadWriter (tell),
                                       Monoid (mappend, mempty), RWST, evalRWST,
-                                      filterM, forM, forM_, liftM, liftM2,
-                                      unless, when, (<>))
+                                      filterM, forM, forM_, liftM2, unless,
+                                      when, (<>))
 import           Data.Binary         (Binary)
 import           Data.Char           (isSpace)
 import           Data.Default        (Default, def)
@@ -198,7 +198,7 @@ updateUpdatedMarks upds = findEditedMarks upds >>=
                           mapM_ updateDependents
 
 findEditedMarks :: [Update] -> BufferM [MarkInfo]
-findEditedMarks upds = liftM (nub . concat) (mapM findEditedMarks' upds)
+findEditedMarks upds = fmap (nub . concat) (mapM findEditedMarks' upds)
   where
     findEditedMarks' :: Update -> BufferM [MarkInfo]
     findEditedMarks' upd = do
@@ -313,8 +313,8 @@ findOverlappingMarksWith :: (MarkInfo -> BufferM Region)
                          -> Bool -> Region -> MarkInfo -> BufferM [MarkInfo]
 findOverlappingMarksWith fMarkRegion flattenMarks border r m =
   let markFilter = filter (m /=) . flattenMarks . marks
-      regOverlap = liftM (regionsOverlap border r) . fMarkRegion
-  in liftM markFilter getBufferDyn >>= filterM regOverlap
+      regOverlap = fmap (regionsOverlap border r) . fMarkRegion
+  in fmap markFilter getBufferDyn >>= filterM regOverlap
 
 findOverlappingMarks :: ([[MarkInfo]] -> [MarkInfo]) -> Bool -> Region ->
                         MarkInfo -> BufferM [MarkInfo]
