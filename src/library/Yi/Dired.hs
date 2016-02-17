@@ -49,7 +49,7 @@ import           Control.Applicative      ((<$>), (<|>))
 import           Control.Category         ((>>>))
 import           Control.Exc              (orException, printingException)
 import           Control.Lens             (assign, makeLenses, use, (%~), (&), (.=), (.~), (^.))
-import           Control.Monad.Reader     (asks, foldM, liftM, unless, void, when)
+import           Control.Monad.Reader     (asks, foldM, unless, void, when)
 import           Data.Binary              (Binary)
 import           Data.Char                (toLower)
 import           Data.Default             (Default, def)
@@ -453,7 +453,7 @@ askDelFiles dir fs =
                    exists <- fileExist path
                    if exists then case de of
                      (DiredDir _dfi) -> do
-                       isNull <- liftM nullDir $ getDirectoryContents path
+                       isNull <- fmap nullDir $ getDirectoryContents path
                        return $ if isNull then DOConfirm recDelPrompt
                                                [DORemoveDir path] [DONoOp]
                                 else DORemoveDir path
@@ -696,9 +696,9 @@ diredScanDir dir = do
                  then return . ((fn <> " -> ") <>) =<< readSymbolicLink fp
                  else return fn
       ownerEntry <- orException (getUserEntryForID uid)
-                    (liftM (scanForUid uid) getAllUserEntries)
+                    (fmap (scanForUid uid) getAllUserEntries)
       groupEntry <- orException (getGroupEntryForID gid)
-                    (liftM (scanForGid gid) getAllGroupEntries)
+                    (fmap (scanForGid gid) getAllGroupEntries)
       let fmodeStr = (modeString . fileMode) fileStatus
           sz = toInteger $ fileSize fileStatus
           ownerStr   = R.fromString $ userName ownerEntry

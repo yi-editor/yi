@@ -123,7 +123,7 @@ module Yi.Buffer.HighLevel
 import           Control.Applicative      (Applicative ((<*>)), (<$>))
 import           Control.Lens             (assign, over, use, (%=), (.=))
 import           Control.Lens.Cons        (_last)
-import           Control.Monad            (forM, forM_, liftM, replicateM_, unless, void, when)
+import           Control.Monad            (forM, forM_, replicateM_, unless, void, when)
 import           Control.Monad.RWS.Strict (ask)
 import           Control.Monad.State      (gets)
 import           Data.Char                (isDigit, isHexDigit, isOctDigit, isSpace, isUpper, toLower, toUpper)
@@ -357,7 +357,7 @@ readPreviousOfLnB :: BufferM YiString
 readPreviousOfLnB = readRegionB =<< regionOfPartB Line Backward
 
 hasWhiteSpaceBefore :: BufferM Bool
-hasWhiteSpaceBefore = liftM isSpace (prevPointB >>= readAtB)
+hasWhiteSpaceBefore = fmap isSpace (prevPointB >>= readAtB)
 
 -- | Get the previous point, unless at the beginning of the file
 prevPointB :: BufferM Point

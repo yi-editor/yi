@@ -12,7 +12,6 @@ module Yi.Paths ( getEvaluatorContextFilename
                 , getDataPath
                 ) where
 
-import           Control.Monad                  (liftM)
 import           Control.Monad.Base             (MonadBase, liftBase)
 import           System.Directory               (createDirectoryIfMissing,
                                                  doesDirectoryExist,
@@ -42,7 +41,7 @@ getDataDir = appUserDataCond XDG.getUserDataDir
 -- | Given a path relative to application data directory,
 --   this function finds a path to a given data file.
 getDataPath :: (MonadBase IO m) => FilePath -> m FilePath
-getDataPath fp = liftM (</> fp) getDataDir
+getDataPath fp = fmap (</> fp) getDataDir
 
 -- | Given a path relative to application configuration directory,
 --   this function finds a path to a given configuration file.
@@ -52,7 +51,7 @@ getConfigPath = getCustomConfigPath getConfigDir
 -- | Given an action that retrieves config path, and a path relative to it,
 -- this function joins the two together to create a config file path.
 getCustomConfigPath :: MonadBase IO m => m FilePath -> FilePath -> m FilePath
-getCustomConfigPath cd fp = (</> fp) `liftM` cd
+getCustomConfigPath cd fp = (</> fp) `fmap` cd
 
 -- Note: Dyre also uses XDG cache dir - that would be:
 --getCachePath = getPathHelper XDG.getUserCacheDirectory

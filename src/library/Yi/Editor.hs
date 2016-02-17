@@ -103,8 +103,8 @@ import           Control.Applicative            ((<$>), (<*>))
 import           Control.Lens                   (Lens', assign, lens, mapped,
                                                  use, uses, view, (%=), (%~),
                                                  (&), (.~), (^.))
-import           Control.Monad                  (forM_)
-import           Control.Monad.Reader           (MonadReader (ask), asks, liftM,
+import           Control.Monad                  (forM_, liftM)
+import           Control.Monad.Reader           (MonadReader (ask), asks,
                                                  unless, when)
 import           Control.Monad.State            (gets, modify)
 import           Data.Binary                    (Binary, get, put)
