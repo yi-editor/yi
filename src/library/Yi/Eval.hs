@@ -75,7 +75,7 @@ import qualified Language.Haskell.Interpreter as LHI
       languageExtensions,
       OptionVal((:=)),
       InterpreterError,
-      Extension(OverloadedStrings, NoImplicitPrelude),
+      Extension(OverloadedStrings),
       setTopLevelModules,
       interpret )
 import System.Directory ( doesFileExist )
@@ -205,11 +205,7 @@ hintEvaluatorThread request contextFile = do
   void $ LHI.runInterpreter $ do
     LHI.set [LHI.searchPath LHI.:= []]
 
-    -- We no longer have Yi.Prelude, perhaps we should remove
-    -- NoImplicitPrelude?
-    LHI.set [LHI.languageExtensions LHI.:= [ LHI.OverloadedStrings
-                                           , LHI.NoImplicitPrelude
-                                           ]]
+    LHI.set [LHI.languageExtensions LHI.:= [ LHI.OverloadedStrings ]]
     when haveUserContext $ do
       LHI.loadModules [contextFile]
       LHI.setTopLevelModules ["Env"]
