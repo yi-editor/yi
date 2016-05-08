@@ -3,7 +3,7 @@ matrix:
     - env: CABALVER=head GHCVER=head
 
 env:
- - CABALVER=1.20 GHCVER=7.8.4
+ - CABALVER=1.22 GHCVER=7.8.4
  - CABALVER=1.22 GHCVER=7.10.3
  - CABALVER=1.24 GHCVER=8.0.1
  - CABALVER=head GHCVER=head
@@ -17,8 +17,8 @@ before_install:
 install:
  - cabal-$CABALVER update
  - travis_retry cabal-$CABALVER install Cabal
- - travis_retry sudo apt-get install happy-1.19.4 alex-3.1.3
- - export PATH=/opt/alex/3.1.3/bin:/opt/happy/1.19.4/bin:$PATH
+ - travis_retry sudo apt-get install happy-1.19.5 alex-3.1.7
+ - export PATH=/opt/alex/3.1.7/bin:/opt/happy/1.19.5/bin:$PATH
  - travis_retry cabal-$CABALVER install -j2 gtk2hs-buildtools
 
 script:
