@@ -15,11 +15,11 @@ module Yi.UI.SimpleLayout
 
 import           Prelude                        hiding (concatMap, mapM)
 
-import           Control.Lens                   (use, (.~))
+import           Control.Lens                   (use, (.~), (&), (^.), to)
 import           Control.Monad.State            (evalState, get, put)
 import           Data.Foldable                  (find, toList)
 import           Data.List                      (partition)
-import qualified Data.List.PointedList.Circular as PL (PointedList)
+import qualified Data.List.PointedList.Circular as PL (PointedList, focus)
 import qualified Data.Map.Strict                as M (Map, fromList)
 import           Data.Maybe                     (fromJust)
 import           Data.Monoid                    ((<>))
@@ -30,6 +30,9 @@ import           Yi.Editor
 import qualified Yi.Rope                        as R (take, toString, toText)
 import           Yi.UI.Utils                    (arrangeItems)
 import           Yi.Window
+import           Yi.Tab                         (tabLayout)
+import qualified Yi.Layout                      as L (Layout)
+import           Yi.Layout                      (Rectangle(..), layoutToRectangles)
 
 data Layout = Layout
     { tabbarRect :: !Rect
@@ -56,43 +59,39 @@ data Size2D = Size2D
 
 layout :: Int -> Int -> Editor -> (Editor, Layout)
 layout colCount rowCount e =
-    ( (windowsA .~ newWindows) e
-    , Layout (Rect 0 0 colCount 1) winRects cmdRect
+    ( e & windowsA .~ newWs
+    , Layout tabRect winRects cmdRect
     )
     where
-        (miniWs, ws) = partition isMini (toList (windows e))
-        (cmd, _) = statusLineInfo e
-        niceCmd = arrangeItems cmd colCount (maxStatusHeight e)
-        cmdRect = Rect 0 (rowCount - cmdHeight - if null miniWs then 0 else 1) colCount cmdHeight
-        cmdHeight = length niceCmd
-        tabbarHeight = 1
-        (heightQuot, heightRem) =
-            quotRem
-                (rowCount - tabbarHeight - if null miniWs then max 1 cmdHeight else 1 + cmdHeight)
-                (length ws)
-        heights = heightQuot + heightRem : repeat heightQuot
-        offsets = scanl (+) 0 heights
-        bigWindowsWithHeights =
-            zipWith (\win h -> layoutWindow win e colCount h)
-                    ws
-                    heights
-        miniWindowsWithHeights =
-            fmap (\win -> layoutWindow win e colCount 1) miniWs
-        newWindows =
-            merge (miniWindowsWithHeights <> bigWindowsWithHeights) (windows e)
-        winRects = M.fromList (bigWindowsWithRects <> miniWindowsWithRects)
-        bigWindowsWithRects =
-            zipWith (\w offset -> (wkey w, Rect 0 (offset + tabbarHeight) colCount (height w)))
-                    bigWindowsWithHeights
-                    offsets
-        miniWindowsWithRects =
-            map (\w -> (wkey w, Rect 0 (rowCount - 1) colCount 1))
-                miniWindowsWithHeights
-        merge :: [Window] -> PL.PointedList Window -> PL.PointedList Window
-        merge updates =
-            let replace (Window { wkey = k }) = fromJust (find ((== k) . wkey) updates)
-            in fmap replace
+      lt = e ^. tabsA . PL.focus . to tabLayout
+      miniWs = filter isMini . toList $ windows e
+      tabHeight = 1
+      tabRect = Rect 0 0 colCount tabHeight
+      cmdHeight = length $ arrangeItems (fst $ statusLineInfo e) colCount (maxStatusHeight e)
+      miniHeight = if null miniWs then 0 else 1
+      cmdRect = Rect 0 (rowCount - cmdHeight - miniHeight) colCount cmdHeight
+      bounds = rectToRectangle $ Rect 0 tabHeight colCount $
+                   rowCount - (max 1 $ cmdHeight + miniHeight) - tabHeight
+      bigRects = layoutToRectangles bounds lt & map (\(wr, r) ->
+                   let r' = rectangleToRect r
+                       w' = layoutWindow (findWindowWith wr e) e (sizeX r') (sizeY r')
+                   in (w', r'))
+      miniRects = miniWs & map (\w ->
+                    let r' = Rect 0 (rowCount - 1) colCount 1
+                        w' = layoutWindow w e (sizeX r') (sizeY r')
+                    in (w', r'))
+      winRects = M.fromList . map (\(w, r) -> (wkey w, r)) $ bigRects <> miniRects
+      updWs = map fst $ bigRects <> miniRects
+      newWs = fmap (\w -> fromJust $ find ((== wkey w) . wkey) updWs) (windows e)
 
+rectToRectangle :: Rect -> Rectangle
+rectToRectangle (Rect x y sx sy) = Rectangle (fromIntegral x)  (fromIntegral y)
+                                             (fromIntegral sx) (fromIntegral sy)
+
+rectangleToRect :: Rectangle -> Rect
+rectangleToRect (Rectangle x y sx sy) = Rect (truncate x) (truncate y)
+                                             (truncate (x + sx) - truncate x)
+                                             (truncate (y + sy) - truncate y)
 
 layoutWindow :: Window -> Editor -> Int -> Int -> Window
 layoutWindow win e w h = win
