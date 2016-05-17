@@ -61,6 +61,7 @@ import           Yi.Event                       (Event)
 import           Yi.Style
 import qualified Yi.UI.Common                   as Common
 import qualified Yi.UI.SimpleLayout             as SL
+import           Yi.Layout                      (HasNeighborWest)
 import           Yi.UI.TabBar                   (TabDescr (TabDescr), tabBarDescr)
 import           Yi.UI.Utils                    (arrangeItems, attributesPictureAndSelB)
 import           Yi.UI.Vty.Conversions          (colorToAttr, fromVtyEvent)
@@ -176,8 +177,8 @@ refresh fs e = do
         mkLine = T.justifyLeft colCount ' ' . T.take colCount
         formatCmdLine text = withAttributes statusBarStyle (mkLine text)
         winImage (win, hasFocus) =
-            let rect = winRects M.! wkey win
-            in renderWindow (configUI $ fsConfig fs) e rect (win, hasFocus)
+            let (rect, nb) = winRects M.! wkey win
+            in renderWindow (configUI $ fsConfig fs) e rect nb (win, hasFocus)
         windowsAndImages =
             fmap (\(w, f) -> (w, winImage (w, f))) (PL.withFocus ws)
         bigImages =
@@ -210,11 +211,13 @@ refresh fs e = do
         (Vty.picForLayers ([tabBarImage, cmdImage] ++ bigImages ++ miniImages))
         { Vty.picCursor = cursorPos }
 
-renderWindow :: UIConfig -> Editor -> SL.Rect -> (Window, Bool) -> Rendered
-renderWindow cfg e (SL.Rect x y w h) (win, focused) =
-    Rendered (Vty.translate x y pict)
+renderWindow :: UIConfig -> Editor -> SL.Rect -> HasNeighborWest -> (Window, Bool) -> Rendered
+renderWindow cfg e (SL.Rect x' y w' h) nb (win, focused) =
+    Rendered (Vty.translate x' y $ if nb then vertSep Vty.<|> pict else pict)
              (fmap (\(i, j) -> (i + y, j + x)) cur)
     where
+        x = x' + if nb then 1 else 0
+        w = w' - if nb then 1 else 0
         b = findBufferWith (bufkey win) e
         sty = configStyle cfg
 
@@ -268,7 +271,10 @@ renderWindow cfg e (SL.Rect x y w h) (win, focused) =
                  then T.empty
                  else T.justifyLeft w ' ' $ T.singleton (configWindowFill cfg)
 
-        pict = Vty.vertCat (take h' (rendered <> repeat (withAttributes eofsty filler)) <> modeLines)
+        pict = Vty.vertCat $ take h' (rendered <> repeat (withAttributes eofsty filler)) <> modeLines
+        
+        sepStyle = attributesToAttr (modelineAttributes sty) Vty.defAttr
+        vertSep = Vty.charFill sepStyle ' ' 1 h
 
 withAttributes :: Attributes -> T.Text -> Vty.Image
 withAttributes sty = Vty.text' (attributesToAttr sty Vty.defAttr)

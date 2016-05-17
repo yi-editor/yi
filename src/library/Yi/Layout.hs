@@ -32,6 +32,7 @@ module Yi.Layout
     -- * Utility functions
     -- ** Layouts as rectangles
     Rectangle(..),
+    HasNeighborWest,
     layoutToRectangles,
     -- ** Transposing things
     Transposable(..),
@@ -296,24 +297,36 @@ instance LayoutManager VPairNStack where
 data Rectangle = Rectangle { rectX, rectY, rectWidth, rectHeight :: !Double }
   deriving(Eq, Show)
 
-layoutToRectangles :: Rectangle -> Layout a -> [(a, Rectangle)]
-layoutToRectangles bounds (SingleWindow a) = [(a, bounds)]
-layoutToRectangles bounds (Stack o ts) = handleStack o bounds ts
-layoutToRectangles bounds (Pair o p _ a b) = handleStack o bounds [(a,p), (b,1-p)]
+-- | Used by the vty frontend to draw vertical separators
+type HasNeighborWest = Bool
 
-handleStack :: Orientation -> Rectangle -> [(Layout a, RelativeSize)] -> [(a, Rectangle)]
-handleStack o bounds tiles =
-      let (totalSpace, startPos, mkBounds) = case o of
-            Vertical -> (rectHeight bounds, rectY bounds, \pos size -> bounds{rectY = pos, rectHeight=size})
-            Horizontal -> (rectWidth bounds, rectX bounds, \pos size -> bounds{rectX = pos, rectWidth=size})
+layoutToRectangles :: HasNeighborWest -> Rectangle -> Layout a -> [(a, Rectangle, HasNeighborWest)]
+layoutToRectangles nb bounds (SingleWindow a) = [(a, bounds, nb)]
+layoutToRectangles nb bounds (Stack o ts) = handleStack o bounds ts'
+    where ts' = if o == Vertical then setNbs nb ts
+                else case ts of
+                       []          -> []
+                       (l, s) : xs -> (l, s, nb) : setNbs True xs
+          setNbs val = map (\(l, s) -> (l, s, val))
+layoutToRectangles nb bounds (Pair o p _ a b) = handleStack o bounds [(a,p,nb), (b,1-p,nb')]
+    where nb' = if o == Horizontal then True else nb
 
-          totalWeight' = sum (fmap snd tiles)
-          totalWeight = if totalWeight' > 0 then totalWeight' else error "Yi.Layout: Stacks must have positive weights"
-          spacePerWeight = totalSpace / totalWeight
-          doTile pos (t, wt) = (pos + wt * spacePerWeight,
-                                layoutToRectangles (mkBounds pos (wt * spacePerWeight)) t)
-      in
-       concat . snd . mapAccumL doTile startPos $ tiles
+handleStack :: Orientation -> Rectangle
+            -> [(Layout a, RelativeSize, HasNeighborWest)]
+            -> [(a, Rectangle, HasNeighborWest)]
+handleStack o bounds tiles = concat . snd . mapAccumL doTile startPos $ tiles
+    where 
+      (totalSpace, startPos, mkBounds) = case o of
+          Vertical   -> (rectHeight bounds, rectY bounds,
+                         \pos size -> bounds { rectY = pos, rectHeight = size })
+          Horizontal -> (rectWidth bounds,  rectX bounds,
+                         \pos size -> bounds { rectX = pos, rectWidth  = size })
+      totalWeight' = sum . fmap (\(_, s, _) -> s) $ tiles
+      totalWeight = if totalWeight' > 0 then totalWeight'
+                    else error "Yi.Layout: Stacks must have positive weights"
+      spacePerWeight = totalSpace / totalWeight
+      doTile pos (t, wt, nb) = (pos + wt * spacePerWeight,
+                               layoutToRectangles nb (mkBounds pos (wt * spacePerWeight)) t)
 
 ----------- Flipping things
 -- | Things with orientations which can be flipped

@@ -32,11 +32,12 @@ import           Yi.UI.Utils                    (arrangeItems)
 import           Yi.Window
 import           Yi.Tab                         (tabLayout)
 import qualified Yi.Layout                      as L (Layout)
-import           Yi.Layout                      (Rectangle(..), layoutToRectangles)
+import           Yi.Layout                      (Rectangle(..), HasNeighborWest,
+                                                 layoutToRectangles)
 
 data Layout = Layout
     { tabbarRect :: !Rect
-    , windowRects :: !(M.Map WindowRef Rect)
+    , windowRects :: !(M.Map WindowRef (Rect, HasNeighborWest))
     , promptRect :: !Rect
     }
 
@@ -72,16 +73,17 @@ layout colCount rowCount e =
       cmdRect = Rect 0 (rowCount - cmdHeight - miniHeight) colCount cmdHeight
       bounds = rectToRectangle $ Rect 0 tabHeight colCount $
                    rowCount - (max 1 $ cmdHeight + miniHeight) - tabHeight
-      bigRects = layoutToRectangles bounds lt & map (\(wr, r) ->
+      bigRects = layoutToRectangles False bounds lt & map (\(wr, r, nb) ->
                    let r' = rectangleToRect r
-                       w' = layoutWindow (findWindowWith wr e) e (sizeX r') (sizeY r')
-                   in (w', r'))
+                       sx = sizeX r' - if nb then 1 else 0
+                       w' = layoutWindow (findWindowWith wr e) e sx (sizeY r')
+                   in (w', r', nb))
       miniRects = miniWs & map (\w ->
                     let r' = Rect 0 (rowCount - 1) colCount 1
                         w' = layoutWindow w e (sizeX r') (sizeY r')
-                    in (w', r'))
-      winRects = M.fromList . map (\(w, r) -> (wkey w, r)) $ bigRects <> miniRects
-      updWs = map fst $ bigRects <> miniRects
+                    in (w', r', False))
+      winRects = M.fromList . map (\(w, r, nb) -> (wkey w, (r, nb))) $ bigRects <> miniRects
+      updWs = map (\(w, _, _) -> w) $ bigRects <> miniRects
       newWs = fmap (\w -> fromJust $ find ((== wkey w) . wkey) updWs) (windows e)
 
 rectToRectangle :: Rect -> Rectangle
