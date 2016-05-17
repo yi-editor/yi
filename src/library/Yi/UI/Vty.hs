@@ -190,7 +190,7 @@ refresh fs e = do
             ((appEndo <$> cmdSty) <*> baseAttributes)
                 (configStyle (configUI (fsConfig fs)))
         tabBarImage =
-            renderTabBar (configStyle (configUI (fsConfig fs)))
+            renderTabBar _tabbarRect (configStyle (configUI (fsConfig fs)))
                 (map (\(TabDescr t f) -> (t, f)) (toList (tabBarDescr e)))
         cmdImage = if null cmd
                    then Vty.emptyImage
@@ -350,8 +350,8 @@ drawText wsty h w tabWidth bufData
         | otherwise = [(c, p)]
         where numeric = ord c
 
-renderTabBar :: UIStyle -> [(T.Text, Bool)] -> Vty.Image
-renderTabBar uiStyle = Vty.horizCat . fmap render
+renderTabBar :: SL.Rect -> UIStyle -> [(T.Text, Bool)] -> Vty.Image
+renderTabBar r uiStyle ts = (Vty.<|> padding) . Vty.horizCat $ fmap render ts
   where
     render (text, inFocus) = Vty.text' (tabAttr inFocus) (tabTitle text)
     tabTitle text   = ' ' `T.cons` text `T.snoc` ' '
@@ -361,3 +361,5 @@ renderTabBar uiStyle = Vty.horizCat . fmap render
     baseAttr False sty =
         attributesToAttr (appEndo (tabNotFocusedStyle uiStyle) sty) Vty.defAttr
             `Vty.withStyle` Vty.underline
+    padding = Vty.charFill (tabAttr False) ' ' (SL.sizeX r - width) 1
+    width = sum . map ((+2) . T.length . fst) $ ts
