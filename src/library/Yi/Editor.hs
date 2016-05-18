@@ -51,6 +51,7 @@ module Yi.Editor ( Editor(..), EditorM, MonadEditor(..)
                  , layoutManagerPreviousVariantE
                  , layoutManagersNextE
                  , layoutManagersPreviousE
+                 , layoutManagersPrintMsgE
                  , maxStatusHeightA
                  , moveTabE
                  , moveWinNextE
@@ -625,15 +626,21 @@ splitE = do
   w <- gets currentBuffer >>= newWindowE False
   windowsA %= PL.insertRight w
 
+-- | Prints the description of the current layout manager in the status bar
+layoutManagersPrintMsgE :: EditorM ()
+layoutManagersPrintMsgE = do
+  lm <- use $ currentTabA . tabLayoutManagerA
+  printMsg . T.pack $ describeLayout lm
+
 -- | Cycle to the next layout manager, or the first one if the current
 -- one is nonstandard.
 layoutManagersNextE :: EditorM ()
-layoutManagersNextE = withLMStackE PL.next
+layoutManagersNextE = withLMStackE PL.next >> layoutManagersPrintMsgE
 
 -- | Cycle to the previous layout manager, or the first one if the
 -- current one is nonstandard.
 layoutManagersPreviousE :: EditorM ()
-layoutManagersPreviousE = withLMStackE PL.previous
+layoutManagersPreviousE = withLMStackE PL.previous >> layoutManagersPrintMsgE
 
 -- | Helper function for 'layoutManagersNext' and 'layoutManagersPrevious'
 withLMStackE :: (PL.PointedList AnyLayoutManager
@@ -650,13 +657,16 @@ withLMStackE f = askCfg >>= \cfg ->
 
 -- | Next variant of the current layout manager, as given by 'nextVariant'
 layoutManagerNextVariantE :: EditorM ()
-layoutManagerNextVariantE = currentTabA . tabLayoutManagerA %= nextVariant
+layoutManagerNextVariantE = do
+  currentTabA . tabLayoutManagerA %= nextVariant
+  layoutManagersPrintMsgE
 
 -- | Previous variant of the current layout manager, as given by
 -- 'previousVariant'
 layoutManagerPreviousVariantE :: EditorM ()
-layoutManagerPreviousVariantE =
+layoutManagerPreviousVariantE = do
   currentTabA . tabLayoutManagerA %= previousVariant
+  layoutManagersPrintMsgE
 
 -- | Sets the given divider position on the current tab
 setDividerPosE :: DividerRef -> DividerPosition -> EditorM ()

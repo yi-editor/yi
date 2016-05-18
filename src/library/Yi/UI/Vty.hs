@@ -212,12 +212,12 @@ refresh fs e = do
         { Vty.picCursor = cursorPos }
 
 renderWindow :: UIConfig -> Editor -> SL.Rect -> HasNeighborWest -> (Window, Bool) -> Rendered
-renderWindow cfg e (SL.Rect x' y w' h) nb (win, focused) =
-    Rendered (Vty.translate x' y $ if nb then vertSep Vty.<|> pict else pict)
-             (fmap (\(i, j) -> (i + y, j + x)) cur)
+renderWindow cfg e (SL.Rect x y w h) nb (win, focused) =
+    Rendered (Vty.translate x y $ if nb then vertSep Vty.<|> pict else pict)
+             (fmap (\(i, j) -> (i + y, j + x')) cur)
     where
-        x = x' + if nb then 1 else 0
-        w = w' - if nb then 1 else 0
+        x' = x + if nb then 1 else 0
+        w' = w - if nb then 1 else 0
         b = findBufferWith (bufkey win) e
         sty = configStyle cfg
 
@@ -229,7 +229,7 @@ renderWindow cfg e (SL.Rect x' y w' h) nb (win, focused) =
         wsty = attributesToAttr ground Vty.defAttr
         eofsty = appEndo (eofStyle sty) ground
         (point, _) = runBuffer win b pointB
-        region = mkSizeRegion fromMarkPoint (Size (w*h'))
+        region = mkSizeRegion fromMarkPoint $ Size (w' * h')
         -- Work around a problem with the mini window never displaying it's contents due to a
         -- fromMark that is always equal to the end of the buffer contents.
         (Just (MarkSet fromM _ _), _) = runBuffer win b (getMarks win)
@@ -250,26 +250,26 @@ renderWindow cfg e (SL.Rect x' y w' h) nb (win, focused) =
         cur = (fmap (\(SL.Point2D curx cury) -> (cury, T.length prompt + curx)) . fst)
               (runBuffer win b
                          (SL.coordsOfCharacterB
-                             (SL.Size2D w h)
+                             (SL.Size2D w' h)
                              fromMarkPoint
                              point))
 
         rendered =
-            drawText wsty h' w
+            drawText wsty h' w'
                      tabWidth
                      ([(c, wsty) | c <- T.unpack prompt] ++ bufData ++ [(' ', wsty)])
                      -- we always add one character which can be used to position the cursor at the end of file
         commonPref = T.pack <$> commonNamePrefix e
         (modeLine0, _) = runBuffer win b $ getModeLine commonPref
         modeLine = if notMini then Just modeLine0 else Nothing
-        prepare = withAttributes modeStyle . T.justifyLeft w ' ' . T.take w
+        prepare = withAttributes modeStyle . T.justifyLeft w' ' ' . T.take w'
         modeLines = map prepare $ maybeToList modeLine
         modeStyle = (if focused then appEndo (modelineFocusStyle sty) else id) (modelineAttributes sty)
 
         filler :: T.Text
-        filler = if w == 0 -- justify would return a single char at w = 0
+        filler = if w' == 0 -- justify would return a single char at w = 0
                  then T.empty
-                 else T.justifyLeft w ' ' $ T.singleton (configWindowFill cfg)
+                 else T.justifyLeft w' ' ' $ T.singleton (configWindowFill cfg)
 
         pict = Vty.vertCat $ take h' (rendered <> repeat (withAttributes eofsty filler)) <> modeLines
         

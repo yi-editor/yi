@@ -305,8 +305,8 @@ layoutToRectangles nb bounds (SingleWindow a) = [(a, bounds, nb)]
 layoutToRectangles nb bounds (Stack o ts) = handleStack o bounds ts'
     where ts' = if o == Vertical then setNbs nb ts
                 else case ts of
-                       []          -> []
                        (l, s) : xs -> (l, s, nb) : setNbs True xs
+                       []          -> []
           setNbs val = map (\(l, s) -> (l, s, val))
 layoutToRectangles nb bounds (Pair o p _ a b) = handleStack o bounds [(a,p,nb), (b,1-p,nb')]
     where nb' = if o == Horizontal then True else nb

@@ -15,13 +15,13 @@ module Yi.UI.SimpleLayout
 
 import           Prelude                        hiding (concatMap, mapM)
 
-import           Control.Lens                   (use, (.~), (&), (^.), to)
+import           Control.Lens                   (use, (.~), (&), (^.), to, _1)
 import           Control.Monad.State            (evalState, get, put)
 import           Data.Foldable                  (find, toList)
 import           Data.List                      (partition)
 import qualified Data.List.PointedList.Circular as PL (PointedList, focus)
 import qualified Data.Map.Strict                as M (Map, fromList)
-import           Data.Maybe                     (fromJust)
+import           Data.Maybe                     (fromMaybe)
 import           Data.Monoid                    ((<>))
 import qualified Data.Text                      as T (uncons)
 import           Data.Traversable               (mapM)
@@ -82,9 +82,10 @@ layout colCount rowCount e =
                     let r' = Rect 0 (rowCount - 1) colCount 1
                         w' = layoutWindow w e (sizeX r') (sizeY r')
                     in (w', r', False))
-      winRects = M.fromList . map (\(w, r, nb) -> (wkey w, (r, nb))) $ bigRects <> miniRects
-      updWs = map (\(w, _, _) -> w) $ bigRects <> miniRects
-      newWs = fmap (\w -> fromJust $ find ((== wkey w) . wkey) updWs) (windows e)
+      rects = bigRects <> miniRects
+      winRects = rects & M.fromList . map (\(w, r, nb) -> (wkey w, (r, nb)))
+      updWs = rects & map (^. _1)
+      newWs = windows e & fmap (\w -> fromMaybe w $ find ((== wkey w) . wkey) updWs)
 
 rectToRectangle :: Rect -> Rectangle
 rectToRectangle (Rect x y sx sy) = Rectangle (fromIntegral x)  (fromIntegral y)
