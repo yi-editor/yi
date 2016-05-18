@@ -22,3 +22,5 @@ cabal.sandbox.config
 .cabal-sandbox
 tags
 TAGS
+.stack-work/
+stack.yaml
