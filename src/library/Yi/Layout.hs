@@ -16,6 +16,7 @@ module Yi.Layout
     DividerRef,
     RelativeSize,
     dividerPositionA,
+    findDivider,
 
     -- * Layout managers
     -- ** The interface
@@ -122,6 +123,18 @@ dividerPositionA ref = lens getter (flip setter) where
   get' s@Stack{} = foldl' (<|>) Nothing (fmap (get' . fst) (wins s))
 
   invalidRef = error "Yi.Layout.dividerPositionA: invalid DividerRef"
+
+-- | Find the divider nearest to a given window, or just the first one
+-- in case the argument is 'Nothing'
+findDivider :: Eq a => Maybe a -> Layout a -> Maybe DividerRef
+findDivider mbw = go [] where
+  go path (SingleWindow w) = maybe Nothing (\w' ->
+                               if w == w' && not (null path)
+                               then Just (head path) else Nothing) mbw
+  go path (Pair _ _ ref l1 l2) = if null mbw then Just ref
+                                 else let p' = ref : path
+                                      in go p' l1 <|> go p' l2
+  go path (Stack _ ws) = foldr (<|>) Nothing $ map (go path . fst) ws
 
 instance Show a => Show (Layout a) where
   show (SingleWindow a) = show a

@@ -170,7 +170,7 @@ requestRefresh fs e = do
 refresh :: FrontendState -> Editor -> IO ()
 refresh fs e = do
     (colCount, rowCount) <- Vty.displayBounds (Vty.outputIface (fsVty fs))
-    let (_e, SL.Layout _tabbarRect winRects promptRect) = SL.layout colCount rowCount e
+    let (_e, SL.Layout tabbarRect winRects promptRect) = SL.layout colCount rowCount e
         ws = windows e
         (cmd, cmdSty) = statusLineInfo e
         niceCmd = arrangeItems cmd (SL.sizeX promptRect) (maxStatusHeight e)
@@ -191,7 +191,7 @@ refresh fs e = do
             ((appEndo <$> cmdSty) <*> baseAttributes)
                 (configStyle (configUI (fsConfig fs)))
         tabBarImage =
-            renderTabBar _tabbarRect (configStyle (configUI (fsConfig fs)))
+            renderTabBar tabbarRect (configStyle (configUI (fsConfig fs)))
                 (map (\(TabDescr t f) -> (t, f)) (toList (tabBarDescr e)))
         cmdImage = if null cmd
                    then Vty.emptyImage
