@@ -360,7 +360,7 @@ defaultModeLine prefix = do
     modeNm <- gets (withMode0 modeName)
     unchanged <- gets isUnchangedBuffer
     enc <- use encodingConverterNameA >>= return . \case
-      Nothing -> mempty
+      Nothing -> mempty :: T.Text
       Just cn -> T.pack $ R.unCn cn
     let pct
           | pos == 0 || s == 0 = " Top"
@@ -991,7 +991,7 @@ betweenB :: Point -- ^ Point to start at
          -> BufferM YiString
 betweenB (Point s) (Point e) =
   if s >= e
-  then return mempty
+  then return (mempty :: YiString)
   else snd . R.splitAt s . fst . R.splitAt e <$> elemsB
 
 -- | Read the character at the current point
@@ -1105,8 +1105,8 @@ gotoLnFrom x = do
 --   This allows you to retrieve inside a 'BufferM' monad, ie:
 --
 -- > value <- getBufferDyn
-getBufferDyn :: (YiVariable a, MonadState FBuffer m, Functor m) => m a
-getBufferDyn = fromMaybe def <$> getDyn (use bufferDynamicA) (assign bufferDynamicA)
+getBufferDyn :: forall m a. (Default a, YiVariable a, MonadState FBuffer m, Functor m) => m a
+getBufferDyn = fromMaybe (def :: a) <$> getDyn (use bufferDynamicA) (assign bufferDynamicA)
 
 -- | Access to a value into the extensible state, keyed by its type.
 --   This allows you to save inside a 'BufferM' monad, ie:
