@@ -1,12 +1,19 @@
 matrix:
   allow_failures:
-    - env: CABALVER=head GHCVER=head
+    - env: GHCVER=7.8.4 FLAGS="-fhint -fpango" CABALVER=1.22 # because of glib failure
+    - env: GHCVER=8.0.1 FLAGS="-fhint -fpango" CABALVER=1.24 # because of hint failure
+    - env: GHCVER=head FLAGS="-f-hint -f-pango" CABALVER=head
+    - env: GHCVER=head FLAGS="-fhint -fpango" CABALVER=head
 
 env:
- - CABALVER=1.22 GHCVER=7.8.4
- - CABALVER=1.22 GHCVER=7.10.3
- - CABALVER=1.24 GHCVER=8.0.1
- - CABALVER=head GHCVER=head
+ - GHCVER=7.8.4 FLAGS="-f-hint -f-pango" CABALVER=1.22
+ - GHCVER=7.10.3 FLAGS="-f-hint -f-pango" CABALVER=1.22
+ - GHCVER=8.0.1 FLAGS="-f-hint -f-pango" CABALVER=1.24
+ - GHCVER=head FLAGS="-f-hint -f-pango" CABALVER=head
+ - GHCVER=7.8.4 FLAGS="-fhint -fpango" CABALVER=1.22
+ - GHCVER=7.10.3 FLAGS="-fhint -fpango" CABALVER=1.22
+ - GHCVER=8.0.1 FLAGS="-fhint -fpango" CABALVER=1.24
+ - GHCVER=head FLAGS="-fhint -fpango" CABALVER=head
 
 before_install:
  - sudo add-apt-repository -y ppa:hvr/ghc
@@ -22,8 +29,8 @@ install:
  - travis_retry cabal-$CABALVER install -j2 gtk2hs-buildtools
 
 script:
- - travis_retry cabal-$CABALVER install -j2 -fvty -fpango --enable-tests -ftesting --only-dependencies --reorder-goals --force-reinstalls
- - cabal-$CABALVER install -j1 -fvty -fpango --enable-tests -ftesting
+ - travis_retry cabal-$CABALVER install -j2 $FLAGS -fvty --enable-tests -ftesting --only-dependencies --reorder-goals --force-reinstalls
+ - cabal-$CABALVER install -j1 $FLAGS -fvty --enable-tests -ftesting
  - cabal-$CABALVER test
  - cd ../yi/example-configs
  - for config in yi*.hs;
