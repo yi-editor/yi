@@ -55,7 +55,7 @@ import           Control.Lens               (Lens', lens)
 import qualified Control.Monad.State.Strict as Monad (State, evalState, get, put)
 import           Data.Default               (Default, def)
 import           Data.List                  (foldl', mapAccumL)
-import           Data.Maybe                 (fromMaybe)
+import           Data.Maybe                 (fromMaybe, isNothing)
 import           Data.Typeable              (Typeable, cast, typeOf)
 
 -------------------------------- Some design notes ----------------------
@@ -131,7 +131,7 @@ findDivider mbw = go [] where
   go path (SingleWindow w) = maybe Nothing (\w' ->
                                if w == w' && not (null path)
                                then Just (head path) else Nothing) mbw
-  go path (Pair _ _ ref l1 l2) = if null mbw then Just ref
+  go path (Pair _ _ ref l1 l2) = if isNothing mbw then Just ref
                                  else let p' = ref : path
                                       in go p' l1 <|> go p' l2
   go path (Stack _ ws) = foldr (<|>) Nothing $ map (go path . fst) ws
