@@ -16,6 +16,7 @@ module Yi.Layout
     DividerRef,
     RelativeSize,
     dividerPositionA,
+    findDivider,
 
     -- * Layout managers
     -- ** The interface
@@ -32,6 +33,7 @@ module Yi.Layout
     -- * Utility functions
     -- ** Layouts as rectangles
     Rectangle(..),
+    HasNeighborWest,
     layoutToRectangles,
     -- ** Transposing things
     Transposable(..),
@@ -53,7 +55,7 @@ import           Control.Lens               (Lens', lens)
 import qualified Control.Monad.State.Strict as Monad (State, evalState, get, put)
 import           Data.Default               (Default, def)
 import           Data.List                  (foldl', mapAccumL)
-import           Data.Maybe                 (fromMaybe)
+import           Data.Maybe                 (fromMaybe, isNothing)
 import           Data.Typeable              (Typeable, cast, typeOf)
 
 -------------------------------- Some design notes ----------------------
@@ -121,6 +123,18 @@ dividerPositionA ref = lens getter (flip setter) where
   get' s@Stack{} = foldl' (<|>) Nothing (fmap (get' . fst) (wins s))
 
   invalidRef = error "Yi.Layout.dividerPositionA: invalid DividerRef"
+
+-- | Find the divider nearest to a given window, or just the first one
+-- in case the argument is 'Nothing'
+findDivider :: Eq a => Maybe a -> Layout a -> Maybe DividerRef
+findDivider mbw = go [] where
+  go path (SingleWindow w) = maybe Nothing (\w' ->
+                               if w == w' && not (null path)
+                               then Just (head path) else Nothing) mbw
+  go path (Pair _ _ ref l1 l2) = if isNothing mbw then Just ref
+                                 else let p' = ref : path
+                                      in go p' l1 <|> go p' l2
+  go path (Stack _ ws) = foldr (<|>) Nothing $ map (go path . fst) ws
 
 instance Show a => Show (Layout a) where
   show (SingleWindow a) = show a
@@ -296,24 +310,36 @@ instance LayoutManager VPairNStack where
 data Rectangle = Rectangle { rectX, rectY, rectWidth, rectHeight :: !Double }
   deriving(Eq, Show)
 
-layoutToRectangles :: Rectangle -> Layout a -> [(a, Rectangle)]
-layoutToRectangles bounds (SingleWindow a) = [(a, bounds)]
-layoutToRectangles bounds (Stack o ts) = handleStack o bounds ts
-layoutToRectangles bounds (Pair o p _ a b) = handleStack o bounds [(a,p), (b,1-p)]
+-- | Used by the vty frontend to draw vertical separators
+type HasNeighborWest = Bool
 
-handleStack :: Orientation -> Rectangle -> [(Layout a, RelativeSize)] -> [(a, Rectangle)]
-handleStack o bounds tiles =
-      let (totalSpace, startPos, mkBounds) = case o of
-            Vertical -> (rectHeight bounds, rectY bounds, \pos size -> bounds{rectY = pos, rectHeight=size})
-            Horizontal -> (rectWidth bounds, rectX bounds, \pos size -> bounds{rectX = pos, rectWidth=size})
+layoutToRectangles :: HasNeighborWest -> Rectangle -> Layout a -> [(a, Rectangle, HasNeighborWest)]
+layoutToRectangles nb bounds (SingleWindow a) = [(a, bounds, nb)]
+layoutToRectangles nb bounds (Stack o ts) = handleStack o bounds ts'
+    where ts' = if o == Vertical then setNbs nb ts
+                else case ts of
+                       (l, s) : xs -> (l, s, nb) : setNbs True xs
+                       []          -> []
+          setNbs val = map (\(l, s) -> (l, s, val))
+layoutToRectangles nb bounds (Pair o p _ a b) = handleStack o bounds [(a,p,nb), (b,1-p,nb')]
+    where nb' = if o == Horizontal then True else nb
 
-          totalWeight' = sum (fmap snd tiles)
-          totalWeight = if totalWeight' > 0 then totalWeight' else error "Yi.Layout: Stacks must have positive weights"
-          spacePerWeight = totalSpace / totalWeight
-          doTile pos (t, wt) = (pos + wt * spacePerWeight,
-                                layoutToRectangles (mkBounds pos (wt * spacePerWeight)) t)
-      in
-       concat . snd . mapAccumL doTile startPos $ tiles
+handleStack :: Orientation -> Rectangle
+            -> [(Layout a, RelativeSize, HasNeighborWest)]
+            -> [(a, Rectangle, HasNeighborWest)]
+handleStack o bounds tiles = concat . snd . mapAccumL doTile startPos $ tiles
+    where 
+      (totalSpace, startPos, mkBounds) = case o of
+          Vertical   -> (rectHeight bounds, rectY bounds,
+                         \pos size -> bounds { rectY = pos, rectHeight = size })
+          Horizontal -> (rectWidth bounds,  rectX bounds,
+                         \pos size -> bounds { rectX = pos, rectWidth  = size })
+      totalWeight' = sum . fmap (\(_, s, _) -> s) $ tiles
+      totalWeight = if totalWeight' > 0 then totalWeight'
+                    else error "Yi.Layout: Stacks must have positive weights"
+      spacePerWeight = totalSpace / totalWeight
+      doTile pos (t, wt, nb) = (pos + wt * spacePerWeight,
+                               layoutToRectangles nb (mkBounds pos (wt * spacePerWeight)) t)
 
 ----------- Flipping things
 -- | Things with orientations which can be flipped
