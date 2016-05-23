@@ -18,21 +18,23 @@ module Yi.Keymap.Cua ( keymap
                      , del
                      ) where
 
-import           Control.Applicative   (Alternative ((<|>)), (<$>))
-import           Control.Lens          (assign, use)
-import           Control.Monad         (unless, when)
-import qualified Data.Text             as T (drop, take)
+import           Control.Applicative      (Alternative ((<|>)), (<$>))
+import           Control.Lens             (assign, use)
+import           Control.Monad            (unless, when)
+import qualified Data.Text                as T (drop, take)
 import           Yi.Buffer
 import           Yi.Editor
-import           Yi.File               (fwriteE)
-import           Yi.Keymap             (Keymap, KeymapSet, YiM, modelessKeymapSet, write)
-import           Yi.Keymap.Emacs.Utils (askQuitEditor, findFile, isearchKeymap)
+import           Yi.File                  (fwriteE)
+import           Yi.Keymap                (Keymap, KeymapSet, YiM, modelessKeymapSet, write)
+import           Yi.Keymap.Emacs.Utils    (askQuitEditor, findFile, isearchKeymap)
 import           Yi.Keymap.Keys
-import           Yi.MiniBuffer         (commentRegion)
-import           Yi.Misc               (adjBlock, selectAll)
-import           Yi.Rectangle          (getRectangle, killRectangle, yankRectangle)
-import qualified Yi.Rope               as R (YiString, length, singleton, withText)
-import           Yi.String             (lines', unlines')
+import           Yi.MiniBuffer            (commentRegion)
+import           Yi.Misc                  (adjBlock, selectAll)
+import           Yi.Rectangle             (getRectangle, killRectangle, yankRectangle)
+import qualified Yi.Rope                  as R (YiString, length, singleton, withText
+                                               , toString)
+import           Yi.String                (lines', unlines')
+import           Yi.Keymap.Emacs.KillRing (clipboardToKillring, killringToClipboard)
 
 customizedCuaKeymapSet :: Keymap -> KeymapSet
 customizedCuaKeymapSet userKeymap =
@@ -84,8 +86,8 @@ deleteSel act = do
     then withEditor del
     else withCurrentBuffer (adjBlock (-1) >> act)
 
-cut :: EditorM ()
-cut = copy >> del
+cut :: YiM ()
+cut = copy >> withEditor del
 
 del :: EditorM ()
 del = do
@@ -94,22 +96,25 @@ del = do
     then killRectangle
     else withCurrentBuffer $ deleteRegionB =<< getSelectRegionB
 
-copy :: EditorM ()
-copy =
-  (setRegE =<<) $ withCurrentBuffer $ do
-    asRect <- use rectangleSelectionA
-    if not asRect
-      then getSelectRegionB >>= readRegionB
-      else do
-        (reg, l, r) <- getRectangle
-        let dropOutside = fmap (T.take (r - l) . T.drop l)
-        R.withText (unlines' . dropOutside . lines') <$> readRegionB reg
+copy :: YiM ()
+copy = do
+  text <- withCurrentBuffer $ do
+     asRect <- use rectangleSelectionA
+     if not asRect
+       then getSelectRegionB >>= readRegionB
+       else do
+         (reg, l, r) <- getRectangle
+         let dropOutside = fmap (T.take (r - l) . T.drop l)
+         R.withText (unlines' . dropOutside . lines') <$> readRegionB reg
+  withEditor $ setRegE text
+  killringToClipboard
 
-paste :: EditorM ()
+paste :: YiM ()
 paste = do
+  clipboardToKillring
   asRect <- withCurrentBuffer (use rectangleSelectionA)
-  if asRect
-    then yankRectangle
+  withEditor $
+    if asRect then yankRectangle
     else withCurrentBuffer . replaceSel =<< getRegE
 
 moveKeys :: [(Event, BufferM ())]
