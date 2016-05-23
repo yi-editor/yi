@@ -296,7 +296,8 @@ library
     yi-language >= 0.1.1.0,
     oo-prototypes,
     yi-rope >= 0.7.0.0 && < 0.8,
-    exceptions
+    exceptions,
+    Hclip >= 3
 
   ghc-options: -Wall -fno-warn-orphans -ferror-spans
   ghc-prof-options: -prof -auto-all -rtsopts

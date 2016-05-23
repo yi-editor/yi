@@ -10,45 +10,76 @@
 module Yi.Keymap.Emacs.KillRing where
 
 import           Control.Lens       (assign, use, uses, (%=), (.=))
-import           Control.Monad      (replicateM_)
+import           Control.Monad      (replicateM_, when)
 import           Data.List.NonEmpty (NonEmpty ((:|)))
+import           Data.Maybe         (fromMaybe)
 import           Yi.Buffer
 import           Yi.Editor          (EditorM, killringA, withCurrentBuffer)
 import           Yi.Keymap          (YiM)
 import           Yi.KillRing        (Killring (_krContents), krKilled, krPut)
-import qualified Yi.Rope            as R (YiString)
+import qualified Yi.Rope            as R (YiString, fromString, toString)
+import           Yi.Types           (withEditor)
+import           Yi.Utils           (io)
+import           System.Hclip       (getClipboard, setClipboard)
 
 -- * Killring actions
 
+-- | Adds system clipboard's contents on top of the killring if not already there
+clipboardToKillring :: YiM ()
+clipboardToKillring = do
+  text <- fmap R.fromString $ io getClipboard
+  withEditor $ do
+    text' <- killringGet
+    when (text' /= text) $ killringPut Forward text
 
--- | C-w
---
+-- | Adds the top of the killring to the system clipboard
+killringToClipboard :: YiM ()
+killringToClipboard = do
+  text <- withEditor killringGet
+  io . setClipboard $ R.toString text
+
 -- This is like @kill-region-or-backward-word@.
-killRegion :: BufferM ()
-killRegion = getSelectRegionB >>= \r ->
+killRegionB :: BufferM ()
+killRegionB = getSelectRegionB >>= \r ->
   if regionStart r == regionEnd r then bkillWordB else deleteRegionB r
 
+-- | C-w
+-- Like `killRegionB`, but with system clipboard synchronization
+killRegion :: YiM ()
+killRegion = withCurrentBuffer killRegionB >> killringToClipboard
+
+-- | Kills current line
+killLineB :: Maybe Int -> BufferM ()
+killLineB mbr = replicateM_ (fromMaybe 1 mbr) $ do
+  eol <- atEol
+  let tu = if eol then Character else Line
+  deleteRegionB =<< regionOfPartNonEmptyB tu Forward
+
 -- | C-k
-killLineE :: Maybe Int -> YiM ()
-killLineE Nothing  = withCurrentBuffer killRestOfLine
-killLineE (Just n) = withCurrentBuffer $ replicateM_ (2*n) killRestOfLine
+-- | Like `killLineB`, but with system clipboard synchronization
+killLine :: Maybe Int -> YiM ()
+killLine mbr = withCurrentBuffer (killLineB mbr) >> killringToClipboard
+
+killringGet :: EditorM R.YiString
+killringGet = do
+  text :| _ <- uses killringA _krContents
+  return text
 
 killringPut :: Direction -> R.YiString -> EditorM ()
 killringPut dir s = killringA %= krPut dir s
 
--- | Kill the rest of line
-killRestOfLine :: BufferM ()
-killRestOfLine =
-    do eol <- atEol
-       if eol then deleteN 1 else deleteToEol
-
--- | C-y
+-- | Yanks top of killbuffer
 yankE :: EditorM ()
 yankE = do
   text :| _ <- uses killringA _krContents
   withCurrentBuffer $ pointB >>= setSelectionMarkPointB >> insertN text
 
--- | M-w
+-- | C-y
+-- Like `yankE`, but with system clipboard synchronization
+yank :: YiM ()
+yank = clipboardToKillring >> withEditor yankE
+
+-- | Saves current selection to killring and then clears it
 killRingSaveE :: EditorM ()
 killRingSaveE = do
   (r, text) <- withCurrentBuffer $ do
@@ -57,8 +88,13 @@ killRingSaveE = do
     assign highlightSelectionA False
     return (r, text)
   killringPut (regionDirection r) text
--- | M-y
 
+-- | M-w
+-- Like `killRingSaveE`, but with system clipboard synchronization
+killRingSave :: YiM ()
+killRingSave = withEditor killRingSaveE >> killringToClipboard
+
+-- | M-y
 -- TODO: Handle argument, verify last command was a yank
 yankPopE :: EditorM ()
 yankPopE = do
