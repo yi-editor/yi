@@ -25,6 +25,8 @@ module Yi.Keymap.Vim.Utils
   , addNewLineIfNecessary
   , indentBlockRegionB
   , addVimJumpHereE
+  , exportRegisterToClipboard
+  , pasteFromClipboard
   ) where
 
 import           Control.Applicative      ((<$), (<$>))
@@ -42,10 +44,13 @@ import           Yi.Keymap                (YiM)
 import           Yi.Keymap.Vim.Common
 import           Yi.Keymap.Vim.EventUtils (eventToEventString, splitCountedCommand)
 import           Yi.Keymap.Vim.Motion     (Move (Move), stringToMove)
-import           Yi.Keymap.Vim.StateUtils (getMaybeCountE, modifyStateE, resetCountE)
+import           Yi.Keymap.Vim.StateUtils (getMaybeCountE, modifyStateE,
+                                           resetCountE, getRegisterE)
 import           Yi.Monad                 (whenM)
 import           Yi.Rope                  (YiString, countNewLines, last)
-import qualified Yi.Rope                  as R (replicateChar, snoc)
+import qualified Yi.Rope                  as R (replicateChar, snoc, toString, fromString)
+import           Yi.Utils                 (io)
+import           System.Hclip             (getClipboard, setClipboard)
 
 -- 'mkBindingE' and 'mkBindingY' are helper functions for bindings
 -- where VimState mutation is not dependent on action performed
@@ -203,3 +208,14 @@ trailingNewline t = case Yi.Rope.last t of
 addNewLineIfNecessary :: YiString -> YiString
 addNewLineIfNecessary rope =
   if trailingNewline rope then rope else rope `R.snoc` '\n'
+
+pasteFromClipboard :: YiM ()
+pasteFromClipboard = do
+  text <- fmap R.fromString $ io getClipboard
+  withCurrentBuffer $ insertRopeWithStyleB text Inclusive
+
+exportRegisterToClipboard :: RegisterName -> YiM ()
+exportRegisterToClipboard name = do
+  mbr <- withEditor $ getRegisterE name
+  io . setClipboard $ maybe "" (R.toString . regContent) mbr
+  

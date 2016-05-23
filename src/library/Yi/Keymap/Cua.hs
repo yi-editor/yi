@@ -31,8 +31,7 @@ import           Yi.Keymap.Keys
 import           Yi.MiniBuffer            (commentRegion)
 import           Yi.Misc                  (adjBlock, selectAll)
 import           Yi.Rectangle             (getRectangle, killRectangle, yankRectangle)
-import qualified Yi.Rope                  as R (YiString, length, singleton, withText
-                                               , toString)
+import qualified Yi.Rope                  as R (YiString, length, singleton, withText)
 import           Yi.String                (lines', unlines')
 import           Yi.Keymap.Emacs.KillRing (clipboardToKillring, killringToClipboard)
 
