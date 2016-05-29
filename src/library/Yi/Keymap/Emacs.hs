@@ -143,7 +143,7 @@ emacsKeys univArg =
          , ctrlCh 'h'           ?>> char 'b' ?>>! acceptedInputsOtherWindow
          , ctrlCh 'i'           ?>>! adjIndent IncreaseOnly
          , ctrlCh 'j'           ?>>! newlineAndIndentB
-         , ctrlCh 'k'           ?>>! killLineE univArg
+         , ctrlCh 'k'           ?>>! killLine univArg
          , ctrlCh 'l'           ?>>! (withCurrentBuffer scrollToCursorB >> userForceRefresh)
          , ctrlCh 'm'           ?>>! repeatingArg (insertB '\n')
          , ctrlCh 'n'           ?>>! repeatingArg (moveE VLine Forward)
@@ -155,7 +155,7 @@ emacsKeys univArg =
          , ctrlCh 't'           ?>>! repeatingArg swapB
          , ctrlCh 'v'           ?>>! scrollDownE univArg
          , ctrlCh 'w'           ?>>! killRegion
-         , ctrlCh 'y'           ?>>! yankE
+         , ctrlCh 'y'           ?>>! yank
          , ctrlCh 'z'           ?>>! suspendEditor
          , ctrlCh '+'           ?>>! repeatingArg (increaseFontSize 1)
          , ctrlCh '-'           ?>>! repeatingArg (decreaseFontSize 1)
@@ -204,7 +204,7 @@ emacsKeys univArg =
          , metaCh 'r'           ?>>! repeatingArg moveToMTB
          , metaCh 'u'           ?>>! repeatingArg uppercaseWordB
          , metaCh 't'           ?>>! repeatingArg (transposeB unitWord Forward)
-         , metaCh 'w'           ?>>! killRingSaveE
+         , metaCh 'w'           ?>>! killRingSave
          , metaCh 'x'           ?>>! executeExtendedCommandE
          , metaCh 'y'           ?>>! yankPopE
          , metaCh '.'           ?>>! promptTag
