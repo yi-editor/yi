@@ -20,29 +20,35 @@ where
 
 import GHC.Generics (Generic)
 
+import           Control.Applicative    ((<$>))
 import           Control.Exc            (ignoringException)
 import           Control.Lens           (assign, makeLenses, use)
 import           Control.Monad          (when)
+import           Control.Monad.State    (get)
 import           Data.Binary            (Binary, decodeFile, encodeFile)
 import           Data.Default           (Default, def)
-import qualified Data.Map               as M (map)
+import qualified Data.Map               as M (map, Map, elems)
 import           Data.Typeable          (Typeable)
 import           System.Directory       (doesFileExist)
+import           Yi.Buffer.Basic        (BufferRef)
 import           Yi.Config.Simple.Types (Field, customVariable)
 import           Yi.Editor
+import           Yi.File                (openNewFile)
 import           Yi.History             (Histories (..), History (..))
 import           Yi.Keymap              (YiM)
 import           Yi.KillRing            (Killring (..))
 import           Yi.Paths               (getPersistentStateFilename)
 import           Yi.Regex               (SearchExp (..))
 import           Yi.Search.Internal     (getRegexE, setRegexE)
-import           Yi.Types               (YiConfigVariable)
+import           Yi.Types               (YiConfigVariable, BufferId(..), FBuffer,
+                                         attributes, ident)
 import           Yi.Utils               (io)
 
 data PersistentState = PersistentState
     { histories     :: !Histories
     , aKillring     :: !Killring
     , aCurrentRegex :: Maybe SearchExp
+    , currBuffers   :: [BufferId]
     } deriving (Generic)
 
 instance Binary PersistentState
@@ -80,6 +86,13 @@ trimHistories maxHistory (Histories m) = Histories $ M.map trimH m
     trimH (History cur content prefix) = History cur (trim content) prefix
     trim content = drop (max 0 (length content - maxHistory)) content
 
+-- | Gets list of BufferId from all opened buffers of Editor.
+getOpenedBufferIds :: (M.Map BufferRef FBuffer) -> [BufferId]
+getOpenedBufferIds m = map ident attrs
+  where
+    attrs = map attributes fbuffs
+    fbuffs = M.elems m
+
 -- | Here is a persistent history saving part.
 --   We assume each command is a single line.
 --   To add new components, one has to:
@@ -95,10 +108,12 @@ savePersistentState = do
     (hist :: Histories) <- withEditor   getEditorDyn
     kr                  <- withEditor $ use killringA
     curRe               <- withEditor   getRegexE
+    openedBufferIds     <- getOpenedBufferIds . buffers <$> withEditor get
     let pState = PersistentState {
                    histories     = trimHistories histLimit hist
                  , aKillring     = kr    -- trimmed during normal operation
                  , aCurrentRegex = curRe -- just a single value -> no need to trim
+                 , currBuffers = openedBufferIds
                  }
     io $ encodeFile pStateFilename pState
 
@@ -125,3 +140,8 @@ loadPersistentState = do
                         PersistentSearch keepSearch <- askConfigVariableA
                         when keepSearch . withEditor $
                             maybe (return ()) setRegexE $ aCurrentRegex pState
+                        openLastIds                 $ currBuffers   pState
+    where
+        openLastIds [] = return ()
+        openLastIds ((FileBuffer path):xs) = openNewFile path >> openLastIds xs
+        openLastIds ((MemBuffer _):xs) = openLastIds xs

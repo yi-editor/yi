@@ -1,7 +1,6 @@
 {-# LANGUAGE LambdaCase          #-}
 {-# LANGUAGE OverloadedStrings   #-}
 {-# LANGUAGE Rank2Types          #-}
-{-# LANGUAGE RecursiveDo         #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# OPTIONS_HADDOCK show-extensions #-}
 
@@ -18,19 +17,13 @@
 
 module Yi.Core
   (
-  -- * Construction and destruction
-    startEditor
-  , quitEditor          -- :: YiM ()
-
   -- * User interaction
-  , refreshEditor       -- :: YiM ()
+    refreshEditor       -- :: YiM ()
   , suspendEditor       -- :: YiM ()
   , userForceRefresh
 
   -- * Global editor actions
   , errorEditor         -- :: String -> YiM ()
-  , closeWindow         -- :: YiM ()
-  , closeWindowEmacs
 
   -- * Interacting with external commands
   , runProcessWithInput          -- :: String -> String -> YiM String
@@ -42,6 +35,14 @@ module Yi.Core
   , withSyntax
   , focusAllSyntax
   , forkAction
+  -- * Export for EditorActions.hs
+  , recoverMode
+  , postActions
+  , showErrors
+  , interactive
+  , dispatch
+  , onYiVar
+  , terminateSubprocesses
   ) where
 
 import           Prelude                        hiding (elem, mapM_, or)
@@ -49,24 +50,24 @@ import           Prelude                        hiding (elem, mapM_, or)
 import           Control.Applicative            (Applicative (pure), (<$>))
 import           Control.Concurrent             (ThreadId, forkIO, forkOS,
                                                  modifyMVar, modifyMVar_,
-                                                 newMVar, readMVar, threadDelay)
+                                                 readMVar, threadDelay)
 import           Control.Exc                    (ignoringException)
 import           Control.Exception              (SomeException, handle)
-import           Control.Lens                   (assign, mapped, use, uses,
-                                                 view, (%=), (%~), (&), (.=),
+import           Control.Lens                   (assign, use, view,
+                                                 (%=), (%~), (&), (.=),
                                                  (.~), (^.))
 import           Control.Monad                  (forever, void, when)
 import           Control.Monad.Base             (MonadBase (liftBase))
 import           Control.Monad.Error            ()
-import           Control.Monad.Reader           (MonadReader (ask), ReaderT (runReaderT), asks)
+import           Control.Monad.Reader           (MonadReader (ask), asks)
 import qualified Data.DelayList                 as DelayList (decrease, insert)
 import           Data.Foldable                  (Foldable (foldMap), elem, find, forM_, mapM_, or, toList)
 import           Data.List                      (partition)
 import           Data.List.NonEmpty             (NonEmpty (..))
 import qualified Data.List.PointedList.Circular as PL (PointedList (_focus), length)
 import           Data.List.Split                (splitOn)
-import qualified Data.Map                       as M (assocs, delete, empty, fromList, insert, member)
-import           Data.Maybe                     (fromMaybe, isNothing)
+import qualified Data.Map                       as M (assocs, delete, fromList, insert, member)
+import           Data.Maybe                     (fromMaybe)
 import           Data.Monoid                    (First (First, getFirst), (<>))
 import qualified Data.Text                      as T (Text, pack, unwords)
 import           Data.Time                      (getCurrentTime)
@@ -89,14 +90,13 @@ import           Yi.Keymap
 import           Yi.Keymap.Keys
 import           Yi.KillRing                    (krEndCmd)
 import           Yi.Monad                       (gets)
-import           Yi.PersistentState             (loadPersistentState, savePersistentState)
 import           Yi.Process
 import qualified Yi.Rope                        as R (YiString, fromString, readFile)
 import           Yi.String                      (chomp, showT)
 import           Yi.Style                       (errorStyle, strongHintStyle)
-import qualified Yi.UI.Common                   as UI (UI (end, layout, main, refresh, suspend, userForceRefresh))
+import qualified Yi.UI.Common                   as UI (UI (layout, refresh, suspend, userForceRefresh))
 import           Yi.Utils                       (io)
-import           Yi.Window                      (bufkey, dummyWindow, isMini, winRegion, wkey)
+import           Yi.Window                      (bufkey, dummyWindow, winRegion, wkey)
 
 -- | Make an action suitable for an interactive run.
 -- UI will be refreshed.
@@ -112,51 +112,6 @@ interactive isRefreshNeeded action = do
   return ()
 
 -- ---------------------------------------------------------------------
--- | Start up the editor, setting any state with the user preferences
--- and file names passed in, and turning on the UI
---
-startEditor :: Config -> Maybe Editor -> IO ()
-startEditor cfg st = do
-    let uiStart = startFrontEnd cfg
-
-    logPutStrLn "Starting Core"
-
-    -- Use an empty state unless resuming from an earlier session and
-    -- one is already available
-    let editor = fromMaybe emptyEditor st
-    -- here to add load history etc?
-
-    -- Setting up the 1st window is a bit tricky because most
-    -- functions assume there exists a "current window"
-    newSt <- newMVar $ YiVar editor 1 M.empty
-    (ui, runYi) <- mdo
-        let handler (exception :: SomeException) =
-              runYi $ errorEditor (showT exception) >> refreshEditor
-
-            inF []     = return ()
-            inF (e:es) = handle handler $ runYi $ dispatch (e :| es)
-
-            outF refreshNeeded acts =
-                handle handler $ runYi $ interactive refreshNeeded acts
-            runYi f   = runReaderT (runYiM f) yi
-            yi        = Yi ui inF outF cfg newSt
-        ui <- uiStart cfg inF (outF MustRefresh) editor
-        return (ui, runYi)
-
-    runYi loadPersistentState
-
-    runYi $ do
-      if isNothing st
-        -- process options if booting for the first time
-        then postActions NoNeedToRefresh $ startActions cfg
-        -- otherwise: recover the mode of buffers
-        else withEditor $ buffersA.mapped %= recoverMode (modeTable cfg)
-      postActions NoNeedToRefresh $ initialActions cfg ++ [makeAction showErrors]
-
-    runYi refreshEditor
-
-    UI.main ui -- transfer control to UI
-
 -- | Runs a 'YiM' action in a separate thread.
 --
 -- Notes:
@@ -273,13 +228,6 @@ showEvs = T.unwords . fmap (T.pack . prettyEvent)
 
 -- ---------------------------------------------------------------------
 -- Meta operations
-
--- | Quit.
-quitEditor :: YiM ()
-quitEditor = do
-    savePersistentState
-    onYiVar $ terminateSubprocesses (const True)
-    withUI (`UI.end` True)
 
 -- | Update (visible) buffers if they have changed on disk.
 -- FIXME: since we do IO here we must catch exceptions!
@@ -411,36 +359,6 @@ errorEditor :: T.Text -> YiM ()
 errorEditor s = do
   printStatus (["error: " <> s], errorStyle)
   logPutStrLn $ "errorEditor: " <> s
-
--- | Close the current window.
--- If this is the last window open, quit the program.
---
--- CONSIDER: call quitEditor when there are no other window in the
--- 'interactive' function. (Not possible since the windowset type
--- disallows it -- should it be relaxed?)
-closeWindow :: YiM ()
-closeWindow = do
-    winCount <- withEditor $ uses windowsA PL.length
-    tabCount <- withEditor $ uses tabsA PL.length
-    when (winCount == 1 && tabCount == 1) quitEditor
-    withEditor tryCloseE
-
--- | This is a like 'closeWindow' but with emacs behaviour of C-x 0:
--- if we're trying to close the minibuffer or last buffer in the
--- editor, then just print a message warning the user about it rather
--- closing mini or quitting editor.
-closeWindowEmacs :: YiM ()
-closeWindowEmacs = do
-  wins <- withEditor $ use windowsA
-  let winCount = PL.length wins
-  tabCount <- withEditor $ uses tabsA PL.length
-
-  case () of
-   _ | winCount == 1 && tabCount == 1 ->
-         printMsg "Attempt to delete sole ordinary window"
-     | isMini (PL._focus wins) ->
-         printMsg "Attempt to delete the minibuffer"
-     | otherwise -> withEditor tryCloseE
 
 onYiVar :: (Yi -> YiVar -> IO (YiVar, a)) -> YiM a
 onYiVar f = do

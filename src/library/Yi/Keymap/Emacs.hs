@@ -39,6 +39,7 @@ import Yi.Command               (shellCommandE)
 import Yi.Core
 import Yi.Dired                 (dired)
 import Yi.Editor
+import Yi.EditorActions
 import Yi.File                  (fwriteE, fwriteToE)
 import Yi.Keymap                (Keymap, KeymapSet, YiAction (..), YiM, modelessKeymapSet, write)
 import Yi.Keymap.Emacs.KillRing

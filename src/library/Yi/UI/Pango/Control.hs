@@ -47,7 +47,8 @@ import Data.Prototype
 import Yi.Rope (toText, splitAtLine, YiString)
 import qualified Yi.Rope as R
 import qualified Data.Map as Map
-import Yi.Core (startEditor, focusAllSyntax)
+import Yi.Core (focusAllSyntax)
+import Yi.EditorActions (startEditor)
 import Yi.Buffer
 import Yi.Config
 import Yi.Tab
