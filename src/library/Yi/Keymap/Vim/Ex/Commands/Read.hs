@@ -55,5 +55,5 @@ readCmd cmdShowText getYiString = Common.impureExCommand
   { cmdShow = cmdShowText
   , cmdAction = YiA $ do
       s <- getYiString 
-      withCurrentBuffer (insertRopeWithStyleB s Inclusive)
+      withCurrentBuffer (insertRopeWithStyleB s LineWise)
   }
