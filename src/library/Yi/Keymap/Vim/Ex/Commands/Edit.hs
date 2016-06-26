@@ -14,8 +14,9 @@ module Yi.Keymap.Vim.Ex.Commands.Edit (parse) where
 
 import           Control.Applicative              (Alternative ((<|>)), (<$>))
 import           Control.Monad                    (void, when)
+import           Data.Maybe                       (isJust)
 import qualified Data.Text                        as T (Text, append, pack, unpack)
-import qualified Text.ParserCombinators.Parsec    as P (anyChar, many, many1, space, string, try)
+import qualified Text.ParserCombinators.Parsec    as P (anyChar, many, many1, space, string, try, optionMaybe)
 import           Yi.Editor                        (MonadEditor (withEditor), newTabE)
 import           Yi.File                          (openNewFile)
 import           Yi.Keymap                        (Action (YiA))
@@ -25,11 +26,11 @@ import           Yi.Keymap.Vim.Ex.Types           (ExCommand (cmdAction, cmdComp
 
 parse :: EventString -> Maybe ExCommand
 parse = Common.parse $ do
-    tab <- P.many (P.string "tab")
-    void $ P.try ( P.string "edit") <|> P.string "e"
+    tab <- P.optionMaybe (P.string "tab")
+    void $ P.try (P.string "edit") <|> P.string "e"
     void $ P.many1 P.space
     filename <- T.pack <$> P.many1 P.anyChar
-    return $! edit (not (null tab)) filename
+    return $! edit (isJust tab) filename
 
 edit :: Bool -> T.Text -> ExCommand
 edit tab f = Common.impureExCommand {
