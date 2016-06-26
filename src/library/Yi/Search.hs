@@ -227,7 +227,6 @@ isearchInitE :: Direction -> EditorM ()
 isearchInitE dir = do
   historyStartGen iSearch
   p <- withCurrentBuffer pointB
-  resetRegexE
   putEditorDyn (Isearch [(T.empty ,mkRegion p p, dir)])
   printMsg "I-search: "
 
@@ -253,6 +252,9 @@ makeISearch s = case makeSearchOptsM opts (T.unpack s) of
 isearchFunE :: (T.Text -> T.Text) -> EditorM ()
 isearchFunE fun = do
   Isearch s <- getEditorDyn
+  case s of
+    [_] -> resetRegexE
+    _ -> return ()
   let (previous,p0,direction) = head s
       current = fun previous
       srch = makeISearch current
