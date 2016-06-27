@@ -17,7 +17,7 @@ import           Control.Applicative ((<$>))
 import           Control.Monad       (forM_)
 import           Data.List           (sort, transpose)
 import           Data.Monoid         ((<>))
-import qualified Data.Text           as T (Text, concat, justifyLeft, length, pack, unpack)
+import qualified Data.Text           as T (Text, concat, justifyLeft, length)
 import qualified Data.Text.ICU       as ICU (regex, find, unfold, group)
 import           Yi.Buffer
 import           Yi.Editor           (EditorM, getRegE, setRegE, withCurrentBuffer)

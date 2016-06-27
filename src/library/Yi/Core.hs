@@ -57,7 +57,7 @@ import           Control.Lens                   (assign, mapped, use, uses,
                                                  (.~), (^.))
 import           Control.Monad                  (forever, void, when)
 import           Control.Monad.Base             (MonadBase (liftBase))
-import           Control.Monad.Error            ()
+import           Control.Monad.Except           ()
 import           Control.Monad.Reader           (MonadReader (ask), ReaderT (runReaderT), asks)
 import qualified Data.DelayList                 as DelayList (decrease, insert)
 import           Data.Foldable                  (Foldable (foldMap), elem, find, forM_, mapM_, or, toList)
