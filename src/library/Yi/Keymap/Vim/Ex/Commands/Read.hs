@@ -16,11 +16,11 @@ import           Control.Monad.Base               (liftBase)
 import           Data.Monoid                      ((<>))
 import qualified Data.Text                        as T (Text, pack)
 import           System.Exit                      (ExitCode (..))
-import           System.IO                        (readFile) 
-import qualified Text.ParserCombinators.Parsec    as P (anyChar, many, many1, space, string, try) 
+import           System.IO                        (readFile)
+import qualified Text.ParserCombinators.Parsec    as P (anyChar, many, many1, space, string, try)
 import           Yi.Buffer                        (BufferRef)
 import           Yi.Buffer.HighLevel              (insertRopeWithStyleB)
-import           Yi.Buffer.Normal                 (RegionStyle (..))
+import           Yi.Buffer.Normal                 (RegionStyle (LineWise))
 import           Yi.Editor                        (printMsg, withCurrentBuffer)
 import           Yi.File                          (fwriteBufferE, viWrite, viWriteTo)
 import           Yi.Keymap                        (Action (YiA, BufferA), YiM)
@@ -36,7 +36,7 @@ parse = Common.parse $
             *> ((P.string "!" *> parseCommand) <|> parseReadFile)
     where parseReadFile = do
             filename <- P.many1 P.anyChar
-            return $! readCmd ("read file " <> T.pack filename) 
+            return $! readCmd ("read file " <> T.pack filename)
                               (liftBase $ fromString <$> readFile filename)
           parseCommand = do
             command <- P.many1 P.anyChar
@@ -54,6 +54,6 @@ readCmd :: T.Text -> YiM YiString -> ExCommand
 readCmd cmdShowText getYiString = Common.impureExCommand
   { cmdShow = cmdShowText
   , cmdAction = YiA $ do
-      s <- getYiString 
-      withCurrentBuffer (insertRopeWithStyleB s LineWise)
+      s <- getYiString
+      withCurrentBuffer $ insertRopeWithStyleB s LineWise
   }
