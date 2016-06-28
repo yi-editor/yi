@@ -43,7 +43,7 @@ import Prelude hiding (mapM_)
 
 import Control.Applicative ( (<$>), (<*>) )
 import Control.Lens ( (^.), (<&>), (.=), (%=) )
-import Control.Monad (when)
+import Control.Monad (when, void, forever)
 import Data.Array ( elems )
 import Data.Binary ( Binary )
 import Data.Default ( Default, def )
@@ -55,8 +55,6 @@ import Data.Typeable ( Typeable )
 #ifdef HINT
 import Control.Concurrent
     ( takeMVar, putMVar, newEmptyMVar, MVar, forkIO )
-import Control.Monad
-    ( Monad((>>), (>>=), return), void, forever )
 import Control.Monad.Base ( MonadBase )
 import Control.Monad.Catch ( try )
 import Control.Monad.Trans ( lift )

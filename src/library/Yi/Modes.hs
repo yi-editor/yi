@@ -27,7 +27,7 @@ import           Data.List           (isPrefixOf)
 import           Data.Maybe          (fromMaybe, isJust)
 import           System.FilePath     (takeDirectory, takeExtension, takeFileName)
 import qualified Data.Text           as T (Text)
-import qualified Data.Text.ICU       as ICU (regex, find, MatchOption(..))
+import qualified Data.Text.ICU       as ICU (regex, find)
 
 import           Yi.Buffer
 import qualified Yi.IncrementalParse  as IncrParser (scanner)

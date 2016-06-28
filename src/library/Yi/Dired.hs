@@ -62,7 +62,7 @@ import qualified Data.Map                 as M (Map, assocs, delete, empty,
 import           Data.Maybe               (fromMaybe)
 import           Data.Monoid              (mempty, (<>))
 import qualified Data.Text                as T (Text, pack, unpack)
-import qualified Data.Text.ICU            as ICU (regex, find, unfold, group, MatchOption(..))
+import qualified Data.Text.ICU            as ICU (regex, find, group)
 import           Data.Time.Clock.POSIX    (posixSecondsToUTCTime)
 import           Data.Typeable            (Typeable)
 import           System.CanonicalizePath  (canonicalizePath)
