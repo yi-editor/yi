@@ -66,13 +66,12 @@ module Yi.Interact
      accepted
     ) where
 
-import           Control.Applicative (Alternative ((<|>), empty), Applicative ((<*>), pure))
+import           Control.Applicative (Alternative ((<|>), empty))
 import           Control.Arrow       (first)
 import           Control.Lens        (Field1 (_1), Field2 (_2), view)
 import           Control.Monad.State (MonadPlus (..), MonadTrans (lift), StateT)
 import           Data.Function       (on)
 import           Data.List           (groupBy)
-import           Data.Monoid         (Monoid (mappend, mempty))
 import qualified Data.Text           as T (Text, append, pack)
 
 ------------------------------------------------

@@ -21,7 +21,6 @@ module Yi.Completion
   )
 where
 
-import           Control.Applicative ((<$>))
 import           Data.Function       (on)
 import           Data.List           (find, nub)
 import           Data.Maybe          (catMaybes)

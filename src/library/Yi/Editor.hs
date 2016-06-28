@@ -100,7 +100,6 @@ module Yi.Editor ( Editor(..), EditorM, MonadEditor(..)
 
 import           Prelude                        hiding (all, concatMap, foldl, foldr)
 
-import           Control.Applicative            ((<$>), (<*>))
 import           Control.Lens                   (Lens', assign, lens, mapped,
                                                  use, uses, view, (%=), (%~),
                                                  (&), (.~), (^.))
@@ -127,7 +126,7 @@ import qualified Data.Map                       as M (delete, elems, empty,
                                                       insert, lookup, singleton, (!))
 import           Data.Maybe                     (fromJust, fromMaybe, isNothing)
 import qualified Data.Monoid                    as Mon ((<>))
-import           Data.Semigroup                 (mempty, (<>))
+import           Data.Semigroup                 ((<>))
 import qualified Data.Text                      as T (Text, null, pack, unlines, unpack, unwords)
 import           System.FilePath                (splitPath)
 import           Yi.Buffer

@@ -23,7 +23,6 @@ module Yi.Mode.Abella
   , abellaSend
   ) where
 
-import           Control.Applicative (Applicative ((<*>)), (<$>))
 import           Control.Lens        (assign, use, (%~), (&), (.=), (.~))
 import           Control.Monad       (join, when)
 import           Data.Binary         (Binary)

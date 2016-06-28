@@ -5,7 +5,6 @@
 module Yi.Config.Simple.Types
  where
 
-import Control.Applicative (Applicative)
 import Control.Lens        (Lens')
 import Control.Monad.Base  (MonadBase)
 import Control.Monad.State (MonadState, StateT)

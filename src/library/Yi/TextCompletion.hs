@@ -24,7 +24,6 @@ module Yi.TextCompletion (
         CompletionScope(..)
 ) where
 
-import           Control.Applicative ((<$>))
 import           Control.Monad       (forM)
 import           Data.Binary         (Binary, get, put)
 import           Data.Char           (GeneralCategory (..), generalCategory)

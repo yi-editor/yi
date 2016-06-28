@@ -14,7 +14,7 @@
 
 module Yi.Keymap.Vim.Ex.Commands.Quit (parse) where
 
-import           Control.Applicative              (Alternative ((<|>)), (<$>))
+import           Control.Applicative              (Alternative ((<|>)))
 import           Control.Lens                     (use, uses)
 import           Control.Monad                    (void, when)
 import           Data.Foldable                    (find)

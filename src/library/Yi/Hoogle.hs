@@ -13,7 +13,6 @@
 
 module Yi.Hoogle where
 
-import           Control.Applicative ((<$>))
 import           Control.Arrow       ((&&&))
 import           Data.Char           (isUpper)
 import           Data.List           (nub)

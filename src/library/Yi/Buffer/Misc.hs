@@ -197,13 +197,11 @@ module Yi.Buffer.Misc
 
 import           Prelude                        hiding (foldr, mapM, notElem)
 
-import           Control.Applicative            (Applicative ((*>), (<*>), pure), (<$>))
 import           Control.Lens                   (Lens', assign, lens, use, uses, view, (%=), (%~), (.=), (^.))
 import           Control.Monad.RWS.Strict       (Endo (Endo, appEndo),
                                                  MonadReader (ask), MonadState,
                                                  MonadWriter (tell),
-                                                 Monoid (mconcat, mempty), asks,
-                                                 gets, join, modify,
+                                                 asks, gets, join, modify,
                                                  replicateM_, runRWS, void,
                                                  when, (<>))
 import           Data.Binary                    (Binary (..), Get)

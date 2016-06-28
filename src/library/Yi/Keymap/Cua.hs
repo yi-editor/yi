@@ -18,7 +18,7 @@ module Yi.Keymap.Cua ( keymap
                      , del
                      ) where
 
-import           Control.Applicative      (Alternative ((<|>)), (<$>))
+import           Control.Applicative      (Alternative ((<|>)))
 import           Control.Lens             (assign, use)
 import           Control.Monad            (unless, when)
 import qualified Data.Text                as T (drop, take)

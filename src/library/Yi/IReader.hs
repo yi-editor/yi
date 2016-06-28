@@ -26,7 +26,6 @@ import           Data.Binary                (Binary, decode, encodeFile)
 import qualified Data.ByteString.Char8      as B (ByteString, pack, readFile, unpack)
 import qualified Data.ByteString.Lazy.Char8 as BL (fromChunks)
 import           Data.Default               (Default, def)
-import           Data.Functor               ((<$>))
 import           Data.Sequence              as S (Seq, ViewL (EmptyL, (:<)),
                                                   ViewR ((:>)), empty, length,
                                                   null, splitAt, viewl, viewr,

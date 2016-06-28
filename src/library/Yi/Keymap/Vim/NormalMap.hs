@@ -13,14 +13,13 @@ module Yi.Keymap.Vim.NormalMap (defNormalMap) where
 
 import           Prelude                    hiding (lookup)
 
-import           Control.Applicative        ((<$>))
 import           Control.Lens               (assign, use, (.=))
 import           Control.Monad              (replicateM_, unless, void, when)
 import           Data.Char                  (ord)
 import           Data.HashMap.Strict        (lookup, singleton)
 import           Data.List                  (group)
 import           Data.Maybe                 (fromMaybe)
-import           Data.Monoid                (Monoid (mempty), (<>))
+import           Data.Monoid                ((<>))
 import qualified Data.Text                  as T (drop, empty, pack, replicate, unpack)
 import           System.Directory           (doesFileExist)
 import           System.FriendlyPath        (expandTilda)

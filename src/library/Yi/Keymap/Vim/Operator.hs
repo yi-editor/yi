@@ -23,7 +23,6 @@ module Yi.Keymap.Vim.Operator
     , lastCharForOperator
     ) where
 
-import           Control.Applicative        ((<$>))
 import           Control.Monad              (when)
 import           Data.Char                  (isSpace, toLower, toUpper)
 import           Data.Foldable              (find)

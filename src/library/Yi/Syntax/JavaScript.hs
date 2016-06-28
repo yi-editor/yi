@@ -19,10 +19,10 @@ module Yi.Syntax.JavaScript where
 
 import           Prelude hiding (elem,error,any,exp)
 
-import           Control.Applicative (Alternative ((<|>), many), Applicative ((<*), (<*>), pure), optional, (<$>))
+import           Control.Applicative (Alternative ((<|>), many), optional)
 import           Data.Data           (Data)
-import           Data.Foldable       (Foldable (foldMap), any, elem, toList)
-import           Data.Monoid         (Endo (..), Monoid (mempty), (<>))
+import           Data.Foldable       (any, elem, toList)
+import           Data.Monoid         (Endo (..), (<>))
 import qualified Data.Text           as T (cons)
 import           Data.Typeable       (Typeable)
 import           Yi.Buffer.Basic     (Point (..))

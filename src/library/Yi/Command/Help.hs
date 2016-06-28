@@ -21,7 +21,6 @@
 
 module Yi.Command.Help(displayHelpFor) where
 
-import           Control.Applicative ((<$>))
 import           Data.Binary         (Binary)
 import           Data.Default        (Default)
 import qualified Data.Text           as T (Text, pack, unlines, unpack)

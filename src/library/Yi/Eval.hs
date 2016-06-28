@@ -41,7 +41,6 @@ module Yi.Eval (
 
 import Prelude hiding (mapM_)
 
-import Control.Applicative ( (<$>), (<*>) )
 import Control.Lens ( (^.), (<&>), (.=), (%=) )
 import Control.Monad (when, void, forever)
 import Data.Array ( elems )
@@ -50,7 +49,7 @@ import Data.Default ( Default, def )
 import Data.Foldable ( mapM_ )
 import qualified Data.HashMap.Strict as M
     ( HashMap, insert, lookup, empty, keys )
-import Data.Monoid ( mempty, Monoid, (<>) )
+import Data.Monoid ( (<>) )
 import Data.Typeable ( Typeable )
 #ifdef HINT
 import Control.Concurrent

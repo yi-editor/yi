@@ -11,7 +11,6 @@
 
 module Yi.Keymap.Vim.Ex.Commands.Help (parse) where
 
-import           Control.Applicative              ((<$>))
 import           Control.Monad                    (void)
 import qualified Data.Text                        as T (append, pack)
 import qualified Text.ParserCombinators.Parsec    as P (anyChar, many1, option, space, string, try)

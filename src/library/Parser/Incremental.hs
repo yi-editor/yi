@@ -18,7 +18,7 @@ module Parser.Incremental (Process,
                           ) where
 
 import Control.Arrow       (first, second, (***))
-import Control.Applicative (Alternative ((<|>), empty), Applicative ((<*>), pure))
+import Control.Applicative (Alternative ((<|>), empty))
 import Data.Tree           (Tree (Node))
 
 data a :< b = (:<) {top :: a, _rest :: b}

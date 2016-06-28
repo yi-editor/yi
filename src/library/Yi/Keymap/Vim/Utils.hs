@@ -29,7 +29,6 @@ module Yi.Keymap.Vim.Utils
   , pasteFromClipboard
   ) where
 
-import           Control.Applicative      ((<$), (<$>))
 import           Control.Lens             ((.=), use)
 import           Control.Monad            (forM_, void, when)
 import           Data.Char                (isSpace)

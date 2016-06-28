@@ -23,7 +23,6 @@ module Yi.Buffer.Adjusted
     , module Yi.Buffer
     ) where
 
-import           Control.Applicative ((<$>))
 import           Control.Monad       (forM_, when)
 import           Yi.Buffer           hiding (bdeleteB, insertB, insertN, insertNAt
                                             , deleteB, deleteN, deleteNAt

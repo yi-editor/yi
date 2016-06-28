@@ -11,7 +11,7 @@
 
 module Yi.Keymap.Vim.Ex.Commands.Substitute (parse) where
 
-import           Control.Applicative              (Alternative ((<|>)), (<$>))
+import           Control.Applicative              (Alternative ((<|>)))
 import           Control.Monad                    (void)
 import           Data.Monoid                      ((<>))
 import qualified Data.Text                        as T (cons, snoc)

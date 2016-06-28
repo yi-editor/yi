@@ -14,11 +14,8 @@
 
 module Yi.Syntax.Latex where
 
-import           Control.Applicative (Alternative ((<|>), empty, many),
-                                      Applicative ((<*), (<*>), pure), (<$>))
-import           Data.Foldable       (Foldable, foldMap)
-import           Data.Monoid         (Endo (..), Monoid (mappend, mempty), (<>))
-import           Data.Traversable    (Traversable (sequenceA))
+import           Control.Applicative (Alternative ((<|>), empty, many))
+import           Data.Monoid         (Endo (..), (<>))
 import           Yi.IncrementalParse (P, eof, recoverWith, symbol)
 import           Yi.Lexer.Alex       hiding (tokenToStyle)
 import           Yi.Lexer.Latex      (Token (..), tokenToText)

@@ -11,7 +11,6 @@
 
 module Yi.Keymap.Vim.SearchMotionMap (defSearchMotionMap) where
 
-import           Control.Applicative      ((<$))
 import           Control.Monad            (replicateM_)
 import           Data.Maybe               (fromMaybe)
 import qualified Data.Text                as T (pack, unpack)

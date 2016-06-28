@@ -19,7 +19,6 @@ module Yi.UI.Vty
 import           Prelude                        hiding (concatMap, error,
                                                  reverse)
 
-import           Control.Applicative            (Applicative ((<*>)), (<$>))
 import           Control.Concurrent             (MVar, forkIO, myThreadId, newEmptyMVar,
                                                  takeMVar, tryPutMVar, tryTakeMVar)
 import           Control.Concurrent.STM         (atomically, isEmptyTChan, readTChan)

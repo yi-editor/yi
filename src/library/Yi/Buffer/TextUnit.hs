@@ -42,7 +42,6 @@ module Yi.Buffer.TextUnit
     ) where
 
 
-import           Control.Applicative (Applicative ((<*>)), (<$>))
 import           Control.Monad       (void, when, (<=<))
 import           Data.Char           (GeneralCategory (LineSeparator, ParagraphSeparator, Space),
                                       generalCategory, isAlphaNum, isSeparator, isSpace)

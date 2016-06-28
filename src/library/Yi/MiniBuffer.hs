@@ -30,7 +30,6 @@ module Yi.MiniBuffer ( spawnMinibufferE, withMinibufferFree, withMinibuffer
                      , commentRegion, promptingForBuffer, debugBufferContent
                      ) where
 
-import           Control.Applicative            ((<$>))
 import           Control.Concurrent             (threadDelay)
 import           Control.Lens                   (use, (%=))
 import           Control.Monad                  (forM, void, when, (<=<), (>=>))
@@ -38,7 +37,6 @@ import           Data.Foldable                  (find, toList)
 import           Data.IORef                     (newIORef, readIORef, writeIORef)
 import qualified Data.List.PointedList.Circular as PL (find, insertRight)
 import           Data.Maybe                     (catMaybes, fromJust, fromMaybe)
-import           Data.Monoid                    (mempty)
 import           Data.Proxy                     (Proxy)
 import           Data.String                    (IsString)
 import qualified Data.Text                      as T (Text, append, head,

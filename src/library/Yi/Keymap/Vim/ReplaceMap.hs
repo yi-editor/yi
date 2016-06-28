@@ -11,7 +11,7 @@
 module Yi.Keymap.Vim.ReplaceMap (defReplaceMap) where
 
 import           Control.Monad            (replicateM_, when)
-import           Data.Monoid              (Monoid (mempty), (<>))
+import           Data.Monoid              ((<>))
 import qualified Data.Text                as T (unpack)
 import           Yi.Buffer.Adjusted
 import           Yi.Editor                (EditorM, getEditorDyn, withCurrentBuffer)

@@ -9,7 +9,6 @@ module Yi.Event
 
 import Data.Bits   (setBit)
 import Data.Char   (chr, ord)
-import Data.Monoid (mappend)
 
 data Modifier = MShift | MCtrl | MMeta | MSuper | MHyper
                 deriving (Show,Eq,Ord)

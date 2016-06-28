@@ -12,7 +12,6 @@
 
 module Yi.Keymap.Vim.VisualMap ( defVisualMap ) where
 
-import           Control.Applicative        ((<$), (<$>))
 import           Control.Lens               ((.=))
 import           Control.Monad              (forM_, void)
 import           Data.Char                  (ord)
@@ -246,6 +245,7 @@ insertBinding = VimBindingE (f . T.unpack . _unEv)
                       "A" -> rightEdgesOfRegionB style region
                       _ -> error "Just silencing ghc's false positive warning."
                   case cursors of
+                      [] -> error "No cursor to move to (in Yi.Keymap.Vim.VisualMap.insertBinding)"
                       (mainCursor : _) -> withCurrentBuffer (moveTo mainCursor)
                   modifyStateE $ \s -> s { vsSecondaryCursors = drop 1 cursors }
                   switchModeE $ Insert (head evs)

@@ -21,7 +21,6 @@ module Yi.Modes (TokenBasedMode, fundamentalMode,
                  gitCommitMode, rubyMode, styleMode
                 ) where
 
-import           Control.Applicative ((<$>))
 import           Control.Lens        ((%~), (&), (.~), (^.))
 import           Data.List           (isPrefixOf)
 import           Data.Maybe          (fromMaybe, isJust)

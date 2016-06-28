@@ -32,10 +32,9 @@ module Yi.Syntax.Tree (IsTree(..), toksAfter, allToks, tokAtOrBefore,
 
 import           Prelude             hiding (concatMap, error)
 
-import           Control.Applicative (Alternative ((<|>), many),
-                                      Applicative ((*>), (<*>), pure), (<$>))
+import           Control.Applicative (Alternative ((<|>), many))
 import           Control.Arrow       (first)
-import           Data.Foldable       (Foldable (foldMap), concatMap, toList)
+import           Data.Foldable       (concatMap, toList)
 import           Data.List.NonEmpty  (NonEmpty (..))
 import qualified Data.List.NonEmpty  as NE (reverse, toList, (<|))
 import           Data.Maybe          (catMaybes, listToMaybe)

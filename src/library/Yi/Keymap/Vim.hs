@@ -22,10 +22,9 @@ module Yi.Keymap.Vim
     , relayoutFromTo
     ) where
 
-import Control.Applicative                    ((<$>))
 import Data.Char                              (toUpper)
 import Data.List                              (find)
-import Data.Monoid                            (Monoid (mempty), (<>))
+import Data.Monoid                            ((<>))
 import Data.Prototype                         (Proto (Proto), extractValue)
 import Yi.Buffer.Adjusted                     (commitUpdateTransactionB, startUpdateTransactionB)
 import Yi.Editor

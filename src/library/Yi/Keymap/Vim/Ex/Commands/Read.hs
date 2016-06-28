@@ -10,12 +10,11 @@
 
 module Yi.Keymap.Vim.Ex.Commands.Read (parse) where
 
-import           Control.Applicative              (Alternative ((<|>)), Applicative ((*>)), (<$>))
+import           Control.Applicative              (Alternative ((<|>)))
 import           Control.Monad.Base               (liftBase)
 import           Data.Monoid                      ((<>))
 import qualified Data.Text                        as T (Text, pack)
 import           System.Exit                      (ExitCode (..))
-import           System.IO                        (readFile)
 import qualified Text.ParserCombinators.Parsec    as P (anyChar, many1, space, string, try)
 import           Yi.Buffer.HighLevel              (insertRopeWithStyleB)
 import           Yi.Buffer.Normal                 (RegionStyle (LineWise))

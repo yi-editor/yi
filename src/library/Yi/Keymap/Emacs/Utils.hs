@@ -50,7 +50,7 @@ module Yi.Keymap.Emacs.Utils
   )
 where
 
-import           Control.Applicative (Alternative ((<|>), many, some), Applicative (pure), optional, (<$>))
+import           Control.Applicative (Alternative ((<|>), many, some), optional)
 import           Control.Lens        (use, (.=))
 import           Control.Monad       (filterM, replicateM_, void)
 import           Control.Monad.Base  ()
