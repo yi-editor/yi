@@ -12,7 +12,7 @@ maintainer:     yi-devel@googlegroups.com
 homepage:       https://yi-editor.github.io
 bug-reports:    https://github.com/yi-editor/yi/issues
 Cabal-Version:  >= 1.20
-tested-with:    GHC==7.8.4, GHC==7.10.3, GHC==8.0.1
+tested-with:    GHC==7.10.3, GHC==8.0.1
 build-type:     Simple
 data-files:
   art/*.png
