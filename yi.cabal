@@ -345,7 +345,7 @@ library
       Yi.UI.Vty
       Yi.UI.Vty.Conversions
     build-depends:
-      vty >= 5.4,
+      vty >= 5.4 && < 5.7,
       stm >= 2.2
     cpp-options: -DFRONTEND_VTY
 
