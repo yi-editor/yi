@@ -1,3 +1,27 @@
+0.13.0 (In development)
+------
+
+ * Building with GHC 7.8 is no longer supported
+ * Added :read Ex command
+ * /<Esc> no longer resets incremental search in vim keymap
+
+0.12.6
+------
+
+ * Building with GHC 8.0 is now supported
+ * Vertical split with vty frontend
+ * System clipboard support in emacs and cua keymaps
+
+0.12.5
+------
+
+ * Remove trying to Show a function
+
+0.12.4
+------
+
+ * Fix build with hint-0.5.1
+ * Replace liftM with fmap
 
 0.12.3
 ------
