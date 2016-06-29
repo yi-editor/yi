@@ -10,7 +10,7 @@
 
 module Yi.Keymap.Vim.Ex.Commands.Write (parse) where
 
-import           Control.Applicative              (Alternative ((<|>)), Applicative ((*>)), (<$>))
+import           Control.Applicative              (Alternative ((<|>)))
 import           Control.Monad                    (void, when)
 import           Data.Monoid                      ((<>))
 import qualified Data.Text                        as T (Text, pack)

@@ -16,9 +16,6 @@
 module Yi.Syntax.OnlineTree (Tree(..), manyToks,
                              tokAtOrBefore) where
 
-import Control.Applicative (Applicative ((<*>), pure), (<$>))
-import Data.Foldable       (Foldable)
-import Data.Traversable    (Traversable)
 import Yi.IncrementalParse (P, Parser (Look), symbol)
 import Yi.Lexer.Alex       (Tok)
 import Yi.Syntax.Tree      (IsTree (emptyNode, uniplate), tokAtOrBefore)

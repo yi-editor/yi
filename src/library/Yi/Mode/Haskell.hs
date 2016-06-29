@@ -32,12 +32,11 @@ module Yi.Mode.Haskell
 
 import           Prelude                   hiding (all, concatMap, elem, error, notElem, exp)
 
-import           Control.Applicative       (Applicative ((*>)), (<$>))
 import           Control.Lens              ((&), (.~), (^.))
 import           Control.Monad             (unless, void, when)
 import           Data.Binary               (Binary)
 import           Data.Default              (Default)
-import           Data.Foldable             (Foldable, all, concatMap, elem, forM_, notElem)
+import           Data.Foldable             (all, concatMap, elem, forM_, notElem)
 import           Data.Maybe                (isJust, listToMaybe)
 import           Data.Monoid               ((<>))
 import qualified Data.Text                 as T (any, concat, drop, pack, unpack, unwords)

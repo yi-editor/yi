@@ -12,7 +12,6 @@
 
 module Yi.Mode.Interactive where
 
-import           Control.Applicative  ((<$>))
 import           Control.Concurrent   (threadDelay)
 import           Control.Lens         (use, (%~), (.=))
 import           Data.Monoid          ((<>))

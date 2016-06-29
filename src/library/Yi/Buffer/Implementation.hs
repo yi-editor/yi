@@ -66,14 +66,12 @@ module Yi.Buffer.Implementation
 
 import           GHC.Generics        (Generic)
 
-import           Control.Applicative (Applicative ((<*>), pure), (<$>))
 import           Data.Array          ((!))
 import           Data.Binary         (Binary (..))
 import           Data.Function       (on)
 import           Data.List           (groupBy)
 import qualified Data.Map            as M (Map, delete, empty, findMax, insert, lookup, map, maxViewWithKey)
 import           Data.Maybe          (fromMaybe)
-import           Data.Monoid         (Monoid (mconcat, mempty))
 import qualified Data.Set            as Set (Set, delete, empty, filter, insert, map, toList)
 import           Data.Typeable       (Typeable)
 import           Yi.Buffer.Basic     (Direction (..), Mark (..), WindowRef, reverseDir)

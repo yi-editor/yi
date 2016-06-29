@@ -26,8 +26,7 @@ import           Control.Arrow       (second)
 import           Control.Lens        (use, (.=))
 import           Control.Monad.RWS   (MonadPlus (mplus), MonadReader (ask),
                                       MonadState, MonadTrans (..),
-                                      MonadWriter (tell),
-                                      Monoid (mappend, mempty), RWST, evalRWST,
+                                      MonadWriter (tell), RWST, evalRWST,
                                       filterM, forM, forM_, liftM2, unless,
                                       when, (<>))
 import           Data.Binary         (Binary)

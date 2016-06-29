@@ -32,7 +32,6 @@ module Yi.Tag ( lookupTag
 
 import           GHC.Generics (Generic)
 
-import           Control.Applicative    ((<$>))
 import           Control.Lens           (makeLenses)
 import           Data.Binary            (Binary, get, put)
 import qualified Data.ByteString        as BS (readFile)

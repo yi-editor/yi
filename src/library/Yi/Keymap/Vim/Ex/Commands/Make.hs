@@ -9,7 +9,6 @@
 
 module Yi.Keymap.Vim.Ex.Commands.Make (parse) where
 
-import           Control.Applicative              (Applicative ((*>)))
 import qualified Data.Text                        as T (pack)
 import qualified Text.ParserCombinators.Parsec    as P (string)
 import           Yi.Command                       (makeBuildE)

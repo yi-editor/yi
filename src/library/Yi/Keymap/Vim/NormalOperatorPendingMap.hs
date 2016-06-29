@@ -11,7 +11,6 @@
 module Yi.Keymap.Vim.NormalOperatorPendingMap
        (defNormalOperatorPendingMap) where
 
-import           Control.Applicative        ((<$>))
 import           Control.Monad              (void, when)
 import           Data.Char                  (isDigit)
 import           Data.List                  (isPrefixOf)

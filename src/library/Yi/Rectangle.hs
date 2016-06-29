@@ -13,7 +13,6 @@
 
 module Yi.Rectangle where
 
-import           Control.Applicative ((<$>))
 import           Control.Monad       (forM_)
 import           Data.List           (sort, transpose)
 import           Data.Monoid         ((<>))

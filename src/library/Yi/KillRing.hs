@@ -26,11 +26,10 @@ module Yi.KillRing ( Killring
 
 import           Prelude             hiding (head, tail, take)
 
-import           Control.Applicative ((<$>), (<*>))
 import           Control.Lens        (makeLenses, (^.))
 import           Data.Binary         (Binary, get, put)
 import           Data.List.NonEmpty  (NonEmpty (..), head, take)
-import           Data.Monoid         (mempty, (<>))
+import           Data.Monoid         ((<>))
 import           Yi.Buffer.Basic     (Direction (..))
 import qualified Yi.Rope             as R (YiString, length)
 

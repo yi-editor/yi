@@ -15,12 +15,10 @@ module Yi.Syntax.Paren where
 
 import Prelude hiding (elem)
 
-import           Control.Applicative (Alternative ((<|>), many),
-                                      Applicative ((*>), (<*), (<*>)), (<$>))
-import           Data.Foldable       (Foldable (foldMap), elem, toList)
+import           Control.Applicative (Alternative ((<|>), many))
+import           Data.Foldable       (elem, toList)
 import           Data.Maybe          (listToMaybe)
-import           Data.Monoid         (Endo (Endo, appEndo), Monoid (mappend), (<>))
-import           Data.Traversable    (Traversable (sequenceA))
+import           Data.Monoid         (Endo (Endo, appEndo), (<>))
 import           Yi.IncrementalParse (P, Parser, eof, lookNext, recoverWith, symbol)
 import           Yi.Lexer.Alex       hiding (tokenToStyle)
 import           Yi.Lexer.Haskell

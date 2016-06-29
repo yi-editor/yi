@@ -9,7 +9,6 @@
 
 module Yi.Keymap.Vim.Ex.Commands.Shell (parse) where
 
-import           Control.Applicative              ((<$>))
 import           Control.Monad                    (void)
 import qualified Data.Text                        as T (pack)
 import qualified Text.ParserCombinators.Parsec    as P (char, many1, noneOf)

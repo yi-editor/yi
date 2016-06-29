@@ -11,7 +11,6 @@
 
 module Yi.Mode.Haskell.Dollarify where
 
-import           Control.Applicative (Applicative ((<*>)), (<$>))
 import           Control.Monad       (unless)
 import           Data.Function       (on)
 import           Data.List           (sortBy)

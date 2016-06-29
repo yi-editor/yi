@@ -12,7 +12,6 @@
 
 module Yi.Keymap.Vim.Ex.Commands.Paste (parse) where
 
-import           Control.Applicative              ((<$>))
 import           Data.Monoid                      ((<>))
 import           Yi.Editor                        (getEditorDyn, printMsg)
 import           Yi.Keymap                        (Action (EditorA))

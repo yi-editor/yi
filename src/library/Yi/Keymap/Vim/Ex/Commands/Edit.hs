@@ -12,11 +12,11 @@
 
 module Yi.Keymap.Vim.Ex.Commands.Edit (parse) where
 
-import           Control.Applicative              (Alternative ((<|>)), (<$>))
+import           Control.Applicative              (Alternative ((<|>)))
 import           Control.Monad                    (void, when)
 import           Data.Maybe                       (isJust)
 import qualified Data.Text                        as T (Text, append, pack, unpack)
-import qualified Text.ParserCombinators.Parsec    as P (anyChar, many, many1, space, string, try, optionMaybe)
+import qualified Text.ParserCombinators.Parsec    as P (anyChar, many1, space, string, try, optionMaybe)
 import           Yi.Editor                        (MonadEditor (withEditor), newTabE)
 import           Yi.File                          (openNewFile)
 import           Yi.Keymap                        (Action (YiA))

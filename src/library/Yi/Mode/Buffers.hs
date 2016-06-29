@@ -12,7 +12,6 @@
 
 module Yi.Mode.Buffers (listBuffers) where
 
-import           Control.Applicative ((<$>))
 import           Control.Category    ((>>>))
 import           Control.Lens        (assign, (%~), (.~))
 import           Data.List.NonEmpty  (toList)

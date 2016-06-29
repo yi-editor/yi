@@ -120,7 +120,6 @@ module Yi.Buffer.HighLevel
     , markWord
     ) where
 
-import           Control.Applicative      (Applicative ((<*>)), (<$>))
 import           Control.Lens             (assign, over, use, (%=), (.=))
 import           Control.Lens.Cons        (_last)
 import           Control.Monad            (forM, forM_, replicateM_, unless, void, when)
@@ -129,7 +128,7 @@ import           Control.Monad.State      (gets)
 import           Data.Char                (isDigit, isHexDigit, isOctDigit, isSpace, isUpper, toLower, toUpper)
 import           Data.List                (intersperse, sort)
 import           Data.Maybe               (catMaybes, fromMaybe, listToMaybe)
-import           Data.Monoid              (Monoid (mempty), (<>))
+import           Data.Monoid              ((<>))
 import qualified Data.Text                as T (Text, toLower, toUpper, unpack)
 import           Data.Time                (UTCTime)
 import           Data.Tuple               (swap)

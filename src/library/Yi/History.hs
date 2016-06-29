@@ -17,13 +17,13 @@
 
 module Yi.History where
 
-import           Control.Applicative (liftA3, (<$>))
+import           Control.Applicative (liftA3)
 import           Control.Lens        (Lens', lens, set, (^.))
 import           Data.Binary         (Binary, get, put)
 import           Data.Default        (Default, def)
 import           Data.List           (nub)
 import qualified Data.Map            as M (Map, findWithDefault, insert, mapKeys)
-import           Data.Monoid         (mempty, (<>))
+import           Data.Monoid         ((<>))
 import qualified Data.Text           as T (Text, isPrefixOf, null, pack, unpack)
 import qualified Data.Text.Encoding  as E (decodeUtf8, encodeUtf8)
 import           Data.Typeable       (Typeable)

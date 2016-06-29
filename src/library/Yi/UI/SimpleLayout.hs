@@ -18,7 +18,6 @@ import           Prelude                        hiding (concatMap, mapM)
 import           Control.Lens                   (use, (.~), (&), (^.), to, _1)
 import           Control.Monad.State            (evalState, get, put)
 import           Data.Foldable                  (find, toList)
-import           Data.List                      (partition)
 import qualified Data.List.PointedList.Circular as PL (PointedList, focus)
 import qualified Data.Map.Strict                as M (Map, fromList)
 import           Data.Maybe                     (fromMaybe)
@@ -31,7 +30,6 @@ import qualified Yi.Rope                        as R (take, toString, toText)
 import           Yi.UI.Utils                    (arrangeItems)
 import           Yi.Window
 import           Yi.Tab                         (tabLayout)
-import qualified Yi.Layout                      as L (Layout)
 import           Yi.Layout                      (Rectangle(..), HasNeighborWest,
                                                  layoutToRectangles)
 

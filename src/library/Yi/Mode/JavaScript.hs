@@ -15,7 +15,6 @@
 
 module Yi.Mode.JavaScript (javaScriptMode, hooks) where
 
-import           Control.Applicative       ((<$>))
 import           Control.Lens              ((%~))
 import           Control.Monad.Writer.Lazy (execWriter)
 import           Data.Binary               (Binary)
@@ -24,7 +23,7 @@ import           Data.DList                as D (toList)
 import           Data.Foldable             as F (toList)
 import           Data.List                 (nub)
 import           Data.Maybe                (isJust)
-import           Data.Monoid               (Monoid (mempty), (<>))
+import           Data.Monoid               ((<>))
 import qualified Data.Text                 as T (unlines)
 import           Data.Typeable             (Typeable)
 import           System.FilePath.Posix     (takeBaseName)

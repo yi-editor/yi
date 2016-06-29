@@ -31,12 +31,12 @@ module Yi.Keymap.Vim.Common
 
 import           GHC.Generics              (Generic)
 
-import           Control.Applicative       (Alternative ((<|>)), (<$>))
+import           Control.Applicative       (Alternative ((<|>)))
 import           Control.Lens              (makeLenses)
 import           Data.Binary               (Binary (..))
 import           Data.Default              (Default (..))
 import qualified Data.HashMap.Strict       as HM (HashMap)
-import           Data.Monoid               (Monoid (mappend, mempty), (<>))
+import           Data.Monoid               ((<>))
 import           Data.String               (IsString (..))
 import qualified Data.Text                 as T (Text, isPrefixOf, pack)
 import qualified Data.Text.Encoding        as E (decodeUtf8, encodeUtf8)

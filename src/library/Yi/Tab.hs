@@ -21,7 +21,6 @@ module Yi.Tab
 
 import           Prelude               hiding (foldl, foldr)
 
-import           Control.Applicative   ((<$>), (<*>))
 import           Control.Lens          (Lens', lens, over, (^.))
 import qualified Data.Binary           as Binary (Binary, get, put)
 import           Data.Default          (def)

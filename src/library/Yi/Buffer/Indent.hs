@@ -31,7 +31,6 @@ module Yi.Buffer.Indent
     , tabB
     ) where
 
-import           Control.Applicative ((<$>))
 import           Control.Monad       ()
 import           Data.Char           (isSpace)
 import           Data.List           (nub, sort)

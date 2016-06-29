@@ -58,7 +58,6 @@ module Yi.Search (
         qrFinish
                  ) where
 
-import           Control.Applicative ((<$>))
 import           Control.Lens        (assign)
 import           Control.Monad       (void, when)
 import           Data.Binary         (Binary, get, put)

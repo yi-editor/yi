@@ -12,7 +12,6 @@
 
 module Yi.Keymap.Vim.ExMap (defExMap) where
 
-import           Control.Applicative      ((<$), (<$>))
 import           Control.Monad            (when)
 import           Data.Char                (isSpace)
 import           Data.Maybe               (fromJust)

@@ -12,12 +12,11 @@ module Yi.Keymap.Vim.InsertMap (defInsertMap) where
 
 import           Prelude                  hiding (head)
 
-import           Control.Applicative      ((<$))
 import           Control.Lens             (use)
 import           Control.Monad            (forM, liftM2, replicateM_, void, when)
 import           Data.Char                (isDigit)
 import           Data.List.NonEmpty       (NonEmpty (..), head, toList)
-import           Data.Monoid              (Monoid (mempty), (<>))
+import           Data.Monoid              ((<>))
 import qualified Data.Text                as T (pack, unpack)
 import qualified Yi.Buffer                as B (bdeleteB, deleteB, deleteRegionB, insertB, insertN)
 import           Yi.Buffer.Adjusted       as BA hiding (Insert)

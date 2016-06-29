@@ -5,7 +5,6 @@ module Yi.Config.Default ( defaultConfig, availableFrontends, defaultEmacsConfig
                          , defaultVimConfig, defaultCuaConfig, toVimStyleConfig
                          , toEmacsStyleConfig, toCuaStyleConfig) where
 
-import           Control.Applicative
 import           Control.Lens        ((.~), (^.), use)
 import           Control.Monad
 import           Data.Default

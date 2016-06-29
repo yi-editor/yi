@@ -46,7 +46,6 @@ module Yi.Core
 
 import           Prelude                        hiding (elem, mapM_, or)
 
-import           Control.Applicative            (Applicative (pure), (<$>))
 import           Control.Concurrent             (ThreadId, forkIO, forkOS,
                                                  modifyMVar, modifyMVar_,
                                                  newMVar, readMVar, threadDelay)
@@ -60,7 +59,7 @@ import           Control.Monad.Base             (MonadBase (liftBase))
 import           Control.Monad.Except           ()
 import           Control.Monad.Reader           (MonadReader (ask), ReaderT (runReaderT), asks)
 import qualified Data.DelayList                 as DelayList (decrease, insert)
-import           Data.Foldable                  (Foldable (foldMap), elem, find, forM_, mapM_, or, toList)
+import           Data.Foldable                  (elem, find, forM_, mapM_, or, toList)
 import           Data.List                      (partition)
 import           Data.List.NonEmpty             (NonEmpty (..))
 import qualified Data.List.PointedList.Circular as PL (PointedList (_focus), length)

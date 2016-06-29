@@ -12,7 +12,7 @@
 
 module Yi.Keymap.Vim.Ex.Commands.Buffer (parse) where
 
-import           Control.Applicative              (Alternative ((<|>)), Applicative ((*>)), (<$>))
+import           Control.Applicative              (Alternative ((<|>)))
 import           Control.Monad                    (void)
 import           Control.Monad.State              (gets)
 import qualified Data.Text                        as T (pack)

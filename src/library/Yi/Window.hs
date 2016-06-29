@@ -13,7 +13,6 @@
 
 module Yi.Window where
 
-import Control.Applicative (Applicative ((<*>)), (<$>))
 import Data.Binary         (Binary (..))
 import Data.Default        (Default (def))
 import Data.Typeable       (Typeable)

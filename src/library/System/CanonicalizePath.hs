@@ -22,7 +22,6 @@ import           System.FilePath          (normalise)
 import qualified System.Win32             as Win32
 #endif
 
-import           Control.Applicative      ((<$>))
 import           Control.Exc              (ignoringException)
 import           Control.Monad            (foldM)
 import           Data.List.Split          (splitOneOf)

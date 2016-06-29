@@ -29,10 +29,8 @@ module Yi.Syntax.Haskell ( PModule
                          , indentScanner
                          ) where
 
-import           Control.Applicative (Alternative ((<|>), empty, many, some),
-                                      Applicative (..), optional, (<$>))
+import           Control.Applicative (Alternative ((<|>), empty, many, some), optional)
 import           Control.Arrow       ((&&&))
-import           Data.Foldable       (Foldable)
 import           Data.List           ((\\))
 import           Data.Maybe          (fromJust, isNothing)
 import           Yi.IncrementalParse

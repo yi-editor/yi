@@ -25,11 +25,9 @@ module Yi.Buffer.Region
   , concatLinesB
   ) where
 
-import           Control.Applicative (Applicative ((<*>), pure), (<$>))
 import           Control.Monad       (when)
 import           Data.Char           (isSpace)
 import           Data.List           (sort)
-import           Data.Monoid         (mconcat)
 import           Yi.Buffer.Misc
 import           Yi.Region
 import           Yi.Rope             (YiString)

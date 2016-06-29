@@ -45,7 +45,7 @@ module Yi.Dired
 
 import           GHC.Generics             (Generic)
 
-import           Control.Applicative      ((<$>), (<|>))
+import           Control.Applicative      ((<|>))
 import           Control.Category         ((>>>))
 import           Control.Exc              (orException, printingException)
 import           Control.Lens             (assign, makeLenses, use, (%~), (&), (.=), (.~), (^.))
@@ -60,7 +60,7 @@ import qualified Data.Map                 as M (Map, assocs, delete, empty,
                                                 insert, keys, lookup, map,
                                                 mapKeys, union, (!))
 import           Data.Maybe               (fromMaybe)
-import           Data.Monoid              (mempty, (<>))
+import           Data.Monoid              ((<>))
 import qualified Data.Text                as T (Text, pack, unpack)
 import qualified Data.Text.ICU            as ICU (regex, find, group)
 import           Data.Time.Clock.POSIX    (posixSecondsToUTCTime)

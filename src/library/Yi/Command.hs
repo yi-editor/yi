@@ -15,7 +15,6 @@
 
 module Yi.Command where
 
-import           Control.Applicative ((<$>))
 import           Control.Exception   (SomeException)
 import           Control.Lens        (assign)
 import           Control.Monad       (void)

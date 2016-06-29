@@ -11,7 +11,6 @@
 
 module Yi.UI.TabBar where
 
-import           Control.Applicative            ((<$>))
 import           Control.Lens                   ((^.))
 import qualified Data.List.PointedList.Circular as PL (PointedList (_focus), withFocus)
 import qualified Data.Text                      as T (Text, pack, unpack)

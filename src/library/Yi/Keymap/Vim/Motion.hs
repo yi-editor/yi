@@ -51,7 +51,7 @@ module Yi.Keymap.Vim.Motion
 
 import           Prelude                    hiding (repeat)
 
-import           Control.Applicative        (Alternative ((<|>)), Applicative ((<*>)), (<$>))
+import           Control.Applicative        (Alternative ((<|>)))
 import           Control.Lens               (Field3 (_3), over, use)
 import           Control.Monad              (replicateM_, void, when, (<=<))
 import           Data.Maybe                 (fromMaybe)

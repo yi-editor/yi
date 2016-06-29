@@ -10,7 +10,7 @@
 
 module Yi.Keymap.Vim.Ex.Commands.Global (parse) where
 
-import           Control.Applicative                  (Alternative ((<|>)), (<$>))
+import           Control.Applicative                  (Alternative ((<|>)))
 import           Control.Lens                         (use)
 import           Control.Monad                        (forM_, void, when)
 import           Data.Monoid                          ((<>))

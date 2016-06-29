@@ -30,11 +30,11 @@ module Yi.Keymap.Vim.Ex.Commands.Common
     , needsSaving
     ) where
 
-import           Control.Applicative           (Alternative ((<|>)), Applicative ((*>), (<*)), (<$>))
+import           Control.Applicative           (Alternative ((<|>)))
 import           Control.Lens                  (use)
 import           Control.Monad                 (void, (>=>))
 import           Data.List.NonEmpty            (NonEmpty (..))
-import           Data.Monoid                   (Monoid (mconcat), (<>))
+import           Data.Monoid                   ((<>))
 import qualified Data.Text                     as T (Text, concat, cons, drop,
                                                      isPrefixOf, length, pack,
                                                      singleton, snoc, unpack)

@@ -31,7 +31,7 @@ module Yi.String (isBlank,
 import           Data.Char   (isAlphaNum, isSpace, toLower, toUpper)
 import           Data.List   (isSuffixOf)
 import           Data.Maybe  (fromMaybe)
-import           Data.Monoid (mconcat, (<>))
+import           Data.Monoid ((<>))
 import qualified Data.Text   as T (Text, break, commonPrefixes, empty,
                                    intercalate, pack, splitAt, splitOn, toUpper)
 import qualified Yi.Rope     as R (YiString, all, cons, head, init, intercalate,

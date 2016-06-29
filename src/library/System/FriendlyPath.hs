@@ -4,7 +4,6 @@ module System.FriendlyPath
   , isAbsolute'
   ) where
 
-import Control.Applicative     ((<$>))
 import System.CanonicalizePath (canonicalizePath)
 import System.Directory        (getHomeDirectory)
 import System.FilePath         (isAbsolute, normalise, pathSeparator)
