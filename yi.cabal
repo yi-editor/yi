@@ -257,7 +257,6 @@ library
     Yi.UI.Utils
     Yi.Verifier.JavaScript
     Yi.Window
-    Yi.Char.Unicode
 
   if flag(hint)
     build-depends: hint > 0.3.1
