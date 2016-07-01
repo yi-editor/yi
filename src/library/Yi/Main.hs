@@ -15,7 +15,7 @@ module Yi.Main (
 import Control.Monad.Error
 import Data.Char
 import Data.List (intercalate)
-import Distribution.Text (display)
+import Data.Version (showVersion)
 import System.Console.GetOpt
 import System.Exit
 #ifndef HLINT
@@ -106,7 +106,7 @@ openInTabsLong = "open-in-tabs"
 usage, versinfo :: String
 usage = usageInfo "Usage: yi [option...] [file]" options
 
-versinfo = "yi " ++ display version
+versinfo = "yi " ++ showVersion version
 
 -- | Transform the config with options
 do_args :: Config -> [String] -> Either Err (Config, ConsoleConfig)
