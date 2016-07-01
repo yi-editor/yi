@@ -174,8 +174,7 @@ completeVimTag s =
 tagsFile :: YiM (Maybe FilePath)
 tagsFile = do
     fs <- view tagsFileList <$> askCfg
-    let g f' f = do
-        case f' of
+    let g f' f = case f' of
             Just _ -> return f'
             Nothing -> tagsFileLocation f
     foldM g Nothing fs

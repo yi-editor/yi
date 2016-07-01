@@ -96,11 +96,11 @@ start config submitEvents submitActions editor = do
         inputLoop = tryTakeMVar endInput >>=
                     maybe (do
                             let go evs = do
-                                e <- getEvent
-                                done <- atomically (isEmptyTChan inputChan)
-                                if done
-                                then submitEvents (D.toList (evs `D.snoc` e))
-                                else go (evs `D.snoc` e)
+                                    e <- getEvent
+                                    done <- atomically (isEmptyTChan inputChan)
+                                    if done
+                                    then submitEvents (D.toList (evs `D.snoc` e))
+                                    else go (evs `D.snoc` e)
                             go D.empty
                             inputLoop)
                           (const $ return ())

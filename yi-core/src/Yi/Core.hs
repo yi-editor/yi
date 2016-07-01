@@ -296,16 +296,16 @@ checkFileChanges e0 = do
          FileBuffer fname -> do
             fe <- doesFileExist fname
             if not fe then nothing else do
-            modTime <- fileModTime fname
-            if b ^. lastSyncTimeA < modTime
-               then if isUnchangedBuffer b
-                 then R.readFile fname >>= return . \case
-                        Left m ->
-                          (runDummy b (readOnlyA .= True), Just $ msg3 m)
-                        Right (newContents, c) ->
-                          (runDummy b (revertB newContents (Just c) now), Just msg1)
-                 else return (b, Just msg2)
-               else nothing
+                modTime <- fileModTime fname
+                if b ^. lastSyncTimeA < modTime
+                   then if isUnchangedBuffer b
+                     then R.readFile fname >>= return . \case
+                            Left m ->
+                              (runDummy b (readOnlyA .= True), Just $ msg3 m)
+                            Right (newContents, c) ->
+                              (runDummy b (revertB newContents (Just c) now), Just msg1)
+                     else return (b, Just msg2)
+                   else nothing
          _ -> nothing
     else nothing
   -- show appropriate update message if applicable
