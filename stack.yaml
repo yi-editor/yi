@@ -9,6 +9,6 @@ packages:
 - yi
 extra-deps:
 - Hclip-3.0.0.3
-resolver: nightly-2016-06-27
+resolver: lts-6.5
 nix:
     shell-file: shell.nix
