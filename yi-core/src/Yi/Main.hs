@@ -69,9 +69,7 @@ data Opts = Help
 
 -- | List of editors for which we provide an emulation.
 editors :: [(String,Config -> Config)]
-editors = [("emacs", toEmacsStyleConfig),
-           ("vim",  toVimStyleConfig),
-           ("cua",   toCuaStyleConfig)]
+editors = []
 
 options :: [OptDescr Opts]
 options =

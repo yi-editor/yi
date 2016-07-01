@@ -1,0 +1,14 @@
+flags: {}
+packages:
+- yi-core
+- yi-frontend-vty
+# - yi-frontend-pango
+- yi-keymap-cua
+- yi-keymap-emacs
+- yi-keymap-vim
+- yi
+extra-deps:
+- Hclip-3.0.0.3
+resolver: nightly-2016-06-27
+nix:
+    shell-file: shell.nix

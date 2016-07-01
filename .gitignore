@@ -23,4 +23,3 @@ cabal.sandbox.config
 tags
 TAGS
 .stack-work/
-stack.yaml
