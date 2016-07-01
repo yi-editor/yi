@@ -389,7 +389,7 @@ Test-Suite test-suite
     Vim.TestPureEditorManipulations
   build-depends:
     base,
-    lens >= 4.7,
+    microlens-platform,
     semigroups,
     tasty,
     tasty-hunit,
