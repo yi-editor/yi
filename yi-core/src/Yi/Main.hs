@@ -33,11 +33,6 @@ import Yi.Keymap
 import Yi.Paths (getConfigDir)
 import Paths_yi_core
 
-frontendNames :: [String]
-frontendNames = fmap fst' availableFrontends
-  where fst' :: (a,UIBoot) -> a
-        fst' (x,_) = x
-
 data Err = Err String ExitCode
 
 instance Error Err where
@@ -93,7 +88,7 @@ options =
   , Option []     ["as"]          (ReqArg EditorNm   "EDITOR")   editorHelp
   , Option []     ["ghc-option"]  (ReqArg GhcOption  "OPTION")   "Specify option to pass to ghc when compiling configuration file"
   , Option [openInTabsShort] [openInTabsLong] (NoArg  OpenInTabs)  "Open files in tabs"
-  ] where frontendHelp = "Select frontend, which can be one of:\n" ++ intercalate ", " frontendNames
+  ] where frontendHelp = "Select frontend"
           editorHelp   = "Start with editor keymap, where editor is one of:\n" ++ (intercalate ", " . fmap fst) editors
 
 openInTabsShort :: Char
@@ -122,9 +117,7 @@ do_args cfg args =
 getConfig :: Bool -> (Config, ConsoleConfig) -> Opts -> Either Err (Config, ConsoleConfig)
 getConfig shouldOpenInTabs (cfg, cfgcon) opt =
     case opt of
-      Frontend f -> case lookup f availableFrontends of
-                      Just frontEnd -> return (cfg { startFrontEnd = frontEnd }, cfgcon)
-                      Nothing       -> fail "Panic: frontend not found"
+      Frontend _    -> fail "Panic: frontend not found"
       Help          -> throwError $ Err usage ExitSuccess
       Version       -> throwError $ Err versinfo ExitSuccess
       Debug         -> return (cfg { debugMode = True }, cfgcon)

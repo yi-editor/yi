@@ -80,10 +80,6 @@ flag pango
   Default: False
   Description: Build with Pango frontend
 
-flag vty
-  Default: True
-  Description: Build with Vty frontend
-
 flag hint
   Default: True
   Description: Include hint (haskell interpreter) in yi
@@ -226,7 +222,6 @@ library
     Yi.TextCompletion
     Yi.Types
     Yi.UI.Common
-    Yi.UI.Batch
     Yi.UI.SimpleLayout
     Yi.UI.TabBar
     Yi.UI.Utils
@@ -284,29 +279,6 @@ library
   if os(windows)
     build-depends:
       Win32
-
-  -- Frontends
-  if flag(pango)
-    exposed-modules:
-      Yi.UI.Pango
-      Yi.UI.Pango.Control
-    other-modules:
-      Yi.UI.Pango.Layouts
-      Yi.UI.Pango.Utils
-    build-depends:
-      gtk   >= 0.13 && < 0.15,
-      glib  >= 0.13 && < 0.14,
-      pango >= 0.13 && < 0.14
-    cpp-options: -DFRONTEND_PANGO
-
-  if flag(vty)
-    exposed-modules:
-      Yi.UI.Vty
-      Yi.UI.Vty.Conversions
-    build-depends:
-      vty >= 5.4,
-      stm >= 2.2
-    cpp-options: -DFRONTEND_VTY
 
   other-modules:
     Paths_yi_core,

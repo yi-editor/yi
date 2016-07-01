@@ -26,10 +26,6 @@
 
 module Yi.Types where
 
-#ifdef FRONTEND_VTY
-import qualified Graphics.Vty as Vty (Config)
-#endif
-
 import           Control.Concurrent             (MVar, modifyMVar, modifyMVar_, readMVar)
 import           Control.Monad.Base             (MonadBase, liftBase)
 import           Control.Monad.Reader           (MonadReader, ReaderT, ask, asks, runReaderT)
@@ -381,9 +377,6 @@ runEditor cfg f e = let (a, e') = runState (runReaderT (fromEditorM f) cfg) e
 -- Yi.Config
 
 data UIConfig = UIConfig {
-#ifdef FRONTEND_VTY
-   configVty :: Vty.Config,
-#endif
    configFontName :: Maybe String,  -- ^ Font name, for the UI that support it.
    configFontSize :: Maybe Int,     -- ^ Font size, for the UI that support it.
    configScrollStyle :: Maybe ScrollStyle,

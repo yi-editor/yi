@@ -2,7 +2,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 
 -- |
--- Module      :  Yi.UI.Vty
+-- Module      :  Yi.Frontend.Vty
 -- License     :  GPL-2
 -- Maintainer  :  yi-devel@googlegroups.com
 -- Stability   :  experimental
@@ -12,7 +12,7 @@
 --
 -- Originally derived from: riot/UI.hs Copyright (c) Tuomo Valkonen 2004.
 
-module Yi.UI.Vty
+module Yi.Frontend.Vty
     ( start
     ) where
 
@@ -47,6 +47,7 @@ import qualified Graphics.Vty                   as Vty (Attr, Cursor (Cursor, No
                                                         defAttr, emptyImage,
                                                         horizCat, mkVty,
                                                         picForLayers,
+                                                        standardIOConfig,
                                                         reverseVideo, text',
                                                         translate, underline,
                                                         vertCat, withBackColor,
@@ -63,7 +64,7 @@ import qualified Yi.UI.SimpleLayout             as SL
 import           Yi.Layout                      (HasNeighborWest)
 import           Yi.UI.TabBar                   (TabDescr (TabDescr), tabBarDescr)
 import           Yi.UI.Utils                    (arrangeItems, attributesPictureAndSelB)
-import           Yi.UI.Vty.Conversions          (colorToAttr, fromVtyEvent)
+import           Yi.Frontend.Vty.Conversions          (colorToAttr, fromVtyEvent)
 import           Yi.Window                      (Window (bufkey, isMini, wkey))
 
 
@@ -84,7 +85,7 @@ data FrontendState = FrontendState
 
 start :: UIBoot
 start config submitEvents submitActions editor = do
-    vty <- (Vty.mkVty . configVty . configUI) config
+    vty <- Vty.mkVty =<< Vty.standardIOConfig
     let inputChan = Vty._eventChannel (Vty.inputIface vty)
     endInput <- newEmptyMVar
     endMain <- newEmptyMVar
