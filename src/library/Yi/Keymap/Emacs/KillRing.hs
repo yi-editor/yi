@@ -9,18 +9,20 @@
 
 module Yi.Keymap.Emacs.KillRing where
 
-import           Lens.Micro         (assign, use, uses, (%=), (.=))
-import           Control.Monad      (replicateM_, when)
-import           Data.List.NonEmpty (NonEmpty ((:|)))
-import           Data.Maybe         (fromMaybe)
+import           Lens.Micro.Platform (use, (%=), (.=))
+import           Control.Monad       (replicateM_, when)
+import           Data.List.NonEmpty  (NonEmpty ((:|)))
+import           Data.Maybe          (fromMaybe)
 import           Yi.Buffer
-import           Yi.Editor          (EditorM, killringA, withCurrentBuffer)
-import           Yi.Keymap          (YiM)
-import           Yi.KillRing        (Killring (_krContents), krKilled, krPut)
-import qualified Yi.Rope            as R (YiString, fromString, toString)
-import           Yi.Types           (withEditor)
-import           Yi.Utils           (io)
-import           System.Hclip       (getClipboard, setClipboard)
+import           Yi.Editor           (EditorM, killringA, withCurrentBuffer)
+import           Yi.Keymap           (YiM)
+import           Yi.KillRing         (Killring (_krContents), krKilled, krPut)
+import qualified Yi.Rope             as R (YiString, fromString, toString)
+import           Yi.Types            (withEditor)
+import           Yi.Utils            (io)
+import           System.Hclip        (getClipboard, setClipboard)
+
+uses l f = f <$> use l
 
 -- * Killring actions
 
@@ -85,7 +87,7 @@ killRingSaveE = do
   (r, text) <- withCurrentBuffer $ do
     r <- getSelectRegionB
     text <- readRegionB r
-    assign highlightSelectionA False
+    highlightSelectionA .= False
     return (r, text)
   killringPut (regionDirection r) text
 

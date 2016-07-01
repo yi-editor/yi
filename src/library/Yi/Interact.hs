@@ -68,8 +68,7 @@ module Yi.Interact
 
 import           Control.Applicative (Alternative ((<|>), empty))
 import           Control.Arrow       (first)
-import           Lens.Micro          (_1, _2)
-import           Lens.Micro.Extras   (view)
+import           Lens.Micro.Platform          (_1, _2, view)
 import           Control.Monad.State (MonadPlus (..), MonadTrans (lift), StateT)
 import           Data.Function       (on)
 import           Data.List           (groupBy)

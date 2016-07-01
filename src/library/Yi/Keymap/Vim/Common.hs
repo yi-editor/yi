@@ -32,7 +32,7 @@ module Yi.Keymap.Vim.Common
 import           GHC.Generics              (Generic)
 
 import           Control.Applicative       (Alternative ((<|>)))
-import           Lens.Micro                (makeLenses)
+import           Lens.Micro.Platform                (makeLenses)
 import           Data.Binary               (Binary (..))
 import           Data.Default              (Default (..))
 import qualified Data.HashMap.Strict       as HM (HashMap)

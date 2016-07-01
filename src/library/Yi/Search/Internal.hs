@@ -11,7 +11,7 @@
 
 module Yi.Search.Internal where
 
-import           Lens.Micro   (assign, use)
+import           Lens.Micro.Platform   ((.=), use)
 import           Yi.Editor    (EditorM, currentRegexA)
 import           Yi.Regex     (SearchExp)
 
@@ -25,11 +25,11 @@ import           Yi.Regex     (SearchExp)
 
 -- | Put regex into regex 'register'
 setRegexE :: SearchExp -> EditorM ()
-setRegexE re = assign currentRegexA (Just re)
+setRegexE re = currentRegexA .= (Just re)
 
 -- | Clear the regex 'register'
 resetRegexE :: EditorM ()
-resetRegexE = assign currentRegexA Nothing
+resetRegexE = currentRegexA .= Nothing
 
 -- | Return contents of regex register
 getRegexE :: EditorM (Maybe SearchExp)

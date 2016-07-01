@@ -5,7 +5,7 @@
 module Yi.Config.Simple.Types
  where
 
-import Lens.Micro          (Lens')
+import Lens.Micro.Platform (Lens')
 import Control.Monad.Base  (MonadBase)
 import Control.Monad.State (MonadState, StateT)
 import Yi.Config           (Config, configVariable)

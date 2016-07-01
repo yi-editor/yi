@@ -13,7 +13,7 @@
 
 module Yi.Config.Lens where
 
-import Lens.Micro        (Lens)
+import Lens.Micro.Platform        (Lens)
 import Data.Default      (Default (def))
 import Data.DynamicState (_dyn)
 import Yi.Types          (Config (..), UIConfig (..), YiConfigVariable)

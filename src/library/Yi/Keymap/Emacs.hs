@@ -27,7 +27,7 @@ module Yi.Keymap.Emacs ( keymap
                        ) where
 
 import Control.Applicative      (Alternative ((<|>), empty, some))
-import Lens.Micro               (assign, makeLenses, (%=))
+import Lens.Micro.Platform      ((.=), makeLenses, (%=))
 import Control.Monad            (replicateM_, unless, void)
 import Control.Monad.State      (gets)
 import Data.Char                (digitToInt, isDigit)
@@ -285,7 +285,7 @@ emacsKeys univArg =
                  , ctrlCh 's'    ?>>! fwriteE
                  , ctrlCh 'w'    ?>>! promptFile "Write file:" (void . fwriteToE)
                  , ctrlCh 'x'    ?>>! (exchangePointAndMarkB >>
-                                       assign highlightSelectionA True)
+                                       highlightSelectionA .= True)
                  , char 'b'      ?>>! switchBufferE
                  , char 'd'      ?>>! dired
                  , char 'e' ?>>

@@ -13,7 +13,7 @@ module Yi.Keymap.Vim.NormalMap (defNormalMap) where
 
 import           Prelude                    hiding (lookup)
 
-import           Lens.Micro                 (assign, use, (.=))
+import           Lens.Micro.Platform        (use, (.=))
 import           Control.Monad              (replicateM_, unless, void, when)
 import           Data.Char                  (ord)
 import           Data.HashMap.Strict        (lookup, singleton)
@@ -380,7 +380,7 @@ searchWordE wholeWord dir = do
 
   let search re = do
         setRegexE re
-        assign searchDirectionA dir
+        searchDirectionA .= dir
         withCount $ continueSearching (const dir)
 
   if wholeWord

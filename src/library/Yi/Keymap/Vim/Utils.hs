@@ -29,7 +29,7 @@ module Yi.Keymap.Vim.Utils
   , pasteFromClipboard
   ) where
 
-import           Lens.Micro               ((.=), use)
+import           Lens.Micro.Platform               ((.=), use)
 import           Control.Monad            (forM_, void, when)
 import           Data.Char                (isSpace)
 import           Data.Foldable            (asum)

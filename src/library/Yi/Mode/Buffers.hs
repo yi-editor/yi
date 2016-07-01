@@ -13,7 +13,7 @@
 module Yi.Mode.Buffers (listBuffers) where
 
 import           Control.Category    ((>>>))
-import           Lens.Micro          (assign, (%~), (.~))
+import           Lens.Micro.Platform ((.=), (%~), (.~))
 import           Data.List.NonEmpty  (toList)
 import qualified Data.Text           as T (intercalate, pack)
 import           System.FilePath     (takeFileName)
@@ -35,7 +35,7 @@ listBuffers = do
   withCurrentBuffer $ do
     modifyMode $ modeKeymapA .~ topKeymapA %~ bufferKeymap
                  >>> modeNameA .~ "buffers"
-    assign readOnlyA True
+    readOnlyA .= True
 
 -- | Switch to the buffer with name at current name. If it it starts
 -- with a @/@ then assume it's a file and try to open it that way.
@@ -62,4 +62,4 @@ bufferKeymap = important $ choice
   , char 'v'                        ?>>! (switch >> setReadOnly True)
   ]
   where
-    setReadOnly = withCurrentBuffer . assign readOnlyA
+    setReadOnly = withCurrentBuffer . (.=) readOnlyA
