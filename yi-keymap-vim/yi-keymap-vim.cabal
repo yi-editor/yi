@@ -37,6 +37,7 @@ library
     parsec,
     pointedlist,
     safe,
+    semigroups,
     text,
     transformers-base,
     unordered-containers,
