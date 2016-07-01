@@ -25,7 +25,7 @@ library
 
   build-depends:
     base,
-    lens,
+    microlens-platform,
     text,
     yi-core,
     yi-keymap-emacs,
