@@ -23,7 +23,7 @@ module Yi.Mode.Abella
   , abellaSend
   ) where
 
-import           Control.Lens        (assign, use, (%~), (&), (.=), (.~))
+import           Lens.Micro.Platform (use, (%~), (&), (.=), (.~))
 import           Control.Monad       (join, when)
 import           Data.Binary         (Binary)
 import           Data.Char           (isSpace)
@@ -73,7 +73,7 @@ getTheoremPointMark = getMarkB $ Just "t"
 abellaEval :: YiM ()
 abellaEval = do
   reg <- withCurrentBuffer . savingPointB $ do
-    join (assign . markPointA <$> getProofPointMark <*> pointB)
+    join ((.=) . markPointA <$> getProofPointMark <*> pointB)
     leftB
     readRegionB =<< regionOfNonEmptyB unitSentence
   abellaSend reg
@@ -95,21 +95,21 @@ abellaNext = do
     rightB
     untilB_ (not . isSpace <$> readB) rightB
     untilB_ ((/= '%') <$> readB) $ moveToEol >> rightB >> firstNonSpaceB
-    join (assign . markPointA <$> getProofPointMark <*> pointB)
+    join ((.=) . markPointA <$> getProofPointMark <*> pointB)
 
 abellaUndo :: YiM ()
 abellaUndo = do
   abellaSend "undo."
   withCurrentBuffer $ do
     moveB unitSentence Backward
-    join (assign . markPointA <$> getProofPointMark <*> pointB)
+    join ((.=) . markPointA <$> getProofPointMark <*> pointB)
 
 abellaAbort :: YiM ()
 abellaAbort = do
   abellaSend "abort."
   withCurrentBuffer $ do
     moveTo =<< use . markPointA =<< getTheoremPointMark
-    join (assign . markPointA <$> getProofPointMark <*> pointB)
+    join ((.=) . markPointA <$> getProofPointMark <*> pointB)
 
 -- | Start Abella in a buffer
 abella :: CommandArguments -> YiM BufferRef
@@ -137,7 +137,7 @@ abellaSend :: R.YiString -> YiM ()
 abellaSend cmd' = do
   let cmd = R.toText cmd'
   when ("Theorem" `T.isInfixOf` cmd) $
-    withCurrentBuffer $ join (assign . markPointA <$> getTheoremPointMark <*> pointB)
+    withCurrentBuffer $ join ((.=) . markPointA <$> getTheoremPointMark <*> pointB)
   b <- abellaGet
   withGivenBuffer b botB
   sendToProcess b . T.unpack $ cmd `T.snoc` '\n'
