@@ -33,7 +33,7 @@ module Yi.File (
   preSaveHooks
  ) where
 
-import           Control.Lens           (assign, makeLenses, use, view, (^.))
+import           Lens.Micro             (assign, makeLenses, use, view, (^.))
 import           Control.Monad          (filterM, void, when)
 import           Control.Monad.Base     (liftBase)
 import           Data.Default           (Default, def)

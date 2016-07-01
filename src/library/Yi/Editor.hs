@@ -100,7 +100,7 @@ module Yi.Editor ( Editor(..), EditorM, MonadEditor(..)
 
 import           Prelude                        hiding (all, concatMap, foldl, foldr)
 
-import           Control.Lens                   (Lens', assign, lens, mapped,
+import           Lens.Micro                     (Lens', assign, lens, mapped,
                                                  use, uses, view, (%=), (%~),
                                                  (&), (.~), (^.))
 import           Control.Monad                  (forM_, liftM)

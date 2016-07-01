@@ -24,7 +24,7 @@ module Yi.Keymap.Vim.Tag
 
 import           GHC.Generics (Generic)
 
-import           Control.Lens        (view)
+import           Lens.Micro        (view)
 import           Control.Monad       (foldM, void)
 import           Data.Binary         (Binary (..))
 import           Data.Default        (Default (..))

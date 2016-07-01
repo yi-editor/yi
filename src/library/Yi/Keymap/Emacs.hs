@@ -27,7 +27,7 @@ module Yi.Keymap.Emacs ( keymap
                        ) where
 
 import Control.Applicative      (Alternative ((<|>), empty, some))
-import Control.Lens             (assign, makeLenses, (%=))
+import Lens.Micro               (assign, makeLenses, (%=))
 import Control.Monad            (replicateM_, unless, void)
 import Control.Monad.State      (gets)
 import Data.Char                (digitToInt, isDigit)

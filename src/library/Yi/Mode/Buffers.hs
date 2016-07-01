@@ -13,7 +13,7 @@
 module Yi.Mode.Buffers (listBuffers) where
 
 import           Control.Category    ((>>>))
-import           Control.Lens        (assign, (%~), (.~))
+import           Lens.Micro          (assign, (%~), (.~))
 import           Data.List.NonEmpty  (toList)
 import qualified Data.Text           as T (intercalate, pack)
 import           System.FilePath     (takeFileName)

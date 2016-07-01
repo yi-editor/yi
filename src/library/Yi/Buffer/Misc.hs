@@ -197,7 +197,9 @@ module Yi.Buffer.Misc
 
 import           Prelude                        hiding (foldr, mapM, notElem)
 
-import           Control.Lens                   (Lens', assign, lens, use, uses, view, (%=), (%~), (.=), (^.))
+import           Lens.Micro                     (Lens', lens, (%~), (^.))
+import           Lens.Micro.Extras              (view)
+import           Lens.Micro.Mtl                 (use, (.=), (%=))
 import           Control.Monad.RWS.Strict       (Endo (Endo, appEndo),
                                                  MonadReader (ask), MonadState,
                                                  MonadWriter (tell),
@@ -231,6 +233,8 @@ import           Yi.Types
 import           Yi.Utils                       (SemiNum ((+~)), makeClassyWithSuffix, makeLensesWithSuffix)
 import           Yi.Window                      (Window (width, wkey, actualLines), dummyWindow)
 
+
+assign = (.=)
 
 -- In addition to Buffer's text, this manages (among others):
 --  * Log of updates mades
@@ -446,7 +450,7 @@ runBufferFull w b f =
                                    selMark = MarkValue 0 Backward, -- sel
                                    fromMark = MarkValue 0 Backward } -- from
                     else do
-                        Just mrks  <- uses winMarksA (M.lookup $ wkey (b ^. lastActiveWindowA))
+                        Just mrks  <- return . (M.lookup $ wkey (b ^. lastActiveWindowA)) =<< use winMarksA 
                         forM mrks getMarkValueB
                 newMrks <- forM newMarkValues newMarkB
                 winMarksA %= M.insert (wkey w) newMrks

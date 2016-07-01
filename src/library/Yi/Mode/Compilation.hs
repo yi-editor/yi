@@ -11,7 +11,7 @@
 -- A 'Mode' for working with buffers showing the results of compilations.
 module Yi.Mode.Compilation where
 
-import           Control.Lens         ((%~), (&), (.~))
+import           Lens.Micro           ((%~), (&), (.~))
 import           Data.Text            ()
 import           Yi.Buffer
 import           Yi.Core              (withSyntax)

@@ -19,7 +19,7 @@ module Yi.Keymap.Cua ( keymap
                      ) where
 
 import           Control.Applicative      (Alternative ((<|>)))
-import           Control.Lens             (assign, use)
+import           Lens.Micro               (assign, use)
 import           Control.Monad            (unless, when)
 import qualified Data.Text                as T (drop, take)
 import           Yi.Buffer

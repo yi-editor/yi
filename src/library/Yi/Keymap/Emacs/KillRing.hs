@@ -9,7 +9,7 @@
 
 module Yi.Keymap.Emacs.KillRing where
 
-import           Control.Lens       (assign, use, uses, (%=), (.=))
+import           Lens.Micro         (assign, use, uses, (%=), (.=))
 import           Control.Monad      (replicateM_, when)
 import           Data.List.NonEmpty (NonEmpty ((:|)))
 import           Data.Maybe         (fromMaybe)

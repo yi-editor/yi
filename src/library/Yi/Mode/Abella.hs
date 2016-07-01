@@ -23,7 +23,7 @@ module Yi.Mode.Abella
   , abellaSend
   ) where
 
-import           Control.Lens        (assign, use, (%~), (&), (.=), (.~))
+import           Lens.Micro          (assign, use, (%~), (&), (.=), (.~))
 import           Control.Monad       (join, when)
 import           Data.Binary         (Binary)
 import           Data.Char           (isSpace)

@@ -66,7 +66,7 @@ module Yi.Hooks(
  )
   where
 
-import Control.Lens           ((^.))
+import Lens.Micro             ((^.))
 import Yi.Config              (configVariable)
 import Yi.Config.Simple.Types (Field, customVariable)
 import Yi.Editor              (EditorM, askCfg)

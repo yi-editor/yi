@@ -18,7 +18,7 @@
 module Yi.History where
 
 import           Control.Applicative (liftA3)
-import           Control.Lens        (Lens', lens, set, (^.))
+import           Lens.Micro          (Lens', lens, set, (^.))
 import           Data.Binary         (Binary, get, put)
 import           Data.Default        (Default, def)
 import           Data.List           (nub)

@@ -21,7 +21,7 @@ module Yi.Modes (TokenBasedMode, fundamentalMode,
                  gitCommitMode, rubyMode, styleMode
                 ) where
 
-import           Control.Lens        ((%~), (&), (.~), (^.))
+import           Lens.Micro          ((%~), (&), (.~), (^.))
 import           Data.List           (isPrefixOf)
 import           Data.Maybe          (fromMaybe, isJust)
 import           System.FilePath     (takeDirectory, takeExtension, takeFileName)

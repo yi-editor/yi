@@ -11,7 +11,7 @@
 
 module Yi.Search.Internal where
 
-import           Control.Lens (assign, use)
+import           Lens.Micro   (assign, use)
 import           Yi.Editor    (EditorM, currentRegexA)
 import           Yi.Regex     (SearchExp)
 

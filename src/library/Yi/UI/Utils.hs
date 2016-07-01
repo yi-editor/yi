@@ -15,7 +15,7 @@ module Yi.UI.Utils where
 import           Prelude                   hiding (mapM)
 
 import           Control.Arrow             (second)
-import           Control.Lens              (use)
+import           Lens.Micro                (use)
 import           Control.Monad.State       (evalState, modify)
 import           Control.Monad.State.Class (gets)
 import           Data.Foldable             (maximumBy)

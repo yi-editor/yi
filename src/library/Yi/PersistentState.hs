@@ -21,7 +21,7 @@ where
 import GHC.Generics (Generic)
 
 import           Control.Exc            (ignoringException)
-import           Control.Lens           (assign, makeLenses, use)
+import           Lens.Micro             (assign, makeLenses, use)
 import           Control.Monad          (when)
 import           Data.Binary            (Binary, decodeFile, encodeFile)
 import           Data.Default           (Default, def)

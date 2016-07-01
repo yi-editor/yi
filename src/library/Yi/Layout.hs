@@ -51,7 +51,7 @@ module Yi.Layout
 
 import           Control.Applicative        ((<|>))
 import           Control.Arrow              (first)
-import           Control.Lens               (Lens', lens)
+import           Lens.Micro                 (Lens', lens)
 import qualified Control.Monad.State.Strict as Monad (State, evalState, get, put)
 import           Data.Default               (Default, def)
 import           Data.List                  (foldl', mapAccumL)

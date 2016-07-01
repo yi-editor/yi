@@ -120,8 +120,9 @@ module Yi.Buffer.HighLevel
     , markWord
     ) where
 
-import           Control.Lens             (assign, over, use, (%=), (.=))
-import           Control.Lens.Cons        (_last)
+import           Lens.Micro               
+--import           Control.Lens             (assign, over, use, (%=), (.=))
+--import           Control.Lens.Cons        (_last)
 import           Control.Monad            (forM, forM_, replicateM_, unless, void, when)
 import           Control.Monad.RWS.Strict (ask)
 import           Control.Monad.State      (gets)

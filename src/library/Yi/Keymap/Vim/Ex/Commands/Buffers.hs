@@ -12,7 +12,7 @@
 module Yi.Keymap.Vim.Ex.Commands.Buffers (parse) where
 
 import           Control.Applicative              (Alternative ((<|>)))
-import           Control.Lens                     (view)
+import           Lens.Micro                     (view)
 import           Control.Monad                    (void)
 import qualified Data.Map                         as M (elems, mapWithKey)
 import qualified Data.Text                        as T (intercalate, pack, unlines)

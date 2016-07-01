@@ -13,7 +13,7 @@ module Yi.Keymap.Vim.NormalMap (defNormalMap) where
 
 import           Prelude                    hiding (lookup)
 
-import           Control.Lens               (assign, use, (.=))
+import           Lens.Micro                 (assign, use, (.=))
 import           Control.Monad              (replicateM_, unless, void, when)
 import           Data.Char                  (ord)
 import           Data.HashMap.Strict        (lookup, singleton)

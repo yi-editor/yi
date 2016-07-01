@@ -41,7 +41,7 @@ module Yi.Eval (
 
 import Prelude hiding (mapM_)
 
-import Control.Lens ( (^.), (<&>), (.=), (%=) )
+import Lens.Micro ( (^.), (<&>), (.=), (%=) )
 import Control.Monad (when, void, forever)
 import Data.Array ( elems )
 import Data.Binary ( Binary )

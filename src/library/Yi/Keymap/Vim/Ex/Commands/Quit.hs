@@ -15,7 +15,7 @@
 module Yi.Keymap.Vim.Ex.Commands.Quit (parse) where
 
 import           Control.Applicative              (Alternative ((<|>)))
-import           Control.Lens                     (use, uses)
+import           Lens.Micro                       (use, uses)
 import           Control.Monad                    (void, when)
 import           Data.Foldable                    (find)
 import qualified Data.List.PointedList.Circular   as PL (length)

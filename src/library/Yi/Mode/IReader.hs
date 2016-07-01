@@ -14,7 +14,7 @@
 
 module Yi.Mode.IReader where
 
-import Control.Lens   ((%~))
+import Lens.Micro   ((%~))
 import Data.Char      (intToDigit)
 import Data.Text      ()
 import Yi.Buffer.Misc

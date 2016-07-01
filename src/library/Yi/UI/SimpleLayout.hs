@@ -15,7 +15,7 @@ module Yi.UI.SimpleLayout
 
 import           Prelude                        hiding (concatMap, mapM)
 
-import           Control.Lens                   (use, (.~), (&), (^.), to, _1)
+import           Lens.Micro                     (use, (.~), (&), (^.), to, _1)
 import           Control.Monad.State            (evalState, get, put)
 import           Data.Foldable                  (find, toList)
 import qualified Data.List.PointedList.Circular as PL (PointedList, focus)

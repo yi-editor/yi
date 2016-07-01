@@ -16,7 +16,7 @@
 module Yi.Command where
 
 import           Control.Exception   (SomeException)
-import           Control.Lens        (assign)
+import           Lens.Micro          (assign)
 import           Control.Monad       (void)
 import           Control.Monad.Base  (liftBase)
 import           Data.Binary         (Binary)
