@@ -1,9 +1,7 @@
 {-# LANGUAGE CPP               #-}
 {-# LANGUAGE OverloadedStrings #-}
 
-module Yi.Config.Default ( defaultConfig, defaultEmacsConfig
-                         , defaultVimConfig, defaultCuaConfig, toVimStyleConfig
-                         , toEmacsStyleConfig, toCuaStyleConfig) where
+module Yi.Config.Default (defaultConfig) where
 
 import           Control.Lens        ((.~), (^.), use)
 import           Control.Monad
@@ -26,10 +24,7 @@ import           Yi.File
 import qualified Yi.Interact         as I
 import           Yi.IReader          (saveAsNewArticle)
 import           Yi.Keymap
-import qualified Yi.Keymap.Cua       as Cua
-import qualified Yi.Keymap.Emacs     as Emacs
 import           Yi.Keymap.Keys
-import qualified Yi.Keymap.Vim       as Vim
 import           Yi.Layout
 import qualified Yi.Mode.Abella      as Abella
 import qualified Yi.Mode.Haskell     as Haskell
@@ -150,58 +145,6 @@ defaultConfig =
          , layoutManagers = [hPairNStack 1, vPairNStack 1, tall, wide]
          , configVars = mempty
          }
-
-defaultEmacsConfig, defaultVimConfig, defaultCuaConfig :: Config
-defaultEmacsConfig = toEmacsStyleConfig defaultConfig
-defaultVimConfig = toVimStyleConfig defaultConfig
-defaultCuaConfig = toCuaStyleConfig defaultConfig
-
-toEmacsStyleConfig, toVimStyleConfig, toCuaStyleConfig :: Config -> Config
-toEmacsStyleConfig cfg
-    = cfg {
-            configUI = (configUI cfg)
-                       { configScrollStyle = Just SnapToCenter
-                       },
-            defaultKm = Emacs.keymap,
-            startActions = makeAction openScratchBuffer : startActions cfg,
-            configInputPreprocess = escToMeta,
-            configKillringAccumulate = True
-          }
-
--- | Input preprocessor: Transform Esc;Char into Meta-Char
--- Useful for emacs lovers ;)
-escToMeta :: I.P Event Event
-escToMeta = mkAutomaton $ forever $ (anyEvent >>= I.write) ||> do
-    void $ event (spec KEsc)
-    c <- printableChar
-    I.write (Event (KASCII c) [MMeta])
-
-toVimStyleConfig cfg = cfg
-  { defaultKm = Vim.keymapSet
-  , configUI = (configUI cfg)
-      { configScrollStyle = Just SingleLine
-      }
-  , configRegionStyle = Inclusive
-  }
-
-toCuaStyleConfig cfg = cfg {defaultKm = Cua.keymap}
-
--- | Open an emacs-like scratch buffer if no file is open.
-openScratchBuffer :: YiM ()
-openScratchBuffer = withEditor $ do
-  fileBufOpen <- any isFileOrDir . M.elems <$> use buffersA
-  unless fileBufOpen $
-    void . newBufferE (MemBuffer "scratch") $ R.unlines
-            [ "This buffer is for notes you don't want to save."
-            , "If you want to create a file, open that file,"
-            , "then enter the text in that file's own buffer."
-            , ""
-            ]
-  where
-    isFileOrDir :: FBuffer -> Bool
-    isFileOrDir attrs = case attrs ^. identA of
-      MemBuffer  _ -> attrs ^. directoryContentA
-      FileBuffer _ -> True
 
 nilKeymap :: Keymap
 nilKeymap = choice [
