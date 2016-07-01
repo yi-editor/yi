@@ -1,14 +1,13 @@
 {-# LANGUAGE CPP               #-}
 {-# LANGUAGE OverloadedStrings #-}
 
-module Yi.Config.Default ( defaultConfig, availableFrontends, defaultEmacsConfig
+module Yi.Config.Default ( defaultConfig, defaultEmacsConfig
                          , defaultVimConfig, defaultCuaConfig, toVimStyleConfig
                          , toEmacsStyleConfig, toCuaStyleConfig) where
 
 
 import           Lens.Micro.Platform          ((.~), (^.), use)
 import           Control.Monad
-import           Data.Default
 import qualified Data.HashMap.Strict as HM
 import qualified Data.Map            as M
 import           Data.Monoid
@@ -42,29 +41,9 @@ import           Yi.Modes
 import qualified Yi.Rope             as R
 import           Yi.Search
 import           Yi.Style.Library
-import qualified Yi.UI.Batch
 import           Yi.Utils
 
 import           Yi.Types            ()
-
-#ifdef FRONTEND_VTY
-import qualified Graphics.Vty.Config as Vty
-import qualified Yi.UI.Vty
-#endif
-#ifdef FRONTEND_PANGO
-import qualified Yi.UI.Pango
-#endif
-
-
-availableFrontends :: [(String, UIBoot)]
-availableFrontends =
-#ifdef FRONTEND_VTY
-   ("vty", Yi.UI.Vty.start) :
-#endif
-#ifdef FRONTEND_PANGO
-   ("pango", Yi.UI.Pango.start) :
-#endif
-  [("batch", Yi.UI.Batch.start)]
 
 -- | List of published Actions
 
@@ -120,9 +99,7 @@ defaultPublishedActions = HM.fromList
 defaultConfig :: Config
 defaultConfig =
   publishedActions .~ defaultPublishedActions $
-  Config { startFrontEnd    = case availableFrontends of
-             [] -> error "panic: no frontend compiled in! (configure with -fvty or another frontend.)"
-             ((_,f):_) -> f
+  Config { startFrontEnd    = error "panic: no frontend compiled in! (configure with -fvty or another frontend.)"
          , configUI         =  UIConfig
            { configFontSize = Just 10
            , configFontName = Nothing
@@ -135,9 +112,6 @@ defaultConfig =
            , configAutoHideTabBar = True
            , configWindowFill = ' '
            , configTheme = defaultTheme
-#ifdef FRONTEND_VTY
-           , configVty = def
-#endif
            }
          , defaultKm        = modelessKeymapSet nilKeymap
          , startActions     = []
@@ -188,13 +162,6 @@ toEmacsStyleConfig cfg
     = cfg {
             configUI = (configUI cfg)
                        { configScrollStyle = Just SnapToCenter
-#ifdef FRONTEND_VTY
-                       -- corey: does this actually matter? escToMeta appears to perform all the
-                       -- meta joining required. I'm not an emacs user and cannot evaluate feel. For
-                       -- me these settings join esc;key to meta-key OK. The 100 millisecond lag in
-                       -- ESC is terrible for me. Maybe that's just how it is under emacs...
-                       , configVty = def { Vty.vtime = Just 100, Vty.vmin = Just 2 }
-#endif
                        },
             defaultKm = Emacs.keymap,
             startActions = makeAction openScratchBuffer : startActions cfg,
@@ -214,9 +181,6 @@ toVimStyleConfig cfg = cfg
   { defaultKm = Vim.keymapSet
   , configUI = (configUI cfg)
       { configScrollStyle = Just SingleLine
-#ifdef FRONTEND_VTY
-      , configVty = (configVty (configUI cfg)) { Vty.vtime = Just 0 }
-#endif
       }
   , configRegionStyle = Inclusive
   }

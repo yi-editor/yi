@@ -1,4 +1,4 @@
-module Yi.UI.Vty.Conversions
+module Yi.Frontend.Vty.Conversions
     ( colorToAttr
     , fromVtyEvent
     , fromVtyKey
@@ -44,7 +44,7 @@ fromVtyKey (Vty.KDown     ) = Yi.Event.KDown
 fromVtyKey (Vty.KRight    ) = Yi.Event.KRight
 fromVtyKey (Vty.KEnter    ) = Yi.Event.KEnter
 fromVtyKey (Vty.KBackTab  ) = error "This should be handled in fromVtyEvent"
-fromVtyKey (Vty.KBegin    ) = error "Yi.UI.Vty.fromVtyKey: can't handle KBegin"
+fromVtyKey (Vty.KBegin    ) = error "Yi.Frontend.Vty.Conversions.fromVtyKey: can't handle KBegin"
 fromVtyKey _ = error "Unhandled key in fromVtyKey"
 
 fromVtyMod :: Vty.Modifier -> Yi.Event.Modifier

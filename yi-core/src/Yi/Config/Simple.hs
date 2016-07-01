@@ -26,7 +26,6 @@
 -- -- note: don't import "Yi", or else there will be name clashes
 --
 -- main = 'configMain' 'defaultEmacsConfig' $ do
---   'setFrontendPreferences' ["pango", "vty"]
 --   'fontSize' '%=' 'Just' 10
 --   'modeBindKeys' Haskell.cleverMode ('metaCh' \'q\' '?>>!' 'reload')
 --   'globalBindKeys' ('metaCh' \'r\' '?>>!' 'reload')
@@ -48,9 +47,6 @@ module Yi.Config.Simple (
   ConfigM,
   configMain,
   Field,
-  -- * Frontend
-  setFrontendPreferences,
-  setFrontend,
   -- * Modes, commands, and keybindings
   globalBindKeys,
   modeBindKeys,
@@ -157,9 +153,6 @@ import           Yi.Config(Config, UIConfig, startFrontEndA, configUIA,
                            configAutoHideScrollBarA, configAutoHideTabBarA,
                            configLineWrapA, configWindowFillA, configThemeA,
                            layoutManagersA, configVarsA,
-#ifdef FRONTEND_VTY
-                           configVtyA
-#endif
                            )
 
 
@@ -170,24 +163,6 @@ import           Yi.Config(Config, UIConfig, startFrontEndA, configUIA,
 -- modifications, then starts yi.
 configMain :: Config -> ConfigM () -> IO ()
 configMain c m = yi =<< execStateT (runConfigM m) c
-
----------------------------------- Frontend
--- | Sets the frontend to the first frontend from the list which is
--- installed.
---
--- Available frontends are a subset of: \"vty\", \"pango\", and
--- \"batch\".
-setFrontendPreferences :: [String] -> ConfigM ()
-setFrontendPreferences fs =
-   case mapMaybe (`lookup` availableFrontends) fs of
-       (f:_) -> startFrontEndA .= f
-       [] -> return ()
-
--- | Sets the frontend, if it is available.
-setFrontend :: String -> ConfigM ()
-setFrontend f = case lookup f availableFrontends of
-  Nothing -> return ()
-  Just x  -> startFrontEndA .= x
 
 ------------------------- Modes, commands, and keybindings
 -- | Adds the given key bindings to the `global keymap'. The bindings
