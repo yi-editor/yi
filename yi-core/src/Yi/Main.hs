@@ -31,7 +31,7 @@ import Yi.Editor
 import Yi.File
 import Yi.Keymap
 import Yi.Paths (getConfigDir)
-import Paths_yi
+import Paths_yi_core
 
 frontendNames :: [String]
 frontendNames = fmap fst' availableFrontends

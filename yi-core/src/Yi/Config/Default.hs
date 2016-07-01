@@ -11,7 +11,7 @@ import           Data.Default
 import qualified Data.HashMap.Strict as HM
 import qualified Data.Map            as M
 import           Data.Monoid
-import           Paths_yi
+import           Paths_yi_core
 import           System.FilePath
 
 import           Yi.Buffer
