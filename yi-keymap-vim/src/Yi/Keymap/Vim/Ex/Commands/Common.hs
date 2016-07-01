@@ -31,7 +31,7 @@ module Yi.Keymap.Vim.Ex.Commands.Common
     ) where
 
 import           Control.Applicative           (Alternative ((<|>)))
-import           Control.Lens                  (use)
+import           Lens.Micro.Platform                    (use)
 import           Control.Monad                 (void, (>=>))
 import           Data.List.NonEmpty            (NonEmpty (..))
 import           Data.Monoid                   ((<>))

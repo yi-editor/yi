@@ -19,7 +19,7 @@ module Yi.Mode.GHCi where
 
 import           GHC.Generics (Generic)
 
-import           Control.Lens         (makeLenses, (%~), (&), (.~))
+import           Lens.Micro.Platform           (makeLenses, (%~), (&), (.~))
 import           Data.Binary          (Binary (..))
 import           Data.Default         (Default (..))
 import           Data.Text            ()

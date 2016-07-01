@@ -197,7 +197,7 @@ module Yi.Buffer.Misc
 
 import           Prelude                        hiding (foldr, mapM, notElem)
 
-import           Control.Lens                   (Lens', assign, lens, use, uses, view, (%=), (%~), (.=), (^.))
+import           Lens.Micro.Platform                     (Lens', lens, (%~), (^.), use, (.=), (%=), view)
 import           Control.Monad.RWS.Strict       (Endo (Endo, appEndo),
                                                  MonadReader (ask), MonadState,
                                                  MonadWriter (tell),
@@ -231,6 +231,8 @@ import           Yi.Types
 import           Yi.Utils                       (SemiNum ((+~)), makeClassyWithSuffix, makeLensesWithSuffix)
 import           Yi.Window                      (Window (width, wkey, actualLines), dummyWindow)
 
+
+uses l f = f <$> use l
 
 -- In addition to Buffer's text, this manages (among others):
 --  * Log of updates mades
@@ -446,11 +448,11 @@ runBufferFull w b f =
                                    selMark = MarkValue 0 Backward, -- sel
                                    fromMark = MarkValue 0 Backward } -- from
                     else do
-                        Just mrks  <- uses winMarksA (M.lookup $ wkey (b ^. lastActiveWindowA))
+                        Just mrks  <- uses winMarksA (M.lookup $ wkey (b ^. lastActiveWindowA))  
                         forM mrks getMarkValueB
                 newMrks <- forM newMarkValues newMarkB
                 winMarksA %= M.insert (wkey w) newMrks
-            assign lastActiveWindowA w
+            lastActiveWindowA .= w
             f
     in (a, updates, pendingUpdatesA %~ (++ fmap TextUpdate updates) $ b')
 
@@ -475,7 +477,7 @@ runBufferDummyWindow b = fst . runBuffer (dummyWindow $ bkey b) b
 -- | Mark the current point in the undo list as a saved state.
 markSavedB :: UTCTime -> BufferM ()
 markSavedB t = do undosA %= setSavedFilePointU
-                  assign lastSyncTimeA t
+                  lastSyncTimeA .= t
 
 bkey :: FBuffer -> BufferRef
 bkey = view bkey__A
@@ -490,7 +492,7 @@ startUpdateTransactionB = do
   then error "Already started update transaction"
   else do
     undosA %= addChangeU InteractivePoint
-    assign updateTransactionInFlightA True
+    updateTransactionInFlightA .= True
 
 commitUpdateTransactionB :: BufferM ()
 commitUpdateTransactionB = do
@@ -498,9 +500,9 @@ commitUpdateTransactionB = do
   if not transactionPresent
   then error "Not in update transaction"
   else do
-    assign updateTransactionInFlightA False
+    updateTransactionInFlightA .= False
     transacAccum <- use updateTransactionAccumA
-    assign updateTransactionAccumA []
+    updateTransactionAccumA .= []
 
     undosA %= (appEndo . mconcat) (Endo . addChangeU . AtomicChange <$> transacAccum)
     undosA %= addChangeU InteractivePoint
@@ -517,7 +519,7 @@ undoRedo f = do
       m <- getInsMark
       ur <- use undosA
       (ur', updates) <- queryAndModify (f m ur)
-      assign undosA ur'
+      undosA .= ur'
       tell updates
 
 undoB :: BufferM ()
@@ -650,7 +652,7 @@ moveTo x = do
 ------------------------------------------------------------------------
 
 setInserting :: Bool -> BufferM ()
-setInserting = assign insertingA
+setInserting = (insertingA .=)
 
 checkRO :: BufferM Bool
 checkRO = do
@@ -793,7 +795,7 @@ setMode :: Mode syntax -> BufferM ()
 setMode m = do
   modify (setMode0 m)
   -- reset the keymap process so we use the one of the new mode.
-  assign keymapProcessA I.End
+  keymapProcessA .= I.End
   modeOnLoad m
 
 -- | Modify the mode
@@ -801,7 +803,7 @@ modifyMode :: (forall syntax. Mode syntax -> Mode syntax) -> BufferM ()
 modifyMode f = do
   modify (modifyMode0 f)
   -- reset the keymap process so we use the one of the new mode.
-  assign keymapProcessA I.End
+  keymapProcessA .= I.End
 
 onMode :: (forall syntax. Mode syntax -> Mode syntax) -> AnyMode -> AnyMode
 onMode f (AnyMode m) = AnyMode (f m)
@@ -857,7 +859,7 @@ setNamedMarkHereB name = do
 
 -- | Highlight the selection
 setVisibleSelection :: Bool -> BufferM ()
-setVisibleSelection = assign highlightSelectionA
+setVisibleSelection = (highlightSelectionA .=)
 
 -- | Whether the selection is highlighted
 getVisibleSelection :: BufferM Bool
@@ -1104,14 +1106,14 @@ gotoLnFrom x = do
 --
 -- > value <- getBufferDyn
 getBufferDyn :: forall m a. (Default a, YiVariable a, MonadState FBuffer m, Functor m) => m a
-getBufferDyn = fromMaybe (def :: a) <$> getDyn (use bufferDynamicA) (assign bufferDynamicA)
+getBufferDyn = fromMaybe (def :: a) <$> getDyn (use bufferDynamicA) (bufferDynamicA .=)
 
 -- | Access to a value into the extensible state, keyed by its type.
 --   This allows you to save inside a 'BufferM' monad, ie:
 --
 -- > putBufferDyn updatedvalue
 putBufferDyn :: (YiVariable a, MonadState FBuffer m, Functor m) => a -> m ()
-putBufferDyn = putDyn (use bufferDynamicA) (assign bufferDynamicA)
+putBufferDyn = putDyn (use bufferDynamicA) (bufferDynamicA .=)
 
 -- | perform a @BufferM a@, and return to the current point. (by using a mark)
 savingExcursionB :: BufferM a -> BufferM a
