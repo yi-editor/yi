@@ -120,7 +120,7 @@ module Yi.Config.Simple (
   module Yi.Mode.Haskell,
  ) where
 
-import           Lens.Micro (Lens', (.=), (%=), (%~), use, lens)
+import           Lens.Micro.Platform (Lens', (.=), (%=), (%~), use, lens)
 import           Control.Monad.State hiding (modify, get)
 import           Data.Maybe(mapMaybe)
 import qualified Data.Text as T

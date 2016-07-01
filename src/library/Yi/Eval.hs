@@ -41,7 +41,7 @@ module Yi.Eval (
 
 import Prelude hiding (mapM_)
 
-import Lens.Micro ( (^.), (<&>), (.=), (%=) )
+import Lens.Micro.Platform ( (^.), (.=), (%=) )
 import Control.Monad (when, void, forever)
 import Data.Array ( elems )
 import Data.Binary ( Binary )
@@ -115,7 +115,9 @@ import qualified Yi.Rope as R
     ( toString, YiString, splitAt, length )
 import Yi.Utils ( makeLensesWithSuffix )
 
-
+infixl 1 <&>
+(<&>) :: Functor f => f a -> (a -> b) -> f b
+a <&> f = f <$> a
 -- TODO: should we be sticking Text here?
 
 -- | Runs the action, as written by the user.

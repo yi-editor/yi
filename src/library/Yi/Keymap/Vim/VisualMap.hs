@@ -12,7 +12,7 @@
 
 module Yi.Keymap.Vim.VisualMap ( defVisualMap ) where
 
-import           Lens.Micro                 ((.=))
+import           Lens.Micro.Platform                 ((.=))
 import           Control.Monad              (forM_, void)
 import           Data.Char                  (ord)
 import           Data.List                  (group)

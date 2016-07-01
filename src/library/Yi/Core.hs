@@ -51,9 +51,8 @@ import           Control.Concurrent             (ThreadId, forkIO, forkOS,
                                                  newMVar, readMVar, threadDelay)
 import           Control.Exc                    (ignoringException)
 import           Control.Exception              (SomeException, handle)
-import           Lens.Micro                     (assign, mapped, use, uses,
-                                                 view, (%=), (%~), (&), (.=),
-                                                 (.~), (^.))
+import           Lens.Micro.Platform            (mapped, use, view, (%=), (%~), 
+                                                 (&), (.=), (.~), (^.))
 import           Control.Monad                  (forever, void, when)
 import           Control.Monad.Base             (MonadBase (liftBase))
 import           Control.Monad.Except           ()
@@ -97,6 +96,8 @@ import qualified Yi.UI.Common                   as UI (UI (end, layout, main, re
 import           Yi.Utils                       (io)
 import           Yi.Window                      (bufkey, dummyWindow, isMini, winRegion, wkey)
 
+
+uses l f = f <$> use l
 -- | Make an action suitable for an interactive run.
 -- UI will be refreshed.
 interactive :: IsRefreshNeeded -> [Action] -> YiM ()
@@ -242,7 +243,7 @@ dispatch (ev :| evs) = do
         ambiguous = case state of
             Ambiguous _ -> True
             _ -> False
-    assign keymapProcessA (if ambiguous then freshP else p')
+    keymapProcessA .= (if ambiguous then freshP else p')
     let actions0 = case state of
           Dead -> [EditorA $ do
                       evs' <- use pendingEventsA
@@ -259,7 +260,7 @@ dispatch (ev :| evs) = do
       pendingFeedback = do pendingEventsA %= (++ [ev])
                            if null userActions
                                then printMsg . showEvs =<< use pendingEventsA
-                               else assign pendingEventsA []
+                               else pendingEventsA .= []
       allActions = [makeAction decay] ++ userActions ++ [makeAction pendingFeedback]
 
   case evs of

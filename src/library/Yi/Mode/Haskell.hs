@@ -32,7 +32,7 @@ module Yi.Mode.Haskell
 
 import           Prelude                   hiding (all, concatMap, elem, error, notElem, exp)
 
-import           Lens.Micro                ((&), (.~), (^.))
+import           Lens.Micro.Platform                ((&), (.~), (^.))
 import           Control.Monad             (unless, void, when)
 import           Data.Binary               (Binary)
 import           Data.Default              (Default)

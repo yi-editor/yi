@@ -23,7 +23,7 @@ import           GHC.Generics (Generic)
 
 import           Control.Applicative (some)
 import           Control.Arrow       (second)
-import           Lens.Micro          (use, (.=))
+import           Lens.Micro.Platform          (use, (.=))
 import           Control.Monad.RWS   (MonadPlus (mplus), MonadReader (ask),
                                       MonadState, MonadTrans (..),
                                       MonadWriter (tell), RWST, evalRWST,

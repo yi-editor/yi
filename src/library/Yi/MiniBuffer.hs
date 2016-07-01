@@ -31,7 +31,7 @@ module Yi.MiniBuffer ( spawnMinibufferE, withMinibufferFree, withMinibuffer
                      ) where
 
 import           Control.Concurrent             (threadDelay)
-import           Lens.Micro                   (use, (%=))
+import           Lens.Micro.Platform                   (use, (%=))
 import           Control.Monad                  (forM, void, when, (<=<), (>=>))
 import           Data.Foldable                  (find, toList)
 import           Data.IORef                     (newIORef, readIORef, writeIORef)

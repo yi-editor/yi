@@ -16,7 +16,7 @@
 module Yi.Command where
 
 import           Control.Exception   (SomeException)
-import           Lens.Micro          (assign)
+import           Lens.Micro.Platform ((.=))
 import           Control.Monad       (void)
 import           Control.Monad.Base  (liftBase)
 import           Data.Binary         (Binary)
@@ -47,7 +47,7 @@ changeBufferNameE :: YiM ()
 changeBufferNameE = withMinibufferFree "New buffer name:" strFun
   where
     strFun :: T.Text -> YiM ()
-    strFun = withCurrentBuffer . assign identA . MemBuffer
+    strFun = withCurrentBuffer . (.=) identA . MemBuffer
 
 ----------------------------
 -- | shell-command with argument prompt

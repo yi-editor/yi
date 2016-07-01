@@ -100,13 +100,14 @@ module Yi.Editor ( Editor(..), EditorM, MonadEditor(..)
 
 import           Prelude                        hiding (all, concatMap, foldl, foldr)
 
-import           Lens.Micro                     (Lens', assign, lens, mapped,
-                                                 use, uses, view, (%=), (%~),
-                                                 (&), (.~), (^.))
+import           Lens.Micro.Platform            (Lens', lens, mapped,
+                                                 use, view, (%=), (%~),
+                                                 (&), (.~), (^.), (.=),
+                                                 ASetter)
 import           Control.Monad                  (forM_, liftM)
 import           Control.Monad.Reader           (MonadReader (ask), asks,
                                                  unless, when)
-import           Control.Monad.State            (gets, modify)
+import           Control.Monad.State            (gets, modify, MonadState)
 import           Data.Binary                    (Binary, get, put)
 import           Data.Default                   (Default, def)
 import qualified Data.DelayList                 as DelayList (insert)
@@ -144,6 +145,11 @@ import           Yi.Tab
 import           Yi.Types
 import           Yi.Utils
 import           Yi.Window
+
+assign :: MonadState s m => ASetter s s a b -> b -> m ()
+assign = (.=)
+
+uses l f = f <$> use l 
 
 instance Binary Editor where
   put (Editor bss bs supply ts dv _sl msh kr regex _dir _ev _cwa ) =

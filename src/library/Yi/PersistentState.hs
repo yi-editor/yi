@@ -21,7 +21,7 @@ where
 import GHC.Generics (Generic)
 
 import           Control.Exc            (ignoringException)
-import           Lens.Micro             (assign, makeLenses, use)
+import           Lens.Micro.Platform    ((.=), makeLenses, use)
 import           Control.Monad          (when)
 import           Data.Binary            (Binary, decodeFile, encodeFile)
 import           Data.Default           (Default, def)
@@ -121,7 +121,7 @@ loadPersistentState = do
     case maybePState of
       Nothing     -> return ()
       Just pState -> do putEditorDyn                $ histories     pState
-                        assign killringA            $ aKillring     pState
+                        (.=) killringA            $ aKillring     pState
                         PersistentSearch keepSearch <- askConfigVariableA
                         when keepSearch . withEditor $
                             maybe (return ()) setRegexE $ aCurrentRegex pState

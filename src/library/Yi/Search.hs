@@ -58,7 +58,7 @@ module Yi.Search (
         qrFinish
                  ) where
 
-import           Lens.Micro          (assign)
+import           Lens.Micro.Platform          ((.=))
 import           Control.Monad       (void, when)
 import           Data.Binary         (Binary, get, put)
 import           Data.Char           (isAlpha, isUpper)
@@ -114,7 +114,7 @@ searchInit :: String -> Direction -> [SearchOption] -> EditorM (SearchExp, Direc
 searchInit re d fs = do
     let Right c_re = makeSearchOptsM fs re
     setRegexE c_re
-    assign searchDirectionA d
+    searchDirectionA .= d
     return (c_re,d)
 
 -- | Do a search, placing cursor at first char of pattern, if found.
@@ -185,7 +185,7 @@ searchAndRepRegion s str globally region = case R.null s of
   True -> do
     let c_re = makeSimpleSearch s
     setRegexE c_re     -- store away for later use
-    assign searchDirectionA Forward
+    searchDirectionA .= Forward
     withCurrentBuffer $ (/= 0) <$> searchAndRepRegion0 c_re str globally region
 
 ------------------------------------------------------------------------
@@ -385,7 +385,7 @@ isearchEndWith act accept = getEditorDyn >>= \case
   Isearch s@((lastSearched, _, dir):_) -> do
     let (_,p0,_) = last s
     historyFinishGen iSearch (return lastSearched)
-    assign searchDirectionA dir
+    searchDirectionA .= dir
     if accept
        then do void act
                printMsg "Quit"
@@ -422,7 +422,7 @@ qrReplaceAll win b what replacement = do
 -- | Exit from query/replace.
 qrFinish :: EditorM ()
 qrFinish = do
-  assign currentRegexA Nothing
+  currentRegexA .= Nothing
   closeBufferAndWindowE  -- the minibuffer.
 
 -- | We replace the currently selected match and then move to the next

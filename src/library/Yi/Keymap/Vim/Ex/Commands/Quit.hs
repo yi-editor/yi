@@ -15,7 +15,7 @@
 module Yi.Keymap.Vim.Ex.Commands.Quit (parse) where
 
 import           Control.Applicative              (Alternative ((<|>)))
-import           Lens.Micro                       (use, uses)
+import           Lens.Micro.Platform              (use)
 import           Control.Monad                    (void, when)
 import           Data.Foldable                    (find)
 import qualified Data.List.PointedList.Circular   as PL (length)
@@ -34,6 +34,7 @@ import           Yi.Monad                         (gets)
 import           Yi.String                        (showT)
 import           Yi.Window                        (bufkey)
 
+uses l f = f <$> use l
 
 parse :: EventString -> Maybe ExCommand
 parse = Common.parse $ P.choice

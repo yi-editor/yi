@@ -15,7 +15,7 @@
 
 module Yi.Mode.JavaScript (javaScriptMode, hooks) where
 
-import           Lens.Micro                ((%~))
+import           Lens.Micro.Platform                ((%~))
 import           Control.Monad.Writer.Lazy (execWriter)
 import           Data.Binary               (Binary)
 import           Data.Default              (Default)

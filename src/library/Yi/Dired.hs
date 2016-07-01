@@ -48,7 +48,7 @@ import           GHC.Generics             (Generic)
 import           Control.Applicative      ((<|>))
 import           Control.Category         ((>>>))
 import           Control.Exc              (orException, printingException)
-import           Lens.Micro               (assign, makeLenses, use, (%~), (&), (.=), (.~), (^.))
+import           Lens.Micro.Platform      (makeLenses, use, (%~), (&), (.=), (.~), (^.))
 import           Control.Monad.Reader     (asks, foldM, unless, void, when)
 import           Data.Binary              (Binary)
 import           Data.Char                (toLower)
@@ -275,13 +275,13 @@ editFile filename = do
 
 bypassReadOnly :: BufferM a -> BufferM a
 bypassReadOnly f = do ro <- use readOnlyA
-                      assign readOnlyA False
+                      readOnlyA .= False
                       res <- f
-                      assign readOnlyA ro
+                      readOnlyA .= ro
                       return res
 
 filenameColOf :: BufferM () -> BufferM ()
-filenameColOf f = getBufferDyn >>= assign preferColA . Just . diredNameCol >> f
+filenameColOf f = getBufferDyn >>= (.=) preferColA . Just . diredNameCol >> f
 
 resetDiredOpState :: YiM ()
 resetDiredOpState = withCurrentBuffer $ putBufferDyn (def :: DiredOpState)
@@ -567,7 +567,7 @@ diredRefresh = do
 
     -- Set buffer contents
     withCurrentBuffer $ do -- Clear buffer
-      assign readOnlyA False
+      readOnlyA .= False
       ---- modifications begin here
       deleteRegionB =<< regionOfB Document
       -- Write Header
@@ -583,7 +583,7 @@ diredRefresh = do
                    >>> modeNameA .~ "dired"
       diredRefreshMark
       ---- no modifications after this line
-      assign readOnlyA True
+      readOnlyA .= True
       when (null currFile) $ moveTo (p-2)
       case getRow currFile ptsList of
         Just rpos -> filenameColOf $ moveTo rpos
