@@ -29,6 +29,7 @@ library
     lens,
     mtl,
     oo-prototypes,
+    semigroups,
     text,
     transformers-base,
     yi-core,
