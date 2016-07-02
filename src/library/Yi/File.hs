@@ -33,7 +33,7 @@ module Yi.File (
   preSaveHooks
  ) where
 
-import           Control.Lens           (assign, makeLenses, use, view, (^.))
+import           Lens.Micro.Platform    ((.=), makeLenses, use, view, (^.))
 import           Control.Monad          (filterM, void, when)
 import           Control.Monad.Base     (liftBase)
 import           Data.Default           (Default, def)
@@ -182,7 +182,7 @@ backupE = error "backupE not implemented"
 setFileName :: BufferRef -> FilePath -> YiM ()
 setFileName b filename = do
   cfn <- liftBase $ userToCanonPath filename
-  withGivenBuffer b $ assign identA $ FileBuffer cfn
+  withGivenBuffer b $ (.=) identA $ FileBuffer cfn
 
 -- | Checks if the given buffer deserves a save: whether it's a file
 -- buffer and whether it's pointing at a file rather than a directory.

@@ -5,7 +5,8 @@ module Yi.Config.Default ( defaultConfig, availableFrontends, defaultEmacsConfig
                          , defaultVimConfig, defaultCuaConfig, toVimStyleConfig
                          , toEmacsStyleConfig, toCuaStyleConfig) where
 
-import           Control.Lens        ((.~), (^.), use)
+
+import           Lens.Micro.Platform          ((.~), (^.), use)
 import           Control.Monad
 import           Data.Default
 import qualified Data.HashMap.Strict as HM

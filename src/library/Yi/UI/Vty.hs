@@ -23,7 +23,7 @@ import           Control.Concurrent             (MVar, forkIO, myThreadId, newEm
                                                  takeMVar, tryPutMVar, tryTakeMVar)
 import           Control.Concurrent.STM         (atomically, isEmptyTChan, readTChan)
 import           Control.Exception              (IOException, handle)
-import           Control.Lens                   (use)
+import           Lens.Micro.Platform                     (use)
 import           Control.Monad                  (void, when)
 import           Data.Char                      (chr, ord)
 import qualified Data.DList                     as D (empty, snoc, toList)

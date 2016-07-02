@@ -23,7 +23,7 @@ module Yi.UI.Pango (start, startGtkHook) where
 import           Control.Applicative
 import           Control.Concurrent
 import           Control.Exception (catch, SomeException)
-import           Control.Lens hiding (set, from)
+import           Lens.Micro.Platform hiding (set, from)
 import           Control.Monad hiding (forM_, mapM_, forM, mapM)
 import           Data.Foldable
 import           Data.IORef

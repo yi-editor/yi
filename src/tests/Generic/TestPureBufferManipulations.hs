@@ -10,7 +10,7 @@ import Test.Tasty.HUnit
 import Test.Tasty (TestTree, testGroup)
 
 import Control.Monad (filterM, forM, void, unless)
-import Control.Lens ((%=))
+import Lens.Micro.Platform ((%=))
 
 import Data.List (sort, isSuffixOf, intercalate, isPrefixOf)
 import Data.Ord (comparing)
