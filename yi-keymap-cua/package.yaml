@@ -1,0 +1,22 @@
+name: yi-keymap-cua
+version: '0.13'
+synopsis: Cua keymap for Yi editor
+maintainer: Dmitry Ivanov <ethercrow@gmail.com>
+license: GPL-2
+github: yi-editor/yi
+category: Yi
+
+ghc-options: -Wall -ferror-spans
+
+dependencies:
+    - base >= 4.8 && < 5
+    - microlens-platform
+    - text
+    - yi-core
+    - yi-keymap-emacs
+    - yi-rope
+
+library:
+    source-dirs: src
+    exposed-modules:
+        - Yi.Keymap.Cua

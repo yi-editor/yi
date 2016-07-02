@@ -1,0 +1,27 @@
+name: yi-frontend-vty
+version: '0.13'
+synopsis: Vty frontend for Yi editor
+maintainer: Dmitry Ivanov <ethercrow@gmail.com>
+license: GPL-2
+github: yi-editor/yi
+category: Yi
+
+ghc-options: -Wall -ferror-spans
+
+dependencies:
+    - base >= 4.8 && < 5
+    - containers
+    - dlist
+    - microlens-platform
+    - pointedlist
+    - stm >= 2.2
+    - text
+    - vty >= 5.4
+    - yi-core
+    - yi-language
+
+library:
+    source-dirs: src
+    exposed-modules:
+        - Yi.Frontend.Vty
+        - Yi.Frontend.Vty.Conversions

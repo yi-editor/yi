@@ -7,10 +7,11 @@ stdenv.mkDerivation {
 
   buildInputs = [
       icu.out
-      haskell.compiler.ghc801
+      ncurses.out
+      haskell.compiler.ghc7103
   ];
 
   shellHook = ''
-    export LD_LIBRARY_PATH="${icu.out}/lib:$LD_LIBRARY_PATH"
+    export LD_LIBRARY_PATH="${icu.out}/lib:${ncurses.out}/lib:$LD_LIBRARY_PATH"
   '';
 }
