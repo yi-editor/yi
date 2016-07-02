@@ -255,7 +255,6 @@ Test-Suite test-suite
     Vim.TestPureEditorManipulations
   build-depends:
     base,
-    lens >= 4.7,
     semigroups,
     tasty,
     tasty-hunit,

@@ -1,0 +1,30 @@
+name: yi-keymap-emacs
+version: '0.13'
+synopsis: Emacs keymap for Yi editor
+maintainer: Dmitry Ivanov <ethercrow@gmail.com>
+license: GPL-2
+github: yi-editor/yi
+category: Yi
+
+ghc-options: -Wall -ferror-spans
+
+dependencies:
+    - base >= 4.8 && < 5
+    - filepath
+    - Hclip
+    - microlens-platform
+    - mtl
+    - oo-prototypes
+    - semigroups
+    - text
+    - transformers-base
+    - yi-core
+    - yi-language
+    - yi-rope
+
+library:
+    source-dirs: src
+    exposed-modules:
+        - Yi.Keymap.Emacs
+        - Yi.Keymap.Emacs.KillRing
+        - Yi.Keymap.Emacs.Utils

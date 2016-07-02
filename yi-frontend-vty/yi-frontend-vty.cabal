@@ -1,30 +1,28 @@
+-- This file has been generated from package.yaml by hpack version 0.14.0.
+--
+-- see: https://github.com/sol/hpack
+
 name:           yi-frontend-vty
 version:        0.13
-category:       Development, Editor
-synopsis:       The Haskell-Scriptable Editor
-description:
-  Yi is a text editor written in Haskell and extensible in Haskell. The goal of the Yi project is
-  to provide a flexible, powerful, and correct editor for haskell hacking.
+category:       Yi
+synopsis:       Vty frontend for Yi editor
 license:        GPL-2
-license-file:   ../LICENSE
-author:         AUTHORS
-maintainer:     yi-devel@googlegroups.com
-homepage:       https://yi-editor.github.io
+maintainer:     Dmitry Ivanov <ethercrow@gmail.com>
+homepage:       https://github.com/yi-editor/yi#readme
 bug-reports:    https://github.com/yi-editor/yi/issues
-Cabal-Version:  >= 1.20
-tested-with:    GHC==7.10.3, GHC==8.0.1
 build-type:     Simple
+cabal-version:  >= 1.10
 
 source-repository head
-  type:     git
-  location: https://github.com/yi-editor/yi.git
+  type: git
+  location: https://github.com/yi-editor/yi
 
 library
-  hs-source-dirs: src
+  hs-source-dirs:
+    src
   default-language: Haskell2010
-
   build-depends:
-    base,
+    base >= 4.8 && < 5,
     containers,
     dlist,
     microlens-platform,
@@ -34,9 +32,9 @@ library
     vty >= 5.4,
     yi-core,
     yi-language
-
-  ghc-options: -Wall -fno-warn-orphans -ferror-spans
-
+  ghc-options: -Wall -ferror-spans
   exposed-modules:
     Yi.Frontend.Vty
     Yi.Frontend.Vty.Conversions
+  other-modules:
+    Paths_yi_frontend_vty

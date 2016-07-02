@@ -1,98 +1,96 @@
+-- This file has been generated from package.yaml by hpack version 0.14.0.
+--
+-- see: https://github.com/sol/hpack
+
 name:           yi-keymap-vim
 version:        0.13
-category:       Development, Editor
-synopsis:       The Haskell-Scriptable Editor
-description:
-  Yi is a text editor written in Haskell and extensible in Haskell. The goal of the Yi project is
-  to provide a flexible, powerful, and correct editor for haskell hacking.
-license:        GPL-2
-license-file:   ../LICENSE
-author:         AUTHORS
-maintainer:     yi-devel@googlegroups.com
-homepage:       https://yi-editor.github.io
+synopsis:       Vim keymap for Yi editor
+category:       Yi
+homepage:       https://github.com/yi-editor/yi#readme
 bug-reports:    https://github.com/yi-editor/yi/issues
-Cabal-Version:  >= 1.20
-tested-with:    GHC==7.10.3, GHC==8.0.1
+maintainer:     Dmitry Ivanov <ethercrow@gmail.com>
+license:        GPL-2
 build-type:     Simple
+cabal-version:  >= 1.10
 
 source-repository head
-  type:     git
-  location: https://github.com/yi-editor/yi.git
+  type: git
+  location: https://github.com/yi-editor/yi
 
 library
-  hs-source-dirs: src
-  default-language: Haskell2010
-
+  hs-source-dirs:
+      src
+  ghc-options: -Wall -ferror-spans
   build-depends:
-    base,
-    binary,
-    containers,
-    data-default,
-    directory,
-    filepath,
-    Hclip,
-    microlens-platform,
-    mtl,
-    oo-prototypes,
-    parsec,
-    pointedlist,
-    safe,
-    semigroups,
-    text,
-    transformers-base,
-    unordered-containers,
-    yi-core,
-    yi-language,
-    yi-rope
-
-  ghc-options: -Wall -fno-warn-orphans -ferror-spans
-
+      base >= 4.8 && < 5
+    , binary
+    , containers
+    , data-default
+    , directory
+    , filepath
+    , Hclip
+    , microlens-platform
+    , mtl
+    , oo-prototypes
+    , parsec
+    , pointedlist
+    , safe
+    , semigroups
+    , text
+    , transformers-base
+    , unordered-containers
+    , yi-core
+    , yi-language
+    , yi-rope
   exposed-modules:
-    Yi.Keymap.Vim
-    Yi.Keymap.Vim.Common
-    Yi.Keymap.Vim.Digraph
-    Yi.Keymap.Vim.Eval
-    Yi.Keymap.Vim.EventUtils
-    Yi.Keymap.Vim.Ex
-    Yi.Keymap.Vim.Ex.Commands.Buffer
-    Yi.Keymap.Vim.Ex.Commands.BufferDelete
-    Yi.Keymap.Vim.Ex.Commands.Buffers
-    Yi.Keymap.Vim.Ex.Commands.Cabal
-    Yi.Keymap.Vim.Ex.Commands.Common
-    Yi.Keymap.Vim.Ex.Commands.Delete
-    Yi.Keymap.Vim.Ex.Commands.Edit
-    Yi.Keymap.Vim.Ex.Commands.Global
-    Yi.Keymap.Vim.Ex.Commands.GotoLine
-    Yi.Keymap.Vim.Ex.Commands.Help
-    Yi.Keymap.Vim.Ex.Commands.Make
-    Yi.Keymap.Vim.Ex.Commands.Nohl
-    Yi.Keymap.Vim.Ex.Commands.Paste
-    Yi.Keymap.Vim.Ex.Commands.Quit
-    Yi.Keymap.Vim.Ex.Commands.Read
-    Yi.Keymap.Vim.Ex.Commands.Reload
-    Yi.Keymap.Vim.Ex.Commands.Shell
-    Yi.Keymap.Vim.Ex.Commands.Sort
-    Yi.Keymap.Vim.Ex.Commands.Substitute
-    Yi.Keymap.Vim.Ex.Commands.Tag
-    Yi.Keymap.Vim.Ex.Commands.Undo
-    Yi.Keymap.Vim.Ex.Commands.Write
-    Yi.Keymap.Vim.Ex.Commands.Yi
-    Yi.Keymap.Vim.Ex.Eval
-    Yi.Keymap.Vim.Ex.Types
-    Yi.Keymap.Vim.ExMap
-    Yi.Keymap.Vim.InsertMap
-    Yi.Keymap.Vim.MatchResult
-    Yi.Keymap.Vim.Motion
-    Yi.Keymap.Vim.NormalMap
-    Yi.Keymap.Vim.NormalOperatorPendingMap
-    Yi.Keymap.Vim.Operator
-    Yi.Keymap.Vim.ReplaceMap
-    Yi.Keymap.Vim.ReplaceSingleCharMap
-    Yi.Keymap.Vim.Search
-    Yi.Keymap.Vim.SearchMotionMap
-    Yi.Keymap.Vim.StateUtils
-    Yi.Keymap.Vim.StyledRegion
-    Yi.Keymap.Vim.Tag
-    Yi.Keymap.Vim.TextObject
-    Yi.Keymap.Vim.Utils
-    Yi.Keymap.Vim.VisualMap
+      Yi.Keymap.Vim
+      Yi.Keymap.Vim.Common
+      Yi.Keymap.Vim.Digraph
+      Yi.Keymap.Vim.Eval
+      Yi.Keymap.Vim.EventUtils
+      Yi.Keymap.Vim.Ex
+      Yi.Keymap.Vim.Ex.Commands.Buffer
+      Yi.Keymap.Vim.Ex.Commands.BufferDelete
+      Yi.Keymap.Vim.Ex.Commands.Buffers
+      Yi.Keymap.Vim.Ex.Commands.Cabal
+      Yi.Keymap.Vim.Ex.Commands.Common
+      Yi.Keymap.Vim.Ex.Commands.Delete
+      Yi.Keymap.Vim.Ex.Commands.Edit
+      Yi.Keymap.Vim.Ex.Commands.Global
+      Yi.Keymap.Vim.Ex.Commands.GotoLine
+      Yi.Keymap.Vim.Ex.Commands.Help
+      Yi.Keymap.Vim.Ex.Commands.Make
+      Yi.Keymap.Vim.Ex.Commands.Nohl
+      Yi.Keymap.Vim.Ex.Commands.Paste
+      Yi.Keymap.Vim.Ex.Commands.Quit
+      Yi.Keymap.Vim.Ex.Commands.Read
+      Yi.Keymap.Vim.Ex.Commands.Reload
+      Yi.Keymap.Vim.Ex.Commands.Shell
+      Yi.Keymap.Vim.Ex.Commands.Sort
+      Yi.Keymap.Vim.Ex.Commands.Substitute
+      Yi.Keymap.Vim.Ex.Commands.Tag
+      Yi.Keymap.Vim.Ex.Commands.Undo
+      Yi.Keymap.Vim.Ex.Commands.Write
+      Yi.Keymap.Vim.Ex.Commands.Yi
+      Yi.Keymap.Vim.Ex.Eval
+      Yi.Keymap.Vim.Ex.Types
+      Yi.Keymap.Vim.ExMap
+      Yi.Keymap.Vim.InsertMap
+      Yi.Keymap.Vim.MatchResult
+      Yi.Keymap.Vim.Motion
+      Yi.Keymap.Vim.NormalMap
+      Yi.Keymap.Vim.NormalOperatorPendingMap
+      Yi.Keymap.Vim.Operator
+      Yi.Keymap.Vim.ReplaceMap
+      Yi.Keymap.Vim.ReplaceSingleCharMap
+      Yi.Keymap.Vim.Search
+      Yi.Keymap.Vim.SearchMotionMap
+      Yi.Keymap.Vim.StateUtils
+      Yi.Keymap.Vim.StyledRegion
+      Yi.Keymap.Vim.Tag
+      Yi.Keymap.Vim.TextObject
+      Yi.Keymap.Vim.Utils
+      Yi.Keymap.Vim.VisualMap
+  other-modules:
+      Paths_yi_keymap_vim
+  default-language: Haskell2010
