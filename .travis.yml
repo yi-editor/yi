@@ -1,40 +1,23 @@
-matrix:
-  allow_failures:
-    - env: GHCVER=8.0.1 FLAGS="-fhint -fpango" CABALVER=1.24 # because of hint failure
-    - env: GHCVER=head FLAGS="-f-hint -f-pango" CABALVER=head
-    - env: GHCVER=head FLAGS="-fhint -fpango" CABALVER=head
+sudo: false
+language: c
 
-env:
- - GHCVER=7.10.3 FLAGS="-f-hint -f-pango" CABALVER=1.22
- - GHCVER=8.0.1 FLAGS="-f-hint -f-pango" CABALVER=1.24
- - GHCVER=head FLAGS="-f-hint -f-pango" CABALVER=head
- - GHCVER=7.10.3 FLAGS="-fhint -fpango" CABALVER=1.22
- - GHCVER=8.0.1 FLAGS="-fhint -fpango" CABALVER=1.24
- - GHCVER=head FLAGS="-fhint -fpango" CABALVER=head
+cache:
+  directories:
+  - $HOME/.stack
+
+addons:
+  apt:
+    packages:
+    - ghc-7.10.3
+    sources: hvr-ghc
 
 before_install:
- - sudo add-apt-repository -y ppa:hvr/ghc
- - sudo apt-get update
- - sudo apt-get install cabal-install-$CABALVER ghc-$GHCVER libicu-dev
- - export PATH=/opt/ghc/$GHCVER/bin:$PATH
+ - mkdir -p $HOME/.local/bin
+ - curl -L https://www.stackage.org/stack/linux-x86_64 | tar xz --wildcards --strip-components=1 -C ~/.local/bin '*/stack'
+ - export PATH=/opt/ghc/7.10.3/bin:$PATH
 
 install:
- - cabal-$CABALVER update
- - travis_retry cabal-$CABALVER install Cabal
- - travis_retry sudo apt-get install happy-1.19.5 alex-3.1.7
- - export PATH=/opt/alex/3.1.7/bin:/opt/happy/1.19.5/bin:$PATH
- - travis_retry cabal-$CABALVER install -j2 gtk2hs-buildtools
+ - stack build -j2
 
 script:
- - travis_retry cabal-$CABALVER install -j2 $FLAGS -fvty --enable-tests -ftesting --only-dependencies --reorder-goals --force-reinstalls
- - cabal-$CABALVER install -j1 $FLAGS -fvty --enable-tests -ftesting
- - cabal-$CABALVER test
- - cd ../yi/example-configs
- - for config in yi*.hs;
-   do
-     ghc -Wall -Werror -ferror-spans --make $config;
-   done;
-
-
-notifications:
-  irc: "chat.freenode.net#yi"
+ - stack test
