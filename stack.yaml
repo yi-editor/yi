@@ -6,6 +6,7 @@ packages:
 - yi-keymap-cua
 - yi-keymap-emacs
 - yi-keymap-vim
+- yi-mode-haskell
 - yi
 extra-deps:
 - Hclip-3.0.0.3

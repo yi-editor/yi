@@ -113,7 +113,6 @@ module Yi.Config.Simple (
   module Yi.Style,
   module Yi.Style.Library,
   module Yi.Misc,
-  module Yi.Mode.Haskell,
  ) where
 
 import           Lens.Micro.Platform (Lens', (.=), (%=), (%~), use, lens)
@@ -135,7 +134,6 @@ import           Yi.Keymap
 import           Yi.Keymap.Keys
 import           Yi.Layout
 import           Yi.Misc
-import           Yi.Mode.Haskell
 import           Yi.Search
 import           Yi.Style
 import           Yi.Style.Library

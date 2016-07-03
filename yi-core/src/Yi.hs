@@ -32,7 +32,6 @@ module Yi
     module Yi.Keymap,
     module Yi.Keymap.Keys,
     module Yi.Misc,
-    module Yi.Mode.Haskell,
     module Yi.Mode.IReader,
     module Yi.Search,
     module Yi.Style,
@@ -52,8 +51,6 @@ import Yi.File
 import Yi.Keymap
 import Yi.Keymap.Keys
 import Yi.Misc
-import Yi.Mode.Haskell (ghciGet, ghciLoadBuffer,
-                        ghciSetProcessName, ghciSetProcessArgs)
 import Yi.Mode.IReader (ireaderMode, ireadMode)
 import Yi.Search
 import Yi.Style

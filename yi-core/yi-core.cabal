@@ -15,70 +15,9 @@ Cabal-Version:  >= 1.20
 tested-with:    GHC==7.10.3, GHC==8.0.1
 build-type:     Simple
 
-extra-source-files:
-  tests/vimtests/README.rst
-  tests/vimtests/blockvisual/*.test
-  tests/vimtests/change/*.test
-  tests/vimtests/delete/*.test
-  tests/vimtests/digraphs/*.test
-  tests/vimtests/empty/*.test
-  tests/vimtests/empty/emptytest/events
-  tests/vimtests/empty/emptytest/input
-  tests/vimtests/empty/emptytest/output
-  tests/vimtests/ex/*.test
-  tests/vimtests/ex/d/*.test
-  tests/vimtests/ex/g/*.test
-  tests/vimtests/ex/gotoline/*.test
-  tests/vimtests/ex/s/*.test
-  tests/vimtests/find/*.test
-  tests/vimtests/indent/*.test
-  tests/vimtests/insertion/*.test
-  tests/vimtests/insertion/cursorkeys/*.test
-  tests/vimtests/joinlines/*.test
-  tests/vimtests/jumplist/*.test
-  tests/vimtests/macros/*.test
-  tests/vimtests/marks/*.test
-  tests/vimtests/movement/*.test
-  tests/vimtests/movement/bigWord/*.test
-  tests/vimtests/movement/char/*.test
-  tests/vimtests/movement/char/h_at_bol/events
-  tests/vimtests/movement/char/h_at_bol/input
-  tests/vimtests/movement/char/h_at_bol/output
-  tests/vimtests/movement/char/hl/events
-  tests/vimtests/movement/char/hl/input
-  tests/vimtests/movement/char/hl/output
-  tests/vimtests/movement/char/j/events
-  tests/vimtests/movement/char/j/input
-  tests/vimtests/movement/char/j/output
-  tests/vimtests/movement/char/l_at_eol/events
-  tests/vimtests/movement/char/l_at_eol/input
-  tests/vimtests/movement/char/l_at_eol/output
-  tests/vimtests/movement/cursorkeys/*.test
-  tests/vimtests/movement/file/*.test
-  tests/vimtests/movement/intraline/*.test
-  tests/vimtests/movement/word/*.test
-  tests/vimtests/numbers/*.test
-  tests/vimtests/paste/*.test
-  tests/vimtests/repeat/*.test
-  tests/vimtests/replace/*.test
-  tests/vimtests/search/*.test
-  tests/vimtests/searchword/*.test
-  tests/vimtests/sort/*.test
-  tests/vimtests/switchcase/*.test
-  tests/vimtests/undo/*.test
-  tests/vimtests/unicode/*.test
-  tests/vimtests/unsorted/*.test
-  tests/vimtests/visual/*.test
-  tests/vimtests/yank/*.test
-
 source-repository head
   type:     git
   location: https://github.com/yi-editor/yi.git
-
--- Frontends
-flag pango
-  Default: False
-  Description: Build with Pango frontend
 
 flag hint
   Default: True
@@ -139,8 +78,6 @@ library
     Yi.Mode.Buffers
     Yi.Mode.Compilation
     Yi.Mode.GHCi
-    Yi.Mode.Haskell
-    Yi.Mode.Haskell.Dollarify
     Yi.Mode.IReader
     Yi.Mode.Interactive
     Yi.Mode.JavaScript
@@ -157,14 +94,11 @@ library
     Yi.Search.Internal
     Yi.String
     Yi.Syntax.Driver
-    Yi.Syntax.Haskell
     Yi.Syntax.JavaScript
     Yi.Syntax.Latex
     Yi.Syntax.Layout
     Yi.Syntax.OnlineTree
-    Yi.Syntax.Paren
     Yi.Syntax.Tree
-    Yi.Syntax.Strokes.Haskell
     Yi.Tab
     Yi.Tag
     Yi.TextCompletion
