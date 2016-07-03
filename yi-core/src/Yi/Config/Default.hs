@@ -28,7 +28,6 @@ import           Yi.Keymap
 import           Yi.Keymap.Keys
 import           Yi.Layout
 import qualified Yi.Mode.Abella      as Abella
-import qualified Yi.Mode.Haskell     as Haskell
 import           Yi.Mode.IReader     (ireadMode, ireaderMode)
 import qualified Yi.Mode.JavaScript  as JS
 import qualified Yi.Mode.Latex       as Latex
@@ -82,7 +81,6 @@ defaultPublishedActions = HM.fromList
     , ("sortLines"              , box sortLines)
     , ("unLineCommentSelectionB", box unLineCommentSelectionB)
     , ("writeB"                 , box writeB)
-    , ("ghciGet"                , box Haskell.ghciGet)
     , ("abella"                 , box Abella.abella)
     ]
 
@@ -111,15 +109,12 @@ defaultConfig =
          , defaultKm        = modelessKeymapSet nilKeymap
          , startActions     = []
          , initialActions   = []
-         , modeTable = [AnyMode Haskell.cleverMode,
-                        AnyMode Haskell.preciseMode,
-                        AnyMode Latex.latexMode3,
+         , modeTable = [AnyMode Latex.latexMode3,
                         AnyMode Latex.fastMode,
                         AnyMode Abella.abellaModeEmacs,
                         AnyMode cMode,
                         AnyMode objectiveCMode,
                         AnyMode cppMode,
-                        AnyMode Haskell.literateMode,
                         AnyMode cabalMode,
                         AnyMode clojureMode,
                         AnyMode gnuMakeMode,
