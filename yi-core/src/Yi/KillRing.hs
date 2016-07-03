@@ -26,7 +26,7 @@ module Yi.KillRing ( Killring
 
 import           Prelude             hiding (head, tail, take)
 
-import           Control.Lens        (makeLenses, (^.))
+import           Lens.Micro.Platform ((^.), makeLenses)
 import           Data.Binary         (Binary, get, put)
 import           Data.List.NonEmpty  (NonEmpty (..), head, take)
 import           Data.Monoid         ((<>))

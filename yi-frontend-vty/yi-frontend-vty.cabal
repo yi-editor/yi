@@ -27,7 +27,7 @@ library
     base,
     containers,
     dlist,
-    lens,
+    microlens-platform,
     pointedlist,
     stm >= 2.2,
     text,

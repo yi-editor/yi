@@ -13,7 +13,7 @@
 module Yi.Mode.Interactive where
 
 import           Control.Concurrent   (threadDelay)
-import           Control.Lens         (use, (%~), (.=))
+import           Lens.Micro.Platform           (use, (%~), (.=))
 import           Data.Monoid          ((<>))
 import qualified Data.Text            as T (Text)
 import           Yi.Buffer

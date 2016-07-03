@@ -19,7 +19,7 @@ import qualified Config.Dyre as Dyre
 import qualified Config.Dyre.Options as Dyre
 import qualified Config.Dyre.Params as Dyre
 import           Config.Dyre.Relaunch
-import           Control.Lens
+import           Lens.Micro.Platform
 import           Data.Text ()
 import           System.Environment
 import           System.Exit

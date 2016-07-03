@@ -26,9 +26,10 @@ library
   build-depends:
     base,
     filepath,
-    lens,
+    microlens-platform,
     mtl,
     oo-prototypes,
+    semigroups,
     text,
     transformers-base,
     yi-core,

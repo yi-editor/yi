@@ -3,7 +3,8 @@
 
 module Yi.Config.Default (defaultConfig) where
 
-import           Control.Lens        ((.~), (^.), use)
+
+import           Lens.Micro.Platform          ((.~), (^.), use)
 import           Control.Monad
 import qualified Data.HashMap.Strict as HM
 import qualified Data.Map            as M

@@ -19,7 +19,7 @@ module Yi.Keymap.Cua ( keymap
                      ) where
 
 import           Control.Applicative      (Alternative ((<|>)))
-import           Control.Lens             (assign, use)
+import           Lens.Micro.Platform      ((.=), use)
 import           Control.Monad            (unless, when)
 import qualified Data.Text                as T (drop, take)
 import           Yi.Buffer
@@ -61,13 +61,13 @@ selfInsertKeymap = do
 setMark :: Bool -> BufferM ()
 setMark b = do
   isSet <- use highlightSelectionA
-  assign rectangleSelectionA b
+  rectangleSelectionA .= b
   unless isSet $ do
-       assign highlightSelectionA True
+       highlightSelectionA .= True
        pointB >>= setSelectionMarkPointB
 
 unsetMark :: BufferM ()
-unsetMark = assign highlightSelectionA False
+unsetMark = highlightSelectionA .= False
 
 replaceSel :: R.YiString -> BufferM ()
 replaceSel s = do

@@ -120,8 +120,7 @@ module Yi.Buffer.HighLevel
     , markWord
     ) where
 
-import           Control.Lens             (assign, over, use, (%=), (.=))
-import           Control.Lens.Cons        (_last)
+import           Lens.Micro.Platform      (over, use, (%=), (.=), _last)
 import           Control.Monad            (forM, forM_, replicateM_, unless, void, when)
 import           Control.Monad.RWS.Strict (ask)
 import           Control.Monad.State      (gets)
@@ -707,7 +706,7 @@ getSelectRegionB = do
 -- and the current point at the 'regionEnd'.
 setSelectRegionB :: Region -> BufferM ()
 setSelectRegionB region = do
-  assign highlightSelectionA True
+  highlightSelectionA .= True
   setSelectionMarkPointB $ regionStart region
   moveTo $ regionEnd region
 

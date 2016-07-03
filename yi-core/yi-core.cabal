@@ -175,7 +175,6 @@ library
     Yi.UI.Utils
     Yi.Verifier.JavaScript
     Yi.Window
-    Yi.Char.Unicode
     System.FriendlyPath
 
   if flag(hint)
@@ -193,11 +192,11 @@ library
     bytestring >= 0.9.1 && < 0.11,
     dynamic-state >= 0.1.0.5,
     data-default,
-    lens >= 4.7,
     dlist >=0.4.1,
     dyre >=0.8.11,
     filepath >= 1.1,
     hashable >=1.1.2.5,
+    microlens-platform,
     mtl >= 0.1.0.1,
     parsec >= 3.0,
     pointedlist >= 0.5,

@@ -11,7 +11,7 @@
 
 module Yi.UI.TabBar where
 
-import           Control.Lens                   ((^.))
+import           Lens.Micro.Platform                     ((^.))
 import qualified Data.List.PointedList.Circular as PL (PointedList (_focus), withFocus)
 import qualified Data.Text                      as T (Text, pack, unpack)
 import           System.FilePath                (isValid, splitPath)
