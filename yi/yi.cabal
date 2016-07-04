@@ -1,45 +1,28 @@
+-- This file has been generated from package.yaml by hpack version 0.14.0.
+--
+-- see: https://github.com/sol/hpack
+
 name:           yi
-version:        0.13.0
-category:       Development, Editor
-synopsis:       The Haskell-Scriptable Editor
-description:
-  Yi is a text editor written in Haskell and extensible in Haskell. The goal of the Yi project is
-  to provide a flexible, powerful, and correct editor for haskell hacking.
+version:        0.13
+category:       Yi
+synopsis:       Yi editor
 license:        GPL-2
-author:         AUTHORS
-maintainer:     yi-devel@googlegroups.com
-homepage:       https://yi-editor.github.io
+maintainer:     Dmitry Ivanov <ethercrow@gmail.com>
+homepage:       https://github.com/yi-editor/yi#readme
 bug-reports:    https://github.com/yi-editor/yi/issues
-Cabal-Version:  >= 1.20
-tested-with:    GHC==7.10.3, GHC==8.0.1
 build-type:     Simple
+cabal-version:  >= 1.10
 
 source-repository head
-  type:     git
-  location: https://github.com/yi-editor/yi.git
-
-flag profiling
-  Default: False
-  Description:
-    Runtime binary will be compiled with profiling and RTS
-    options enabled.
-
-flag eventlog
-  Default: False
-  Description:
-    Runtime binary will be compiled with eventlog and RTS
-    options enabled.
+  type: git
+  location: https://github.com/yi-editor/yi
 
 executable yi
-  hs-source-dirs: src/executable
-  default-language: Haskell2010
-
-  if flag(profiling)
-    cpp-options: -DPROFILING
-
   main-is: Main.hs
-
+  hs-source-dirs:
+      src
+  ghc-options: -Wall -ferror-spans
   build-depends:
-    base >=4 && <5, yi-core
-
-  ghc-options: -threaded
+      base >= 4.8
+    , yi-core >= 0.13
+  default-language: Haskell2010

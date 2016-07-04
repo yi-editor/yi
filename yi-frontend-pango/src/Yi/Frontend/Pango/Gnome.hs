@@ -1,5 +1,5 @@
 -- | Gnome integration
-module Yi.UI.Pango.Gnome(watchSystemFont) where
+module Yi.Frontend.Pango.Gnome(watchSystemFont) where
 
 import Control.Monad
 import Graphics.UI.Gtk

@@ -1,0 +1,18 @@
+name: yi
+version: '0.13'
+synopsis: Yi editor
+maintainer: Dmitry Ivanov <ethercrow@gmail.com>
+license: GPL-2
+github: yi-editor/yi
+category: Yi
+
+ghc-options: -Wall -ferror-spans
+
+dependencies:
+    - base >= 4.8
+    - yi-core >= 0.13
+
+executables:
+    yi:
+        main: Main.hs
+        source-dirs: src

@@ -9,6 +9,7 @@ packages:
 - yi
 extra-deps:
 - Hclip-3.0.0.3
+# - gconf-0.13.1.0
 resolver: lts-6.5
 nix:
     shell-file: shell.nix
