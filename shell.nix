@@ -6,12 +6,19 @@ stdenv.mkDerivation {
   name = "yi";
 
   buildInputs = [
+      cairo
+      pango
+      gtk
+      haskell.compiler.ghc7103
+      haskellPackages.gtk2hs-buildtools
       icu.out
       ncurses.out
-      haskell.compiler.ghc7103
+      pkgconfig
+      glibcLocales
   ];
 
   shellHook = ''
+    export LC_ALL=en_US.UTF-8
     export LD_LIBRARY_PATH="${icu.out}/lib:${ncurses.out}/lib:$LD_LIBRARY_PATH"
   '';
 }

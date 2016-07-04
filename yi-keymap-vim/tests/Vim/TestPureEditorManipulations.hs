@@ -16,13 +16,16 @@ import qualified Data.Text as T
 import           Test.Tasty (TestTree, testGroup)
 import qualified Vim.EditorManipulations.BufferExCommand as BufferExCommand
 import           Yi (extractValue)
-import           Yi.Config.Default (defaultVimConfig)
+import           Yi.Config.Default (defaultConfig)
 import           Yi.Keymap.Vim
 import           Yi.Keymap.Vim.Common
+import           Yi.Types (Config (..))
 
 tests :: TestTree
 tests =
     testGroup "Vim pure editor manipulation tests"
-        [ BufferExCommand.tests defaultVimConfig
+        [ BufferExCommand.tests yiConfig
             (pureEval (extractValue defVimConfig) . Ev . T.pack)
         ]
+    where
+    yiConfig = defaultConfig {defaultKm = keymapSet}

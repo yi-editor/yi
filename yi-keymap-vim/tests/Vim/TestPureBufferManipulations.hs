@@ -21,10 +21,13 @@ import qualified Data.Text as T
 import qualified Generic.TestPureBufferManipulations as GT
 import           Test.Tasty (TestTree)
 import           Yi (extractValue)
-import           Yi.Config.Default (defaultVimConfig)
+import           Yi.Config.Default (defaultConfig)
 import           Yi.Keymap.Vim
 import           Yi.Keymap.Vim.Common
+import           Yi.Types (Config (..))
 
 getTests :: IO TestTree
-getTests = GT.getTests defaultVimConfig "src/tests/vimtests"
+getTests = GT.getTests yiConfig "tests/vimtests"
            "Vim" (pureEval (extractValue defVimConfig) . Ev . T.pack)
+    where
+    yiConfig = defaultConfig {defaultKm = keymapSet}

@@ -81,3 +81,16 @@ library:
         - Yi.Keymap.Vim.TextObject
         - Yi.Keymap.Vim.Utils
         - Yi.Keymap.Vim.VisualMap
+
+tests:
+    spec:
+        main: TestSuite.hs
+        source-dirs:
+            - tests
+        dependencies:
+            - tasty
+            - tasty-hunit
+            - QuickCheck
+            - tasty-quickcheck
+            - yi-core
+            - yi-keymap-vim

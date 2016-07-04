@@ -1,7 +1,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 
 -- | Random GTK utils
-module Yi.UI.Pango.Utils where
+module Yi.Frontend.Pango.Utils where
 
 import Control.Exception (catch, throw)
 
