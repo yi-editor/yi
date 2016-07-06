@@ -6,10 +6,10 @@
 {-# OPTIONS_GHC -w #-}
 
 -- |
--- Module      :  Yi.UI.Pango.Control
+-- Module      :  Yi.Frontend.Pango.Control
 -- License     :  GPL
 
-module Yi.UI.Pango.Control (
+module Yi.Frontend.Pango.Control (
     Control(..)
 ,   ControlM(..)
 ,   Buffer(..)

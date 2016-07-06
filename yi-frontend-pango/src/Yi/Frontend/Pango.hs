@@ -9,7 +9,7 @@
 {-# OPTIONS_HADDOCK show-extensions #-}
 
 -- |
--- Module      :  Yi.UI.Pango
+-- Module      :  Yi.Frontend.Pango
 -- License     :  GPL-2
 -- Maintainer  :  yi-devel@googlegroups.com
 -- Stability   :  experimental
@@ -18,7 +18,7 @@
 -- This module defines a user interface implemented using gtk2hs and
 -- pango for direct text rendering.
 
-module Yi.UI.Pango (start, startGtkHook) where
+module Yi.Frontend.Pango (start, startGtkHook) where
 
 import           Control.Applicative
 import           Control.Concurrent
@@ -56,12 +56,12 @@ import           Yi.Style
 import           Yi.Tab
 import           Yi.Types (fontsizeVariation, attributes)
 import qualified Yi.UI.Common as Common
-import           Yi.UI.Pango.Control (keyTable)
+import           Yi.Frontend.Pango.Control (keyTable)
 #ifdef GNOME_ENABLED
-import           Yi.UI.Pango.Gnome(watchSystemFont)
+import           Yi.Frontend.Pango.Gnome(watchSystemFont)
 #endif
-import           Yi.UI.Pango.Layouts
-import           Yi.UI.Pango.Utils
+import           Yi.Frontend.Pango.Layouts
+import           Yi.Frontend.Pango.Utils
 import           Yi.String (showT)
 import           Yi.UI.TabBar
 import           Yi.UI.Utils

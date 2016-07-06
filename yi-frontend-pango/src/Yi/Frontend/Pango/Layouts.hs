@@ -4,7 +4,7 @@
 {-# OPTIONS_HADDOCK show-extensions #-}
 
 -- |
--- Module      :  Yi.UI.Pango.Layouts
+-- Module      :  Yi.Frontend.Pango.Layouts
 -- License     :  GPL-2
 -- Maintainer  :  yi-devel@googlegroups.com
 -- Stability   :  experimental
@@ -19,7 +19,7 @@
 -- construct 'LayoutDisplay' as a tree of these, mirroring the
 -- structure of 'Layout'.
 
-module Yi.UI.Pango.Layouts (
+module Yi.Frontend.Pango.Layouts (
   -- * Getting the underlying widget
   WidgetLike(..),
   -- * Window layout
@@ -80,7 +80,7 @@ type StackDescr = [(Widget, RelativeSize)]
 weightedStackNew :: Orientation -> StackDescr -> IO WeightedStack
 weightedStackNew o s = do
   when (any ((<= 0) . snd) s) $ error
-    "Yi.UI.Pango.WeightedStack.WeightedStack: all weights must be positive"
+    "Yi.Frontend.Pango.WeightedStack.WeightedStack: all weights must be positive"
   l <- fixedNew
   set l (fmap ((containerChild :=) . fst) s)
   void $ Gtk.on l sizeRequest (doSizeRequest o s)

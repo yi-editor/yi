@@ -94,3 +94,46 @@ library
   other-modules:
       Paths_yi_keymap_vim
   default-language: Haskell2010
+
+test-suite spec
+  type: exitcode-stdio-1.0
+  main-is: TestSuite.hs
+  hs-source-dirs:
+      tests
+  ghc-options: -Wall -ferror-spans
+  build-depends:
+      base >= 4.8 && < 5
+    , binary
+    , containers
+    , data-default
+    , directory
+    , filepath
+    , Hclip
+    , microlens-platform
+    , mtl
+    , oo-prototypes
+    , parsec
+    , pointedlist
+    , safe
+    , semigroups
+    , text
+    , transformers-base
+    , unordered-containers
+    , yi-core
+    , yi-language
+    , yi-rope
+    , tasty
+    , tasty-hunit
+    , QuickCheck
+    , tasty-quickcheck
+    , yi-core
+    , yi-keymap-vim
+  other-modules:
+      Driver
+      Generic.TestPureBufferManipulations
+      Generic.TestUtils
+      Vim.EditorManipulations.BufferExCommand
+      Vim.TestExCommandParsers
+      Vim.TestPureBufferManipulations
+      Vim.TestPureEditorManipulations
+  default-language: Haskell2010

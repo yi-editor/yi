@@ -1,0 +1,130 @@
+name: yi-core
+version: '0.13'
+synopsis: Yi editor core library
+maintainer: Dmitry Ivanov <ethercrow@gmail.com>
+license: GPL-2
+github: yi-editor/yi
+category: Yi
+
+ghc-options: -Wall -ferror-spans
+
+dependencies:
+    - base >= 4.8
+    - array
+    - binary >= 0.7
+    - bytestring >= 0.9.1
+    - containers
+    - data-default
+    - directory
+    - dlist >= 0.4.1
+    - dynamic-state >= 0.1.0.5
+    - dyre >= 0.8.11
+    - exceptions
+    - filepath >= 1.1
+    - hashable >= 1.1.2.5
+    - Hclip >= 3
+    - microlens-platform
+    - mtl >= 0.1.0.1
+    - old-locale
+    - oo-prototypes
+    - parsec >= 3.0
+    - pointedlist >= 0.5
+    - process >= 1.0.1.1
+    - safe >= 0.3.4
+    - semigroups
+    - split >= 0.2
+    - text >= 1.1.1.3
+    - text-icu >= 0.7
+    - time >= 1.1
+    - transformers-base
+    - unix
+    - unix-compat >= 0.1
+    - unordered-containers >= 0.1.3
+    - word-trie >= 0.2.0.4
+    - xdg-basedir >= 0.2.1
+    - yi-language >= 0.1.1.0
+    - yi-rope >= 0.7.0.0
+
+
+library:
+    source-dirs: src
+    exposed-modules:
+        - Yi
+        - Yi.Boot
+        - Yi.Boot.Internal
+        - Yi.Buffer
+        - Yi.Buffer.Adjusted
+        - Yi.Buffer.HighLevel
+        - Yi.Buffer.Indent
+        - Yi.Buffer.Normal
+        - Yi.Buffer.Misc
+        - Yi.Buffer.Region
+        - Yi.Buffer.TextUnit
+        - Yi.Buffer.Undo
+        - Yi.Command
+        - Yi.Command.Help
+        - Yi.Completion
+        - Yi.Config
+        - Yi.Config.Default
+        - Yi.Config.Misc
+        - Yi.Config.Lens
+        - Yi.Config.Simple
+        - Yi.Config.Simple.Types
+        - Yi.Core
+        - Yi.Debug
+        - Yi.Dired
+        - Yi.Editor
+        - Yi.Eval
+        - Yi.Event
+        - Yi.File
+        - Yi.History
+        - Yi.Hoogle
+        - Yi.Hooks
+        - Yi.IReader
+        - Yi.IncrementalParse
+        - Yi.Interact
+        - Yi.JumpList
+        - Yi.Keymap
+        - Yi.Keymap.Completion
+        - Yi.Keymap.Keys
+        - Yi.KillRing
+        - Yi.Layout
+        - Yi.Main
+        - Yi.MiniBuffer
+        - Yi.Misc
+        - Yi.Mode.Abella
+        - Yi.Mode.Buffers
+        - Yi.Mode.Compilation
+        - Yi.Mode.GHCi
+        - Yi.Mode.IReader
+        - Yi.Mode.Interactive
+        - Yi.Mode.JavaScript
+        - Yi.Mode.Latex
+        - Yi.Modes
+        - Yi.Monad
+        - Yi.Paths
+        - Yi.PersistentState
+        - Yi.Process
+        - Yi.Rectangle
+        - Yi.Snippets
+        - Yi.Snippets.Haskell
+        - Yi.Search
+        - Yi.Search.Internal
+        - Yi.String
+        - Yi.Syntax.Driver
+        - Yi.Syntax.JavaScript
+        - Yi.Syntax.Latex
+        - Yi.Syntax.Layout
+        - Yi.Syntax.OnlineTree
+        - Yi.Syntax.Tree
+        - Yi.Tab
+        - Yi.Tag
+        - Yi.TextCompletion
+        - Yi.Types
+        - Yi.UI.Common
+        - Yi.UI.SimpleLayout
+        - Yi.UI.TabBar
+        - Yi.UI.Utils
+        - Yi.Verifier.JavaScript
+        - Yi.Window
+        - System.FriendlyPath
