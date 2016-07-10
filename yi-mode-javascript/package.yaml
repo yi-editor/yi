@@ -1,0 +1,32 @@
+name: yi-mode-javascript
+version: '0.13'
+synopsis: Yi editor javascript mode
+maintainer: Dmitry Ivanov <ethercrow@gmail.com>
+license: GPL-2
+github: yi-editor/yi
+category: Yi
+
+ghc-options: -Wall -ferror-spans
+
+dependencies:
+    - base >= 4.8
+    - array
+    - binary >= 0.7
+    - data-default
+    - dlist
+    - filepath
+    - microlens-platform
+    - mtl
+    - text
+    - yi-core
+    - yi-language
+    - yi-rope
+
+library:
+    source-dirs: src
+    exposed-modules:
+      - Yi.Mode.JavaScript
+      - Yi.Syntax.JavaScript
+      - Yi.Verifier.JavaScript
+include-dirs:
+    - src/Yi/Lexer
