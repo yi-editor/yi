@@ -21,7 +21,7 @@ import           Control.Monad       (void)
 import           Control.Monad.Base  (liftBase)
 import           Data.Binary         (Binary)
 import           Data.Default        (Default)
-import qualified Data.Text           as T (Text, init, last, pack, unpack)
+import qualified Data.Text           as T (Text, init, filter, last, length, unpack)
 import           Data.Typeable       (Typeable)
 import           System.Exit         (ExitCode (..))
 import           Yi.Buffer           (BufferId (MemBuffer), BufferRef, identA, setMode)
@@ -33,7 +33,7 @@ import qualified Yi.Mode.Compilation as Compilation (mode)
 import qualified Yi.Mode.Interactive as Interactive (spawnProcess)
 import           Yi.Monad            (maybeM)
 import           Yi.Process          (runShellCommand, shellFileName)
-import qualified Yi.Rope             as R (fromString)
+import qualified Yi.Rope             as R (fromText)
 import           Yi.Types            (YiVariable)
 import           Yi.UI.Common        (reloadProject)
 import           Yi.Utils            (io)
@@ -58,19 +58,17 @@ shellCommandE = withMinibufferFree "Shell command:" shellCommandV
 -- | shell-command with a known argument
 shellCommandV :: T.Text -> YiM ()
 shellCommandV cmd = do
-  (exitCode,cmdOut,cmdErr) <- liftBase $ runShellCommand (T.unpack cmd)
+  (exitCode,cmdOut,cmdErr) <- liftBase . runShellCommand $ T.unpack cmd
   case exitCode of
-    ExitSuccess -> if length (filter (== '\n') cmdOut) > 17
+    ExitSuccess -> if T.length (T.filter (== '\n') cmdOut) > 17
                    then withEditor . void $ -- see GitHub issue #477
                           newBufferE (MemBuffer "Shell Command Output")
-                                     (R.fromString cmdOut)
-                   else printMsg $ case T.pack cmdOut of
+                                     (R.fromText cmdOut)
+                   else printMsg $ case cmdOut of
                      "" -> "(Shell command with no output)"
                      -- Drop trailing newline from output
                      xs -> if T.last xs == '\n' then T.init xs else xs
-    -- FIXME: here we get a string and convert it back to utf8;
-    -- this indicates a possible bug.
-    ExitFailure _ -> printMsg $ T.pack cmdErr
+    ExitFailure _ -> printMsg cmdErr
 
 ----------------------------
 -- Cabal-related commands
