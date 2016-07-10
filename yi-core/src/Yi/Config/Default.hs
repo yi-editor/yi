@@ -29,7 +29,6 @@ import           Yi.Keymap.Keys
 import           Yi.Layout
 import qualified Yi.Mode.Abella      as Abella
 import           Yi.Mode.IReader     (ireadMode, ireaderMode)
-import qualified Yi.Mode.JavaScript  as JS
 import qualified Yi.Mode.Latex       as Latex
 import           Yi.Modes
 import qualified Yi.Rope             as R
@@ -122,7 +121,6 @@ defaultConfig =
                         AnyMode ocamlMode,
                         AnyMode ottMode,
                         AnyMode perlMode,
-                        AnyMode (JS.hooks JS.javaScriptMode),
                         AnyMode pythonMode,
                         AnyMode rubyMode,
                         AnyMode javaMode,

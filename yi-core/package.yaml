@@ -100,7 +100,6 @@ library:
         - Yi.Mode.Haskell.Dollarify
         - Yi.Mode.IReader
         - Yi.Mode.Interactive
-        - Yi.Mode.JavaScript
         - Yi.Mode.Latex
         - Yi.Modes
         - Yi.Monad
@@ -114,8 +113,6 @@ library:
         - Yi.Search.Internal
         - Yi.String
         - Yi.Syntax.Driver
-        - Yi.Syntax.Haskell
-        - Yi.Syntax.JavaScript
         - Yi.Syntax.Latex
         - Yi.Syntax.Layout
         - Yi.Syntax.OnlineTree
@@ -130,6 +127,5 @@ library:
         - Yi.UI.SimpleLayout
         - Yi.UI.TabBar
         - Yi.UI.Utils
-        - Yi.Verifier.JavaScript
         - Yi.Window
         - System.FriendlyPath

@@ -7,6 +7,7 @@ packages:
 - yi-keymap-emacs
 - yi-keymap-vim
 - yi-mode-haskell
+- yi-mode-javascript
 - yi
 extra-deps:
 - Hclip-3.0.0.3
