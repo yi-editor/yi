@@ -1,0 +1,9 @@
+[ Tok { tokT = (Reserved Module), tokLen = Size { fromSize = 6 }, tokPosn = Posn { posnOfs = Point { fromPoint = 0 }, posnLine = 1, posnCol = 0 } }
+, Tok { tokT = ConsIdent, tokLen = Size { fromSize = 1 }, tokPosn = Posn { posnOfs = Point { fromPoint = 7 }, posnLine = 1, posnCol = 7 } }
+, Tok { tokT = (Reserved Where), tokLen = Size { fromSize = 5 }, tokPosn = Posn { posnOfs = Point { fromPoint = 9 }, posnLine = 1, posnCol = 9 } }
+, Tok { tokT = VarIdent, tokLen = Size { fromSize = 4 }, tokPosn = Posn { posnOfs = Point { fromPoint = 16 }, posnLine = 3, posnCol = 0 } }
+, Tok { tokT = (ReservedOp Equal), tokLen = Size { fromSize = 1 }, tokPosn = Posn { posnOfs = Point { fromPoint = 21 }, posnLine = 3, posnCol = 5 } }
+, Tok { tokT = VarIdent, tokLen = Size { fromSize = 5 }, tokPosn = Posn { posnOfs = Point { fromPoint = 23 }, posnLine = 3, posnCol = 7 } }
+, Tok { tokT = StringTok, tokLen = Size { fromSize = 7 }, tokPosn = Posn { posnOfs = Point { fromPoint = 29 }, posnLine = 3, posnCol = 13 } }
+, Tok { tokT = StringTok, tokLen = Size { fromSize = 7 }, tokPosn = Posn { posnOfs = Point { fromPoint = 37 }, posnLine = 3, posnCol = 21 } }
+]

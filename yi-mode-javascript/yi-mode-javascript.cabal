@@ -38,6 +38,7 @@ library
       Yi.Mode.JavaScript
       Yi.Syntax.JavaScript
       Yi.Verifier.JavaScript
+      Yi.Lexer.JavaScript
   other-modules:
       Paths_yi_mode_javascript
   ghc-options: -Wall -ferror-spans
