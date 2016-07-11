@@ -8,6 +8,7 @@ packages:
 - yi-keymap-vim
 - yi-mode-haskell
 - yi-mode-javascript
+- yi-language
 - yi
 extra-deps:
 - Hclip-3.0.0.3

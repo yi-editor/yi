@@ -28,5 +28,6 @@ library:
       - Yi.Mode.JavaScript
       - Yi.Syntax.JavaScript
       - Yi.Verifier.JavaScript
+      - Yi.Lexer.JavaScript
 include-dirs:
     - src/Yi/Lexer
