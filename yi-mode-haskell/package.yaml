@@ -1,0 +1,33 @@
+name: yi-mode-haskell
+version: '0.13'
+synopsis: Yi editor haskell mode
+maintainer: Dmitry Ivanov <ethercrow@gmail.com>
+license: GPL-2
+github: yi-editor/yi
+category: Yi
+
+ghc-options: -Wall -ferror-spans
+
+dependencies:
+    - base >= 4.8
+    - array
+    - binary >= 0.7
+    - data-default
+    - microlens-platform
+    - text
+    - yi-core
+    - yi-language
+    - yi-rope
+
+library:
+    source-dirs: src
+    exposed-modules:
+        - Yi.Lexer.Haskell
+        - Yi.Lexer.LiterateHaskell
+        - Yi.Mode.Haskell
+        - Yi.Mode.Haskell.Dollarify
+        - Yi.Syntax.Haskell
+        - Yi.Syntax.Paren
+        - Yi.Syntax.Strokes.Haskell
+include-dirs:
+    - src/Yi/Lexer

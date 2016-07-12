@@ -1,4 +1,4 @@
--- This file has been generated from package.yaml by hpack version 0.14.0.
+-- This file has been generated from package.yaml by hpack version 0.14.1.
 --
 -- see: https://github.com/sol/hpack
 
@@ -69,11 +69,8 @@ library
       Yi.Mode.Buffers
       Yi.Mode.Compilation
       Yi.Mode.GHCi
-      Yi.Mode.Haskell
-      Yi.Mode.Haskell.Dollarify
       Yi.Mode.IReader
       Yi.Mode.Interactive
-      Yi.Mode.JavaScript
       Yi.Mode.Latex
       Yi.Modes
       Yi.Monad
@@ -87,14 +84,10 @@ library
       Yi.Search.Internal
       Yi.String
       Yi.Syntax.Driver
-      Yi.Syntax.Haskell
-      Yi.Syntax.JavaScript
       Yi.Syntax.Latex
       Yi.Syntax.Layout
       Yi.Syntax.OnlineTree
-      Yi.Syntax.Paren
       Yi.Syntax.Tree
-      Yi.Syntax.Strokes.Haskell
       Yi.Tab
       Yi.Tag
       Yi.TextCompletion
@@ -103,7 +96,6 @@ library
       Yi.UI.SimpleLayout
       Yi.UI.TabBar
       Yi.UI.Utils
-      Yi.Verifier.JavaScript
       Yi.Window
       System.FriendlyPath
   ghc-options: -Wall -ferror-spans

@@ -1,0 +1,99 @@
+name:                yi-language
+version:             0.2.1
+synopsis:            Collection of language-related Yi libraries.
+description:         Collection of language-related Yi libraries: lexers, scanners…
+homepage:            https://github.com/yi-editor/yi-language
+license:             GPL-2
+author:              Mateusz Kowalczyk
+maintainer:          yi-devel@googlegroups.com
+category:            Yi
+build-type:          Simple
+extra-source-files:  README.md, src/Yi/Lexer/common.hsinc
+cabal-version:       >=1.10
+tested-with:         GHC==7.10.1, GHC==8.0.1
+
+library
+  exposed-modules:
+      Yi.Buffer.Basic
+    , Yi.Lexer.Abella
+    , Yi.Lexer.Alex
+    , Yi.Lexer.C
+    , Yi.Lexer.Cabal
+    , Yi.Lexer.Clojure
+    , Yi.Lexer.Compilation
+    , Yi.Lexer.Cplusplus
+    , Yi.Lexer.GNUMake
+    , Yi.Lexer.GitCommit
+    , Yi.Lexer.JSON
+    , Yi.Lexer.Java
+    , Yi.Lexer.Latex
+    , Yi.Lexer.OCaml
+    , Yi.Lexer.ObjectiveC
+    , Yi.Lexer.Ott
+    , Yi.Lexer.Perl
+    , Yi.Lexer.Python
+    , Yi.Lexer.R
+    , Yi.Lexer.Ruby
+    , Yi.Lexer.SVNCommit
+    , Yi.Lexer.Srmc
+    , Yi.Lexer.Whitespace
+    , Yi.Regex
+    , Yi.Region
+    , Yi.Style
+    , Yi.Style.Library
+    , Yi.Syntax
+    , Yi.Utils
+
+  build-depends:       base >=4.7 && <5
+                       , array
+                       , binary
+                       , data-default
+                       , template-haskell >= 2.4
+                       , containers
+                       , hashable >=1.1.2.5
+                       , oo-prototypes
+                       , pointedlist >= 0.5
+                       , regex-base ==0.93.*
+                       , regex-tdfa >= 1.1 && <1.3
+                       , transformers-base
+                       , unordered-containers >= 0.1.3 && < 0.3
+                       , microlens-platform
+
+  hs-source-dirs:      src
+  build-tools:         alex >= 3.0.3
+  default-language:    Haskell2010
+  include-dirs:        src/Yi/Lexer
+  ghc-options: -Wall -ferror-spans
+
+
+test-suite spec
+  type:             exitcode-stdio-1.0
+  default-language: Haskell2010
+  main-is:          Spec.hs
+  hs-source-dirs:
+      test
+  ghc-options: -Wall
+
+  other-modules:
+      Yi.Lexer.HaskellSpec
+      Yi.Lexer.Helpers
+      Yi.Lexer.Helpers.TH
+
+  build-depends:
+      base
+    , array
+    , binary
+    , containers
+    , data-default
+    , filepath
+    , hashable >=1.1.2.5
+    , hspec
+    , microlens-platform
+    , pointedlist >= 0.5
+    , regex-base ==0.93.*
+    , regex-tdfa >= 1.1 && <1.3
+    , template-haskell >= 2.4
+    , transformers-base
+    , unordered-containers >= 0.1.3 && < 0.3
+    , QuickCheck == 2.*
+    , yi-language
