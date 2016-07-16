@@ -80,7 +80,6 @@ library:
         - Yi.History
         - Yi.Hoogle
         - Yi.Hooks
-        - Yi.IReader
         - Yi.IncrementalParse
         - Yi.Interact
         - Yi.JumpList
@@ -94,7 +93,6 @@ library:
         - Yi.Misc
         - Yi.Mode.Common
         - Yi.Mode.Interactive
-        - Yi.Mode.IReader
         - Yi.Mode.Compilation
         - Yi.Monad
         - Yi.Paths
