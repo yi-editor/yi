@@ -9,6 +9,7 @@ packages:
 - yi-mode-haskell
 - yi-mode-javascript
 - yi-stock-modes
+- yi-ireader
 - yi-language
 - yi
 extra-deps:

@@ -23,12 +23,10 @@ import           Yi.Editor
 import           Yi.Eval             (publishedActions)
 import           Yi.File
 import qualified Yi.Interact         as I
-import           Yi.IReader          (saveAsNewArticle)
 import           Yi.Keymap
 import           Yi.Keymap.Keys
 import           Yi.Layout
 import           Yi.Mode.Common      (fundamentalMode)
-import           Yi.Mode.IReader     (ireadMode, ireaderMode)
 import qualified Yi.Rope             as R
 import           Yi.Search
 import           Yi.Style.Library
@@ -56,8 +54,6 @@ defaultPublishedActions = HM.fromList
     , ("getSelectRegionB"       , box getSelectRegionB)
     , ("grepFind"               , box grepFind)
     , ("insertB"                , box insertB)
-    , ("iread"                  , box ireadMode)
-    , ("ireadSaveAsArticle"     , box saveAsNewArticle)
     , ("leftB"                  , box leftB)
     , ("linePrefixSelectionB"   , box linePrefixSelectionB)
     , ("lineStreamB"            , box lineStreamB)
