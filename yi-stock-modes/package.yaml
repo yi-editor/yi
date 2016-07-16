@@ -1,6 +1,6 @@
-name: yi-keymap-emacs
+name: yi-stock-modes
 version: '0.13'
-synopsis: Emacs keymap for Yi editor
+synopsis: Yi editor stock modes
 maintainer: Dmitry Ivanov <ethercrow@gmail.com>
 license: GPL-2
 github: yi-editor/yi
@@ -9,23 +9,22 @@ category: Yi
 ghc-options: -Wall -ferror-spans
 
 dependencies:
-    - base >= 4.8 && < 5
+    - base >= 4.8
+    - binary >= 0.7
+    - data-default
     - filepath
-    - Hclip
     - microlens-platform
-    - mtl
-    - oo-prototypes
     - semigroups
     - text
-    - transformers-base
     - yi-core
-    - yi-stock-modes
     - yi-language
     - yi-rope
 
 library:
     source-dirs: src
     exposed-modules:
-        - Yi.Keymap.Emacs
-        - Yi.Keymap.Emacs.KillRing
-        - Yi.Keymap.Emacs.Utils
+      - Yi.Modes
+      - Yi.Mode.Buffers
+      - Yi.Mode.Abella
+      - Yi.Mode.Latex
+include-dirs:

@@ -25,7 +25,7 @@ import           Yi.Keymap.Keys       (Key (KEnter, KHome), char, choice, meta, 
 import           Yi.Lexer.Alex        (Tok)
 import           Yi.Lexer.Compilation (Token)
 import qualified Yi.Mode.Compilation  as Compilation (mode)
-import           Yi.Modes             (lookupMode)
+import           Yi.Mode.Common       (lookupMode)
 import           Yi.Monad             (gets)
 import qualified Yi.Rope              as R (YiString, fromText, toString, toText)
 import qualified Yi.Syntax.OnlineTree as OnlineTree (Tree)

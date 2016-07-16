@@ -22,7 +22,7 @@ import Yi.Editor      (printMsg, withCurrentBuffer)
 import Yi.IReader
 import Yi.Keymap      (YiM, topKeymapA)
 import Yi.Keymap.Keys (choice, important, metaCh, (?>>!))
-import Yi.Modes       (anyExtension, fundamentalMode)
+import Yi.Mode.Common (anyExtension, fundamentalMode)
 
 abstract :: Mode syntax
 abstract = fundamentalMode { modeApplies = anyExtension ["irtxt"]

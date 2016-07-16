@@ -55,7 +55,7 @@ import qualified Yi.Lexer.LiterateHaskell  as LiterateHaskell (HlState, alexScan
 import           Yi.MiniBuffer             (noHint, withMinibufferFree, withMinibufferGen)
 import qualified Yi.Mode.GHCi              as GHCi (ghciProcessArgs, ghciProcessName, spawnProcess)
 import qualified Yi.Mode.Interactive       as Interactive (queryReply)
-import           Yi.Modes                  (anyExtension, extensionOrContentsMatch)
+import           Yi.Mode.Common            (anyExtension, extensionOrContentsMatch)
 import           Yi.Monad                  (gets)
 import qualified Yi.Rope                   as R
 import           Yi.String                 (fillText, showT)

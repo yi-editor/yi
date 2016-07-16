@@ -39,7 +39,7 @@ import           Yi.Keymap.Keys      (Event, choice, ctrlCh, (<||), (?*>>!))
 import qualified Yi.Lexer.Abella     as Abella (Token, lexer)
 import           Yi.MiniBuffer       (CommandArguments (..))
 import qualified Yi.Mode.Interactive as Interactive (spawnProcess)
-import           Yi.Modes            (TokenBasedMode, anyExtension, styleMode)
+import           Yi.Mode.Common      (TokenBasedMode, anyExtension, styleMode)
 import qualified Yi.Rope             as R (YiString, toText)
 import           Yi.Types            (YiVariable)
 
