@@ -17,7 +17,7 @@ import           Yi.Buffer
 import qualified Yi.IncrementalParse  as IncrParser (scanner)
 import           Yi.Lexer.Alex        (AlexState, CharScanner, Tok, commonLexer, lexScanner)
 import qualified Yi.Lexer.Latex       as Latex (HlState, Token, alexScanToken, initState)
-import           Yi.Modes             (anyExtension, fundamentalMode)
+import           Yi.Mode.Common       (anyExtension, fundamentalMode)
 import           Yi.Syntax            (ExtHL (ExtHL), Scanner, mkHighlighter)
 import qualified Yi.Syntax.Driver     as Driver (mkHighlighter)
 import qualified Yi.Syntax.Latex      as Latex (TT, Tree, getStrokes, parse, tokenToStroke)
