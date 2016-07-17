@@ -19,7 +19,7 @@ dependencies:
     - text
     - transformers-base
     - yi-core
-    - yi-stock-modes
+    - yi-misc-modes
     - yi-language
     - yi-rope
 

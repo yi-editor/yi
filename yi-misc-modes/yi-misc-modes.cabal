@@ -2,9 +2,9 @@
 --
 -- see: https://github.com/sol/hpack
 
-name:           yi-stock-modes
+name:           yi-misc-modes
 version:        0.13
-synopsis:       Yi editor javascript mode
+synopsis:       Yi editor miscellaneous modes
 category:       Yi
 homepage:       https://github.com/yi-editor/yi#readme
 bug-reports:    https://github.com/yi-editor/yi/issues
@@ -38,5 +38,5 @@ library
       Yi.Mode.Abella
       Yi.Mode.Latex
   other-modules:
-      Paths_yi_stock_modes
+      Paths_yi_misc_modes
   default-language: Haskell2010
