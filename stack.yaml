@@ -8,7 +8,7 @@ packages:
 - yi-keymap-vim
 - yi-mode-haskell
 - yi-mode-javascript
-- yi-stock-modes
+- yi-misc-modes
 - yi-ireader
 - yi-language
 - yi
