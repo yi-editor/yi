@@ -11,6 +11,7 @@ ghc-options: -Wall -ferror-spans
 dependencies:
     - base >= 4.8 && < 5
     - containers
+    - data-default
     - dlist
     - microlens-platform
     - pointedlist

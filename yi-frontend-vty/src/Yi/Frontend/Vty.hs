@@ -1,5 +1,8 @@
-{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE DeriveDataTypeable #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TemplateHaskell #-}
 
 -- |
 -- Module      :  Yi.Frontend.Vty
@@ -23,9 +26,10 @@ import           Control.Concurrent             (MVar, forkIO, myThreadId, newEm
                                                  takeMVar, tryPutMVar, tryTakeMVar)
 import           Control.Concurrent.STM         (atomically, isEmptyTChan, readTChan)
 import           Control.Exception              (IOException, handle)
-import           Lens.Micro.Platform                     (use)
+import           Lens.Micro.Platform            (makeLenses, view, use)
 import           Control.Monad                  (void, when)
 import           Data.Char                      (chr, ord)
+import           Data.Default                   (Default)
 import qualified Data.DList                     as D (empty, snoc, toList)
 import           Data.Foldable                  (concatMap, toList)
 import           Data.IORef                     (IORef, newIORef, readIORef, writeIORef)
@@ -37,8 +41,10 @@ import qualified Data.Text                      as T (Text, cons, empty,
                                                       justifyLeft, length, pack,
                                                       singleton, snoc, take,
                                                       unpack)
+import           Data.Typeable                  (Typeable)
 import           GHC.Conc                       (labelThread)
 import qualified Graphics.Vty                   as Vty (Attr, Cursor (Cursor, NoCursor),
+                                                        Config,
                                                         Event (EvResize), Image,
                                                         Input (_eventChannel),
                                                         Output (displayBounds),
@@ -59,6 +65,7 @@ import           Yi.Debug                       (logError, logPutStrLn)
 import           Yi.Editor
 import           Yi.Event                       (Event)
 import           Yi.Style
+import           Yi.Types                       (YiConfigVariable)
 import qualified Yi.UI.Common                   as Common
 import qualified Yi.UI.SimpleLayout             as SL
 import           Yi.Layout                      (HasNeighborWest)
@@ -83,9 +90,25 @@ data FrontendState = FrontendState
     , fsEditorRef :: IORef Editor
     }
 
+-- | Base vty configuration, named so to distinguish it from any vty
+-- frontend configuration.
+--
+-- If this is set to its default (None) it will be replaced by the default
+-- vty configuration from standardIOConfig. However, standardIOConfig
+-- runs in the IO monad so we cannot set the real default here.
+newtype BaseVtyConfig = BaseVtyConfig { _baseVtyConfig :: Maybe Vty.Config }
+    deriving (Typeable, Default)
+
+instance YiConfigVariable BaseVtyConfig
+
+makeLenses ''BaseVtyConfig
+
 start :: UIBoot
 start config submitEvents submitActions editor = do
-    vty <- Vty.mkVty =<< Vty.standardIOConfig
+    let baseConfig = view (configVariable . baseVtyConfig) config
+    vty <- Vty.mkVty =<< case baseConfig of
+        Nothing -> Vty.standardIOConfig
+        Just conf -> return conf
     let inputChan = Vty._eventChannel (Vty.inputIface vty)
     endInput <- newEmptyMVar
     endMain <- newEmptyMVar
