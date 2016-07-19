@@ -31,3 +31,31 @@ library:
         - Yi.Syntax.Strokes.Haskell
 include-dirs:
     - src/Yi/Lexer
+
+tests:
+  spec:
+    main: Spec.hs
+    source-dirs: test
+    ghc-options: -Wall
+    dependencies:
+      - base
+      - array
+      - binary
+      - containers
+      - data-default
+      - filepath
+      - hashable >=1.1.2.5
+      - hspec
+      - microlens-platform
+      - pointedlist >= 0.5
+      - regex-base ==0.93.*
+      - regex-tdfa >= 1.1 && <1.3
+      - template-haskell >= 2.4
+      - transformers-base
+      - unordered-containers >= 0.1.3 && < 0.3
+      - QuickCheck == 2.*
+      - yi-mode-haskell
+    other-modules:
+      Yi.Lexer.HaskellSpec
+      Yi.Lexer.Helpers
+      Yi.Lexer.Helpers.TH
