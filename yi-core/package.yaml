@@ -113,7 +113,6 @@ library:
         - Yi.Search.Internal
         - Yi.String
         - Yi.Syntax.Driver
-        - Yi.Syntax.Latex
         - Yi.Syntax.Layout
         - Yi.Syntax.OnlineTree
         - Yi.Syntax.Paren
