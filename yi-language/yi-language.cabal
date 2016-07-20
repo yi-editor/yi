@@ -15,28 +15,8 @@ tested-with:         GHC==7.10.1, GHC==8.0.1
 library
   exposed-modules:
       Yi.Buffer.Basic
-    , Yi.Lexer.Abella
     , Yi.Lexer.Alex
-    , Yi.Lexer.C
-    , Yi.Lexer.Cabal
-    , Yi.Lexer.Clojure
     , Yi.Lexer.Compilation
-    , Yi.Lexer.Cplusplus
-    , Yi.Lexer.GNUMake
-    , Yi.Lexer.GitCommit
-    , Yi.Lexer.JSON
-    , Yi.Lexer.Java
-    , Yi.Lexer.Latex
-    , Yi.Lexer.OCaml
-    , Yi.Lexer.ObjectiveC
-    , Yi.Lexer.Ott
-    , Yi.Lexer.Perl
-    , Yi.Lexer.Python
-    , Yi.Lexer.R
-    , Yi.Lexer.Ruby
-    , Yi.Lexer.SVNCommit
-    , Yi.Lexer.Srmc
-    , Yi.Lexer.Whitespace
     , Yi.Regex
     , Yi.Region
     , Yi.Style

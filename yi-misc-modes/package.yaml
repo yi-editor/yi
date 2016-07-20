@@ -9,6 +9,7 @@ category: Yi
 ghc-options: -Wall -ferror-spans
 
 dependencies:
+    - array
     - base >= 4.8
     - binary >= 0.7
     - data-default
@@ -19,7 +20,6 @@ dependencies:
     - yi-core
     - yi-language
     - yi-rope
-
 library:
     source-dirs: src
     exposed-modules:
@@ -27,4 +27,26 @@ library:
       - Yi.Mode.Buffers
       - Yi.Mode.Abella
       - Yi.Mode.Latex
-include-dirs:
+      - Yi.Lexer.Abella
+      - Yi.Lexer.C
+      - Yi.Lexer.Cabal
+      - Yi.Lexer.Clojure
+      - Yi.Lexer.Cplusplus
+      - Yi.Lexer.GNUMake
+      - Yi.Lexer.GitCommit
+      - Yi.Lexer.JSON
+      - Yi.Lexer.Java
+      - Yi.Lexer.Latex
+      - Yi.Lexer.OCaml
+      - Yi.Lexer.ObjectiveC
+      - Yi.Lexer.Ott
+      - Yi.Lexer.Perl
+      - Yi.Lexer.Python
+      - Yi.Lexer.R
+      - Yi.Lexer.Ruby
+      - Yi.Lexer.SVNCommit
+      - Yi.Lexer.Srmc
+      - Yi.Lexer.Whitespace
+      - Yi.Syntax.Latex
+    include-dirs:
+      - src/Yi/Lexer
