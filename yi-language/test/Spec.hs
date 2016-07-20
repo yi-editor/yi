@@ -1,5 +1,7 @@
-import Test.Hspec
-import Test.QuickCheck
+import Test.Tasty
+import Test.Tasty.Hspec
+import Test.Tasty.QuickCheck
+
 import Yi.Regex
 import Text.Regex.TDFA.ReadRegex (parseRegex)
 import Text.Regex.TDFA.Pattern
@@ -25,22 +27,23 @@ ignoreDoPa p = p
 
 mapFst f (a,b) = (f a,b)
 
-main :: IO ()
-main = hspec $ do
+main = defaultMain =<< tests
+
+tests = testSpec "(Hspec tests)" $ do
   describe "reversePattern" $ do
-    it "reverses normal characters" $ do
+    it "reverses normal characters" $
       (mapFst ignoreDoPa . reversePattern <$> parseRegex "ab") 
         `shouldBe` (mapFst ignoreDoPa <$> parseRegex "ba")
 
-    it "changes carat to dollar" $ do
+    it "changes carat to dollar" $
       (reversePattern <$> parseRegex "^") `shouldBe` parseRegex "$"
 
-    it "changes dollar to carat" $ do
+    it "changes dollar to carat" $
       (reversePattern <$> parseRegex "$") `shouldBe` parseRegex "^"
 
-    it "forms the identity when applied twice" $ do
+    it "forms the identity when applied twice" $
       property $ \p -> (reversePattern . reversePattern <$> parseRegex p) `shouldBe` parseRegex p
 
-    it "recursively reverses patterns" $ do
+    it "recursively reverses patterns" $
       (mapFst ignoreDoPa . reversePattern <$> parseRegex "foo|bar") 
         `shouldBe` (mapFst ignoreDoPa <$> parseRegex "oof|rab")

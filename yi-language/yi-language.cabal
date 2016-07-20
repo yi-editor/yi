@@ -71,6 +71,7 @@ test-suite spec
   main-is:             Spec.hs
   build-depends:       base >= 4.7 && < 5
                      , yi-language
-                     , hspec
                      , regex-tdfa
-                     , QuickCheck
+                     , tasty
+                     , tasty-hspec
+                     , tasty-quickcheck
