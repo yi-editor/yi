@@ -10,6 +10,7 @@ module Yi.Regex
   , SearchExp(..), searchString, searchRegex, emptySearch
   , emptyRegex
   , regexEscapeString
+  , reversePattern
   , module Text.Regex.TDFA
   ) where
 

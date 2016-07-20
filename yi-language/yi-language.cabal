@@ -64,3 +64,14 @@ library
   default-language:    Haskell2010
   include-dirs:        src/Yi/Lexer
   ghc-options: -Wall -ferror-spans
+
+test-suite spec
+  type:                exitcode-stdio-1.0
+  hs-source-dirs:      test
+  main-is:             Spec.hs
+  build-depends:       base >= 4.7 && < 5
+                     , yi-language
+                     , regex-tdfa
+                     , tasty
+                     , tasty-hspec
+                     , tasty-quickcheck
