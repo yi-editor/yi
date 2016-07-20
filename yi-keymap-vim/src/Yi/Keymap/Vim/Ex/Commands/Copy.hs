@@ -15,31 +15,27 @@ import           Control.Monad                    (void)
 import qualified Text.ParserCombinators.Parsec    as P (string)
 import           Yi.Editor                        (withCurrentBuffer)
 import           Yi.Keymap                        (Action (YiA))
-import qualified Yi.Keymap.Vim.Ex.Commands.Common as Common (parse, impureExCommand)
+import qualified Yi.Keymap.Vim.Ex.Commands.Common as Common (parse, impureExCommand, parseRange)
 import           Yi.Keymap.Vim.Ex.Types           (ExCommand (cmdAction, cmdShow))
 import           Yi.Keymap.Vim.Common             (EventString)
-import           Yi.Types                         (YiM)
-import           Yi.Rope                          (toString, toText)
-import           Yi.Buffer.HighLevel              (getRawestSelectRegionB)
-import           Yi.Buffer.Region                 (readRegionB)
+import           Yi.Types                         (YiM, BufferM)
+import           Yi.Rope                          (toString)
+import           Yi.Buffer.Region                 (readRegionB, Region)
 import           Control.Monad.Base               (liftBase)
 import           System.Hclip                     (setClipboard)
 import           Yi.Core                          (errorEditor)
-import           Yi.Editor                        (printMsg, withEditor)
-import           Data.Monoid                      ((<>))
 
 parse :: EventString -> Maybe ExCommand
 parse = Common.parse $ do
-    void (P.string "'<,'>copy")
+    region <- Common.parseRange
+    void (P.string "copy")
     return $ Common.impureExCommand {
         cmdShow = "copy"
-      , cmdAction = YiA copy
+      , cmdAction = YiA (copy region)
       }
 
-copy :: YiM ()
-copy = do
-  selectionString <- withCurrentBuffer (readRegionB =<< getRawestSelectRegionB)
-  withEditor $ printMsg ("copied \"" <> toText selectionString <> "\"")
-  case toString selectionString of
-    "" -> errorEditor "Cannot copy empty selection"
-    s  -> liftBase (setClipboard s)
+copy :: Maybe (BufferM Region) -> YiM ()
+copy maybeGetRegion = case maybeGetRegion of
+    Nothing -> errorEditor "Cannot copy: No region"
+    Just getRegion -> liftBase . setClipboard . toString 
+      =<< withCurrentBuffer (readRegionB =<< getRegion)
