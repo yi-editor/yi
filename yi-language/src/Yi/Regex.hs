@@ -10,6 +10,7 @@ module Yi.Regex
   , SearchExp(..), searchString, searchRegex, emptySearch
   , emptyRegex
   , regexEscapeString
+  , reversePattern
   , module Text.Regex.TDFA
   ) where
 
@@ -97,13 +98,21 @@ literalPattern' = PConcat . map (PChar (DoPa 0))
 
 -- | Reverse a pattern. Note that the submatches will be reversed as well.
 reversePattern :: (Pattern, (t, DoPa)) -> (Pattern, (t, DoPa))
-reversePattern (pattern,(gi,DoPa maxDoPa)) = (transform rev pattern, (gi,DoPa maxDoPa))
-    where rev (PConcat l) = PConcat (reverse l)
-          rev (PCarat  x) = PDollar x
-          rev (PDollar x) = PCarat  x
-          rev (PEscape {getDoPa = dp, getPatternChar = '<'}) = PEscape {getDoPa = dp, getPatternChar = '>'}
-          rev (PEscape {getDoPa = dp, getPatternChar = '>'}) = PEscape {getDoPa = dp, getPatternChar = '<'}
-          rev x           = x
+reversePattern (pattern,rest) = (rev pattern, rest)
+    where rev (PConcat l)      = PConcat (reverse (map rev l))
+          rev (PCarat  dp)     = PDollar dp
+          rev (PDollar dp)     = PCarat  dp
+          rev (PEscape dp '<') = PEscape dp '>'
+          rev (PEscape dp '>') = PEscape dp '<'
+          rev (PGroup a x)     = PGroup a (rev x)
+          rev (POr l)          = POr (map rev l)
+          rev (PQuest x)       = PQuest (rev x)
+          rev (PPlus x)        = PPlus (rev x)
+          rev (PStar b x)      = PStar b (rev x)
+          rev (PBound i m x)   = PBound i m (rev x)
+          rev (PNonCapture x)  = PNonCapture (rev x)
+          rev (PNonEmpty x)    = PNonEmpty (rev x)
+          rev x = x
 
 {-
 Chris K Commentary:
@@ -127,29 +136,6 @@ to the input pattern.
 
 -}
 
-transform :: Plated a => (a -> a) -> a -> a
-transform = transformOf plate
-
-transformOf :: ASetter' a a -> (a -> a) -> a -> a
-transformOf l f = go
-  where
-    go = f . over l go
-
-class Plated a where
-    plate :: Traversal' a a
-
-instance Plated Pattern where
-    plate f (PGroup x p) = PGroup <$> pure x <*> f p
-    plate f (POr ps)     = POr <$> traverse f ps
-    plate f (PConcat ps) = PConcat <$> traverse f ps
-    plate f (PQuest p)   = PQuest <$> f p
-    plate f (PPlus p)    = PPlus <$> f p
-    plate f (PStar x p)  = PStar <$> pure x <*> f p
-    plate f (PBound w x p) = PBound <$> pure w <*> pure x <*> f p
-    plate f (PNonCapture p) = PNonCapture <$> f p
-    plate f (PNonEmpty p) = PNonEmpty <$> f p
-    plate _ p = pure p
-
 emptySearch :: SearchExp
 emptySearch = SearchExp "" emptyRegex emptyRegex []
 
@@ -157,4 +143,3 @@ emptySearch = SearchExp "" emptyRegex emptyRegex []
 -- | The regular expression that matches nothing.
 emptyRegex :: Regex
 Just emptyRegex = makeRegexOptsM defaultCompOpt defaultExecOpt "[[:empty:]]"
-
