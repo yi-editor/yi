@@ -1,6 +1,6 @@
 -- | This is a little helper for completion interfaces.
 
-module Yi.Keymap.Completion (
+module Yi.CompletionTree (
         CompletionTree(CT),
         stepTree, obvious, mergeTrees, listToTree, complete)
    where
