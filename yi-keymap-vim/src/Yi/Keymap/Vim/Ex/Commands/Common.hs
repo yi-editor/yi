@@ -33,16 +33,16 @@ module Yi.Keymap.Vim.Ex.Commands.Common
 import           Control.Applicative           (Alternative ((<|>)))
 import           Lens.Micro.Platform                    (use)
 import           Control.Monad                 (void, (>=>))
+import qualified Data.Attoparsec.Text          as P (Parser, anyChar, char,
+                                                     digit, inClass, many',
+                                                     many1, notInClass, parseOnly,
+                                                     option, satisfy, space, string)
 import           Data.List.NonEmpty            (NonEmpty (..))
 import           Data.Monoid                   ((<>))
 import qualified Data.Text                     as T (Text, concat, cons, drop,
                                                      isPrefixOf, length, pack,
-                                                     singleton, snoc, unpack)
+                                                     singleton, snoc)
 import           System.Directory              (getCurrentDirectory)
-import qualified Text.ParserCombinators.Parsec as P (GenParser, anyChar, char,
-                                                     digit, many, many1, noneOf,
-                                                     oneOf, optionMaybe, parse,
-                                                     space, string)
 import           Text.Read                     (readMaybe)
 import           Yi.Buffer
 import           Yi.Editor
@@ -55,21 +55,25 @@ import           Yi.Monad                      (gets)
 import           Yi.Style                      (errorStyle)
 import           Yi.Utils                      (io)
 
-parse :: P.GenParser Char () ExCommand -> EventString -> Maybe ExCommand
-parse parser (Ev s) =
-  either (const Nothing) Just (P.parse parser "" $ T.unpack s)
+-- TODO this kind of thing is exactly where it makes sense to
+-- *not* use parseOnly but its easier to have compatibility with
+-- the old parsec-based interface for now.
 
-parseWithBangAndCount :: P.GenParser Char () a
+parse :: P.Parser ExCommand -> EventString -> Maybe ExCommand
+parse parser (Ev s) =
+  either (const Nothing) Just $ P.parseOnly parser s
+
+parseWithBangAndCount :: P.Parser a
                       -- ^ The command name parser.
                       -> (a -> Bool
                           -> Maybe Int
-                          -> P.GenParser Char () ExCommand)
+                          -> P.Parser ExCommand)
                       -- ^ A parser for the remaining command arguments.
                       -> EventString
                       -- ^ The string to parse.
                       -> Maybe ExCommand
 parseWithBangAndCount nameParser argumentParser (Ev s) =
-    either (const Nothing) Just (P.parse parser "" $ T.unpack s)
+    either (const Nothing) Just (P.parseOnly parser s)
   where
     parser = do
         mcount <- parseCount
@@ -77,36 +81,36 @@ parseWithBangAndCount nameParser argumentParser (Ev s) =
         bang   <- parseBang
         argumentParser a bang mcount
 
-parseWithBang :: P.GenParser Char () a
+parseWithBang :: P.Parser a
               -- ^ The command name parser.
-              -> (a -> Bool -> P.GenParser Char () ExCommand)
+              -> (a -> Bool -> P.Parser ExCommand)
               -- ^ A parser for the remaining command arguments.
               -> EventString
               -- ^ The string to parse.
               -> Maybe ExCommand
 parseWithBang nameParser argumentParser (Ev s) =
-    either (const Nothing) Just (P.parse parser "" $ T.unpack s)
+    either (const Nothing) Just (P.parseOnly parser s)
   where
     parser = do
         a    <- nameParser
         bang <- parseBang
         argumentParser a bang
 
-parseBang :: P.GenParser Char () Bool
+parseBang :: P.Parser Bool
 parseBang = P.string "!" *> return True <|> return False
 
-parseCount :: P.GenParser Char () (Maybe Int)
-parseCount = readMaybe <$> P.many P.digit
+parseCount :: P.Parser (Maybe Int)
+parseCount = readMaybe <$> P.many' P.digit
 
-parseRange :: P.GenParser Char s (Maybe (BufferM Region))
+parseRange :: P.Parser (Maybe (BufferM Region))
 parseRange = fmap Just parseFullRange
          <|> fmap Just parsePointRange
          <|> return Nothing
 
-parseFullRange :: P.GenParser Char s (BufferM Region)
+parseFullRange :: P.Parser (BufferM Region)
 parseFullRange = P.char '%' *> return (regionOfB Document)
 
-parsePointRange :: P.GenParser Char s (BufferM Region)
+parsePointRange :: P.Parser (BufferM Region)
 parsePointRange = do
     p1 <- parseSinglePoint
     void $ P.char ','
@@ -116,22 +120,22 @@ parsePointRange = do
         p2' <- p2
         return $ mkRegion (min p1' p2') (max p1' p2')
 
-parseSinglePoint :: P.GenParser Char s (BufferM Point)
+parseSinglePoint :: P.Parser (BufferM Point)
 parseSinglePoint = parseSingleMark <|> parseLinePoint
 
 -- | Some of the parse rules for the second point actually depend
 -- on the first point. If parse rule succeeds this can result
 -- in the first BufferM Point having to be run twice but this
 -- probably isn't a big deal.
-parseSinglePoint2 :: BufferM Point -> P.GenParser Char s (BufferM Point)
+parseSinglePoint2 :: BufferM Point -> P.Parser (BufferM Point)
 parseSinglePoint2 ptB = parseEndOfLine ptB <|> parseSinglePoint
 
 -- | Parse a single mark, or a selection mark (< or >)
-parseSingleMark :: P.GenParser Char s (BufferM Point)
+parseSingleMark :: P.Parser (BufferM Point)
 parseSingleMark = P.char '\'' *> (parseSelMark <|> parseNormMark)
 
 -- | Parse a normal mark (non-system)
-parseNormMark :: P.GenParser Char s (BufferM Point)
+parseNormMark :: P.Parser (BufferM Point)
 parseNormMark = do
     c <- P.anyChar
     return $ mayGetMarkB [c] >>= \case
@@ -139,25 +143,25 @@ parseNormMark = do
         Just mark -> use (markPointA mark)
 
 -- | Parse selection marks.
-parseSelMark :: P.GenParser Char s (BufferM Point)
+parseSelMark :: P.Parser (BufferM Point)
 parseSelMark = do
-    c <- P.oneOf "<>" 
+    c <- P.satisfy $ P.inClass "<>"
     return $ if c == '<' then getSelectionMarkPointB else pointB
 
 -- | Parses end of line, $, only valid for 2nd point.
-parseEndOfLine :: BufferM Point -> P.GenParser Char s (BufferM Point)
+parseEndOfLine :: BufferM Point -> P.Parser (BufferM Point)
 parseEndOfLine ptB = P.char '$' *> return (ptB >>= eolPointB)
 
 -- | Parses a numeric line or ".+k", k relative to current
-parseLinePoint :: P.GenParser Char s (BufferM Point)
+parseLinePoint :: P.Parser (BufferM Point)
 parseLinePoint = parseCurrentLinePoint <|> parseNormalLinePoint
 
 -- | Parses .+-k
-parseCurrentLinePoint :: P.GenParser Char s (BufferM Point)
+parseCurrentLinePoint :: P.Parser (BufferM Point)
 parseCurrentLinePoint = do
     void $ P.char '.'
-    relative <- P.optionMaybe $ do
-        c <- P.oneOf "+-"
+    relative <- P.option Nothing $ Just <$> do
+        c <- P.satisfy $ P.inClass "+-"
         (i :: Int) <- read <$> P.many1 P.digit
         return $ if c == '+' then i else -i
     case relative of
@@ -167,7 +171,7 @@ parseCurrentLinePoint = do
             savingPointB $ gotoLn (ln + offset) >> pointB
 
 -- | Parses a line number
-parseNormalLinePoint :: P.GenParser Char s (BufferM Point)
+parseNormalLinePoint :: P.Parser (BufferM Point)
 parseNormalLinePoint = do
     ln <- read <$> P.many1 P.digit
     return . savingPointB $ gotoLn ln >> pointB
@@ -178,17 +182,17 @@ parseBoolOption :: T.Text -> (BoolOptionAction -> Action) -> EventString
     -> Maybe ExCommand
 parseBoolOption name action = parse $ do
     void $ P.string "set "
-    nos <- P.many (P.string "no")
-    invs <- P.many (P.string "inv")
-    void $ P.string (T.unpack name)
-    bangs <- P.many (P.string "!")
-    qs <- P.many (P.string "?")
+    nos <- P.many' (P.string "no")
+    invs <- P.many' (P.string "inv")
+    void $ P.string name
+    bangs <- P.many' (P.string "!")
+    qs <- P.many' (P.string "?")
     return $ pureExCommand {
         cmdShow = T.concat [ "set "
-                           , T.pack $ concat nos
+                           , T.concat nos
                            , name
-                           , T.pack $ concat bangs
-                           , T.pack $ concat qs ]
+                           , T.concat bangs
+                           , T.concat qs ]
       , cmdAction = action $
           case fmap (not . null) [qs, bangs, invs, nos] of
               [True, _, _, _] -> BoolOptionAsk
@@ -204,12 +208,12 @@ parseTextOption :: T.Text -> (TextOptionAction -> Action) -> EventString
     -> Maybe ExCommand
 parseTextOption name action = parse $ do
     void $ P.string "set "
-    void $ P.string (T.unpack name)
-    maybeNewValue <- P.optionMaybe $ do
-        void $ P.many P.space
+    void $ P.string name
+    maybeNewValue <- P.option Nothing $ Just <$> do
+        void $ P.many' P.space
         void $ P.char '='
-        void $ P.many P.space
-        T.pack <$> P.many P.anyChar
+        void $ P.many' P.space
+        T.pack <$> P.many' P.anyChar
     return $ pureExCommand
       { cmdShow = T.concat [ "set "
                            , name
@@ -277,33 +281,33 @@ errorNoWrite :: EditorM ()
 errorNoWrite = errorEditor "No write since last change (add ! to override)"
 
 -- | Useful parser for any Ex command that acts kind of like a shell
-commandArgs :: P.GenParser Char () [T.Text]
-commandArgs = P.many commandArg
+commandArgs :: P.Parser [T.Text]
+commandArgs = P.many' commandArg
 
 -- | Parse a single command, with a space in front
-commandArg :: P.GenParser Char () T.Text
+commandArg :: P.Parser T.Text
 commandArg = fmap mconcat $ P.many1 P.space *> normArg
 
 -- | Unquoted arg, allows for escaping of \, ", ', and space. Includes quoted arg
 -- as a subset, because of things like aa"bbb"
-normArg :: P.GenParser Char () [T.Text]
+normArg :: P.Parser [T.Text]
 normArg = P.many1 $
         quoteArg '\"'
     <|> quoteArg '\"'
     <|> T.singleton <$> escapeChar
-    <|> T.singleton <$> P.noneOf " \"\'\\"
+    <|> T.singleton <$> P.satisfy (P.notInClass " \"\'\\")
 
 -- | Quoted arg with char delim. Allows same escapes, but doesn't require escaping
 -- of the opposite kind or space. However, it does allow escaping opposite kind like
 -- normal, as well as allowing escaping of space (is this normal behavior?).
-quoteArg :: Char -> P.GenParser Char () T.Text
+quoteArg :: Char -> P.Parser T.Text
 quoteArg delim = fmap T.pack $ P.char delim 
-    *> P.many1 (P.noneOf (delim:"\\") <|> escapeChar)
+    *> P.many1 (P.satisfy (P.notInClass (delim:"\\")) <|> escapeChar)
     <* P.char delim
 
 -- | Parser for a single escape character
-escapeChar :: P.GenParser Char () Char
-escapeChar = P.char '\\' *> P.oneOf " \"\'\\"
+escapeChar :: P.Parser Char
+escapeChar = P.char '\\' *> P.satisfy (P.inClass " \"\'\\")
 
 needsSaving :: BufferRef -> YiM Bool
 needsSaving = findBuffer >=> maybe (return False) deservesSave

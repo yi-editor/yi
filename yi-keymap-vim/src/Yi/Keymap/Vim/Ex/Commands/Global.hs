@@ -15,7 +15,7 @@ import           Lens.Micro.Platform                           (use)
 import           Control.Monad                        (forM_, void, when)
 import           Data.Monoid                          ((<>))
 import qualified Data.Text                            as T (Text, isInfixOf, pack, snoc)
-import qualified Text.ParserCombinators.Parsec        as P (anyChar, char, many, noneOf, string, try)
+import qualified Data.Attoparsec.Text                 as P (anyChar, char, many', satisfy, string, try)
 import           Yi.Buffer.Adjusted
 import           Yi.Editor                            (withCurrentBuffer)
 import           Yi.Keymap                            (Action (BufferA, EditorA))
@@ -30,9 +30,9 @@ import           Yi.String                            (showT)
 parse :: EventString -> Maybe ExCommand
 parse = Common.parse $ do
     void $ P.try (P.string "global/") <|> P.string "g/"
-    predicate <- T.pack <$> P.many (P.noneOf "/")
+    predicate <- T.pack <$> P.many' (P.satisfy (/= '/'))
     void $ P.char '/'
-    cmdString <- Ev . T.pack <$> P.many P.anyChar
+    cmdString <- Ev . T.pack <$> P.many' P.anyChar
     cmd <- case evStringToExCommand allowedCmds cmdString of
             Just c -> return c
             _ -> fail "Unexpected command argument for global command."

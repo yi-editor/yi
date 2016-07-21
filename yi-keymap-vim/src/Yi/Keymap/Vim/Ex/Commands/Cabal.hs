@@ -1,3 +1,4 @@
+{-# LANGUAGE OverloadedStrings #-}
 {-# OPTIONS_HADDOCK show-extensions #-}
 
 -- |
@@ -11,8 +12,8 @@ module Yi.Keymap.Vim.Ex.Commands.Cabal (parse) where
 
 import           Control.Applicative              (Alternative ((<|>)))
 import           Control.Monad                    (void)
+import qualified Data.Attoparsec.Text             as P (string, try)
 import qualified Data.Text                        as T (pack)
-import qualified Text.ParserCombinators.Parsec    as P (string, try)
 import           Yi.Command                       (cabalBuildE)
 import           Yi.Keymap                        (Action (YiA))
 import           Yi.Keymap.Vim.Common             (EventString)

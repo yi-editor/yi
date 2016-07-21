@@ -12,11 +12,11 @@ module Yi.Keymap.Vim.Ex.Commands.Tag (parse) where
 
 import           Control.Applicative              (Alternative ((<|>)))
 import           Control.Monad                    (void)
+import qualified Data.Attoparsec.Text             as P (Parser, anyChar, endOfInput,
+                                                        many1, option,
+                                                        space, string)
 import           Data.Monoid                      ((<>))
 import qualified Data.Text                        as T (pack)
-import qualified Text.ParserCombinators.Parsec    as P (GenParser, anyChar, eof,
-                                                        many1, optionMaybe,
-                                                        space, string)
 import           Yi.Keymap                        (Action (YiA))
 import           Yi.Keymap.Vim.Common             (EventString)
 import qualified Yi.Keymap.Vim.Ex.Commands.Common as Common (impureExCommand, parse)
@@ -29,18 +29,18 @@ parse = Common.parse $ do
     void $ P.string "t"
     parseTag <|> parseNext
 
-parseTag :: P.GenParser Char () ExCommand
+parseTag :: P.Parser ExCommand
 parseTag = do
   void $ P.string "a"
-  void . P.optionMaybe $ P.string "g"
-  t <- P.optionMaybe $ do
+  void . P.option Nothing $ Just <$> P.string "g"
+  t <- P.option Nothing $ Just <$> do
       void $ P.many1 P.space
       P.many1 P.anyChar
   case t of
-    Nothing -> P.eof >> return (tag Nothing)
+    Nothing -> P.endOfInput >> return (tag Nothing)
     Just t' -> return $! tag (Just (Tag (T.pack t')))
 
-parseNext :: P.GenParser Char () ExCommand
+parseNext :: P.Parser ExCommand
 parseNext = do
   void $ P.string "next"
   return next

@@ -12,7 +12,7 @@
 module Yi.Keymap.Vim.Ex.Commands.Copy (parse) where
 
 import           Control.Monad                    (void)
-import qualified Text.ParserCombinators.Parsec    as P (string)
+import qualified Data.Attoparsec.Text             as P (string)
 import           Yi.Editor                        (withCurrentBuffer)
 import           Yi.Keymap                        (Action (YiA))
 import qualified Yi.Keymap.Vim.Ex.Commands.Common as Common (parse, impureExCommand, parseRange)

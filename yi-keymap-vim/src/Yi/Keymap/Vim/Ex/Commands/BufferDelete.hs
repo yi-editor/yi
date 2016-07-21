@@ -13,7 +13,7 @@ module Yi.Keymap.Vim.Ex.Commands.BufferDelete (parse) where
 import           Control.Applicative              (Alternative ((<|>)))
 import           Control.Monad                    (void)
 import           Data.Text                        ()
-import qualified Text.ParserCombinators.Parsec    as P (string, try)
+import qualified Data.Attoparsec.Text             as P (string, try)
 import           Yi.Editor                        (closeBufferAndWindowE)
 import           Yi.Keymap                        (Action (EditorA))
 import           Yi.Keymap.Vim.Common             (EventString)

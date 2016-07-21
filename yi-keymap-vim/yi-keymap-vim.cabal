@@ -23,6 +23,7 @@ library
   ghc-options: -Wall -ferror-spans
   build-depends:
       base >= 4.8 && < 5
+    , attoparsec
     , binary
     , containers
     , data-default
@@ -32,7 +33,6 @@ library
     , microlens-platform
     , mtl
     , oo-prototypes
-    , parsec
     , pointedlist
     , safe
     , semigroups
