@@ -21,7 +21,7 @@ import           Yi.Keymap            (Action (YiA), topKeymapA)
 import           Yi.Keymap.Keys       (Key (KEnter), spec, (<||), (?>>!))
 import           Yi.Lexer.Alex        (Posn (..), Tok (..))
 import qualified Yi.Lexer.Compilation as Compilation (Token (Report), lexer)
-import           Yi.Modes             (TokenBasedMode, styleMode)
+import           Yi.Mode.Common       (TokenBasedMode, styleMode)
 import qualified Yi.Syntax.OnlineTree as OnlineTree (tokAtOrBefore)
 
 mode :: TokenBasedMode Compilation.Token

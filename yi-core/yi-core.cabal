@@ -53,7 +53,6 @@ library
       Yi.History
       Yi.Hoogle
       Yi.Hooks
-      Yi.IReader
       Yi.IncrementalParse
       Yi.Interact
       Yi.JumpList
@@ -65,14 +64,9 @@ library
       Yi.Main
       Yi.MiniBuffer
       Yi.Misc
-      Yi.Mode.Abella
-      Yi.Mode.Buffers
-      Yi.Mode.Compilation
-      Yi.Mode.GHCi
-      Yi.Mode.IReader
+      Yi.Mode.Common
       Yi.Mode.Interactive
-      Yi.Mode.Latex
-      Yi.Modes
+      Yi.Mode.Compilation
       Yi.Monad
       Yi.Paths
       Yi.PersistentState
@@ -84,7 +78,6 @@ library
       Yi.Search.Internal
       Yi.String
       Yi.Syntax.Driver
-      Yi.Syntax.Latex
       Yi.Syntax.Layout
       Yi.Syntax.OnlineTree
       Yi.Syntax.Tree

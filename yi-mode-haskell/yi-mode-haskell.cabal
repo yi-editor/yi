@@ -24,6 +24,7 @@ library
   exposed-modules:
       Yi.Lexer.Haskell
       Yi.Lexer.LiterateHaskell
+      Yi.Mode.GHCi
       Yi.Mode.Haskell
       Yi.Mode.Haskell.Dollarify
       Yi.Syntax.Haskell

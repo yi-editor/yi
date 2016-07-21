@@ -1,6 +1,6 @@
-name: yi-keymap-emacs
+name: yi-ireader
 version: '0.13'
-synopsis: Emacs keymap for Yi editor
+synopsis: Yi editor incremental reader
 maintainer: Dmitry Ivanov <ethercrow@gmail.com>
 license: GPL-2
 github: yi-editor/yi
@@ -9,23 +9,19 @@ category: Yi
 ghc-options: -Wall -ferror-spans
 
 dependencies:
-    - base >= 4.8 && < 5
-    - filepath
-    - Hclip
+    - base >= 4.8
+    - bytestring
+    - binary >= 0.7
+    - containers
+    - data-default
     - microlens-platform
-    - mtl
-    - oo-prototypes
-    - semigroups
     - text
-    - transformers-base
     - yi-core
-    - yi-misc-modes
     - yi-language
     - yi-rope
 
 library:
     source-dirs: src
     exposed-modules:
-        - Yi.Keymap.Emacs
-        - Yi.Keymap.Emacs.KillRing
-        - Yi.Keymap.Emacs.Utils
+        - Yi.Mode.IReader
+        - Yi.IReader

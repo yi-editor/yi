@@ -1,0 +1,66 @@
+-- This file has been generated from package.yaml by hpack version 0.14.1.
+--
+-- see: https://github.com/sol/hpack
+
+name:           yi-misc-modes
+version:        0.13
+synopsis:       Yi editor miscellaneous modes
+category:       Yi
+homepage:       https://github.com/yi-editor/yi#readme
+bug-reports:    https://github.com/yi-editor/yi/issues
+maintainer:     Dmitry Ivanov <ethercrow@gmail.com>
+license:        GPL-2
+build-type:     Simple
+cabal-version:  >= 1.10
+
+source-repository head
+  type: git
+  location: https://github.com/yi-editor/yi
+
+library
+  hs-source-dirs:
+      src
+  ghc-options: -Wall -ferror-spans
+  include-dirs:
+      src/Yi/Lexer
+  build-depends:
+      array
+    , base >= 4.8
+    , binary >= 0.7
+    , data-default
+    , filepath
+    , microlens-platform
+    , semigroups
+    , text
+    , yi-core
+    , yi-language
+    , yi-rope
+  exposed-modules:
+      Yi.Modes
+      Yi.Mode.Buffers
+      Yi.Mode.Abella
+      Yi.Mode.Latex
+      Yi.Lexer.Abella
+      Yi.Lexer.C
+      Yi.Lexer.Cabal
+      Yi.Lexer.Clojure
+      Yi.Lexer.Cplusplus
+      Yi.Lexer.GNUMake
+      Yi.Lexer.GitCommit
+      Yi.Lexer.JSON
+      Yi.Lexer.Java
+      Yi.Lexer.Latex
+      Yi.Lexer.OCaml
+      Yi.Lexer.ObjectiveC
+      Yi.Lexer.Ott
+      Yi.Lexer.Perl
+      Yi.Lexer.Python
+      Yi.Lexer.R
+      Yi.Lexer.Ruby
+      Yi.Lexer.SVNCommit
+      Yi.Lexer.Srmc
+      Yi.Lexer.Whitespace
+      Yi.Syntax.Latex
+  other-modules:
+      Paths_yi_misc_modes
+  default-language: Haskell2010

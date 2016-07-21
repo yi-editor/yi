@@ -23,14 +23,10 @@ import           Yi.Editor
 import           Yi.Eval             (publishedActions)
 import           Yi.File
 import qualified Yi.Interact         as I
-import           Yi.IReader          (saveAsNewArticle)
 import           Yi.Keymap
 import           Yi.Keymap.Keys
 import           Yi.Layout
-import qualified Yi.Mode.Abella      as Abella
-import           Yi.Mode.IReader     (ireadMode, ireaderMode)
-import qualified Yi.Mode.Latex       as Latex
-import           Yi.Modes
+import           Yi.Mode.Common      (fundamentalMode)
 import qualified Yi.Rope             as R
 import           Yi.Search
 import           Yi.Style.Library
@@ -58,8 +54,6 @@ defaultPublishedActions = HM.fromList
     , ("getSelectRegionB"       , box getSelectRegionB)
     , ("grepFind"               , box grepFind)
     , ("insertB"                , box insertB)
-    , ("iread"                  , box ireadMode)
-    , ("ireadSaveAsArticle"     , box saveAsNewArticle)
     , ("leftB"                  , box leftB)
     , ("linePrefixSelectionB"   , box linePrefixSelectionB)
     , ("lineStreamB"            , box lineStreamB)
@@ -80,7 +74,6 @@ defaultPublishedActions = HM.fromList
     , ("sortLines"              , box sortLines)
     , ("unLineCommentSelectionB", box unLineCommentSelectionB)
     , ("writeB"                 , box writeB)
-    , ("abella"                 , box Abella.abella)
     ]
 
   where
@@ -108,28 +101,7 @@ defaultConfig =
          , defaultKm        = modelessKeymapSet nilKeymap
          , startActions     = []
          , initialActions   = []
-         , modeTable = [AnyMode Latex.latexMode3,
-                        AnyMode Latex.fastMode,
-                        AnyMode Abella.abellaModeEmacs,
-                        AnyMode cMode,
-                        AnyMode objectiveCMode,
-                        AnyMode cppMode,
-                        AnyMode cabalMode,
-                        AnyMode clojureMode,
-                        AnyMode gnuMakeMode,
-                        AnyMode srmcMode,
-                        AnyMode ocamlMode,
-                        AnyMode ottMode,
-                        AnyMode perlMode,
-                        AnyMode pythonMode,
-                        AnyMode rubyMode,
-                        AnyMode javaMode,
-                        AnyMode jsonMode,
-                        AnyMode ireaderMode,
-                        AnyMode svnCommitMode,
-                        AnyMode gitCommitMode,
-                        AnyMode whitespaceMode,
-                        AnyMode fundamentalMode]
+         , modeTable = [AnyMode fundamentalMode]
          , debugMode = False
          , configKillringAccumulate = False
          , configCheckExternalChangesObsessively = True
