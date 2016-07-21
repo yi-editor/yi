@@ -64,6 +64,7 @@ library:
         - Yi.Command
         - Yi.Command.Help
         - Yi.Completion
+        - Yi.CompletionTree
         - Yi.Config
         - Yi.Config.Default
         - Yi.Config.Misc
@@ -85,7 +86,6 @@ library:
         - Yi.Interact
         - Yi.JumpList
         - Yi.Keymap
-        - Yi.Keymap.Completion
         - Yi.Keymap.Keys
         - Yi.KillRing
         - Yi.Layout
