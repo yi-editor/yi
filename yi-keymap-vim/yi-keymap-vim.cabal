@@ -1,4 +1,4 @@
--- This file has been generated from package.yaml by hpack version 0.14.0.
+-- This file has been generated from package.yaml by hpack version 0.14.1.
 --
 -- see: https://github.com/sol/hpack
 
@@ -54,6 +54,7 @@ library
       Yi.Keymap.Vim.Ex.Commands.Buffers
       Yi.Keymap.Vim.Ex.Commands.Cabal
       Yi.Keymap.Vim.Ex.Commands.Common
+      Yi.Keymap.Vim.Ex.Commands.Copy
       Yi.Keymap.Vim.Ex.Commands.Delete
       Yi.Keymap.Vim.Ex.Commands.Edit
       Yi.Keymap.Vim.Ex.Commands.Global
