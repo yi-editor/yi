@@ -13,7 +13,7 @@ module Yi.Keymap.Vim.Ex.Commands.Help (parse) where
 
 import           Control.Monad                    (void)
 import qualified Data.Text                        as T (append, pack)
-import qualified Text.ParserCombinators.Parsec    as P (anyChar, many1, option, space, string, try)
+import qualified Data.Attoparsec.Text             as P (anyChar, many1, option, space, string, try)
 import           Yi.Command.Help                  (displayHelpFor)
 import           Yi.Keymap                        (Action (YiA))
 import           Yi.Keymap.Vim.Common             (EventString)

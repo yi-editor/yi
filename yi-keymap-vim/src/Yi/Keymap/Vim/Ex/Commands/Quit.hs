@@ -17,11 +17,11 @@ module Yi.Keymap.Vim.Ex.Commands.Quit (parse) where
 import           Control.Applicative              (Alternative ((<|>)))
 import           Lens.Micro.Platform              (use)
 import           Control.Monad                    (void, when)
+import qualified Data.Attoparsec.Text             as P (char, choice, many', string, try)
 import           Data.Foldable                    (find)
 import qualified Data.List.PointedList.Circular   as PL (length)
 import           Data.Monoid                      ((<>))
 import qualified Data.Text                        as T (append)
-import qualified Text.ParserCombinators.Parsec    as P (char, choice, many, string, try)
 import           Yi.Buffer                        (bkey, file)
 import           Yi.Core                          (closeWindow, errorEditor, quitEditor)
 import           Yi.Editor
@@ -34,19 +34,21 @@ import           Yi.Monad                         (gets)
 import           Yi.String                        (showT)
 import           Yi.Window                        (bufkey)
 
+-- TODO wtf is the type of this function? It looks like it was introduced
+-- in the migration to microlens
 uses l f = f <$> use l
 
 parse :: EventString -> Maybe ExCommand
 parse = Common.parse $ P.choice
     [ do
         void $ P.try ( P.string "xit") <|> P.string "x"
-        bangs <- P.many (P.char '!')
+        bangs <- P.many' (P.char '!')
         return (quit True (not $ null bangs) False)
     , do
-        ws <- P.many (P.char 'w')
+        ws <- P.many' (P.char 'w')
         void $ P.try ( P.string "quit") <|> P.string "q"
-        as <- P.many (P.try ( P.string "all") <|> P.string "a")
-        bangs <- P.many (P.char '!')
+        as <- P.many' (P.try ( P.string "all") <|> P.string "a")
+        bangs <- P.many' (P.char '!')
         return $! quit (not $ null ws) (not $ null bangs) (not $ null as)
     ]
 

@@ -12,9 +12,9 @@ module Yi.Keymap.Vim.Ex.Commands.Write (parse) where
 
 import           Control.Applicative              (Alternative ((<|>)))
 import           Control.Monad                    (void, when)
+import qualified Data.Attoparsec.Text             as P (anyChar, many', many1, space, string, try)
 import           Data.Monoid                      ((<>))
 import qualified Data.Text                        as T (Text, pack)
-import qualified Text.ParserCombinators.Parsec    as P (anyChar, many, many1, space, string, try)
 import           Yi.Buffer                        (BufferRef)
 import           Yi.Editor                        (printMsg)
 import           Yi.File                          (fwriteBufferE, viWrite, viWriteTo)
@@ -28,7 +28,7 @@ parse = Common.parse $
                (P.try (P.string "write") <|> P.string "w")
             *> (parseWriteAs <|> parseWrite)
     where parseWrite = do
-            alls <- P.many (P.try ( P.string "all") <|> P.string "a")
+            alls <- P.many' (P.try ( P.string "all") <|> P.string "a")
             return $! writeCmd $ not (null alls)
 
           parseWriteAs = do
