@@ -110,16 +110,6 @@ $longintegersuffix = [lL]
 @number      = @integer | @longinteger
 
 $cntrl   = [$large \@\[\\\]\^\_]
-@ascii   = \^ $cntrl | NUL | SOH | STX | ETX | EOT | ENQ | ACK
-         | BEL | BS | HT | LF | VT | FF | CR | SO | SI | DLE
-         | DC1 | DC2 | DC3 | DC4 | NAK | SYN | ETB | CAN | EM
-         | SUB | ESC | FS | GS | RS | US | SP | DEL
-$charesc = [abfnrtv\\\"\'\&]
-@escape  = \\ ($charesc | @ascii | @number)
-@gap     = \\ $whitechar+ \\
-
-@shortstring = $graphic # [\"\'\\] | " " | @escape | @gap
-@longstring  = @shortstring | $nl
 
 main :-
 
@@ -141,22 +131,48 @@ main :-
  @number @exponent?
    | @number \. @number? @exponent?             { c numberStyle }
 
- $strprefix* \" @shortstring* \"
-   | $strprefix* \' @shortstring* \'
-   | $strprefix* \" \" \" @longstring* \" \" \"
-   | $strprefix* \' \' \' @longstring* \' \' \' { c stringStyle }
+ $strprefix* \"                                 { m (const DoubleQuotes) stringStyle }
+ $strprefix* \'                                 { m (const SingleQuotes) stringStyle }
+ $strprefix* \" \" \"                           { m (const DoubleDoc) stringStyle }
+ $strprefix* \' \' \'                           { m (const SingleDoc) stringStyle }
+
  .                                              { c operatorStyle }
 }
 
-{
+<doublequotes> {
+  \"                                            { m (const Base) stringStyle }
+  .                                             { c stringStyle }
+}
 
-type HlState = Int
+<singlequotes> {
+  \'                                            { m (const Base) stringStyle }
+  .                                             { c stringStyle }
+}
+
+<doubledoc> {
+  \" \" \"                                      { m (const Base) stringStyle }
+  .                                             { c stringStyle }
+}
+
+<singledoc> {
+  \' \' \'                                      { m (const Base) stringStyle }
+  .                                             { c stringStyle }
+}
+
+{
+data HlState = Base | DoubleQuotes | SingleQuotes | DoubleDoc | SingleDoc
+    deriving (Eq, Show)
+
 type Token = StyleName
 
-stateToInit x = 0
+stateToInit Base = 0
+stateToInit DoubleQuotes = doublequotes
+stateToInit SingleQuotes = singlequotes
+stateToInit DoubleDoc = doubledoc
+stateToInit SingleDoc = singledoc
 
 initState :: HlState
-initState = 0
+initState = Base
 
 lexer :: StyleLexerASI HlState Token
 lexer = StyleLexer
