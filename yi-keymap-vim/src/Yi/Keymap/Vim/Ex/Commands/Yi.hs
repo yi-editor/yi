@@ -1,3 +1,4 @@
+{-# LANGUAGE OverloadedStrings #-}
 {-# OPTIONS_HADDOCK show-extensions #-}
 
 -- |
@@ -11,8 +12,8 @@
 module Yi.Keymap.Vim.Ex.Commands.Yi (parse) where
 
 import           Control.Monad                    (void)
-import qualified Data.Text                        as T (pack)
-import qualified Text.ParserCombinators.Parsec    as P (anyChar, many1, space, string)
+import qualified Data.Attoparsec.Text             as P (many1, space, string, takeText)
+import qualified Data.Text                        as T (unpack)
 import           Yi.Eval                          (execEditorAction)
 import           Yi.Keymap                        (Action (YiA))
 import           Yi.Keymap.Vim.Common             (EventString)
@@ -23,8 +24,8 @@ parse :: EventString -> Maybe ExCommand
 parse = Common.parse $ do
     void $ P.string "yi"
     void $ P.many1 P.space
-    cmd <- P.many1 P.anyChar
+    cmd <- P.takeText
     return $! Common.impureExCommand {
-        cmdAction = YiA $ execEditorAction cmd
-      , cmdShow = T.pack cmd
+        cmdAction = YiA $ execEditorAction (T.unpack cmd)
+      , cmdShow = cmd
       }

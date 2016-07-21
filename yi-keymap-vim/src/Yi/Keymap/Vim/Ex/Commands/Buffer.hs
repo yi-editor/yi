@@ -15,12 +15,12 @@ module Yi.Keymap.Vim.Ex.Commands.Buffer (parse) where
 import           Control.Applicative              (Alternative ((<|>)))
 import           Control.Monad                    (void)
 import           Control.Monad.State              (gets)
-import qualified Data.Text                        as T (pack)
-import qualified Text.ParserCombinators.Parsec    as P (GenParser, anyChar,
-                                                        digit, eof, many, many1,
-                                                        parse, space, string,
+import qualified Data.Attoparsec.Text             as P (Parser, anyChar, choice,
+                                                        digit, endOfInput, many', many1,
+                                                        parseOnly, space, string,
                                                         try)
 import           Yi.Buffer.Basic                  (BufferRef (..))
+import qualified Data.Text                        as T (Text, pack, unpack)
 import           Yi.Buffer.Misc                   (bkey, isUnchangedBuffer)
 import           Yi.Editor
 import           Yi.Keymap                        (Action (EditorA))
@@ -30,9 +30,9 @@ import           Yi.Keymap.Vim.Ex.Types           (ExCommand (cmdAction, cmdShow
 
 parse :: EventString -> Maybe ExCommand
 parse = Common.parseWithBangAndCount nameParser $ \ _ bang mcount -> do
-  bufIdent <- P.try ( P.many1 P.digit <|> bufferSymbol) <|>
-              P.many1 P.space *> P.many P.anyChar <|>
-              P.eof *> return ""
+  bufIdent <- (T.pack <$> P.many1 P.digit) <|> bufferSymbol <|>
+              (T.pack <$> P.many1 P.space) *> (T.pack <$> P.many' P.anyChar) <|>
+              P.endOfInput *> return ""
   return $ Common.pureExCommand {
       cmdShow = "buffer"
     , cmdAction = EditorA $ do
@@ -47,19 +47,15 @@ parse = Common.parseWithBangAndCount nameParser $ \ _ bang mcount -> do
     bufferSymbol = P.string "%" <|> P.string "#"
 
 
-nameParser :: P.GenParser Char () ()
-nameParser =
-    void $ P.try ( P.string "buffer") <|>
-           P.try ( P.string "buf")    <|>
-           P.try ( P.string "bu")     <|>
-           P.try ( P.string "b")
+nameParser :: P.Parser ()
+nameParser = void . P.choice . fmap P.string $ ["buffer", "buf", "bu", "b"]
 
 
-switchToBuffer :: String -> EditorM ()
+switchToBuffer :: T.Text -> EditorM ()
 switchToBuffer s =
-    case P.parse bufferRef "" s of
+    case P.parseOnly bufferRef s of
         Right ref -> switchByRef ref
-        Left _e   -> switchByName s
+        Left _e   -> switchByName $ T.unpack s
   where
     bufferRef = BufferRef . read <$> P.many1 P.digit
 

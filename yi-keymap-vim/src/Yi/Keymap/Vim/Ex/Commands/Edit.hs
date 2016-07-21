@@ -16,7 +16,7 @@ import           Control.Applicative              (Alternative ((<|>)))
 import           Control.Monad                    (void, when)
 import           Data.Maybe                       (isJust)
 import qualified Data.Text                        as T (Text, append, pack, unpack)
-import qualified Text.ParserCombinators.Parsec    as P (anyChar, many1, space, string, try, optionMaybe)
+import qualified Data.Attoparsec.Text             as P (anyChar, many1, space, string, try, option)
 import           Yi.Editor                        (MonadEditor (withEditor), newTabE)
 import           Yi.File                          (openNewFile)
 import           Yi.Keymap                        (Action (YiA))
@@ -26,7 +26,7 @@ import           Yi.Keymap.Vim.Ex.Types           (ExCommand (cmdAction, cmdComp
 
 parse :: EventString -> Maybe ExCommand
 parse = Common.parse $ do
-    tab <- P.optionMaybe (P.string "tab")
+    tab <- P.option Nothing $ Just <$> P.string "tab"
     void $ P.try (P.string "edit") <|> P.string "e"
     void $ P.many1 P.space
     filename <- T.pack <$> P.many1 P.anyChar

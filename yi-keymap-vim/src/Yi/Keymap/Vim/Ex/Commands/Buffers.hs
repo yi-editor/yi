@@ -14,9 +14,9 @@ module Yi.Keymap.Vim.Ex.Commands.Buffers (parse) where
 import           Control.Applicative              (Alternative ((<|>)))
 import           Lens.Micro.Platform                     (view)
 import           Control.Monad                    (void)
+import qualified Data.Attoparsec.Text             as P (string, try)
 import qualified Data.Map                         as M (elems, mapWithKey)
 import qualified Data.Text                        as T (intercalate, pack, unlines)
-import qualified Text.ParserCombinators.Parsec    as P (string, try)
 import           Yi.Buffer.Basic                  (BufferRef (BufferRef))
 import           Yi.Buffer.Misc                   (BufferId (MemBuffer), identA)
 import           Yi.Editor

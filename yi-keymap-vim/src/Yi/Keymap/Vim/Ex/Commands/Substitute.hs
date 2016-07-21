@@ -13,9 +13,9 @@ module Yi.Keymap.Vim.Ex.Commands.Substitute (parse) where
 
 import           Control.Applicative              (Alternative ((<|>)))
 import           Control.Monad                    (void)
+import qualified Data.Attoparsec.Text             as P (char, inClass, many', satisfy, string, try)
 import           Data.Monoid                      ((<>))
 import qualified Data.Text                        as T (cons, snoc)
-import qualified Text.ParserCombinators.Parsec    as P (char, many, noneOf, oneOf, string, try)
 import           Yi.Buffer.Adjusted
 import           Yi.Editor                        (EditorM, closeBufferAndWindowE, printMsg, withCurrentBuffer)
 import           Yi.Keymap                        (Action (EditorA), Keymap)
@@ -30,14 +30,14 @@ import           Yi.Search
 
 parse :: EventString -> Maybe ExCommand
 parse = Common.parse $ do
-    percents <- P.many (P.char '%')
+    percents <- P.many' (P.char '%')
     void $ P.try (P.string "substitute") <|> P.string "s"
-    delimiter <- P.oneOf "!@#$%^&*()[]{}<>/.,~';:?-="
-    from <- R.fromString <$> P.many (P.noneOf [delimiter])
+    delimiter <- P.satisfy (`elem` ("!@#$%^&*()[]{}<>/.,~';:?-=" :: String))
+    from <- R.fromString <$> P.many' (P.satisfy (/= delimiter))
     void $ P.char delimiter
-    to <- R.fromString <$> P.many (P.noneOf [delimiter])
+    to <- R.fromString <$> P.many' (P.satisfy (/= delimiter))
     void $ P.char delimiter
-    flagChars <- P.many (P.oneOf "gic")
+    flagChars <- P.many' (P.satisfy $ P.inClass "gic")
     return $! substitute from to delimiter
         ('g' `elem` flagChars)
         ('i' `elem` flagChars)

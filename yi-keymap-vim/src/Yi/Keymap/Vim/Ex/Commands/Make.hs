@@ -1,3 +1,4 @@
+{-# LANGUAGE OverloadedStrings #-}
 {-# OPTIONS_HADDOCK show-extensions #-}
 
 -- |
@@ -9,8 +10,7 @@
 
 module Yi.Keymap.Vim.Ex.Commands.Make (parse) where
 
-import qualified Data.Text                        as T (pack)
-import qualified Text.ParserCombinators.Parsec    as P (string)
+import qualified Data.Attoparsec.Text             as P (string)
 import           Yi.Command                       (makeBuildE)
 import           Yi.Keymap                        (Action (YiA))
 import           Yi.Keymap.Vim.Common             (EventString)
@@ -22,6 +22,6 @@ parse :: EventString -> Maybe ExCommand
 parse = Common.parse $ do
     args <- P.string "make" *> Common.commandArgs
     return $ Common.impureExCommand {
-        cmdShow = T.pack "make"
+        cmdShow = "make"
       , cmdAction = YiA $ makeBuildE $ CommandArguments args
       }
