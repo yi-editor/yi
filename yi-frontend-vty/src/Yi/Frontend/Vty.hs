@@ -17,6 +17,8 @@
 
 module Yi.Frontend.Vty
     ( start
+
+    , baseVtyConfig
     ) where
 
 import           Prelude                        hiding (concatMap, error,
@@ -26,7 +28,7 @@ import           Control.Concurrent             (MVar, forkIO, myThreadId, newEm
                                                  takeMVar, tryPutMVar, tryTakeMVar)
 import           Control.Concurrent.STM         (atomically, isEmptyTChan, readTChan)
 import           Control.Exception              (IOException, handle)
-import           Lens.Micro.Platform            (makeLenses, view, use)
+import           Lens.Micro.Platform            (makeLenses, view, use, Lens')
 import           Control.Monad                  (void, when)
 import           Data.Char                      (chr, ord)
 import           Data.Default                   (Default)
@@ -96,16 +98,19 @@ data FrontendState = FrontendState
 -- If this is set to its default (None) it will be replaced by the default
 -- vty configuration from standardIOConfig. However, standardIOConfig
 -- runs in the IO monad so we cannot set the real default here.
-newtype BaseVtyConfig = BaseVtyConfig { _baseVtyConfig :: Maybe Vty.Config }
+newtype BaseVtyConfig = BaseVtyConfig { _baseVtyConfig' :: Maybe Vty.Config }
     deriving (Typeable, Default)
 
 instance YiConfigVariable BaseVtyConfig
 
 makeLenses ''BaseVtyConfig
 
+baseVtyConfig :: Lens' Config (Maybe Vty.Config)
+baseVtyConfig = configVariable . baseVtyConfig'
+
 start :: UIBoot
 start config submitEvents submitActions editor = do
-    let baseConfig = view (configVariable . baseVtyConfig) config
+    let baseConfig = view baseVtyConfig config
     vty <- Vty.mkVty =<< case baseConfig of
         Nothing -> Vty.standardIOConfig
         Just conf -> return conf
