@@ -15,6 +15,7 @@ import           Control.Monad.Base               (liftBase)
 import qualified Data.Attoparsec.Text             as P (anyChar, many1, space, string, try)
 import           Data.Monoid                      ((<>))
 import qualified Data.Text                        as T (Text, pack)
+import qualified Data.Text.IO                     as T (readFile)
 import           System.Exit                      (ExitCode (..))
 import           Yi.Buffer.HighLevel              (insertRopeWithStyleB)
 import           Yi.Buffer.Normal                 (RegionStyle (LineWise))
@@ -24,7 +25,7 @@ import           Yi.Keymap.Vim.Common             (EventString)
 import qualified Yi.Keymap.Vim.Ex.Commands.Common as Common (impureExCommand, parse)
 import           Yi.Keymap.Vim.Ex.Types           (ExCommand (cmdAction, cmdShow))
 import           Yi.Process                       (runShellCommand)
-import           Yi.Rope                          (fromString, YiString)
+import           Yi.Rope                          (fromText, YiString)
 
 parse :: EventString -> Maybe ExCommand
 parse = Common.parse $
@@ -33,7 +34,7 @@ parse = Common.parse $
     where parseReadFile = do
             filename <- P.many1 P.anyChar
             return $! readCmd ("read file " <> T.pack filename)
-                              (liftBase $ fromString <$> readFile filename)
+                              (liftBase $ fromText <$> T.readFile filename)
           parseCommand = do
             command <- P.many1 P.anyChar
             return $! readCmd ("read command " <> T.pack command) (runShellCommand' command)
@@ -41,10 +42,8 @@ parse = Common.parse $
           runShellCommand' cmd = do
             (exitCode,cmdOut,cmdErr) <- liftBase $ runShellCommand cmd
             case exitCode of
-              ExitSuccess -> return $ fromString cmdOut
-              -- FIXME: here we get a string and convert it back to utf8;
-              -- this indicates a possible bug (This is copied from 'shellCommandV').
-              ExitFailure _ -> printMsg (T.pack cmdErr) >> return ""
+              ExitSuccess -> return $ fromText cmdOut
+              ExitFailure _ -> printMsg cmdErr >> return ""
 
 readCmd :: T.Text -> YiM YiString -> ExCommand
 readCmd cmdShowText getYiString = Common.impureExCommand

@@ -4,26 +4,28 @@
 module Yi.Process (runProgCommand, runShellCommand, shellFileName,
                    createSubprocess, readAvailable, SubprocessInfo(..), SubprocessId) where
 
-import           Control.Exc           (orException)
-import           Foreign.C.String      (peekCStringLen)
-import           Foreign.Marshal.Alloc (allocaBytes)
-import           System.Directory      (findExecutable)
-import           System.Environment    (getEnv)
-import           System.Exit           (ExitCode (ExitFailure))
-import           System.IO             (BufferMode (NoBuffering), Handle, hGetBufNonBlocking, hSetBuffering)
-import           System.Process        (ProcessHandle, readProcessWithExitCode, runProcess)
-import           Yi.Buffer.Basic       (BufferRef)
-import           Yi.Monad              (repeatUntilM)
+import           Control.Exc             (orException)
+import qualified Data.ListLike as L      (empty)
+import           Foreign.C.String        (peekCStringLen)
+import           Foreign.Marshal.Alloc   (allocaBytes)
+import           System.Directory        (findExecutable)
+import           System.Environment      (getEnv)
+import           System.Exit             (ExitCode (ExitFailure))
+import           System.IO               (BufferMode (NoBuffering), Handle, hSetBuffering, hGetBufNonBlocking)
+import           System.Process          (ProcessHandle, runProcess)
+import           System.Process.ListLike (ListLikeProcessIO, readProcessWithExitCode)
+import           Yi.Buffer.Basic         (BufferRef)
+import           Yi.Monad                (repeatUntilM)
 
 #ifndef mingw32_HOST_OS
 import System.Posix.IO (createPipe, fdToHandle)
 #endif
 
-runProgCommand :: String -> [String] -> IO (ExitCode,String,String)
+runProgCommand :: ListLikeProcessIO a c => String -> [String] -> IO (ExitCode, a, a)
 runProgCommand prog args = do loc <- findExecutable prog
                               case loc of
-                                  Nothing -> return (ExitFailure 1,"","")
-                                  Just fp -> readProcessWithExitCode fp args ""
+                                  Nothing -> return (ExitFailure 1, L.empty, L.empty)
+                                  Just fp -> readProcessWithExitCode fp args L.empty
 
 ------------------------------------------------------------------------
 -- | Run a command using the system shell, returning stdout, stderr and exit code
@@ -34,10 +36,10 @@ shellFileName = orException (getEnv "SHELL") (return "/bin/sh")
 shellCommandSwitch :: String
 shellCommandSwitch = "-c"
 
-runShellCommand :: String -> IO (ExitCode,String,String)
+runShellCommand :: ListLikeProcessIO a c => String -> IO (ExitCode, a, a)
 runShellCommand cmd = do
       sh <- shellFileName
-      readProcessWithExitCode sh [shellCommandSwitch, cmd] ""
+      readProcessWithExitCode sh [shellCommandSwitch, cmd] L.empty
 
 
 --------------------------------------------------------------------------------
@@ -95,7 +97,7 @@ readAvailable :: Handle -> IO String
 readAvailable handle = fmap concat $ repeatUntilM $ readChunk handle
 
 -- Read a chunk from a handle, bool indicates if there is potentially more data available
-readChunk :: Handle -> IO (Bool,String)
+readChunk :: Handle -> IO (Bool, String)
 readChunk handle = do
     let bufferSize = 1024
     allocaBytes bufferSize $ \buffer -> do

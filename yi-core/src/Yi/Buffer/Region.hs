@@ -31,7 +31,8 @@ import           Data.List           (sort)
 import           Yi.Buffer.Misc
 import           Yi.Region
 import           Yi.Rope             (YiString)
-import qualified Yi.Rope             as R (YiString, cons, dropWhile, filter, lines, map, null)
+import qualified Yi.Rope             as R (YiString, cons, dropWhile, filter
+                                          , lines, lines', map, null, length)
 import           Yi.String           (overInit)
 import           Yi.Utils            (SemiNum ((~-)))
 import           Yi.Window           (winRegion)
@@ -116,3 +117,23 @@ joinLinesB = savingPointB . modifyRegionB g'
 -- if any.
 concatLinesB :: Region -> BufferM ()
 concatLinesB = savingPointB . modifyRegionB (overInit $ R.filter (/= '\n'))
+
+-- | Gets the lines of a region (as a region), preserving newlines. Thus the
+-- resulting list of regions is a partition of the original region.
+--
+-- The direction of the region is preserved and all smaller regions will
+-- retain that direction.
+--
+-- Note that regions should never be empty, so it would be odd for this to
+-- return an empty list...
+linesOfRegionB :: Region -> BufferM [Region]
+linesOfRegionB region = do
+    let start = regionStart region
+        end = regionEnd region
+        direction = regionDirection region
+    ls <- R.lines' <$> readRegionB region
+    return $ case ls of
+        [] -> []
+        (l:ls') -> let initialRegion = mkRegion' direction start (end + fromIntegral (R.length l))
+                       f reg ln = fmapRegion (+ fromIntegral (R.length ln)) reg
+                   in tail $ scanl f initialRegion ls'

@@ -23,6 +23,7 @@ dependencies:
     - filepath >= 1.1
     - hashable >= 1.1.2.5
     - Hclip >= 3
+    - ListLike
     - microlens-platform
     - mtl >= 0.1.0.1
     - old-locale
@@ -30,6 +31,7 @@ dependencies:
     - parsec >= 3.0
     - pointedlist >= 0.5
     - process >= 1.0.1.1
+    - process-extras
     - safe >= 0.3.4
     - semigroups
     - split >= 0.2

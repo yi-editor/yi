@@ -12,7 +12,7 @@ module Yi.Main (
                 Err(..),
                ) where
 
-import Control.Monad.Error
+import Control.Monad
 import Data.Char
 import Data.List (intercalate)
 import Data.Version (showVersion)
@@ -34,9 +34,6 @@ import Yi.Paths (getConfigDir)
 import Paths_yi_core
 
 data Err = Err String ExitCode
-
-instance Error Err where
-    strMsg s = Err s (ExitFailure 1)
 
 -- | Configuration information which can be set in the command-line, but not
 -- in the user's configuration file.
@@ -116,8 +113,8 @@ getConfig :: Bool -> (Config, ConsoleConfig) -> Opts -> Either Err (Config, Cons
 getConfig shouldOpenInTabs (cfg, cfgcon) opt =
     case opt of
       Frontend _    -> fail "Panic: frontend not found"
-      Help          -> throwError $ Err usage ExitSuccess
-      Version       -> throwError $ Err versinfo ExitSuccess
+      Help          -> Left $ Err usage ExitSuccess
+      Version       -> Left $ Err versinfo ExitSuccess
       Debug         -> return (cfg { debugMode = True }, cfgcon)
       LineNo l      -> case startActions cfg of
                          x : xs -> return (cfg { startActions = x:makeAction (gotoLn (read l)):xs }, cfgcon)

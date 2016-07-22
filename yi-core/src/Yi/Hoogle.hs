@@ -16,7 +16,7 @@ module Yi.Hoogle where
 import           Control.Arrow       ((&&&))
 import           Data.Char           (isUpper)
 import           Data.List           (nub)
-import qualified Data.Text           as T (isInfixOf, lines, pack)
+import qualified Data.Text           as T (isInfixOf, lines, unpack)
 import           System.Exit         (ExitCode (ExitFailure))
 import           Yi.Buffer           (readRegionB, regionOfB, replaceRegionB, unitWord)
 import           Yi.Editor           (printMsgs, withCurrentBuffer)
@@ -55,10 +55,10 @@ hoogleRaw srch opts = do
   case outp of
     (ExitFailure 1, "", "") -> -- no output, probably failed to run binary
       fail "Error running hoogle command.  Is hoogle on path?"
-    (ExitFailure 1, xs, _) -> fail $ "hoogle failed with: " ++ xs
+    (ExitFailure 1, xs, _) -> fail $ "hoogle failed with: " ++ T.unpack xs
     _ -> return ()
-  -- TODO: bench ‘R.fromText . T.lines . T.pack’ vs ‘R.lines . R.fromString’
-  let results = fmap R.fromText . T.lines $ T.pack out
+  -- TODO: bench ‘R.fromText . T.lines’ vs ‘R.lines . R.fromText’
+  let results = fmap R.fromText . T.lines $ out
   if results == ["No results found"]
     then fail "No Hoogle results"
     else return results
