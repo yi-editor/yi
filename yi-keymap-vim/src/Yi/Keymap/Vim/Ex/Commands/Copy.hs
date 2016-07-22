@@ -12,7 +12,8 @@
 module Yi.Keymap.Vim.Ex.Commands.Copy (parse) where
 
 import           Control.Monad                    (void)
-import qualified Data.Attoparsec.Text             as P (string)
+import qualified Data.Attoparsec.Text             as P (match, string)
+import           Data.Monoid                      ((<>))
 import           Yi.Editor                        (withCurrentBuffer)
 import           Yi.Keymap                        (Action (YiA))
 import qualified Yi.Keymap.Vim.Ex.Commands.Common as Common (parse, impureExCommand, parseRange)
@@ -27,10 +28,10 @@ import           Yi.Core                          (errorEditor)
 
 parse :: EventString -> Maybe ExCommand
 parse = Common.parse $ do
-    region <- Common.parseRange
+    (regionText, region) <- P.match Common.parseRange
     void (P.string "copy")
     return $ Common.impureExCommand {
-        cmdShow = "copy"
+        cmdShow = regionText <> "copy"
       , cmdAction = YiA (copy region)
       }
 
