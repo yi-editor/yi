@@ -14,6 +14,7 @@ packages:
 - yi
 extra-deps:
 - Hclip-3.0.0.3
+- ListLike-4.5
 # - gconf-0.13.1.0
 resolver: lts-6.8
 nix:

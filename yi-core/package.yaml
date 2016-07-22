@@ -23,7 +23,7 @@ dependencies:
     - filepath >= 1.1
     - hashable >= 1.1.2.5
     - Hclip >= 3
-    - ListLike
+    - ListLike >= 4.5
     - microlens-platform
     - mtl >= 0.1.0.1
     - old-locale
@@ -120,3 +120,15 @@ library:
         - Yi.UI.Utils
         - Yi.Window
         - System.FriendlyPath
+
+tests:
+  tasty:
+    main: Spec.hs
+    source-dirs: test
+    dependencies:
+      - tasty
+      - tasty-hspec
+      - tasty-quickcheck
+      - yi-core
+      - text
+      - containers
