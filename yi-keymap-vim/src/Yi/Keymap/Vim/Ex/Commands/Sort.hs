@@ -11,7 +11,9 @@
 module Yi.Keymap.Vim.Ex.Commands.Sort (parse) where
 
 import           Control.Monad                    (void)
-import qualified Data.Attoparsec.Text             as P (string)
+import qualified Data.Attoparsec.Text             as P (match, string)
+import           Data.Monoid                      ((<>))
+import qualified Data.Text                        as T (Text)
 import           Yi.Buffer
 import           Yi.Keymap                        (Action (BufferA))
 import           Yi.Keymap.Vim.Common             (EventString)
@@ -20,15 +22,15 @@ import           Yi.Keymap.Vim.Ex.Types           (ExCommand (cmdAction, cmdComp
 
 parse :: EventString -> Maybe ExCommand
 parse = Common.parse $ do
-    region <- Common.parseRange
+    (regionText, region) <- P.match Common.parseRange
     void $ P.string "sort"
-    return $ sort region
+    return $ sort region regionText
 
-sort :: Maybe (BufferM Region) -> ExCommand
-sort r = Common.pureExCommand {
-    cmdShow = "sort"
+sort :: Maybe (BufferM Region) -> T.Text -> ExCommand
+sort r rt = Common.pureExCommand {
+    cmdShow = rt <> "sort"
   , cmdAction = BufferA $ sortA r
-  , cmdComplete = return ["sort"]
+  , cmdComplete = return [rt <> "sort"]
   }
 
 sortA :: Maybe (BufferM Region) -> BufferM ()
