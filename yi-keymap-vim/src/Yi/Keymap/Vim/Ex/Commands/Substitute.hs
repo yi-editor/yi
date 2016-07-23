@@ -17,11 +17,11 @@ import qualified Data.Attoparsec.Text             as P (char, inClass, many', ma
                                                         satisfy, string, try)
 import           Data.Maybe                       (fromMaybe)
 import           Data.Monoid                      ((<>))
-import qualified Data.Text                        as T (Text, cons, snoc, pack)
+import qualified Data.Text                        as T (Text, cons, snoc)
 import           Lens.Micro.Platform              (over, _2)
 import           Yi.Buffer.Adjusted
 import           Yi.Buffer.Region                 (linesOfRegionB)
-import           Yi.Editor                        (EditorM, closeBufferAndWindowE, printMsg, withCurrentBuffer)
+import           Yi.Editor                        (EditorM, closeBufferAndWindowE, withCurrentBuffer)
 import           Yi.Keymap                        (Action (EditorA), Keymap)
 import           Yi.Keymap.Keys                   (char, choice, (?>>!))
 import           Yi.Keymap.Vim.Common             (EventString)
@@ -64,7 +64,6 @@ substitute from to delimiter global caseInsensitive confirm regionText regionB =
         let opts = QuoteRegex : if caseInsensitive then [IgnoreCase] else []
         lines <- withCurrentBuffer $ regionB >>= linesOfRegionB
         region <- withCurrentBuffer regionB
-        printMsg $ T.pack $ show (lines, region)
         regex <- if R.null from
                     then getRegexE
                     else return . (either (const Nothing) Just) 
