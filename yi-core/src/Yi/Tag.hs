@@ -42,7 +42,7 @@ import           Data.Maybe             (mapMaybe)
 import qualified Data.Text              as T (Text, append, isPrefixOf, lines, pack, unpack, words)
 import qualified Data.Text.Encoding     as E (decodeUtf8, encodeUtf8)
 import qualified Data.Text.Read         as R (decimal)
-import qualified Data.Trie              as Trie (Trie, certainSuffix, fromList, possibleSuffixes)
+import qualified Yi.CompletionTree      as CT
 import           Data.Typeable          (Typeable)
 import           System.FilePath        (takeDirectory, takeFileName, (</>))
 import           System.FriendlyPath    (expandTilda)
@@ -88,7 +88,7 @@ data TagTable = TagTable
     -- tags are relative to this path
     , tagFileMap :: Map Tag [(FilePath, Int)]
     -- ^ map from tags to files
-    , tagTrie :: Trie.Trie
+    , tagCompletionTree :: CT.CompletionTree T.Text
     -- ^ trie to speed up tag hinting
     } deriving (Typeable, Generic)
 
@@ -120,21 +120,20 @@ importTagTable filename = do
   return TagTable { tagFileName = takeFileName filename
                   , tagBaseDir  = takeDirectory filename
                   , tagFileMap  = cts
-                    -- TODO either change word-trie to use Text or
-                    -- figure out a better way all together for this
-                  , tagTrie = Trie.fromList . map (T.unpack . _unTag) $ keys cts
+                  , tagCompletionTree = CT.fromList . map (_unTag) $ keys cts
                   }
 
 -- | Gives all the possible expanded tags that could match a given @prefix@
 hintTags :: TagTable -> T.Text -> [T.Text]
-hintTags tags prefix = map (T.append prefix . T.pack) sufs
+hintTags tags prefix = map (prefix `T.append`) sufs
   where
-    sufs = Trie.possibleSuffixes (T.unpack prefix) $ tagTrie tags
+    sufs :: [T.Text]
+    sufs = CT.toList (CT.update (tagCompletionTree tags) prefix)
 
 -- | Extends the string to the longest certain length
 completeTag :: TagTable -> T.Text -> T.Text
 completeTag tags prefix =
-  prefix `T.append` T.pack (Trie.certainSuffix (T.unpack prefix) (tagTrie tags))
+  prefix `T.append` fst (CT.complete (CT.update (tagCompletionTree tags) prefix))
 
 
 -- ---------------------------------------------------------------------

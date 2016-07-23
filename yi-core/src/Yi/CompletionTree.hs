@@ -38,6 +38,7 @@ import           Data.Maybe          (isJust, fromJust, listToMaybe, catMaybes)
 import qualified Data.ListLike       as LL
 import           Data.ListLike       (ListLike)
 import           Lens.Micro.Platform (over, Lens', _2, (.~), (&))
+import           Data.Binary         (Binary)
 
 -- | A CompletionTree is a map of partial completions.
 --
@@ -59,7 +60,7 @@ import           Lens.Micro.Platform (over, Lens', _2, (.~), (&))
 -- (The empty strings are needed to denote the end of a word)
 -- (A CompletionTree is not limited to a binary tree)
 newtype CompletionTree a = CompletionTree {_unCompletionTree :: (Map a (CompletionTree a))}
-  deriving (Monoid, Eq)
+  deriving (Monoid, Eq, Binary)
 
 unCompletionTree :: Lens' (CompletionTree a) (Map a (CompletionTree a))
 unCompletionTree f ct = (\unCompletionTree' -> ct {_unCompletionTree = unCompletionTree'}) <$>
