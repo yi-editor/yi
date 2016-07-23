@@ -13,24 +13,29 @@ module Yi.Keymap.Vim.Ex.Commands.Substitute (parse) where
 
 import           Control.Applicative              (Alternative ((<|>)))
 import           Control.Monad                    (void)
-import qualified Data.Attoparsec.Text             as P (char, inClass, many', satisfy, string, try)
+import qualified Data.Attoparsec.Text             as P (char, inClass, many', match, option, 
+                                                        satisfy, string, try)
+import           Data.Maybe                       (fromMaybe)
 import           Data.Monoid                      ((<>))
-import qualified Data.Text                        as T (cons, snoc)
+import qualified Data.Text                        as T (Text, cons, snoc, pack)
+import           Lens.Micro.Platform              (over, _2)
 import           Yi.Buffer.Adjusted
+import           Yi.Buffer.Region                 (linesOfRegionB)
 import           Yi.Editor                        (EditorM, closeBufferAndWindowE, printMsg, withCurrentBuffer)
 import           Yi.Keymap                        (Action (EditorA), Keymap)
 import           Yi.Keymap.Keys                   (char, choice, (?>>!))
 import           Yi.Keymap.Vim.Common             (EventString)
-import qualified Yi.Keymap.Vim.Ex.Commands.Common as Common (parse, pureExCommand)
+import qualified Yi.Keymap.Vim.Ex.Commands.Common as Common (parse, pureExCommand, parseRange)
 import           Yi.Keymap.Vim.Ex.Types           (ExCommand (cmdAction, cmdShow))
 import           Yi.MiniBuffer                    (spawnMinibufferE)
 import           Yi.Regex                         (makeSearchOptsM)
+import           Yi.Region                        (Region)
 import qualified Yi.Rope                          as R (YiString, fromString, length, null, toText, toString)
 import           Yi.Search
 
 parse :: EventString -> Maybe ExCommand
 parse = Common.parse $ do
-    percents <- P.many' (P.char '%')
+    (rangeText, rangeB) <- over _2 (fromMaybe $ regionOfB Line) <$> P.match Common.parseRange
     void $ P.try (P.string "substitute") <|> P.string "s"
     delimiter <- P.satisfy (`elem` ("!@#$%^&*()[]{}<>/.,~';:?-=" :: String))
     from <- R.fromString <$> P.many' (P.satisfy (/= delimiter))
@@ -42,12 +47,13 @@ parse = Common.parse $ do
         ('g' `elem` flagChars)
         ('i' `elem` flagChars)
         ('c' `elem` flagChars)
-        (not $ null percents)
+        rangeText
+        rangeB
 
-substitute :: R.YiString -> R.YiString -> Char -> Bool -> Bool -> Bool -> Bool -> ExCommand
-substitute from to delimiter global caseInsensitive confirm allLines = Common.pureExCommand {
-    cmdShow = (if allLines then "%" else "")
-              <>       "substitute"
+substitute :: R.YiString -> R.YiString -> Char -> Bool -> Bool -> Bool -> T.Text -> BufferM Region -> ExCommand
+substitute from to delimiter global caseInsensitive confirm regionText regionB = Common.pureExCommand {
+    cmdShow = regionText
+              <>       "s"
               <>       (delimiter `T.cons` R.toText from)
               <>       (delimiter `T.cons` R.toText to)
               `T.snoc` delimiter
@@ -56,6 +62,9 @@ substitute from to delimiter global caseInsensitive confirm allLines = Common.pu
               <>       (if global then "g" else "")
   , cmdAction = EditorA $ do
         let opts = QuoteRegex : if caseInsensitive then [IgnoreCase] else []
+        lines <- withCurrentBuffer $ regionB >>= linesOfRegionB
+        region <- withCurrentBuffer regionB
+        printMsg $ T.pack $ show (lines, region)
         regex <- if R.null from
                     then getRegexE
                     else return . (either (const Nothing) Just) 
@@ -63,32 +72,29 @@ substitute from to delimiter global caseInsensitive confirm allLines = Common.pu
         case regex of
             Nothing -> printMsg "No previous search pattern"
             Just regex' -> if confirm
-                then substituteConfirm regex' to global allLines
+                then substituteConfirm regex' to global lines
                 else withCurrentBuffer $ do
-                    let replace = void $ regionOfB Line
-                                  >>= searchAndRepRegion0 regex' to global
-                    if allLines
-                        then withEveryLineB replace
-                        else replace
+                    -- We need to reverse the lines here so that replacing
+                    -- does not effect the regions in question.
+                    mapM_ (void . searchAndRepRegion0 regex' to global) (reverse lines)
                     moveToSol
   }
 
 -- | Run substitution in confirm mode
-substituteConfirm :: SearchExp -> R.YiString -> Bool -> Bool -> EditorM ()
-substituteConfirm regex to global allLines = do
+substituteConfirm :: SearchExp -> R.YiString -> Bool -> [Region] -> EditorM ()
+substituteConfirm regex to global lines = do
+    -- TODO This highlights all matches, even in non-global mode
+    -- and could potentially be classified as a bug. Fixing requires
+    -- changing the regex highlighting api.
     setRegexE regex
-    regions <- withCurrentBuffer $ findMatches regex global allLines
+    regions <- withCurrentBuffer $ findMatches regex global lines
     substituteMatch to 0 False regions
 
 -- | All matches to replace under given flags
-findMatches :: SearchExp -> Bool -> Bool -> BufferM [Region]
-findMatches regex global allLines = do
-    lns <- if allLines
-        then do lineCount <- lineCountB
-                lineRegions [1..lineCount]
-        else return <$> regionOfB Line
+findMatches :: SearchExp -> Bool -> [Region] -> BufferM [Region]
+findMatches regex global lines = do
     let f = if global then id else take 1
-    concat <$> mapM (fmap f . regexRegionB regex) lns
+    concat <$> mapM (fmap f . regexRegionB regex) lines
 
 -- | Get regions corresponding to all lines
 lineRegions :: [Int] -> BufferM [Region]
