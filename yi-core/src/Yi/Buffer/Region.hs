@@ -23,6 +23,7 @@ module Yi.Buffer.Region
   , blockifyRegion
   , joinLinesB
   , concatLinesB
+  , linesOfRegionB
   ) where
 
 import           Control.Monad       (when)
@@ -134,6 +135,11 @@ linesOfRegionB region = do
     ls <- R.lines' <$> readRegionB region
     return $ case ls of
         [] -> []
-        (l:ls') -> let initialRegion = mkRegion' direction start (end + fromIntegral (R.length l))
-                       f reg ln = fmapRegion (+ fromIntegral (R.length ln)) reg
-                   in tail $ scanl f initialRegion ls'
+        (l:ls') -> let initialRegion = mkRegion' direction start (start + fromIntegral (R.length l))
+                   in scanl nextRegion initialRegion ls'
+
+-- | Given some text and the previous region, finds the next region
+-- (used for implementing linesOfRegionB, not generally useful)
+nextRegion :: Region -> R.YiString -> Region
+nextRegion r l = mkRegion' (regionDirection r) (regionEnd r) (regionEnd r + len)
+    where len = fromIntegral $ R.length l
