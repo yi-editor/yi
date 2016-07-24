@@ -136,7 +136,7 @@ tests:
     source-dirs: test
     dependencies:
       - tasty
-      - tasty-hspec
+      - tasty-hunit
       - tasty-quickcheck
       - yi-core
       - text
