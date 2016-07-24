@@ -13,7 +13,7 @@
 --
 -- Uses Dyre to implement the XMonad-style dynamic reconfiguration.
 
-module Yi.Boot (yi, yiDriver, reload) where
+module Yi.Boot (yi, yiDriver, yiDriver', reload) where
 
 import qualified Config.Dyre as Dyre
 import qualified Config.Dyre.Options as Dyre
@@ -21,6 +21,7 @@ import qualified Config.Dyre.Params as Dyre
 import           Config.Dyre.Relaunch
 import           Lens.Micro.Platform
 import           Data.Text ()
+import qualified Data.Text.IO as T (putStrLn)
 import           System.Environment
 import           System.Exit
 import           Yi.Boot.Internal
@@ -29,6 +30,7 @@ import           Yi.Config
 import           Yi.Editor
 import           Yi.Keymap
 import           Yi.Main
+import           Yi.Option (OptionError(..))
 import           Yi.Paths (getCustomConfigPath)
 import           Yi.Rope (fromString)
 
@@ -51,16 +53,21 @@ showErrorsInConf c errs = c & _1 . initialActionsA %~ (makeAction openErrBuf :)
 yi :: Config -> IO ()
 yi = yiDriver
 
+-- | Called from the yi built with the user's configuration. Does not
+-- ignore unknown arguments.
+yiDriver :: Config -> IO ()
+yiDriver = yiDriver' False
+
 -- | Used by both the yi executable and the custom yi that is built
 -- from the user's configuration. The yi executable uses a default
 -- config.
-yiDriver :: Config -> IO ()
-yiDriver cfg = do
+yiDriver' :: Bool -> Config -> IO ()
+yiDriver' ignoreUnknownArgs cfg = do
   args <- Dyre.withDyreOptions Dyre.defaultParams getArgs
   -- we do the arg processing before dyre, so we can extract
   -- '--ghc-option=' and '--help' and so on.
-  case do_args cfg args of
-    Left (Err err code) -> putStrLn err >> exitWith code
+  case do_args ignoreUnknownArgs cfg args of
+    Left (OptionError err code) -> T.putStrLn err >> exitWith code
     Right (finalCfg, cfgcon) -> do
       modules <- getCustomConfigPath (userConfigDir cfgcon) "modules"
       let yiParams = Dyre.defaultParams

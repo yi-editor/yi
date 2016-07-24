@@ -1,4 +1,7 @@
 {-# LANGUAGE CPP #-}
+{-# LANGUAGE DeriveDataTypeable #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE OverloadedStrings #-}
 
 -- | This is the main module of Yi, called with configuration from the user.
 -- Here we mainly process command line arguments.
@@ -9,13 +12,15 @@ module Yi.Main (
                 -- * Command line processing
                 do_args,
                 ConsoleConfig(..),
-                Err(..),
                ) where
 
 import Control.Monad
 import Data.Char
+import Data.Monoid
+import qualified Data.Text as T
 import Data.List (intercalate)
 import Data.Version (showVersion)
+import Lens.Micro.Platform (view)
 import System.Console.GetOpt
 import System.Exit
 #ifndef HLINT
@@ -24,16 +29,14 @@ import System.Exit
 
 import Yi.Buffer
 import Yi.Config
-import Yi.Config.Default
 import Yi.Core (startEditor)
 import Yi.Debug
 import Yi.Editor
 import Yi.File
 import Yi.Keymap
+import Yi.Option (YiOption, OptionError(..), yiCustomOptions)
 import Yi.Paths (getConfigDir)
 import Paths_yi_core
-
-data Err = Err String ExitCode
 
 -- | Configuration information which can be set in the command-line, but not
 -- in the user's configuration file.
@@ -66,13 +69,16 @@ data Opts = Help
           | GhcOption String
           | Debug
           | OpenInTabs
+          | CustomNoArg YiOption
+          | CustomReqArg (String -> YiOption) String
+          | CustomOptArg (Maybe String -> YiOption) (Maybe String)
 
 -- | List of editors for which we provide an emulation.
 editors :: [(String,Config -> Config)]
 editors = []
 
-options :: [OptDescr Opts]
-options =
+builtinOptions :: [OptDescr Opts]
+builtinOptions =
   [ Option []     ["self-check"]  (NoArg  SelfCheck)             "Run self-checks"
   , Option ['f']  ["frontend"]    (ReqArg Frontend   "FRONTEND") frontendHelp
   , Option ['y']  ["config-file"] (ReqArg ConfigFile "PATH")     "Specify a folder containing a configuration yi.hs file"
@@ -86,6 +92,18 @@ options =
   ] where frontendHelp = "Select frontend"
           editorHelp   = "Start with editor keymap, where editor is one of:\n" ++ (intercalate ", " . fmap fst) editors
 
+convertCustomOption :: OptDescr YiOption -> OptDescr Opts
+convertCustomOption (Option short long desc help) = Option short long desc' help
+    where desc' = convertCustomArgDesc desc
+
+convertCustomArgDesc :: ArgDescr YiOption -> ArgDescr Opts
+convertCustomArgDesc (NoArg o) = NoArg (CustomNoArg o)
+convertCustomArgDesc (ReqArg f s) = ReqArg (CustomReqArg f) s
+convertCustomArgDesc (OptArg f s) = OptArg (CustomOptArg f) s
+
+customOptions :: Config -> [OptDescr Opts]
+customOptions = fmap convertCustomOption . view yiCustomOptions
+
 openInTabsShort :: Char
 openInTabsShort = 'p'
 
@@ -93,28 +111,33 @@ openInTabsLong :: String
 openInTabsLong = "open-in-tabs"
 
 -- | usage string.
-usage, versinfo :: String
-usage = usageInfo "Usage: yi [option...] [file]" options
+usage :: [OptDescr Opts] -> T.Text
+usage opts = T.pack $ usageInfo "Usage: yi [option...] [file]" opts
 
-versinfo = "yi " ++ showVersion version
+versinfo :: T.Text
+versinfo = "yi " <> T.pack (showVersion version)
 
 -- | Transform the config with options
-do_args :: Config -> [String] -> Either Err (Config, ConsoleConfig)
-do_args cfg args =
-    case getOpt (ReturnInOrder File) options args of
-        (os, [], []) -> foldM (getConfig shouldOpenInTabs) (cfg, defaultConsoleConfig) (reverse os)
-        (_, _, errs) -> fail (concat errs)
+do_args :: Bool -> Config -> [String] -> Either OptionError (Config, ConsoleConfig)
+do_args ignoreUnknown cfg args = let options = customOptions cfg ++ builtinOptions in
+    case getOpt' (ReturnInOrder File) options args of
+        (os, [], [], []) -> handle options os
+        (os, _, u:us, []) -> if ignoreUnknown
+                                    then handle options os
+                                    else fail $ "unknown arguments: " ++ intercalate ", " (u:us)
+        (os, ex, ey, errs) -> fail (concat errs)
     where
         shouldOpenInTabs = ("--" ++ openInTabsLong) `elem` args
                          || ('-':[openInTabsShort]) `elem` args
+        handle options os = foldM (getConfig options shouldOpenInTabs) (cfg, defaultConsoleConfig) (reverse os)
 
 -- | Update the default configuration based on a command-line option.
-getConfig :: Bool -> (Config, ConsoleConfig) -> Opts -> Either Err (Config, ConsoleConfig)
-getConfig shouldOpenInTabs (cfg, cfgcon) opt =
+getConfig :: [OptDescr Opts] -> Bool -> (Config, ConsoleConfig) -> Opts -> Either OptionError (Config, ConsoleConfig)
+getConfig options shouldOpenInTabs (cfg, cfgcon) opt =
     case opt of
       Frontend _    -> fail "Panic: frontend not found"
-      Help          -> Left $ Err usage ExitSuccess
-      Version       -> Left $ Err versinfo ExitSuccess
+      Help          -> Left $ OptionError (usage options) ExitSuccess
+      Version       -> Left $ OptionError versinfo ExitSuccess
       Debug         -> return (cfg { debugMode = True }, cfgcon)
       LineNo l      -> case startActions cfg of
                          x : xs -> return (cfg { startActions = x:makeAction (gotoLn (read l)):xs }, cfgcon)
@@ -130,6 +153,15 @@ getConfig shouldOpenInTabs (cfg, cfgcon) opt =
              Nothing -> fail $ "Unknown emulation: " ++ show emul
       GhcOption ghcOpt -> return (cfg, cfgcon { ghcOptions = ghcOptions cfgcon ++ [ghcOpt] })
       ConfigFile f -> return (cfg, cfgcon { userConfigDir = return f })
+      CustomNoArg o -> do
+          cfg' <- o cfg
+          return (cfg', cfgcon)
+      CustomReqArg f s -> do
+          cfg' <- f s cfg
+          return (cfg', cfgcon)
+      CustomOptArg f s -> do
+          cfg' <- f s cfg
+          return (cfg', cfgcon)
       _ -> return (cfg, cfgcon)
   where
     prependActions as = return (cfg { startActions = fmap makeAction as ++ startActions cfg }, cfgcon)
