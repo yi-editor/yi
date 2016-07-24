@@ -17,7 +17,7 @@ before_install:
  - export PATH=/opt/ghc/7.10.3/bin:$PATH
 
 install:
- - stack build -j2
+ - stack test -j2 --no-run-tests
 
 script:
  - stack test
