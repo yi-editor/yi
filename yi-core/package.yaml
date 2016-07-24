@@ -158,6 +158,7 @@ library:
         - Yi.Mode.Latex
         - Yi.Modes
         - Yi.Monad
+        - Yi.Option
         - Yi.Paths
         - Yi.PersistentState
         - Yi.Process
