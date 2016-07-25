@@ -5,6 +5,7 @@
 {-# LANGUAGE OverloadedStrings  #-}
 {-# LANGUAGE TemplateHaskell    #-}
 {-# OPTIONS_HADDOCK show-extensions #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 
 -- |
 -- Module      :  Yi.Tag
@@ -33,7 +34,7 @@ module Yi.Tag ( lookupTag
 import           GHC.Generics (Generic)
 
 import           Lens.Micro.Platform             (makeLenses)
-import           Data.Binary            (Binary, get, put)
+import           Data.Binary            (Binary)
 import qualified Data.ByteString        as BS (readFile)
 import           Data.Default           (Default, def)
 import qualified Data.Foldable          as F (concat)
@@ -43,7 +44,6 @@ import qualified Data.Text              as T (Text, append, isPrefixOf, lines, p
 import qualified Data.Text.Encoding     as E (decodeUtf8, encodeUtf8)
 import qualified Data.Text.Read         as R (decimal)
 import qualified Yi.CompletionTree      as CT
-import           Data.Typeable          (Typeable)
 import           System.FilePath        (takeDirectory, takeFileName, (</>))
 import           System.FriendlyPath    (expandTilda)
 import           Yi.Config.Simple.Types (Field, customVariable)
@@ -51,7 +51,6 @@ import           Yi.Editor              (EditorM, getEditorDyn, putEditorDyn)
 import           Yi.Types               (YiConfigVariable, YiVariable)
 
 newtype TagsFileList  = TagsFileList { _unTagsFileList :: [FilePath] }
-    deriving (Typeable, Generic)
 
 instance Default TagsFileList where
     def = TagsFileList ["tags"]
@@ -63,21 +62,17 @@ makeLenses ''TagsFileList
 tagsFileList :: Field [FilePath]
 tagsFileList = customVariable . unTagsFileList
 
-newtype Tags = Tags (Maybe TagTable) deriving (Typeable, Generic)
+newtype Tags = Tags (Maybe TagTable) deriving (Binary)
 
 instance Default Tags where
     def = Tags Nothing
 
 instance YiVariable Tags
 
-newtype Tag = Tag { _unTag :: T.Text } deriving (Show, Eq, Ord)
+newtype Tag = Tag { _unTag :: T.Text } deriving (Show, Eq, Ord, Binary)
 
 unTag' :: Tag -> T.Text
 unTag' =  _unTag
-
-instance Binary Tag where
-  put (Tag t) = put (E.encodeUtf8 t)
-  get = Tag . E.decodeUtf8 <$> get
 
 data TagTable = TagTable
     { tagFileName :: FilePath
@@ -90,7 +85,7 @@ data TagTable = TagTable
     -- ^ map from tags to files
     , tagCompletionTree :: CT.CompletionTree T.Text
     -- ^ trie to speed up tag hinting
-    } deriving (Typeable, Generic)
+    } deriving (Generic)
 
 -- | Find the location of a tag using the tag table.
 -- Returns a full path and line number
@@ -153,6 +148,4 @@ getTags = do
   Tags t <- getEditorDyn
   return t
 
-instance Binary Tags
 instance Binary TagTable
-instance Binary TagsFileList
