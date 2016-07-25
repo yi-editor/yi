@@ -8,6 +8,28 @@ category: Yi
 
 ghc-options: -Wall -ferror-spans
 
+flags:
+  hint:
+    description: Include hint (haskell interpreter) in yi
+    manual: True
+    default: False
+  profiling:
+    description:
+      Runtime binary will be compiled with profiling and RTS
+      options enabled.
+    manual: True
+    default: False
+  eventlog:
+    description:
+      Runtime binary will be compiled with eventlog and RTS
+      options enabled.
+    manual: True
+    default: False
+  testing:
+    description: bake-in the self-checks
+    manual: True
+    default: False
+
 dependencies:
     - base >= 4.8
     - array
@@ -38,17 +60,48 @@ dependencies:
     - text-icu >= 0.7
     - time >= 1.1
     - transformers-base
-    - unix
     - unix-compat >= 0.1
     - unordered-containers >= 0.1.3
     - word-trie >= 0.2.0.4
     - xdg-basedir >= 0.2.1
     - yi-language >= 0.1.1.0
     - yi-rope >= 0.7.0.0
+when:
+  - condition: os(win32)
+    then:
+      dependencies:
+        - Win32
+    else:
+      dependencies:
+        - unix
+
 
 
 library:
     source-dirs: src
+
+    when:
+      - condition: flag(profiling)
+        cpp-options: -DPROFILING
+
+      - condition: flag(eventlog)
+        cpp-options: -DEVENTLOG
+        ghc-options: -Wall -fno-warn-orphans -eventlog
+
+      - condition: flag(hint)
+        cpp-options: -DHINT
+        dependencies:
+          - hint > 0.3.1
+
+      - condition: flag(testing)
+        cpp-options: -DTESTING
+        dependencies:
+          - QuickCheck >= 2.7
+          - random
+
+    ghc-options: -Wall -fno-warn-orphans -ferror-spans
+    ghc-prof-options: -prof -auto-all -rtsopts
+
     exposed-modules:
         - Yi
         - Yi.Boot
