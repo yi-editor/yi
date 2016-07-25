@@ -29,6 +29,7 @@ module Yi.Tag ( lookupTag
               , setTags
               , resetTags
               , tagsFileList
+              , readCTags
               ) where
 
 import           GHC.Generics (Generic)
