@@ -8,11 +8,14 @@ category: Yi
 
 ghc-options: -Wall -ferror-spans
 
+data-files:
+  - ../art/*.png
+  - ../art/*.pdf
+
 dependencies:
     - base >= 4.8 && < 5
     - containers
     - filepath
-    - gconf
     - glib  >= 0.13 && < 0.14
     - gtk >= 0.13 && < 0.15
     - microlens-platform

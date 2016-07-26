@@ -2,7 +2,8 @@ flags: {}
 packages:
 - yi-core
 - yi-frontend-vty
-# - yi-frontend-pango
+- yi-frontend-pango
+- yi-frontend-pango-gnome
 - yi-keymap-cua
 - yi-keymap-emacs
 - yi-keymap-vim
@@ -12,10 +13,8 @@ packages:
 - yi-ireader
 - yi-language
 - yi
+resolver: nightly-2016-07-31
 extra-deps:
-- Hclip-3.0.0.3
-- ListLike-4.5
-# - gconf-0.13.1.0
-resolver: nightly-2016-07-28
+  - gconf-0.13.1.0
 nix:
     shell-file: shell.nix

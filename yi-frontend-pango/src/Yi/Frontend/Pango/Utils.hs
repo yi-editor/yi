@@ -6,7 +6,7 @@ module Yi.Frontend.Pango.Utils where
 import Control.Exception (catch, throw)
 
 import Data.Text (append)
-import Paths_yi
+import Paths_yi_frontend_pango
 import System.FilePath
 import Graphics.UI.Gtk
 import System.Glib.GError

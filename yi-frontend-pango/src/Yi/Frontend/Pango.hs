@@ -57,9 +57,6 @@ import           Yi.Tab
 import           Yi.Types (fontsizeVariation, attributes)
 import qualified Yi.UI.Common as Common
 import           Yi.Frontend.Pango.Control (keyTable)
-#ifdef GNOME_ENABLED
-import           Yi.Frontend.Pango.Gnome(watchSystemFont)
-#endif
 import           Yi.Frontend.Pango.Layouts
 import           Yi.Frontend.Pango.Utils
 import           Yi.String (showT)
@@ -226,11 +223,7 @@ startNoMsgGtkHook userHook cfg ch outCh ed = do
   let actionCh = outCh . return
   tc <- newIORef =<< newCache ed actionCh
 
-#ifdef GNOME_ENABLED
-  let watchFont = watchSystemFont
-#else
   let watchFont = (fontDescriptionFromString ("Monospace 10" :: T.Text) >>=)
-#endif
   watchFont $ updateFont (configUI cfg) fontRef tc status
 
   -- I think this is the correct place to put it...
