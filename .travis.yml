@@ -9,6 +9,7 @@ addons:
   apt:
     packages:
     - ghc-8.0.1
+    - libgconf2-dev
     sources: hvr-ghc
 
 before_install:
@@ -17,6 +18,7 @@ before_install:
  - export PATH=/opt/ghc/8.0.1/bin:$PATH
 
 install:
+ - stack install gtk2hs-buildtools
  - stack test -j2 --no-run-tests
 
 script:

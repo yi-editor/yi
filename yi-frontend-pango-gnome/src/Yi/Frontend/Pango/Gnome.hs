@@ -4,6 +4,7 @@ module Yi.Frontend.Pango.Gnome(watchSystemFont) where
 import Control.Monad
 import Graphics.UI.Gtk
 import System.Gnome.GConf
+import Data.Text
 
 monospaceFontKey :: String
 monospaceFontKey = "/desktop/gnome/interface/monospace_font_name"
@@ -14,7 +15,7 @@ watchSystemFont cb = do
   gconfAddDir gconf "/desktop/gnome/interface"
   watch gconf monospaceFontKey (cb <=< fontDescriptionFromString)
 
-watch :: GConfValueClass value => GConf -> String -> (value -> IO ()) -> IO ()
+watch :: GConf -> String -> (Text -> IO ()) -> IO ()
 watch gconf key cb = do
   cb =<< gconfGet gconf key
   gconfNotifyAdd gconf key $ \key' val -> when (key == key') (cb val)

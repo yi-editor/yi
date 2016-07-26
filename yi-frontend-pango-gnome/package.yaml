@@ -1,0 +1,20 @@
+name: yi-frontend-pango-gnome
+version: 0.13.0
+synopsis: Gnome support for the Pango frontend of the Yi Editor
+maintainer: yi-devel@googlegroups.com
+license: GPL-2
+github: yi-editor/yi
+category: Yi
+
+ghc-options: -Wall
+
+dependencies:
+  - base >= 4.7 && < 5
+  - gtk
+  - gconf
+  - text
+
+library:
+  source-dirs: src
+  exposed-modules:
+    - Yi.Frontend.Pango.Gnome
