@@ -24,5 +24,6 @@ dependencies:
 library:
     source-dirs: src
     exposed-modules:
+        - Yi.Config.Default.Vty
         - Yi.Frontend.Vty
         - Yi.Frontend.Vty.Conversions

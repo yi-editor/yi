@@ -23,6 +23,7 @@ dependencies:
 library:
     source-dirs: src
     exposed-modules:
+      - Yi.Config.Default.MiscModes
       - Yi.Modes
       - Yi.Mode.Buffers
       - Yi.Mode.Abella

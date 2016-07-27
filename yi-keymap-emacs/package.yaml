@@ -10,6 +10,7 @@ ghc-options: -Wall -ferror-spans
 
 dependencies:
     - base >= 4.8 && < 5
+    - containers
     - filepath
     - Hclip
     - microlens-platform
@@ -26,6 +27,7 @@ dependencies:
 library:
     source-dirs: src
     exposed-modules:
+        - Yi.Config.Default.Emacs
         - Yi.Keymap.Emacs
         - Yi.Keymap.Emacs.KillRing
         - Yi.Keymap.Emacs.Utils
