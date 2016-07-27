@@ -22,6 +22,7 @@ dependencies:
 library:
     source-dirs: src
     exposed-modules:
+        - Yi.Config.Default.HaskellMode
         - Yi.Lexer.Haskell
         - Yi.Lexer.LiterateHaskell
         - Yi.Mode.GHCi
