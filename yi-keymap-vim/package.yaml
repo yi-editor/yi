@@ -33,6 +33,7 @@ dependencies:
 library:
     source-dirs: src
     exposed-modules:
+        - Yi.Config.Default.Vim
         - Yi.Keymap.Vim
         - Yi.Keymap.Vim.Common
         - Yi.Keymap.Vim.Digraph

@@ -25,6 +25,7 @@ dependencies:
 library:
     source-dirs: src
     exposed-modules:
+      - Yi.Config.Default.JavaScriptMode
       - Yi.Mode.JavaScript
       - Yi.Syntax.JavaScript
       - Yi.Verifier.JavaScript

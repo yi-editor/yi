@@ -29,5 +29,6 @@ dependencies:
 library:
     source-dirs: src
     exposed-modules:
+        - Yi.Config.Default.Pango
         - Yi.Frontend.Pango
         - Yi.Frontend.Pango.Control
