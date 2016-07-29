@@ -16,6 +16,6 @@ extra-deps:
 - Hclip-3.0.0.3
 - ListLike-4.5
 # - gconf-0.13.1.0
-resolver: nightly-2016-07-28
+resolver: lts-6.9
 nix:
     shell-file: shell.nix
