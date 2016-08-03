@@ -1,4 +1,5 @@
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE ViewPatterns #-}
 {-# OPTIONS_HADDOCK show-extensions #-}
 
 -- |
@@ -25,6 +26,7 @@ import           Yi.Keymap.Vim.Operator     (VimOperator (..), opDelete, stringT
 import           Yi.Keymap.Vim.StateUtils
 import           Yi.Keymap.Vim.StyledRegion (StyledRegion (StyledRegion), transformCharactersInRegionB)
 import           Yi.Keymap.Vim.Tag          (gotoTag)
+import           Yi.Keymap.Vim.TextObject
 import           Yi.Keymap.Vim.Utils        (matchFromBool, mkChooseRegisterBinding, mkMotionBinding)
 import           Yi.MiniBuffer              (spawnMinibufferE)
 import           Yi.Monad                   (whenM)
@@ -34,7 +36,7 @@ import           Yi.Utils                   (SemiNum ((-~)))
 
 defVisualMap :: [VimOperator] -> [VimBinding]
 defVisualMap operators =
-    [escBinding, motionBinding, changeVisualStyleBinding, setMarkBinding]
+    [escBinding, motionBinding, textObjectBinding, changeVisualStyleBinding, setMarkBinding]
     ++ [chooseRegisterBinding]
     ++ operatorBindings operators ++ digitBindings ++ [replaceBinding, switchEdgeBinding]
     ++ [insertBinding, exBinding, shiftDBinding]
@@ -130,6 +132,19 @@ motionBinding = mkMotionBinding Continue $
     \m -> case m of
         Visual _ -> True
         _ -> False
+
+textObjectBinding :: VimBinding
+textObjectBinding = VimBindingE (f . T.unpack . _unEv)
+    where
+    f (stringToTextObject -> PartialMatch) (VimState {vsMode = Visual _}) = PartialMatch
+    f (stringToTextObject -> WholeMatch to) (VimState {vsMode = Visual _}) =
+        WholeMatch $ do
+            withCurrentBuffer $ do
+                StyledRegion _ reg <- regionOfTextObjectB (CountedTextObject 1 to)
+                setSelectionMarkPointB (regionStart reg)
+                moveTo (regionEnd reg -~ 1)
+            return Continue
+    f _ _ = NoMatch
 
 regionOfSelectionB :: BufferM Region
 regionOfSelectionB = savingPointB $ do

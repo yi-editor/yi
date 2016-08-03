@@ -9,6 +9,7 @@ module Yi.Keymap.Vim.TextObject
 
 import Control.Monad              (replicateM_, (<=<))
 import Yi.Buffer.Adjusted
+import Yi.Keymap.Vim.MatchResult
 import Yi.Keymap.Vim.StyledRegion (StyledRegion (..), normalizeRegion)
 
 data TextObject = TextObject !RegionStyle !TextUnit
@@ -29,10 +30,12 @@ textObjectRegionB' (CountedTextObject count (TextObject style unit)) =
 changeTextObjectStyle :: (RegionStyle -> RegionStyle) -> TextObject -> TextObject
 changeTextObjectStyle smod (TextObject s u) = TextObject (smod s) u
 
-stringToTextObject :: String -> Maybe TextObject
-stringToTextObject ('i':s) = parseTextObject InsideBound s
-stringToTextObject ('a':s) = parseTextObject OutsideBound s
-stringToTextObject _ = Nothing
+stringToTextObject :: String -> MatchResult TextObject
+stringToTextObject "a" = PartialMatch
+stringToTextObject "i" = PartialMatch
+stringToTextObject ('i':s) = matchFromMaybe (parseTextObject InsideBound s)
+stringToTextObject ('a':s) = matchFromMaybe (parseTextObject OutsideBound s)
+stringToTextObject _ = NoMatch
 
 parseTextObject :: BoundarySide -> String -> Maybe TextObject
 parseTextObject bs (c:[]) = fmap (TextObject Exclusive . ($ bs == OutsideBound)) mkUnit
