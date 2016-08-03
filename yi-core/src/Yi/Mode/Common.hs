@@ -14,14 +14,16 @@ module Yi.Mode.Common (TokenBasedMode, fundamentalMode,
                  anyExtension, extensionOrContentsMatch, 
                  linearSyntaxMode, hookModes, 
                  applyModeHooks, lookupMode, styleMode,
-                 extensionMatches
+                 extensionMatches, shebangParser
                 ) where
 
-import           Lens.Micro.Platform          ((%~), (&), (.~), (^.))
-import           Data.Maybe          (fromMaybe, isJust)
-import           System.FilePath     (takeExtension)
-import qualified Data.Text           as T (Text)
-import qualified Data.Text.ICU       as ICU (regex, find)
+import           Lens.Micro.Platform  ((%~), (&), (.~), (^.))
+import           Control.Applicative  ((<|>))
+import           Control.Monad        (void)
+import qualified Data.Attoparsec.Text as P
+import           Data.Maybe           (fromMaybe, isJust)
+import           System.FilePath      (takeExtension)
+import qualified Data.Text            as T (Text)
 
 import           Yi.Buffer
 import qualified Yi.IncrementalParse  as IncrParser (scanner)
@@ -107,12 +109,47 @@ anyExtension extensions fileName _contents
 
 -- | When applied to an extensions list and regular expression pattern, creates
 -- a 'Mode.modeApplies' function.
-extensionOrContentsMatch :: [String] -> T.Text -> FilePath -> R.YiString -> Bool
-extensionOrContentsMatch extensions pattern fileName contents
-    = extensionMatches extensions fileName || isJust m
+extensionOrContentsMatch :: [String] -> P.Parser () -> FilePath -> R.YiString -> Bool
+extensionOrContentsMatch extensions parser fileName contents
+    = extensionMatches extensions fileName || m
     where
-        r = ICU.regex [] pattern
-        m = ICU.find r $ R.toText contents
+        m = case P.parseOnly parser $ R.toText contents of
+              Left _ -> False
+              Right _ -> True
+
+{- | Generate a parser for shebang patterns
+the generated parser will match only if the shebang is at the start of a line
+
+==== __Examples__
+
+> shebangParser "runhaskell"
+
+generates a parser that matches "#!\/usr\/bin\/env runhaskell\\n"
+(but also "djsjfaj\\n\\n\\n\\r\\n#!    \/usr\/bin\/env       runhaskell       \\ndkasfkda\\n\\r\\nkasfaj")
+
+__Note:__ You can get @("runhaskell" :: Parser String)@ by using the OverloadedStrings extension
+
+> shebangParser "python"
+
+generates a parser that matches "#!\/usr\/bin\/env python\\n"
+
+__Note:__ it doesn't match "#!\/usr\/bin\/env python2\\n" (that's why the newline is required)
+
+It is also possible to use more complex parsers:
+
+> shebangParser ("python" *> ("2" <|> "3" <|> ""))
+
+generates a parser that matches any of:
+
+  * "#!\/usr\/bin\/env python\\n"
+  * "#!\/usr\/bin\/env python2\\n"
+  * "#!\/usr\/bin\/env python3\\n"
+-}
+shebangParser :: P.Parser a -> P.Parser ()
+shebangParser p = void p'
+  where
+    p' = "#!" *> P.skipWhile (== ' ') *> "/usr/bin/env " *> P.skipWhile (== ' ') *> p *> P.skipWhile (== ' ') *> P.endOfLine
+     <|> P.skip (const True) *> P.skipWhile (not . P.isEndOfLine) *> P.skipWhile P.isEndOfLine *> p'
 
 -- | Adds a hook to all matching hooks in a list
 hookModes :: (AnyMode -> Bool) -> BufferM () -> [AnyMode] -> [AnyMode]
