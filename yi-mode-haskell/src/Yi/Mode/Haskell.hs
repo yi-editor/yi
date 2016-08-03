@@ -55,7 +55,7 @@ import qualified Yi.Lexer.LiterateHaskell  as LiterateHaskell (HlState, alexScan
 import           Yi.MiniBuffer             (noHint, withMinibufferFree, withMinibufferGen)
 import qualified Yi.Mode.GHCi              as GHCi (ghciProcessArgs, ghciProcessName, spawnProcess)
 import qualified Yi.Mode.Interactive       as Interactive (queryReply)
-import           Yi.Mode.Common            (anyExtension, extensionOrContentsMatch)
+import           Yi.Mode.Common            (anyExtension, extensionOrContentsMatch, shebangParser)
 import           Yi.Monad                  (gets)
 import qualified Yi.Rope                   as R
 import           Yi.String                 (fillText, showT)
@@ -77,11 +77,10 @@ import           Yi.Utils                  (groupBy')
 -- Haskell hackers so it should be fine, at least for now.
 haskellAbstract :: Mode (tree TT)
 haskellAbstract = emptyMode
-  & modeAppliesA .~ extensionOrContentsMatch extensions shebangPattern
+  & modeAppliesA .~ extensionOrContentsMatch extensions (shebangParser "runhaskell")
   & modeNameA .~ "haskell"
   & modeToggleCommentSelectionA .~ Just (toggleCommentB "--")
   where extensions = ["hs", "x", "hsc", "hsinc"]
-        shebangPattern = "^#![[:space:]]*/usr/bin/env[[:space:]]+runhaskell"
 
 -- | "Clever" haskell mode, using the paren-matching syntax.
 cleverMode :: Mode (Paren.Tree (Tok Haskell.Token))
