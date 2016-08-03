@@ -1,0 +1,8 @@
+resolver: nightly-2016-07-28
+packages:
+- '.'
+- '../../yi-core'
+- '../../yi-frontend-vty'
+- '../../yi-keymap-vim'
+- '../../yi-mode-haskell'
+extra-deps: []
