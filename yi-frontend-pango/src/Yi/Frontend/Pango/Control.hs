@@ -11,24 +11,24 @@
 
 module Yi.Frontend.Pango.Control (
     Control(..)
-,   ControlM(..)
-,   Buffer(..)
-,   View(..)
-,   Iter(..)
-,   startControl
-,   runControl
-,   controlIO
-,   liftYi
-,   getControl
-,   newBuffer
-,   newView
-,   getBuffer
-,   setBufferMode
-,   withCurrentBuffer
-,   setText
-,   getText
-,   keyTable
-) where
+  , ControlM(..)
+  , Buffer(..)
+  , View(..)
+  , Iter(..)
+  , startControl
+  , runControl
+  , controlIO
+  , liftYi
+  , getControl
+  , newBuffer
+  , newView
+  , getBuffer
+  , setBufferMode
+  , withCurrentBuffer
+  , setText
+  , getText
+  , keyTable
+  ) where
 
 import Data.Text (unpack, pack, Text)
 import qualified Data.Text as T
@@ -197,8 +197,8 @@ startNoMsg :: ControlM () -> UIBoot
 startNoMsg main config input output ed = do
     control <- newEmptyMVar
     let wrappedMain = do
-        output [makeAction $ makeControl control]
-        void (runControl' main control)
+          output [makeAction $ makeControl control]
+          void (runControl' main control)
     return (mkUI wrappedMain control)
 
 end :: ControlM ()
@@ -798,9 +798,9 @@ handleMove view p0 event = do
   -- Relies on uiActionCh being synchronous
   selection <- liftBase $ newIORef ""
   let yiAction = do
-      txt <- withCurrentBuffer (readRegionB =<< getSelectRegionB)
+        txt <- withCurrentBuffer (readRegionB =<< getSelectRegionB)
              :: YiM R.YiString
-      liftBase $ writeIORef selection txt
+        liftBase $ writeIORef selection txt
   runAction $ makeAction yiAction
   txt <- liftBase $ readIORef selection
 
