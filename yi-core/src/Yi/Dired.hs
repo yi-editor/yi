@@ -50,6 +50,7 @@ import           Control.Category         ((>>>))
 import           Control.Exc              (orException, printingException)
 import           Lens.Micro.Platform      (makeLenses, use, (%~), (&), (.=), (.~), (^.))
 import           Control.Monad.Reader     (asks, foldM, unless, void, when)
+import qualified Data.Attoparsec.Text     as P
 import           Data.Binary              (Binary)
 import           Data.Char                (toLower)
 import           Data.Default             (Default, def)
@@ -62,7 +63,6 @@ import qualified Data.Map                 as M (Map, assocs, delete, empty,
 import           Data.Maybe               (fromMaybe)
 import           Data.Monoid              ((<>))
 import qualified Data.Text                as T (Text, pack, unpack)
-import qualified Data.Text.ICU            as ICU (regex, find, group)
 import           Data.Time.Clock.POSIX    (posixSecondsToUTCTime)
 import           Data.Typeable            (Typeable)
 import           System.CanonicalizePath  (canonicalizePath)
@@ -258,12 +258,11 @@ editFile filename = do
       content <- withGivenBuffer b elemsB
 
       let header = R.take 1024 content
-          rx = ICU.regex [] "\\-\\*\\- *([^ ]*) *\\-\\*\\-"
-          hmode = case ICU.find rx (R.toText header) of
-              Nothing -> ""
-              Just m  -> case (ICU.group 1 m) of
-                           Just n  -> n
-                           Nothing -> ""
+          pc = "-*-" *> P.skipWhile (== ' ') *> P.takeWhile (/= ' ') <* P.skipWhile (== ' ') <* "-*-"
+                    <|> P.skip (const True) *> P.skipWhile (/= '-') *> pc
+          hmode = case P.parseOnly pc (R.toText header) of
+                    Left _ -> ""
+                    Right str -> str
           Just mode = find (\(AnyMode m) -> modeName m == hmode) tbl <|>
                       find (\(AnyMode m) -> modeApplies m f header) tbl <|>
                       Just (AnyMode emptyMode)

@@ -33,6 +33,7 @@ flags:
 dependencies:
     - base >= 4.8
     - array
+    - attoparsec
     - binary >= 0.7
     - bytestring >= 0.9.1
     - containers
