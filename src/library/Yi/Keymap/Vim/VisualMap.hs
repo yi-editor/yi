@@ -17,7 +17,7 @@ import           Lens.Micro.Platform                 ((.=))
 import           Control.Monad              (forM_, void)
 import           Data.Char                  (ord)
 import           Data.List                  (group)
-import           Data.Maybe                 (fromJust)
+import           Data.Maybe                 (fromJust, fromMaybe)
 import qualified Data.Text                  as T (unpack)
 import           Yi.Buffer.Adjusted         hiding (Insert)
 import           Yi.Editor
@@ -137,10 +137,12 @@ textObjectBinding :: VimBinding
 textObjectBinding = VimBindingE (f . T.unpack . _unEv)
     where
     f (stringToTextObject -> PartialMatch) (VimState {vsMode = Visual _}) = PartialMatch
-    f (stringToTextObject -> WholeMatch to) (VimState {vsMode = Visual _}) =
+    f (stringToTextObject -> WholeMatch to) (VimState {vsMode = Visual _, vsCount = mbCount}) =
+        let count = fromMaybe 1 mbCount
+        in
         WholeMatch $ do
             withCurrentBuffer $ do
-                StyledRegion _ reg <- regionOfTextObjectB (CountedTextObject 1 to)
+                StyledRegion _ reg <- regionOfTextObjectB (CountedTextObject count to)
                 setSelectionMarkPointB (regionStart reg)
                 moveTo (regionEnd reg -~ 1)
             return Continue
@@ -270,7 +272,7 @@ insertBinding = VimBindingE (f . T.unpack . _unEv)
 tagJumpBinding :: VimBinding
 tagJumpBinding = VimBindingY (f . T.unpack . _unEv)
     where f "<C-]>" (VimState { vsMode = (Visual _) })
-            = WholeMatch $ do 
+            = WholeMatch $ do
                  tag <- Tag . R.toText <$> withCurrentBuffer
                             (regionOfSelectionB >>= readRegionB)
                  withEditor $ switchModeE Normal
