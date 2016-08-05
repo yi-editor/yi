@@ -5,17 +5,21 @@ cache:
   directories:
   - $HOME/.stack
 
+env:
+  - STACK_YAML=lts.yaml
+  - STACK_YAML=stack.yaml
+
 addons:
   apt:
     packages:
-    - ghc-8.0.1
     - libgconf2-dev
+    - libgmp-dev
     sources: hvr-ghc
 
 before_install:
  - mkdir -p $HOME/.local/bin
  - curl -L https://www.stackage.org/stack/linux-x86_64 | tar xz --wildcards --strip-components=1 -C ~/.local/bin '*/stack'
- - export PATH=/opt/ghc/8.0.1/bin:$PATH
+ - stack setup
 
 install:
  - stack install gtk2hs-buildtools
