@@ -42,6 +42,7 @@ import           Yi.Event                 (Event)
 import           Yi.Keymap                (YiM)
 import           Yi.Keymap.Vim.Common
 import           Yi.Keymap.Vim.EventUtils (eventToEventString, splitCountedCommand)
+import           Yi.Keymap.Vim.MatchResult
 import           Yi.Keymap.Vim.Motion     (Move (Move), stringToMove)
 import           Yi.Keymap.Vim.StateUtils (getMaybeCountE, modifyStateE,
                                            resetCountE, getRegisterE)
@@ -95,9 +96,6 @@ selectBinding :: EventString -> VimState -> [VimBinding] -> MatchResult (YiM Rep
 selectBinding input state = asum . fmap try
     where try (VimBindingY matcher) = matcher input state
           try (VimBindingE matcher) = fmap withEditor $ matcher input state
-
-matchFromBool :: Bool -> MatchResult ()
-matchFromBool b = if b then WholeMatch () else NoMatch
 
 setUnjumpMarks :: Point -> BufferM ()
 setUnjumpMarks p = do

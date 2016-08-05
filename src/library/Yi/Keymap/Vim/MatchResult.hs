@@ -34,3 +34,10 @@ instance Show (MatchResult a) where
     show (WholeMatch _) = "WholeMatch"
     show PartialMatch = "PartialMatch"
     show NoMatch = "NoMatch"
+
+matchFromBool :: Bool -> MatchResult ()
+matchFromBool b = if b then WholeMatch () else NoMatch
+
+matchFromMaybe :: Maybe a -> MatchResult a
+matchFromMaybe Nothing = NoMatch
+matchFromMaybe (Just a) = WholeMatch a

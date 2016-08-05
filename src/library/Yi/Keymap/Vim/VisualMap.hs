@@ -1,4 +1,5 @@
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE ViewPatterns #-}
 {-# OPTIONS_HADDOCK show-extensions #-}
 
 -- |
@@ -16,7 +17,7 @@ import           Lens.Micro.Platform                 ((.=))
 import           Control.Monad              (forM_, void)
 import           Data.Char                  (ord)
 import           Data.List                  (group)
-import           Data.Maybe                 (fromJust)
+import           Data.Maybe                 (fromJust, fromMaybe)
 import qualified Data.Text                  as T (unpack)
 import           Yi.Buffer.Adjusted         hiding (Insert)
 import           Yi.Editor
@@ -25,6 +26,7 @@ import           Yi.Keymap.Vim.Operator     (VimOperator (..), opDelete, stringT
 import           Yi.Keymap.Vim.StateUtils
 import           Yi.Keymap.Vim.StyledRegion (StyledRegion (StyledRegion), transformCharactersInRegionB)
 import           Yi.Keymap.Vim.Tag          (gotoTag)
+import           Yi.Keymap.Vim.TextObject
 import           Yi.Keymap.Vim.Utils        (matchFromBool, mkChooseRegisterBinding, mkMotionBinding)
 import           Yi.MiniBuffer              (spawnMinibufferE)
 import           Yi.Monad                   (whenM)
@@ -34,7 +36,7 @@ import           Yi.Utils                   (SemiNum ((-~)))
 
 defVisualMap :: [VimOperator] -> [VimBinding]
 defVisualMap operators =
-    [escBinding, motionBinding, changeVisualStyleBinding, setMarkBinding]
+    [escBinding, motionBinding, textObjectBinding, changeVisualStyleBinding, setMarkBinding]
     ++ [chooseRegisterBinding]
     ++ operatorBindings operators ++ digitBindings ++ [replaceBinding, switchEdgeBinding]
     ++ [insertBinding, exBinding, shiftDBinding]
@@ -130,6 +132,21 @@ motionBinding = mkMotionBinding Continue $
     \m -> case m of
         Visual _ -> True
         _ -> False
+
+textObjectBinding :: VimBinding
+textObjectBinding = VimBindingE (f . T.unpack . _unEv)
+    where
+    f (stringToTextObject -> PartialMatch) (VimState {vsMode = Visual _}) = PartialMatch
+    f (stringToTextObject -> WholeMatch to) (VimState {vsMode = Visual _, vsCount = mbCount}) =
+        let count = fromMaybe 1 mbCount
+        in
+        WholeMatch $ do
+            withCurrentBuffer $ do
+                StyledRegion _ reg <- regionOfTextObjectB (CountedTextObject count to)
+                setSelectionMarkPointB (regionStart reg)
+                moveTo (regionEnd reg -~ 1)
+            return Continue
+    f _ _ = NoMatch
 
 regionOfSelectionB :: BufferM Region
 regionOfSelectionB = savingPointB $ do
@@ -255,7 +272,7 @@ insertBinding = VimBindingE (f . T.unpack . _unEv)
 tagJumpBinding :: VimBinding
 tagJumpBinding = VimBindingY (f . T.unpack . _unEv)
     where f "<C-]>" (VimState { vsMode = (Visual _) })
-            = WholeMatch $ do 
+            = WholeMatch $ do
                  tag <- Tag . R.toText <$> withCurrentBuffer
                             (regionOfSelectionB >>= readRegionB)
                  withEditor $ switchModeE Normal

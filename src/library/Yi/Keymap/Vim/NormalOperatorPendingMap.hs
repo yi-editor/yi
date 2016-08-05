@@ -146,9 +146,9 @@ parseCommand n sm _ s = case stringToMove . Ev $ T.pack s of
   WholeMatch m -> JustMove $ CountedMove n $ changeMoveStyle sm m
   PartialMatch -> PartialOperand
   NoMatch -> case stringToTextObject s of
-    Just to -> JustTextObject $ CountedTextObject (fromMaybe 1 n)
+    WholeMatch to -> JustTextObject $ CountedTextObject (fromMaybe 1 n)
                $ changeTextObjectStyle sm to
-    Nothing -> NoOperand
+    _ -> NoOperand
 
 -- TODO: setup doctests
 -- Parse event string that can go after operator
