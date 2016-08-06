@@ -16,6 +16,7 @@ executable yi-emacs-vty-static
     , yi-core
     , yi-frontend-vty
     , yi-keymap-emacs
+    , yi-misc-modes
     , yi-mode-haskell
     , yi-rope
   hs-source-dirs: .
