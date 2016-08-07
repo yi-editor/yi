@@ -1,6 +1,6 @@
 name:                yi-vim-vty-static
 version:             0.1.0.0
-license:             GPL-3
+license:             GPL-2
 author:              Yi developers
 maintainer:          yi-devel@googlegroups.com
 category:            Yi
