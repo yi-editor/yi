@@ -10,9 +10,11 @@
 
 module Yi.Keymap.Vim.Ex.Commands.Stack (parse) where
 
-import           Control.Applicative              (Alternative ((<|>)), optional)
-import           Data.Attoparsec.Text             () -- import IsString (Parser a)
-import           Yi.Command                       (stackBuildE)
+import           Control.Applicative              (Alternative ((<|>)))
+import           Data.Attoparsec.Text             as P (choice, Parser)
+import           Data.Text                        (Text)
+import           Data.Monoid                      ((<>))
+import           Yi.Command                       (stackCommandE)
 import           Yi.Keymap                        (Action (YiA))
 import           Yi.Keymap.Vim.Common             (EventString)
 import qualified Yi.Keymap.Vim.Ex.Commands.Common as Common (commandArgs, impureExCommand, parse)
@@ -21,8 +23,46 @@ import           Yi.MiniBuffer                    (CommandArguments (CommandArgu
 
 parse :: EventString -> Maybe ExCommand
 parse = Common.parse $ do
-    args <- "stack" *> optional " build" *> Common.commandArgs
+    cmd <- "stack" *> (" " *> P.choice commands <|> pure "build")
+    args <- Common.commandArgs
     return $ Common.impureExCommand {
-        cmdShow = "stack build"
-      , cmdAction = YiA $ stackBuildE $ CommandArguments args
+        cmdShow = "stack " <> cmd
+      , cmdAction = YiA $ stackCommandE cmd $ CommandArguments args
       }
+
+commands :: [P.Parser Text]
+commands =
+  [ "build"
+  , "install"
+  , "uninstall"
+  , "test"
+  , "bench"
+  , "haddock"
+  , "new"
+  , "templates"
+  , "init"
+  , "solver"
+  , "setup"
+  , "path"
+  , "unpack"
+  , "update"
+  , "upgrade"
+  , "upload"
+  , "sdist"
+  , "dot"
+  , "exec"
+  , "ghc"
+  , "ghci"
+  , "repl"
+  , "runghc"
+  , "runhaskell"
+  , "eval"
+  , "clean"
+  , "list-dependencies"
+  , "query"
+  , "ide"
+  , "docker"
+  , "config"
+  , "image"
+  , "hpc"
+  ]
