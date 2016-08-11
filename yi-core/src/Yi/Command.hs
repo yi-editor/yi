@@ -135,3 +135,12 @@ grepFind (Doc filePattern) (Doc searchedRegex) = withOtherWindow $ do
                                       "-name", filePattern, "-exec", "grep", "-Hnie", searchedRegex, "{}", ";"] (const $ return ())
     withCurrentBuffer $ setMode Compilation.mode
     return ()
+
+-----------------------
+-- | stack-build
+
+stackCommandE :: T.Text -> CommandArguments -> YiM ()
+stackCommandE cmd = stackRun cmd (const $ return ())
+
+stackRun :: T.Text -> (Either SomeException ExitCode -> YiM x) -> CommandArguments -> YiM ()
+stackRun cmd onExit (CommandArguments args) = buildRun "stack" (cmd:args) onExit
