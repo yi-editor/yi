@@ -1,0 +1,24 @@
+name: yi-vim-vty-static
+version: '0.13'
+license: GPL-2
+maintainer: Yi developers <yi-devel@googlegroups.com>
+github: yi-editor/yi
+category: Yi
+
+ghc-options: -Wall -ferror-spans
+
+dependencies:
+    - base >= 4.8
+    - microlens-platform
+    - mtl
+    - yi-core
+    - yi-frontend-vty
+    - yi-keymap-vim
+    - yi-misc-modes
+    - yi-mode-haskell
+    - yi-rope
+
+executables:
+    yi-vim-vty:
+        main: Main.hs
+        source-dirs: .
