@@ -27,9 +27,9 @@ install:
 
 script:
  - stack test
- - for c in example-configs/*-static;
+ - for c in example-configs/*-{static,dynamic};
    do
      cd "$c" &&
-     stack build --stack-yaml=$STACK_YAML &&
+     stack build &&
      cd -;
    done
