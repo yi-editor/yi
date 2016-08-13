@@ -3,7 +3,6 @@ packages:
 - yi-core
 - yi-frontend-vty
 - yi-frontend-pango
-- yi-frontend-pango-gnome
 - yi-keymap-cua
 - yi-keymap-emacs
 - yi-keymap-vim
@@ -15,7 +14,6 @@ packages:
 - yi
 extra-deps:
 - ListLike-4.5
-- gconf-0.13.0.3
 resolver: lts-6.10
 nix:
     shell-file: shell.nix

@@ -12,7 +12,6 @@ env:
 addons:
   apt:
     packages:
-    - libgconf2-dev
     - libgmp-dev
     sources: hvr-ghc
 
