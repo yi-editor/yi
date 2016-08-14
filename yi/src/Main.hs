@@ -2,8 +2,8 @@
 
 module Main (main) where
 
-import Yi.Boot (yiDriver)
+import Yi.Boot (yiDriver')
 import Yi.Config.Default (defaultConfig)
 
 main :: IO ()
-main = yiDriver defaultConfig
+main = yiDriver' True defaultConfig
