@@ -54,6 +54,7 @@ dependencies:
     - parsec >= 3.0
     - pointedlist >= 0.5
     - process >= 1.0.1.1
+    - process-extras >= 0.3.3.8
     - safe >= 0.3.4
     - semigroups
     - split >= 0.2
@@ -101,7 +102,6 @@ library:
           - random
 
     ghc-options: -Wall -fno-warn-orphans -ferror-spans
-    ghc-prof-options: -prof -auto-all -rtsopts
 
     exposed-modules:
         - Yi
@@ -136,7 +136,6 @@ library:
         - Yi.History
         - Yi.Hoogle
         - Yi.Hooks
-        - Yi.IReader
         - Yi.IncrementalParse
         - Yi.Interact
         - Yi.JumpList
@@ -147,16 +146,9 @@ library:
         - Yi.Main
         - Yi.MiniBuffer
         - Yi.Misc
-        - Yi.Mode.Abella
-        - Yi.Mode.Buffers
+        - Yi.Mode.Common
         - Yi.Mode.Compilation
-        - Yi.Mode.GHCi
-        - Yi.Mode.Haskell
-        - Yi.Mode.Haskell.Dollarify
-        - Yi.Mode.IReader
         - Yi.Mode.Interactive
-        - Yi.Mode.Latex
-        - Yi.Modes
         - Yi.Monad
         - Yi.Option
         - Yi.Paths
@@ -171,9 +163,7 @@ library:
         - Yi.Syntax.Driver
         - Yi.Syntax.Layout
         - Yi.Syntax.OnlineTree
-        - Yi.Syntax.Paren
         - Yi.Syntax.Tree
-        - Yi.Syntax.Strokes.Haskell
         - Yi.Tab
         - Yi.Tag
         - Yi.TextCompletion
