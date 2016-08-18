@@ -1,0 +1,17 @@
+flags: {}
+packages:
+- yi-core
+- yi-frontend-vty
+- yi-frontend-pango
+- yi-keymap-cua
+- yi-keymap-emacs
+- yi-keymap-vim
+- yi-mode-haskell
+- yi-mode-javascript
+- yi-misc-modes
+- yi-ireader
+- yi-language
+- yi
+resolver: nightly-2016-07-31
+nix:
+    shell-file: shell.nix
