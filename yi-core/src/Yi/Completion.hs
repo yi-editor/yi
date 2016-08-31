@@ -14,7 +14,7 @@ module Yi.Completion
   ( completeInList, completeInList'
   , completeInListCustomShow
   , commonPrefix
-  , prefixMatch, infixMatch
+  , prefixMatch, infixUptoEndMatch
   , subsequenceMatch
   , containsMatch', containsMatch, containsMatchCaseInsensitive
   , mkIsPrefixOf
@@ -47,9 +47,9 @@ mkIsPrefixOf False = T.isPrefixOf `on` T.toCaseFold
 prefixMatch :: T.Text -> T.Text -> Maybe T.Text
 prefixMatch prefix s = if prefix `T.isPrefixOf` s then Just s else Nothing
 
--- | Infix matching function, for use with 'completeInList'
-infixMatch :: T.Text -> T.Text -> Maybe T.Text
-infixMatch needle haystack = case T.breakOn needle haystack of
+-- | Text from the match up to the end, for use with 'completeInList'
+infixUptoEndMatch :: T.Text -> T.Text -> Maybe T.Text
+infixUptoEndMatch needle haystack = case T.breakOn needle haystack of
   (_, t) -> if T.null t then Nothing else Just t
 
 -- | A simple fuzzy match algorithm. Example: "abc" matches "a1b2c"
