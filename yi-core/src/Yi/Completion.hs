@@ -17,7 +17,7 @@ module Yi.Completion
   , prefixMatch, infixUptoEndMatch
   , subsequenceMatch
   , containsMatch', containsMatch, containsMatchCaseInsensitive
-  , mkIsPrefixOf
+  , isCasePrefixOf
   )
 where
 
@@ -36,12 +36,12 @@ import           Yi.Utils            (commonPrefix)
 
 -- | Like usual 'T.isPrefixOf' but user can specify case sensitivity.
 -- See 'T.toCaseFold' for exotic unicode gotchas.
-mkIsPrefixOf :: Bool -- ^ Is case-sensitive?
+isCasePrefixOf :: Bool -- ^ Is case-sensitive?
              -> T.Text
              -> T.Text
              -> Bool
-mkIsPrefixOf True = T.isPrefixOf
-mkIsPrefixOf False = T.isPrefixOf `on` T.toCaseFold
+isCasePrefixOf True = T.isPrefixOf
+isCasePrefixOf False = T.isPrefixOf `on` T.toCaseFold
 
 -- | Prefix matching function, for use with 'completeInList'
 prefixMatch :: T.Text -> T.Text -> Maybe T.Text
@@ -67,7 +67,7 @@ containsMatch' :: Bool -> T.Text -> T.Text -> Maybe T.Text
 containsMatch' caseSensitive pattern str =
   const str <$> find (pattern `tstPrefix`) (T.tails str)
   where
-    tstPrefix = mkIsPrefixOf caseSensitive
+    tstPrefix = isCasePrefixOf caseSensitive
 
 containsMatch :: T.Text -> T.Text -> Maybe T.Text
 containsMatch = containsMatch' True

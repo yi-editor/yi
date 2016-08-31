@@ -36,7 +36,7 @@ import qualified Data.Text           as T (Text, drop, groupBy, head, isPrefixOf
 import qualified Data.Text.Encoding  as E (decodeUtf8, encodeUtf8)
 import           Data.Typeable       (Typeable)
 import           Yi.Buffer
-import           Yi.Completion       (completeInList, mkIsPrefixOf)
+import           Yi.Completion       (completeInList, isCasePrefixOf)
 import           Yi.Editor
 import           Yi.Keymap           (YiM)
 import qualified Yi.Rope             as R (fromText, toText)
@@ -103,7 +103,7 @@ wordCompleteString' caseSensitive =
                    textRegion =<< regionOfPartB unitWord Backward)
                  (\_ -> withEditor wordsForCompletion)
                  (\_ -> return ())
-                 (mkIsPrefixOf caseSensitive)
+                 (isCasePrefixOf caseSensitive)
   where
     textRegion = fmap R.toText . readRegionB
 
