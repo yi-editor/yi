@@ -52,7 +52,7 @@ infixMatch :: T.Text -> T.Text -> Maybe T.Text
 infixMatch needle haystack = case T.breakOn needle haystack of
   (_, t) -> if T.null t then Nothing else Just t
 
--- | Example: "abc" matches "a1b2c"
+-- | A simple fuzzy match algorithm. Example: "abc" matches "a1b2c"
 subsequenceMatch :: String -> String -> Bool
 subsequenceMatch needle haystack = go needle haystack
   where go (n:ns) (h:hs) | n == h = go ns hs
