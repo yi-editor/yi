@@ -275,7 +275,7 @@ withMinibufferFin prompt possibilities act
     -- may have for example two possibilities which share a long
     -- prefix and hence we wish to press tab to complete up to the
     -- point at which they differ.
-    completer s = return $ fromMaybe s $ commonTPrefix $ catMaybes (infixMatch s <$> possibilities)
+    completer s = return $ fromMaybe s $ commonTPrefix $ catMaybes (infixUptoEndMatch s <$> possibilities)
 
 -- | TODO: decide whether we should be keeping 'T.Text' here or moving
 -- to 'YiString'.

@@ -14,10 +14,10 @@ module Yi.Completion
   ( completeInList, completeInList'
   , completeInListCustomShow
   , commonPrefix
-  , prefixMatch, infixMatch
+  , prefixMatch, infixUptoEndMatch
   , subsequenceMatch
   , containsMatch', containsMatch, containsMatchCaseInsensitive
-  , mkIsPrefixOf
+  , isCasePrefixOf
   )
 where
 
@@ -36,23 +36,23 @@ import           Yi.Utils            (commonPrefix)
 
 -- | Like usual 'T.isPrefixOf' but user can specify case sensitivity.
 -- See 'T.toCaseFold' for exotic unicode gotchas.
-mkIsPrefixOf :: Bool -- ^ Is case-sensitive?
+isCasePrefixOf :: Bool -- ^ Is case-sensitive?
              -> T.Text
              -> T.Text
              -> Bool
-mkIsPrefixOf True = T.isPrefixOf
-mkIsPrefixOf False = T.isPrefixOf `on` T.toCaseFold
+isCasePrefixOf True = T.isPrefixOf
+isCasePrefixOf False = T.isPrefixOf `on` T.toCaseFold
 
 -- | Prefix matching function, for use with 'completeInList'
 prefixMatch :: T.Text -> T.Text -> Maybe T.Text
 prefixMatch prefix s = if prefix `T.isPrefixOf` s then Just s else Nothing
 
--- | Infix matching function, for use with 'completeInList'
-infixMatch :: T.Text -> T.Text -> Maybe T.Text
-infixMatch needle haystack = case T.breakOn needle haystack of
+-- | Text from the match up to the end, for use with 'completeInList'
+infixUptoEndMatch :: T.Text -> T.Text -> Maybe T.Text
+infixUptoEndMatch needle haystack = case T.breakOn needle haystack of
   (_, t) -> if T.null t then Nothing else Just t
 
--- | Example: "abc" matches "a1b2c"
+-- | A simple fuzzy match algorithm. Example: "abc" matches "a1b2c"
 subsequenceMatch :: String -> String -> Bool
 subsequenceMatch needle haystack = go needle haystack
   where go (n:ns) (h:hs) | n == h = go ns hs
@@ -67,7 +67,7 @@ containsMatch' :: Bool -> T.Text -> T.Text -> Maybe T.Text
 containsMatch' caseSensitive pattern str =
   const str <$> find (pattern `tstPrefix`) (T.tails str)
   where
-    tstPrefix = mkIsPrefixOf caseSensitive
+    tstPrefix = isCasePrefixOf caseSensitive
 
 containsMatch :: T.Text -> T.Text -> Maybe T.Text
 containsMatch = containsMatch' True
