@@ -1,10 +1,12 @@
 resolver: lts-6.9
 packages:
 - '.'
-- '../../yi-core'
-- '../../yi-frontend-vty'
-- '../../yi-keymap-emacs'
-- '../../yi-misc-modes'
-- '../../yi-mode-haskell'
+- location: '../../'
+  subdirs:
+    - 'yi-core'
+    - 'yi-frontend-vty'
+    - 'yi-keymap-emacs'
+    - 'yi-misc-modes'
+    - 'yi-mode-haskell'
 extra-deps:
 - ListLike-4.5
