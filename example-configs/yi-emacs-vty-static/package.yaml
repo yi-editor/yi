@@ -5,7 +5,7 @@ maintainer: Yi developers <yi-devel@googlegroups.com>
 github: yi-editor/yi
 category: Yi
 
-ghc-options: -Wall -ferror-spans
+ghc-options: -Wall -ferror-spans -threaded
 
 dependencies:
     - base >= 4.8
