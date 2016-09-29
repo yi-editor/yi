@@ -15,5 +15,7 @@ executable yi
                      , yi-mode-haskell
                      , yi-mode-javascript
                      , yi-misc-modes
+                     , yi-rope
+                     , microlens-platform
   default-language:    Haskell2010
   ghc-options:         -O2 -threaded
