@@ -8,7 +8,7 @@ category: Yi
 ghc-options: -Wall -ferror-spans -threaded
 
 dependencies:
-    - base >= 4.8
+    - base >= 4.8 && < 5
     - microlens-platform
     - mtl
     - yi-core

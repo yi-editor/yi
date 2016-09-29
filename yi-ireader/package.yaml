@@ -9,7 +9,7 @@ category: Yi
 ghc-options: -Wall -ferror-spans
 
 dependencies:
-    - base >= 4.8
+    - base >= 4.8 && < 5
     - bytestring
     - binary >= 0.7
     - containers

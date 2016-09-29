@@ -31,7 +31,7 @@ flags:
     default: False
 
 dependencies:
-    - base >= 4.8
+    - base >= 4.8 && < 5
     - array
     - attoparsec
     - binary >= 0.7
