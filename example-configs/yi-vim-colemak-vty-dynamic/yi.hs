@@ -1,5 +1,4 @@
 {-# LANGUAGE OverloadedStrings #-}
-{-# OPTIONS_GHC -Wall #-}
 
 import           Data.Prototype
 import           Lens.Micro.Platform              ((.=))
