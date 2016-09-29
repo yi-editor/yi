@@ -19,7 +19,7 @@
 -- native names.
 
 module Yi.Keymap.Emacs ( keymap
-                       , mkKeymap
+                       , mkKeymapSet
                        , defKeymap
                        , ModeMap(..)
                        , eKeymap
@@ -27,13 +27,13 @@ module Yi.Keymap.Emacs ( keymap
                        ) where
 
 import Control.Applicative      (Alternative ((<|>), empty, some))
-import Lens.Micro.Platform      ((.=), makeLenses, (%=))
 import Control.Monad            (replicateM_, unless, void)
 import Control.Monad.State      (gets)
 import Data.Char                (digitToInt, isDigit)
 import Data.Maybe               (fromMaybe)
 import Data.Prototype           (Proto (Proto), extractValue)
 import Data.Text                ()
+import Lens.Micro.Platform      ((.=), makeLenses, (%=))
 import Yi.Buffer
 import Yi.Command               (shellCommandE)
 import Yi.Core
@@ -58,10 +58,10 @@ data ModeMap = ModeMap { _eKeymap :: Keymap
 $(makeLenses ''ModeMap)
 
 keymap :: KeymapSet
-keymap = mkKeymap defKeymap
+keymap = mkKeymapSet defKeymap
 
-mkKeymap :: Proto ModeMap -> KeymapSet
-mkKeymap = modelessKeymapSet . _eKeymap . extractValue
+mkKeymapSet :: Proto ModeMap -> KeymapSet
+mkKeymapSet = modelessKeymapSet . _eKeymap . extractValue
 
 defKeymap :: Proto ModeMap
 defKeymap = Proto template
