@@ -9,7 +9,7 @@ category: Yi
 ghc-options: -Wall -ferror-spans
 
 dependencies:
-  - base >=4.7 && <5
+  - base >= 4.8 && < 5
   - array
   - binary
   - data-default

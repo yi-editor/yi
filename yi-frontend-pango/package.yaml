@@ -9,8 +9,8 @@ category: Yi
 ghc-options: -Wall -ferror-spans
 
 data-files:
-  - ../art/*.png
-  - ../art/*.pdf
+  - art/*.png
+  - art/*.pdf
 
 dependencies:
     - base >= 4.8 && < 5

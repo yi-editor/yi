@@ -6,7 +6,8 @@ cache:
   - $HOME/.stack
 
 env:
-  - STACK_YAML=lts.yaml
+  - STACK_YAML=lts-6.yaml
+  - STACK_YAML=lts-7.yaml
   - STACK_YAML=stack.yaml
 
 addons:

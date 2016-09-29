@@ -10,7 +10,7 @@ ghc-options: -Wall -ferror-spans
 
 dependencies:
     - array
-    - base >= 4.8
+    - base >= 4.8 && < 5
     - binary >= 0.7
     - data-default
     - filepath

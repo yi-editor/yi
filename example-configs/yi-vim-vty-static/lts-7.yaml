@@ -1,4 +1,4 @@
-resolver: lts-6.9
+resolver: lts-7.1
 packages:
 - '.'
 - location: '../../'
@@ -8,5 +8,3 @@ packages:
     - 'yi-keymap-vim'
     - 'yi-misc-modes'
     - 'yi-mode-haskell'
-extra-deps:
-- ListLike-4.5
