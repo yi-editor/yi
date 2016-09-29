@@ -1,3 +1,0 @@
-Line 0
-Line 1: This is !! some text.
-Line 1: This is !! some text.

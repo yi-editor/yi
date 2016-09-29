@@ -1,2 +1,0 @@
-module Yi.MiniBuffer 
- ((:::)(..)) where

@@ -1,6 +1,8 @@
 0.13.0 (In development)
 ------
 
+ * Keymaps, modes and frontends are split into separate packages.
+   User configs are now supposed to be packages as well.
  * Building with GHC 7.8 is no longer supported
  * Added :read Ex command
  * /<Esc> no longer resets incremental search in vim keymap
