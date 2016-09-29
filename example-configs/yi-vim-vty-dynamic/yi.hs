@@ -2,12 +2,15 @@
 
 import           Data.Monoid
 import           Data.Prototype
-import           Lens.Micro.Platform      ((.=))
+import           Lens.Micro.Platform              ((.=))
 import           Yi.Config
-import           Yi.Config.Default        (defaultConfig)
+import           Yi.Config.Default                (defaultConfig)
+import           Yi.Config.Default.HaskellMode    (configureHaskellMode)
+import           Yi.Config.Default.JavaScriptMode (configureJavaScriptMode)
+import           Yi.Config.Default.MiscModes      (configureMiscModes)
 import           Yi.Config.Default.Vim
 import           Yi.Config.Default.Vty
-import           Yi.Config.Simple hiding  (super)
+import           Yi.Config.Simple hiding          (super)
 import qualified Yi.Keymap.Vim as V2
 import qualified Yi.Keymap.Vim.Common as V2
 import qualified Yi.Keymap.Vim.Utils as V2
@@ -18,6 +21,9 @@ main :: IO ()
 main = configMain defaultConfig $ do
          configureVty
          myVimConfig
+         configureHaskellMode
+         configureJavaScriptMode
+         configureMiscModes
 
 myVimConfig :: ConfigM ()
 myVimConfig = do

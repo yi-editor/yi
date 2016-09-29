@@ -1,5 +1,5 @@
 -- This is a configuration example, that requires manual rebuild (as opposed to dynamic ones, using
--- Dyre, which you, probably, actually want). Here's a building example with "stack":
+-- Dyre, which you're, probably, actually want). Here's a building example with "stack":
 -- 1. Edit "stack.yaml" file so that "location: " would point to the root of the Yi source code
 -- 2. Run "stack install"
 -- 3. Run the built with "stack exec yi-emacs-vty" (or just "yi-emacs-vty" if you have $PATH
