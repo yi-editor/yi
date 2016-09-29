@@ -1,7 +1,7 @@
 name: yi-ireader
 version: '0.13'
 synopsis: Yi editor incremental reader
-maintainer: Dmitry Ivanov <ethercrow@gmail.com>
+maintainer: Yi developers <yi-devel@googlegroups.com>
 license: GPL-2
 github: yi-editor/yi
 category: Yi

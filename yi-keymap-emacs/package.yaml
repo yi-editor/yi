@@ -1,7 +1,7 @@
 name: yi-keymap-emacs
 version: '0.13'
 synopsis: Emacs keymap for Yi editor
-maintainer: Dmitry Ivanov <ethercrow@gmail.com>
+maintainer: Yi developers <yi-devel@googlegroups.com>
 license: GPL-2
 github: yi-editor/yi
 category: Yi
