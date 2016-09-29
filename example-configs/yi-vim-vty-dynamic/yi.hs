@@ -29,7 +29,7 @@ myVimConfig :: ConfigM ()
 myVimConfig = do
   configureVim
   defaultKmA .= myKeymapSet
-  modeTableA .= (myModes)
+  modeTableA .= myModes
   configCheckExternalChangesObsessivelyA .= False
 
 myKeymapSet :: KeymapSet
