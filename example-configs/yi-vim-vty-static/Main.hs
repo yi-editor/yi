@@ -2,7 +2,7 @@
 -- Dyre, which you're, most probably, actually want). Here's a building example with "stack":
 -- 1. Edit "stack.yaml" file so that "location: " would point to the root of the Yi source code
 -- 2. Run "stack install"
--- 3. Run the built with "stack exec yi-emacs-vty" (or just "yi-emacs-vty" if you have $PATH
+-- 3. Run the built with "stack exec yi-vim-vty" (or just "yi-vim-vty" if you have $PATH
 --    configured acc.)
 -- The final name of the executable can be changed in the "package.yaml" file.
 
