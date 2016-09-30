@@ -1,5 +1,7 @@
--- This is a configuration example, that requires manual rebuild (as opposed to dynamic ones, using
--- Dyre, which you're, most probably, actually want). Here's a building example with "stack":
+-- This example requires manual rebuild (as opposed to dynamic ones, automatically rebuilding the
+-- config upon changes). This config is useful for distribution of the editor in binary form as such
+-- a build have almost all libraries statically linked in.
+-- Here's a building example with "stack":
 -- 1. Edit "stack.yaml" file so that "location: " would point to the root of the Yi source code
 -- 2. Run "stack install"
 -- 3. Run the built with "stack exec yi-vim-vty" (or just "yi-vim-vty" if you have $PATH
