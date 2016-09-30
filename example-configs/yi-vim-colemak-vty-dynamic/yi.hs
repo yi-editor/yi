@@ -1,6 +1,5 @@
 {-# LANGUAGE OverloadedStrings #-}
 
-import           Data.Monoid
 import           Data.Prototype
 import           Lens.Micro.Platform              ((.=))
 import           Yi.Config
@@ -32,6 +31,13 @@ myVimConfig = do
   modeTableA .= myModes
   configCheckExternalChangesObsessivelyA .= False
 
+-- main :: IO ()
+-- main = yi $ defaultVimConfig {
+--     modeTable = myModes ++ modeTable defaultVimConfig,
+--     defaultKm = myKeymapSet,
+--     configCheckExternalChangesObsessively = False
+-- }
+
 myKeymapSet :: KeymapSet
 myKeymapSet = V2.mkKeymapSet $ V2.defVimConfig `override` \super this ->
     let eval = V2.pureEval this
@@ -44,7 +50,8 @@ myKeymapSet = V2.mkKeymapSet $ V2.defVimConfig `override` \super this ->
           -- whose prereq function returns WholeMatch,
           -- the first such binding is used.
           -- So it's important to have custom bindings first.
-          V2.vimBindings = myBindings eval <> V2.vimBindings super
+          V2.vimBindings = myBindings eval ++ V2.vimBindings super
+        , V2.vimRelayout = colemakRelayout
         }
 
 myBindings :: (V2.EventString -> EditorM ()) -> [V2.VimBinding]
@@ -55,15 +62,22 @@ myBindings eval =
                                         fmap (const (y >> return V2.Continue))
                                              (evs `V2.matchesString` x)
                                     _ -> V2.NoMatch)
-    in [ nmap "<C-h>" previousTabE
+    in [
+         -- Tab traversal
+         nmap "<C-h>" previousTabE
+       , nmap "<C-l>" nextTabE
        , nmap "<C-l>" nextTabE
 
          -- Press space to clear incremental search highlight
        , nmap " " (eval ":nohlsearch<CR>")
 
+         -- for times when you don't press shift hard enough
+       , nmap ";" (eval ":")
+
        , nmap "<F3>" (withCurrentBuffer deleteTrailingSpaceB)
        , nmap "<F4>" (withCurrentBuffer moveToSol)
        , nmap "<F1>" (withCurrentBuffer readCurrentWordB >>= printMsg . R.toText)
+
        , imap "<Home>" (withCurrentBuffer moveToSol)
        , imap "<End>" (withCurrentBuffer moveToEol)
        ]
@@ -75,3 +89,9 @@ myModes = [
              modePrettify = const $ return ()
          }
     ]
+
+colemakRelayout :: Char -> Char
+colemakRelayout = V2.relayoutFromTo colemakLayout qwertyLayout
+    where
+        colemakLayout = concat ["qwfpgjluy;[]", "arstdhneio'\\", "zxcvbkm,./"]
+        qwertyLayout = concat ["qwertyuiop[]", "asdfghjkl;'\\", "zxcvbnm,./"]
