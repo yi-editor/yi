@@ -6,11 +6,17 @@ license: GPL-2
 github: yi-editor/yi
 category: Yi
 
-ghc-options: -Wall -ferror-spans
+ghc-options: -Wall -ferror-spans -threaded
 
 dependencies:
     - base >= 4.8 && < 5
+    - mtl >= 2.2
     - yi-core >= 0.13
+    - yi-frontend-vty >= 0.13
+    - yi-keymap-emacs >= 0.13
+    - yi-mode-haskell >= 0.13
+    - yi-mode-javascript >= 0.13
+    - yi-misc-modes >= 0.13
 
 executables:
     yi:
