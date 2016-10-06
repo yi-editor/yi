@@ -1,16 +1,4 @@
 {-# LANGUAGE CPP #-}
--- This example requires manual rebuild (as opposed to dynamic ones, automatically rebuilding the
--- config upon changes). This config is useful for distribution of the editor in binary form as such
--- a build have almost all libraries statically linked in.
--- Here's a building example with "stack":
--- 1. Edit "stack.yaml" file so that "location: " would point to the root of the Yi source code
--- 2. Run "stack install"
---  (You can add "--flag yi-all-static:-vty" for example to leave out the vty
---  frontend, see the package.yaml file for all available flags)
--- 3. Run the built with "stack exec yi" (or just "yi" if you have $PATH
---    configured acc.)
---    (Please look at the command line options with "stack exec yi -- -h")
--- The final name of the executable can be changed in the "package.yaml" file.
 
 import Control.Monad.State.Lazy (execStateT)
 import Data.List                (intersperse)

@@ -1,7 +1,8 @@
-name: yi-all-static
+name: yi
 version: 0.13.0.1
-license: GPL-2
+synopsis: Yi editor
 maintainer: Yi developers <yi-devel@googlegroups.com>
+license: GPL-2
 github: yi-editor/yi
 category: Yi
 
@@ -27,13 +28,13 @@ flags:
 
 dependencies:
     - base >= 4.8 && < 5
-    - microlens-platform >= 0.3.7.0
+    - microlens-platform >= 0.3.4.0
     - mtl >= 2.2.1
     - optparse-applicative >= 0.12.1.0
     - yi-core >= 0.13.0.1
     - yi-misc-modes >= 0.13.0.1
     - yi-mode-haskell >= 0.13.0.1
-    - yi-rope >= 0.13.0.1
+    - yi-rope >= 0.7.0.1
 
 when:
   - condition: flag(vty)
