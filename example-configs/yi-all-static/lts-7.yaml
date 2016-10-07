@@ -1,0 +1,13 @@
+resolver: lts-7.1
+packages:
+- '.'
+- location: '../../'
+  subdirs:
+    - 'yi-core'
+    - 'yi-frontend-vty'
+    - 'yi-frontend-pango'
+    - 'yi-keymap-vim'
+    - 'yi-keymap-emacs'
+    - 'yi-misc-modes'
+    - 'yi-mode-haskell'
+    - 'yi-mode-javascript'

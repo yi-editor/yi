@@ -1,0 +1,15 @@
+resolver: lts-6.19
+packages:
+- '.'
+- location: '../../'
+  subdirs:
+    - 'yi-core'
+    - 'yi-frontend-vty'
+    - 'yi-frontend-pango'
+    - 'yi-keymap-vim'
+    - 'yi-keymap-emacs'
+    - 'yi-misc-modes'
+    - 'yi-mode-haskell'
+    - 'yi-mode-javascript'
+extra-deps:
+- ListLike-4.5
