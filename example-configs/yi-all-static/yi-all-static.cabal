@@ -49,6 +49,7 @@ executable yi
     , yi-core
     , yi-misc-modes
     , yi-mode-haskell
+    , yi-mode-javascript
     , yi-rope
   if flag(vty)
     cpp-options: -DVTY

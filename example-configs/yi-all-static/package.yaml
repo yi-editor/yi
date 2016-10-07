@@ -33,6 +33,7 @@ dependencies:
     - yi-core
     - yi-misc-modes
     - yi-mode-haskell
+    - yi-mode-javascript
     - yi-rope
 
 when:

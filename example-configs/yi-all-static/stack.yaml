@@ -10,4 +10,5 @@ packages:
     - 'yi-keymap-emacs'
     - 'yi-misc-modes'
     - 'yi-mode-haskell'
+    - 'yi-mode-javascript'
 extra-deps: []
