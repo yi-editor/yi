@@ -16,6 +16,7 @@ import Control.Monad.State.Lazy (execStateT)
 import Data.List                (intersperse)
 import Lens.Micro.Platform      ((.=))
 import Data.Maybe               (fromMaybe)
+import Data.Monoid              ((<>))
 
 import Options.Applicative
 
@@ -70,10 +71,10 @@ data CommandLineOptions = CommandLineOptions {
   }
 
 commandLineOptions :: Parser (Maybe CommandLineOptions)
-commandLineOptions = flag' Nothing 
-                       ( long "version" 
-                      <> short 'v' 
-                      <> help "Show the version number") 
+commandLineOptions = flag' Nothing
+                       ( long "version"
+                      <> short 'v'
+                      <> help "Show the version number")
   <|> (Just <$> (CommandLineOptions
     <$> optional (strOption
         ( long "frontend"
@@ -96,7 +97,7 @@ commandLineOptions = flag' Nothing
 main :: IO ()
 main = do
     mayClo <- execParser opts
-    case mayClo of 
+    case mayClo of
       Nothing -> putStrLn "Yi 0.13.0.1"
       Just clo -> do
         let openFileActions = intersperse (EditorA newTabE) (map (YiA . openNewFile) (files clo))
@@ -105,7 +106,7 @@ main = do
             (runConfigM (myConfig (frontend clo) (keymap clo) >> (startActionsA .= (openFileActions ++ [moveLineAction]))))
             defaultConfig
         startEditor cfg Nothing
-  where 
+  where
    opts = info (helper <*> commandLineOptions)
      ( fullDesc
     <> progDesc "Edit files"
