@@ -1,4 +1,9 @@
-# Yi [![Build Status](https://travis-ci.org/yi-editor/yi.svg?branch=master)](https://travis-ci.org/yi-editor/yi)
+# Yi
+[![Travis](https://travis-ci.org/yi-editor/yi.svg?branch=master)](https://travis-ci.org/yi-editor/yi)
+[![Hackage](https://img.shields.io/hackage/v/yi.svg?maxAge=2592000)](https://hackage.haskell.org/package/yi)
+[![Hackage-Deps](https://img.shields.io/hackage-deps/v/yi.svg?maxAge=2592000)]()
+[![yi on Stackage LTS 7](http://stackage.org/package/yi/badge/lts-7)](http://stackage.org/lts-7/package/yi)
+[![yi on Stackage Nightly](http://stackage.org/package/yi/badge/nightly)](http://stackage.org/nightly/package/yi)
 
 Yi is a text editor written in Haskell and extensible in Haskell. The goal of Yi is to provide a flexible, powerful and correct editor core scriptable in Haskell.
 
