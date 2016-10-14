@@ -14,6 +14,8 @@ packages:
 - yi-language
 - yi-snippet
 - yi
+extra-deps:
+- optparse-applicative-0.13.0.0
 resolver: lts-7.1
 nix:
     shell-file: shell.nix

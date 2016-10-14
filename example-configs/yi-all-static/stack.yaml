@@ -1,4 +1,4 @@
-resolver: nightly-2016-07-28
+resolver: nightly-2016-10-10
 packages:
 - '.'
 - location: '../../'
@@ -11,4 +11,5 @@ packages:
     - 'yi-misc-modes'
     - 'yi-mode-haskell'
     - 'yi-mode-javascript'
-extra-deps: []
+extra-deps:
+- optparse-applicative-0.13.0.0

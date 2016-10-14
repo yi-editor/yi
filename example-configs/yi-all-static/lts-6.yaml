@@ -13,3 +13,4 @@ packages:
     - 'yi-mode-javascript'
 extra-deps:
 - ListLike-4.5
+- optparse-applicative-0.13.0.0

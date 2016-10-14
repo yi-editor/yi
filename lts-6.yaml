@@ -16,6 +16,7 @@ packages:
 - yi
 extra-deps:
 - ListLike-4.5
+- optparse-applicative-0.13.0.0
 resolver: lts-6.19
 nix:
     shell-file: shell.nix
