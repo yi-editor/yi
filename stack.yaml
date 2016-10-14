@@ -3,6 +3,7 @@ packages:
 - yi-core
 - yi-frontend-vty
 - yi-frontend-pango
+- yi-fuzzy-open
 - yi-keymap-cua
 - yi-keymap-emacs
 - yi-keymap-vim
