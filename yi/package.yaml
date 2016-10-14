@@ -30,7 +30,7 @@ dependencies:
     - base >= 4.8 && < 5
     - microlens-platform >= 0.3.4.0
     - mtl >= 2.2.1
-    - optparse-applicative >= 0.12.1.0
+    - optparse-applicative >= 0.13.0.0
     - yi-core >= 0.13.0.1
     - yi-misc-modes >= 0.13.0.1
     - yi-mode-haskell >= 0.13.0.1
