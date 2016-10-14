@@ -11,6 +11,7 @@ packages:
 - yi-misc-modes
 - yi-ireader
 - yi-language
+- yi-snippet
 - yi
 resolver: nightly-2016-07-31
 nix:

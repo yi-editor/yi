@@ -1,0 +1,38 @@
+name: yi-snippet
+version: 0.13.1
+synopsis: Snippet support for yi
+maintainer: Yi developers <yi-devel@googlegroups.com>
+license: GPL-2
+github: yi-editor/yi
+category: Yi
+
+ghc-options: -Wall -ferror-spans
+
+dependencies:
+    - base >= 4.8 && < 5
+    - binary >= 0.7.5
+    - containers >= 0.5.6
+    - data-default >= 0.5
+    - free >= 4.12
+    - lens >= 4.13
+    - mtl >= 2.2
+    - text >= 1.2
+    - vector >= 0.11
+    - yi-core >= 0.13.1
+    - yi-rope >= 0.7
+
+library:
+  source-dirs: src
+  exposed-modules:
+  - Yi.Snippet
+  - Yi.Snippet.Internal
+
+tests:
+  spec:
+    main: TestMain.hs
+    source-dirs:
+      - test
+    dependencies:
+      - tasty-th
+      - tasty-hunit
+      - yi-snippet

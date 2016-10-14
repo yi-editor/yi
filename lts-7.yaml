@@ -11,6 +11,7 @@ packages:
 - yi-misc-modes
 - yi-ireader
 - yi-language
+- yi-snippet
 - yi
 resolver: lts-7.1
 nix:
