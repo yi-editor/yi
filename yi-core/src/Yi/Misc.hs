@@ -19,9 +19,11 @@ module Yi.Misc ( getAppropriateFiles, getFolder, cd, pwd, matchingFileNames
                , printFileInfoE, debugBufferContent
                ) where
 
-import           Control.Monad           (filterM, (>=>))
+import           Control.Concurrent
+import           Control.Monad           (filterM, (>=>), when, void)
 import           Control.Monad.Base      (liftBase)
 import           Data.Char               (chr, isAlpha, isLower, isUpper, ord)
+import           Data.IORef
 import           Data.List               ((\\))
 import           Data.Maybe              (isNothing)
 import qualified Data.Text               as T (Text, append, concat, isPrefixOf,
@@ -38,11 +40,13 @@ import           System.FilePath         (addTrailingPathSeparator,
 import           System.FriendlyPath     (expandTilda, isAbsolute')
 import           Yi.Buffer
 import           Yi.Completion           (completeInList')
-import           Yi.Editor               (EditorM, printMsg, withCurrentBuffer)
-import           Yi.Keymap               (YiM)
-import           Yi.MiniBuffer           (debugBufferContent, mkCompleteFn, withMinibufferGen)
+import           Yi.Core                 (onYiVar)
+import           Yi.Editor               (EditorM, printMsg, withCurrentBuffer, withGivenBuffer, findBuffer)
+import           Yi.Keymap               (YiM, makeAction, YiAction)
+import           Yi.MiniBuffer           (mkCompleteFn, withMinibufferGen, promptingForBuffer)
 import           Yi.Monad                (gets)
-import qualified Yi.Rope                 as R (fromText)
+import qualified Yi.Rope                 as R (fromText, YiString)
+import           Yi.Types                (IsRefreshNeeded(..), Yi(..))
 import           Yi.Utils                (io)
 
 -- | Given a possible starting path (which if not given defaults to
@@ -212,3 +216,75 @@ printFileInfoE = printMsg . showBufInfo =<< withCurrentBuffer bufInfoB
             , bufInfoPercent bufInfo
             , "]"
             ]
+
+-- | Runs a 'YiM' action in a separate thread.
+--
+-- Notes:
+--
+-- * It seems to work but I don't know why
+--
+-- * Maybe deadlocks?
+--
+-- * If you're outputting into the Yi window, you should really limit
+-- the rate at which you do so: for example, the Pango front-end will
+-- quite happily segfault/double-free if you output too fast.
+--
+-- I am exporting this for those adventurous to play with but I have
+-- only discovered how to do this a night before the release so it's
+-- rather experimental. A simple function that prints a message once a
+-- second, 5 times, could be written like this:
+--
+-- @
+-- printer :: YiM ThreadId
+-- printer = do
+--   mv <- io $ newMVar (0 :: Int)
+--   forkAction (suicide mv) MustRefresh $ do
+--     c <- io $ do
+--       modifyMVar_ mv (return . succ)
+--       tryReadMVar mv
+--     case c of
+--       Nothing -> printMsg "messaging unknown time"
+--       Just x -> printMsg $ "message #" <> showT x
+--   where
+--     suicide mv = tryReadMVar mv >>= \case
+--       Just i | i >= 5 -> return True
+--       _ -> threadDelay 1000000 >> return False
+-- @
+forkAction :: (YiAction a x, Show x)
+           => IO Bool
+              -- ^ runs after we insert the action: this may be a
+              -- thread delay or a thread suicide or whatever else;
+              -- when delay returns False, that's our signal to
+              -- terminate the thread.
+           -> IsRefreshNeeded
+              -- ^ should we refresh after each action
+           -> a
+              -- ^ The action to actually run
+           -> YiM ThreadId
+forkAction delay ref ym = onYiVar $ \yi yv -> do
+  let loop = do
+        yiOutput yi ref [makeAction ym]
+        delay >>= \b -> when b loop
+  t <- forkIO loop
+  return (yv, t)
+
+-- | Prints out the rope of the current buffer as-is to stdout.
+--
+-- The only way to stop it is to close the buffer in question which
+-- should free up the 'BufferRef'.
+debugBufferContent :: YiM ()
+debugBufferContent = promptingForBuffer "buffer to trace:"
+                     debugBufferContentUsing (\_ x -> x)
+
+debugBufferContentUsing :: BufferRef -> YiM ()
+debugBufferContentUsing b = do
+  mv <- io $ newIORef mempty
+  keepGoing <- io $ newIORef True
+  let delay = threadDelay 100000 >> readIORef keepGoing
+  void . forkAction delay NoNeedToRefresh $
+    findBuffer b >>= \case
+      Nothing -> io $ writeIORef keepGoing True
+      Just _ -> do
+        ns <- withGivenBuffer b elemsB :: YiM R.YiString
+        io $ readIORef mv >>= \c ->
+          when (c /= ns) (print ns >> void (writeIORef mv ns))
