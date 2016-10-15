@@ -155,8 +155,6 @@ library:
         - Yi.PersistentState
         - Yi.Process
         - Yi.Rectangle
-        - Yi.Snippets
-        - Yi.Snippets.Haskell
         - Yi.Search
         - Yi.Search.Internal
         - Yi.String
