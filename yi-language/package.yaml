@@ -1,5 +1,5 @@
 name: yi-language
-version: 0.13.2
+version: 0.13.3
 synopsis: Collection of language-related Yi libraries.
 maintainer: Yi developers <yi-devel@googlegroups.com>
 license: GPL-2
@@ -40,7 +40,7 @@ library:
       - Yi.Syntax
       - Yi.Utils
     build-tools:
-      - alex >= 3.0.3
+      - alex >= 3.0.3 && < 3.2.0
     include-dirs:
       - src/Yi/Lexer
 
