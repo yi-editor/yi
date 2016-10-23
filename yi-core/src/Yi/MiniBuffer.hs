@@ -27,14 +27,12 @@ module Yi.MiniBuffer ( spawnMinibufferE, withMinibufferFree, withMinibuffer
                      , getAllModeNames, matchingBufferNames, anyModeByNameM
                      , anyModeName, (:::)(..), LineNumber, RegexTag
                      , FilePatternTag, ToKill, CommandArguments(..)
-                     , commentRegion, promptingForBuffer, debugBufferContent
+                     , commentRegion, promptingForBuffer
                      ) where
 
-import           Control.Concurrent             (threadDelay)
-import           Lens.Micro.Platform                   (use, (%=))
-import           Control.Monad                  (forM, void, when, (<=<), (>=>))
+import           Lens.Micro.Platform            (use, (%=))
+import           Control.Monad                  (forM, void, (<=<), (>=>))
 import           Data.Foldable                  (find, toList)
-import           Data.IORef                     (newIORef, readIORef, writeIORef)
 import qualified Data.List.PointedList.Circular as PL (find, insertRight)
 import           Data.Maybe                     (catMaybes, fromJust, fromMaybe)
 import           Data.Proxy                     (Proxy)
@@ -47,7 +45,7 @@ import           System.CanonicalizePath        (replaceShorthands)
 import           Yi.Buffer
 import           Yi.Completion
 import           Yi.Config                      (modeTable)
-import           Yi.Core                        (forkAction, runAction)
+import           Yi.Core                        (runAction)
 import           Yi.Editor
 import           Yi.History                     (historyFinishGen, historyMove, historyStartGen)
 import           Yi.Keymap
@@ -56,29 +54,7 @@ import           Yi.Monad                       (gets)
 import qualified Yi.Rope                        as R (YiString, fromText, toText)
 import           Yi.String                      (commonTPrefix)
 import           Yi.Style                       (defaultStyle)
-import           Yi.Utils                       (io)
 import           Yi.Window                      (bufkey)
-
--- | Prints out the rope of the current buffer as-is to stdout.
---
--- The only way to stop it is to close the buffer in question which
--- should free up the 'BufferRef'.
-debugBufferContent :: YiM ()
-debugBufferContent = promptingForBuffer "buffer to trace:"
-                     debugBufferContentUsing (\_ x -> x)
-
-debugBufferContentUsing :: BufferRef -> YiM ()
-debugBufferContentUsing b = do
-  mv <- io $ newIORef mempty
-  keepGoing <- io $ newIORef True
-  let delay = threadDelay 100000 >> readIORef keepGoing
-  void . forkAction delay NoNeedToRefresh $
-    findBuffer b >>= \case
-      Nothing -> io $ writeIORef keepGoing True
-      Just _ -> do
-        ns <- withGivenBuffer b elemsB :: YiM R.YiString
-        io $ readIORef mv >>= \c ->
-          when (c /= ns) (print ns >> void (writeIORef mv ns))
 
 -- | Prompts for a buffer name, turns it into a 'BufferRef' and passes
 -- it on to the handler function. Uses all known buffers for hinting.
