@@ -8,7 +8,7 @@
 -- Portability :  portable
 --
 -- This module doesn't contains actual eval, see
--- 'Yi.Keymap.Vim.vimEval' comment.
+-- 'Yi.Keymap.Vim.pureEval' comment.
 
 module Yi.Keymap.Vim.Eval (scheduleActionStringForEval) where
 

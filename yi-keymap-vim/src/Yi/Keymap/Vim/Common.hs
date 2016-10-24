@@ -127,7 +127,7 @@ data VimState = VimState
     , vsRegisterMap           :: !(HM.HashMap RegisterName Register)
     , vsActiveRegister        :: !RegisterName
     , vsRepeatableAction      :: !(Maybe RepeatableAction)
-    , vsStringToEval          :: !EventString -- ^ see Yi.Keymap.Vim.vimEval comment
+    , vsStringToEval          :: !EventString -- ^ see Yi.Keymap.Vim.pureEval comment
     , vsOngoingInsertEvents   :: !EventString
     , vsLastGotoCharCommand   :: !(Maybe GotoCharCommand)
     , vsBindingAccumulator    :: !EventString
