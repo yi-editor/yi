@@ -174,6 +174,7 @@ editAction (Ev evs) = do
       "<C-r>" -> return () -- TODO
       "<lt>" -> insertB '<'
       "<Del>" -> deleteB Character Forward
+      "<C-d>" -> deleteB unitWord Forward
       "<Left>" -> moveXorSol 1
       "<C-b>" -> moveXorSol 1
       "<Right>" -> moveXorEol 1
