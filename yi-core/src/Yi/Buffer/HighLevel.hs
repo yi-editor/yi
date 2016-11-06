@@ -89,7 +89,6 @@ module Yi.Buffer.HighLevel
     , replaceBufferContent
     , revertB
     , rightEdgesOfRegionB
-    , selectNParagraphs
     , scrollB
     , scrollCursorToBottomB
     , scrollCursorToTopB
@@ -97,6 +96,7 @@ module Yi.Buffer.HighLevel
     , scrollToCursorB
     , scrollToLineAboveWindowB
     , scrollToLineBelowWindowB
+    , selectNParagraphs
     , setSelectionMarkPointB
     , setSelectRegionB
     , shapeOfBlockRegionB
@@ -294,14 +294,15 @@ nextNParagraphs n = replicateM_ n $ moveB unitEmacsParagraph Forward
 prevNParagraphs :: Int -> BufferM ()
 prevNParagraphs n = replicateM_ n $ moveB unitEmacsParagraph Backward
 
+-- | Select next @n@ paragraphs
 selectNParagraphs :: Int -> BufferM ()
 selectNParagraphs n = do
   getVisibleSelection >>= \case
     True -> exchangePointAndMarkB
-             >> nextNParagraphs n >> (setVisibleSelection True)
-             >> exchangePointAndMarkB
+            >> nextNParagraphs n >> (setVisibleSelection True)
+            >> exchangePointAndMarkB
     False -> nextNParagraphs n >> (setVisibleSelection True)
-            >> pointB >>= setSelectionMarkPointB >> prevNParagraphs n
+             >> pointB >>= setSelectionMarkPointB >> prevNParagraphs n
 
 -- ! Examples:
 -- @goUnmatchedB Backward '(' ')'@
