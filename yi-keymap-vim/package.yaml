@@ -64,6 +64,7 @@ library:
         - Yi.Keymap.Vim.Ex.Commands.Undo
         - Yi.Keymap.Vim.Ex.Commands.Write
         - Yi.Keymap.Vim.Ex.Commands.Yi
+        - Yi.Keymap.Vim.Ex.Commands.Registers
         - Yi.Keymap.Vim.Ex.Eval
         - Yi.Keymap.Vim.Ex.Types
         - Yi.Keymap.Vim.ExMap
