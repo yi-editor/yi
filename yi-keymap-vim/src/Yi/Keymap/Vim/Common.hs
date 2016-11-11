@@ -101,7 +101,7 @@ data RepeatableAction = RepeatableAction
 data Register = Register
     { regRegionStyle :: RegionStyle
     , regContent     :: YiString
-    } deriving (Generic)
+    } deriving (Show, Generic)
 
 data VimMode
     = Normal

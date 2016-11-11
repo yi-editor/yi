@@ -13,14 +13,15 @@ import           Yi.Keymap.Vim.Ex
 import qualified Yi.Keymap.Vim.Ex.Commands.Buffer as Buffer
 import qualified Yi.Keymap.Vim.Ex.Commands.BufferDelete as BufferDelete
 import qualified Yi.Keymap.Vim.Ex.Commands.Delete as Delete
+import qualified Yi.Keymap.Vim.Ex.Commands.Registers as Registers
 
 data CommandParser = CommandParser
-    { cpDescription :: String
-    , cpParser      :: String -> Maybe ExCommand
-    , cpNames       :: [String]
-    , cpAcceptsBang :: Bool
+    { cpDescription  :: String
+    , cpParser       :: String -> Maybe ExCommand
+    , cpNames        :: [String]
+    , cpAcceptsBang  :: Bool
     , cpAcceptsCount :: Bool
-    , cpArgs        :: Gen String
+    , cpArgs         :: Gen String
     }
 
 addingSpace :: Gen String -> Gen String
@@ -97,6 +98,21 @@ commandParsers =
                  , addingSpace count
                  , (<>) <$> addingSpace registerName <*> addingSpace count
                  ])
+
+    , CommandParser
+          "Registers.parse"
+          (Registers.parse . Ev . T.pack)
+          [ "reg"
+          , "regi"
+          , "regis"
+          , "regist"
+          , "registe"
+          , "register"
+          , "registers"
+          ]
+          False
+          False
+          (pure "")
     ]
 
 
