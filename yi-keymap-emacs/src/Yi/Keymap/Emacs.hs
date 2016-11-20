@@ -196,7 +196,7 @@ emacsKeys univArg =
          , metaCh 'd'           ?>>! repeatingArg killWordB
          , metaCh 'e'           ?>>! repeatingArg (moveE unitSentence Forward)
          , metaCh 'f'           ?>>! repeatingArg nextWordB
-         , metaCh 'h'           ?>>! (setSelectRegionB =<< regionOfB unitParagraph)
+         , metaCh 'h'           ?>>! repeatingArg (selectNParagraphs 1)
          , metaCh 'k'           ?>>! repeatingArg (deleteB unitSentence Forward)
          , metaCh 'l'           ?>>! repeatingArg lowercaseWordB
          , metaCh 'm'           ?>>! firstNonSpaceB
