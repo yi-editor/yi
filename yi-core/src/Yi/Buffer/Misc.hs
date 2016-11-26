@@ -245,7 +245,7 @@ instance HasAttributes FBuffer where
 
 -- | Gets a short identifier of a buffer. If we're given a 'MemBuffer'
 -- then just wraps the buffer name like so: @*name*@. If we're given a
--- 'FileBuffer', it drops the number of the directory path.
+-- 'FileBuffer', it drops the number of path components.
 --
 -- >>> let memBuf = newB (BufferRef 0) (MemBuffer "foo/bar/hello") ""
 -- >>> shortIdentString 2 memBuf
