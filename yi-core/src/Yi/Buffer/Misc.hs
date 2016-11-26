@@ -245,12 +245,14 @@ instance HasAttributes FBuffer where
 
 -- | Gets a short identifier of a buffer. If we're given a 'MemBuffer'
 -- then just wraps the buffer name like so: @*name*@. If we're given a
--- 'FileBuffer', it drops the the number of characters specified.
+-- 'FileBuffer', it drops the number of path components.
 --
--- >>> shortIdentString 3 (MemBuffer "hello")
--- "*hello*"
--- >>> shortIdentString 3 (FileBuffer "hello")
--- "lo"
+-- >>> let memBuf = newB (BufferRef 0) (MemBuffer "foo/bar/hello") ""
+-- >>> shortIdentString 2 memBuf
+-- "*foo/bar/hello*"
+-- >>> let fileBuf = newB (BufferRef 0) (FileBuffer "foo/bar/hello") ""
+-- >>> shortIdentString 2 fileBuf
+-- "hello"
 shortIdentString :: Int -- ^ Number of characters to drop from FileBuffer names
                  -> FBuffer -- ^ Buffer to work with
                  -> T.Text
@@ -260,10 +262,12 @@ shortIdentString dl b = case b ^. identA of
 
 -- | Gets the buffer's identifier string, emphasising the 'MemBuffer':
 --
--- >>> identString (MemBuffer "hello")
--- "*hello*"
--- >>> identString (FileBuffer "hello")
--- "hello"
+-- >>> let memBuf = newB (BufferRef 0) (MemBuffer "foo/bar/hello") ""
+-- >>> identString memBuf
+-- "*foo/bar/hello*"
+-- >>> let fileBuf = newB (BufferRef 0) (FileBuffer "foo/bar/hello") ""
+-- >>> identString fileBuf
+-- "foo/bar/hello"
 identString :: FBuffer -> T.Text
 identString b = case b ^. identA of
   MemBuffer bName -> "*" <> bName <> "*"
