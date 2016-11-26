@@ -6,9 +6,9 @@
 {-# LANGUAGE ExistentialQuantification  #-}
 {-# LANGUAGE FlexibleContexts           #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
-{-# LANGUAGE ImpredicativeTypes         #-}
 {-# LANGUAGE LambdaCase                 #-}
 {-# LANGUAGE OverloadedStrings          #-}
+{-# LANGUAGE RankNTypes                 #-}
 {-# LANGUAGE ScopedTypeVariables        #-}
 {-# LANGUAGE StandaloneDeriving         #-}
 {-# LANGUAGE TemplateHaskell            #-}
@@ -393,13 +393,13 @@ getPercent a b = T.justifyRight 3 ' ' (T.pack $ show p) `T.snoc` '%'
           bb = fromIntegral b :: Double
 
 queryBuffer :: (forall syntax. BufferImpl syntax -> x) -> BufferM x
-queryBuffer = gets . queryRawbuf
+queryBuffer x = gets (queryRawbuf x)
 
 modifyBuffer :: (forall syntax. BufferImpl syntax -> BufferImpl syntax) -> BufferM ()
-modifyBuffer = modify . modifyRawbuf
+modifyBuffer x = modify (modifyRawbuf x)
 
 queryAndModify :: (forall syntax. BufferImpl syntax -> (BufferImpl syntax,x)) -> BufferM x
-queryAndModify = getsAndModify . queryAndModifyRawbuf
+queryAndModify x = getsAndModify (queryAndModifyRawbuf x)
 
 -- | Adds an "overlay" to the buffer
 addOverlayB :: Overlay -> BufferM ()
@@ -816,7 +816,7 @@ withMode0 :: (forall syntax. Mode syntax -> a) -> FBuffer -> a
 withMode0 f FBuffer {bmode = m} = f m
 
 withModeB :: (forall syntax. Mode syntax -> BufferM a) -> BufferM a
-withModeB = join . gets . withMode0
+withModeB x = join (gets (withMode0 x))
 
 withSyntax0 :: (forall syntax. Mode syntax -> syntax -> a) -> WindowRef -> FBuffer -> a
 withSyntax0 f wk (FBuffer bm rb _attrs) = f bm (getAst wk rb)
@@ -830,7 +830,7 @@ focusSyntax ::  M.Map WindowRef Region -> FBuffer -> FBuffer
 focusSyntax r = modifyRawbuf (focusAst r)
 
 withSyntaxB' :: (forall syntax. Mode syntax -> syntax -> BufferM a) -> BufferM a
-withSyntaxB' = join . withSyntaxB
+withSyntaxB' x = join (withSyntaxB x)
 
 -- | Return indices of strings in buffer matched by regex in the
 -- given region.
