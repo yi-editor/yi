@@ -13,19 +13,20 @@
 module Yi.Keymap.Vim.ExMap (defExMap) where
 
 import           Control.Monad            (when)
+import           Control.Monad.Base       (liftBase)
 import           Data.Char                (isSpace)
 import           Data.Maybe               (fromJust)
 import           Data.Monoid              ((<>))
-import qualified Data.Text                as T (Text, drop, head, length, split, unwords)
+import qualified Data.Text                as T (Text, drop, head, length, split, unwords, map)
 import           System.FilePath          (isPathSeparator)
 import           Yi.Buffer.Adjusted       hiding (Insert)
 import           Yi.Editor
 import           Yi.History               (historyDown, historyFinish, historyPrefixSet, historyUp)
 import           Yi.Keymap                (YiM)
 import           Yi.Keymap.Vim.Common
+import           Yi.Keymap.Vim.Utils      (matchFromBool, mkBindingY, mkStringBindingY)
 import           Yi.Keymap.Vim.Ex
-import           Yi.Keymap.Vim.StateUtils (modifyStateE, resetCountE, switchModeE)
-import           Yi.Keymap.Vim.Utils      (matchFromBool)
+import           Yi.Keymap.Vim.StateUtils (modifyStateE, resetCountE, switchModeE, getRegisterE)
 import qualified Yi.Rope                  as R (fromText, toText)
 import           Yi.String                (commonTPrefix')
 
@@ -37,6 +38,7 @@ defExMap cmdParsers =
     , finishBindingE cmdParsers
     , failBindingE
     , historyBinding
+    , putRegisterBinding
     , printable
     ]
 
@@ -163,6 +165,23 @@ historyBinding = VimBindingE f
               , ("<C-n>", historyDown)
               ]
 
+putRegisterBinding :: VimBinding
+putRegisterBinding = mkStringBindingY Ex ("<C-r>", putRegister, id)
+  where
+    putRegister :: YiM ()
+    putRegister = do
+      registerName <- liftBase getChar
+      -- Replace " to \NUL, because yi's default register is \NUL and Vim's default is "
+      let registerName' = if registerName == '"' then '\NUL' else registerName
+      mayRegisterVal <- withEditor $ fmap regContent <$> getRegisterE registerName'
+      case mayRegisterVal of
+        Nothing   -> return ()
+        Just val  -> withEditor . withCurrentBuffer . insertN $ replaceCr val
+    -- Compliant putting of original Vim spec
+    replaceCr = let replacer '\n' = '\r'
+                    replacer x    = x
+                in R.fromText . T.map replacer . R.toText
+
 editAction :: EventString -> EditorM RepeatToken
 editAction (Ev evs) = do
   withCurrentBuffer $ case evs of
@@ -171,7 +190,6 @@ editAction (Ev evs) = do
       "<C-w>" -> do
           r <- regionOfPartNonEmptyB unitViWordOnLine Backward
           deleteRegionB r
-      "<C-r>" -> return () -- TODO
       "<lt>" -> insertB '<'
       "<Del>" -> deleteB Character Forward
       "<C-d>" -> deleteB Character Forward
