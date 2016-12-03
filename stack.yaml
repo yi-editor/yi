@@ -16,6 +16,7 @@ packages:
 - yi
 extra-deps:
 - Hclip-3.0.0.4
-resolver: nightly-2016-12-01
+- optparse-applicative-0.12.1.0
+resolver: nightly-2016-10-21
 nix:
     shell-file: shell.nix
