@@ -1,4 +1,28 @@
-0.13.0 (In development)
+0.13.4
+------
+
+ * alex >= 3.2.1 is now allowed as it was fixed
+ * [yi-keymap-vim] Implement <C-d> and <M-d> in Ex mode
+ * [yi-keymap-vim] Implement :registers command
+ * [yi-keymap-emacs] Fix paragraph selection
+ * Fix build with GHC 8.0.2
+
+0.13.3
+------
+
+ * Blacklist alex >= 3.2.0
+
+0.13.2
+------
+
+ * Update optparse-applicative version
+
+0.13.1
+------
+
+ * pre-0.13 example user configs are now ported to 0.13
+
+0.13.0
 ------
 
  * Keymaps, modes and frontends are split into separate packages.
