@@ -1,4 +1,4 @@
-resolver: nightly-2016-10-10
+resolver: nightly-2016-10-21
 packages:
 - '.'
 - location: '../../'
@@ -6,6 +6,8 @@ packages:
     - 'yi-core'
     - 'yi-frontend-vty'
     - 'yi-keymap-emacs'
+    - 'yi-language'
     - 'yi-misc-modes'
     - 'yi-mode-haskell'
-extra-deps: []
+extra-deps:
+- Hclip-3.0.0.4

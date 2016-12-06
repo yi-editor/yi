@@ -36,7 +36,11 @@ alexScanUser' user input (I# (sc))
           Nothing -> (AlexEOF, lookahead)
           Just _  -> (AlexError input', lookahead)
       (AlexLastSkip input'' len, _, lookahead) -> (AlexSkip input'' len, lookahead)
+#if MIN_TOOL_VERSION_alex(3,2,0)
+      (AlexLastAcc k input'' len, _, lookahead) -> (AlexToken input'' len (alex_actions ! k), lookahead)
+#else
       (AlexLastAcc k input'' len, _, lookahead) -> (AlexToken input'' len k, lookahead)
+#endif
 
 
 -- Same as alex_scan_tkn, but also return the length of lookahead.

@@ -23,6 +23,7 @@ before_install:
 
 install:
  - stack install gtk2hs-buildtools
+ - stack exec -- alex --version
  - stack test -j2 --no-run-tests
 
 script:

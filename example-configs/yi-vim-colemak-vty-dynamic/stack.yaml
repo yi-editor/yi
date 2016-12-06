@@ -5,6 +5,7 @@ packages:
     subdirs:
      - yi-core
      - yi-keymap-vim
+     - yi-language
      - yi-frontend-vty
      - yi-mode-haskell
      - yi-mode-javascript
@@ -14,4 +15,7 @@ packages:
       commit: 971e2eccce29edd820c776ac61593a4ea3fd1fdb
     extra-dep: true
 
-resolver: nightly-2016-10-10
+resolver: nightly-2016-10-21
+
+extra-deps:
+- Hclip-3.0.0.4
