@@ -1,9 +1,9 @@
--- This file has been generated from package.yaml by hpack version 0.14.0.
+-- This file has been generated from package.yaml by hpack version 0.15.0.
 --
 -- see: https://github.com/sol/hpack
 
 name:           yi-emacs-vty-static
-version:        0.13
+version:        0.13.4
 category:       Yi
 homepage:       https://github.com/yi-editor/yi#readme
 bug-reports:    https://github.com/yi-editor/yi/issues
@@ -20,9 +20,9 @@ executable yi-emacs-vty
   main-is: Main.hs
   hs-source-dirs:
       .
-  ghc-options: -Wall -ferror-spans
+  ghc-options: -Wall -ferror-spans -threaded
   build-depends:
-      base >= 4.8
+      base >= 4.8 && < 5
     , microlens-platform
     , mtl
     , yi-core

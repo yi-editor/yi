@@ -3,7 +3,7 @@
 -- see: https://github.com/sol/hpack
 
 name:           yi-vim-pango-static
-version:        0.13.0.1
+version:        0.13.4
 category:       Yi
 homepage:       https://github.com/yi-editor/yi#readme
 bug-reports:    https://github.com/yi-editor/yi/issues

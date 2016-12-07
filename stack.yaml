@@ -1,4 +1,6 @@
 flags: {}
+nix:
+  shell-file: shell.nix
 packages:
 - yi-core
 - yi-frontend-vty
@@ -16,7 +18,6 @@ packages:
 - yi
 extra-deps:
 - Hclip-3.0.0.4
-- optparse-applicative-0.12.1.0
+- optparse-applicative-0.13.0.0
+- vty-5.13
 resolver: nightly-2016-10-21
-nix:
-    shell-file: shell.nix
