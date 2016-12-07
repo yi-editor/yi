@@ -3,7 +3,7 @@
 -- see: https://github.com/sol/hpack
 
 name:           yi-all-static
-version:        0.13.4
+version:        0.13.0.1
 category:       Yi
 homepage:       https://github.com/yi-editor/yi#readme
 bug-reports:    https://github.com/yi-editor/yi/issues
@@ -45,7 +45,7 @@ executable yi
       base >= 4.8 && < 5
     , microlens-platform
     , mtl
-    , optparse-applicative >= 0.13.0.0
+    , optparse-applicative
     , yi-core
     , yi-misc-modes
     , yi-mode-haskell
