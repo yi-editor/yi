@@ -62,6 +62,7 @@ module Yi.Buffer.Implementation
   , markPointAA
   , markGravityAA
   , mem
+  , BufferImpl
   ) where
 
 import           GHC.Generics        (Generic)
