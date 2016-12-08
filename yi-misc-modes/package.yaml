@@ -54,3 +54,5 @@ library:
       - Yi.Syntax.Latex
     include-dirs:
       - src/Yi/Lexer
+    build-tools:
+      - alex >= 3.0.3 && < 3.2.0 || >= 3.2.1

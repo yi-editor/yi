@@ -33,5 +33,7 @@ library:
       - Yi.Syntax.JavaScript
       - Yi.Verifier.JavaScript
       - Yi.Lexer.JavaScript
+    build-tools:
+      - alex >= 3.0.3 && < 3.2.0 || >= 3.2.1
 include-dirs:
     - src/Yi/Lexer

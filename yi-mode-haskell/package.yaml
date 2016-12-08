@@ -34,6 +34,9 @@ library:
         - Yi.Syntax.Haskell
         - Yi.Syntax.Paren
         - Yi.Syntax.Strokes.Haskell
+    build-tools:
+      - alex >= 3.0.3 && < 3.2.0 || >= 3.2.1
+
 include-dirs:
     - src/Yi/Lexer
 
