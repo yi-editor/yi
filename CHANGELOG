@@ -1,3 +1,10 @@
+0.13.5
+------
+
+ * Unbreak build with alex-3.2.1
+ * [yi-keymap-cua] Expose default Cua config
+ * Fix haddock generation for BufferImpl
+
 0.13.4
 ------
 
