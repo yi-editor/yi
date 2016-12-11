@@ -15,23 +15,27 @@ module Yi.Keymap.Vim.ExMap (defExMap) where
 import           Control.Monad            (when)
 import           Control.Monad.Base       (liftBase)
 import           Data.Char                (isSpace)
+import qualified Data.HashMap.Strict      as HM (lookup)
 import           Data.Maybe               (fromJust)
 import           Data.Monoid              ((<>))
-import qualified Data.Text                as T (Text, drop, head, length, split, unwords, map)
+import qualified Data.Text                as T (Text, drop, head, length, split, unwords, map, unpack)
 import           System.FilePath          (isPathSeparator)
 import           Yi.Buffer.Adjusted       hiding (Insert)
 import           Yi.Editor
 import           Yi.History               (historyDown, historyFinish, historyPrefixSet, historyUp)
 import           Yi.Keymap                (YiM)
 import           Yi.Keymap.Vim.Common
-import           Yi.Keymap.Vim.Utils      (matchFromBool, mkBindingY, mkStringBindingY)
+import           Yi.Keymap.Vim.Utils      (matchFromBool, mkBindingY, mkStringBindingY, selectBinding)
 import           Yi.Keymap.Vim.Ex
 import           Yi.Keymap.Vim.StateUtils (modifyStateE, resetCountE, switchModeE, getRegisterE)
-import qualified Yi.Rope                  as R (fromText, toText)
+import qualified Yi.Rope                  as R (fromText, toText, toString)
 import           Yi.String                (commonTPrefix')
 
 defExMap :: [EventString -> Maybe ExCommand] -> [VimBinding]
-defExMap cmdParsers =
+defExMap cmdParsers = specials cmdParsers ++ [printable]
+
+specials :: [EventString -> Maybe ExCommand] -> [VimBinding]
+specials cmdParsers =
     [ exitBinding
     , completionBinding cmdParsers
     , finishBindingY cmdParsers
@@ -39,7 +43,6 @@ defExMap cmdParsers =
     , failBindingE
     , historyBinding
     , putRegisterBinding
-    , printable
     ]
 
 completionBinding :: [EventString -> Maybe ExCommand] -> VimBinding
@@ -142,11 +145,6 @@ failBindingE = VimBindingE f
                 return Drop
           f _ _ = NoMatch
 
-printable :: VimBinding
-printable = VimBindingE f
-    where f evs (VimState { vsMode = Ex }) = WholeMatch $ editAction evs
-          f _ _ = NoMatch
-
 historyBinding :: VimBinding
 historyBinding = VimBindingE f
     where f evs (VimState { vsMode = Ex }) | evs `elem` fmap fst binds
@@ -166,47 +164,59 @@ historyBinding = VimBindingE f
               ]
 
 putRegisterBinding :: VimBinding
-putRegisterBinding = mkStringBindingY Ex ("<C-r>", putRegister, id)
+putRegisterBinding = VimBindingE $ f . T.unpack . _unEv
   where
-    putRegister :: YiM ()
-    putRegister = do
-      registerName <- liftBase getChar
-      -- Replace " to \NUL, because yi's default register is \NUL and Vim's default is "
-      let registerName' = if registerName == '"' then '\NUL' else registerName
-      mayRegisterVal <- withEditor $ fmap regContent <$> getRegisterE registerName'
-      case mayRegisterVal of
-        Nothing   -> return ()
-        Just val  -> withEditor . withCurrentBuffer . insertN $ replaceCr val
+    f "<C-r>" (VimState { vsMode = Ex }) = PartialMatch
+    f ('<':'C':'-':'r':'>':regName:[]) vs@(VimState { vsMode = Ex }) =
+      WholeMatch $ putRegister regName vs
+    f _ _ = NoMatch
+
+    putRegister :: RegisterName -> VimState -> EditorM RepeatToken
+    putRegister registerName vs = do
+        -- Replace " to \NUL, because yi's default register is \NUL and Vim's default is "
+        let registerName'  = if registerName == '"' then '\NUL' else registerName
+            mayRegisterVal = regContent <$> HM.lookup registerName' (vsRegisterMap vs)
+        case mayRegisterVal of
+            Nothing  -> return Continue
+            Just val -> do
+                withCurrentBuffer $ insertN . replaceCr $ val
+                return Continue
     -- Compliant putting of original Vim spec
     replaceCr = let replacer '\n' = '\r'
                     replacer x    = x
                 in R.fromText . T.map replacer . R.toText
 
+printable :: VimBinding
+printable = VimBindingE f
+    where f evs vs@(VimState { vsMode = Ex }) =
+            case selectBinding evs vs (specials undefined) of
+                NoMatch -> WholeMatch $ editAction evs
+                _       -> NoMatch
+          f _ _ = NoMatch
+
 editAction :: EventString -> EditorM RepeatToken
 editAction (Ev evs) = do
   withCurrentBuffer $ case evs of
-      "<BS>"  -> bdeleteB
-      "<C-h>" -> bdeleteB
-      "<C-w>" -> do
-          r <- regionOfPartNonEmptyB unitViWordOnLine Backward
-          deleteRegionB r
-      "<lt>" -> insertB '<'
-      "<Del>" -> deleteB Character Forward
-      "<C-d>" -> deleteB Character Forward
-      "<M-d>" -> deleteB unitWord Forward
-      "<Left>" -> moveXorSol 1
-      "<C-b>" -> moveXorSol 1
+      "<BS>"    -> bdeleteB
+      "<C-h>"   -> bdeleteB
+      "<C-w>"   -> regionOfPartNonEmptyB unitViWordOnLine Backward >>= deleteRegionB
+      "<lt>"    -> insertB '<'
+      "<Del>"   -> deleteB Character Forward
+      "<C-d>"   -> deleteB Character Forward
+      "<M-d>"   -> deleteB unitWord Forward
+      "<Left>"  -> moveXorSol 1
+      "<C-b>"   -> moveXorSol 1
       "<Right>" -> moveXorEol 1
-      "<C-f>" -> moveXorEol 1
-      "<Home>" -> moveToSol
-      "<C-a>" -> moveToSol
-      "<End>" -> moveToEol
-      "<C-e>" -> moveToEol
-      "<C-u>" -> moveToSol >> deleteToEol
-      "<C-k>" -> deleteToEol
-      evs' -> case T.length evs' of
-        1 -> insertB $ T.head evs'
-        _ -> error $ "Unhandled event " ++ show evs' ++ " in ex mode"
+      "<C-f>"   -> moveXorEol 1
+      "<Home>"  -> moveToSol
+      "<C-a>"   -> moveToSol
+      "<End>"   -> moveToEol
+      "<C-e>"   -> moveToEol
+      "<C-u>"   -> moveToSol >> deleteToEol
+      "<C-k>"   -> deleteToEol
+      _ -> case T.length evs of
+          1 -> insertB $ T.head evs
+          _ -> error $ "Unhandled event " ++ show evs ++ " in ex mode"
   command <- R.toText <$> withCurrentBuffer elemsB
   historyPrefixSet command
   modifyStateE $ \state -> state {
