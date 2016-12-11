@@ -2,6 +2,7 @@
 {-# LANGUAGE RankNTypes          #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeOperators       #-}
+{-# LANGUAGE DeriveFunctor       #-}
 
 -- TODO:
 -- better interface
@@ -52,14 +53,10 @@ data Steps s a where
     Fail    ::                                                  Steps s a
 
 -- profile !! s = number of Dislikes found to do s Shifts
-data Profile = PSusp | PFail | PRes Int | !Int :> Profile
-    deriving Show
+data ProfileF a = PSusp | PFail | PRes a | !a :> ProfileF a
+    deriving (Show, Functor)
 
-mapSucc :: Profile -> Profile
-mapSucc PSusp = PSusp
-mapSucc PFail = PFail
-mapSucc (PRes x) = PRes (succ x)
-mapSucc (x :> xs) = succ x :> mapSucc xs
+type Profile = ProfileF Int
 
 -- Map lookahead to maximum dislike difference we accept. When looking much further,
 -- we are more prone to discard smaller differences. It's essential that this drops below 0 when
@@ -112,7 +109,7 @@ profile (App p) = profile p
 profile (Shift p) = 0 :> profile p
 profile (Done) = PRes 0 -- success with zero dislikes
 profile (Fail) = PFail
-profile (Dislike p) = mapSucc (profile p)
+profile (Dislike p) = fmap succ (profile p)
 profile (Log _ p) = profile p
 profile (Sus _ _) = PSusp
 profile (Best _ pr _ _) = pr
