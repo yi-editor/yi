@@ -21,3 +21,6 @@ extra-deps:
 - optparse-applicative-0.13.0.0
 - vty-5.13
 resolver: nightly-2016-10-21
+docker:
+  enable: false
+  repo: "fpco/stack-build:lts-6.26"
