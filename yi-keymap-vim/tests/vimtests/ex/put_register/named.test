@@ -1,8 +1,12 @@
 -- Input
 (1,1)
-foo
+sort 2
+sort 3
+sort 1
 -- Output
-(1,4)
-foo
+(1,1)
+sort 1
+sort 2
+sort 3
 -- Events
-"ayiw:<C-r>a
+"ayiw:%<C-r>a<CR>
