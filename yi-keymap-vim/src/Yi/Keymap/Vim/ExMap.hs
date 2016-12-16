@@ -167,15 +167,15 @@ pasteRegisterBinding :: VimBinding
 pasteRegisterBinding = VimBindingE $ f . T.unpack . _unEv
   where
     f "<C-r>" (VimState { vsMode = Ex }) = PartialMatch
-    f ('<':'C':'-':'r':'>':regName:[]) vs@(VimState { vsMode = Ex }) =
-      WholeMatch $ pasteRegister regName vs
+    f ('<':'C':'-':'r':'>':regName:[]) (VimState { vsMode = Ex }) =
+      WholeMatch $ pasteRegister regName
     f _ _ = NoMatch
 
-    pasteRegister :: RegisterName -> VimState -> EditorM RepeatToken
-    pasteRegister registerName vs = do
+    pasteRegister :: RegisterName -> EditorM RepeatToken
+    pasteRegister registerName = do
         -- Replace " to \NUL, because yi's default register is \NUL and Vim's default is "
-        let registerName'  = if registerName == '"' then '\NUL' else registerName
-            mayRegisterVal = regContent <$> HM.lookup registerName' (vsRegisterMap vs)
+        let registerName' = if registerName == '"' then '\NUL' else registerName
+        mayRegisterVal <- fmap regContent <$> getRegisterE registerName'
         case mayRegisterVal of
             Nothing  -> return Continue
             Just val -> do
