@@ -42,7 +42,7 @@ specials cmdParsers =
     , finishBindingE cmdParsers
     , failBindingE
     , historyBinding
-    , putRegisterBinding
+    , pasteRegisterBinding
     ]
 
 completionBinding :: [EventString -> Maybe ExCommand] -> VimBinding
@@ -163,16 +163,16 @@ historyBinding = VimBindingE f
               , ("<C-n>", historyDown)
               ]
 
-putRegisterBinding :: VimBinding
-putRegisterBinding = VimBindingE $ f . T.unpack . _unEv
+pasteRegisterBinding :: VimBinding
+pasteRegisterBinding = VimBindingE $ f . T.unpack . _unEv
   where
     f "<C-r>" (VimState { vsMode = Ex }) = PartialMatch
     f ('<':'C':'-':'r':'>':regName:[]) vs@(VimState { vsMode = Ex }) =
-      WholeMatch $ putRegister regName vs
+      WholeMatch $ pasteRegister regName vs
     f _ _ = NoMatch
 
-    putRegister :: RegisterName -> VimState -> EditorM RepeatToken
-    putRegister registerName vs = do
+    pasteRegister :: RegisterName -> VimState -> EditorM RepeatToken
+    pasteRegister registerName vs = do
         -- Replace " to \NUL, because yi's default register is \NUL and Vim's default is "
         let registerName'  = if registerName == '"' then '\NUL' else registerName
             mayRegisterVal = regContent <$> HM.lookup registerName' (vsRegisterMap vs)
@@ -181,7 +181,7 @@ putRegisterBinding = VimBindingE $ f . T.unpack . _unEv
             Just val -> do
                 withCurrentBuffer $ insertN . replaceCr $ val
                 return Continue
-    -- Compliant putting of original Vim spec
+    -- Avoid putting EOL
     replaceCr = let replacer '\n' = '\r'
                     replacer x    = x
                 in R.fromText . T.map replacer . R.toText
