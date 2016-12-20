@@ -181,6 +181,7 @@ tests:
       - tasty
       - tasty-hunit
       - tasty-quickcheck
+      - quickcheck-text
       - yi-core
       - text
       - containers

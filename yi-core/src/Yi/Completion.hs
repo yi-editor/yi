@@ -49,6 +49,7 @@ prefixMatch prefix s = if prefix `T.isPrefixOf` s then Just s else Nothing
 
 -- | Text from the match up to the end, for use with 'completeInList'
 infixUptoEndMatch :: T.Text -> T.Text -> Maybe T.Text
+infixUptoEndMatch "" haystack = Just haystack
 infixUptoEndMatch needle haystack = case T.breakOn needle haystack of
   (_, t) -> if T.null t then Nothing else Just t
 
