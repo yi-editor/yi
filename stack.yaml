@@ -20,4 +20,5 @@ extra-deps:
 - Hclip-3.0.0.4
 - optparse-applicative-0.13.0.0
 - vty-5.13
+- ListLike-4.5
 resolver: nightly-2016-10-21
