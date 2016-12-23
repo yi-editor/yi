@@ -32,7 +32,7 @@ import qualified Yi.Rope                  as R (fromText, toText, toString)
 import           Yi.String                (commonTPrefix')
 
 defExMap :: [EventString -> Maybe ExCommand] -> [VimBinding]
-defExMap cmdParsers = specials cmdParsers ++ [printable]
+defExMap cmdParsers = printable : specials cmdParsers
 
 specials :: [EventString -> Maybe ExCommand] -> [VimBinding]
 specials cmdParsers =
@@ -163,24 +163,29 @@ historyBinding = VimBindingE f
               , ("<C-n>", historyDown)
               ]
 
+-- <C-r>a pastes a content of regContent of 'a' Register to Ex buffer ('a' is forall)
 pasteRegisterBinding :: VimBinding
 pasteRegisterBinding = VimBindingE $ f . T.unpack . _unEv
   where
     f "<C-r>" (VimState { vsMode = Ex }) = PartialMatch
-    f ('<':'C':'-':'r':'>':regName:[]) (VimState { vsMode = Ex }) =
-      WholeMatch $ pasteRegister regName
+    f ('<':'C':'-':'r':'>':regName:[]) vs@(VimState { vsMode = Ex }) =
+        WholeMatch $ pasteRegister regName vs
     f _ _ = NoMatch
 
-    pasteRegister :: RegisterName -> EditorM RepeatToken
-    pasteRegister registerName = do
+    -- Paste a content to Ex buffer, and update vsOngoingInsertEvents of VimState
+    pasteRegister :: RegisterName -> VimState -> EditorM RepeatToken
+    pasteRegister registerName vs = do
         -- Replace " to \NUL, because yi's default register is \NUL and Vim's default is "
         let registerName' = if registerName == '"' then '\NUL' else registerName
         mayRegisterVal <- fmap regContent <$> getRegisterE registerName'
         case mayRegisterVal of
-            Nothing  -> return Continue
+            Nothing  -> return Drop
             Just val -> do
                 withCurrentBuffer $ insertN . replaceCr $ val
-                return Continue
+                -- putEditorDyn fixes that Ex mode never evaluate pasted command
+                -- If you remove this, tests/vimtests/ex/paste_register will failed
+                putEditorDyn vs { vsOngoingInsertEvents = Ev . R.toText $ val }
+                return Finish
     -- Avoid putting EOL
     replaceCr = let replacer '\n' = '\r'
                     replacer x    = x
@@ -189,7 +194,7 @@ pasteRegisterBinding = VimBindingE $ f . T.unpack . _unEv
 printable :: VimBinding
 printable = VimBindingE f
     where f evs vs@(VimState { vsMode = Ex }) =
-            case selectBinding evs vs (specials undefined) of
+            case selectBinding evs vs $ specials [] of
                 NoMatch -> WholeMatch $ editAction evs
                 _       -> NoMatch
           f _ _ = NoMatch
