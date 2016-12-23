@@ -9,4 +9,4 @@ sort 1
 sort 2
 sort 3
 -- Events
-yiw:%<C-r>"<CR>
+yiw:%<C-r>"<CR>gg0
