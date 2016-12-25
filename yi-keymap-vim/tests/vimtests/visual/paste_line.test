@@ -1,0 +1,13 @@
+-- Input
+(1,1)
+foo
+bar
+
+-- Output
+(1,1)
+foo
+foo
+foo
+
+-- Events
+yyjVppgg0

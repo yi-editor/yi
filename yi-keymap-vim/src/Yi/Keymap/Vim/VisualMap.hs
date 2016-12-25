@@ -27,7 +27,7 @@ import           Yi.Keymap.Vim.StateUtils
 import           Yi.Keymap.Vim.StyledRegion (StyledRegion (StyledRegion), transformCharactersInRegionB)
 import           Yi.Keymap.Vim.Tag          (gotoTag)
 import           Yi.Keymap.Vim.TextObject
-import           Yi.Keymap.Vim.Utils        (matchFromBool, mkChooseRegisterBinding, mkMotionBinding)
+import           Yi.Keymap.Vim.Utils        (matchFromBool, mkChooseRegisterBinding, mkMotionBinding, addNewLineIfNecessary)
 import           Yi.MiniBuffer              (spawnMinibufferE)
 import           Yi.Monad                   (whenM)
 import qualified Yi.Rope                    as R (toText)
@@ -37,7 +37,7 @@ import           Yi.Utils                   (SemiNum ((-~)))
 defVisualMap :: [VimOperator] -> [VimBinding]
 defVisualMap operators =
     [escBinding, motionBinding, textObjectBinding, changeVisualStyleBinding, setMarkBinding]
-    ++ [chooseRegisterBinding]
+    ++ [chooseRegisterBinding, pasteBinding]
     ++ operatorBindings operators ++ digitBindings ++ [replaceBinding, switchEdgeBinding]
     ++ [insertBinding, exBinding, shiftDBinding]
     ++ [tagJumpBinding]
@@ -234,6 +234,21 @@ replaceBinding = VimBindingE (f . T.unpack . _unEv)
                     return Finish
                 _ -> NoMatch
           f _ _ = NoMatch
+
+pasteBinding :: VimBinding
+pasteBinding = VimBindingE (f . T.unpack . _unEv)
+    where
+    f "p" (VimState { vsMode = (Visual LineWise) }) = WholeMatch $ do
+        register <- getRegisterE . vsActiveRegister =<< getEditorDyn
+        case register of
+            Just (Register LineWise rope) -> withCurrentBuffer $ do
+                region <- regionOfSelectionB
+                _ <- deleteRegionWithStyleB region LineWise
+                insertRopeWithStyleB (addNewLineIfNecessary rope) LineWise
+            _ -> pure ()
+        switchModeE Normal
+        return Finish
+    f _ _ = NoMatch
 
 switchEdgeBinding :: VimBinding
 switchEdgeBinding = VimBindingE (f . T.unpack . _unEv)
