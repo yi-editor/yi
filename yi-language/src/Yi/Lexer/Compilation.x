@@ -8,7 +8,7 @@
 {-# OPTIONS -w  #-}
 module Yi.Lexer.Compilation (lexer, Token(..)) where
 import Yi.Lexer.Alex hiding (tokenToStyle)
-import Yi.Regex
+import Yi.Regex (matchOnceText, Regex, makeRegex)
 import Yi.Style (commentStyle)
 }
 

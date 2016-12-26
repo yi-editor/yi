@@ -17,13 +17,15 @@ module Yi.Regex
 import Data.Bifunctor (first)
 import Data.Binary
 import GHC.Generics (Generic)
-import Text.Regex.TDFA
-import Text.Regex.TDFA.Pattern
-import Control.Applicative
-import Lens.Micro.Platform
+import Yi.Buffer.Basic (Direction(..))
+
+import Text.Regex.TDFA ( Regex, CompOption(..), caseSensitive, multiline
+                       , defaultCompOpt, defaultExecOpt, makeRegexOptsM
+                       , matchOnceText, makeRegex, RegexLike(matchAll)
+                       , AllTextSubmatches(..), (=~))
+import Text.Regex.TDFA.Pattern (Pattern(..), DoPa(..), showPattern)
 import Text.Regex.TDFA.ReadRegex(parseRegex)
 import Text.Regex.TDFA.TDFA(patternToRegex)
-import Yi.Buffer.Basic (Direction(..))
 
 -- input string, regexexp, backward regex.
 data SearchExp = SearchExp

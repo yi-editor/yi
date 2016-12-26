@@ -91,7 +91,7 @@ import Control.Concurrent (newMVar, modifyMVar, MVar, newEmptyMVar, putMVar,
 import Data.Typeable
 import qualified Data.List.PointedList as PL (insertRight, withFocus,
                                               PointedList(..), singleton)
-import Yi.Regex
+import Yi.Regex ((=~), AllTextSubmatches(..))
 import Yi.String (showT)
 import System.FilePath
 import qualified Yi.UI.Common as Common
