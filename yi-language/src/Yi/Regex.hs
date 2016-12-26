@@ -14,6 +14,7 @@ module Yi.Regex
   , module Text.Regex.TDFA
   ) where
 
+import Data.Bifunctor (first)
 import Data.Binary
 import GHC.Generics (Generic)
 import Text.Regex.TDFA
@@ -69,7 +70,7 @@ makeSearchOptsM opts re = (\p->SearchExp { seInput        = re
           compile source = patternToRegex source (searchOpts opts defaultCompOpt) defaultExecOpt
           pattern = if QuoteRegex `elem` opts
                           then Right (literalPattern re)
-                          else mapLeft show (parseRegex re)
+                          else first show (parseRegex re)
 
 instance Binary SearchExp where
   get = do re   <- get
@@ -80,10 +81,6 @@ instance Binary SearchExp where
   put (SearchExp { seInput   = re,
                    seOptions = opts, .. }) = do put re
                                                 put opts
-
-mapLeft :: (t1 -> a) -> Either t1 t -> Either a t
-mapLeft _ (Right a) = Right a
-mapLeft f (Left a) = Left (f a)
 
 -- | Return an escaped (for parseRegex use) version of the string.
 regexEscapeString :: String -> String
