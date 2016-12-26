@@ -241,10 +241,21 @@ pasteBinding = VimBindingE (f . T.unpack . _unEv)
     f "p" (VimState { vsMode = (Visual LineWise) }) = WholeMatch $ do
         register <- getRegisterE . vsActiveRegister =<< getEditorDyn
         case register of
-            Just (Register LineWise rope) -> withCurrentBuffer $ do
+            Just (Register _style rope) -> withCurrentBuffer $ do
                 region <- regionOfSelectionB
                 _ <- deleteRegionWithStyleB region LineWise
                 insertRopeWithStyleB (addNewLineIfNecessary rope) LineWise
+            _ -> pure ()
+        switchModeE Normal
+        return Finish
+    f "p" (VimState { vsMode = (Visual Block) }) = NoMatch
+    f "p" (VimState { vsMode = (Visual _) }) = WholeMatch $ do
+        register <- getRegisterE . vsActiveRegister =<< getEditorDyn
+        case register of
+            Just (Register _style rope) -> withCurrentBuffer $ do
+                region <- regionOfSelectionB
+                region' <- convertRegionToStyleB region Inclusive
+                replaceRegionB region' rope
             _ -> pure ()
         switchModeE Normal
         return Finish
