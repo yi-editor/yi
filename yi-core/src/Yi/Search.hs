@@ -71,7 +71,7 @@ import           Data.Typeable       (Typeable)
 import           Yi.Buffer
 import           Yi.Editor
 import           Yi.History          (historyFinishGen, historyMoveGen, historyStartGen)
-import           Yi.Regex
+import           Yi.Regex            (SearchOption(..), makeSearchOptsM, emptyRegex, SearchExp(..))
 import qualified Yi.Rope             as R (YiString, null, toString, toText)
 import           Yi.Search.Internal  (getRegexE, resetRegexE, setRegexE)
 import           Yi.String           (showT)
