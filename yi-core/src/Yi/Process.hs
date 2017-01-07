@@ -17,8 +17,10 @@ import           System.Process.ListLike (ListLikeProcessIO, readProcessWithExit
 import           Yi.Buffer.Basic         (BufferRef)
 import           Yi.Monad                (repeatUntilM)
 
-#ifndef mingw32_HOST_OS
-import System.Posix.IO (createPipe, fdToHandle)
+#ifdef mingw32_HOST_OS
+import           System.Process          (runInteractiveProcess)
+#else
+import           System.Posix.IO         (createPipe, fdToHandle)
 #endif
 
 runProgCommand :: ListLikeProcessIO a c => String -> [String] -> IO (ExitCode, a, a)
