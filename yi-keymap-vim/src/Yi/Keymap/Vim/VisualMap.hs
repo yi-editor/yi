@@ -30,7 +30,7 @@ import           Yi.Keymap.Vim.TextObject
 import           Yi.Keymap.Vim.Utils        (matchFromBool, mkChooseRegisterBinding, mkMotionBinding, addNewLineIfNecessary)
 import           Yi.MiniBuffer              (spawnMinibufferE)
 import           Yi.Monad                   (whenM)
-import qualified Yi.Rope                    as R (toText)
+import qualified Yi.Rope                    as R (toText, countNewLines)
 import           Yi.Tag                     (Tag (Tag))
 import           Yi.Utils                   (SemiNum ((-~)))
 
@@ -238,21 +238,24 @@ replaceBinding = VimBindingE (f . T.unpack . _unEv)
 pasteBinding :: VimBinding
 pasteBinding = VimBindingE (f . T.unpack . _unEv)
     where
-    f "p" (VimState { vsMode = (Visual LineWise) }) = WholeMatch $ do
+    f "p" (VimState { vsMode = (Visual style) }) = WholeMatch $ do
         register <- getRegisterE . vsActiveRegister =<< getEditorDyn
-        case register of
-            Just (Register _style rope) -> withCurrentBuffer $ do
+        case (register, style) of
+            (Just (Register _style rope), LineWise) -> withCurrentBuffer $ do
                 region <- regionOfSelectionB
                 _ <- deleteRegionWithStyleB region LineWise
                 insertRopeWithStyleB (addNewLineIfNecessary rope) LineWise
-            _ -> pure ()
-        switchModeE Normal
-        return Finish
-    f "p" (VimState { vsMode = (Visual Block) }) = NoMatch
-    f "p" (VimState { vsMode = (Visual _) }) = WholeMatch $ do
-        register <- getRegisterE . vsActiveRegister =<< getEditorDyn
-        case register of
-            Just (Register _style rope) -> withCurrentBuffer $ do
+            (Just (Register Block rope), Block) -> withCurrentBuffer $ do
+                here <- pointB
+                there <- getSelectionMarkPointB
+                (here', there') <- flipRectangleB here there
+                reg <- regionOfSelectionB
+                void $ deleteRegionWithStyleB reg Block
+                moveTo (minimum [here, there, here', there'])
+                insertRopeWithStyleB rope Block
+            (Just (Register _ rope), Block) ->
+                printMsg "Pasting non-block string into a block selection is not implemented"
+            (Just (Register _style rope), _) -> withCurrentBuffer $ do
                 region <- regionOfSelectionB
                 region' <- convertRegionToStyleB region Inclusive
                 replaceRegionB region' rope
