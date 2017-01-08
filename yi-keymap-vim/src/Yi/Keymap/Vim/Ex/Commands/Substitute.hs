@@ -13,14 +13,13 @@ module Yi.Keymap.Vim.Ex.Commands.Substitute (parse) where
 
 import           Control.Applicative              (Alternative ((<|>)))
 import           Control.Monad                    (void)
-import qualified Data.Attoparsec.Text             as P (char, inClass, many', match, option, 
+import qualified Data.Attoparsec.Text             as P (char, inClass, many', match,
                                                         satisfy, string, try)
 import           Data.Maybe                       (fromMaybe)
 import           Data.Monoid                      ((<>))
 import qualified Data.Text                        as T (Text, cons, snoc)
 import           Lens.Micro.Platform              (over, _2)
 import           Yi.Buffer.Adjusted
-import           Yi.Buffer.Region                 (linesOfRegionB)
 import           Yi.Editor                        (EditorM, closeBufferAndWindowE, printMsg, withCurrentBuffer)
 import           Yi.Keymap                        (Action (EditorA), Keymap)
 import           Yi.Keymap.Keys                   (char, choice, (?>>!))
@@ -29,7 +28,6 @@ import qualified Yi.Keymap.Vim.Ex.Commands.Common as Common (parse, pureExComman
 import           Yi.Keymap.Vim.Ex.Types           (ExCommand (cmdAction, cmdShow))
 import           Yi.MiniBuffer                    (spawnMinibufferE)
 import           Yi.Regex                         (makeSearchOptsM)
-import           Yi.Region                        (Region)
 import qualified Yi.Rope                          as R (YiString, fromString, length, null, toText, toString)
 import           Yi.Search
 
@@ -62,8 +60,7 @@ substitute from to delimiter global caseInsensitive confirm regionText regionB =
               <>       (if global then "g" else "")
   , cmdAction = EditorA $ do
         let opts = QuoteRegex : if caseInsensitive then [IgnoreCase] else []
-        lines <- withCurrentBuffer $ regionB >>= linesOfRegionB
-        region <- withCurrentBuffer regionB
+        lines' <- withCurrentBuffer $ regionB >>= linesOfRegionB
         regex <- if R.null from
                     then getRegexE
                     else return . (either (const Nothing) Just) 
@@ -71,33 +68,29 @@ substitute from to delimiter global caseInsensitive confirm regionText regionB =
         case regex of
             Nothing -> printMsg "No previous search pattern"
             Just regex' -> if confirm
-                then substituteConfirm regex' to global lines
+                then substituteConfirm regex' to global lines'
                 else withCurrentBuffer $ do
-                    -- We need to reverse the lines here so that replacing
+                    -- We need to reverse the lines' here so that replacing
                     -- does not effect the regions in question.
-                    mapM_ (void . searchAndRepRegion0 regex' to global) (reverse lines)
+                    mapM_ (void . searchAndRepRegion0 regex' to global) (reverse lines')
                     moveToSol
   }
 
 -- | Run substitution in confirm mode
 substituteConfirm :: SearchExp -> R.YiString -> Bool -> [Region] -> EditorM ()
-substituteConfirm regex to global lines = do
+substituteConfirm regex to global lines' = do
     -- TODO This highlights all matches, even in non-global mode
     -- and could potentially be classified as a bug. Fixing requires
     -- changing the regex highlighting api.
     setRegexE regex
-    regions <- withCurrentBuffer $ findMatches regex global lines
+    regions <- withCurrentBuffer $ findMatches regex global lines'
     substituteMatch to 0 False regions
 
 -- | All matches to replace under given flags
 findMatches :: SearchExp -> Bool -> [Region] -> BufferM [Region]
-findMatches regex global lines = do
+findMatches regex global lines' = do
     let f = if global then id else take 1
-    concat <$> mapM (fmap f . regexRegionB regex) lines
-
--- | Get regions corresponding to all lines
-lineRegions :: [Int] -> BufferM [Region]
-lineRegions = mapM $ \ln -> gotoLn ln >> regionOfB Line
+    concat <$> mapM (fmap f . regexRegionB regex) lines'
 
 -- | Offsets a region (to account for a region prior being modified)
 offsetRegion :: Int -> Region -> Region

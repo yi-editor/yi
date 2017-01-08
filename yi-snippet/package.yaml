@@ -14,7 +14,7 @@ dependencies:
     - containers >= 0.5.6
     - data-default >= 0.5
     - free >= 4.12
-    - lens >= 4.13
+    - microlens-platform
     - mtl >= 2.2
     - text >= 1.2
     - vector >= 0.11

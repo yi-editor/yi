@@ -125,7 +125,7 @@ do_args ignoreUnknown cfg args = let options = customOptions cfg ++ builtinOptio
         (os, _, u:us, []) -> if ignoreUnknown
                                     then handle options os
                                     else fail $ "unknown arguments: " ++ intercalate ", " (u:us)
-        (os, ex, ey, errs) -> fail (concat errs)
+        (_os, _ex, _ey, errs) -> fail (concat errs)
     where
         shouldOpenInTabs = ("--" ++ openInTabsLong) `elem` args
                          || ('-':[openInTabsShort]) `elem` args

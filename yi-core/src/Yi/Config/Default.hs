@@ -4,10 +4,8 @@
 module Yi.Config.Default (defaultConfig) where
 
 
-import           Lens.Micro.Platform          ((.~), (^.), use)
-import           Control.Monad
+import           Lens.Micro.Platform ((.~))
 import qualified Data.HashMap.Strict as HM
-import qualified Data.Map            as M
 import           Data.Monoid
 import           Paths_yi_core
 import           System.FilePath
@@ -17,7 +15,6 @@ import           Yi.Command          (cabalBuildE, cabalConfigureE, grepFind,
                                       makeBuild, reloadProjectE, searchSources,
                                       shell)
 import           Yi.Config
-import           Yi.Config.Misc
 import           Yi.Core             (errorEditor, quitEditor)
 import           Yi.Editor
 import           Yi.Eval             (publishedActions)

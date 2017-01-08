@@ -1,4 +1,5 @@
 {-# OPTIONS_HADDOCK show-extensions #-}
+{-# language RankNTypes #-}
 
 -- |
 -- Module      :  Yi.Keymap.Emacs.KillRing
@@ -9,8 +10,9 @@
 
 module Yi.Keymap.Emacs.KillRing where
 
-import           Lens.Micro.Platform (use, (%=), (.=))
+import           Lens.Micro.Platform (use, (%=), (.=), Getting)
 import           Control.Monad       (replicateM_, when)
+import           Control.Monad.State.Class (MonadState)
 import           Data.List.NonEmpty  (NonEmpty ((:|)))
 import           Data.Maybe          (fromMaybe)
 import           Yi.Buffer
@@ -22,6 +24,7 @@ import           Yi.Types            (withEditor)
 import           Yi.Utils            (io)
 import           System.Hclip        (getClipboard, setClipboard)
 
+uses :: forall a b f s. MonadState s f => Getting a s a -> (a -> b) -> f b
 uses l f = f <$> use l
 
 -- * Killring actions

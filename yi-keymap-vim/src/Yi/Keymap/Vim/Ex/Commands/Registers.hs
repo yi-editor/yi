@@ -8,7 +8,7 @@
 -- :reg[isters] ex command to list yanked texts.
 module Yi.Keymap.Vim.Ex.Commands.Registers (printRegisters, parse) where
 
-import           Control.Applicative              (Alternative ((<|>)), (<*))
+import           Control.Applicative              (Alternative ((<|>)))
 import           Control.Monad                    (void)
 import           Data.Monoid                      ((<>))
 import           Yi.Keymap                        (Action (EditorA))
@@ -48,7 +48,7 @@ printRegisters = do
 -- | See :help :registers on Vim
 parse :: EventString -> Maybe ExCommand
 parse = Common.parse $ do
-  P.string "reg" <* (     P.try (P.string "isters")
+  _ <- P.string "reg" <* (     P.try (P.string "isters")
                       <|> P.try (P.string "ister")
                       <|> P.try (P.string "iste")
                       <|> P.try (P.string "ist")
