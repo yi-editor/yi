@@ -42,7 +42,7 @@ module Yi.Eval (
 import Prelude hiding (mapM_)
 
 import Lens.Micro.Platform ( (^.), (.=), (%=) )
-import Control.Monad (when, void, forever)
+import Control.Monad (when)
 import Data.Array ( elems )
 import Data.Binary ( Binary )
 import Data.Default ( Default, def )

@@ -27,7 +27,6 @@ module Yi.Snippet.Internal
     , filename
     ) where
 
-import Control.Lens
 import Control.Monad.Free
 import Control.Monad.State hiding (state)
 import Control.Monad.Writer
@@ -37,6 +36,7 @@ import qualified Data.Map.Strict as M
 import Data.Maybe
 import Data.Typeable
 import GHC.Generics
+import Lens.Micro.Platform ((.~))
 
 import Yi.Buffer
 import Yi.Editor (withCurrentBuffer)

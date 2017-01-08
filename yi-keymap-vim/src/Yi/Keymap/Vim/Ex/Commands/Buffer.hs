@@ -17,8 +17,7 @@ import           Control.Monad                    (void)
 import           Control.Monad.State              (gets)
 import qualified Data.Attoparsec.Text             as P (Parser, anyChar, choice,
                                                         digit, endOfInput, many', many1,
-                                                        parseOnly, space, string,
-                                                        try)
+                                                        parseOnly, space, string)
 import           Yi.Buffer.Basic                  (BufferRef (..))
 import qualified Data.Text                        as T (Text, pack, unpack)
 import           Yi.Buffer.Misc                   (bkey, isUnchangedBuffer)

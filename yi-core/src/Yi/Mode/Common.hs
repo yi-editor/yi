@@ -21,9 +21,8 @@ import           Lens.Micro.Platform  ((%~), (&), (.~), (^.))
 import           Control.Applicative  ((<|>))
 import           Control.Monad        (void)
 import qualified Data.Attoparsec.Text as P
-import           Data.Maybe           (fromMaybe, isJust)
+import           Data.Maybe           (fromMaybe)
 import           System.FilePath      (takeExtension)
-import qualified Data.Text            as T (Text)
 
 import           Yi.Buffer
 import qualified Yi.IncrementalParse  as IncrParser (scanner)

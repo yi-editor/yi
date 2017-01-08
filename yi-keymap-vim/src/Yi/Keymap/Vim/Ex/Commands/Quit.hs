@@ -1,5 +1,6 @@
 {-# LANGUAGE LambdaCase        #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# language RankNTypes #-}
 {-# LANGUAGE TupleSections     #-}
 {-# OPTIONS_HADDOCK show-extensions #-}
 
@@ -15,8 +16,9 @@
 module Yi.Keymap.Vim.Ex.Commands.Quit (parse) where
 
 import           Control.Applicative              (Alternative ((<|>)))
-import           Lens.Micro.Platform              (use)
+import           Lens.Micro.Platform              (use, Getting)
 import           Control.Monad                    (void, when)
+import           Control.Monad.State.Class        (MonadState)
 import qualified Data.Attoparsec.Text             as P (char, choice, many', string, try)
 import           Data.Foldable                    (find)
 import qualified Data.List.PointedList.Circular   as PL (length)
@@ -34,8 +36,7 @@ import           Yi.Monad                         (gets)
 import           Yi.String                        (showT)
 import           Yi.Window                        (bufkey)
 
--- TODO wtf is the type of this function? It looks like it was introduced
--- in the migration to microlens
+uses :: forall a b f s. MonadState s f => Getting a s a -> (a -> b) -> f b
 uses l f = f <$> use l
 
 parse :: EventString -> Maybe ExCommand

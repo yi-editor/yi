@@ -13,9 +13,7 @@
 module Yi.Keymap.Vim.ExMap (defExMap) where
 
 import           Control.Monad            (when)
-import           Control.Monad.Base       (liftBase)
 import           Data.Char                (isSpace)
-import qualified Data.HashMap.Strict      as HM (lookup)
 import           Data.Maybe               (fromJust)
 import           Data.Monoid              ((<>))
 import qualified Data.Text                as T (Text, drop, head, length, split, unwords, map, unpack)
@@ -25,10 +23,10 @@ import           Yi.Editor
 import           Yi.History               (historyDown, historyFinish, historyPrefixSet, historyUp)
 import           Yi.Keymap                (YiM)
 import           Yi.Keymap.Vim.Common
-import           Yi.Keymap.Vim.Utils      (matchFromBool, mkBindingY, mkStringBindingY, selectBinding)
+import           Yi.Keymap.Vim.Utils      (matchFromBool, selectBinding)
 import           Yi.Keymap.Vim.Ex
 import           Yi.Keymap.Vim.StateUtils (modifyStateE, resetCountE, switchModeE, getRegisterE)
-import qualified Yi.Rope                  as R (fromText, toText, toString)
+import qualified Yi.Rope                  as R (fromText, toText)
 import           Yi.String                (commonTPrefix')
 
 defExMap :: [EventString -> Maybe ExCommand] -> [VimBinding]
