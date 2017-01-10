@@ -1,0 +1,12 @@
+-- Input
+(1,1)
+123 foo
+456 bar
+789 baz
+-- Output
+(1,1)
+123 123
+456 456
+789 789
+-- Events
+<C-v>jjllygg0w<C-v>jjllpgg0

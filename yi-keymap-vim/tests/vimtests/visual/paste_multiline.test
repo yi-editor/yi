@@ -1,0 +1,17 @@
+-- Input
+(1,1)
+foo
+bar
+123
+baz
+
+-- Output
+(1,1)
+foo
+bar
+foo
+bar
+baz
+
+-- Events
+Vjy3ggVpgg0
