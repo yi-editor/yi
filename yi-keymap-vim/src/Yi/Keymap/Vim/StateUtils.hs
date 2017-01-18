@@ -91,7 +91,7 @@ flushAccumulatorE :: EditorM ()
 flushAccumulatorE = do
     accum <- vsAccumulator <$> getEditorDyn
     let repeatableAction = stringToRepeatableAction accum
-    modifyStateE $ \s ->
+    accum `seq` modifyStateE $ \s ->
         s { vsRepeatableAction = Just repeatableAction
           , vsAccumulator = mempty
           , vsCurrentMacroRecording = fmap (fmap (<> accum))

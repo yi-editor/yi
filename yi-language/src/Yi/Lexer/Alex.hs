@@ -212,7 +212,7 @@ lexScanner Lexer {..} src = Scanner
 -- | unfold lexer into a function that returns a stream of (state, token)
 unfoldLexer :: ((state, input) -> Maybe (token, (state, input)))
             -> (state, input) -> [(state, token)]
-unfoldLexer f b = case f b of
+unfoldLexer f b = fst b `seq` case f b of
              Nothing -> []
              Just (t, b') -> (fst b, t) : unfoldLexer f b'
 
