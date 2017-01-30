@@ -42,7 +42,7 @@ module Yi.Eval (
 import Prelude hiding (mapM_)
 
 import Lens.Micro.Platform ( (^.), (.=), (%=) )
-import Control.Monad (when)
+import Control.Monad (when, void, forever)
 import Data.Array ( elems )
 import Data.Binary ( Binary )
 import Data.Default ( Default, def )
@@ -177,7 +177,9 @@ instance Default HelpCache where
 instance YiVariable HelpCache
 
 #ifdef HINT
-type HintRequest = (String, MVar (Either LHI.InterpreterError Action))
+data HintRequest = HintEvaluate String (MVar (Either LHI.InterpreterError Action))
+                 | HintGetNames (MVar (Either LHI.InterpreterError [LHI.ModuleElem]))
+                 | HintDescribe String (MVar (Either LHI.InterpreterError String))
 newtype HintThreadVar = HintThreadVar (Maybe (MVar HintRequest))
   deriving (Typeable, Default)
 
@@ -211,10 +213,17 @@ hintEvaluatorThread request contextFile = do
 
     -- Yi.Keymap: Action lives there
     LHI.setImportsQ [("Yi", Nothing), ("Yi.Keymap",Just "Yi.Keymap")]
-    forever $ do
-      (s,response) <- lift $ takeMVar request
-      res <- try $ LHI.interpret ("Yi.makeAction (" ++ s ++ ")") (LHI.as :: Action)
-      lift $ putMVar response res
+
+    forever $ lift (takeMVar request) >>= \case
+      HintEvaluate s response -> do
+        res <- try $ LHI.interpret ("Yi.makeAction (" ++ s ++ ")") (LHI.as :: Action)
+        lift $ putMVar response res
+      HintGetNames response -> do
+        res <- try $ LHI.getModuleExports "Yi"
+        lift $ putMVar response res
+      HintDescribe name response -> do
+        res <- try $ LHI.typeOf name
+        lift $ putMVar response res
 
 -- Evaluator implemented by calling GHCi. This evaluator can run
 -- arbitrary expressions in the class 'YiAction'.
@@ -241,7 +250,7 @@ ghciEvaluator = Evaluator { execEditorActionImpl = execAction
       request <- getHintThread
       res <- io $ do
         response <- newEmptyMVar
-        putMVar request (s,response)
+        putMVar request (HintEvaluate s response)
         takeMVar response
       case res of
         Left err -> errorEditor (showT err)
@@ -252,11 +261,13 @@ ghciEvaluator = Evaluator { execEditorActionImpl = execAction
       NamesCache cache <- getEditorDyn
       result <- if null cache
                 then do
-                  res <- io $ LHI.runInterpreter $ do
-                    LHI.set [LHI.searchPath LHI.:= []]
-                    LHI.getModuleExports "Yi"
+                  request <- getHintThread
+                  res <- io $ do
+                    response <- newEmptyMVar
+                    putMVar request (HintGetNames response)
+                    takeMVar response
                   return $ case res of
-                    Left err ->[show err]
+                    Left err -> [show err]
                     Right exports -> flattenExports exports
                 else return $ sort cache
       putEditorDyn $ NamesCache result
@@ -275,14 +286,12 @@ ghciEvaluator = Evaluator { execEditorActionImpl = execAction
       HelpCache cache <- getEditorDyn
       description <- case name `M.lookup` cache of
                        Nothing -> do
-                         result <- io $ LHI.runInterpreter $ do
-                           LHI.set [LHI.searchPath LHI.:= []]
-                           -- when haveUserContext $ do
-                           --   LHI.loadModules [contextFile]
-                           --   LHI.setTopLevelModules ["Env"]
-                           LHI.setImportsQ [("Yi", Nothing), ("Yi.Keymap",Just "Yi.Keymap")]
-                           LHI.typeOf name
-                         let newDescription = either show id result
+                         request <- getHintThread
+                         res <- io $ do
+                           response <- newEmptyMVar
+                           putMVar request (HintDescribe name response)
+                           takeMVar response
+                         let newDescription = either show id res
                          putEditorDyn $ HelpCache $ M.insert name newDescription cache
                          return newDescription
                        Just description -> return description
