@@ -205,21 +205,20 @@ matchGotoCharMove :: String -> MatchResult Move
 matchGotoCharMove (m:[]) | m `elem` ('f' : "FtT") = PartialMatch
 matchGotoCharMove (m:"<lt>") | m `elem` ('f' : "FtT") = matchGotoCharMove (m:"<")
 matchGotoCharMove (m:c:[]) | m `elem` ('f' : "FtT") = WholeMatch $ Move style False action
-    where (dir, style, move) =
+    where (dir, style, move, offset) =
               case m of
-                  'f' -> (Forward, Inclusive, nextCInLineInc c)
-                  't' -> (Forward, Inclusive, nextCInLineExc c)
-                  'F' -> (Backward, Exclusive, prevCInLineInc c)
-                  'T' -> (Backward, Exclusive, prevCInLineExc c)
+                  'f' -> (Forward, Inclusive, nextCInLineInc c, pure ())
+                  't' -> (Forward, Inclusive, nextCInLineInc c, moveB Character Backward)
+                  'F' -> (Backward, Exclusive, prevCInLineInc c, pure ())
+                  'T' -> (Backward, Exclusive, prevCInLineInc c, moveB Character Forward)
                   _ -> error "can't happen"
           action mcount = do
                   let count = fromMaybe 1 mcount
                   p0 <- pointB
-                  replicateM_ (count - 1) $ do
-                      move
-                      moveB Character dir
+                  replicateM_ (count - 1) $ move
                   p1 <- pointB
                   move
                   p2 <- pointB
+                  offset
                   when (p1 == p2) $ moveTo p0
 matchGotoCharMove _ = NoMatch
