@@ -47,8 +47,8 @@ parse = Common.parse $ do
     from <- R.fromString <$> P.many' (P.satisfy (/= delimiter))
     void $ P.char delimiter
     to <- R.fromString <$> P.many' (P.satisfy (/= delimiter))
-    void $ P.char delimiter
-    flagChars <- P.many' (P.satisfy $ P.inClass "gic")
+    flagChars <- P.option "" $
+      P.char delimiter *> P.many' (P.satisfy $ P.inClass "gic")
     return $! substitute from to delimiter
         ('g' `elem` flagChars)
         ('i' `elem` flagChars)
