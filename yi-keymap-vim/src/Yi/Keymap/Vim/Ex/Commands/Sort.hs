@@ -38,4 +38,4 @@ sortA r = do
     region <- case r of
         Nothing -> regionOfB Document
         Just r' -> r'
-    sortLinesWithRegion region
+    sortLinesWithRegion region{regionEnd = regionEnd region - 1}

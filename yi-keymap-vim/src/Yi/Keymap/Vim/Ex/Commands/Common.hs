@@ -109,9 +109,8 @@ parseRange = fmap Just parseFullRange
 
 styleRange :: P.Parser (BufferM Region) -> P.Parser (BufferM Region)
 styleRange = fmap $ \regionB -> do
-    style <- getRegionStyle
     region <- regionB
-    convertRegionToStyleB region style
+    convertRegionToStyleB region LineWise
 
 parseFullRange :: P.Parser (BufferM Region)
 parseFullRange = P.char '%' *> return (regionOfB Document)
