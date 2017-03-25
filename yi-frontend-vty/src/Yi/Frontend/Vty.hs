@@ -66,6 +66,7 @@ import           Yi.Config
 import           Yi.Debug                       (logError, logPutStrLn)
 import           Yi.Editor
 import           Yi.Event                       (Event)
+import qualified Yi.Rope as R
 import           Yi.Style
 import           Yi.Types                       (YiConfigVariable)
 import qualified Yi.UI.Common                   as Common
@@ -74,7 +75,7 @@ import           Yi.Layout                      (HasNeighborWest)
 import           Yi.UI.TabBar                   (TabDescr (TabDescr), tabBarDescr)
 import           Yi.UI.Utils                    (arrangeItems, attributesPictureAndSelB)
 import           Yi.Frontend.Vty.Conversions          (colorToAttr, fromVtyEvent)
-import           Yi.Window                      (Window (bufkey, isMini, wkey))
+import           Yi.Window                      (Window (bufkey, isMini, wkey, width, height))
 
 
 data Rendered = Rendered
@@ -240,10 +241,12 @@ refresh fs e = do
         { Vty.picCursor = cursorPos }
 
 renderWindow :: UIConfig -> Editor -> SL.Rect -> HasNeighborWest -> (Window, Bool) -> Rendered
-renderWindow cfg e (SL.Rect x y w h) nb (win, focused) =
+renderWindow cfg e (SL.Rect x y _ _) nb (win, focused) =
     Rendered (Vty.translate x y $ if nb then vertSep Vty.<|> pict else pict)
              (fmap (\(i, j) -> (i + y, j + x')) cur)
     where
+        w = Yi.Window.width win
+        h = Yi.Window.height win
         x' = x + if nb then 1 else 0
         w' = w - if nb then 1 else 0
         b = findBufferWith (bufkey win) e
@@ -257,21 +260,25 @@ renderWindow cfg e (SL.Rect x y w h) nb (win, focused) =
         wsty = attributesToAttr ground Vty.defAttr
         eofsty = appEndo (eofStyle sty) ground
         (point, _) = runBuffer win b pointB
-        region = mkSizeRegion fromMarkPoint $ Size (w' * h')
+        (text, _) = runBuffer win b $
+          -- Take the window worth of lines; we now know exactly how
+          -- much text to render, parse and stroke.
+          fst . R.splitAtLine h' <$> streamB Forward fromMarkPoint
+
+        region = mkSizeRegion fromMarkPoint . Size $! R.length text
         -- Work around a problem with the mini window never displaying it's contents due to a
         -- fromMark that is always equal to the end of the buffer contents.
         (Just (MarkSet fromM _ _), _) = runBuffer win b (getMarks win)
         fromMarkPoint = if notMini
                         then fst $ runBuffer win b $ use $ markPointA fromM
                         else Point 0
-        (text, _) = runBuffer win b (indexedStreamB Forward fromMarkPoint)
 
         (attributes, _) = runBuffer win b $ attributesPictureAndSelB sty (currentRegex e) region
         -- TODO: I suspect that this costs quite a lot of CPU in the "dry run" which determines the window size;
         -- In that case, since attributes are also useless there, it might help to replace the call by a dummy value.
         -- This is also approximately valid of the call to "indexedAnnotatedStreamB".
         colors = map (fmap (($ Vty.defAttr) . attributesToAttr)) attributes
-        bufData =  paintChars Vty.defAttr colors text
+        bufData =  paintChars Vty.defAttr colors $! zip [fromMarkPoint..] (R.toString text)
         tabWidth = tabSize . fst $ runBuffer win b indentSettingsB
         prompt = if isMini win then miniIdentString b else ""
 
@@ -300,7 +307,7 @@ renderWindow cfg e (SL.Rect x y w h) nb (win, focused) =
                  else T.justifyLeft w' ' ' $ T.singleton (configWindowFill cfg)
 
         pict = Vty.vertCat $ take h' (rendered <> repeat (withAttributes eofsty filler)) <> modeLines
-        
+
         sepStyle = attributesToAttr (modelineAttributes sty) Vty.defAttr
         vertSep = Vty.charFill sepStyle ' ' 1 h
 

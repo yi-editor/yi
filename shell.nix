@@ -10,7 +10,7 @@ stdenv.mkDerivation {
   buildInputs = [
       cairo
       pango
-      gtk
+      gtk2
       ghc
       haskellPackages.gtk2hs-buildtools
       icu.out

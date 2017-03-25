@@ -1,4 +1,5 @@
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE BangPatterns #-}
 
 module Yi.IncrementalParse (recoverWith, symbol, eof, lookNext, testNext,
                             State, P, Parser(..), AlexState (..), scanner) where
@@ -26,8 +27,9 @@ scanner parser input = Scanner
         run :: State st token result -> [(State st token result, result)]
         run (st,process) = updateState0 process $ scanRun input st
 
+
         updateState0 :: Process token result -> [(st,token)] -> [(State st token result, result)]
         updateState0 _        [] = []
         updateState0 curState toks@((st,tok):rest) = ((st, curState), result) : updateState0 nextState rest
-            where nextState =       evalL $           pushSyms [tok]           curState
+            where !nextState =       evalL $           pushSyms [tok]           curState
                   result    = fst $ evalR $ pushEof $ pushSyms (fmap snd toks) curState

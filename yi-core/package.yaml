@@ -172,6 +172,7 @@ library:
         - Yi.UI.Utils
         - Yi.Window
         - System.FriendlyPath
+        - Parser.Incremental
 
 tests:
   tasty:

@@ -6,7 +6,7 @@ license: GPL-2
 github: yi-editor/yi
 category: Yi
 
-ghc-options: -Wall -ferror-spans -threaded
+ghc-options: -Wall -ferror-spans -threaded -eventlog -rtsopts
 
 flags:
   vty:

@@ -20,6 +20,7 @@ dependencies:
     - vty >= 5.4
     - yi-core
     - yi-language
+    - yi-rope
 
 library:
     source-dirs: src

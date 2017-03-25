@@ -51,7 +51,7 @@ import           Control.Concurrent             (ThreadId, forkIO, forkOS,
                                                  newMVar, readMVar, threadDelay)
 import           Control.Exc                    (ignoringException)
 import           Control.Exception              (SomeException, handle)
-import           Lens.Micro.Platform            (mapped, use, view, (%=), (%~), 
+import           Lens.Micro.Platform            (mapped, use, view, (%=), (%~),
                                                  (&), (.=), (.~), (^.))
 import           Control.Monad                  (forever, void, when)
 import           Control.Monad.Base             (MonadBase (liftBase))

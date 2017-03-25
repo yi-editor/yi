@@ -1,5 +1,6 @@
 flags: {}
 nix:
+  enable: true
   shell-file: shell.nix
 packages:
 - yi-core
@@ -22,3 +23,6 @@ extra-deps:
 - vty-5.13
 - ListLike-4.5
 resolver: nightly-2016-10-21
+build:
+ library-profiling: true
+ executable-profiling: false

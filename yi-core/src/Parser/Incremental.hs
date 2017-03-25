@@ -196,15 +196,15 @@ toQ (Enter err p) = \k h -> Log err $ toQ p k h
 toQ (Shif p) = \k h -> Sh' $ toQ p k h
 
 toP :: Parser s a -> forall r. Steps s r -> Steps s (a :< r)
-toP (Look a f) = \fut -> Sus (toP a fut) (\s -> toP (f s) fut)
-toP (Appl f x) = App . toP f . toP x
-toP (Pure x)   = Val x
-toP Empt = const Fail
-toP (Disj a b)  = \fut -> iBest (toP a fut) (toP b fut)
-toP (Bind p a2q) = \fut -> toQ p (\(_,a) -> toP (a2q a) fut) ()
-toP (Yuck p) = Dislike . toP p
-toP (Enter err p) = Log err . toP p
-toP (Shif p) = Sh' . toP p
+toP (Look a f) = {-# SCC "toP_Look" #-} \fut -> Sus (toP a fut) (\s -> toP (f s) fut)
+toP (Appl f x) = {-# SCC "toP_Appl" #-} App . toP f . toP x
+toP (Pure x)   = {-# SCC "toP_Pure" #-} Val x
+toP Empt = {-# SCC "toP_Empt" #-} const Fail
+toP (Disj a b)  = {-# SCC "toP_Disj" #-} \fut -> iBest (toP a fut) (toP b fut)
+toP (Bind p a2q) = {-# SCC "toP_Bind" #-} \fut -> toQ p (\(_,a) -> toP (a2q a) fut) ()
+toP (Yuck p) = {-# SCC "toP_Yuck" #-} Dislike . toP p
+toP (Enter err p) = {-# SCC "toP_Enter" #-} Log err . toP p
+toP (Shif p) = {-# SCC "toP_Shif" #-} Sh' . toP p
 
 -- | Intelligent, caching best.
 iBest :: Steps s a -> Steps s a -> Steps s a

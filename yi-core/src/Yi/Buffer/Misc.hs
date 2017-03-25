@@ -452,7 +452,7 @@ runBufferFull w b f =
                                    selMark = MarkValue 0 Backward, -- sel
                                    fromMark = MarkValue 0 Backward } -- from
                     else do
-                        Just mrks  <- uses winMarksA (M.lookup $ wkey (b ^. lastActiveWindowA))  
+                        Just mrks  <- uses winMarksA (M.lookup $ wkey (b ^. lastActiveWindowA))
                         forM mrks getMarkValueB
                 newMrks <- forM newMarkValues newMarkB
                 winMarksA %= M.insert (wkey w) newMrks
