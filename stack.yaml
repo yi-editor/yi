@@ -1,6 +1,5 @@
 flags: {}
 nix:
-  enable: true
   shell-file: shell.nix
 packages:
 - yi-core
