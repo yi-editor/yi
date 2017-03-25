@@ -67,7 +67,7 @@ substitute from to delimiter global caseInsensitive confirm regionText regionB =
               <>       (if caseInsensitive then "i" else "")
               <>       (if global then "g" else "")
   , cmdAction = EditorA $ do
-        let opts = QuoteRegex : if caseInsensitive then [IgnoreCase] else []
+        let opts = if caseInsensitive then [IgnoreCase] else []
         lines' <- withCurrentBuffer $ regionB >>= linesOfRegionB
         regex <- if R.null from
                     then getRegexE
