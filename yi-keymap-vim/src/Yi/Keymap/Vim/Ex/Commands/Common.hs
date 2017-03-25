@@ -109,9 +109,8 @@ parseRange = fmap Just parseFullRange
 
 styleRange :: P.Parser (BufferM Region) -> P.Parser (BufferM Region)
 styleRange = fmap $ \regionB -> do
-    style <- getRegionStyle
     region <- regionB
-    convertRegionToStyleB region style
+    convertRegionToStyleB region LineWise
 
 parseFullRange :: P.Parser (BufferM Region)
 parseFullRange = P.char '%' *> return (regionOfB Document)
@@ -165,11 +164,11 @@ parseLinePoint = parseCurrentLinePoint <|> parseNormalLinePoint
 -- | Parses .+-k
 parseCurrentLinePoint :: P.Parser (BufferM Point)
 parseCurrentLinePoint = do
-    void $ P.char '.'
-    relative <- P.option Nothing $ Just <$> do
-        c <- P.satisfy $ P.inClass "+-"
-        (i :: Int) <- read <$> P.many1 P.digit
-        return $ if c == '+' then i else -i
+    relative <- (Nothing <$ P.char '.' <|>) $
+      do () <$ P.char '.' <|> pure ()
+         c <- P.satisfy $ P.inClass "+-"
+         (i :: Int) <- read <$> P.many1 P.digit
+         return . Just $ if c == '+' then i else -i
     case relative of
         Nothing -> return $ pointB >>= solPointB
         Just offset -> return $ do
