@@ -2,6 +2,7 @@
 module Vim.TestExCommandParsers (tests) where
 
 import           Control.Applicative
+import           Data.List (inits)
 import           Data.Maybe
 import           Data.Monoid
 import qualified Data.Text as T
@@ -14,6 +15,7 @@ import qualified Yi.Keymap.Vim.Ex.Commands.Buffer as Buffer
 import qualified Yi.Keymap.Vim.Ex.Commands.BufferDelete as BufferDelete
 import qualified Yi.Keymap.Vim.Ex.Commands.Delete as Delete
 import qualified Yi.Keymap.Vim.Ex.Commands.Registers as Registers
+import qualified Yi.Keymap.Vim.Ex.Commands.Nohl as Nohl
 
 data CommandParser = CommandParser
     { cpDescription  :: String
@@ -110,6 +112,14 @@ commandParsers =
           , "register"
           , "registers"
           ]
+          False
+          False
+          (pure "")
+
+    , CommandParser
+          "Nohl.parse"
+          (Nohl.parse . Ev . T.pack)
+          (drop 3 $ inits "nohlsearch")
           False
           False
           (pure "")
