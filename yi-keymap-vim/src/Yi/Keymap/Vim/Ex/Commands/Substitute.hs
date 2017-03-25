@@ -11,10 +11,11 @@
 
 module Yi.Keymap.Vim.Ex.Commands.Substitute (parse) where
 
-import           Control.Applicative              (Alternative ((<|>)))
+import           Control.Applicative              (Alternative)
 import           Control.Monad                    (void)
 import qualified Data.Attoparsec.Text             as P (char, inClass, many', match,
-                                                        satisfy, string, try)
+                                                        satisfy, string, option,
+                                                        (<?>), Parser)
 import           Data.Maybe                       (fromMaybe)
 import           Data.Monoid                      ((<>))
 import qualified Data.Text                        as T (Text, cons, snoc)
@@ -31,16 +32,23 @@ import           Yi.Regex                         (makeSearchOptsM)
 import qualified Yi.Rope                          as R (YiString, fromString, length, null, toText, toString)
 import           Yi.Search
 
+-- | Skip one or no occurrences of a given parser.
+skipOptional :: Alternative f => f a -> f ()
+skipOptional p = P.option () (() <$ p)
+{-# SPECIALIZE skipOptional :: P.Parser a -> P.Parser () #-}
+
 parse :: EventString -> Maybe ExCommand
 parse = Common.parse $ do
     (rangeText, rangeB) <- over _2 (fromMaybe $ regionOfB Line) <$> P.match Common.parseRange
-    void $ P.try (P.string "substitute") <|> P.string "s"
+    P.char 's' *> 
+      skipOptional (P.string "ub" *> skipOptional (P.string "stitute"))
+      P.<?> "substitute"
     delimiter <- P.satisfy (`elem` ("!@#$%^&*()[]{}<>/.,~';:?-=" :: String))
     from <- R.fromString <$> P.many' (P.satisfy (/= delimiter))
     void $ P.char delimiter
     to <- R.fromString <$> P.many' (P.satisfy (/= delimiter))
-    void $ P.char delimiter
-    flagChars <- P.many' (P.satisfy $ P.inClass "gic")
+    flagChars <- P.option "" $
+      P.char delimiter *> P.many' (P.satisfy $ P.inClass "gic")
     return $! substitute from to delimiter
         ('g' `elem` flagChars)
         ('i' `elem` flagChars)
