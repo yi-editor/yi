@@ -1,3 +1,4 @@
+{-# LANGUAGE BangPatterns              #-}
 {-# LANGUAGE CPP                       #-}
 {-# LANGUAGE DeriveDataTypeable        #-}
 {-# LANGUAGE DeriveGeneric             #-}
@@ -26,7 +27,7 @@ module Yi.Buffer.Implementation
   , Mark, MarkValue(..)
   , Size
   , Direction (..)
-  , BufferImpl
+  , BufferImpl(..)
   , Overlay (..)
   , mkOverlay
   , overlayUpdate
@@ -62,7 +63,6 @@ module Yi.Buffer.Implementation
   , markPointAA
   , markGravityAA
   , mem
-  , BufferImpl
   ) where
 
 import           GHC.Generics        (Generic)
@@ -71,7 +71,7 @@ import           Data.Array          ((!))
 import           Data.Binary         (Binary (..))
 import           Data.Function       (on)
 import           Data.List           (groupBy)
-import qualified Data.Map            as M (Map, delete, empty, findMax, insert, lookup, map, maxViewWithKey)
+import qualified Data.Map.Strict     as M (Map, delete, empty, findMax, insert, lookup, map, maxViewWithKey)
 import           Data.Maybe          (fromMaybe)
 import qualified Data.Set            as Set (Set, delete, empty, filter, insert, map, toList)
 import           Data.Typeable       (Typeable)
@@ -98,11 +98,11 @@ type Marks = M.Map Mark MarkValue
 data HLState syntax = forall cache. HLState !(Highlighter cache syntax) !cache
 
 data Overlay = Overlay
-    { overlayOwner      :: R.YiString
-    , overlayBegin     :: MarkValue
-    , overlayEnd       :: MarkValue
-    , overlayStyle     :: StyleName
-    , overlayAnnotation :: R.YiString
+    { overlayOwner      :: !R.YiString
+    , overlayBegin     :: !MarkValue
+    , overlayEnd       :: !MarkValue
+    , overlayStyle     :: !StyleName
+    , overlayAnnotation :: !R.YiString
     }
 
 instance Eq Overlay where
@@ -117,6 +117,14 @@ instance Ord Overlay where
             , compare c c'
             , compare msg msg'
             ]
+
+instance Show Overlay where
+  show (Overlay a b c _ msg) = concat
+    [ "Overlay { "
+    , "overlayOwner = ", show a, ", "
+    , "overlayBegin = ", show b, ", "
+    , "overlayEnd = ", show c, ", "
+    , "overlayAnnotation = ", show msg, "}"]
 
 data BufferImpl syntax = FBufferData
     { mem         :: !YiString -- ^ buffer text
@@ -321,10 +329,10 @@ applyUpdateI u fb = touchSyntax (updatePoint u) $
                                    overlays = Set.map (mapOvlMarks shift) (overlays fb)}
                                    -- FIXME: this is inefficient; find a way to use mapMonotonic
                                    -- (problem is that marks can have different gravities)
-    where (p', amount) = case u of
-                           Insert pnt _ cs -> (insertChars p cs pnt, sz)
-                           Delete pnt _ _  -> (deleteChars p pnt sz, negate sz)
-          sz = updateSize u
+    where (!p', !amount) = case u of
+            Insert pnt _ cs -> (insertChars p cs pnt, sz)
+            Delete pnt _ _  -> (deleteChars p pnt sz, negate sz)
+          !sz = updateSize u
           shift = shiftMarkValue (updatePoint u) amount
           p = mem fb
           -- FIXME: remove collapsed overlays

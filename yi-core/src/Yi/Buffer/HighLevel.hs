@@ -129,6 +129,7 @@ import           Data.Char                (isDigit, isHexDigit, isOctDigit, isSp
 import           Data.List                (intersperse, sort)
 import           Data.Maybe               (catMaybes, fromMaybe, listToMaybe)
 import           Data.Monoid              ((<>))
+import qualified Data.Set                 as Set
 import qualified Data.Text                as T (Text, toLower, toUpper, unpack)
 import           Data.Time                (UTCTime)
 import           Data.Tuple               (swap)
@@ -599,8 +600,7 @@ scrollB n = do
     void $ gotoLnFrom n
     (markPointA fr .=) =<< pointB
   w <- askWindow wkey
-  (%=) pointFollowsWindowA (\old w' -> ((w == w') || old w'))
-
+  pointFollowsWindowA %= Set.insert w
 
 -- Scroll line above window to the bottom.
 scrollToLineAboveWindowB :: BufferM ()
@@ -617,9 +617,9 @@ scrollToLineBelowWindowB = do upFromBosB 0
 -- | Move the point to inside the viewable region
 snapInsB :: BufferM ()
 snapInsB = do
-    movePoint <- use pointFollowsWindowA
     w <- askWindow wkey
-    when (movePoint w) $ do
+    movePoint <- Set.member w <$> use pointFollowsWindowA
+    when movePoint $ do
         r <- winRegionB
         p <- pointB
         moveTo $ max (regionStart r) $ min (regionEnd r) p
@@ -643,9 +643,9 @@ pointScreenRelPosition _ _ _ = Within -- just to disable the non-exhaustive patt
 -- | Move the visible region to include the point
 snapScreenB :: Maybe ScrollStyle ->BufferM Bool
 snapScreenB style = do
-    movePoint <- use pointFollowsWindowA
     w <- askWindow wkey
-    if movePoint w then return False else do
+    movePoint <- Set.member w <$> use pointFollowsWindowA
+    if movePoint then return False else do
         inWin <- pointInWindowB =<< pointB
         if inWin then return False else do
             h <- askWindow actualLines

@@ -28,9 +28,10 @@ module Yi.Types where
 
 import           Control.Concurrent             (MVar, modifyMVar, modifyMVar_, readMVar)
 import           Control.Monad.Base             (MonadBase, liftBase)
-import           Control.Monad.Reader           (MonadReader, ReaderT, ask, asks, runReaderT)
-import           Control.Monad.RWS.Strict       (MonadWriter, RWS, ap, liftM3, void)
-import           Control.Monad.State            (MonadState (..), State, forever, runState)
+import           Control.Monad.Reader
+import           Control.Monad.State.Strict
+import           Control.Monad (ap, liftM3, void, forever)
+import qualified Data.Set                       as Set
 import           Data.Binary                    (Binary)
 import qualified Data.Binary                    as B (get, put)
 import           Data.Default                   (Default, def)
@@ -40,11 +41,12 @@ import qualified Data.DynamicState.Serializable as DynamicState (DynamicState)
 import           Data.Function                  (on)
 import           Data.List.NonEmpty             (NonEmpty)
 import           Data.List.PointedList          (PointedList)
-import qualified Data.Map                       as M (Map)
+import qualified Data.Map.Strict                as M (Map)
 import qualified Data.Text                      as T (Text)
 import qualified Data.Text.Encoding             as E (decodeUtf8, encodeUtf8)
 import           Data.Time                      (UTCTime (..))
 import           Data.Typeable                  (Typeable)
+import qualified Data.Sequence                  as S
 import           Data.Word                      (Word8)
 import           Yi.Buffer.Basic                (BufferRef, WindowRef)
 import           Yi.Buffer.Implementation
@@ -164,16 +166,18 @@ extractTopKeymap kms = forever (topKeymap kms)
 -- Yi.Buffer.Misc
 
 -- | The BufferM monad writes the updates performed.
-newtype BufferM a = BufferM { fromBufferM :: RWS Window [Update] FBuffer a }
-    deriving (Monad, Functor, MonadWriter [Update], MonadState FBuffer, MonadReader Window, Typeable)
+newtype BufferM a = BufferM { fromBufferM :: ReaderT Window (State FBuffer) a }
+    deriving ( Monad, Functor, Typeable
+             , MonadState FBuffer
+             , MonadReader Window )
 
 -- | Currently duplicates some of Vim's indent settings. Allowing a
 -- buffer to specify settings that are more dynamic, perhaps via
 -- closures, could be useful.
 data IndentSettings = IndentSettings
-  { expandTabs :: Bool -- ^ Insert spaces instead of tabs as possible
-  , tabSize    :: Int  -- ^ Size of a Tab
-  , shiftWidth :: Int  -- ^ Indent by so many columns
+  { expandTabs :: !Bool -- ^ Insert spaces instead of tabs as possible
+  , tabSize    :: !Int  -- ^ Size of a Tab
+  , shiftWidth :: !Int  -- ^ Indent by so many columns
   } deriving (Eq, Show, Typeable)
 
 instance Applicative BufferM where
@@ -193,7 +197,7 @@ instance Eq FBuffer where
 type WinMarks = MarkSet Mark
 
 data MarkSet a = MarkSet { fromMark, insMark, selMark :: !a }
-               deriving (Traversable, Foldable, Functor)
+               deriving (Traversable, Foldable, Functor, Show)
 
 instance Binary a => Binary (MarkSet a) where
   put (MarkSet f i s) = B.put f >> B.put i >> B.put s
@@ -211,7 +215,7 @@ data Attributes
     -- ^ prefered column to arrive at visually (ie, respecting wrap)
     , stickyEol :: !Bool
     -- ^ stick to the end of line (used by vim bindings mostly)
-    , pendingUpdates :: ![UIUpdate]
+    , pendingUpdates :: !(S.Seq UIUpdate)
     -- ^ updates that haven't been synched in the UI yet
     , selectionStyle :: !SelectionStyle
     , keymapProcess :: !KeymapProcess
@@ -222,33 +226,36 @@ data Attributes
     , readOnly :: !Bool -- ^ read-only flag
     , inserting :: !Bool -- ^ the keymap is ready for insertion into this buffer
     , directoryContent :: !Bool -- ^ does buffer contain directory contents
-    , pointFollowsWindow :: !(WindowRef -> Bool)
+    , pointFollowsWindow :: !(Set.Set WindowRef)
     , updateTransactionInFlight :: !Bool
-    , updateTransactionAccum :: ![Update]
+    , updateTransactionAccum :: !(S.Seq Update)
     , fontsizeVariation :: !Int
-    , encodingConverterName :: Maybe R.ConverterName
+    , encodingConverterName :: !(Maybe R.ConverterName)
       -- ^ How many points (frontend-specific) to change
       -- the font by in this buffer
+    , updateStream :: !(S.Seq Update)
+    -- ^ Updates that we've seen in this buffer, basically
+    -- "write-only". Work-around for broken WriterT.
     } deriving Typeable
 
 
 instance Binary Yi.Types.Attributes where
     put (Yi.Types.Attributes n b u bd pc pv se pu selectionStyle_
-         _proc wm law lst ro ins _dc _pfw isTransacPresent transacAccum fv cn) = do
+         _proc wm law lst ro ins _dc _pfw isTransacPresent transacAccum fv cn lg') = do
       let putTime (UTCTime x y) = B.put (fromEnum x) >> B.put (fromEnum y)
       B.put n >> B.put b >> B.put u >> B.put bd
       B.put pc >> B.put pv >> B.put se >> B.put pu >> B.put selectionStyle_ >> B.put wm
       B.put law >> putTime lst >> B.put ro >> B.put ins >> B.put _dc
-      B.put isTransacPresent >> B.put transacAccum >> B.put fv >> B.put cn
+      B.put isTransacPresent >> B.put transacAccum >> B.put fv >> B.put cn >> B.put lg'
     get = Yi.Types.Attributes <$> B.get <*> B.get <*> B.get <*> B.get <*>
           B.get <*> B.get <*> B.get <*> B.get <*> B.get <*> pure I.End <*> B.get <*> B.get
           <*> getTime <*> B.get <*> B.get <*> B.get
-          <*> pure (const False) <*> B.get <*> B.get <*> B.get <*> B.get
+          <*> pure ({- TODO can serialise now -}mempty) <*> B.get <*> B.get <*> B.get <*> B.get <*> B.get
       where
         getTime = UTCTime <$> (toEnum <$> B.get) <*> (toEnum <$> B.get)
 
-data BufferId = MemBuffer T.Text
-              | FileBuffer FilePath
+data BufferId = MemBuffer !T.Text
+              | FileBuffer !FilePath
               deriving (Show, Eq, Ord)
 
 instance Binary BufferId where
@@ -263,7 +270,7 @@ instance Binary BufferId where
 data SelectionStyle = SelectionStyle
   { highlightSelection :: !Bool
   , rectangleSelection :: !Bool
-  } deriving Typeable
+  } deriving (Typeable, Show)
 
 instance Binary SelectionStyle where
   put (SelectionStyle h r) = B.put h >> B.put r
@@ -407,29 +414,29 @@ data CursorStyle = AlwaysFat
 -- | Configuration record. All Yi hooks can be set here.
 data Config = Config {startFrontEnd :: UIBoot,
                       -- ^ UI to use.
-                      configUI :: UIConfig,
+                      configUI :: !UIConfig,
                       -- ^ UI-specific configuration.
-                      startActions :: [Action],
+                      startActions :: ![Action],
                       -- ^ Actions to run when the editor is started.
-                      initialActions :: [Action],
+                      initialActions :: ![Action],
                       -- ^ Actions to run after startup (after startActions) or reload.
-                      defaultKm :: KeymapSet,
+                      defaultKm :: !KeymapSet,
                       -- ^ Default keymap to use.
-                      configInputPreprocess :: I.P Event Event,
-                      modeTable :: [AnyMode],
+                      configInputPreprocess :: !(I.P Event Event),
+                      modeTable :: ![AnyMode],
                       -- ^ List modes by order of preference.
-                      debugMode :: Bool,
+                      debugMode :: !Bool,
                       -- ^ Produce a .yi.dbg file with a lot of debug information.
-                      configRegionStyle :: RegionStyle,
+                      configRegionStyle :: !RegionStyle,
                       -- ^ Set to 'Exclusive' for an emacs-like behaviour.
-                      configKillringAccumulate :: Bool,
+                      configKillringAccumulate :: !Bool,
                       -- ^ Set to 'True' for an emacs-like behaviour, where
                       -- all deleted text is accumulated in a killring.
-                      configCheckExternalChangesObsessively :: Bool,
-                      bufferUpdateHandler :: [[Update] -> BufferM ()],
-                      layoutManagers :: [AnyLayoutManager],
+                      configCheckExternalChangesObsessively :: !Bool,
+                      bufferUpdateHandler :: !(S.Seq (S.Seq Update -> BufferM ())),
+                      layoutManagers :: ![AnyLayoutManager],
                       -- ^ List of layout managers for 'cycleLayoutManagersNext'
-                      configVars :: ConfigState.DynamicState
+                      configVars :: !ConfigState.DynamicState
                       -- ^ Custom configuration, containing the 'YiConfigVariable's. Configure with 'configVariableA'.
                      }
 
