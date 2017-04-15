@@ -118,6 +118,7 @@ module Yi.Config.Simple (
 import           Lens.Micro.Platform (Lens', (%=), (%~), use, lens)
 import           Control.Monad.State hiding (modify, get)
 import qualified Data.Text as T
+import qualified Data.Sequence as S
 import           Text.Printf(printf)
 import           Yi.Boot
 import           Yi.Buffer hiding (modifyMode)
@@ -372,5 +373,5 @@ killringAccumulate :: Field Bool
 killringAccumulate = configKillringAccumulateA
 
 -- | ?
-bufferUpdateHandler :: Field [[Update] -> BufferM ()]
+bufferUpdateHandler :: Field (S.Seq (S.Seq Update -> BufferM ()))
 bufferUpdateHandler = bufferUpdateHandlerA

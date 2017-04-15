@@ -1,6 +1,7 @@
 {-# LANGUAGE CPP                #-}
 {-# LANGUAGE DeriveGeneric      #-}
 {-# LANGUAGE TemplateHaskell    #-}
+{-# LANGUAGE ViewPatterns       #-}
 
 -- | An implementation of restricted, linear undo, as described in:
 --
@@ -55,9 +56,10 @@ module Yi.Buffer.Undo (
   , Change(AtomicChange, InteractivePoint)
    ) where
 
-import           GHC.Generics             (Generic)
-
 import           Data.Binary              (Binary (..))
+import           Data.Monoid
+import qualified Data.Sequence as S
+import           GHC.Generics             (Generic)
 import           Yi.Buffer.Implementation
 
 data Change = SavedFilePoint
@@ -70,7 +72,7 @@ data Change = SavedFilePoint
 instance Binary Change
 
 -- | A URList consists of an undo and a redo list.
-data URList = URList ![Change] ![Change]
+data URList = URList !(S.Seq Change) !(S.Seq Change)
             deriving (Show, Generic)
 instance Binary URList
 
@@ -78,14 +80,14 @@ instance Binary URList
 -- Notice we must have a saved file point as this is when we assume we are
 -- opening the file so it is currently the same as the one on disk
 emptyU :: URList
-emptyU = URList [SavedFilePoint] []
+emptyU = URList (S.singleton SavedFilePoint) S.empty
 
 -- | Add an action to the undo list.
 -- According to the restricted, linear undo model, if we add a command
 -- whilst the redo list is not empty, we will lose our redoable changes.
 addChangeU :: Change -> URList -> URList
 addChangeU InteractivePoint (URList us rs) = URList (addIP us) rs
-addChangeU u (URList us _rs) = URList (u:us) []
+addChangeU u (URList us _) = URList (u S.<| us) S.empty
 
 -- | Add a saved file point so that we can tell that the buffer has not
 -- been modified since the previous saved file point.
@@ -93,50 +95,55 @@ addChangeU u (URList us _rs) = URList (u:us) []
 -- since they are now worthless.
 setSavedFilePointU :: URList -> URList
 setSavedFilePointU (URList undos redos) =
-  URList (SavedFilePoint : cleanUndos) cleanRedos
+  URList (SavedFilePoint S.<| cleanUndos) cleanRedos
   where
-  cleanUndos = filter isNotSavedFilePoint undos
-  cleanRedos = filter isNotSavedFilePoint redos
+  cleanUndos = S.filter isNotSavedFilePoint undos
+
+  cleanRedos = S.filter isNotSavedFilePoint redos
+
   isNotSavedFilePoint :: Change -> Bool
   isNotSavedFilePoint SavedFilePoint = False
   isNotSavedFilePoint _              = True
 
 -- | This undoes one interaction step.
-undoU :: Mark -> URList -> BufferImpl syntax -> (BufferImpl syntax, (URList, [Update]))
-undoU m = undoUntilInteractive m [] . undoInteractive
+undoU :: Mark -> URList -> BufferImpl syntax -> (BufferImpl syntax, (URList, S.Seq Update))
+undoU m = undoUntilInteractive m mempty . undoInteractive
 
 -- | This redoes one iteraction step.
-redoU :: Mark -> URList -> BufferImpl syntax -> (BufferImpl syntax, (URList, [Update]))
+redoU :: Mark -> URList -> BufferImpl syntax -> (BufferImpl syntax, (URList, S.Seq Update))
 redoU = asRedo . undoU
 
 -- | Prepare undo by moving one interaction point from undoes to redoes.
 undoInteractive :: URList -> URList
 undoInteractive (URList us rs) = URList (remIP us) (addIP rs)
 
-remIP, addIP :: [Change] -> [Change]
-
 -- | Remove an initial interactive point, if there is one
-remIP (InteractivePoint:xs) = xs
-remIP xs = xs
+remIP :: S.Seq Change -> S.Seq Change
+remIP xs = case S.viewl xs of
+  InteractivePoint S.:< xs' -> xs'
+  _ -> xs
 
 -- | Insert an initial interactive point, if there is none
-addIP xs@(InteractivePoint:_) = xs
-addIP xs = InteractivePoint:xs
+addIP :: S.Seq Change -> S.Seq Change
+addIP xs = case S.viewl xs of
+  InteractivePoint S.:< _ -> xs
+  _ -> InteractivePoint S.<| xs
 
 -- | Repeatedly undo actions, storing away the inverse operations in the
 --   redo list.
-undoUntilInteractive :: Mark -> [Update] -> URList -> BufferImpl syntax -> (BufferImpl syntax, (URList, [Update]))
-undoUntilInteractive pointMark xs ur@(URList cs rs) b = case cs of
-      []                   -> (b, (ur, xs))
-      [SavedFilePoint]     -> (b, (ur, xs)) -- Why this special case?
-      (InteractivePoint:_) -> (b, (ur, xs))
-      (SavedFilePoint:cs') ->
-        undoUntilInteractive pointMark xs (URList cs' (SavedFilePoint:rs)) b
-      (AtomicChange u:cs') ->
-        let ur' = URList cs' (AtomicChange (reverseUpdateI u):rs)
-            b' = applyUpdateWithMoveI u b
-            (b'', (ur'', xs'')) = undoUntilInteractive pointMark xs ur' b'
-        in (b'', (ur'', u:xs''))
+undoUntilInteractive :: Mark -> S.Seq Update -> URList -> BufferImpl syntax
+                     -> (BufferImpl syntax, (URList, S.Seq Update))
+undoUntilInteractive pointMark xs ur@(URList cs rs) b = case S.viewl cs of
+  S.EmptyL -> (b, (ur, xs))
+  SavedFilePoint S.:< (S.viewl -> S.EmptyL) -> (b, (ur, xs)) -- Why this special case?
+  InteractivePoint S.:< _ -> (b, (ur, xs))
+  SavedFilePoint S.:< cs' ->
+    undoUntilInteractive pointMark xs (URList cs' (SavedFilePoint S.<| rs)) b
+  AtomicChange u S.:< cs' ->
+    let ur' = URList cs' (AtomicChange (reverseUpdateI u) S.<| rs)
+        b' = applyUpdateWithMoveI u b
+        (b'', (ur'', xs')) = undoUntilInteractive pointMark xs ur' b'
+    in (b'', (ur'', u S.<| xs'))
     where
       -- Apply a /valid/ update and also move point in buffer to update position
       applyUpdateWithMoveI :: Update -> BufferImpl syntax -> BufferImpl syntax
@@ -148,8 +155,10 @@ undoUntilInteractive pointMark xs ur@(URList cs rs) b = case cs of
 
 -- | Run the undo-function @f@ on a swapped URList making it
 --   operate in a redo fashion instead of undo.
-asRedo :: (URList -> t -> (t, (URList, [Update]))) -> URList -> t -> (t, (URList, [Update]))
-asRedo f ur x = let (y,(ur',rs)) = f (swapUndoRedo ur) x in (y,(swapUndoRedo ur',rs))
+asRedo :: (URList -> t -> (t, (URList, S.Seq Update))) -> URList -> t
+       -> (t, (URList, S.Seq Update))
+asRedo f ur x = let (y,(ur',rs)) = f (swapUndoRedo ur) x
+                in (y,(swapUndoRedo ur',rs))
   where
     swapUndoRedo :: URList -> URList
     swapUndoRedo (URList us rs) = URList rs us
@@ -162,8 +171,8 @@ asRedo f ur x = let (y,(ur',rs)) = f (swapUndoRedo ur) x in (y,(swapUndoRedo ur'
 isAtSavedFilePointU :: URList -> Bool
 isAtSavedFilePointU (URList us _) = isUnchanged us
   where
-    isUnchanged cs = case cs of
-      []                       -> False
-      (SavedFilePoint : _)     -> True
-      (InteractivePoint : cs') -> isUnchanged cs'
-      _                        -> False
+    isUnchanged cs = case S.viewl cs of
+      S.EmptyL                  -> False
+      SavedFilePoint S.:< _     -> True
+      InteractivePoint S.:< cs' -> isUnchanged cs'
+      _                         -> False

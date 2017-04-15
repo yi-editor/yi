@@ -46,9 +46,8 @@ module Yi.Core
 
 import           Prelude                        hiding (elem, mapM_, or)
 
-import           Control.Concurrent             (ThreadId, forkIO, forkOS,
-                                                 modifyMVar, modifyMVar_,
-                                                 newMVar, readMVar, threadDelay)
+import           Control.Concurrent             (forkOS, modifyMVar, modifyMVar_
+                                                ,newMVar, readMVar, threadDelay)
 import           Control.Exc                    (ignoringException)
 import           Control.Exception              (SomeException, handle)
 import           Lens.Micro.Platform            (mapped, use, view, (%=), (%~),
@@ -65,7 +64,7 @@ import qualified Data.List.PointedList.Circular as PL (PointedList (_focus), len
 import           Data.List.Split                (splitOn)
 import qualified Data.Map                       as M (assocs, delete, empty, fromList, insert, member)
 import           Data.Maybe                     (fromMaybe, isNothing)
-import           Data.Monoid                    (First (First, getFirst), (<>))
+import           Data.Monoid                    (First (First, getFirst), (<>), mempty)
 import qualified Data.Text                      as T (Text, pack, unwords)
 import           Data.Time                      (getCurrentTime)
 import           Data.Time.Clock.POSIX          (posixSecondsToUTCTime)
@@ -320,8 +319,8 @@ refreshEditor = onYiVar $ \yi var -> do
         -- Terminate stale processes.
         terminateSubprocesses (staleProcess $ buffers e7) yi var {yiEditor = e7}
   where
-    clearUpdates = pendingUpdatesA .~ []
-    clearFollow = pointFollowsWindowA .~ const False
+    clearUpdates = pendingUpdatesA .~ mempty
+    clearFollow = pointFollowsWindowA .~ mempty
     -- Is this process stale? (associated with a deleted buffer)
     staleProcess bs p = not (bufRef p `M.member` bs)
 

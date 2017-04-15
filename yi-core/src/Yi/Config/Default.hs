@@ -96,15 +96,15 @@ defaultConfig =
            , configTheme = defaultTheme
            }
          , defaultKm        = modelessKeymapSet nilKeymap
-         , startActions     = []
-         , initialActions   = []
+         , startActions     = mempty
+         , initialActions   = mempty
          , modeTable = [AnyMode fundamentalMode]
          , debugMode = False
          , configKillringAccumulate = False
          , configCheckExternalChangesObsessively = True
          , configRegionStyle = Exclusive
          , configInputPreprocess = I.idAutomaton
-         , bufferUpdateHandler = []
+         , bufferUpdateHandler = mempty
          , layoutManagers = [hPairNStack 1, vPairNStack 1, tall, wide]
          , configVars = mempty
          }

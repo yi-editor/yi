@@ -1,3 +1,4 @@
+{-# LANGUAGE BangPatterns               #-}
 {-# LANGUAGE CPP                        #-}
 {-# LANGUAGE DeriveDataTypeable         #-}
 {-# LANGUAGE DeriveFoldable             #-}
@@ -193,29 +194,30 @@ module Yi.Buffer.Misc
   , fontsizeVariationA
   , encodingConverterNameA
   , stickyEolA
+  , queryBuffer
   ) where
 
 import           Prelude                        hiding (foldr, mapM, notElem)
 
-import           Lens.Micro.Platform                     (Lens', lens, (%~), (^.), use, (.=), (%=), view)
-import           Control.Monad.RWS.Strict       (Endo (Endo, appEndo),
-                                                 MonadReader (ask), MonadState,
-                                                 MonadWriter (tell),
-                                                 asks, gets, join, modify,
-                                                 replicateM_, runRWS, void,
-                                                 when, (<>))
+import           Control.Applicative (liftA2)
+import           Control.Monad (when, void, replicateM_, join)
+import           Data.Monoid
+import           Control.Monad.Reader
+import           Control.Monad.State.Strict     hiding (get, put)
 import           Data.Binary                    (Binary (..), Get)
 import           Data.Char                      (ord)
 import           Data.Default                   (Default (def))
 import           Data.DynamicState.Serializable (getDyn, putDyn)
 import           Data.Foldable                  (Foldable (foldr), forM_, notElem)
-import qualified Data.Map                       as M (Map, empty, insert, lookup)
+import qualified Data.Map.Strict                as M (Map, empty, insert, lookup)
 import           Data.Maybe                     (fromMaybe, isNothing)
+import qualified Data.Sequence                  as S
 import qualified Data.Set                       as Set (Set)
 import qualified Data.Text                      as T (Text, concat, justifyRight, pack, snoc, unpack)
 import qualified Data.Text.Encoding             as E (decodeUtf8, encodeUtf8)
 import           Data.Time                      (UTCTime (UTCTime))
 import           Data.Traversable               (Traversable (mapM), forM)
+import           Lens.Micro.Platform            (Lens', lens, (&), (.~), (%~), (^.), use, (.=), (%=), view)
 import           Numeric                        (showHex)
 import           System.FilePath                (joinPath, splitPath)
 import           Yi.Buffer.Basic                (BufferRef, Point (..), Size (Size), WindowRef)
@@ -396,7 +398,7 @@ queryBuffer :: (forall syntax. BufferImpl syntax -> x) -> BufferM x
 queryBuffer x = gets (queryRawbuf x)
 
 modifyBuffer :: (forall syntax. BufferImpl syntax -> BufferImpl syntax) -> BufferM ()
-modifyBuffer x = modify (modifyRawbuf x)
+modifyBuffer x = modify' (modifyRawbuf x)
 
 queryAndModify :: (forall syntax. BufferImpl syntax -> (BufferImpl syntax,x)) -> BufferM x
 queryAndModify x = getsAndModify (queryAndModifyRawbuf x)
@@ -404,7 +406,7 @@ queryAndModify x = getsAndModify (queryAndModifyRawbuf x)
 -- | Adds an "overlay" to the buffer
 addOverlayB :: Overlay -> BufferM ()
 addOverlayB ov = do
-  pendingUpdatesA %= (++ [overlayUpdate ov])
+  pendingUpdatesA %= (S.|> overlayUpdate ov)
   modifyBuffer $ addOverlayBI ov
 
 getOverlaysOfOwnerB :: R.YiString -> BufferM (Set.Set Overlay)
@@ -413,7 +415,7 @@ getOverlaysOfOwnerB owner = queryBuffer (getOverlaysOfOwnerBI owner)
 -- | Remove an existing "overlay"
 delOverlayB :: Overlay -> BufferM ()
 delOverlayB ov = do
-  pendingUpdatesA %= (++ [overlayUpdate ov])
+  pendingUpdatesA %= (S.|> overlayUpdate ov)
   modifyBuffer $ delOverlayBI ov
 
 delOverlaysOfOwnerB :: R.YiString -> BufferM ()
@@ -438,9 +440,13 @@ getMarks = gets . getMarksRaw
 getMarksRaw :: Window -> FBuffer -> Maybe WinMarks
 getMarksRaw w b = M.lookup (wkey w) (b ^. winMarksA)
 
-runBufferFull :: Window -> FBuffer -> BufferM a -> (a, [Update], FBuffer)
+runBufferFull :: Window -> FBuffer -> BufferM a -> (a, S.Seq Update, FBuffer)
 runBufferFull w b f =
-    let (a, b', updates) = runRWS (fromBufferM f') w b
+    let (a, b') = runState (runReaderT (fromBufferM f') w) b
+        updates = b' ^. updateStreamA
+        -- We're done running BufferM, don't store updates in editor
+        -- state.
+        !newSt = b' & updateStreamA .~ mempty
         f' = do
             ms <- getMarks w
             when (isNothing ms) $ do
@@ -458,7 +464,7 @@ runBufferFull w b f =
                 winMarksA %= M.insert (wkey w) newMrks
             lastActiveWindowA .= w
             f
-    in (a, updates, pendingUpdatesA %~ (++ fmap TextUpdate updates) $ b')
+    in (a, updates, pendingUpdatesA %~ (S.>< fmap TextUpdate updates) $ newSt)
 
 getMarkValueRaw :: Mark -> FBuffer -> MarkValue
 getMarkValueRaw m = fromMaybe (MarkValue 0 Forward) . queryRawbuf (getMarkValueBI m)
@@ -506,14 +512,14 @@ commitUpdateTransactionB = do
   else do
     updateTransactionInFlightA .= False
     transacAccum <- use updateTransactionAccumA
-    updateTransactionAccumA .= []
+    updateTransactionAccumA .= mempty
 
-    undosA %= (appEndo . mconcat) (Endo . addChangeU . AtomicChange <$> transacAccum)
+    undosA %= (appEndo . foldr (<>) mempty) (Endo . addChangeU . AtomicChange <$> transacAccum)
     undosA %= addChangeU InteractivePoint
 
 
 undoRedo :: (forall syntax. Mark -> URList -> BufferImpl syntax
-             -> (BufferImpl syntax, (URList, [Update])))
+             -> (BufferImpl syntax, (URList, S.Seq Update)))
          -> BufferM ()
 undoRedo f = do
   isTransacPresent <- use updateTransactionInFlightA
@@ -524,7 +530,7 @@ undoRedo f = do
       ur <- use undosA
       (ur', updates) <- queryAndModify (f m ur)
       undosA .= ur'
-      tell updates
+      updateStreamA %= (<> updates)
 
 undoB :: BufferM ()
 undoB = undoRedo undoU
@@ -597,7 +603,7 @@ newB unique nm s =
             , preferVisCol = Nothing
             , stickyEol = False
             , bufferDynamic = mempty
-            , pendingUpdates = []
+            , pendingUpdates = mempty
             , selectionStyle = SelectionStyle False False
             , keymapProcess = I.End
             , winMarks = M.empty
@@ -606,11 +612,12 @@ newB unique nm s =
             , readOnly = False
             , directoryContent = False
             , inserting = True
-            , pointFollowsWindow = const False
+            , pointFollowsWindow = mempty
             , updateTransactionInFlight = False
-            , updateTransactionAccum = []
+            , updateTransactionAccum = mempty
             , fontsizeVariation = 0
             , encodingConverterName = Nothing
+            , updateStream = mempty
             } }
 
 epoch :: UTCTime
@@ -666,26 +673,26 @@ checkRO = do
 
 applyUpdate :: Update -> BufferM ()
 applyUpdate update = do
-  ro    <- checkRO
-  valid <- queryBuffer (isValidUpdate update)
-  when (not ro && valid) $ do
+  runp <- liftA2 (&&) (not <$> checkRO) (queryBuffer (isValidUpdate update))
+  when runp $ do
     forgetPreferCol
-    let reversed = reverseUpdateI update
     modifyBuffer (applyUpdateI update)
-
     isTransacPresent <- use updateTransactionInFlightA
     if isTransacPresent
-    then updateTransactionAccumA %= (reversed:)
-    else undosA %= addChangeU (AtomicChange reversed)
+    then updateTransactionAccumA %= (reverseUpdateI update S.<|)
+    else undosA %= addChangeU (AtomicChange $ reverseUpdateI update)
 
-    tell [update]
-   -- otherwise, just ignore.
+    updateStreamA %= (S.|> update)
+
 
 -- | Revert all the pending updates; don't touch the point.
 revertPendingUpdatesB :: BufferM ()
 revertPendingUpdatesB = do
   updates <- use pendingUpdatesA
-  modifyBuffer (flip (foldr (\u bi -> applyUpdateI (reverseUpdateI u) bi)) [u | TextUpdate u <- updates])
+  modifyBuffer $ \stx ->
+    let applyTextUpdate (TextUpdate u) bi = applyUpdateI (reverseUpdateI u) bi
+        applyTextUpdate _ bi = bi
+    in foldr applyTextUpdate stx updates
 
 -- | Write an element into the buffer at the current point.
 writeB :: Char -> BufferM ()
@@ -874,8 +881,8 @@ getInsMark = insMark <$> askMarks
 
 askMarks :: BufferM WinMarks
 askMarks = do
-    Just ms <- getMarks =<< ask
-    return ms
+  Just !ms <- getMarks =<< ask
+  return ms
 
 getMarkB :: Maybe String -> BufferM Mark
 getMarkB m = do
@@ -961,7 +968,11 @@ pointOfLineColB :: Int -> Int -> BufferM Point
 pointOfLineColB line col = savingPointB $ moveToLineColB line col >> pointB
 
 forgetPreferCol :: BufferM ()
-forgetPreferCol = preferColA .= Nothing >> preferVisColA .= Nothing
+forgetPreferCol = do
+  preferColA .= Nothing
+  preferVisColA .= Nothing
+  !st <- gets id
+  return $! (st `seq` ())
 
 savingPrefCol :: BufferM a -> BufferM a
 savingPrefCol f = do

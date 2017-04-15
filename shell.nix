@@ -1,7 +1,7 @@
 { pkgs ? import <nixpkgs> {} }:
 
 with pkgs;
-let ghc = haskell.packages.ghc801.ghcWithPackages (pkgs: [pkgs.gtk2hs-buildtools]);
+let ghc = haskell.packages.ghc802.ghcWithPackages (pkgs: [pkgs.gtk2hs-buildtools]);
 in
 
 stdenv.mkDerivation {

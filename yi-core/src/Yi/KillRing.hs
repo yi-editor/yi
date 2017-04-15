@@ -34,10 +34,10 @@ import           Yi.Buffer.Basic     (Direction (..))
 import qualified Yi.Rope             as R (YiString, length)
 
 
-data Killring = Killring { _krKilled :: Bool
-                         , _krAccumulate :: Bool
-                         , _krContents :: NonEmpty R.YiString
-                         , _krLastYank :: Bool
+data Killring = Killring { _krKilled :: !Bool
+                         , _krAccumulate :: !Bool
+                         , _krContents :: !(NonEmpty R.YiString)
+                         , _krLastYank :: !Bool
                          } deriving (Show, Eq)
 
 instance Binary Killring where

@@ -112,7 +112,7 @@ import           Data.Binary                    (Binary, get, put)
 import           Data.Default                   (Default, def)
 import qualified Data.DelayList                 as DelayList (insert)
 import           Data.DynamicState.Serializable (getDyn, putDyn)
-import           Data.Foldable                  (Foldable (foldl, foldr), all, concatMap, toList)
+import           Data.Foldable                  (Foldable (foldl, foldl', foldr), all, concatMap, toList)
 import           Data.List                      (delete, (\\))
 import           Data.List.NonEmpty             (NonEmpty (..), fromList, nub)
 import qualified Data.List.NonEmpty             as NE (filter, head, length, toList, (<|))
@@ -128,6 +128,7 @@ import qualified Data.Map                       as M (delete, elems, empty,
 import           Data.Maybe                     (fromJust, fromMaybe, isNothing)
 import qualified Data.Monoid                    as Mon ((<>))
 import           Data.Semigroup                 ((<>))
+import qualified Data.Sequence                  as S
 import qualified Data.Text                      as T (Text, null, pack, unlines, unpack, unwords)
 import           System.FilePath                (splitPath)
 import           Yi.Buffer
@@ -149,7 +150,7 @@ import           Yi.Window
 assign :: MonadState s m => ASetter s s a b -> b -> m ()
 assign = (.=)
 
-uses l f = f <$> use l 
+uses l f = f <$> use l
 
 instance Binary Editor where
   put (Editor bss bs supply ts dv _sl msh kr regex _dir _ev _cwa ) =
@@ -369,16 +370,17 @@ withGivenBufferAndWindow w k f = withEditor $ do
                    (v, us, b') = runBufferFull w b f
                in (e & buffersA .~ mapAdjust' (const b') k (buffers e)
                      & killringA %~
-                        if accum && all updateIsDelete us
-                        then foldl (.) id $ reverse [ krPut dir s
-                                                    | Delete _ dir s <- us ]
-                        else id
-
+                        (\kr ->
+                           if accum && all updateIsDelete us
+                           then let putDelKr kr' (Delete _ dir s) = krPut dir s kr'
+                                    putDelKr kr' _ = kr'
+                                in foldl' putDelKr kr (S.reverse us)
+                           else kr)
                   , (us, v))
   (us, v) <- getsAndModify edit
 
   updHandler <- return . bufferUpdateHandler =<< ask
-  unless (null us || null updHandler) $
+  unless (S.null us || S.null updHandler) $
     forM_ updHandler (\h -> withGivenBufferAndWindow w k (h us))
   return v
 

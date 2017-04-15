@@ -21,7 +21,7 @@ extra-deps:
 - optparse-applicative-0.13.0.0
 - vty-5.13
 - ListLike-4.5
-resolver: nightly-2016-10-21
+resolver: lts-8.6
 build:
  library-profiling: true
  executable-profiling: false

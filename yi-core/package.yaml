@@ -186,3 +186,13 @@ tests:
       - yi-core
       - text
       - containers
+
+benchmarks:
+  all:
+    main: Bench.hs
+    source-dirs: bench
+    ghc-options: -Wall -ferror-spans -rtsopts
+    dependencies:
+      - yi-core
+      - criterion
+      - deepseq
