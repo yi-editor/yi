@@ -4,7 +4,7 @@ nix:
 packages:
 - yi-core
 - yi-frontend-vty
-- yi-frontend-pango
+# - yi-frontend-pango
 - yi-fuzzy-open
 - yi-keymap-cua
 - yi-keymap-emacs
@@ -15,13 +15,9 @@ packages:
 - yi-ireader
 - yi-language
 - yi-snippet
-- yi
-extra-deps:
-- Hclip-3.0.0.4
-- optparse-applicative-0.13.0.0
-- vty-5.13
-- ListLike-4.5
-resolver: lts-8.6
+# - yi
+extra-deps: []
+resolver: lts-8.18
 build:
  library-profiling: false
  executable-profiling: false

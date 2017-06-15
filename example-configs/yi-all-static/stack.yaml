@@ -1,4 +1,4 @@
-resolver: nightly-2016-10-21
+resolver: lts-8.18
 packages:
 - '.'
 - location: '../../'
@@ -12,6 +12,4 @@ packages:
     - 'yi-misc-modes'
     - 'yi-mode-haskell'
     - 'yi-mode-javascript'
-extra-deps:
-- optparse-applicative-0.13.0.0
-- Hclip-3.0.0.4
+extra-deps: []

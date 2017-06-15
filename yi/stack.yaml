@@ -1,2 +1,2 @@
-resolver: nightly-2016-10-21
+resolver: lts-8.18
 extra-deps: []
