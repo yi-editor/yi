@@ -1,3 +1,22 @@
+0.13.6
+------
+
+ * [yi-keymap-vim] Enable regexps for :substitute
+ * [yi-keymap-vim] Various fixes regarding ex ranges
+ * [yi-keymap-vim] Make trailing delimiter in :substitute optional 
+ * [yi-keymap-vim] Fix behaviour of f,t,F,T when given a count
+ * [yi-keymap-vim] Support all abbreviations for :nohlsearch
+ * [yi-keymap-vim] . in relative ex ranges is optional
+ * [yi-keymap-vim] Range support for :delete
+ * [yi-keymap-vim] Support 'sub' abbreviation for substitute.
+ * [yi-keymap-vim] Fix behaviour of f,t,F,T when given a count
+ * [yi-keymap-vim] Implement visual paste
+ * [yi-keymap-vim] Add supporting of pasting text on Ex
+ * Fix error when completing the empty text
+ * Fixed hint spawning multiple interpreters
+ * Fix the Windows build
+ * Various performance improvements
+
 0.13.5
 ------
 

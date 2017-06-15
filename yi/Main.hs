@@ -86,7 +86,7 @@ main :: IO ()
 main = do
     mayClo <- execParser opts
     case mayClo of
-      Nothing -> putStrLn "Yi 0.13.5"
+      Nothing -> putStrLn "Yi 0.13.6"
       Just clo -> do
         let openFileActions = intersperse (EditorA newTabE) (map (YiA . openNewFile) (files clo))
             moveLineAction  = YiA $ withCurrentBuffer (lineMoveRel (fromMaybe 0 (startOnLine clo)))
