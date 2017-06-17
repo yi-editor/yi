@@ -1,5 +1,5 @@
 import           Lens.Micro.Platform ((.=))
-import           Yi                  (override)
+import           Data.Prototype (override)
 import           Yi.Config.Default.Emacs
 import           Yi.Config.Default.HaskellMode
 import           Yi.Config.Default.JavaScriptMode

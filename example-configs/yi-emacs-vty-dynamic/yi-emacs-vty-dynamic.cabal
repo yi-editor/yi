@@ -1,4 +1,4 @@
-name:                yi-config
+name:                yi-emacs-vty-dynamic
 version:             0.1.0.0
 license:             GPL-2
 author:              Jaro Reinders
@@ -16,6 +16,7 @@ executable yi
                      , yi-mode-javascript
                      , yi-misc-modes
                      , yi-rope
+                     , oo-prototypes
                      , microlens-platform
   default-language:    Haskell2010
   ghc-options:         -O2 -threaded

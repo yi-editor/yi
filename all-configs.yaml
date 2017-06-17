@@ -16,7 +16,14 @@ packages:
 - yi-language
 - yi-snippet
 - yi
-extra-deps: []
+- example-configs/yi-all-static
+- example-configs/yi-emacs-vty-static
+- example-configs/yi-emacs-vty-dynamic
+- example-configs/yi-vim-colemak-vty-dynamic
+- example-configs/yi-vim-pango-dynamic
+- example-configs/yi-vim-pango-static
+- example-configs/yi-vim-vty-dynamic
+- example-configs/yi-vim-vty-static
 resolver: lts-8.18
 build:
  library-profiling: false
