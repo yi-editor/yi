@@ -8,6 +8,9 @@ category: Yi
 
 ghc-options: -Wall -ferror-spans
 
+data-files:
+  - tests/vimtests/*/*.test
+
 dependencies:
     - attoparsec
     - base >= 4.8 && < 5
