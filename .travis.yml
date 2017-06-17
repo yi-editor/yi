@@ -1,36 +1,29 @@
 sudo: false
-language: c
+language: generic
 
 cache:
   directories:
   - $HOME/.stack
+  - $HOME/.local/bin
 
-env:
-  - STACK_YAML=lts-6.yaml
-  - STACK_YAML=lts-7.yaml
-  - STACK_YAML=stack.yaml
+jobs:
+  include:
+    - stage: "Prepare"
+      script: stack install --install-ghc gtk2hs-buildtools
+    - stage: "Build and test"
+      script: stack --install-ghc --stack-yaml=lts-6.yaml test
+    - script: stack --install-ghc --stack-yaml=lts-7.yaml test
+    - script: stack --stack-yaml=stack.yaml test
+    - stage: "Build example configs"
+      script: stack --stack-yaml=all-configs.yaml build
 
 addons:
   apt:
     packages:
     - libgmp-dev
+    - alex
     sources: hvr-ghc
 
 before_install:
  - mkdir -p $HOME/.local/bin
  - curl -L https://www.stackage.org/stack/linux-x86_64 | tar xz --wildcards --strip-components=1 -C ~/.local/bin '*/stack'
- - stack setup
-
-install:
- - stack install gtk2hs-buildtools
- - stack exec -- alex --version
- - stack test -j2 --no-run-tests
-
-script:
- - stack test
- - for c in example-configs/*-{static,dynamic};
-   do
-     cd "$c" &&
-     stack build &&
-     cd -;
-   done
