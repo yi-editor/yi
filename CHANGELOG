@@ -1,3 +1,8 @@
+0.13.7
+------
+
+ * [yi-keymap-vim] Include test data files in sdist
+
 0.13.6
 ------
 
