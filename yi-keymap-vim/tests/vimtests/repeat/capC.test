@@ -1,0 +1,10 @@
+-- Input
+(1,1)
+foo bar
+foo  baz
+-- Output
+(2,9)
+foo quux
+foo  quux
+-- Events
+wCquux<Esc>j0w.

@@ -12,6 +12,7 @@
  * [yi-keymap-vim] Fix behaviour of f,t,F,T when given a count
  * [yi-keymap-vim] Implement visual paste
  * [yi-keymap-vim] Add supporting of pasting text on Ex
+ * [yi-keymap-vim] Fix repeating replacement operators
  * Fix error when completing the empty text
  * Fixed hint spawning multiple interpreters
  * Fix the Windows build

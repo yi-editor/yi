@@ -232,15 +232,10 @@ continuingBindings = fmap (mkStringBindingE Normal Continue)
     , ("v", enableVisualE Inclusive, resetCount . switchMode (Visual Inclusive))
     , ("V", enableVisualE LineWise, resetCount . switchMode (Visual LineWise))
     , ("<C-v>", enableVisualE Block, resetCount . switchMode (Visual Block))
-    ]
-
-nonrepeatableBindings :: [VimBinding]
-nonrepeatableBindings = fmap (mkBindingE Normal Drop)
-    [ (spec KEsc, return (), resetCount)
-    , (ctrlCh 'c', return (), resetCount)
-
+    ] ++ fmap (mkBindingE Normal Continue)
+    [
     -- Changing
-    , (char 'C',
+      (char 'C',
         do region <- withCurrentBuffer $ regionWithTwoMovesB (return ()) moveToEol
            void $ operatorApplyToRegionE opChange 1 $ StyledRegion Exclusive region
         , switchMode $ Insert 'C')
@@ -252,6 +247,13 @@ nonrepeatableBindings = fmap (mkBindingE Normal Drop)
 
     -- Replacing
     , (char 'R', return (), switchMode Replace)
+    ]
+
+
+nonrepeatableBindings :: [VimBinding]
+nonrepeatableBindings = fmap (mkBindingE Normal Drop)
+    [ (spec KEsc, return (), resetCount)
+    , (ctrlCh 'c', return (), resetCount)
 
     -- Yanking
     , ( char 'Y'
