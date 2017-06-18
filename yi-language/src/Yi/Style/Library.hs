@@ -3,7 +3,6 @@ module Yi.Style.Library where
 
 import Yi.Style
 import Data.Prototype
-import Data.Monoid
 
 type Theme = Proto UIStyle
 

@@ -6,7 +6,7 @@
 {-# LANGUAGE TupleSections #-}
 {-# LANGUAGE ViewPatterns #-}
 {-# OPTIONS_GHC -funbox-strict-fields #-}
-{-# OPTIONS_GHC -Wno-orphans #-} -- this file adds missing instances for GTK stuff
+{-# OPTIONS_GHC -fno-warn-orphans #-} -- this file adds missing instances for GTK stuff
 {-# OPTIONS_HADDOCK show-extensions #-}
 
 -- |

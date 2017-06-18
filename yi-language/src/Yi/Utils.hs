@@ -1,6 +1,7 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FunctionalDependencies #-}
 {-# OPTIONS_HADDOCK show-extensions #-}
+{-# OPTIONS_GHC -fno-warn-orphans #-} -- for Binary instance of Hashmap
 
 -- |
 -- Module      :  Yi.Utils
@@ -15,12 +16,10 @@
 
 module Yi.Utils where
 
-import           Control.Applicative
 import           Lens.Micro.Platform
 import           Control.Monad.Base
 import           Data.Binary
 import           Data.Char (toLower)
-import           Data.Foldable hiding (all,any)
 import qualified Data.HashMap.Strict as HashMap
 import           Data.Hashable(Hashable)
 import qualified Data.List.PointedList as PL

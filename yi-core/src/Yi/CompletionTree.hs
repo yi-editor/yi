@@ -177,9 +177,9 @@ toList ct
   | mempty == ct = []
   | otherwise = toList' ct
   where
-    toList' (CompletionTree ct)
-      | M.null ct = [mempty]
-      | otherwise = concat $ M.elems $ M.mapWithKey (\k v -> map (k `LL.append`) $ toList' v) ct
+    toList' (CompletionTree ct')
+      | M.null ct' = [mempty]
+      | otherwise = concat $ M.elems $ M.mapWithKey (\k v -> map (k `LL.append`) $ toList' v) ct'
 
 -- TODO: make this function display a tree and rename to showTree
 -- | For debugging purposes.
