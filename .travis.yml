@@ -13,11 +13,11 @@ jobs:
     - script: stack setup --stack-yaml=lts-7.yaml
     - script: stack install --stack-yaml=stack.yaml --install-ghc gtk2hs-buildtools
     - stage: "Build and test"
-      script: stack --install-ghc --stack-yaml=lts-6.yaml test
-    - script: stack --install-ghc --stack-yaml=lts-7.yaml test
-    - script: stack --stack-yaml=stack.yaml test
+      script: stack --install-ghc --stack-yaml=lts-6.yaml test -j2
+    - script: stack --install-ghc --stack-yaml=lts-7.yaml test -j2
+    - script: stack --stack-yaml=stack.yaml test -j2
     - stage: "Build example configs"
-      script: stack --stack-yaml=all-configs.yaml build
+      script: stack --stack-yaml=all-configs.yaml build -j2
 
 addons:
   apt:
