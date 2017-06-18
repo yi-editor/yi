@@ -10,6 +10,7 @@
 {-# LANGUAGE TypeSynonymInstances       #-}
 {-# LANGUAGE UndecidableInstances       #-}
 {-# OPTIONS_HADDOCK show-extensions #-}
+{-# OPTIONS_GHC -Wno-orphans #-}
 
 -- |
 -- Module      :  Yi.Minibuffer

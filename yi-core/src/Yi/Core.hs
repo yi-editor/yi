@@ -85,7 +85,7 @@ import           Yi.Editor
 import           Yi.Keymap
 import           Yi.Keymap.Keys
 import           Yi.KillRing                    (krEndCmd)
-import           Yi.Monad                       (gets)
+import           Yi.Monad                       (gets, uses)
 import           Yi.PersistentState             (loadPersistentState, savePersistentState)
 import           Yi.Process
 import qualified Yi.Rope                        as R (YiString, fromString, readFile)
@@ -95,8 +95,6 @@ import qualified Yi.UI.Common                   as UI (UI (end, layout, main, re
 import           Yi.Utils                       (io)
 import           Yi.Window                      (bufkey, dummyWindow, isMini, winRegion, wkey)
 
-
-uses l f = f <$> use l
 -- | Make an action suitable for an interactive run.
 -- UI will be refreshed.
 interactive :: IsRefreshNeeded -> [Action] -> YiM ()

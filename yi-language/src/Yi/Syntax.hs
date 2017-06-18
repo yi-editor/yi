@@ -33,8 +33,6 @@ where
 import qualified  Data.Map as M
 import Control.Arrow
 import Yi.Style
-import Data.Foldable
-import Data.Traversable
 import Yi.Buffer.Basic
 import Yi.Region
 

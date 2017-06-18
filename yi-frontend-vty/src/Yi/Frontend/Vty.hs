@@ -402,5 +402,5 @@ renderTabBar r uiStyle ts = (Vty.<|> padding) . Vty.horizCat $ fmap render ts
     baseAttr False sty =
         attributesToAttr (appEndo (tabNotFocusedStyle uiStyle) sty) Vty.defAttr
             `Vty.withStyle` Vty.underline
-    padding = Vty.charFill (tabAttr False) ' ' (SL.sizeX r - width) 1
-    width = sum . map ((+2) . T.length . fst) $ ts
+    padding = Vty.charFill (tabAttr False) ' ' (SL.sizeX r - width') 1
+    width' = sum . map ((+2) . T.length . fst) $ ts

@@ -6,6 +6,7 @@
 {-# LANGUAGE TupleSections #-}
 {-# LANGUAGE ViewPatterns #-}
 {-# OPTIONS_GHC -funbox-strict-fields #-}
+{-# OPTIONS_GHC -Wno-orphans #-} -- this file adds missing instances for GTK stuff
 {-# OPTIONS_HADDOCK show-extensions #-}
 
 -- |
@@ -23,7 +24,7 @@ module Yi.Frontend.Pango (start, startGtkHook) where
 import           Control.Applicative
 import           Control.Concurrent
 import           Control.Exception (catch, SomeException)
-import           Lens.Micro.Platform hiding (set, from)
+import           Lens.Micro.Platform hiding (set)
 import           Control.Monad hiding (forM_, mapM_, forM, mapM)
 import           Data.Foldable
 import           Data.IORef

@@ -1,8 +1,10 @@
 module Yi.Monad (
+                 assign,
                  gets,
                  getsAndModify,
                  maybeM,
                  repeatUntilM,
+                 uses,
                  whenM,
                  with,
                 ) where
@@ -10,6 +12,7 @@ module Yi.Monad (
 import Control.Monad.Base   (MonadBase, liftBase)
 import Control.Monad.Reader (MonadReader, ask)
 import Control.Monad.State  (MonadState, get, gets, put, when)
+import Lens.Micro.Platform (Getting, ASetter, (.=), use)
 
 -- | Combination of the Control.Monad.State 'modify' and 'gets'
 getsAndModify :: MonadState s m => (s -> (s,a)) -> m a
@@ -39,3 +42,9 @@ repeatUntilM m = do
     then (do xs <- repeatUntilM m 
              return (x:xs))
     else return [x]
+
+assign :: MonadState s m => ASetter s s a b -> b -> m ()
+assign = (.=)
+
+uses :: MonadState s m => Getting a s a -> (a -> b) -> m b
+uses l f = f <$> use l

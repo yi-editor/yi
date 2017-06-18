@@ -41,10 +41,9 @@ import           Data.Maybe          (catMaybes, listToMaybe)
 import           Data.Monoid         (First (First, getFirst), Last (Last, getLast), (<>))
 import           Yi.Buffer.Basic     (Point)
 import           Yi.Debug            (error, trace)
-import           Yi.Lexer.Alex       (Posn (Posn, posnLine, posnOfs),
-                                      Tok (Tok, tokPosn), tokBegin, tokEnd)
-import           Yi.Region           (Region (regionEnd, regionStart),
-                                      includedRegion, mkRegion)
+import           Yi.Lexer.Alex       (posnLine, posnOfs,
+                                      Tok (tokPosn), tokBegin, tokEnd)
+import           Yi.Region           (Region (regionEnd, regionStart), mkRegion)
 import           Yi.String           (showT)
 
 #ifdef TESTING

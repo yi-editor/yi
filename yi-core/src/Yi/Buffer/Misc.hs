@@ -224,7 +224,7 @@ import           Yi.Buffer.Basic                (BufferRef, Point (..), Size (Si
 import           Yi.Buffer.Implementation
 import           Yi.Buffer.Undo
 import           Yi.Interact                    as I (P (End))
-import           Yi.Monad                       (getsAndModify)
+import           Yi.Monad                       (getsAndModify, uses)
 import           Yi.Region                      (Region, mkRegion)
 import           Yi.Rope                        (YiString)
 import qualified Yi.Rope                        as R
@@ -232,9 +232,6 @@ import           Yi.Syntax                      (ExtHL (ExtHL), Stroke, noHighli
 import           Yi.Types
 import           Yi.Utils                       (SemiNum ((+~)), makeClassyWithSuffix, makeLensesWithSuffix)
 import           Yi.Window                      (Window (width, wkey, actualLines), dummyWindow)
-
-
-uses l f = f <$> use l
 
 -- In addition to Buffer's text, this manages (among others):
 --  * Log of updates mades

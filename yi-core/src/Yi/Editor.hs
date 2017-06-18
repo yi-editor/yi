@@ -102,12 +102,11 @@ import           Prelude                        hiding (all, concatMap, foldl, f
 
 import           Lens.Micro.Platform            (Lens', lens, mapped,
                                                  use, view, (%=), (%~),
-                                                 (&), (.~), (^.), (.=),
-                                                 ASetter)
+                                                 (&), (.~), (^.))
 import           Control.Monad                  (forM_, liftM)
 import           Control.Monad.Reader           (MonadReader (ask), asks,
                                                  unless, when)
-import           Control.Monad.State            (gets, modify, MonadState)
+import           Control.Monad.State            (gets, modify)
 import           Data.Binary                    (Binary, get, put)
 import           Data.Default                   (Default, def)
 import qualified Data.DelayList                 as DelayList (insert)
@@ -137,7 +136,7 @@ import           Yi.Interact                    as I (accepted, mkAutomaton)
 import           Yi.JumpList                    (Jump (..), JumpList, addJump, jumpBack, jumpForward)
 import           Yi.KillRing                    (krEmpty, krGet, krPut, krSet)
 import           Yi.Layout
-import           Yi.Monad                       (getsAndModify)
+import           Yi.Monad                       (assign, getsAndModify, uses)
 import           Yi.Rope                        (YiString, empty, fromText)
 import qualified Yi.Rope                        as R (YiString, fromText, snoc)
 import           Yi.String                      (listify)
@@ -146,11 +145,6 @@ import           Yi.Tab
 import           Yi.Types
 import           Yi.Utils
 import           Yi.Window
-
-assign :: MonadState s m => ASetter s s a b -> b -> m ()
-assign = (.=)
-
-uses l f = f <$> use l
 
 instance Binary Editor where
   put (Editor bss bs supply ts dv _sl msh kr regex _dir _ev _cwa ) =

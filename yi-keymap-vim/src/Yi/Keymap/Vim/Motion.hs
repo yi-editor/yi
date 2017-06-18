@@ -205,12 +205,12 @@ matchGotoCharMove :: String -> MatchResult Move
 matchGotoCharMove (m:[]) | m `elem` ('f' : "FtT") = PartialMatch
 matchGotoCharMove (m:"<lt>") | m `elem` ('f' : "FtT") = matchGotoCharMove (m:"<")
 matchGotoCharMove (m:c:[]) | m `elem` ('f' : "FtT") = WholeMatch $ Move style False action
-    where (dir, style, move, offset) =
+    where (style, move, offset) =
               case m of
-                  'f' -> (Forward, Inclusive, nextCInLineInc c, pure ())
-                  't' -> (Forward, Inclusive, nextCInLineInc c, moveB Character Backward)
-                  'F' -> (Backward, Exclusive, prevCInLineInc c, pure ())
-                  'T' -> (Backward, Exclusive, prevCInLineInc c, moveB Character Forward)
+                  'f' -> (Inclusive, nextCInLineInc c, pure ())
+                  't' -> (Inclusive, nextCInLineInc c, moveB Character Backward)
+                  'F' -> (Exclusive, prevCInLineInc c, pure ())
+                  'T' -> (Exclusive, prevCInLineInc c, moveB Character Forward)
                   _ -> error "can't happen"
           action mcount = do
                   let count = fromMaybe 1 mcount

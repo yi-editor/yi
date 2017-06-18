@@ -130,7 +130,6 @@ concatLinesB = savingPointB . modifyRegionB (overInit $ R.filter (/= '\n'))
 linesOfRegionB :: Region -> BufferM [Region]
 linesOfRegionB region = do
     let start = regionStart region
-        end = regionEnd region
         direction = regionDirection region
     ls <- R.lines' <$> readRegionB region
     return $ case ls of

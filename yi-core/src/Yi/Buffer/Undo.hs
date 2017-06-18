@@ -57,7 +57,6 @@ module Yi.Buffer.Undo (
    ) where
 
 import           Data.Binary              (Binary (..))
-import           Data.Monoid
 import qualified Data.Sequence as S
 import           GHC.Generics             (Generic)
 import           Yi.Buffer.Implementation
@@ -147,7 +146,7 @@ undoUntilInteractive pointMark xs ur@(URList cs rs) b = case S.viewl cs of
     where
       -- Apply a /valid/ update and also move point in buffer to update position
       applyUpdateWithMoveI :: Update -> BufferImpl syntax -> BufferImpl syntax
-      applyUpdateWithMoveI u = case updateDirection u of
+      applyUpdateWithMoveI upd = case updateDirection upd of
                                  Forward ->  apply . move
                                  Backward -> move . apply
           where move = modifyMarkBI pointMark (\v -> v {markPoint = updatePoint u})

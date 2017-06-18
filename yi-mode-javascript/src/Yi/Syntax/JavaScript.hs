@@ -18,6 +18,7 @@
 module Yi.Syntax.JavaScript where
 
 import           Prelude hiding (elem,error,any,exp)
+import qualified Prelude
 
 import           Control.Applicative (Alternative ((<|>), many), optional)
 import           Data.Data           (Data)
@@ -126,6 +127,8 @@ instance IsTree Statement where
     subtrees (Else _ x) = fromBlock x
     subtrees (With _ _ x) = fromBlock x
     subtrees _ = []
+    uniplate = Prelude.error "uniplate not implemented in IsTree (Yi.Syntax.JavaScript.Statement)"
+    emptyNode = Prelude.error "emptyNode not implemented in IsTree (Yi.Syntax.JavaScript.Statement)"
 
 instance Failable ForContent where
     stupid = ForErr

@@ -30,7 +30,7 @@ import           Yi.Keymap.Vim.TextObject
 import           Yi.Keymap.Vim.Utils        (matchFromBool, mkChooseRegisterBinding, mkMotionBinding, addNewLineIfNecessary)
 import           Yi.MiniBuffer              (spawnMinibufferE)
 import           Yi.Monad                   (whenM)
-import qualified Yi.Rope                    as R (toText, countNewLines)
+import qualified Yi.Rope                    as R (toText)
 import           Yi.Tag                     (Tag (Tag))
 import           Yi.Utils                   (SemiNum ((-~)))
 
@@ -253,7 +253,7 @@ pasteBinding = VimBindingE (f . T.unpack . _unEv)
                 void $ deleteRegionWithStyleB reg Block
                 moveTo (minimum [here, there, here', there'])
                 insertRopeWithStyleB rope Block
-            (Just (Register _ rope), Block) ->
+            (Just (Register _ _), Block) ->
                 printMsg "Pasting non-block string into a block selection is not implemented"
             (Just (Register _style rope), _) -> withCurrentBuffer $ do
                 region <- regionOfSelectionB
