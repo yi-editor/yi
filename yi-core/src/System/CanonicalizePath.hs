@@ -12,7 +12,6 @@
 -- System.Directory.canonicalizePath replacement
 module System.CanonicalizePath
   ( canonicalizePath
-  , normalisePath
   , replaceShorthands
   ) where
 
@@ -31,13 +30,6 @@ import           System.Directory         (getCurrentDirectory)
 import           System.FilePath          (isAbsolute, isDrive, pathSeparator,
                                            pathSeparators, takeDirectory, (</>))
 import           System.PosixCompat.Files (readSymbolicLink)
-
--- | Removes `/./` `//` and `/../` sequences from path,
--- doesn't follow symlinks
-normalisePath :: FilePath -> IO FilePath
-normalisePath path = do
-  absPath <- makeAbsolute path
-  return $ foldl combinePath "/" $ splitPath absPath
 
 -- | Returns absolute name of the file, which doesn't contain
 -- any `/./`, `/../`, `//` sequences or symlinks

@@ -4,7 +4,7 @@
 -- cursor. For example, opening a second buffer is not considered a pure buffer
 -- operation.
 
-module Generic.TestPureBufferManipulations where
+module Generic.TestPureBufferManipulations (getTests) where
 
 import Test.Tasty.HUnit
 import Test.Tasty (TestTree, testGroup)

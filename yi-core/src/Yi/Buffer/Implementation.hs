@@ -24,17 +24,16 @@ module Yi.Buffer.Implementation
   , Update (..)
   , updateIsDelete
   , Point
-  , Mark, MarkValue(..)
+  , Mark, MarkValue (..)
   , Size
   , Direction (..)
-  , BufferImpl(..)
+  , BufferImpl (mem, marks, markNames, hlCache, overlays, dirtyOffset)
   , Overlay (..)
   , mkOverlay
   , overlayUpdate
   , applyUpdateI
   , isValidUpdate
   , reverseUpdateI
-  , nelemsBI
   , sizeBI
   , newBI
   , solPoint

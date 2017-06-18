@@ -38,7 +38,6 @@ import           Data.Monoid         ((<>))
 import           Yi.Buffer.Basic     (Direction (..))
 import           Yi.Buffer.HighLevel (firstNonSpaceB, getNextLineB, getNextNonBlankLineB, moveToSol, readLnB)
 import           Yi.Buffer.Misc
-import           Yi.Buffer.Normal    ()
 import           Yi.Buffer.Region    (Region (regionStart), mkRegion, modifyRegionB, readRegionB)
 import           Yi.Buffer.TextUnit  (regionWithTwoMovesB)
 import           Yi.Rope             (YiString)

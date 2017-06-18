@@ -1,0 +1,43 @@
+- package:
+  - name: yi-core
+  - section:
+    - name: library
+    - message:
+      - name: Redundant build-depends entry
+      - depends: semigroups
+- package:
+  - name: yi-keymap-emacs
+  - section:
+    - name: library
+    - message:
+      - name: Redundant build-depends entry
+      - depends: semigroups
+- package:
+  - name: yi-keymap-vim
+  - section:
+    - name: library
+    - message:
+      - name: Redundant build-depends entry
+      - depends: semigroups
+  - section:
+    - name: test:spec
+    - message:
+      - name: Redundant build-depends entry
+      - depends: semigroups
+- package:
+  - name: yi-misc-modes
+  - section:
+    - name: library
+    - message:
+      - name: Redundant build-depends entry
+      - depends: semigroups
+- package:
+  - name: yi-keymap-vim
+  - section:
+    - name: test:spec
+    - message:
+      - name: Weeds exported
+      - module:
+        - name: Generic.TestUtils
+        - identifier: assertNotEqual
+
