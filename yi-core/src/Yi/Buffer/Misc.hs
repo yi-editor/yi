@@ -94,7 +94,6 @@ module Yi.Buffer.Misc
   , getVisibleSelection
   , setVisibleSelection
   , isUnchangedBuffer
-  , setAnyMode
   , setMode
   , setMode0
   , modifyMode
@@ -127,12 +126,9 @@ module Yi.Buffer.Misc
   , pointFollowsWindowA
   , revertPendingUpdatesB
   , askWindow
-  , clearSyntax
-  , focusSyntax
   , Mode (..)
   , modeNameA
   , modeAppliesA
-  , modeHLA
   , modePrettifyA
   , modeKeymapA
   , modeIndentA
@@ -144,7 +140,6 @@ module Yi.Buffer.Misc
   , modeOnLoadA
   , modeGotoDeclarationA
   , modeModeLineA
-  , AnyMode (..)
   , IndentBehaviour (..)
   , IndentSettings (..)
   , expandTabsA
@@ -155,11 +150,7 @@ module Yi.Buffer.Misc
   , emptyMode
   , withModeB
   , withMode0
-  , onMode
-  , withSyntaxB
-  , withSyntaxB'
   , keymapProcessA
-  , strokesRangesB
   , streamB
   , indexedStreamB
   , askMarks
@@ -228,7 +219,7 @@ import           Yi.Monad                       (getsAndModify, uses)
 import           Yi.Region                      (Region, mkRegion)
 import           Yi.Rope                        (YiString)
 import qualified Yi.Rope                        as R
-import           Yi.Syntax                      (ExtHL (ExtHL), Stroke, noHighlighter)
+import           Yi.Style                       (Stroke)
 import           Yi.Types
 import           Yi.Utils                       (SemiNum ((+~)), makeClassyWithSuffix, makeLensesWithSuffix)
 import           Yi.Window                      (Window (width, wkey, actualLines), dummyWindow)
@@ -286,29 +277,19 @@ miniIdentString b = case b ^. identA of
 
 -- unfortunately the dynamic stuff can't be read.
 instance Binary FBuffer where
-    put (FBuffer binmode r attributes_) =
-      let strippedRaw :: BufferImpl ()
-          strippedRaw = setSyntaxBI (modeHL emptyMode) r
-      in do
+    put (FBuffer binmode r attributes_) = do
           put binmode
-          put strippedRaw
+          put r
           put attributes_
-    get =
-        FBuffer <$> get <*> getStripped <*> get
-      where getStripped :: Get (BufferImpl ())
-            getStripped = get
+    get = FBuffer <$> get <*> get <*> get
 
--- | update the syntax information (clear the dirty "flag")
-clearSyntax :: FBuffer -> FBuffer
-clearSyntax = modifyRawbuf updateSyntax
-
-queryRawbuf :: (forall syntax. BufferImpl syntax -> x) -> FBuffer -> x
+queryRawbuf :: (BufferImpl -> x) -> FBuffer -> x
 queryRawbuf f (FBuffer _ fb _) = f fb
 
-modifyRawbuf :: (forall syntax. BufferImpl syntax -> BufferImpl syntax) -> FBuffer -> FBuffer
+modifyRawbuf :: (BufferImpl -> BufferImpl) -> FBuffer -> FBuffer
 modifyRawbuf f (FBuffer f1 f2 f3) = FBuffer f1 (f f2) f3
 
-queryAndModifyRawbuf :: (forall syntax. BufferImpl syntax -> (BufferImpl syntax,x)) ->
+queryAndModifyRawbuf :: (BufferImpl -> (BufferImpl, x)) ->
                      FBuffer -> (FBuffer, x)
 queryAndModifyRawbuf f (FBuffer f1 f5 f3) =
     let (f5', x) = f f5
@@ -328,7 +309,7 @@ rectangleSelectionA = selectionStyleA .
   lens rectangleSelection (\e x -> e { rectangleSelection = x })
 
 -- | Just stores the mode name.
-instance Binary (Mode syntax) where
+instance Binary (Mode) where
     put = put . E.encodeUtf8 . modeName
     get = do
       n <- E.decodeUtf8 <$> get
@@ -391,13 +372,13 @@ getPercent a b = T.justifyRight 3 ' ' (T.pack $ show p) `T.snoc` '%'
           aa = fromIntegral a :: Double
           bb = fromIntegral b :: Double
 
-queryBuffer :: (forall syntax. BufferImpl syntax -> x) -> BufferM x
+queryBuffer :: (BufferImpl -> x) -> BufferM x
 queryBuffer x = gets (queryRawbuf x)
 
-modifyBuffer :: (forall syntax. BufferImpl syntax -> BufferImpl syntax) -> BufferM ()
+modifyBuffer :: (BufferImpl -> BufferImpl) -> BufferM ()
 modifyBuffer x = modify' (modifyRawbuf x)
 
-queryAndModify :: (forall syntax. BufferImpl syntax -> (BufferImpl syntax,x)) -> BufferM x
+queryAndModify :: (BufferImpl -> (BufferImpl,x)) -> BufferM x
 queryAndModify x = getsAndModify (queryAndModifyRawbuf x)
 
 -- | Adds an "overlay" to the buffer
@@ -515,8 +496,8 @@ commitUpdateTransactionB = do
     undosA %= addChangeU InteractivePoint
 
 
-undoRedo :: (forall syntax. Mark -> URList -> BufferImpl syntax
-             -> (BufferImpl syntax, (URList, S.Seq Update)))
+undoRedo :: (Mark -> URList -> BufferImpl
+             -> (BufferImpl, (URList, S.Seq Update)))
          -> BufferM ()
 undoRedo f = do
   isTransacPresent <- use updateTransactionInFlightA
@@ -564,24 +545,23 @@ modeAlwaysApplies = const2 True
 modeNeverApplies :: a -> b -> Bool
 modeNeverApplies = const2 False
 
-emptyMode :: Mode syntax
+emptyMode :: Mode
 emptyMode = Mode
   {
    modeName = "empty",
    modeApplies = modeNeverApplies,
-   modeHL = ExtHL noHighlighter,
-   modePrettify = const $ return (),
+   modePrettify = return (),
    modeKeymap = id,
-   modeIndent = \_ _ -> return (),
-   modeAdjustBlock = \_ _ -> return (),
-   modeFollow = const emptyAction,
+   modeIndent = \_ -> return (),
+   modeAdjustBlock = \_ -> return (),
+   modeFollow = emptyAction,
    modeIndentSettings = IndentSettings
    { expandTabs = True
    , tabSize = 8
    , shiftWidth = 4
    },
    modeToggleCommentSelection = Nothing,
-   modeGetStrokes = \_ _ _ _ -> [],
+   modeGetStrokes = \_ _ _ -> [],
    modeOnLoad = return (),
    modeGotoDeclaration = return (),
    modeModeLine = defaultModeLine
@@ -636,12 +616,6 @@ streamB dir i = queryBuffer $ getStream dir i
 
 indexedStreamB :: Direction -> Point -> BufferM [(Point,Char)]
 indexedStreamB dir i = queryBuffer $ getIndexedStream dir i
-
-strokesRangesB :: Maybe SearchExp -> Region -> BufferM [[Stroke]]
-strokesRangesB regex r = do
-  p <- pointB
-  getStrokes <- withSyntaxB modeGetStrokes
-  queryBuffer $ strokesRangesBI getStrokes regex r p
 
 ------------------------------------------------------------------------
 -- Point based operations
@@ -788,18 +762,14 @@ gotoLn x = do
 
 ---------------------------------------------------------------------
 
-setMode0 :: forall syntax. Mode syntax -> FBuffer -> FBuffer
-setMode0 m (FBuffer _ rb at) = FBuffer m (setSyntaxBI (modeHL m) rb) at
+setMode0 :: Mode -> FBuffer -> FBuffer
+setMode0 m (FBuffer _ rb at) = FBuffer m rb at
 
-modifyMode0 :: (forall syntax. Mode syntax -> Mode syntax) -> FBuffer -> FBuffer
-modifyMode0 f (FBuffer m rb f3) = FBuffer m' (setSyntaxBI (modeHL m') rb) f3
+modifyMode0 :: (Mode -> Mode) -> FBuffer -> FBuffer
+modifyMode0 f (FBuffer m rb f3) = FBuffer m' rb f3
   where m' = f m
 
--- | Set the mode
-setAnyMode :: AnyMode -> BufferM ()
-setAnyMode (AnyMode m) = setMode m
-
-setMode :: Mode syntax -> BufferM ()
+setMode :: Mode -> BufferM ()
 setMode m = do
   modify (setMode0 m)
   -- reset the keymap process so we use the one of the new mode.
@@ -807,34 +777,17 @@ setMode m = do
   modeOnLoad m
 
 -- | Modify the mode
-modifyMode :: (forall syntax. Mode syntax -> Mode syntax) -> BufferM ()
+modifyMode :: (Mode -> Mode) -> BufferM ()
 modifyMode f = do
   modify (modifyMode0 f)
   -- reset the keymap process so we use the one of the new mode.
   keymapProcessA .= I.End
 
-onMode :: (forall syntax. Mode syntax -> Mode syntax) -> AnyMode -> AnyMode
-onMode f (AnyMode m) = AnyMode (f m)
-
-withMode0 :: (forall syntax. Mode syntax -> a) -> FBuffer -> a
+withMode0 :: (Mode -> a) -> FBuffer -> a
 withMode0 f FBuffer {bmode = m} = f m
 
-withModeB :: (forall syntax. Mode syntax -> BufferM a) -> BufferM a
+withModeB :: (Mode -> BufferM a) -> BufferM a
 withModeB x = join (gets (withMode0 x))
-
-withSyntax0 :: (forall syntax. Mode syntax -> syntax -> a) -> WindowRef -> FBuffer -> a
-withSyntax0 f wk (FBuffer bm rb _attrs) = f bm (getAst wk rb)
-
-
-withSyntaxB :: (forall syntax. Mode syntax -> syntax -> a) -> BufferM a
-withSyntaxB f = withSyntax0 f <$> askWindow wkey <*> use id
-
-
-focusSyntax ::  M.Map WindowRef Region -> FBuffer -> FBuffer
-focusSyntax r = modifyRawbuf (focusAst r)
-
-withSyntaxB' :: (forall syntax. Mode syntax -> syntax -> BufferM a) -> BufferM a
-withSyntaxB' x = join (withSyntaxB x)
 
 -- | Return indices of strings in buffer matched by regex in the
 -- given region.

@@ -59,9 +59,8 @@ import           Yi.Layout                      (AnyLayoutManager)
 import           Yi.Monad                       (getsAndModify)
 import           Yi.Process                     (SubprocessId, SubprocessInfo)
 import qualified Yi.Rope                        as R (ConverterName, YiString)
-import           Yi.Style                       (StyleName)
+import           Yi.Style                       (StyleName, Stroke)
 import           Yi.Style.Library               (Theme)
-import           Yi.Syntax                      (ExtHL, Stroke)
 import           Yi.Tab                         (Tab)
 import           Yi.UI.Common                   (UI)
 import           Yi.Window                      (Window)
@@ -184,12 +183,11 @@ instance Applicative BufferM where
     pure = return
     (<*>) = ap
 
-data FBuffer = forall syntax.
-        FBuffer { bmode  :: !(Mode syntax)
-                , rawbuf :: !(BufferImpl syntax)
-                , attributes :: !Yi.Types.Attributes
-               }
-        deriving Typeable
+data FBuffer = FBuffer
+    { bmode  :: !Mode
+    , rawbuf :: !BufferImpl
+    , attributes :: !Yi.Types.Attributes
+    } deriving Typeable
 
 instance Eq FBuffer where
     (==) = (==) `on` bkey__ . attributes
@@ -276,34 +274,28 @@ instance Binary SelectionStyle where
   put (SelectionStyle h r) = B.put h >> B.put r
   get = SelectionStyle <$> B.get <*> B.get
 
-
-data AnyMode = forall syntax. AnyMode (Mode syntax)
-  deriving Typeable
-
 -- | A Mode customizes the Yi interface for editing a particular data
 -- format. It specifies when the mode should be used and controls
 -- file-specific syntax highlighting and command input, among other
 -- things.
-data Mode syntax = Mode
+data Mode = Mode
   { modeName :: T.Text
     -- ^ so this can be serialized, debugged.
   , modeApplies :: FilePath -> R.YiString -> Bool
     -- ^ What type of files does this mode apply to?
-  , modeHL :: ExtHL syntax
-    -- ^ Syntax highlighter
-  , modePrettify :: syntax -> BufferM ()
+  , modePrettify :: BufferM ()
     -- ^ Prettify current \"paragraph\"
   , modeKeymap :: KeymapSet -> KeymapSet
     -- ^ Buffer-local keymap modification
-  , modeIndent :: syntax -> IndentBehaviour -> BufferM ()
+  , modeIndent :: IndentBehaviour -> BufferM ()
     -- ^ emacs-style auto-indent line
-  , modeAdjustBlock :: syntax -> Int -> BufferM ()
+  , modeAdjustBlock :: Int -> BufferM ()
     -- ^ adjust the indentation after modification
-  , modeFollow :: syntax -> Action
+  , modeFollow :: Action
     -- ^ Follow a \"link\" in the file. (eg. go to location of error message)
   , modeIndentSettings :: IndentSettings
   , modeToggleCommentSelection :: Maybe (BufferM ())
-  , modeGetStrokes :: syntax -> Point -> Point -> Point -> [Stroke]
+  , modeGetStrokes :: Point -> Point -> Point -> [Stroke]
     -- ^ Strokes that should be applied when displaying a syntax element
     -- should this be an Action instead?
   , modeOnLoad :: BufferM ()
@@ -423,7 +415,7 @@ data Config = Config {startFrontEnd :: UIBoot,
                       defaultKm :: !KeymapSet,
                       -- ^ Default keymap to use.
                       configInputPreprocess :: !(I.P Event Event),
-                      modeTable :: ![AnyMode],
+                      modeTable :: ![Mode],
                       -- ^ List modes by order of preference.
                       debugMode :: !Bool,
                       -- ^ Produce a .yi.dbg file with a lot of debug information.

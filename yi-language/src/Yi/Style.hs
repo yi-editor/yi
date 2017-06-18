@@ -7,6 +7,8 @@ import Data.Word (Word8)
 import Data.Char (chr, ord)
 import Data.Monoid
 
+import Yi.Buffer.Basic
+
 -- | Visual text attributes to be applied during layout.
 data Attributes = Attributes
   { foreground :: !Color
@@ -25,6 +27,8 @@ emptyAttributes = Attributes { foreground = Default, background = Default, rever
 -- | The style is used to transform attributes by modifying
 --   one or more of the visual text attributes.
 type Style = Endo Attributes
+
+type Stroke = Span StyleName
 
 -- | The UI type
 data UIStyle = UIStyle

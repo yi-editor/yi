@@ -8,9 +8,6 @@ category: Yi
 
 ghc-options: -Wall -ferror-spans
 
-extra-source-files:
-  - src/Yi/Lexer/common.hsinc
-
 dependencies:
   - base >= 4.8 && < 5
   - array
@@ -30,16 +27,12 @@ library:
     source-dirs: src
     exposed-modules:
       - Yi.Buffer.Basic
-      - Yi.Lexer.Alex
-      - Yi.Lexer.Compilation
       - Yi.Regex
       - Yi.Region
       - Yi.Style
       - Yi.Style.Library
-      - Yi.Syntax
       - Yi.Utils
     build-tools:
-      - alex >= 3.0.3 && < 3.2.0 || >= 3.2.1
     include-dirs:
       - src/Yi/Lexer
     dependencies:

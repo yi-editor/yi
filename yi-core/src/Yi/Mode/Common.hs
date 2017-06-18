@@ -10,10 +10,10 @@
 --
 -- Common functions used by modes.
 
-module Yi.Mode.Common (TokenBasedMode, fundamentalMode,
+module Yi.Mode.Common (fundamentalMode,
                  anyExtension, extensionOrContentsMatch, 
-                 linearSyntaxMode, hookModes, 
-                 applyModeHooks, lookupMode, styleMode,
+                 hookModes, 
+                 applyModeHooks, lookupMode,
                  extensionMatches, shebangParser
                 ) where
 
@@ -25,28 +25,20 @@ import           Data.Maybe           (fromMaybe)
 import           System.FilePath      (takeExtension)
 
 import           Yi.Buffer
-import qualified Yi.IncrementalParse  as IncrParser (scanner)
 import           Yi.Keymap            (YiM)
-import           Yi.Lexer.Alex
-import           Yi.MiniBuffer        (anyModeByNameM)
+import           Yi.MiniBuffer        (modeByNameM)
 import qualified Yi.Rope              as R (YiString, toText)
 import           Yi.Search            (makeSimpleSearch)
 import           Yi.Style             (StyleName)
-import           Yi.Syntax            (ExtHL (ExtHL))
-import           Yi.Syntax.Driver     (mkHighlighter)
-import           Yi.Syntax.OnlineTree (Tree, manyToks)
-import           Yi.Syntax.Tree       (tokenBasedStrokes)
-
-type TokenBasedMode tok = Mode (Tree (Tok tok))
 
 -- TODO: Move this mode to it's own module
 -- | The only built in mode of yi
-fundamentalMode :: Mode syntax
+fundamentalMode :: Mode
 fundamentalMode = emptyMode
   { modeName = "fundamental"
   , modeApplies = modeAlwaysApplies
-  , modeIndent = const autoIndentB
-  , modePrettify = const fillParagraph
+  , modeIndent = autoIndentB
+  , modePrettify = fillParagraph
   , modeGotoDeclaration = do
        currentPoint <- pointB
        currentWord <- readCurrentWordB
@@ -62,32 +54,6 @@ fundamentalMode = emptyMode
                else moveTo currentPoint
            [] -> moveTo currentPoint
   }
-
--- | Creates a 'TokenBasedMode' from a 'Lexer' and a function that
--- turns tokens into 'StyleName'.
-linearSyntaxMode' :: Show (l s)
-                  => Lexer l s (Tok t) i
-                  -> (t -> StyleName)
-                  -> TokenBasedMode t
-linearSyntaxMode' scanToken tts = fundamentalMode
-  & modeHLA .~ ExtHL (mkHighlighter $ IncrParser.scanner manyToks . lexer)
-  & modeGetStrokesA .~ tokenBasedStrokes tokenToStroke
-  where
-    tokenToStroke = fmap tts . tokToSpan
-    lexer = lexScanner scanToken
-
--- | Specialised version of 'linearSyntaxMode'' for the common case,
--- wrapping up into a 'Lexer' with 'commonLexer'.
-linearSyntaxMode :: Show s => s -- ^ Starting state
-                 -> TokenLexer AlexState s (Tok t) AlexInput
-                 -> (t -> StyleName)
-                 -> TokenBasedMode t
-linearSyntaxMode initSt scanToken =
-  linearSyntaxMode' (commonLexer scanToken initSt)
-
-styleMode :: Show (l s) => StyleLexer l s t i
-          -> TokenBasedMode t
-styleMode l = linearSyntaxMode' (l ^. styleLexer) (l ^. tokenToStyle)
 
 -- | Determines if the file's extension is one of the extensions in the list.
 extensionMatches :: [String]
@@ -151,17 +117,17 @@ shebangParser p = void p'
      <|> P.skip (const True) *> P.skipWhile (not . P.isEndOfLine) *> P.skipWhile P.isEndOfLine *> p'
 
 -- | Adds a hook to all matching hooks in a list
-hookModes :: (AnyMode -> Bool) -> BufferM () -> [AnyMode] -> [AnyMode]
-hookModes p h = map $ \am@(AnyMode m) ->
-  if p am then AnyMode (m & modeOnLoadA %~ (>> h)) else am
+hookModes :: (Mode -> Bool) -> BufferM () -> [Mode] -> [Mode]
+hookModes p h = map $ \m ->
+  if p m then (m & modeOnLoadA %~ (>> h)) else m
 
--- | Apply a list of mode hooks to a list of AnyModes
-applyModeHooks :: [(AnyMode -> Bool, BufferM ())] -> [AnyMode] -> [AnyMode]
-applyModeHooks hs ms = flip map ms $ \am -> case filter (($ am) . fst) hs of
-    [] -> am
-    ls -> onMode (modeOnLoadA %~ \x -> foldr ((>>) . snd) x ls) am
+-- | Apply a list of mode hooks to a list of Modes
+applyModeHooks :: [(Mode -> Bool, BufferM ())] -> [Mode] -> [Mode]
+applyModeHooks hs ms = flip map ms $ \m -> case filter (($ m) . fst) hs of
+    [] -> m
+    ls -> (modeOnLoadA %~ \x -> foldr ((>>) . snd) x ls) m
 
 -- | Check whether a mode of the same name is already in modeTable and
 -- returns the original mode, if it isn't the case.
-lookupMode :: AnyMode -> YiM AnyMode
-lookupMode am@(AnyMode m) = fromMaybe am <$> anyModeByNameM (modeName m)
+lookupMode :: Mode -> YiM Mode
+lookupMode m = fromMaybe m <$> modeByNameM (modeName m)

@@ -128,7 +128,6 @@ library:
         - Yi.History
         - Yi.Hoogle
         - Yi.Hooks
-        - Yi.IncrementalParse
         - Yi.Interact
         - Yi.JumpList
         - Yi.Keymap
@@ -139,8 +138,6 @@ library:
         - Yi.MiniBuffer
         - Yi.Misc
         - Yi.Mode.Common
-        - Yi.Mode.Compilation
-        - Yi.Mode.Interactive
         - Yi.Monad
         - Yi.Option
         - Yi.Paths
@@ -150,10 +147,6 @@ library:
         - Yi.Search
         - Yi.Search.Internal
         - Yi.String
-        - Yi.Syntax.Driver
-        - Yi.Syntax.Layout
-        - Yi.Syntax.OnlineTree
-        - Yi.Syntax.Tree
         - Yi.Tab
         - Yi.Tag
         - Yi.TextCompletion

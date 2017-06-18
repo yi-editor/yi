@@ -28,7 +28,7 @@ import           Data.Traversable          (mapM)
 import           Yi.Buffer
 import           Yi.String                 (padLeft)
 import           Yi.Style                  (Attributes, StyleName, UIStyle (baseAttributes, selectedStyle))
-import           Yi.Syntax                 (Span (..))
+import           Yi.Buffer.Basic           (Span (..))
 import           Yi.Window                 (Window (height, isMini))
 
 applyHeights :: Traversable t => [Int] -> t Window -> t Window
@@ -70,20 +70,11 @@ paintStrokes f0 x0 lf@((pf,f):tf) lx@((px,x):tx) =
     EQ -> (pf, f  x ):paintStrokes f  x  tf tx
     GT -> (px, f0 x ):paintStrokes f0 x  lf tx
 
-
-
-paintPicture :: a -> [[Span (Endo a)]] -> [(Point,a)]
-paintPicture a = foldr (paintStrokes id a . strokePicture) []
-
 attributesPictureB :: UIStyle -> Maybe SearchExp -> Region -> [[Span StyleName]]
-    -> BufferM [(Point,Attributes)]
-attributesPictureB sty mexp region extraLayers =
-  paintPicture (baseAttributes sty) <$>
-    fmap (fmap (fmap ($ sty))) <$>
-    (extraLayers ++) <$>
-    strokesRangesB mexp region
+    -> BufferM [(Point, Attributes)]
+attributesPictureB sty mexp region extraLayers = return []
 
-attributesPictureAndSelB :: UIStyle -> Maybe SearchExp -> Region -> BufferM [(Point,Attributes)]
+attributesPictureAndSelB :: UIStyle -> Maybe SearchExp -> Region -> BufferM [(Point, Attributes)]
 attributesPictureAndSelB sty mexp region = do
     selReg <- getSelectRegionB
     showSel <- use highlightSelectionA

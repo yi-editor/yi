@@ -39,8 +39,6 @@ module Yi.Core
 
   -- * Misc
   , runAction
-  , withSyntax
-  , focusAllSyntax
   , onYiVar
   ) where
 
@@ -155,10 +153,12 @@ startEditor cfg st = do
     UI.main ui -- transfer control to UI
 
 
-recoverMode :: [AnyMode] -> FBuffer -> FBuffer
-recoverMode tbl buffer  = case fromMaybe (AnyMode emptyMode) (find (\(AnyMode m) -> modeName m == oldName) tbl) of
-    AnyMode m -> setMode0 m buffer
-  where oldName = case buffer of FBuffer {bmode = m} -> modeName m
+recoverMode :: [Mode] -> FBuffer -> FBuffer
+recoverMode tbl buffer =
+    case fromMaybe emptyMode (find (\m -> modeName m == oldName) tbl) of
+        m -> setMode0 m buffer
+    where
+    oldName = case buffer of FBuffer {bmode = m} -> modeName m
 
 postActions :: IsRefreshNeeded -> [Action] -> YiM ()
 postActions refreshNeeded actions = do yi <- ask; liftBase $ yiOutput yi refreshNeeded actions
@@ -266,27 +266,6 @@ checkFileChanges e0 = do
         fileModTime f = posixSecondsToUTCTime . realToFrac . modificationTime <$> getFileStatus f
         runDummy b act = snd $ runBuffer (dummyWindow $ bkey b) b act
 
--- | Hide selection, clear "syntax dirty" flag (as appropriate).
-clearAllSyntaxAndHideSelection :: Editor -> Editor
-clearAllSyntaxAndHideSelection = buffersA %~ fmap (clearSyntax . clearHighlight)
-  where
-    clearHighlight fb =
-      -- if there were updates, then hide the selection.
-      let h = view highlightSelectionA fb
-          us = view pendingUpdatesA fb
-      in highlightSelectionA .~ (h && null us) $ fb
-
-
--- Focus syntax tree on the current window, for all visible buffers.
-focusAllSyntax :: Editor -> Editor
-focusAllSyntax e6 = buffersA %~ fmap (\b -> focusSyntax (regions b) b) $ e6
-    where regions b = M.fromList [(wkey w, winRegion w) | w <- toList $ windows e6, bufkey w == bkey b]
-          -- Why bother filtering the region list? After all the trees
-          -- are lazily computed. Answer: focusing is an incremental
-          -- algorithm. Each "focused" path depends on the previous
-          -- one. If we left unforced focused paths, we'd create a
-          -- long list of thunks: a memory leak.
-
 -- | Redraw
 refreshEditor :: YiM ()
 refreshEditor = onYiVar $ \yi var -> do
@@ -303,13 +282,11 @@ refreshEditor = onYiVar $ \yi var -> do
         e7 <- (if configCheckExternalChangesObsessively cfg
                then checkFileChanges
                else return) (yiEditor var) >>=
-             return . clearAllSyntaxAndHideSelection >>=
              -- Adjust window sizes according to UI info
              UI.layout (yiUi yi) >>=
              scroll >>=
              -- Adjust point according to the current layout;
              return . fst . runOnWins snapInsB >>=
-             return . focusAllSyntax >>=
              -- Clear "pending updates" and "followUp" from buffers.
              return . (buffersA %~ fmap (clearUpdates . clearFollow))
         -- Display the new state of the editor
@@ -495,12 +472,6 @@ waitForExit ph =
       case mec of
           Nothing -> threadDelay (500*1000) >> waitForExit ph
           Just ec -> return (Right ec)
-
-withSyntax :: (Show x, YiAction a x) => (forall syntax. Mode syntax -> syntax -> a) -> YiM ()
-withSyntax f = do
-            b <- gets currentBuffer
-            act <- withGivenBuffer b $ withSyntaxB f
-            runAction $ makeAction act
 
 userForceRefresh :: YiM ()
 userForceRefresh = withUI UI.userForceRefresh
