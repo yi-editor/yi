@@ -1,0 +1,20 @@
+-- Input
+(1,1)
+#pragma once
+
+#include <memory>
+#include <future>
+#include <string>
+
+namespace stuff {
+-- Output
+(6,1)
+#pragma once
+
+#include <future>
+#include <memory>
+#include <string>
+
+namespace stuff {
+-- Events
+jjVjj:sort<CR> 
