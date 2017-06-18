@@ -3,6 +3,7 @@
 import           Data.Monoid
 import           Data.Prototype
 import           Lens.Micro.Platform              ((.=))
+import           Yi.Boot                          (configMain)
 import           Yi.Config
 import           Yi.Config.Default                (defaultConfig)
 import           Yi.Config.Default.HaskellMode    (configureHaskellMode)

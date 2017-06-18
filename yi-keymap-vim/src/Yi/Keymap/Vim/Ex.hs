@@ -30,7 +30,6 @@ import qualified Yi.Keymap.Vim.Ex.Commands.Nohl         as Nohl (parse)
 import qualified Yi.Keymap.Vim.Ex.Commands.Paste        as Paste (parse)
 import qualified Yi.Keymap.Vim.Ex.Commands.Quit         as Quit (parse)
 import qualified Yi.Keymap.Vim.Ex.Commands.Read         as Read (parse)
-import qualified Yi.Keymap.Vim.Ex.Commands.Reload       as Reload (parse)
 import qualified Yi.Keymap.Vim.Ex.Commands.Shell        as Shell (parse)
 import qualified Yi.Keymap.Vim.Ex.Commands.Sort         as Sort (parse)
 import qualified Yi.Keymap.Vim.Ex.Commands.Substitute   as Substitute (parse)
@@ -60,7 +59,6 @@ defExCommandParsers =
     , Paste.parse
     , Quit.parse
     , Read.parse
-    , Reload.parse
     , Sort.parse
     , Substitute.parse
     , Shell.parse

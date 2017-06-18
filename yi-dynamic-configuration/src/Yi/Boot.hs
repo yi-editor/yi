@@ -13,12 +13,13 @@
 --
 -- Uses Dyre to implement the XMonad-style dynamic reconfiguration.
 
-module Yi.Boot (yi, yiDriver, yiDriver', reload) where
+module Yi.Boot (configMain, yi, yiDriver, yiDriver', reload) where
 
 import qualified Config.Dyre as Dyre
 import qualified Config.Dyre.Options as Dyre
 import qualified Config.Dyre.Params as Dyre
 import           Config.Dyre.Relaunch
+import           Control.Monad.State hiding (modify, get)
 import           Lens.Micro.Platform
 import           Data.Text ()
 import qualified Data.Text.IO as T (putStrLn)
@@ -27,6 +28,7 @@ import           System.Exit
 import           Yi.Boot.Internal
 import           Yi.Buffer.Misc (BufferId(..))
 import           Yi.Config
+import           Yi.Config.Simple.Types
 import           Yi.Editor
 import           Yi.Keymap
 import           Yi.Main
@@ -48,6 +50,11 @@ showErrorsInConf :: (Config, ConsoleConfig) -> String -> (Config, ConsoleConfig)
 showErrorsInConf c errs = c & _1 . initialActionsA %~ (makeAction openErrBuf :)
   where
     openErrBuf = splitE >> newBufferE (MemBuffer "*errors*") (fromString errs)
+
+-- | Starts with the given initial config, makes the described
+-- modifications, then starts yi.
+configMain :: Config -> ConfigM () -> IO ()
+configMain c m = yi =<< execStateT (runConfigM m) c
 
 -- | Handy alias for 'yiDriver'.
 yi :: Config -> IO ()

@@ -41,7 +41,6 @@ dependencies:
     - directory
     - dlist >= 0.4.1
     - dynamic-state >= 0.1.0.5
-    - dyre >= 0.8.11
     - exceptions
     - filepath >= 1.1
     - hashable >= 1.1.2.5
@@ -105,8 +104,6 @@ library:
 
     exposed-modules:
         - Yi
-        - Yi.Boot
-        - Yi.Boot.Internal
         - Yi.Buffer
         - Yi.Buffer.Adjusted
         - Yi.Buffer.HighLevel

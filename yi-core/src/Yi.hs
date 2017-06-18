@@ -20,7 +20,6 @@
 module Yi
   (
     module Data.Prototype, -- prototypes are mainly there for config; makes sense to export them.
-    module Yi.Boot,
     module Yi.Buffer,
     module Yi.Config,
     module Yi.Config.Default,
@@ -38,7 +37,6 @@ module Yi
   ) where
 
 import Data.Prototype
-import Yi.Boot
 import Yi.Buffer
 import Yi.Config
 import Yi.Config.Default

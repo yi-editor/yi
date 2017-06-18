@@ -59,7 +59,6 @@ library:
         - Yi.Keymap.Vim.Ex.Commands.Paste
         - Yi.Keymap.Vim.Ex.Commands.Quit
         - Yi.Keymap.Vim.Ex.Commands.Read
-        - Yi.Keymap.Vim.Ex.Commands.Reload
         - Yi.Keymap.Vim.Ex.Commands.Shell
         - Yi.Keymap.Vim.Ex.Commands.Sort
         - Yi.Keymap.Vim.Ex.Commands.Substitute
