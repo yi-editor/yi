@@ -1,13 +1,11 @@
 module Yi.CompletionTests (testSuite) where
 
-import Data.List (sort,nub)
 import Data.Maybe(isJust)
 import Data.Monoid
 import Data.Text.Arbitrary()
 import Test.Tasty
 import Test.Tasty.QuickCheck
 import Yi.Completion as C
-import qualified Data.Map as M
 import qualified Data.Text as T
 
 testSuite :: TestTree

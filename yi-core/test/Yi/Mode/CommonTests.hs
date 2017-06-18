@@ -2,7 +2,6 @@
 module Yi.Mode.CommonTests (testSuite) where
 
 import Test.Tasty
-import Test.Tasty.QuickCheck
 import Test.Tasty.HUnit
 
 import Yi.Mode.Common

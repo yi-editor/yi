@@ -14,7 +14,7 @@ import           Yi.Rope ()
 
 type BufferName = String
 
--- | Create three buffers and return the 'BufferRef' and buffer name of
+-- | Create three bufs and return the 'BufferRef' and buffer name of
 -- each.
 createInitialBuffers :: EditorM [(BufferRef, BufferName)]
 createInitialBuffers = do
@@ -25,10 +25,10 @@ createInitialBuffers = do
 
 
 nthBufferRef :: Int -> [(BufferRef, BufferName)] -> BufferRef
-nthBufferRef n buffers = fst $ buffers !! n
+nthBufferRef n bufs = fst $ bufs !! n
 
 nthBufferName :: Int -> [(BufferRef, BufferName)] -> BufferName
-nthBufferName n buffers = snd $ buffers !! n
+nthBufferName n bufs = snd $ bufs !! n
 
 
 tests :: Config -> KeyEval -> TestTree
@@ -37,15 +37,15 @@ tests c ev =
         testCase ":buffer {bufname} switches to the named buffer" $ do
             let setupActions = createInitialBuffers
 
-                preConditions editor buffers =
-                    assertNotCurrentBuffer (nthBufferRef 1 buffers) editor
+                preConditions editor bufs =
+                    assertNotCurrentBuffer (nthBufferRef 1 bufs) editor
 
-                testActions buffers =
-                    ev $ ":buffer " ++ nthBufferName 1 buffers ++ "<CR>"
+                testActions bufs =
+                    ev $ ":buffer " ++ nthBufferName 1 bufs ++ "<CR>"
 
-                assertions editor buffers = do
+                assertions editor bufs = do
                     assertContentOfCurrentBuffer c "Buffer two" editor
-                    assertCurrentBuffer (nthBufferRef 1 buffers) editor
+                    assertCurrentBuffer (nthBufferRef 1 bufs) editor
 
             runTest setupActions preConditions testActions assertions c
 
@@ -53,16 +53,16 @@ tests c ev =
       , testCase ":buffer N switches to the numbered buffer" $ do
             let setupActions = createInitialBuffers
 
-                preConditions editor buffers =
-                    assertNotCurrentBuffer (nthBufferRef 1 buffers) editor
+                preConditions editor bufs =
+                    assertNotCurrentBuffer (nthBufferRef 1 bufs) editor
 
-                testActions buffers =
-                    let (BufferRef bref) = nthBufferRef 1 buffers
+                testActions bufs =
+                    let (BufferRef bref) = nthBufferRef 1 bufs
                     in ev $ ":buffer " ++ show bref ++ "<CR>"
 
-                assertions editor buffers = do
+                assertions editor bufs = do
                     assertContentOfCurrentBuffer c "Buffer two" editor
-                    assertCurrentBuffer (nthBufferRef 1 buffers) editor
+                    assertCurrentBuffer (nthBufferRef 1 bufs) editor
 
             runTest setupActions preConditions testActions assertions c
 
@@ -70,17 +70,17 @@ tests c ev =
       , testCase ":buffer # switches to the previous buffer" $ do
             let setupActions = createInitialBuffers
 
-                preConditions editor buffers =
+                preConditions editor bufs =
                     assertEqual "Unexpected buffer stack"
-                        [nthBufferRef 2 buffers, nthBufferRef 1 buffers]
+                        [nthBufferRef 2 bufs, nthBufferRef 1 bufs]
                         (take 2 . NE.toList $ bufferStack editor)
 
                 testActions _ =
                     ev $ ":buffer #<CR>"
 
-                assertions editor buffers = do
+                assertions editor bufs = do
                     assertEqual "Unexpected buffer stack"
-                        [nthBufferRef 1 buffers, nthBufferRef 2 buffers]
+                        [nthBufferRef 1 bufs, nthBufferRef 2 bufs]
                         (take 2 . NE.toList $ bufferStack editor)
 
             runTest setupActions preConditions testActions assertions c
@@ -89,15 +89,15 @@ tests c ev =
       , testCase ":buffer % is a no-op" $ do
             let setupActions = createInitialBuffers
 
-                preConditions editor buffers =
-                    assertCurrentBuffer (nthBufferRef 2 buffers) editor
+                preConditions editor bufs =
+                    assertCurrentBuffer (nthBufferRef 2 bufs) editor
 
                 testActions _ =
                     ev $ ":buffer %<CR>"
 
-                assertions editor buffers = do
+                assertions editor bufs = do
                     assertContentOfCurrentBuffer c "Buffer three" editor
-                    assertCurrentBuffer (nthBufferRef 2 buffers) editor
+                    assertCurrentBuffer (nthBufferRef 2 bufs) editor
 
             runTest setupActions preConditions testActions assertions c
 
@@ -105,15 +105,15 @@ tests c ev =
       , testCase ":buffer is a no-op" $ do
             let setupActions = createInitialBuffers
 
-                preConditions editor buffers =
-                    assertCurrentBuffer (nthBufferRef 2 buffers) editor
+                preConditions editor bufs =
+                    assertCurrentBuffer (nthBufferRef 2 bufs) editor
 
                 testActions _ =
                     ev $ ":buffer<CR>"
 
-                assertions editor buffers = do
+                assertions editor bufs = do
                     assertContentOfCurrentBuffer c "Buffer three" editor
-                    assertCurrentBuffer (nthBufferRef 2 buffers) editor
+                    assertCurrentBuffer (nthBufferRef 2 bufs) editor
 
             runTest setupActions preConditions testActions assertions c
 
@@ -121,15 +121,15 @@ tests c ev =
       , testCase "A modified buffer is not abandoned" $ do
             let setupActions = createInitialBuffers
 
-                preConditions editor buffers =
-                    assertNotCurrentBuffer (nthBufferRef 1 buffers) editor
+                preConditions editor bufs =
+                    assertNotCurrentBuffer (nthBufferRef 1 bufs) editor
 
-                testActions buffers = do
+                testActions bufs = do
                     withCurrentBuffer $ insertN "The buffer is altered"
-                    ev $ ":buffer " ++ nthBufferName 1 buffers ++ "<CR>"
+                    ev $ ":buffer " ++ nthBufferName 1 bufs ++ "<CR>"
 
-                assertions editor buffers = do
-                    assertNotCurrentBuffer (nthBufferRef 1 buffers) editor
+                assertions editor bufs = do
+                    assertNotCurrentBuffer (nthBufferRef 1 bufs) editor
 
             runTest setupActions preConditions testActions assertions c
 
@@ -137,15 +137,15 @@ tests c ev =
       , testCase "A modified buffer can be abandoned with a bang" $ do
             let setupActions = createInitialBuffers
 
-                preConditions editor buffers =
-                    assertNotCurrentBuffer (nthBufferRef 1 buffers) editor
+                preConditions editor bufs =
+                    assertNotCurrentBuffer (nthBufferRef 1 bufs) editor
 
-                testActions buffers = do
+                testActions bufs = do
                     withCurrentBuffer $ insertN "The buffer is altered"
-                    ev $ ":buffer! " ++ nthBufferName 1 buffers ++ "<CR>"
+                    ev $ ":buffer! " ++ nthBufferName 1 bufs ++ "<CR>"
 
-                assertions editor buffers = do
-                    assertCurrentBuffer (nthBufferRef 1 buffers) editor
+                assertions editor bufs = do
+                    assertCurrentBuffer (nthBufferRef 1 bufs) editor
 
             runTest setupActions preConditions testActions assertions c
 
@@ -153,18 +153,18 @@ tests c ev =
       , testCase ":Nbuffer switches to the numbered buffer" $ do
             let setupActions = createInitialBuffers
 
-                preConditions editor buffers =
-                    assertNotCurrentBuffer (nthBufferRef 1 buffers) editor
+                preConditions editor bufs =
+                    assertNotCurrentBuffer (nthBufferRef 1 bufs) editor
 
-                testActions buffers =
+                testActions bufs =
                     -- return ()
-                    let (BufferRef bref) = nthBufferRef 1 buffers
+                    let (BufferRef bref) = nthBufferRef 1 bufs
                     in ev $ ":" ++ show bref ++ "buffer<CR>"
                     -- in ev $ ":buffer " ++ show bref ++ "<CR>"
 
-                assertions editor buffers = do
+                assertions editor bufs = do
                     -- assertContentOfCurrentBuffer c "Buffer two" editor
-                    assertCurrentBuffer (nthBufferRef 1 buffers) editor
+                    assertCurrentBuffer (nthBufferRef 1 bufs) editor
 
             runTest setupActions preConditions testActions assertions c
 

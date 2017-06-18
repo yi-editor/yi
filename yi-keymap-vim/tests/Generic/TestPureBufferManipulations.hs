@@ -24,7 +24,6 @@ import Yi.Buffer
 import Yi.Config (Config)
 import Yi.Editor
 import Yi.Window
-import Yi.Region
 
 import Generic.TestUtils
 
@@ -152,9 +151,9 @@ discoverTests topdir ev = do
     return $ testsFromDirs ++ testsFromFiles
 
 optionalSettingAction :: OptionalSetting -> EditorM ()
-optionalSettingAction (WindowSize w h) = 
-    let region = mkSizeRegion (Point 0) (Size (w*h))
-    in currentWindowA %= (\w -> w { height = h, actualLines = h, winRegion = region })
+optionalSettingAction (WindowSize width' height') = 
+    let region = mkSizeRegion (Point 0) (Size (width' * height'))
+    in currentWindowA %= (\w -> w { height = height', actualLines = height', winRegion = region })
 
 mkTestCase :: Config -> KeymapTest -> TestTree
 mkTestCase cf t = testCase (ktName t) $ do

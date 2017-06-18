@@ -1,7 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 module Vim.TestExCommandParsers (tests) where
 
-import           Control.Applicative
 import           Data.List (inits)
 import           Data.Maybe
 import           Data.Monoid
