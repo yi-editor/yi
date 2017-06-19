@@ -22,6 +22,7 @@
 --
 -- @
 -- import Yi.Config.Simple
+-- import Yi.Boot
 -- import qualified Yi.Mode.Haskell as Haskell
 -- -- note: don't import "Yi", or else there will be name clashes
 --
@@ -45,7 +46,6 @@
 module Yi.Config.Simple (
   -- * The main interface
   ConfigM,
-  configMain,
   Field,
   -- * Modes, commands, and keybindings
   globalBindKeys,
@@ -98,7 +98,6 @@ module Yi.Config.Simple (
 
   -- we can't just export 'module Yi', because then we would get
   -- clashes with Yi.Config
-  module Yi.Boot,
   module Yi.Buffer,
   module Yi.Core,
   module Yi.Dired,
@@ -120,7 +119,6 @@ import           Control.Monad.State hiding (modify, get)
 import qualified Data.Text as T
 import qualified Data.Sequence as S
 import           Text.Printf(printf)
-import           Yi.Boot
 import           Yi.Buffer hiding (modifyMode)
 import           Yi.Config.Default
 import           Yi.Config.Misc
@@ -156,11 +154,6 @@ import           Yi.Config(Config, UIConfig, startFrontEndA, configUIA,
 
 --------------- Main interface
 -- newtype ConfigM a   (imported)
-
--- | Starts with the given initial config, makes the described
--- modifications, then starts yi.
-configMain :: Config -> ConfigM () -> IO ()
-configMain c m = yi =<< execStateT (runConfigM m) c
 
 ------------------------- Modes, commands, and keybindings
 -- | Adds the given key bindings to the `global keymap'. The bindings
