@@ -7,6 +7,7 @@ packages:
 - yi-fuzzy-open
 - yi-keymap-vim
 - yi-snippet
+- yi-misc-modes
 extra-deps: []
 resolver: lts-8.18
 build:
