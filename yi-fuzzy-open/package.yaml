@@ -21,7 +21,6 @@ dependencies:
     - transformers-base >= 0.4.4
     - vector >= 0.11
     - yi-core >= 0.14.0
-    - yi-language >= 0.14.0
     - yi-rope >= 0.7
 
 library:

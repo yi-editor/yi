@@ -3,9 +3,10 @@ nix:
   shell-file: shell.nix
 packages:
 - yi-core
-- yi-language
 - yi-frontend-vty
+- yi-fuzzy-open
 - yi-keymap-vim
+- yi-snippet
 extra-deps: []
 resolver: lts-8.18
 build:

@@ -30,7 +30,6 @@ dependencies:
     - transformers-base
     - unordered-containers
     - yi-core
-    - yi-language
     - yi-rope
 
 library:
