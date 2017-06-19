@@ -1,4 +1,6 @@
 # Yi
+
+[![Join the chat at https://gitter.im/yi-editor/yi](https://badges.gitter.im/yi-editor/yi.svg)](https://gitter.im/yi-editor/yi?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
 [![Travis](https://travis-ci.org/yi-editor/yi.svg?branch=master)](https://travis-ci.org/yi-editor/yi)
 [![Hackage](https://img.shields.io/hackage/v/yi.svg?maxAge=2592000)](https://hackage.haskell.org/package/yi)
 [![Hackage-Deps](https://img.shields.io/hackage-deps/v/yi.svg?maxAge=2592000)]()
