@@ -1,3 +1,9 @@
+0.14.0
+------
+
+ * yi-core now doesn't depend on dyre.
+   Dynamic configuration support is now provided by yi-dynamic-configuration package.
+
 0.13.7
 ------
 
