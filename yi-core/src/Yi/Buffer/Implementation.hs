@@ -27,7 +27,7 @@ module Yi.Buffer.Implementation
   , Mark, MarkValue (..)
   , Size
   , Direction (..)
-  , BufferImpl (mem, marks, markNames, hlCache, overlays, dirtyOffset)
+  , BufferImpl (mem, marks, markNames, overlays)
   , Overlay (..)
   , mkOverlay
   , overlayUpdate

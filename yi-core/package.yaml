@@ -166,6 +166,7 @@ library:
     dependencies:
     - semigroups
     - dyre >= 0.8.11
+    - regex-tdfa >= 1.2
 
 tests:
   tasty:
