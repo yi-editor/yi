@@ -8,6 +8,7 @@ packages:
 - yi-frontend-vty
 - yi-fuzzy-open
 - yi-ireader
+- yi-keymap-cua
 - yi-keymap-emacs
 - yi-keymap-vim
 - yi-misc-modes
