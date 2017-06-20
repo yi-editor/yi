@@ -26,7 +26,6 @@ dependencies:
     - text
     - transformers-base
     - yi-core
-    - yi-language
     - yi-rope
 
 library:

@@ -146,6 +146,7 @@ library:
         - Yi.Process
         - Yi.Rectangle
         - Yi.Regex
+        - Yi.Region
         - Yi.Search
         - Yi.Search.Internal
         - Yi.String

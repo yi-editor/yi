@@ -29,7 +29,7 @@ dependencies:
     - text
     - transformers-base
     - unordered-containers
-    - yi-core
+    - yi-core >= 0.13.7
     - yi-rope
 
 library:
