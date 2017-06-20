@@ -6,6 +6,7 @@ packages:
 - yi-dynamic-configuration
 - yi-frontend-vty
 - yi-frontend-pango
+- yi-ireader
 - yi-fuzzy-open
 - yi-keymap-vim
 - yi-snippet

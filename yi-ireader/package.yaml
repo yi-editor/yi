@@ -17,7 +17,6 @@ dependencies:
     - microlens-platform
     - text
     - yi-core
-    - yi-language
     - yi-rope
 
 library:
