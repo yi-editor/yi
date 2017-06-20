@@ -3,6 +3,7 @@ nix:
   shell-file: shell.nix
 packages:
 - yi-core
+- yi-dynamic-configuration
 - yi-frontend-vty
 - yi-frontend-pango
 - yi-fuzzy-open
