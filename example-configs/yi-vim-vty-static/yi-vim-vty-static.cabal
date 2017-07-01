@@ -3,7 +3,7 @@
 -- see: https://github.com/sol/hpack
 
 name:           yi-vim-vty-static
-version:        0.13.7
+version:        0.14.0
 category:       Yi
 homepage:       https://github.com/yi-editor/yi#readme
 bug-reports:    https://github.com/yi-editor/yi/issues
