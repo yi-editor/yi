@@ -115,7 +115,6 @@ module Yi.Config.Simple (
  ) where
 
 import           Lens.Micro.Platform (Lens', (%=), (%~), use, lens)
-import           Control.Monad.State hiding (modify, get)
 import qualified Data.Text as T
 import qualified Data.Sequence as S
 import           Text.Printf(printf)
