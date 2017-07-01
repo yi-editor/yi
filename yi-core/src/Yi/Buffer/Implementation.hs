@@ -51,6 +51,7 @@ module Yi.Buffer.Implementation
   , delOverlayBI
   , delOverlaysOfOwnerBI
   , getOverlaysOfOwnerBI
+  , strokesRangesBI
   , getStream
   , getIndexedStream
   , lineAt
@@ -74,7 +75,7 @@ import           Yi.Regex            (RegexLike (matchAll), SearchExp, searchReg
 import           Yi.Region           (Region (..), fmapRegion, mkRegion, nearRegion, regionSize)
 import           Yi.Rope             (YiString)
 import qualified Yi.Rope             as R
-import           Yi.Style            (StyleName, UIStyle (hintStyle, strongHintStyle))
+import           Yi.Style            (StyleName, Stroke, UIStyle (hintStyle, strongHintStyle))
 import           Yi.Utils            (SemiNum ((+~), (~-)), makeLensesWithSuffix, mapAdjust')
 
 
@@ -262,6 +263,39 @@ delOverlaysOfOwnerBI owner fb =
 getOverlaysOfOwnerBI :: R.YiString -> BufferImpl -> Set.Set Overlay
 getOverlaysOfOwnerBI owner fb =
     Set.filter ((== owner) . overlayOwner) (overlays fb)
+
+-- FIXME: this can be really inefficient.
+
+-- | Return style information for the range @(i,j)@ Style information
+--   is derived from syntax highlighting, active overlays and current regexp.  The
+--   returned list contains tuples @(l,s,r)@ where every tuple is to
+--   be interpreted as apply the style @s@ from position @l@ to @r@ in
+--   the buffer.  In each list, the strokes are guaranteed to be
+--   ordered and non-overlapping.  The lists of strokes are ordered by
+--   decreasing priority: the 1st layer should be "painted" on top.
+strokesRangesBI :: (Point -> Point -> Point -> [Stroke]) ->
+  Maybe SearchExp -> Region -> Point -> BufferImpl -> [[Stroke]]
+strokesRangesBI getStrokes regex rgn point fb = result
+  where
+    i = regionStart rgn
+    j = regionEnd rgn
+    dropBefore = dropWhile (\s ->spanEnd s <= i)
+    takeIn  = takeWhile (\s -> spanBegin s <= j)
+
+    groundLayer = [Span i mempty j]
+
+    -- zero-length spans seem to break stroking in general, so filter them out!
+    syntaxHlLayer = filter (\(Span b _m a) -> b /= a)  $ getStrokes point i j
+
+    layers2 = map (map overlayStroke) $ groupBy ((==) `on` overlayOwner) $  Set.toList $ overlays fb
+    layer3 = case regex of
+               Just re -> takeIn $ map hintStroke $ regexRegionBI re (mkRegion i j) fb
+               Nothing -> []
+    result = map (map clampStroke . takeIn . dropBefore) (layer3 : layers2 ++ [syntaxHlLayer, groundLayer])
+    overlayStroke (Overlay _owner sm  em a _msg) =
+        Span (markPoint sm) a (markPoint em)
+    clampStroke (Span l x r) = Span (max i l) x (min j r)
+    hintStroke r = Span (regionStart r) (if point `nearRegion` r then strongHintStyle else hintStyle) (regionEnd r)
 
 ------------------------------------------------------------------------
 -- Point based editing

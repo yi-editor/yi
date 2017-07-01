@@ -153,6 +153,7 @@ module Yi.Buffer.Misc
   , keymapProcessA
   , streamB
   , indexedStreamB
+  , strokesRangesB
   , askMarks
   , pointAt
   , SearchExp
@@ -195,12 +196,12 @@ import           Control.Monad (when, void, replicateM_, join)
 import           Data.Monoid
 import           Control.Monad.Reader
 import           Control.Monad.State.Strict     hiding (get, put)
-import           Data.Binary                    (Binary (..), Get)
+import           Data.Binary                    (Binary (..))
 import           Data.Char                      (ord)
 import           Data.Default                   (Default (def))
 import           Data.DynamicState.Serializable (getDyn, putDyn)
 import           Data.Foldable                  (Foldable (foldr), forM_, notElem)
-import qualified Data.Map.Strict                as M (Map, empty, insert, lookup)
+import qualified Data.Map.Strict                as M (empty, insert, lookup)
 import           Data.Maybe                     (fromMaybe, isNothing)
 import qualified Data.Sequence                  as S
 import qualified Data.Set                       as Set (Set)
@@ -211,7 +212,7 @@ import           Data.Traversable               (Traversable (mapM), forM)
 import           Lens.Micro.Platform            (Lens', lens, (&), (.~), (%~), (^.), use, (.=), (%=), view)
 import           Numeric                        (showHex)
 import           System.FilePath                (joinPath, splitPath)
-import           Yi.Buffer.Basic                (BufferRef, Point (..), Size (Size), WindowRef)
+import           Yi.Buffer.Basic                (BufferRef, Point (..), Size (Size))
 import           Yi.Buffer.Implementation
 import           Yi.Buffer.Undo
 import           Yi.Interact                    as I (P (End))
@@ -616,6 +617,12 @@ streamB dir i = queryBuffer $ getStream dir i
 
 indexedStreamB :: Direction -> Point -> BufferM [(Point,Char)]
 indexedStreamB dir i = queryBuffer $ getIndexedStream dir i
+
+strokesRangesB :: Maybe SearchExp -> Region -> BufferM [[Stroke]]
+strokesRangesB regex r = do
+  p <- pointB
+  getStrokes <- withModeB (pure . modeGetStrokes)
+  queryBuffer $ strokesRangesBI getStrokes regex r p
 
 ------------------------------------------------------------------------
 -- Point based operations
