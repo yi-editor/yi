@@ -217,7 +217,7 @@ import           Yi.Buffer.Implementation
 import           Yi.Buffer.Undo
 import           Yi.Interact                    as I (P (End))
 import           Yi.Monad                       (getsAndModify, uses)
-import           Yi.Region                      (Region, mkRegion)
+import           Yi.Region                      (Region (..), mkRegion)
 import           Yi.Rope                        (YiString)
 import qualified Yi.Rope                        as R
 import           Yi.Style                       (Stroke)
@@ -557,12 +557,12 @@ emptyMode = Mode
    modeAdjustBlock = \_ -> return (),
    modeFollow = emptyAction,
    modeIndentSettings = IndentSettings
-   { expandTabs = True
-   , tabSize = 8
-   , shiftWidth = 4
-   },
+     { expandTabs = True
+     , tabSize = 8
+     , shiftWidth = 4
+     },
    modeToggleCommentSelection = Nothing,
-   modeGetStrokes = \_ _ _ -> [],
+   modeGetStrokes = \_ _ _ -> pure [],
    modeOnLoad = return (),
    modeGotoDeclaration = return (),
    modeModeLine = defaultModeLine
@@ -621,8 +621,11 @@ indexedStreamB dir i = queryBuffer $ getIndexedStream dir i
 strokesRangesB :: Maybe SearchExp -> Region -> BufferM [[Stroke]]
 strokesRangesB regex r = do
   p <- pointB
-  getStrokes <- withModeB (pure . modeGetStrokes)
-  queryBuffer $ strokesRangesBI getStrokes regex r p
+  let start = regionStart r
+      end = regionEnd r
+  modeSpecificStrokes <- withModeB $ \m -> modeGetStrokes m p start end
+  commonStrokes <- queryBuffer $ strokesRangesBI regex r p
+  return $ commonStrokes ++ [modeSpecificStrokes]
 
 ------------------------------------------------------------------------
 -- Point based operations

@@ -295,9 +295,8 @@ data Mode = Mode
     -- ^ Follow a \"link\" in the file. (eg. go to location of error message)
   , modeIndentSettings :: IndentSettings
   , modeToggleCommentSelection :: Maybe (BufferM ())
-  , modeGetStrokes :: Point -> Point -> Point -> [Stroke]
+  , modeGetStrokes :: Point -> Point -> Point -> BufferM [Stroke]
     -- ^ Strokes that should be applied when displaying a syntax element
-    -- should this be an Action instead?
   , modeOnLoad :: BufferM ()
     -- ^ An action that is to be executed when this mode is set
   , modeModeLine :: [T.Text] -> BufferM T.Text

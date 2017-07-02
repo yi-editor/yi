@@ -273,29 +273,27 @@ getOverlaysOfOwnerBI owner fb =
 --   the buffer.  In each list, the strokes are guaranteed to be
 --   ordered and non-overlapping.  The lists of strokes are ordered by
 --   decreasing priority: the 1st layer should be "painted" on top.
-strokesRangesBI :: (Point -> Point -> Point -> [Stroke]) ->
-  Maybe SearchExp -> Region -> Point -> BufferImpl -> [[Stroke]]
-strokesRangesBI getStrokes regex rgn point fb = result
+strokesRangesBI :: Maybe SearchExp -> Region -> Point -> BufferImpl -> [[Stroke]]
+strokesRangesBI regex rgn point fb = result
   where
-    i = regionStart rgn
-    j = regionEnd rgn
-    dropBefore = dropWhile (\s ->spanEnd s <= i)
-    takeIn  = takeWhile (\s -> spanBegin s <= j)
+  result = map
+      (map clampStroke . takeIn . dropBefore)
+      (regexLayer : overlayLayers)
 
-    groundLayer = [Span i mempty j]
+  i = regionStart rgn
+  j = regionEnd rgn
 
-    -- zero-length spans seem to break stroking in general, so filter them out!
-    syntaxHlLayer = filter (\(Span b _m a) -> b /= a)  $ getStrokes point i j
+  dropBefore = dropWhile (\s ->spanEnd s <= i)
+  takeIn  = takeWhile (\s -> spanBegin s <= j)
+  clampStroke (Span l x r) = Span (max i l) x (min j r)
 
-    layers2 = map (map overlayStroke) $ groupBy ((==) `on` overlayOwner) $  Set.toList $ overlays fb
-    layer3 = case regex of
-               Just re -> takeIn $ map hintStroke $ regexRegionBI re (mkRegion i j) fb
-               Nothing -> []
-    result = map (map clampStroke . takeIn . dropBefore) (layer3 : layers2 ++ [syntaxHlLayer, groundLayer])
-    overlayStroke (Overlay _owner sm  em a _msg) =
-        Span (markPoint sm) a (markPoint em)
-    clampStroke (Span l x r) = Span (max i l) x (min j r)
-    hintStroke r = Span (regionStart r) (if point `nearRegion` r then strongHintStyle else hintStyle) (regionEnd r)
+  overlayLayers = map (map overlayStroke) $ groupBy ((==) `on` overlayOwner) $ Set.toList $ overlays fb
+  regexLayer = case regex of
+             Just re -> takeIn $ map hintStroke $ regexRegionBI re (mkRegion i j) fb
+             Nothing -> []
+  overlayStroke (Overlay _owner sm  em a _msg) =
+      Span (markPoint sm) a (markPoint em)
+  hintStroke r = Span (regionStart r) (if point `nearRegion` r then strongHintStyle else hintStyle) (regionEnd r)
 
 ------------------------------------------------------------------------
 -- Point based editing
