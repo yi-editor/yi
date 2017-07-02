@@ -24,7 +24,6 @@ import           System.FilePath     (takeDirectory, takeFileName)
 
 import           Yi.Buffer
 import           Yi.Mode.Common
-import           Yi.Style             (StyleName)
 
 cMode :: Mode
 cMode = fundamentalMode

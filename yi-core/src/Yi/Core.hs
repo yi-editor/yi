@@ -48,14 +48,14 @@ import           Control.Concurrent             (forkOS, modifyMVar, modifyMVar_
                                                 ,newMVar, readMVar, threadDelay)
 import           Control.Exc                    (ignoringException)
 import           Control.Exception              (SomeException, handle)
-import           Lens.Micro.Platform            (mapped, use, view, (%=), (%~),
+import           Lens.Micro.Platform            (mapped, use, (%=), (%~),
                                                  (&), (.=), (.~), (^.))
 import           Control.Monad                  (forever, void, when)
 import           Control.Monad.Base             (MonadBase (liftBase))
 import           Control.Monad.Except           ()
 import           Control.Monad.Reader           (MonadReader (ask), ReaderT (runReaderT), asks)
 import qualified Data.DelayList                 as DelayList (decrease, insert)
-import           Data.Foldable                  (elem, find, forM_, mapM_, or, toList)
+import           Data.Foldable                  (elem, find, forM_, mapM_, or)
 import           Data.List                      (partition)
 import           Data.List.NonEmpty             (NonEmpty (..))
 import qualified Data.List.PointedList.Circular as PL (PointedList (_focus), length)
@@ -91,7 +91,7 @@ import           Yi.String                      (chomp, showT)
 import           Yi.Style                       (errorStyle, strongHintStyle)
 import qualified Yi.UI.Common                   as UI (UI (end, layout, main, refresh, suspend, userForceRefresh))
 import           Yi.Utils                       (io)
-import           Yi.Window                      (bufkey, dummyWindow, isMini, winRegion, wkey)
+import           Yi.Window                      (bufkey, dummyWindow, isMini)
 
 -- | Make an action suitable for an interactive run.
 -- UI will be refreshed.

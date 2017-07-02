@@ -24,19 +24,16 @@ import           Data.Default        (Default)
 import qualified Data.Text           as T (Text, init, filter, last, length, unpack)
 import           Data.Typeable       (Typeable)
 import           System.Exit         (ExitCode (..))
-import           Yi.Buffer           (BufferId (MemBuffer), BufferRef, identA, setMode)
-import           Yi.Buffer.Misc
+import           Yi.Buffer           (BufferId (MemBuffer), BufferRef, identA)
 import           Yi.Core             (startSubprocess)
 import           Yi.Editor
 import           Yi.Keymap           (YiM, withUI)
 import           Yi.MiniBuffer
 import           Yi.Monad            (maybeM)
-import           Yi.Process          (runShellCommand, shellFileName)
+import           Yi.Process          (runShellCommand)
 import qualified Yi.Rope             as R (fromText)
 import           Yi.Types            (YiVariable)
 import           Yi.UI.Common        (reloadProject)
-import           Yi.Utils            (io)
-
 
 ---------------------------
 -- | Changing the buffer name quite useful if you have

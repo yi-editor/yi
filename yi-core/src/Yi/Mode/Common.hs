@@ -17,7 +17,7 @@ module Yi.Mode.Common (fundamentalMode,
                  extensionMatches, shebangParser
                 ) where
 
-import           Lens.Micro.Platform  ((%~), (&), (.~), (^.))
+import           Lens.Micro.Platform  ((%~), (&))
 import           Control.Applicative  ((<|>))
 import           Control.Monad        (void)
 import qualified Data.Attoparsec.Text as P
@@ -29,7 +29,6 @@ import           Yi.Keymap            (YiM)
 import           Yi.MiniBuffer        (modeByNameM)
 import qualified Yi.Rope              as R (YiString, toText)
 import           Yi.Search            (makeSimpleSearch)
-import           Yi.Style             (StyleName)
 
 -- TODO: Move this mode to it's own module
 -- | The only built in mode of yi
