@@ -12,8 +12,6 @@ import Yi hiding (option)
 import Yi.Config.Simple.Types
 import Yi.Buffer.Misc (lineMoveRel)
 
-import Yi.Config.Default.HaskellMode    (configureHaskellMode)
-import Yi.Config.Default.JavaScriptMode (configureJavaScriptMode)
 import Yi.Config.Default.MiscModes      (configureMiscModes)
 
 #ifdef VIM
@@ -111,6 +109,4 @@ myConfig f k = do
   case k of
     Nothing -> snd (head keymaps)
     Just k' -> fromMaybe (return ()) (lookup k' keymaps)
-  configureHaskellMode
-  configureJavaScriptMode
   configureMiscModes

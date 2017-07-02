@@ -7,6 +7,5 @@ packages:
     - 'yi-frontend-vty'
     - 'yi-keymap-emacs'
     - 'yi-misc-modes'
-    - 'yi-mode-haskell'
 extra-deps:
 - ListLike-4.5

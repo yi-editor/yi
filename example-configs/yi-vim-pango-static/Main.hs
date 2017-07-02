@@ -16,7 +16,6 @@ import System.Environment
 
 import Yi
 import Yi.Config.Simple.Types
-import Yi.Config.Default.HaskellMode (configureHaskellMode)
 import Yi.Config.Default.MiscModes (configureMiscModes)
 import Yi.Config.Default.Vim (configureVim)
 import Yi.Config.Default.Pango (configurePango)
@@ -34,5 +33,4 @@ myConfig :: ConfigM ()
 myConfig = do
     configurePango
     configureVim
-    configureHaskellMode
     configureMiscModes

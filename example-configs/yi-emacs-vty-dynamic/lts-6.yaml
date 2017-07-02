@@ -6,8 +6,6 @@ packages:
      - yi-core
      - yi-keymap-emacs
      - yi-frontend-vty
-     - yi-mode-haskell
-     - yi-mode-javascript
      - yi-misc-modes
   - location:
       git: https://github.com/willdonnelly/dyre.git

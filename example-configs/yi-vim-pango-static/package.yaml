@@ -15,7 +15,6 @@ dependencies:
     - yi-frontend-pango
     - yi-keymap-vim
     - yi-misc-modes
-    - yi-mode-haskell
     - yi-rope
 
 executables:

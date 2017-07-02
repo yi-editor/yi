@@ -32,8 +32,6 @@ dependencies:
     - optparse-applicative >= 0.13.0.0
     - yi-core
     - yi-misc-modes
-    - yi-mode-haskell
-    - yi-mode-javascript
     - yi-rope
 
 when:

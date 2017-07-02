@@ -7,5 +7,4 @@ packages:
     - 'yi-frontend-vty'
     - 'yi-keymap-vim'
     - 'yi-misc-modes'
-    - 'yi-mode-haskell'
 extra-deps: []

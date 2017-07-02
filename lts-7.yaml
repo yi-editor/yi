@@ -11,6 +11,7 @@ packages:
 - yi-keymap-vim
 - yi-misc-modes
 - yi-snippet
+- yi
 extra-deps:
 - optparse-applicative-0.13.0.0
 resolver: lts-7.1

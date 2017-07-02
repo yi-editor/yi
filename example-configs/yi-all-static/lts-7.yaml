@@ -9,7 +9,5 @@ packages:
     - 'yi-keymap-vim'
     - 'yi-keymap-emacs'
     - 'yi-misc-modes'
-    - 'yi-mode-haskell'
-    - 'yi-mode-javascript'
 extra-deps:
 - optparse-applicative-0.13.0.0

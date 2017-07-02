@@ -3,7 +3,7 @@
 -- see: https://github.com/sol/hpack
 
 name:           yi-emacs-vty-static
-version:        0.13.7
+version:        0.15.0
 category:       Yi
 homepage:       https://github.com/yi-editor/yi#readme
 bug-reports:    https://github.com/yi-editor/yi/issues
@@ -29,6 +29,5 @@ executable yi-emacs-vty
     , yi-frontend-vty
     , yi-keymap-emacs
     , yi-misc-modes
-    , yi-mode-haskell
     , yi-rope
   default-language: Haskell2010

@@ -13,6 +13,7 @@ packages:
 - yi-keymap-vim
 - yi-misc-modes
 - yi-snippet
+- yi
 extra-deps: []
 resolver: lts-8.18
 build:

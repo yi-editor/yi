@@ -3,7 +3,7 @@
 -- see: https://github.com/sol/hpack
 
 name:           yi-all-static
-version:        0.13.7
+version:        0.15.0
 category:       Yi
 homepage:       https://github.com/yi-editor/yi#readme
 bug-reports:    https://github.com/yi-editor/yi/issues
@@ -48,8 +48,6 @@ executable yi
     , optparse-applicative >= 0.13.0.0
     , yi-core
     , yi-misc-modes
-    , yi-mode-haskell
-    , yi-mode-javascript
     , yi-rope
   if flag(vty)
     cpp-options: -DVTY

@@ -5,8 +5,6 @@ import           Lens.Micro.Platform              ((.=))
 import           Yi.Boot                          (configMain, reload)
 import           Yi.Config
 import           Yi.Config.Default                (defaultConfig)
-import           Yi.Config.Default.HaskellMode    (configureHaskellMode)
-import           Yi.Config.Default.JavaScriptMode (configureJavaScriptMode)
 import           Yi.Config.Default.MiscModes      (configureMiscModes)
 import           Yi.Config.Default.Vim
 import           Yi.Config.Default.Vty
@@ -23,8 +21,6 @@ main :: IO ()
 main = configMain defaultConfig $ do
          configureVty
          myVimConfig
-         configureHaskellMode
-         configureJavaScriptMode
          configureMiscModes
 
 myVimConfig :: ConfigM ()
