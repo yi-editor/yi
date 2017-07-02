@@ -6,7 +6,6 @@ packages:
     - 'yi-core'
     - 'yi-frontend-vty'
     - 'yi-keymap-emacs'
-    - 'yi-language'
     - 'yi-misc-modes'
     - 'yi-mode-haskell'
 extra-deps: []

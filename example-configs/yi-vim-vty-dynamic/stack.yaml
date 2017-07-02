@@ -6,7 +6,6 @@ packages:
      - yi-core
      - yi-keymap-vim
      - yi-frontend-vty
-     - yi-language
      - yi-mode-haskell
      - yi-mode-javascript
      - yi-misc-modes

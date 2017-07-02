@@ -14,7 +14,7 @@ dependencies:
 - mtl >= 0.1.0.1
 - microlens-platform
 - text >= 1.0
-- yi-rope >= 0.8
+- yi-rope >= 0.7.0.2
 
 library:
   source-dirs: src

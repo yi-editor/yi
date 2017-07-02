@@ -22,7 +22,6 @@ dependencies:
     - mtl
     - text
     - yi-core
-    - yi-language
     - yi-rope
 
 library:

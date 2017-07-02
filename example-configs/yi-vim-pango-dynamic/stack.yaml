@@ -5,7 +5,6 @@ packages:
     subdirs:
      - yi-core
      - yi-keymap-vim
-     - yi-language
      - yi-frontend-pango
      - yi-mode-haskell
      - yi-mode-javascript

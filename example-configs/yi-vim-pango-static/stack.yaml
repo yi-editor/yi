@@ -6,7 +6,6 @@ packages:
     - 'yi-core'
     - 'yi-frontend-pango'
     - 'yi-keymap-vim'
-    - 'yi-language'
     - 'yi-misc-modes'
     - 'yi-mode-haskell'
 extra-deps: []
