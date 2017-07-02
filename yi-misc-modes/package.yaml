@@ -25,5 +25,3 @@ library:
       - Yi.Config.Default.MiscModes
       - Yi.Modes
       - Yi.Mode.Buffers
-    build-tools:
-      - alex >= 3.0.3 && < 3.2.0 || >= 3.2.1
