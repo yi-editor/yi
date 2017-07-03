@@ -22,8 +22,6 @@ jobs:
     - script: stack --stack-yaml=stack.yaml test -j2
     - stage: "Build example configs"
       script:
-      - grep -R 'mode-haskell' yi-*
-      - grep -R 'mode-haskell' example-configs
       - stack --stack-yaml=all-configs.yaml build -j2
 
 addons:
