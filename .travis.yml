@@ -8,22 +8,28 @@ cache:
 
 jobs:
   include:
-    - stage: "Prepare"
-      script: stack setup --stack-yaml=lts-6.yaml
-    - script: stack setup --stack-yaml=lts-7.yaml
-    - script: stack install --stack-yaml=stack.yaml --install-ghc gtk2hs-buildtools
+    - stage: "Prepare GHC"
+      script:
+      - stack setup --stack-yaml=lts-6.yaml
+      - stack setup --stack-yaml=lts-7.yaml
+      - stack setup --stack-yaml=stack.yaml
+
+    - stage: "Install gtk2hs-buildtools"
+      script: stack install --stack-yaml=stack.yaml --install-ghc gtk2hs-buildtools
     - stage: "Build and test"
       script: stack --install-ghc --stack-yaml=lts-6.yaml test -j2
     - script: stack --install-ghc --stack-yaml=lts-7.yaml test -j2
     - script: stack --stack-yaml=stack.yaml test -j2
     - stage: "Build example configs"
-      script: stack --stack-yaml=all-configs.yaml build -j2
+      script:
+      - grep -R 'mode-haskell' yi-*
+      - grep -R 'mode-haskell' example-configs
+      - stack --stack-yaml=all-configs.yaml build -j2
 
 addons:
   apt:
     packages:
     - libgmp-dev
-    - alex
     sources: hvr-ghc
 
 before_install:
