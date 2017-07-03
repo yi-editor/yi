@@ -14,7 +14,6 @@ import qualified Yi.Keymap.Vim.Common as V
 import qualified Yi.Keymap.Vim.Ex.Types as V
 import qualified Yi.Keymap.Vim.Ex.Commands.Common as V
 import qualified Yi.Keymap.Vim.Utils as V
-import qualified Yi.Mode.Haskell as Haskell
 import qualified Yi.Rope as R
 
 main :: IO ()
@@ -27,7 +26,6 @@ myVimConfig :: ConfigM ()
 myVimConfig = do
   configureVim
   defaultKmA .= myKeymapSet
-  modeTableA .= myModes
   configCheckExternalChangesObsessivelyA .= False
 
 myKeymapSet :: KeymapSet
@@ -74,14 +72,6 @@ myBindings eval =
        , imap "<Home>" (withCurrentBuffer moveToSol)
        , imap "<End>" (withCurrentBuffer moveToEol)
        ]
-
-myModes :: [AnyMode]
-myModes = [
-         AnyMode Haskell.fastMode {
-             -- Disable beautification
-             modePrettify = const $ return ()
-         }
-    ]
 
 colemakRelayout :: Char -> Char
 colemakRelayout = V.relayoutFromTo colemakLayout qwertyLayout
