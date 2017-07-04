@@ -186,7 +186,7 @@ insertChars p cs (Point i) = left `R.append` cs `R.append` right
     where (left, right) = R.splitAt i p
 {-# INLINE insertChars #-}
 
--- | Write string into buffer.
+-- | Delete substring from buffer.
 deleteChars :: YiString -> Point -> Size -> YiString
 deleteChars p (Point i) (Size n) = left `R.append` right
     where (left, rest) = R.splitAt i p
