@@ -1,0 +1,24 @@
+name: yi-vim-vty-dynamic
+version: 0.15.0
+license: GPL-2
+maintainer: Yi developers <yi-devel@googlegroups.com>
+github: yi-editor/yi
+category: Yi
+
+ghc-options: -Wall -ferror-spans -threaded
+
+dependencies:
+    - base >= 4.8 && < 5
+    - yi-core
+    - yi-dynamic-configuration
+    - yi-keymap-vim
+    - yi-frontend-vty
+    - yi-misc-modes
+    - yi-rope
+    - oo-prototypes
+    - microlens-platform
+
+executables:
+    yi:
+        main: yi.hs
+        source-dirs: .
