@@ -15,6 +15,7 @@
 
 module Yi.Command where
 
+import           Control.Concurrent  (MVar,newEmptyMVar,putMVar,takeMVar)
 import           Control.Exception   (SomeException)
 import           Lens.Micro.Platform ((.=))
 import           Control.Monad       (void)
@@ -30,7 +31,7 @@ import           Yi.Editor
 import           Yi.Keymap           (YiM, withUI)
 import           Yi.MiniBuffer
 import qualified Yi.Mode.Compilation as Compilation (mode)
-import qualified Yi.Mode.Interactive as Interactive (spawnProcess)
+import qualified Yi.Mode.Interactive as Interactive (mode,spawnProcess)
 import           Yi.Monad            (maybeM)
 import           Yi.Process          (runShellCommand, shellFileName)
 import qualified Yi.Rope             as R (fromText)
@@ -99,6 +100,19 @@ buildRun cmd args onExit = withOtherWindow $ do
    putEditorDyn $ CabalBuffer $ Just b
    withCurrentBuffer $ setMode Compilation.mode
    return ()
+
+-- | Run the given command with args in interactive mode.
+interactiveRun :: T.Text -> [T.Text] -> (Either SomeException ExitCode -> YiM x) -> YiM ()
+interactiveRun cmd args onExit = withOtherWindow $ do
+    bc <- liftBase $ newEmptyMVar
+    b <- startSubprocess (T.unpack cmd) (T.unpack <$> args) $ \r -> do
+      b <- liftBase $ takeMVar bc
+      withGivenBuffer b $ setMode Compilation.mode
+      onExit r
+    maybeM deleteBuffer =<< cabalBuffer <$> getEditorDyn
+    withCurrentBuffer $ setMode Interactive.mode
+    liftBase $ putMVar bc b
+    return ()
 
 makeBuild :: CommandArguments -> YiM ()
 makeBuild (CommandArguments args) = buildRun "make" args (const $ return ())
