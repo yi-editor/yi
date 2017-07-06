@@ -114,11 +114,18 @@ interactiveRun cmd args onExit = withOtherWindow $ do
     liftBase $ putMVar bc b
     return ()
 
+-- | Select 'buildRun' or 'interactiveRun' based on stack or cabal command name
+selectRunner :: T.Text -> T.Text -> [T.Text] -> (Either SomeException ExitCode -> YiM x) -> YiM ()
+selectRunner command = if command `elem` ["eval","exec","ghci","repl","runghc","runhaskell","script"]
+  then interactiveRun
+  else buildRun
+
 makeBuild :: CommandArguments -> YiM ()
 makeBuild (CommandArguments args) = buildRun "make" args (const $ return ())
 
 cabalRun :: T.Text -> (Either SomeException ExitCode -> YiM x) -> CommandArguments -> YiM ()
-cabalRun cmd onExit (CommandArguments args) = buildRun "cabal" (cmd:args) onExit
+cabalRun cmd onExit (CommandArguments args) = runner "cabal" (cmd:args) onExit where
+  runner = selectRunner cmd
 
 makeRun :: (Either SomeException ExitCode -> YiM x) -> CommandArguments -> YiM ()
 makeRun onExit (CommandArguments args) = buildRun "make" args onExit
@@ -157,4 +164,6 @@ stackCommandE :: T.Text -> CommandArguments -> YiM ()
 stackCommandE cmd = stackRun cmd (const $ return ())
 
 stackRun :: T.Text -> (Either SomeException ExitCode -> YiM x) -> CommandArguments -> YiM ()
-stackRun cmd onExit (CommandArguments args) = buildRun "stack" (cmd:args) onExit
+stackRun cmd onExit (CommandArguments args) = runner "stack" (cmd:args) onExit where
+    runner = selectRunner cmd
+
