@@ -13,17 +13,20 @@ Yi is a collection of packages that serve as building blocks for making your ver
 
 Just doing `stack install yi` would be akin to unwrapping a box of legos and
 finding an assembled spaceship there.
+Note that this way, it will not be possible to use a custom configuration.
 
-A good starting point is choosing an example config of your liking in the
+In order to have a personalized configuration, it is required to use yi as libraries to create your own text editor.
+
+A good starting point is choosing an example configuration of your liking in the
 [example-configs][userconfigs] directory, building it, running it, and tinkering with it.
 
 See [this documentation page](https://yi-editor.github.io/pages/installing/)
 for more detailed installation instructions. Hacking instructions if you're
 using the nix package manager are also there.
 
-## Getting Source
+### Advanced configuration examples
 
-Yi source repository is available on [GitHub][github].
+Some people share their yi configuration here on [github](https://github.com/search?utf8=%E2%9C%93&q=yi-config+language%3Ahaskell&type=).
 
 ## Documentation
 
