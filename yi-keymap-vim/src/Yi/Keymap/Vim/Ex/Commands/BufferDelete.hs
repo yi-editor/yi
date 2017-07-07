@@ -11,39 +11,40 @@
 module Yi.Keymap.Vim.Ex.Commands.BufferDelete (parse) where
 
 import           Control.Applicative              (Alternative ((<|>),some))
-import           Control.Monad                    (void)
-import           Control.Monad.State              (gets)
+import           Control.Monad                    (void, when)
 import qualified Data.Text                        as T (null)
-import qualified Data.Attoparsec.Text             as P (Parser, char, choice, digit, endOfInput, parseOnly, string, try)
+import qualified Data.Attoparsec.Text             as P (Parser, char, choice, digit, endOfInput, parseOnly, string)
+import           Lens.Micro.Platform              (use)
 import           Yi.Buffer.Basic                  (BufferRef (..))
-import           Yi.Editor                        (closeBufferAndWindowE,deleteBuffer,getBufferWithName)
-import           Yi.Keymap                        (Action (EditorA))
+import           Yi.Core                          (closeWindow, errorEditor)
+import           Yi.Editor                        (currentWindowA, deleteBuffer, getBufferWithName, withEditor)
+import           Yi.Keymap                        (Action (YiA))
 import           Yi.Keymap.Vim.Common             (EventString)
-import qualified Yi.Keymap.Vim.Ex.Commands.Common as Common (parse, pureExCommand)
 import           Yi.Keymap.Vim.Ex.Commands.Buffer (bufferIdentifier)
+import qualified Yi.Keymap.Vim.Ex.Commands.Common as Common (needsSaving, parse, impureExCommand)
 import           Yi.Keymap.Vim.Ex.Types           (ExCommand (cmdAction, cmdShow))
+import           Yi.Window                        (bufkey)
 
 parse :: EventString -> Maybe ExCommand
 parse = Common.parse $ do
-    nameParser <* ((void $ some (P.char ' ')) <|> P.endOfInput)
+    nameParser
+    bang <- (True <$ P.char '!') <|> pure False
+    ((void $ some (P.char ' ')) <|> P.endOfInput)
     bufIdent <- bufferIdentifier
-    if T.null bufIdent
-        then return $ Common.pureExCommand {
-            cmdShow = "bdelete"
-          , cmdAction = EditorA closeBufferAndWindowE
-          }
-        -- If a different buffer is specified: the user probably doesn't
-        -- want to close the current window. Also keep the current window
-        -- open if the current buffer is specified because otherwise there's
-        -- no way to do it.
-        else return $ Common.pureExCommand {
-            cmdShow = "bdelete"
-          , cmdAction = EditorA $ do
-                buffer <- case P.parseOnly bufferRef bufIdent of
-                    Right ref -> return ref
-                    Left _ -> getBufferWithName bufIdent
-                deleteBuffer buffer
-          }
+    return $ Common.impureExCommand {
+        cmdShow = "bdelete"
+      , cmdAction = YiA $ do
+            buffer <- case P.parseOnly bufferRef bufIdent of
+                _ | T.null bufIdent -> withEditor $ bufkey <$> use currentWindowA
+                Right ref -> return ref
+                Left _ -> getBufferWithName bufIdent
+            q <- if bang then pure True else not <$> Common.needsSaving buffer
+            if q
+                then do
+                    deleteBuffer buffer
+                    when (T.null bufIdent) $ closeWindow -- Because this function closed the window before I started altering it
+                else errorEditor "No write since last change (add ! to override)"
+      }
   where
     bufferRef = BufferRef . read <$> some P.digit
 
