@@ -10,7 +10,7 @@
 --
 -- :buffer ex command to switch to named or numbered buffer.
 
-module Yi.Keymap.Vim.Ex.Commands.Buffer (parse) where
+module Yi.Keymap.Vim.Ex.Commands.Buffer (parse,bufferIdentifier) where
 
 import           Control.Applicative              (Alternative ((<|>)))
 import           Control.Monad                    (void)
@@ -29,9 +29,7 @@ import           Yi.Keymap.Vim.Ex.Types           (ExCommand (cmdAction, cmdShow
 
 parse :: EventString -> Maybe ExCommand
 parse = Common.parseWithBangAndCount nameParser $ \ _ bang mcount -> do
-  bufIdent <- (T.pack <$> P.many1 P.digit) <|> bufferSymbol <|>
-              (T.pack <$> P.many1 P.space) *> (T.pack <$> P.many' P.anyChar) <|>
-              P.endOfInput *> return ""
+  bufIdent <- bufferIdentifier
   return $ Common.pureExCommand {
       cmdShow = "buffer"
     , cmdAction = EditorA $ do
@@ -42,9 +40,14 @@ parse = Common.parseWithBangAndCount nameParser $ \ _ bang mcount -> do
             Just i  -> switchByRef $ BufferRef i
           else Common.errorNoWrite
     }
-  where
-    bufferSymbol = P.string "%" <|> P.string "#"
 
+bufferSymbol :: P.Parser T.Text
+bufferSymbol = P.string "%" <|> P.string "#"
+
+bufferIdentifier :: P.Parser T.Text
+bufferIdentifier = (T.pack <$> P.many1 P.digit) <|> bufferSymbol <|>
+    (T.pack <$> P.many1 P.space) *> (T.pack <$> P.many' P.anyChar) <|>
+    P.endOfInput *> return ""
 
 nameParser :: P.Parser ()
 nameParser = void . P.choice . fmap P.string $ ["buffer", "buf", "bu", "b"]
