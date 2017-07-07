@@ -1,4 +1,4 @@
-{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE OverloadedStrings, UnboxedTuples #-}
 {-# OPTIONS_HADDOCK show-extensions #-}
 
 -- |
@@ -10,10 +10,10 @@
 
 module Yi.Keymap.Vim.Ex.Commands.BufferDelete (parse) where
 
-import           Control.Applicative              (Alternative ((<|>),some))
+import           Control.Applicative              (Alternative (some))
 import           Control.Monad                    (void, when)
 import qualified Data.Text                        as T (null)
-import qualified Data.Attoparsec.Text             as P (Parser, char, choice, digit, endOfInput, parseOnly, string)
+import qualified Data.Attoparsec.Text             as P (Parser, choice, digit, parseOnly, string)
 import           Lens.Micro.Platform              (use)
 import           Yi.Buffer.Basic                  (BufferRef (..))
 import           Yi.Core                          (closeWindow, errorEditor)
@@ -21,23 +21,21 @@ import           Yi.Editor                        (currentWindowA, deleteBuffer,
 import           Yi.Keymap                        (Action (YiA))
 import           Yi.Keymap.Vim.Common             (EventString)
 import           Yi.Keymap.Vim.Ex.Commands.Buffer (bufferIdentifier)
-import qualified Yi.Keymap.Vim.Ex.Commands.Common as Common (needsSaving, parse, impureExCommand)
+import qualified Yi.Keymap.Vim.Ex.Commands.Common as Common (needsSaving, parseWithBangAndCount, impureExCommand)
 import           Yi.Keymap.Vim.Ex.Types           (ExCommand (cmdAction, cmdShow))
 import           Yi.Window                        (bufkey)
 
 parse :: EventString -> Maybe ExCommand
-parse = Common.parse $ do
-    nameParser
-    bang <- (True <$ P.char '!') <|> pure False
-    ((void $ some (P.char ' ')) <|> P.endOfInput)
+parse = Common.parseWithBangAndCount nameParser $ \ _ bang mcount -> do
     bufIdent <- bufferIdentifier
     return $ Common.impureExCommand {
         cmdShow = "bdelete"
       , cmdAction = YiA $ do
-            buffer <- case P.parseOnly bufferRef bufIdent of
+            buffer <- case (# mcount, P.parseOnly bufferRef bufIdent #) of
+                (# Just i, _ #) -> return $ BufferRef i
                 _ | T.null bufIdent -> withEditor $ bufkey <$> use currentWindowA
-                Right ref -> return ref
-                Left _ -> getBufferWithName bufIdent
+                (# _, Right ref #) -> return ref
+                (# _, Left _ #) -> getBufferWithName bufIdent
             q <- if bang then pure True else not <$> Common.needsSaving buffer
             if q
                 then do
