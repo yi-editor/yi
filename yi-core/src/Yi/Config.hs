@@ -18,13 +18,13 @@ module Yi.Config ( Config(..), UIConfig(..), UIBoot, CursorStyle(..)
 import Data.Prototype (extractValue)
 import Yi.Config.Lens
 import Yi.Style       (UIStyle)
-import Yi.Types       (AnyMode, Config (..), CursorStyle (..), Keymap,
+import Yi.Types       (Config (..), CursorStyle (..), Keymap, Mode,
                        UIBoot, UIConfig (..), extractTopKeymap)
 
 configStyle :: UIConfig -> UIStyle
 configStyle = extractValue . configTheme
 
-configFundamentalMode :: Config -> AnyMode
+configFundamentalMode :: Config -> Mode
 configFundamentalMode = last . modeTable
 
 configTopLevelKeymap :: Config -> Keymap

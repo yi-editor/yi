@@ -24,9 +24,9 @@
 module Yi.MiniBuffer ( spawnMinibufferE, withMinibufferFree, withMinibuffer
                      , withMinibufferGen, withMinibufferFin, noHint
                      , noPossibilities, mkCompleteFn, simpleComplete
-                     , infixComplete, infixComplete', anyModeByName
-                     , getAllModeNames, matchingBufferNames, anyModeByNameM
-                     , anyModeName, (:::)(..), LineNumber, RegexTag
+                     , infixComplete, infixComplete'
+                     , getAllModeNames, matchingBufferNames, modeByNameM
+                     , (:::)(..), LineNumber, RegexTag
                      , FilePatternTag, ToKill, CommandArguments(..)
                      , commentRegion, promptingForBuffer
                      ) where
@@ -337,24 +337,21 @@ instance Promptable Point where
     getPromptedValue s = Point <$> getPromptedValue s
     getPrompt _ = "Point"
 
-anyModeName :: AnyMode -> T.Text
-anyModeName (AnyMode m) = modeName m
-
 -- TODO: Better name
-anyModeByNameM :: T.Text -> YiM (Maybe AnyMode)
-anyModeByNameM n = find ((n==) . anyModeName) . modeTable <$> askCfg
+modeByNameM :: T.Text -> YiM (Maybe Mode)
+modeByNameM n = find ((n ==) . modeName) . modeTable <$> askCfg
 
-anyModeByName :: T.Text -> YiM AnyMode
-anyModeByName n = anyModeByNameM n >>= \case
-  Nothing -> fail $ "anyModeByName: no such mode: " ++ T.unpack n
+modeByName :: T.Text -> YiM Mode
+modeByName n = modeByNameM n >>= \case
+  Nothing -> fail $ "modeByName: no such mode: " ++ T.unpack n
   Just m  -> return m
 
 getAllModeNames :: YiM [T.Text]
-getAllModeNames = fmap anyModeName . modeTable <$> askCfg
+getAllModeNames = fmap modeName . modeTable <$> askCfg
 
-instance Promptable AnyMode where
+instance Promptable Mode where
     getPrompt _ = "Mode"
-    getPromptedValue = anyModeByName
+    getPromptedValue = modeByName
     getMinibuffer _ prompt act = do
       names <- getAllModeNames
       withMinibufferFin prompt names act

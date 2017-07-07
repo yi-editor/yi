@@ -124,13 +124,13 @@ selectAll :: BufferM ()
 selectAll = botB >> placeMark >> topB >> setVisibleSelection True
 
 adjBlock :: Int -> BufferM ()
-adjBlock x = withSyntaxB' (\m s -> modeAdjustBlock m s x)
+adjBlock x = withModeB (\m -> modeAdjustBlock m x)
 
 -- | A simple wrapper to adjust the current indentation using
 -- the mode specific indentation function but according to the
 -- given indent behaviour.
 adjIndent :: IndentBehaviour -> BufferM ()
-adjIndent ib = withSyntaxB' (\m s -> modeIndent m s ib)
+adjIndent ib = withModeB (\m -> modeIndent m ib)
 
 -- | Generic emacs style prompt file action. Takes a @prompt@ and a continuation
 -- @act@ and prompts the user with file hints.

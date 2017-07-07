@@ -131,7 +131,7 @@ modelessKeymapSet k = KeymapSet
 -- | @withModeY f@ runs @f@ on the current buffer's mode. As this runs in
 -- the YiM monad, we're able to do more than with just 'withModeB' such as
 -- prompt the user for something before running the action.
-withModeY :: (forall syntax. Mode syntax -> YiM ()) -> YiM ()
+withModeY :: (Mode -> YiM ()) -> YiM ()
 withModeY f = do
    bufref <- gets Editor.currentBuffer
    mfbuf <- Editor.findBuffer bufref

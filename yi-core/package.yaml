@@ -1,5 +1,5 @@
 name: yi-core
-version: 0.14.0
+version: 0.15.0
 synopsis: Yi editor core library
 maintainer: Yi developers <yi-devel@googlegroups.com>
 license: GPL-2
@@ -53,6 +53,7 @@ dependencies:
     - process >= 1.0.1.1
     - process-extras >= 0.3.3.8
     - split >= 0.2
+    - template-haskell
     - text >= 1.1.1.3
     - text-icu >= 0.7
     - time >= 1.1
@@ -60,7 +61,6 @@ dependencies:
     - unix-compat >= 0.1
     - unordered-containers >= 0.1.3
     - xdg-basedir >= 0.2.1
-    - yi-language >= 0.1.1.0
     - yi-rope >= 0.7.0.0
 when:
   - condition: os(win32)
@@ -101,6 +101,7 @@ library:
         - Yi
         - Yi.Buffer
         - Yi.Buffer.Adjusted
+        - Yi.Buffer.Basic
         - Yi.Buffer.HighLevel
         - Yi.Buffer.Indent
         - Yi.Buffer.Normal
@@ -128,7 +129,6 @@ library:
         - Yi.History
         - Yi.Hoogle
         - Yi.Hooks
-        - Yi.IncrementalParse
         - Yi.Interact
         - Yi.JumpList
         - Yi.Keymap
@@ -139,21 +139,18 @@ library:
         - Yi.MiniBuffer
         - Yi.Misc
         - Yi.Mode.Common
-        - Yi.Mode.Compilation
-        - Yi.Mode.Interactive
         - Yi.Monad
         - Yi.Option
         - Yi.Paths
         - Yi.PersistentState
         - Yi.Process
         - Yi.Rectangle
+        - Yi.Regex
+        - Yi.Region
         - Yi.Search
         - Yi.Search.Internal
         - Yi.String
-        - Yi.Syntax.Driver
-        - Yi.Syntax.Layout
-        - Yi.Syntax.OnlineTree
-        - Yi.Syntax.Tree
+        - Yi.Style
         - Yi.Tab
         - Yi.Tag
         - Yi.TextCompletion
@@ -162,12 +159,13 @@ library:
         - Yi.UI.SimpleLayout
         - Yi.UI.TabBar
         - Yi.UI.Utils
+        - Yi.Utils
         - Yi.Window
         - System.FriendlyPath
         - Parser.Incremental
     dependencies:
     - semigroups
-    - dyre >= 0.8.11
+    - regex-tdfa >= 1.2
 
 tests:
   tasty:

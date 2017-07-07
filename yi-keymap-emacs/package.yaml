@@ -1,5 +1,5 @@
 name: yi-keymap-emacs
-version: 0.14.0
+version: 0.15.0
 synopsis: Emacs keymap for Yi editor
 maintainer: Yi developers <yi-devel@googlegroups.com>
 license: GPL-2
@@ -21,7 +21,6 @@ dependencies:
     - transformers-base
     - yi-core
     - yi-misc-modes
-    - yi-language
     - yi-rope
 
 library:

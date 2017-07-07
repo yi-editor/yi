@@ -1,5 +1,5 @@
 name: yi-all-static
-version: 0.14.0
+version: 0.15.0
 license: GPL-2
 maintainer: Yi developers <yi-devel@googlegroups.com>
 github: yi-editor/yi
@@ -32,8 +32,6 @@ dependencies:
     - optparse-applicative >= 0.13.0.0
     - yi-core
     - yi-misc-modes
-    - yi-mode-haskell
-    - yi-mode-javascript
     - yi-rope
 
 when:

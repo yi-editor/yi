@@ -5,10 +5,7 @@ packages:
     subdirs:
      - yi-core
      - yi-keymap-vim
-     - yi-language
      - yi-frontend-vty
-     - yi-mode-haskell
-     - yi-mode-javascript
      - yi-misc-modes
   - location:
       git: https://github.com/willdonnelly/dyre.git

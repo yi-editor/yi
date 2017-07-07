@@ -24,20 +24,16 @@ import           Data.Default        (Default)
 import qualified Data.Text           as T (Text, init, filter, last, length, unpack)
 import           Data.Typeable       (Typeable)
 import           System.Exit         (ExitCode (..))
-import           Yi.Buffer           (BufferId (MemBuffer), BufferRef, identA, setMode)
+import           Yi.Buffer           (BufferId (MemBuffer), BufferRef, identA)
 import           Yi.Core             (startSubprocess)
 import           Yi.Editor
 import           Yi.Keymap           (YiM, withUI)
 import           Yi.MiniBuffer
-import qualified Yi.Mode.Compilation as Compilation (mode)
-import qualified Yi.Mode.Interactive as Interactive (spawnProcess)
 import           Yi.Monad            (maybeM)
-import           Yi.Process          (runShellCommand, shellFileName)
+import           Yi.Process          (runShellCommand)
 import qualified Yi.Rope             as R (fromText)
 import           Yi.Types            (YiVariable)
 import           Yi.UI.Common        (reloadProject)
-import           Yi.Utils            (io)
-
 
 ---------------------------
 -- | Changing the buffer name quite useful if you have
@@ -97,7 +93,6 @@ buildRun cmd args onExit = withOtherWindow $ do
    b <- startSubprocess (T.unpack cmd) (T.unpack <$> args) onExit
    maybeM deleteBuffer =<< cabalBuffer <$> getEditorDyn
    putEditorDyn $ CabalBuffer $ Just b
-   withCurrentBuffer $ setMode Compilation.mode
    return ()
 
 makeBuild :: CommandArguments -> YiM ()
@@ -117,12 +112,6 @@ cabalBuildE = cabalRun "build" (const $ return ())
 makeBuildE :: CommandArguments -> YiM ()
 makeBuildE = makeRun (const $ return ())
 
-shell :: YiM BufferRef
-shell = do
-    sh <- io shellFileName
-    Interactive.spawnProcess sh ["-i"]
-    -- use the -i option for interactive mode (assuming bash)
-
 -- | Search the source files in the project.
 searchSources :: String ::: RegexTag -> YiM ()
 searchSources = grepFind (Doc "*.hs")
@@ -133,7 +122,6 @@ grepFind (Doc filePattern) (Doc searchedRegex) = withOtherWindow $ do
     void $ startSubprocess "find" [".",
                                       "-name", "_darcs", "-prune", "-o",
                                       "-name", filePattern, "-exec", "grep", "-Hnie", searchedRegex, "{}", ";"] (const $ return ())
-    withCurrentBuffer $ setMode Compilation.mode
     return ()
 
 -----------------------

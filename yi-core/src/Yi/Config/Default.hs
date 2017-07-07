@@ -12,8 +12,7 @@ import           System.FilePath
 
 import           Yi.Buffer
 import           Yi.Command          (cabalBuildE, cabalConfigureE, grepFind,
-                                      makeBuild, reloadProjectE, searchSources,
-                                      shell)
+                                      makeBuild, reloadProjectE, searchSources)
 import           Yi.Config
 import           Yi.Core             (errorEditor, quitEditor)
 import           Yi.Editor
@@ -54,7 +53,6 @@ defaultPublishedActions = HM.fromList
     , ("leftB"                  , box leftB)
     , ("linePrefixSelectionB"   , box linePrefixSelectionB)
     , ("lineStreamB"            , box lineStreamB)
---    , ("mkRegion"               , box mkRegion) -- can't make 'instance Promptable Region'
     , ("makeBuild"              , box makeBuild)
     , ("moveB"                  , box moveB)
     , ("numberOfB"              , box numberOfB)
@@ -65,9 +63,8 @@ defaultPublishedActions = HM.fromList
     , ("reloadProjectE"         , box reloadProjectE)
     , ("replaceString"          , box replaceString)
     , ("revertE"                , box revertE)
-    , ("shell"                  , box shell)
     , ("searchSources"          , box searchSources)
-    , ("setAnyMode"             , box setAnyMode)
+    , ("setMode"                , box setMode)
     , ("sortLines"              , box sortLines)
     , ("unLineCommentSelectionB", box unLineCommentSelectionB)
     , ("writeB"                 , box writeB)
@@ -98,7 +95,7 @@ defaultConfig =
          , defaultKm        = modelessKeymapSet nilKeymap
          , startActions     = mempty
          , initialActions   = mempty
-         , modeTable = [AnyMode fundamentalMode]
+         , modeTable = [fundamentalMode]
          , debugMode = False
          , configKillringAccumulate = False
          , configCheckExternalChangesObsessively = True

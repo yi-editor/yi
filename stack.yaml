@@ -4,17 +4,14 @@ nix:
 packages:
 - yi-core
 - yi-dynamic-configuration
-- yi-frontend-vty
 - yi-frontend-pango
+- yi-frontend-vty
 - yi-fuzzy-open
+- yi-ireader
 - yi-keymap-cua
 - yi-keymap-emacs
 - yi-keymap-vim
-- yi-mode-haskell
-- yi-mode-javascript
 - yi-misc-modes
-- yi-ireader
-- yi-language
 - yi-snippet
 - yi
 extra-deps: []

@@ -24,21 +24,23 @@ import Yi.Keymap      (YiM, topKeymapA)
 import Yi.Keymap.Keys (choice, important, metaCh, (?>>!))
 import Yi.Mode.Common (anyExtension, fundamentalMode)
 
-abstract :: Mode syntax
-abstract = fundamentalMode { modeApplies = anyExtension ["irtxt"]
-                           , modeKeymap = topKeymapA %~ ikeys }
-  where
+abstract :: Mode
+abstract = fundamentalMode
+    { modeApplies = anyExtension ["irtxt"]
+    , modeKeymap = topKeymapA %~ ikeys
+    }
+    where
     ikeys = important $ choice m
     m = [ metaCh '`' ?>>! saveAsNewArticle
         , metaCh '0' ?>>! deleteAndNextArticle
         ]
         ++ map (\x -> metaCh (intToDigit x) ?>>! saveAndNextArticle x) [1..9]
 
-ireaderMode :: Mode syntax
+ireaderMode :: Mode
 ireaderMode = abstract { modeName = "interactive reading of text" }
 
 ireadMode ::  YiM ()
 ireadMode = do
-  withCurrentBuffer $ setAnyMode $ AnyMode ireaderMode
+  withCurrentBuffer $ setMode ireaderMode
   nextArticle
   printMsg "M-` new; M-0 delete; M-[1-9]: save w/higher priority"

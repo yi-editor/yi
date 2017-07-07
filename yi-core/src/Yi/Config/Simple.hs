@@ -115,7 +115,6 @@ module Yi.Config.Simple (
  ) where
 
 import           Lens.Micro.Platform (Lens', (%=), (%~), use, lens)
-import           Control.Monad.State hiding (modify, get)
 import qualified Data.Text as T
 import qualified Data.Sequence as S
 import           Text.Printf(printf)
@@ -167,7 +166,7 @@ globalBindKeys a = (defaultKmA . topKeymapA) %= (||> a)
 -- As with 'modifyMode', a mode by the given name must already be
 -- registered, or the function will have no effect, and issue a
 -- command-line warning.
-modeBindKeys :: Mode syntax -> Keymap -> ConfigM ()
+modeBindKeys :: Mode -> Keymap -> ConfigM ()
 modeBindKeys mode keys =
   ensureModeRegistered "modeBindKeys" (modeName mode) boundKeys
   where
@@ -187,8 +186,8 @@ modeBindKeysByName name k =
 
 -- | Register the given mode. It will be preferred over any modes
 -- already defined.
-addMode :: Mode syntax -> ConfigM ()
-addMode m = modeTableA %= (AnyMode m :)
+addMode :: Mode -> ConfigM ()
+addMode m = modeTableA %= (m :)
 
 -- | @modifyMode mode f@ modifies all modes with the same name as
 -- @mode@, using the function @f@.
@@ -199,8 +198,8 @@ addMode m = modeTableA %= (AnyMode m :)
 -- warning.
 --
 -- @'modifyMode' mode f = 'modifyModeByName' ('modeName' mode) f@
-modifyMode :: Mode syntax
-           -> (forall syntax'. Mode syntax' -> Mode syntax')
+modifyMode :: Mode
+           -> (Mode -> Mode)
            -> ConfigM ()
 modifyMode mode f = ensureModeRegistered "modifyMode" (modeName mode) modMode
   where
@@ -209,12 +208,12 @@ modifyMode mode f = ensureModeRegistered "modifyMode" (modeName mode) modMode
 -- | @modifyModeByName name f@ modifies the mode with name @name@
 -- using the function @f@. Consider using 'modifyMode' instead.
 modifyModeByName :: T.Text
-                 -> (forall syntax. Mode syntax -> Mode syntax)
+                 -> (Mode -> Mode)
                  -> ConfigM ()
 modifyModeByName name f =
-    ensureModeRegistered "modifyModeByName" name $ modeTableA %= fmap (onMode g)
+    ensureModeRegistered "modifyModeByName" name $ modeTableA %= fmap g
         where
-            g :: forall syntax. Mode syntax -> Mode syntax
+            g :: Mode -> Mode
             g m | modeName m == name = f m
                 | otherwise          = m
 
@@ -226,7 +225,7 @@ warn caller msg = io $ putStrLn $ printf "Warning: %s: %s" caller msg
 
 isModeRegistered :: T.Text -> ConfigM Bool
 isModeRegistered name =
-  any (\(AnyMode mode) -> modeName mode == name) <$> use modeTableA
+  any (\mode -> modeName mode == name) <$> use modeTableA
 
 -- ensure the given mode is registered, and if it is, then run the given action.
 ensureModeRegistered :: String -> T.Text -> ConfigM () -> ConfigM ()
@@ -349,7 +348,7 @@ inputPreprocess = configInputPreprocessA
 
 -- | List of modes by order of preference. Consider using 'addMode',
 -- 'modeBindKeys', or 'modifyMode' instead.
-modes :: Field [AnyMode]
+modes :: Field [Mode]
 modes = modeTableA
 
 -- | Set to 'Exclusive' for an emacs-like behaviour. Consider starting

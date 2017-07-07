@@ -12,8 +12,6 @@ import Yi hiding (option)
 import Yi.Config.Simple.Types
 import Yi.Buffer.Misc (lineMoveRel)
 
-import Yi.Config.Default.HaskellMode    (configureHaskellMode)
-import Yi.Config.Default.JavaScriptMode (configureJavaScriptMode)
 import Yi.Config.Default.MiscModes      (configureMiscModes)
 
 #ifdef VIM
@@ -86,7 +84,7 @@ main :: IO ()
 main = do
     mayClo <- execParser opts
     case mayClo of
-      Nothing -> putStrLn "Yi 0.14.0"
+      Nothing -> putStrLn "Yi 0.15.0"
       Just clo -> do
         let openFileActions = intersperse (EditorA newTabE) (map (YiA . openNewFile) (files clo))
             moveLineAction  = YiA $ withCurrentBuffer (lineMoveRel (fromMaybe 0 (startOnLine clo)))
@@ -111,6 +109,4 @@ myConfig f k = do
   case k of
     Nothing -> snd (head keymaps)
     Just k' -> fromMaybe (return ()) (lookup k' keymaps)
-  configureHaskellMode
-  configureJavaScriptMode
   configureMiscModes

@@ -235,7 +235,7 @@ stringToNewBuffer nm cs = withEditor $ do
     m <- asks configFundamentalMode
     withGivenBuffer u $ do
         putRegionStyle defRegStyle
-        setAnyMode m
+        setMode m
     return u
 
 insertBuffer :: MonadEditor m => FBuffer -> m ()

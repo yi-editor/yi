@@ -1,5 +1,5 @@
 name: yi-vim-vty-static
-version: 0.14.0
+version: 0.15.0
 license: GPL-2
 maintainer: Yi developers <yi-devel@googlegroups.com>
 github: yi-editor/yi
@@ -15,7 +15,6 @@ dependencies:
     - yi-frontend-vty
     - yi-keymap-vim
     - yi-misc-modes
-    - yi-mode-haskell
     - yi-rope
 
 executables:

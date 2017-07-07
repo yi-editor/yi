@@ -1,5 +1,5 @@
 name: yi-frontend-pango
-version: 0.14.0
+version: 0.15.0
 synopsis: Pango frontend for Yi editor
 maintainer: Yi developers <yi-devel@googlegroups.com>
 license: GPL-2
@@ -26,7 +26,6 @@ dependencies:
     - text
     - transformers-base
     - yi-core
-    - yi-language
     - yi-rope
 
 library:

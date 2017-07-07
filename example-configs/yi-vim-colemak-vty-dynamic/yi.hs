@@ -5,8 +5,6 @@ import           Lens.Micro.Platform              ((.=))
 import           Yi.Boot                          (configMain, reload)
 import           Yi.Config
 import           Yi.Config.Default                (defaultConfig)
-import           Yi.Config.Default.HaskellMode    (configureHaskellMode)
-import           Yi.Config.Default.JavaScriptMode (configureJavaScriptMode)
 import           Yi.Config.Default.MiscModes      (configureMiscModes)
 import           Yi.Config.Default.Vim
 import           Yi.Config.Default.Vty
@@ -16,22 +14,18 @@ import qualified Yi.Keymap.Vim.Common as V
 import qualified Yi.Keymap.Vim.Ex.Types as V
 import qualified Yi.Keymap.Vim.Ex.Commands.Common as V
 import qualified Yi.Keymap.Vim.Utils as V
-import qualified Yi.Mode.Haskell as Haskell
 import qualified Yi.Rope as R
 
 main :: IO ()
 main = configMain defaultConfig $ do
          configureVty
          myVimConfig
-         configureHaskellMode
-         configureJavaScriptMode
          configureMiscModes
 
 myVimConfig :: ConfigM ()
 myVimConfig = do
   configureVim
   defaultKmA .= myKeymapSet
-  modeTableA .= myModes
   configCheckExternalChangesObsessivelyA .= False
 
 myKeymapSet :: KeymapSet
@@ -78,14 +72,6 @@ myBindings eval =
        , imap "<Home>" (withCurrentBuffer moveToSol)
        , imap "<End>" (withCurrentBuffer moveToEol)
        ]
-
-myModes :: [AnyMode]
-myModes = [
-         AnyMode Haskell.fastMode {
-             -- Disable beautification
-             modePrettify = const $ return ()
-         }
-    ]
 
 colemakRelayout :: Char -> Char
 colemakRelayout = V.relayoutFromTo colemakLayout qwertyLayout

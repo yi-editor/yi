@@ -105,11 +105,11 @@ setSavedFilePointU (URList undos redos) =
   isNotSavedFilePoint _              = True
 
 -- | This undoes one interaction step.
-undoU :: Mark -> URList -> BufferImpl syntax -> (BufferImpl syntax, (URList, S.Seq Update))
+undoU :: Mark -> URList -> BufferImpl -> (BufferImpl, (URList, S.Seq Update))
 undoU m = undoUntilInteractive m mempty . undoInteractive
 
 -- | This redoes one iteraction step.
-redoU :: Mark -> URList -> BufferImpl syntax -> (BufferImpl syntax, (URList, S.Seq Update))
+redoU :: Mark -> URList -> BufferImpl -> (BufferImpl, (URList, S.Seq Update))
 redoU = asRedo . undoU
 
 -- | Prepare undo by moving one interaction point from undoes to redoes.
@@ -130,8 +130,8 @@ addIP xs = case S.viewl xs of
 
 -- | Repeatedly undo actions, storing away the inverse operations in the
 --   redo list.
-undoUntilInteractive :: Mark -> S.Seq Update -> URList -> BufferImpl syntax
-                     -> (BufferImpl syntax, (URList, S.Seq Update))
+undoUntilInteractive :: Mark -> S.Seq Update -> URList -> BufferImpl
+                     -> (BufferImpl, (URList, S.Seq Update))
 undoUntilInteractive pointMark xs ur@(URList cs rs) b = case S.viewl cs of
   S.EmptyL -> (b, (ur, xs))
   SavedFilePoint S.:< (S.viewl -> S.EmptyL) -> (b, (ur, xs)) -- Why this special case?
@@ -145,7 +145,7 @@ undoUntilInteractive pointMark xs ur@(URList cs rs) b = case S.viewl cs of
     in (b'', (ur'', u S.<| xs'))
     where
       -- Apply a /valid/ update and also move point in buffer to update position
-      applyUpdateWithMoveI :: Update -> BufferImpl syntax -> BufferImpl syntax
+      applyUpdateWithMoveI :: Update -> BufferImpl -> BufferImpl
       applyUpdateWithMoveI upd = case updateDirection upd of
                                  Forward ->  apply . move
                                  Backward -> move . apply

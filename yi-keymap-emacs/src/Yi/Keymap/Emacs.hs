@@ -200,7 +200,7 @@ emacsKeys univArg =
          , metaCh 'k'           ?>>! repeatingArg (deleteB unitSentence Forward)
          , metaCh 'l'           ?>>! repeatingArg lowercaseWordB
          , metaCh 'm'           ?>>! firstNonSpaceB
-         , metaCh 'q'           ?>>! withSyntax modePrettify
+         , metaCh 'q'           ?>>! withModeB modePrettify
          , metaCh 'r'           ?>>! repeatingArg moveToMTB
          , metaCh 'u'           ?>>! repeatingArg uppercaseWordB
          , metaCh 't'           ?>>! repeatingArg (transposeB unitWord Forward)

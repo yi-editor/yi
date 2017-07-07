@@ -23,60 +23,41 @@ import           Data.List           (isPrefixOf)
 import           System.FilePath     (takeDirectory, takeFileName)
 
 import           Yi.Buffer
---import           Yi.Lexer.Alex
-import qualified Yi.Lexer.C           as C (lexer)
-import qualified Yi.Lexer.Cabal       as Cabal (lexer)
-import qualified Yi.Lexer.Clojure     as Clojure (lexer)
-import qualified Yi.Lexer.Cplusplus   as Cplusplus (lexer)
-import qualified Yi.Lexer.GitCommit   as GitCommit (Token, lexer)
-import qualified Yi.Lexer.GNUMake     as GNUMake (lexer)
-import qualified Yi.Lexer.Java        as Java (lexer)
-import qualified Yi.Lexer.JSON        as JSON (lexer)
-import qualified Yi.Lexer.ObjectiveC  as ObjectiveC (lexer)
-import qualified Yi.Lexer.OCaml       as OCaml (Token, lexer)
-import qualified Yi.Lexer.Ott         as Ott (lexer)
-import qualified Yi.Lexer.Perl        as Perl (lexer)
-import qualified Yi.Lexer.Python      as Python (lexer)
-import qualified Yi.Lexer.Ruby        as Ruby (lexer)
-import qualified Yi.Lexer.Srmc        as Srmc (lexer)
-import qualified Yi.Lexer.SVNCommit   as SVNCommit (lexer)
-import qualified Yi.Lexer.Whitespace  as Whitespace (lexer)
 import           Yi.Mode.Common
-import           Yi.Style             (StyleName)
 
-cMode :: TokenBasedMode StyleName
-cMode = styleMode C.lexer
+cMode :: Mode
+cMode = fundamentalMode
   & modeNameA .~ "c"
   & modeAppliesA .~ anyExtension [ "c", "h" ]
 
-objectiveCMode :: TokenBasedMode StyleName
-objectiveCMode = styleMode ObjectiveC.lexer
+objectiveCMode :: Mode
+objectiveCMode = fundamentalMode
   & modeNameA .~ "objective-c"
   & modeAppliesA .~ anyExtension [ "m", "mm" ]
 
-cppMode :: TokenBasedMode StyleName
-cppMode = styleMode Cplusplus.lexer
+cppMode :: Mode
+cppMode = fundamentalMode
   & modeAppliesA .~ anyExtension [ "cxx", "cpp", "hxx" ]
   & modeNameA .~ "c++"
 
-cabalMode :: TokenBasedMode StyleName
-cabalMode = styleMode Cabal.lexer
+cabalMode :: Mode
+cabalMode = fundamentalMode
   & modeNameA .~ "cabal"
   & modeAppliesA .~ anyExtension [ "cabal" ]
   & modeToggleCommentSelectionA .~ Just (toggleCommentB "--")
 
-clojureMode :: TokenBasedMode StyleName
-clojureMode = styleMode Clojure.lexer
+clojureMode :: Mode
+clojureMode = fundamentalMode
   & modeNameA .~ "clojure"
   & modeAppliesA .~ anyExtension [ "clj", "edn" ]
 
-srmcMode :: TokenBasedMode StyleName
-srmcMode = styleMode Srmc.lexer
+srmcMode :: Mode
+srmcMode = fundamentalMode
   & modeNameA .~ "srmc"
   & modeAppliesA .~ anyExtension [ "pepa", "srmc" ] -- pepa is a subset of srmc
 
-gitCommitMode :: TokenBasedMode GitCommit.Token
-gitCommitMode = styleMode GitCommit.lexer
+gitCommitMode :: Mode
+gitCommitMode = fundamentalMode
   & modeNameA .~ "git-commit"
   & modeAppliesA .~ isCommit
   where
@@ -84,49 +65,47 @@ gitCommitMode = styleMode GitCommit.lexer
       ("COMMIT_EDITMSG", ".git") -> True
       _ -> False
 
-svnCommitMode :: TokenBasedMode StyleName
-svnCommitMode = styleMode SVNCommit.lexer
+svnCommitMode :: Mode
+svnCommitMode = fundamentalMode
   & modeNameA .~ "svn-commit"
   & modeAppliesA .~ isCommit
   where
     isCommit p _ = "svn-commit" `isPrefixOf` p && extensionMatches ["tmp"] p
 
-ocamlMode :: TokenBasedMode OCaml.Token
-ocamlMode = styleMode OCaml.lexer
+ocamlMode :: Mode
+ocamlMode = fundamentalMode
   & modeNameA .~ "ocaml"
   & modeAppliesA .~ anyExtension [ "ml", "mli", "mly" , "mll", "ml4", "mlp4" ]
 
-perlMode :: TokenBasedMode StyleName
-perlMode = styleMode Perl.lexer
+perlMode :: Mode
+perlMode = fundamentalMode
   & modeNameA .~ "perl"
   & modeAppliesA .~ anyExtension [ "t", "pl", "pm" ]
 
-rubyMode :: TokenBasedMode StyleName
-rubyMode = styleMode Ruby.lexer
+rubyMode :: Mode
+rubyMode = fundamentalMode
   & modeNameA .~ "ruby"
   & modeAppliesA .~ anyExtension [ "rb", "ru" ]
 
-pythonMode :: TokenBasedMode StyleName
-pythonMode = base
+pythonMode :: Mode
+pythonMode = fundamentalMode
   & modeNameA .~ "python"
   & modeAppliesA .~ anyExtension [ "py" ]
   & modeToggleCommentSelectionA .~ Just (toggleCommentB "#")
   & modeIndentSettingsA %~ (\x -> x { expandTabs = True, tabSize = 4 })
-  where
-    base = styleMode Python.lexer
 
-javaMode :: TokenBasedMode StyleName
-javaMode = styleMode Java.lexer
+javaMode :: Mode
+javaMode = fundamentalMode
   & modeNameA .~ "java"
   & modeAppliesA .~ anyExtension [ "java" ]
 
-jsonMode :: TokenBasedMode StyleName
-jsonMode = styleMode JSON.lexer
+jsonMode :: Mode
+jsonMode = fundamentalMode
   & modeNameA .~ "json"
   & modeAppliesA .~ anyExtension [ "json" ]
 
-gnuMakeMode :: TokenBasedMode StyleName
-gnuMakeMode = styleMode GNUMake.lexer
+gnuMakeMode :: Mode
+gnuMakeMode = fundamentalMode
   & modeNameA .~ "Makefile"
   & modeAppliesA .~ isMakefile
   & modeIndentSettingsA %~ (\x -> x { expandTabs = False, shiftWidth = 8 })
@@ -138,13 +117,13 @@ gnuMakeMode = styleMode GNUMake.lexer
               matches "GNUmakefile" = True
               matches filename      = extensionMatches [ "mk" ] filename
 
-ottMode :: TokenBasedMode StyleName
-ottMode = styleMode Ott.lexer
+ottMode :: Mode
+ottMode = fundamentalMode
   & modeNameA .~ "ott"
   & modeAppliesA .~ anyExtension [ "ott" ]
 
-whitespaceMode :: TokenBasedMode StyleName
-whitespaceMode = styleMode Whitespace.lexer
+whitespaceMode :: Mode
+whitespaceMode = fundamentalMode
   & modeNameA .~ "whitespace"
   & modeAppliesA .~ anyExtension [ "ws" ]
-  & modeIndentA .~ (\_ _ -> insertB '\t')
+  & modeIndentA .~ (\_ -> insertB '\t')

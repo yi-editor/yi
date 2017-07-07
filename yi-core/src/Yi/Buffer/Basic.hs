@@ -1,11 +1,13 @@
-{-# LANGUAGE DeriveDataTypeable #-}
-{-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE ExistentialQuantification #-}
-{-# LANGUAGE GeneralizedNewtypeDeriving #-}
-{-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE TemplateHaskell #-}
-{-# LANGUAGE DeriveGeneric #-}
-{-# LANGUAGE CPP #-}
+{-# language DeriveDataTypeable #-}
+{-# language DeriveGeneric #-}
+{-# language DeriveFunctor #-}
+{-# language DeriveFoldable #-}
+{-# language DeriveTraversable #-}
+{-# language ExistentialQuantification #-}
+{-# language GeneralizedNewtypeDeriving #-}
+{-# language MultiParamTypeClasses #-}
+{-# language ScopedTypeVariables #-}
+{-# language TemplateHaskell #-}
 
 -- Copyright 2008 JP Bernardy
 -- | Basic types useful everywhere we play with buffers.
@@ -68,6 +70,12 @@ instance SemiNum Point Size where
     Point p +~ Size s = Point (p + s)
     Point p -~ Size s = Point (p - s)
     Point p ~- Point q = Size (abs (p - q))
+
+data Span a = Span
+    { spanBegin :: !Point
+    , spanContents :: !a
+    , spanEnd :: !Point
+    } deriving (Show, Functor, Foldable, Traversable)
 
 -- | Window references
 newtype WindowRef = WindowRef { unWindowRef :: Int }

@@ -263,11 +263,11 @@ editFile filename = do
           hmode = case P.parseOnly pc (R.toText header) of
                     Left _ -> ""
                     Right str -> str
-          Just mode = find (\(AnyMode m) -> modeName m == hmode) tbl <|>
-                      find (\(AnyMode m) -> modeApplies m f header) tbl <|>
-                      Just (AnyMode emptyMode)
+          Just mode = find (\m -> modeName m == hmode) tbl <|>
+                      find (\m -> modeApplies m f header) tbl <|>
+                      Just emptyMode
       case mode of
-          AnyMode newMode -> withGivenBuffer b $ setMode newMode
+          newMode -> withGivenBuffer b $ setMode newMode
 
       return b
 

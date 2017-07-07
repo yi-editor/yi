@@ -47,7 +47,7 @@ import Data.Prototype
 import Yi.Rope (toText, splitAtLine, YiString)
 import qualified Yi.Rope as R
 import qualified Data.Map as Map
-import Yi.Core (startEditor, focusAllSyntax)
+import Yi.Core (startEditor)
 import Yi.Buffer
 import Yi.Config
 import Yi.Tab
@@ -491,10 +491,7 @@ newView buffer font = do
                     , winRegion = mkRegion (Point 0) (Point 2000)
                     }) $ liftYi $ withEditor $ newWindowE False viewFBufRef
     let windowRef = wkey newWindow
-    liftYi $ withEditor $ do
-        windowsA %= PL.insertRight newWindow
-        e <- get
-        put $ focusAllSyntax e
+    liftYi $ withEditor $ windowsA %= PL.insertRight newWindow
     drawArea <- liftBase drawingAreaNew
     liftBase . widgetModifyBg drawArea StateNormal . mkCol False
       . Yi.Style.background . baseAttributes . configStyle $ configUI config
@@ -544,7 +541,7 @@ newView buffer font = do
         (text, allAttrs, debug, tos, rel, point, inserting) <-
           runControl (liftYi $ withEditor $ do
             window <- findWindowWith windowRef <$> get
-            (%=) buffersA (fmap (clearSyntax . clearHighlight))
+            (%=) buffersA (fmap (clearHighlight))
             let winh = height window
             let tos = max 0 (regionStart (winRegion window))
             let bos = regionEnd (winRegion window)
@@ -658,16 +655,15 @@ setBufferMode f buffer = do
         hmode = case header =~ ("\\-\\*\\- *([^ ]*) *\\-\\*\\-" :: String) of
             AllTextSubmatches [_,m] -> T.pack m
             _ -> ""
-        Just mode = find (\(AnyMode m)-> modeName m == hmode) tbl <|>
-                    find (\(AnyMode m)-> modeApplies m f contents) tbl <|>
-                    Just (AnyMode emptyMode)
+        Just mode = find (\m -> modeName m == hmode) tbl <|>
+                    find (\m -> modeApplies m f contents) tbl <|>
+                    Just emptyMode
     case mode of
-        AnyMode newMode -> do
+        newMode -> do
             -- liftBase $ putStrLn $ show (f, modeName newMode)
             liftYi $ withEditor $ do
                 withGivenBuffer bufRef $ do
                     setMode newMode
-                    modify clearSyntax
                 switchToBufferE bufRef
             -- withEditor focusAllSyntax
 

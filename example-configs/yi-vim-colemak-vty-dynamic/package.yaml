@@ -1,4 +1,4 @@
-name: yi-vim-pango-static
+name: yi-vim-colemak-vty-dynamic
 version: 0.15.0
 license: GPL-2
 maintainer: Yi developers <yi-devel@googlegroups.com>
@@ -9,15 +9,16 @@ ghc-options: -Wall -ferror-spans -threaded
 
 dependencies:
     - base >= 4.8 && < 5
-    - microlens-platform
-    - mtl
-    - yi-core
-    - yi-frontend-pango
+    - yi-core >= 0.15
+    - yi-dynamic-configuration
     - yi-keymap-vim
+    - yi-frontend-vty
     - yi-misc-modes
     - yi-rope
+    - oo-prototypes
+    - microlens-platform
 
 executables:
-    yi-vim-pango:
-        main: Main.hs
+    yi:
+        main: yi.hs
         source-dirs: .

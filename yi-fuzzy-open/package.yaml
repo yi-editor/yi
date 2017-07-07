@@ -1,5 +1,5 @@
 name: yi-fuzzy-open
-version: 0.14.0
+version: 0.15.0
 synopsis: Fuzzy open plugin for yi
 maintainer: Yi developers <yi-devel@googlegroups.com>
 license: GPL-2
@@ -20,8 +20,7 @@ dependencies:
     - text >= 1.2
     - transformers-base >= 0.4.4
     - vector >= 0.11
-    - yi-core >= 0.14.0
-    - yi-language >= 0.14.0
+    - yi-core >= 0.15.0
     - yi-rope >= 0.7
 
 library:

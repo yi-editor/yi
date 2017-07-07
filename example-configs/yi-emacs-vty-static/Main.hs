@@ -15,7 +15,6 @@ import System.Environment
 
 import Yi
 import Yi.Config.Simple.Types
-import Yi.Config.Default.HaskellMode (configureHaskellMode)
 import Yi.Config.Default.MiscModes (configureMiscModes)
 import Yi.Config.Default.Emacs (configureEmacs)
 import Yi.Config.Default.Vty (configureVty)
@@ -33,5 +32,4 @@ myConfig :: ConfigM ()
 myConfig = do
     configureVty
     configureEmacs
-    configureHaskellMode
     configureMiscModes
