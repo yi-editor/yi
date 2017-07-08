@@ -18,6 +18,7 @@ module Yi.Keymap.Vim.Ex
 import           Yi.Keymap.Vim.Common                   (EventString)
 import qualified Yi.Keymap.Vim.Ex.Commands.Buffer       as Buffer (parse)
 import qualified Yi.Keymap.Vim.Ex.Commands.BufferDelete as BufferDelete (parse)
+import qualified Yi.Keymap.Vim.Ex.Commands.BufferNew    as BufferNew (parse)
 import qualified Yi.Keymap.Vim.Ex.Commands.Buffers      as Buffers (parse)
 import qualified Yi.Keymap.Vim.Ex.Commands.Cabal        as Cabal (parse)
 import qualified Yi.Keymap.Vim.Ex.Commands.Delete       as Delete (parse)
@@ -48,6 +49,7 @@ defExCommandParsers =
     [ Buffer.parse
     , Buffers.parse
     , BufferDelete.parse
+    , BufferNew.parse
     , Cabal.parse
     , Delete.parse
     , Edit.parse
