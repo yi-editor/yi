@@ -28,7 +28,7 @@ A good starting point is choosing an example configuration of your liking in the
 
 Yi, as a library, can be categorized into four parts :
 
-* *UIs*, how the editor is rendered following input events;
+* *Frontends* are responsible for rendering the editor state and passing user events to the core ;
     * a "textual" editor using [yi-frontend-vty](https://hackage.haskell.org/package/yi-frontend-vty)
     * a "graphical" one using [yi-frontend-pango](https://hackage.haskell.org/package/yi-frontend-pango)
     * or both
@@ -41,20 +41,11 @@ Yi, as a library, can be categorized into four parts :
  * *Keymaps*, how to trigger actions, they serve as the basis to use or to create the ones you need;
     * [vim-like](https://hackage.haskell.org/package/yi-keymap-vim)
     * [emacs-like](https://hackage.haskell.org/package/yi-keymap-emacs)
-    * [cua-like](https://hackage.haskell.org/package/yi-keymap-vim)
+    * [cua-like](https://hackage.haskell.org/package/yi-keymap-cua)
   
 * *Glue code*, how the three other parts are shaped together.
 
-The main configuratong work will takes place in the *Actions* and *Keymaps* parts.
-
-So to unleash the power of haskell in text editing, it is possible to define:
-  1. editing operations (**BufferM**)
-  2. compositions of buffers (**EditorM**)
-  3. interactions with the OS (**YiM**)
-  
-if and only if the default configurations available do not handle your specific case.
-
-#### Advanced configuration examples
+#### External configuration examples
 
 Some people share their Yi configurations here on [github](https://github.com/search?utf8=%E2%9C%93&q=yi-config+language%3Ahaskell&type=).
 
