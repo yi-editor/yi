@@ -33,12 +33,12 @@ Yi, as a library, can be categorized into four parts :
     * a "graphical" one using [yi-frontend-pango](https://hackage.haskell.org/package/yi-frontend-pango)
     * or both
     
- * *Actions*, how to interact with the editor and it's the part that makes most of Yi. It is structured around a stack of three monadic DSLs:
+ * *Actions* describe how to interact with the editor, and it's the part that makes most of Yi. It is structured around a stack of three monadic DSLs:
    * **BufferM** for all buffer-local operations, like insertion, deletion of text, and annotation of buffer contents. It can be understood as a monad that encapsulates the state of one buffer.
    * **EditorM** for editor-level operations, e.g., opening and closing windows and buffers. Operations involving *more than one buffer are handled at this level too.*
    * **YiM** for IO-level operations. There, one can operate on files, processes, etc. *This is the only level where IO can be performed.*
 
- * *Keymaps*, how to trigger actions, they serve as the basis to use or to create the ones you need;
+ * *Keymaps* represent how to trigger actions, they serve as the basis to use or to create the ones you need;
     * [vim-like](https://hackage.haskell.org/package/yi-keymap-vim)
     * [emacs-like](https://hackage.haskell.org/package/yi-keymap-emacs)
     * [cua-like](https://hackage.haskell.org/package/yi-keymap-cua)
