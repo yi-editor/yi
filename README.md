@@ -9,24 +9,45 @@
 
 Yi is a collection of packages that serve as building blocks for making your very own text editor.
 
-## Installing
+## Installation
 
-Just doing `stack install yi` would be akin to unwrapping a box of legos and
+Just running `stack install yi` would be akin to unwrapping a box of lego and
 finding an assembled spaceship there.
 Note that this way, it will not be possible to use a custom configuration.
 
-In order to have a personalized configuration, it is required to use yi as libraries to create your own text editor.
-
-A good starting point is choosing an example configuration of your liking in the
-[example-configs][userconfigs] directory, building it, running it, and tinkering with it.
+In order to have a personalized configuration, it is necessary to use Yi as libraries to create your own text editor.
 
 See [this documentation page](https://yi-editor.github.io/pages/installing/)
 for more detailed installation instructions. Hacking instructions if you're
 using the nix package manager are also there.
 
-### Advanced configuration examples
+## Configuration
 
-Some people share their yi configuration here on [github](https://github.com/search?utf8=%E2%9C%93&q=yi-config+language%3Ahaskell&type=).
+A good starting point is choosing an example configuration of your liking in the
+[example-configs][userconfigs] directory, building it, running it, and tinkering with it.
+
+Yi, as a library, can be categorized into four parts :
+
+* *Frontends* are responsible for rendering the editor state and passing user events to the core ;
+    * a "textual" editor using [yi-frontend-vty](https://hackage.haskell.org/package/yi-frontend-vty)
+    * a "graphical" one using [yi-frontend-pango](https://hackage.haskell.org/package/yi-frontend-pango)
+    * or both
+    
+ * *Actions* describe how to interact with the editor, and it's the part that makes most of Yi. It is structured around a stack of three monadic DSLs:
+   * **BufferM** for all buffer-local operations, like insertion, deletion of text, and annotation of buffer contents. It can be understood as a monad that encapsulates the state of one buffer.
+   * **EditorM** for editor-level operations, e.g., opening and closing windows and buffers. Operations involving *more than one buffer are handled at this level too.*
+   * **YiM** for IO-level operations. There, one can operate on files, processes, etc. *This is the only level where IO can be performed.*
+
+ * *Keymaps* represent how to trigger actions, they serve as the basis to use or to create the ones you need;
+    * [vim-like](https://hackage.haskell.org/package/yi-keymap-vim)
+    * [emacs-like](https://hackage.haskell.org/package/yi-keymap-emacs)
+    * [cua-like](https://hackage.haskell.org/package/yi-keymap-cua)
+  
+* *Glue code*, how the three other parts are shaped together.
+
+#### External configuration examples
+
+Some people share their Yi configurations here on [github](https://github.com/search?utf8=%E2%9C%93&q=yi-config+language%3Ahaskell&type=).
 
 ## Documentation
 
