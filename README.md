@@ -4,27 +4,47 @@
 [![Travis](https://travis-ci.org/yi-editor/yi.svg?branch=master)](https://travis-ci.org/yi-editor/yi)
 [![Hackage](https://img.shields.io/hackage/v/yi.svg?maxAge=2592000)](https://hackage.haskell.org/package/yi)
 [![Hackage-Deps](https://img.shields.io/hackage-deps/v/yi.svg?maxAge=2592000)]()
-[![yi on Stackage LTS 7](https://stackage.org/package/yi/badge/lts-7)](https://stackage.org/lts-7/package/yi)
-[![yi on Stackage Nightly](https://stackage.org/package/yi/badge/nightly)](https://stackage.org/nightly/package/yi)
 
 Yi is a collection of packages that serve as building blocks for making your very own text editor.
 
 ## Installation
 
-Just running `stack install yi` would be akin to unwrapping a box of lego and
+Just running `stack install yi` or `cabal install -j yi` would be akin to unwrapping a box of lego and
 finding an assembled spaceship there.
 Note that this way, it will not be possible to use a custom configuration.
 
 In order to have a personalized configuration, it is necessary to use Yi as libraries to create your own text editor.
 
-See [this documentation page](https://yi-editor.github.io/pages/installing/)
+A good starting point is choosing an example configuration of your liking in the
+[example-configs][userconfigs] directory, building it, running it, and tinkering with it.
+
+> Note to cabal users, it is necessary to run [hpack](https://hackage.haskell.org/package/hpack) in order to generate a *.cabal* file from the `package.yaml` provided.
+
+#### Static vs dynamic
+
+Yi used to have a dynamic configuration (*à la* Xmonad). So each time after the configuration was changed, Yi needed recompilation before starting.
+
+Now, it's recommended to use a static configuration which makes it possible to distribute binaries without the entire Haskell ecosystem.
+
+*Dynamic configuration is still available using a [separate package](https://hackage.haskell.org/package/yi-dynamic-configuration).*
+
+See this [article](https://yi-editor.github.io/posts/2017-01-06-dyre/) for more detailed explanations about static and dynamic configuration.
+
+### Static example configurations
+The static example configurations don't need to be placed in any specific directory (but you can still use `~/.config/yi`).
+   1. Copy the example configuration (only the contents of the folder) to your `yi` folder.
+   2. Install the configuration (with `stack install` or `hpack; cabal install`).
+   *Make sure the folder where stack (or cabal) installs executables is on your PATH.*
+   3. Run Yi with the command found in the package.yaml file under the executables line (i.e. `yi-vty-emacs` for the emacs config). You can also change the executable name here.
+
+### Dynamic example configurations
+ You can install this just like the static configuration. Make sure to copy the example configuration in the `~/.config/yi` folder. After step 3, you should be able to just use the `yi` command to launch Yi. If you change your configuration file Yi automatically detects your changes and rebuilds itself.
+
+See this [documentation page](https://yi-editor.github.io/pages/installing/)
 for more detailed installation instructions. Hacking instructions if you're
 using the nix package manager are also there.
 
 ## Configuration
-
-A good starting point is choosing an example configuration of your liking in the
-[example-configs][userconfigs] directory, building it, running it, and tinkering with it.
 
 Yi, as a library, can be categorized into four parts :
 
