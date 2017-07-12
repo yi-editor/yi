@@ -33,13 +33,12 @@ See this [article](https://yi-editor.github.io/posts/2017-01-06-dyre/) for more 
 ### Static example configurations
 The static example configurations don't need to be placed in any specific directory (but you can still use `~/.config/yi`).
    1. Copy the example configuration (only the contents of the folder) to your `yi` folder.
-   2. Edit *stack.yaml* file so that `location: ` would point to the root of the Yi source code.
-   3. Install the configuration (with `stack install` or `hpack; cabal install`).
+   2. Install the configuration (with `stack install` or `hpack; cabal install`).
    *Make sure the folder where stack (or cabal) installs executables is on your PATH.*
-   4. Run Yi with the command found in the package.yaml file under the executables line (i.e. `yi-vty-emacs` for the emacs config). You can also change the executable name here.
+   3. Run Yi with the command found in the package.yaml file under the executables line (i.e. `yi-vty-emacs` for the emacs config). You can also change the executable name here.
 
 ### Dynamic example configurations
- You can install this just like the static configuration (skipping step 2). Make sure to copy the example configuration in the `~/.config/yi` folder. After step 4, you should be able to just use the `yi` command to launch Yi. If you change your configuration file Yi automatically detects your changes and rebuilds itself.
+ You can install this just like the static configuration. Make sure to copy the example configuration in the `~/.config/yi` folder. After step 3, you should be able to just use the `yi` command to launch Yi. If you change your configuration file Yi automatically detects your changes and rebuilds itself.
 
 See this [documentation page](https://yi-editor.github.io/pages/installing/)
 for more detailed installation instructions. Hacking instructions if you're
