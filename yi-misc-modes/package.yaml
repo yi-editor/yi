@@ -18,7 +18,6 @@ dependencies:
     - data-default
     - filepath
     - microlens-platform
-    - semigroups
     - text
     - yi-core
     - yi-language

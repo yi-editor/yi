@@ -159,8 +159,6 @@ library:
         - Yi.Window
         - System.FriendlyPath
         - Parser.Incremental
-    dependencies:
-    - semigroups
 
 tests:
   tasty:

@@ -2,6 +2,7 @@ Unreleased
 ----------
 
  * [yi-keymap-vim] Fixed visual selection not disappearing after doing visual replace or visual insert
+ * Building with GHC 7 is no longer supported
 
 0.14.1 (2017-07-29)
 -------------------
