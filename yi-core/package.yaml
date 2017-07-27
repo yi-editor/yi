@@ -89,12 +89,6 @@ library:
         dependencies:
           - hint > 0.3.1
 
-      - condition: flag(testing)
-        cpp-options: -DTESTING
-        dependencies:
-          - QuickCheck >= 2.7
-          - random
-
     ghc-options: -Wall -fno-warn-orphans -ferror-spans
 
     exposed-modules:

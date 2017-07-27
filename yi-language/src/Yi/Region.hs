@@ -31,10 +31,6 @@ import Data.Typeable
 import Data.Binary
 import GHC.Generics (Generic)
 
-#ifdef TESTING
-import Test.QuickCheck
-#endif
-
 -- | The region data type.
 -- The region is semi open: it includes the start but not the end bound.
 -- This allows simpler region-manipulation algorithms.
@@ -45,14 +41,6 @@ data Region = Region
     } deriving (Typeable, Generic)
 
 instance Binary Region
-
-#ifdef TESTING
-instance Arbitrary Region where
-    arbitrary = sized $ \size -> do
-        x0 :: Int <- arbitrary
-        return $ mkRegion (fromIntegral x0) (fromIntegral (x0 + size))
-#endif
-
 
 instance Show Region where
     show r = show (regionStart r) ++
