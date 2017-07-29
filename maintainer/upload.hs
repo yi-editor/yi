@@ -1,6 +1,6 @@
 #!/usr/bin/env runghc
 
-import Control.Monad (forM_)
+import Control.Monad (forM_, when)
 import Data.List (isPrefixOf)
 import System.Directory (getDirectoryContents)
 import System.Process (callProcess)
@@ -14,4 +14,5 @@ main = do
         callProcess "stack" ["sdist", p]
 
     forM_ packages $ \p ->
-        callProcess "stack" ["upload", "--no-signature", p]
+        when (p /= "yi-intero") $
+            callProcess "stack" ["upload", "--no-signature", p]
