@@ -1,3 +1,10 @@
+0.14.1 (2017-07-29)
+-------------------
+
+ * [yi-keymap-vim] Added :new command
+ * [yi-keymap-vim] Fixed parser for ":!"
+ * Fixed yi-core dependency on dyre (it was still mentioned in package.yaml by accident)
+
 0.14.0
 ------
 
