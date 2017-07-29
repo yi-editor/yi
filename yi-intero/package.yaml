@@ -1,0 +1,24 @@
+name:                yi-intero
+version:             0.14.0
+synopsis:            Intero support for Yi
+license:             GPL-2
+maintainer:          Yi developers <yi-devel@googlegroups.com>
+category:            Yi
+extra-source-files:
+- README.md
+
+dependencies:
+  - base >= 4.7 && < 5
+  - binary
+  - data-default
+  - process
+  - transformers-base
+  - yi-rope
+  - text
+  - yi-core     == 0.14.*
+  - yi-language == 0.14.*
+
+library:
+  source-dirs: src
+  exposed-modules: 
+    - Yi.Intero

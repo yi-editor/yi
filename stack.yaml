@@ -13,6 +13,7 @@ packages:
 - yi-mode-haskell
 - yi-mode-javascript
 - yi-misc-modes
+- yi-intero
 - yi-ireader
 - yi-language
 - yi-snippet
