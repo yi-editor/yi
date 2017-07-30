@@ -16,8 +16,8 @@ Currently only these actions are exposed:
   - `interoLocAt` determines the location of the definition of the word under the cursor.
   - `interoUses` finds the usage location of the word under the cursor or the definition location if not using this on a definition.
   - `interoTypeAt` returns the type of the word under the cursor.
-  - `interoJump` jump to the definition of the word under the cursor.
-  - `interoModule <Some.Module.Name>` jump to the given module.
+  - `interoJump` to jump to the definition of the word under the cursor.
+  - `interoModule <Some.Module.Name>` to jump to the given module.
 
 `interoEval`, `interoLocAt`, `interoUses` and `interoTypeAt` display their results in a split window as a raw string.
 
@@ -25,6 +25,8 @@ Currently only these actions are exposed:
 
 yi-intero is still in an early stage so there is a lot to do. The difficulties are my own
 quick guesses so don't feel discouraged if something turns out to be very difficult.
+
+You can also look at [the github issue tracker and filter on the plugin-intero label](https://github.com/yi-editor/yi/issues?q=is%3Aopen+is%3Aissue+label%3Aplugin-intero) to find github issues where you can discuss most of the following points.
 
 ### Keybindings
 
