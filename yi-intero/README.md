@@ -8,7 +8,7 @@ To use this library add it as a dependency to your Yi configuration and bind the
 
 ## usage
 
-Before you can use any intero functions you have to start the background process with the `interoStart` action. This will run `stack ghci --with-ghc intero` in the background.
+Before you can use any intero functions you have to start the background process with the `interoStart` action. This will run `stack build intero` followed by `stack ghci --with-ghc intero` in the background (the editor will freeze temporarily).
 
 Currently only these actions are exposed:
 
@@ -16,8 +16,9 @@ Currently only these actions are exposed:
   - `interoLocAt` determines the location of the definition of the word under the cursor.
   - `interoUses` finds the usage location of the word under the cursor or the definition location if not using this on a definition.
   - `interoTypeAt` returns the type of the word under the cursor.
+  - `interoJump` jump to the definition of the word under the cursor.
 
-Every action results in a split window in which the result of the query are displayed.
+`interoEval`, `interoLocAt`, `interoUses` and `interoTypeAt` display their results in a split window as a raw string.
 
 ## development
 
@@ -61,7 +62,11 @@ We should make sure that the completion is very configurable.
 
 Difficulty: Easy (for jump to definition) and Medium (for jump to uses)
 
-This should also be pretty straightforward. The jump to uses should in my opinion be done like I explained in the [Integration of results](#integration-of-results) section. Jump to definition should be pretty easy: convert the output of intero to a location and a filename and then open the file and go to the given position. It should be checked that the file is actually accessible on disk.
+This should also be pretty straightforward. The jump to uses should in my opinion be done like I explained in the [Integration of results](#integration-of-results) section.
+
+> Jump to definition should be pretty easy: convert the output of intero to a location and a filename and then open the file and go to the given position. It should be checked that the file is actually accessible on disk.
+
+This is now done!
 
 ### Automatic installation of Intero
 

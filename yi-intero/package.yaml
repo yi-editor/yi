@@ -18,6 +18,8 @@ dependencies:
   - yi-core     == 0.14.*
   - yi-language == 0.14.*
   - transformers
+  - filepath
+  - directory
 
 library:
   source-dirs: src

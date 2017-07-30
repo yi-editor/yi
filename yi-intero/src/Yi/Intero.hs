@@ -12,7 +12,7 @@
 module Yi.Intero (
     Intero
   , interoStart
-  , interoLocAt, interoTypeAt, interoEval, interoUses
+  , interoLocAt, interoTypeAt, interoEval, interoUses, interoJump
   ) where
 
 import qualified Yi.Rope as R
@@ -35,6 +35,10 @@ import Control.Monad.Trans.Except
 import Control.Monad.Trans.Class (lift)
 import Data.Text (pack)
 import Control.Exception (IOException, try)
+import System.Directory (canonicalizePath)
+import System.FilePath (isRelative, equalFilePath)
+import Data.Char (isDigit)
+import Yi.File (openNewFile)
 
 import qualified InteroAPI as Intero
 import InteroAPI (Request)
@@ -59,7 +63,7 @@ instance YiVariable Intero
 -- | Start the Intero background process.
 interoStart :: Action
 interoStart = YiA $ do
-  Intero intero <- getEditorDyn :: YiM Intero
+  Intero intero <- getEditorDyn
   case intero of
     -- FIXME: change "." into the correct directory
     Nothing -> liftBase (try (Intero.start ".") :: IO (Either IOException (MVar Request)))
@@ -125,3 +129,34 @@ regionToRange region = withCurrentBuffer $ do
 inNewBuffer :: Text -> R.YiString -> YiM ()
 inNewBuffer bufName content = withEditor $ withOtherWindow $ do
   void $ newBufferE (MemBuffer bufName) $ content
+
+-- | Jump to the definition of the word currently under the cursor. This fails if the
+-- current word is not a function or if it is outside the current stack project.
+-- If the function is outside the current file then it is opened in the current window.
+interoJump :: Action
+interoJump = YiA $
+  either errorEditor return =<< runExceptT (do
+    file   <- ExceptT $ maybe (Left "Not in file") Right <$> withCurrentBuffer (gets file)
+    intero <- ExceptT $ maybe (Left "Intero not running") Right . unIntero <$> getEditorDyn
+    region <- lift $ withCurrentBuffer (regionOfB unitWord)
+    range  <- lift $ regionToRange region
+    name   <- lift $ withCurrentBuffer (readRegionB region)
+    res    <- liftBase (Intero.locAt intero file range (R.toString name))
+    -- Parsing the result
+    -- Intero returns "Couldn't resolve to any module." if the input was not found
+    -- anywhere, so we just check if the output contains a colon.
+    when (':' `notElem` res) $ throwE "Couldn't resolve to any modules."
+    -- We can detect results of the form <packagename>-<packageversion>-<hash>:<module>
+    -- by checking if the path is not absolute, because intero will (AFAIK) only return
+    -- absolute paths if it returns a path.
+    when (isRelative res) $ throwE "Definition is outside the current project"
+    let (path,loc) = span (/= ':') res
+        (line,loc') = (\(a,b) -> (read a,b)) $ span isDigit $ dropWhile (not . isDigit) loc
+        col = (flip (-) 1) $ read $ takeWhile isDigit $ dropWhile (not . isDigit) loc'
+    path' <- liftBase $ canonicalizePath path
+    file' <- liftBase $ canonicalizePath file
+    unless (path' `equalFilePath` file') $ lift $ openNewFile $ path'
+    point <- lift $ withCurrentBuffer $ pointOfLineColB line col
+    lift $ void $ withCurrentBuffer $ moveTo point
+    )
+
