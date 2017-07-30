@@ -14,12 +14,12 @@ Currently only these actions are exposed:
 
   - `interoEval` for sending a raw string to the intero prompt.
   - `interoLocAt` determines the location of the definition of the word under the cursor.
-  - `interoUses` finds the usage location of the word under the cursor or the definition location if not using this on a definition.
+  - `interoUses` finds the usage locations of the word under the cursor. This opens a new buffer in which a list of choices are displayed. The user can then press enter to choose one and jump to the use. The user can also press escape to return to the original buffer.
   - `interoTypeAt` returns the type of the word under the cursor.
   - `interoJump` to jump to the definition of the word under the cursor.
   - `interoModule <Some.Module.Name>` to jump to the given module.
 
-`interoEval`, `interoLocAt`, `interoUses` and `interoTypeAt` display their results in a split window as a raw string.
+`interoEval`, `interoLocAt`, and `interoTypeAt` display their results in a split window as a raw string.
 
 ## development
 
@@ -37,17 +37,6 @@ packages (like `yi-intero-vim`, `yi-intero-emacs` and `yi-intero-cua`), but I th
 should think of a solution that doesn't require a ton of packages that only contain
 keybindings.
 
-### Integration of results
-
-Difficulty: Varying between Easy and Medium
-
-Right now we just show the result of an action in a split window. The results should be parsed
-and properly handeled.
-
-For example the `:uses` command should open a fullscreen window in which a list of uses are
-displayed. The user should be able to choose from a list of uses which he wants to view. The
-Yi.Dired file choosing mechanism is similar so it should be possible to reuse some of its code.
-
 ### Completion
 
 Difficulty: Easy->Medium->Hard (more functionality is more difficulty)
@@ -61,12 +50,12 @@ easy if it is easy to run a command after every keystroke that inserts a charact
 
 We should make sure that the completion is very configurable.
 
-### Jump to definition/uses
-
-Difficulty: Easy (for jump to definition) and Medium (for jump to uses)
-
-This should also be pretty straightforward. The jump to uses should in my opinion be done like I explained in the [Integration of results](#integration-of-results) section.
-
+> ### Jump to definition/uses
+>
+> Difficulty: Easy (for jump to definition) and Medium (for jump to uses)
+>
+> This should also be pretty straightforward. The jump to uses should in my opinion be done like I explained in the [Integration of results](#integration-of-results) section.
+>
 > Jump to definition should be pretty easy: convert the output of intero to a location and a filename and then open the file and go to the given position. It should be checked that the file is actually accessible on disk.
 
 This is now done!

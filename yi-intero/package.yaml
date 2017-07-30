@@ -20,6 +20,7 @@ dependencies:
   - transformers
   - filepath
   - directory
+  - microlens-platform
 
 library:
   source-dirs: src

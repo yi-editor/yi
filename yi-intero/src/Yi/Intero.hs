@@ -25,6 +25,7 @@ import Yi.Region
 import Data.Default (Default, def)
 import Yi.Editor
 import Control.Monad
+import Yi.Buffer.Basic (BufferRef)
 import Yi.Buffer.Misc
 import Control.Monad.Base
 import Yi.Buffer.Region
@@ -40,6 +41,11 @@ import System.Directory (canonicalizePath)
 import System.FilePath (isRelative, equalFilePath)
 import Data.Char (isDigit, isSpace)
 import Yi.File (openNewFile)
+import Lens.Micro.Platform ((.~),(%~))
+import Control.Category ((>>>))
+import Yi.Keymap.Keys ((?>>!), spec, choice, important)
+import Yi.Keymap (topKeymapA)
+import Yi.Event (Key (KEsc,KEnter))
 
 import qualified InteroAPI as Intero
 import InteroAPI (Request)
@@ -109,9 +115,48 @@ interoLocAt  :: Action
 interoLocAt  = interoFileRangeNameAction Intero.locAt
 
 -- | Finds the places where the current word under the cursor is used if it is a definition
--- or the place where it is defined if it isn't.
+-- or the place where it is defined if it isn't. This opens a new buffer in which the list
+-- of found uses are displayed. Press enter to select one of them or escape to return to
+-- the original buffer.
 interoUses   :: Action
-interoUses   = interoFileRangeNameAction Intero.uses
+interoUses   = YiA $
+  either errorEditor return =<< runExceptT (do
+    file   <- ExceptT $ maybe (Left "Not in file") Right <$> withCurrentBuffer (gets file)
+    intero <- ExceptT $ maybe (Left "Intero not running") Right . unIntero <$> getEditorDyn
+    region <- lift $ withCurrentBuffer (regionOfB unitWord)
+    range  <- lift $ regionToRange region
+    name   <- lift $ withCurrentBuffer (readRegionB region)
+    res    <- liftBase (Intero.uses intero file range (R.toString name))
+    -- Parsing the result
+    -- Intero returns "Couldn't resolve to any module." if the input was not found
+    -- anywhere, so we just check if the output contains a colon.
+    when (':' `notElem` res) $ throwE "Couldn't resolve to any modules."
+    -- We can detect results of the form <packagename>-<packageversion>-<hash>:<module>
+    -- by checking if the path is not absolute, because intero will (AFAIK) only return
+    -- absolute paths if it returns a path.
+    let (path,loc) = span (/= ':') res
+    when (isRelative res) $ throwE "Definition is outside the current project."
+    lift $ withEditor $ do
+      b <- gets currentBuffer
+      newBufferE (MemBuffer "*intero*") $ R.fromString res
+      withCurrentBuffer $ modifyMode $ modeKeymapA .~ topKeymapA %~ important (choice [spec KEnter ?>>! jumpToUse b file, spec KEsc ?>>! EditorA (switchToBufferE b)])
+               >>> modeNameA   .~ "intero-uses"
+    )
+  where
+    jumpToUse :: BufferRef -> FilePath -> Action
+    jumpToUse original file = YiA $ either errorEditor return =<< runExceptT (do
+      res <- lift $ withCurrentBuffer $ R.toString <$> readUnitB Line
+      let (path,loc) = span (/= ':') res
+          (line,loc') = (\(a,b) -> (read a,b)) $ span isDigit $ dropWhile (not . isDigit) loc
+          col = (flip (-) 1) $ read $ takeWhile isDigit $ dropWhile (not . isDigit) loc'
+      path' <- liftBase $ canonicalizePath path
+      file' <- liftBase $ canonicalizePath file
+      if (path' `equalFilePath` file')
+        then lift $ withEditor $ switchToBufferE original
+        else lift $ openNewFile $ path'
+      point <- lift $ withCurrentBuffer $ pointOfLineColB line col
+      lift $ void $ withCurrentBuffer $ moveTo point
+      )
 
 -- | Find the type of the current word under the cursor.
 interoTypeAt :: Action
@@ -150,9 +195,9 @@ interoJump = YiA $
     -- We can detect results of the form <packagename>-<packageversion>-<hash>:<module>
     -- by checking if the path is not absolute, because intero will (AFAIK) only return
     -- absolute paths if it returns a path.
-    when (isRelative res) $ throwE "Definition is outside the current project"
     let (path,loc) = span (/= ':') res
-        (line,loc') = (\(a,b) -> (read a,b)) $ span isDigit $ dropWhile (not . isDigit) loc
+    when (isRelative res) $ throwE "Definition is outside the current project."
+    let (line,loc') = (\(a,b) -> (read a,b)) $ span isDigit $ dropWhile (not . isDigit) loc
         col = (flip (-) 1) $ read $ takeWhile isDigit $ dropWhile (not . isDigit) loc'
     path' <- liftBase $ canonicalizePath path
     file' <- liftBase $ canonicalizePath file
