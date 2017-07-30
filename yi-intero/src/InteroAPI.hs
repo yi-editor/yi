@@ -17,9 +17,11 @@ module InteroAPI (
 
 import Control.Exception  (IOException, catch, handle)
 import Control.Concurrent (MVar, newEmptyMVar, takeMVar, putMVar, forkIO)
-import System.IO          (hSetBuffering, hGetChar, BufferMode (NoBuffering), hPutStrLn, hReady)
-import System.Process     (runInteractiveProcess)
-import Control.Monad      (void, forever)
+import System.IO          (hClose, hSetBuffering, hGetChar, BufferMode (NoBuffering), hPutStrLn, hReady, hGetContents)
+import System.Process     (createProcess, proc, CreateProcess (..), StdStream (..), waitForProcess)
+import Control.Monad      (void, forever, when)
+import Data.Function      (fix)
+import System.Exit        (ExitCode (ExitSuccess))
 
 -- | The request that are send to the background process.
 data Request = Request
@@ -33,22 +35,34 @@ data Request = Request
 start :: FilePath -> IO (MVar Request)
 start path = do
   req <- newEmptyMVar
-  (inp,out,err,pid) <- catch
-    (runInteractiveProcess "stack" ["ghci","--with-ghc","intero"] (Just path) Nothing)
-    (\(_ :: IOException) -> error "Couldn't launch intero process.")
+  do
+    (Just inp,Just out,Just err,pid) <- catch
+       (createProcess ((proc "stack" ["build", "intero"])
+                       {std_in = CreatePipe, std_out = CreatePipe, std_err = CreatePipe}))
+       (\(_ :: IOException) -> error "Couldn't install intero.")
+    exitCode <- waitForProcess pid
+    hClose out
+    hClose inp
+    hClose err
+    when (exitCode /= ExitSuccess) $ do
+      error $ "Couldn't install intero: " ++ show exitCode
+  (Just inp,Just out,Just err,pid) <- catch
+    (createProcess
+      ((proc "stack" ["ghci","--with-ghc","intero"])
+       {cwd = Just path, std_in = CreatePipe, std_out = CreatePipe, std_err = CreatePipe}))
+    (\(_ :: IOException) -> error "Couldn't launch intero.")
   hSetBuffering inp NoBuffering
   hSetBuffering out NoBuffering
   hSetBuffering err NoBuffering
   let repl instr = handle (\(e :: IOException) -> return (show e)) $ do
         hPutStrLn inp instr
-        let getReply = do
-              mc <- catch (fmap Just (hGetChar out))
-                          (\(_ :: IOException) -> return Nothing)
-              case mc of
-                Nothing -> hGetAvailable err
-                Just '\4' -> hGetAvailable err
-                Just c -> fmap (c:) getReply
-        getReply
+        fix $ \getReply -> do
+          mc <- catch (fmap Just (hGetChar out))
+                      (\(_ :: IOException) -> return Nothing)
+          case mc of
+            Nothing -> hGetAvailable err
+            Just '\4' -> hGetAvailable err
+            Just c -> fmap (c:) getReply
   void $ repl ":set prompt \"\\4\""
   forkIO $ forever $ do
     Request query res <- takeMVar req
@@ -56,7 +70,7 @@ start path = do
   return req
   where
     hGetAvailable h = do
-      available <- catch (hReady h) (\(_ :: IOException) -> return False)
+      available <- hReady h `catch` \(_ :: IOException) -> return False
       if available
         then catch ((:) <$> hGetChar h <*> hGetAvailable h)
                    (\(_ :: IOException) -> return [])

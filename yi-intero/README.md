@@ -67,8 +67,10 @@ This should also be pretty straightforward. The jump to uses should in my opinio
 
 Difficulty: Easy
 
-Intero needs to be installed in the current stack project, installing intero globally can lead
-to problems as explained in the [TOOLING.md file of Intero](https://github.com/commercialhaskell/intero/blob/28271d50ca65c460cd0983cea13a2c4509b95583/TOOLING.md#installing). We can just run `stack build intero` everytime `interoStart` is used. That should be sufficient.
+> Intero needs to be installed in the current stack project, installing intero globally can lead
+> to problems as explained in the [TOOLING.md file of Intero](https://github.com/commercialhaskell/intero/blob/28271d50ca65c460cd0983cea13a2c4509b95583/TOOLING.md#installing). We can just run `stack build intero` everytime `interoStart` is used. That should be sufficient.
+
+This is done! Right now the editor just freezes while installing intero and opening the project, when running `interoStart`. This should be changed so that a loading screen is shown in which the output of the currently running commands (like "stack build intero" and "stack ghci --with-ghc intero") is shown.
 
 ### Type checking and error reporting
 
