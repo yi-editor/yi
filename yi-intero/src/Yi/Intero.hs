@@ -13,6 +13,7 @@ module Yi.Intero (
     Intero
   , interoStart
   , interoLocAt, interoTypeAt, interoEval, interoUses, interoJump
+  , interoModule
   ) where
 
 import qualified Yi.Rope as R
@@ -37,7 +38,7 @@ import Data.Text (pack)
 import Control.Exception (IOException, try)
 import System.Directory (canonicalizePath)
 import System.FilePath (isRelative, equalFilePath)
-import Data.Char (isDigit)
+import Data.Char (isDigit, isSpace)
 import Yi.File (openNewFile)
 
 import qualified InteroAPI as Intero
@@ -160,3 +161,15 @@ interoJump = YiA $
     lift $ void $ withCurrentBuffer $ moveTo point
     )
 
+-- | Jump to a module inside the current stack package. This opens the module (if it exists)
+-- in the current window.
+interoModule :: String -> Action
+interoModule moduleName = YiA $
+  either errorEditor return =<< runExceptT (do
+    intero <- ExceptT $ maybe (Left "Intero not running") Right . unIntero <$> getEditorDyn
+    res    <- liftBase $ Intero.eval intero ":show modules"
+    let table = map ((\(a,b) -> (a, takeWhile (/= ',') $ dropWhile isSpace $ tail $ dropWhile isSpace b)) . span (/= ' ')) $ lines res
+    case lookup moduleName table of
+      Nothing -> throwE "Module not in project."
+      Just path -> lift $ openNewFile $ path
+    )

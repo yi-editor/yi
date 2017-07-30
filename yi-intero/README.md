@@ -17,6 +17,7 @@ Currently only these actions are exposed:
   - `interoUses` finds the usage location of the word under the cursor or the definition location if not using this on a definition.
   - `interoTypeAt` returns the type of the word under the cursor.
   - `interoJump` jump to the definition of the word under the cursor.
+  - `interoModule <Some.Module.Name>` jump to the given module.
 
 `interoEval`, `interoLocAt`, `interoUses` and `interoTypeAt` display their results in a split window as a raw string.
 
