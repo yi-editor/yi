@@ -1,0 +1,22 @@
+resolver: nightly-2017-07-31
+
+packages:
+- yi-core
+- yi-dynamic-configuration
+- yi-frontend-vty
+# - yi-frontend-pango
+- yi-fuzzy-open
+- yi-keymap-cua
+- yi-keymap-emacs
+- yi-keymap-vim
+- yi-mode-haskell
+- yi-mode-javascript
+- yi-misc-modes
+- yi-ireader
+- yi-language
+- yi-snippet
+# - yi
+extra-deps:
+- Hclip-3.0.0.4
+- yi-rope-0.8
+- dynamic-state-0.3
