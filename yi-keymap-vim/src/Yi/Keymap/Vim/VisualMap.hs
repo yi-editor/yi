@@ -230,7 +230,7 @@ replaceBinding = VimBindingE (f . T.unpack . _unEv)
                     region <- withCurrentBuffer regionOfSelectionB
                     withCurrentBuffer $ transformCharactersInRegionB (StyledRegion style region)
                                       (\x -> if x == '\n' then x else c)
-                    switchModeE Normal
+                    escAction
                     return Finish
                 _ -> NoMatch
           f _ _ = NoMatch
@@ -260,7 +260,7 @@ pasteBinding = VimBindingE (f . T.unpack . _unEv)
                 region' <- convertRegionToStyleB region Inclusive
                 replaceRegionB region' rope
             _ -> pure ()
-        switchModeE Normal
+        escAction
         return Finish
     f _ _ = NoMatch
 
@@ -294,6 +294,7 @@ insertBinding = VimBindingE (f . T.unpack . _unEv)
                       [] -> error "No cursor to move to (in Yi.Keymap.Vim.VisualMap.insertBinding)"
                       (mainCursor : _) -> withCurrentBuffer (moveTo mainCursor)
                   modifyStateE $ \s -> s { vsSecondaryCursors = drop 1 cursors }
+                  withCurrentBuffer $ setVisibleSelection False
                   switchModeE $ Insert (head evs)
                   return Continue
           f _ _ = NoMatch
@@ -304,7 +305,7 @@ tagJumpBinding = VimBindingY (f . T.unpack . _unEv)
             = WholeMatch $ do
                  tag <- Tag . R.toText <$> withCurrentBuffer
                             (regionOfSelectionB >>= readRegionB)
-                 withEditor $ switchModeE Normal
+                 withEditor escAction
                  gotoTag tag 0 Nothing
                  return Finish
           f _ _ = NoMatch
