@@ -2,6 +2,8 @@
 
 module Yi.UI.Common where
 
+import           System.Exit (ExitCode)
+
 {- | Record presenting a frontend's interface.
 
 The functions 'layout' and 'refresh' are both run by the editor's main loop,
@@ -44,13 +46,13 @@ in "Yi.Core"). The frontend must be preparaed for this: for instance, Gtk-based 
 should wrap GUI updates in @postGUIAsync@.
 -}
 data UI e = UI
-    { main                  :: IO ()               -- ^ Main loop
-    , end                   :: Bool -> IO ()       -- ^ Clean up, and also terminate if given 'true'
-    , suspend               :: IO ()               -- ^ Suspend (or minimize) the program
-    , refresh               :: e -> IO ()     -- ^ Refresh the UI with the given state
-    , userForceRefresh      :: IO ()               -- ^ User force-refresh (in case the screen has been messed up from outside)
-    , layout                :: e -> IO e -- ^ Set window width and height
-    , reloadProject         :: FilePath -> IO ()   -- ^ Reload cabal project views
+    { main                  :: IO ()                   -- ^ Main loop
+    , end                   :: Maybe ExitCode -> IO () -- ^ Clean up, and also terminate if given an exit code.
+    , suspend               :: IO ()                   -- ^ Suspend (or minimize) the program
+    , refresh               :: e -> IO ()              -- ^ Refresh the UI with the given state
+    , userForceRefresh      :: IO ()                   -- ^ User force-refresh (in case the screen has been messed up from outside)
+    , layout                :: e -> IO e               -- ^ Set window width and height
+    , reloadProject         :: FilePath -> IO ()       -- ^ Reload cabal project views
     }
 
 dummyUI :: UI e

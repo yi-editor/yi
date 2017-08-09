@@ -26,5 +26,5 @@ import Yi.UI.Common         (end)
 reload :: YiM ()
 reload = do
   editor <- withEditor get
-  withUI (`end` False)
+  withUI (`end` Nothing)
   liftBase $ relaunchWithBinaryState (Just editor) Nothing
