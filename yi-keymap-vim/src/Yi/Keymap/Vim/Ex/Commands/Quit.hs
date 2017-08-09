@@ -24,8 +24,10 @@ import           Data.Foldable                    (find)
 import qualified Data.List.PointedList.Circular   as PL (length)
 import           Data.Monoid                      ((<>))
 import qualified Data.Text                        as T (append)
+import           System.Exit                      (ExitCode (ExitFailure))
 import           Yi.Buffer                        (bkey, file)
-import           Yi.Core                          (closeWindow, errorEditor, quitEditor)
+import           Yi.Core                          (closeWindow, errorEditor, quitEditor,
+                                                   quitEditorWithExitCode)
 import           Yi.Editor
 import           Yi.File                          (deservesSave, fwriteAllY, viWrite)
 import           Yi.Keymap                        (Action (YiA), YiM, readEditor)
@@ -46,6 +48,9 @@ parse = Common.parse $ P.choice
         bangs <- P.many' (P.char '!')
         return (quit True (not $ null bangs) False)
     , do
+        void $ P.try (P.string "cquit") <|> P.string "cq"
+        return hardExitWithError
+    , do
         ws <- P.many' (P.char 'w')
         void $ P.try ( P.string "quit") <|> P.string "q"
         as <- P.many' (P.try ( P.string "all") <|> P.string "a")
@@ -60,6 +65,12 @@ quit w f a = Common.impureExCommand {
               `T.append` (if a then "all" else "")
               `T.append` (if f then "!" else "")
   , cmdAction = YiA $ action w f a
+  }
+
+hardExitWithError :: ExCommand
+hardExitWithError = Common.impureExCommand {
+    cmdShow = "cquit"
+  , cmdAction = YiA (quitEditorWithExitCode (ExitFailure 1))
   }
 
 action :: Bool -> Bool -> Bool -> YiM ()

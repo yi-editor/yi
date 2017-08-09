@@ -61,6 +61,7 @@ import qualified Graphics.Vty                   as Vty (Attr, Cursor (Cursor, No
                                                         vertCat, withBackColor,
                                                         withForeColor,
                                                         withStyle, (<|>))
+import           System.Exit                    (ExitCode, exitWith)
 import           Yi.Buffer
 import           Yi.Config
 import           Yi.Debug                       (logError, logPutStrLn)
@@ -86,7 +87,7 @@ data Rendered = Rendered
 data FrontendState = FrontendState
     { fsVty :: Vty.Vty
     , fsConfig :: Config
-    , fsEndMain :: MVar ()
+    , fsEndMain :: MVar ExitCode
     , fsEndInputLoop :: MVar ()
     , fsEndRenderLoop :: MVar ()
     , fsDirty :: MVar ()
@@ -174,7 +175,8 @@ main :: FrontendState -> IO ()
 main fs = do
     tid <- myThreadId
     labelThread tid "VtyMain"
-    takeMVar (fsEndMain fs)
+    exitCode <- takeMVar (fsEndMain fs)
+    exitWith exitCode
 
 layout :: FrontendState -> Editor -> IO Editor
 layout fs e = do
@@ -182,14 +184,15 @@ layout fs e = do
     let (e', _layout) = SL.layout colCount rowCount e
     return e'
 
-end :: FrontendState -> Bool -> IO ()
-end fs mustQuit = do
+end :: FrontendState -> Maybe ExitCode -> IO ()
+end fs mExit = do
     -- setTerminalAttributes stdInput (oAttrs ui) Immediately
     void $ tryPutMVar (fsEndInputLoop fs) ()
     void $ tryPutMVar (fsEndRenderLoop fs) ()
     Vty.shutdown (fsVty fs)
-    when mustQuit $
-        void (tryPutMVar (fsEndMain fs) ())
+    case mExit of
+      Nothing   -> pure ()
+      Just code -> void (tryPutMVar (fsEndMain fs) code)
 
 requestRefresh :: FrontendState -> Editor -> IO ()
 requestRefresh fs e = do

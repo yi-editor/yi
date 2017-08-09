@@ -20,21 +20,22 @@ module Yi.Core
   (
   -- * Construction and destruction
     startEditor
-  , quitEditor          -- :: YiM ()
+  , quitEditor             -- :: YiM ()
+  , quitEditorWithExitCode -- :: ExitCode -> YiM ()
 
   -- * User interaction
-  , refreshEditor       -- :: YiM ()
-  , suspendEditor       -- :: YiM ()
+  , refreshEditor          -- :: YiM ()
+  , suspendEditor          -- :: YiM ()
   , userForceRefresh
 
   -- * Global editor actions
-  , errorEditor         -- :: String -> YiM ()
-  , closeWindow         -- :: YiM ()
+  , errorEditor            -- :: String -> YiM ()
+  , closeWindow            -- :: YiM ()
   , closeWindowEmacs
 
   -- * Interacting with external commands
-  , runProcessWithInput          -- :: String -> String -> YiM String
-  , startSubprocess                 -- :: FilePath -> [String] -> YiM ()
+  , runProcessWithInput    -- :: String -> String -> YiM String
+  , startSubprocess        -- :: FilePath -> [String] -> YiM ()
   , sendToProcess
 
   -- * Misc
@@ -71,7 +72,7 @@ import           Data.Time.Clock.POSIX          (posixSecondsToUTCTime)
 import           Data.Traversable               (forM)
 import           GHC.Conc                       (labelThread)
 import           System.Directory               (doesFileExist)
-import           System.Exit                    (ExitCode)
+import           System.Exit                    (ExitCode (ExitSuccess))
 import           System.IO                      (Handle, hPutStr, hWaitForInput)
 import           System.PosixCompat.Files       (getFileStatus, modificationTime)
 import           System.Process                 (ProcessHandle,
@@ -223,10 +224,14 @@ showEvs = T.unwords . fmap (T.pack . prettyEvent)
 
 -- | Quit.
 quitEditor :: YiM ()
-quitEditor = do
+quitEditor = quitEditorWithExitCode ExitSuccess
+
+-- | Quit with an exit code. (This is used to implement vim's :cq command)
+quitEditorWithExitCode :: ExitCode -> YiM ()
+quitEditorWithExitCode exitCode = do
     savePersistentState
     onYiVar $ terminateSubprocesses (const True)
-    withUI (`UI.end` True)
+    withUI (`UI.end` (Just exitCode))
 
 -- | Update (visible) buffers if they have changed on disk.
 -- FIXME: since we do IO here we must catch exceptions!
