@@ -586,10 +586,13 @@ scrollCursorToTopB = do
 -- | Move cursor to the bottom of the screen
 scrollCursorToBottomB :: BufferM ()
 scrollCursorToBottomB = do
-    MarkSet _ i _ <- markLines
-    r <- winRegionB
-    t <- lineOf (regionEnd r - 1)
-    scrollB $ i - t
+    -- NOTE: This is only an approximation.
+    --       The correct scroll amount depends on how many lines just above
+    --       the current viewport are going to be wrapped. We don't have this
+    --       information here as wrapping is done in the frontend.
+    MarkSet f i _ <- markLines
+    h <- askWindow actualLines
+    scrollB $ i - f - h + 1
 
 -- | Scroll by n lines.
 scrollB :: Int -> BufferM ()
@@ -604,15 +607,17 @@ scrollB n = do
 
 -- Scroll line above window to the bottom.
 scrollToLineAboveWindowB :: BufferM ()
-scrollToLineAboveWindowB = do downFromTosB 0
-                              replicateM_ 1 lineUp
-                              scrollCursorToBottomB
+scrollToLineAboveWindowB = do
+    downFromTosB 0
+    replicateM_ 1 lineUp
+    scrollCursorToBottomB
 
 -- Scroll line below window to the top.
 scrollToLineBelowWindowB :: BufferM ()
-scrollToLineBelowWindowB = do upFromBosB 0
-                              replicateM_ 1 lineDown
-                              scrollCursorToTopB
+scrollToLineBelowWindowB = do
+    upFromBosB 0
+    replicateM_ 1 lineDown
+    scrollCursorToTopB
 
 -- | Move the point to inside the viewable region
 snapInsB :: BufferM ()
@@ -628,7 +633,7 @@ snapInsB = do
 indexOfSolAbove :: Int -> BufferM Point
 indexOfSolAbove n = pointAt $ gotoLnFrom (negate n)
 
-data  RelPosition = Above | Below | Within
+data RelPosition = Above | Below | Within
   deriving (Show)
 
 -- | return relative position of the point @p@
@@ -641,7 +646,7 @@ pointScreenRelPosition p rs re
 pointScreenRelPosition _ _ _ = Within -- just to disable the non-exhaustive pattern match warning
 
 -- | Move the visible region to include the point
-snapScreenB :: Maybe ScrollStyle ->BufferM Bool
+snapScreenB :: Maybe ScrollStyle -> BufferM Bool
 snapScreenB style = do
     w <- askWindow wkey
     movePoint <- Set.member w <$> use pointFollowsWindowA
