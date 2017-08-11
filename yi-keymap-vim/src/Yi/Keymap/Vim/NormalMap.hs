@@ -16,7 +16,7 @@ import           Prelude                    hiding (lookup)
 import           Lens.Micro.Platform        (use, (.=))
 import           Control.Monad              (replicateM_, unless, void, when)
 import           Data.Char                  (ord)
-import           Data.HashMap.Strict        (lookup, singleton)
+import           Data.HashMap.Strict        (lookup, insert)
 import           Data.List                  (group)
 import           Data.Maybe                 (fromMaybe)
 import           Data.Monoid                ((<>))
@@ -490,11 +490,10 @@ finishRecordingMacroBinding = VimBindingE (f . T.unpack . _unEv)
                           , vsCurrentMacroRecording = Just (macroName, Ev macroBody) })
                 = WholeMatch $ do
                       let reg = Register Exclusive (R.fromText (T.drop 2 macroBody))
-                      modifyStateE $ \s ->
-                          s { vsCurrentMacroRecording = Nothing
-                              , vsRegisterMap = singleton macroName reg
-                                              <> vsRegisterMap s
-                              }
+                      modifyStateE $ \s -> s
+                          { vsCurrentMacroRecording = Nothing
+                          , vsRegisterMap = insert macroName reg (vsRegisterMap s)
+                          }
                       return Finish
           f _ _ = NoMatch
 
@@ -506,10 +505,12 @@ playMacroBinding = VimBindingE (f . T.unpack . _unEv)
                                , vsCount = mbCount }) = WholeMatch $ do
               resetCountE
               case lookup c registers of
-                  Just (Register _ evs) -> do
+                  Just reg@(Register _ evs) -> do
                       let count = fromMaybe 1 mbCount
                           mkAct = Ev . T.replicate count . R.toText
                       scheduleActionStringForEval . mkAct $ evs
+                      modifyStateE $ \s ->
+                          s { vsRegisterMap = insert '@' reg (vsRegisterMap s) }
                       return Finish
                   Nothing -> return Drop
           f _ _ = NoMatch
