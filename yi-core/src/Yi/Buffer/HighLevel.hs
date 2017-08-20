@@ -962,14 +962,13 @@ rightEdgesOfRegionB _ reg = savingPointB $ do
 splitBlockRegionToContiguousSubRegionsB :: Region -> BufferM [Region]
 splitBlockRegionToContiguousSubRegionsB reg = savingPointB $ do
     (start, lengths) <- shapeOfBlockRegionB reg
-    moveTo start
-    forM lengths $ \l -> do
+    forM (zip [0..] lengths) $ \(i, l) -> do
+        moveTo start
+        void $ lineMoveRel i
         p0 <- pointB
         moveXorEol l
         p1 <- pointB
         let subRegion = mkRegion p0 p1
-        moveTo p0
-        void $ lineMoveRel 1
         return subRegion
 
 deleteRegionWithStyleB :: Region -> RegionStyle -> BufferM Point
