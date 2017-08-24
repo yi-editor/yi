@@ -49,6 +49,7 @@ printableAction evs = do
     saveInsertEventStringE evs
     withCurrentBuffer $ case T.unpack . _unEv $ evs of
         [c]    -> insertOrReplaceB c
+        "<lt>" -> insertOrReplaceB '<'
         "<CR>" -> insertOrReplaceB '\n'
         -- For testing purposes assume noexpandtab, tw=4
         "<Esc>" -> replicateM_ 4 $ insertOrReplaceB ' '
