@@ -4,7 +4,7 @@ packages:
 - yi-core
 - yi-dynamic-configuration
 - yi-frontend-vty
-- yi-frontend-pango
+# - yi-frontend-pango
 - yi-fuzzy-open
 - yi-keymap-cua
 - yi-keymap-emacs
@@ -15,14 +15,14 @@ packages:
 - yi-ireader
 - yi-language
 - yi-snippet
-- yi
+# - yi
 extra-deps:
 - Hclip-3.0.0.4
 - yi-rope-0.8
 - dynamic-state-0.3
-- gtk-0.14.6
-- cairo-0.13.3.1
-- gio-0.13.3.1
-- glib-0.13.4.1
-- gtk2hs-buildtools-0.13.2.2
-- pango-0.13.3.1
+# - gtk-0.14.6
+# - cairo-0.13.3.1
+# - gio-0.13.3.1
+# - glib-0.13.4.1
+# - gtk2hs-buildtools-0.13.2.2
+# - pango-0.13.3.1
