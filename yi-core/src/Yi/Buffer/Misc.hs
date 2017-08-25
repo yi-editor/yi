@@ -483,8 +483,9 @@ runBufferDummyWindow b = fst . runBuffer (dummyWindow $ bkey b) b
 
 -- | Mark the current point in the undo list as a saved state.
 markSavedB :: UTCTime -> BufferM ()
-markSavedB t = do undosA %= setSavedFilePointU
-                  lastSyncTimeA .= t
+markSavedB t = do
+    undosA %= setSavedFilePointU
+    lastSyncTimeA .= t
 
 bkey :: FBuffer -> BufferRef
 bkey = view bkey__A
@@ -495,9 +496,7 @@ isUnchangedBuffer = isAtSavedFilePointU . view undosA
 startUpdateTransactionB :: BufferM ()
 startUpdateTransactionB = do
   transactionPresent <- use updateTransactionInFlightA
-  if transactionPresent
-  then error "Already started update transaction"
-  else do
+  when (not transactionPresent) $ do
     undosA %= addChangeU InteractivePoint
     updateTransactionInFlightA .= True
 

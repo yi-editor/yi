@@ -170,7 +170,7 @@ mkTestCase cf t = testCase (ktName t) $ do
         assertions editor _ =
             let actualOut = cursorPos editor ++ "\n" ++
                             extractBufferString cf editor
-            in  assertEqual (errorMsg actualOut) actualOut (ktOutput t)
+            in  assertEqual (errorMsg actualOut) (ktOutput t) actualOut
 
     runTest setupActions preConditions testActions assertions cf
 

@@ -30,6 +30,7 @@ import           Data.Maybe                 (fromJust)
 import           Data.Monoid                ((<>))
 import qualified Data.Text                  as T (unpack)
 import           Yi.Buffer.Adjusted         hiding (Insert)
+import           Yi.Buffer.Misc             (startUpdateTransactionB)
 import           Yi.Editor                  (EditorM, getEditorDyn, withCurrentBuffer)
 import           Yi.Keymap.Vim.Common
 import           Yi.Keymap.Vim.EventUtils   (eventToEventString, parseEvents)
@@ -109,6 +110,7 @@ opChange = VimOperator {
         regName <- fmap vsActiveRegister getEditorDyn
         setRegisterE regName style s
         withCurrentBuffer $ do
+            startUpdateTransactionB
             point <- deleteRegionWithStyleB reg style
             moveTo point
             when (style == LineWise) $ do

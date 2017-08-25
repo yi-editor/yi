@@ -48,6 +48,7 @@
 module Yi.Buffer.Undo (
     emptyU
   , addChangeU
+  , deleteInteractivePointsU
   , setSavedFilePointU
   , isAtSavedFilePointU
   , undoU
@@ -87,6 +88,12 @@ emptyU = URList (S.singleton SavedFilePoint) S.empty
 addChangeU :: Change -> URList -> URList
 addChangeU InteractivePoint (URList us rs) = URList (addIP us) rs
 addChangeU u (URList us _) = URList (u S.<| us) S.empty
+
+deleteInteractivePointsU :: URList -> URList
+deleteInteractivePointsU (URList us rs) = URList (go us) rs
+    where
+    go (S.viewl -> InteractivePoint S.:< x) = go x
+    go x = x
 
 -- | Add a saved file point so that we can tell that the buffer has not
 -- been modified since the previous saved file point.
