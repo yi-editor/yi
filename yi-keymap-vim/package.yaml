@@ -25,7 +25,6 @@ dependencies:
     - oo-prototypes
     - pointedlist
     - safe
-    - semigroups
     - text
     - transformers-base
     - unordered-containers

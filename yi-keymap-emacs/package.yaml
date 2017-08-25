@@ -16,7 +16,6 @@ dependencies:
     - microlens-platform
     - mtl
     - oo-prototypes
-    - semigroups
     - text
     - transformers-base
     - yi-core
