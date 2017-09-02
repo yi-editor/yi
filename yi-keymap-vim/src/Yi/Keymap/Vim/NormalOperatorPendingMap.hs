@@ -17,7 +17,7 @@ import           Data.List                  (isPrefixOf)
 import           Data.Maybe                 (fromJust, fromMaybe)
 import           Data.Monoid                ((<>))
 import qualified Data.Text                  as T (init, last, pack, snoc, unpack)
-import           Yi.Buffer.Adjusted         hiding (Insert)
+import           Yi.Buffer                  hiding (Insert)
 import           Yi.Editor                  (getEditorDyn, withCurrentBuffer)
 import           Yi.Keymap.Keys             (Key (KEsc), spec)
 import           Yi.Keymap.Vim.Common

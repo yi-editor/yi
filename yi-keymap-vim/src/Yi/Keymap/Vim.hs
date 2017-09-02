@@ -26,7 +26,7 @@ import Data.Char                              (toUpper)
 import Data.List                              (find)
 import Data.Monoid                            ((<>))
 import Data.Prototype                         (Proto (Proto), extractValue)
-import Yi.Buffer.Adjusted                     (commitUpdateTransactionB, startUpdateTransactionB)
+import Yi.Buffer                              (commitUpdateTransactionB, startUpdateTransactionB)
 import Yi.Editor
 import Yi.Event                               (Event (..), Key (KASCII), Modifier (MCtrl, MMeta))
 import Yi.Keymap                              (Keymap, KeymapM, KeymapSet, YiM, modelessKeymapSet, write)

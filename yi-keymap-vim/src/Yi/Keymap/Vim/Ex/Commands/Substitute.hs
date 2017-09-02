@@ -20,7 +20,7 @@ import           Data.Maybe                       (fromMaybe)
 import           Data.Monoid                      ((<>))
 import qualified Data.Text                        as T (Text, cons, snoc)
 import           Lens.Micro.Platform              (over, _2)
-import           Yi.Buffer.Adjusted
+import           Yi.Buffer
 import           Yi.Editor                        (EditorM, closeBufferAndWindowE, printMsg, withCurrentBuffer)
 import           Yi.Keymap                        (Action (EditorA), Keymap)
 import           Yi.Keymap.Keys                   (char, choice, (?>>!))

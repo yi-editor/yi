@@ -16,7 +16,7 @@ import           Control.Monad                        (forM_, void, when)
 import           Data.Monoid                          ((<>))
 import qualified Data.Text                            as T (Text, isInfixOf, pack, snoc)
 import qualified Data.Attoparsec.Text                 as P (anyChar, char, many', satisfy, string, try)
-import           Yi.Buffer.Adjusted
+import           Yi.Buffer
 import           Yi.Editor                            (withCurrentBuffer)
 import           Yi.Keymap                            (Action (BufferA, EditorA))
 import           Yi.Keymap.Vim.Common                 (EventString (Ev))

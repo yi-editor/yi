@@ -45,7 +45,7 @@ import Yi.Keymap.Emacs.KillRing
 import Yi.Keymap.Emacs.Utils
 import Yi.Keymap.Keys
 import Yi.MiniBuffer
-import Yi.Misc                  (adjBlock, adjIndent, placeMark, selectAll)
+import Yi.Misc                  (adjIndent, placeMark, selectAll)
 import Yi.Mode.Buffers          (listBuffers)
 import Yi.Rectangle
 import Yi.Search                (isearchFinishWithE, resetRegexE, getRegexE)
@@ -79,7 +79,7 @@ selfInsertKeymap univArg condition = do
   c <- printableChar
   unless (condition c) empty
   let n = argToInt univArg
-  write (adjBlock n >> replicateM_ n (insertB c))
+  write (replicateM_ n (insertB c))
 
 completionKm :: Bool -> Keymap
 completionKm caseSensitive = do void $ some (meta (char '/') ?>>! wordComplete' caseSensitive)
@@ -89,7 +89,7 @@ completionKm caseSensitive = do void $ some (meta (char '/') ?>>! wordComplete' 
            -- and resetting it (restarting at the 1st completion).
 
 deleteB' :: BufferM ()
-deleteB' = adjBlock (-1) >> deleteN 1
+deleteB' = deleteN 1
 
 -- | Wrapper around 'moveE' which also cancels incremental search. See
 -- issue #499 for details.
@@ -235,7 +235,7 @@ emacsKeys univArg =
   withIntArg cmd = withUnivArg $ \arg -> cmd (fromMaybe 1 arg)
 
   deleteBack :: YiM ()
-  deleteBack = repeatingArg $ blockKillring >> adjBlock (-1) >> bdeleteB
+  deleteBack = repeatingArg $ blockKillring >> bdeleteB
 
   deleteForward :: YiM ()
   deleteForward = repeatingArg $ blockKillring >> deleteB'

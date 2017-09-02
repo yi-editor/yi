@@ -29,7 +29,7 @@ import           Yi.Keymap                (Keymap, KeymapSet, YiM, modelessKeyma
 import           Yi.Keymap.Emacs.Utils    (askQuitEditor, findFile, isearchKeymap)
 import           Yi.Keymap.Keys
 import           Yi.MiniBuffer            (commentRegion)
-import           Yi.Misc                  (adjBlock, selectAll)
+import           Yi.Misc                  (selectAll)
 import           Yi.Rectangle             (getRectangle, killRectangle, yankRectangle)
 import qualified Yi.Rope                  as R (YiString, length, singleton, withText)
 import           Yi.String                (lines', unlines')
@@ -74,16 +74,14 @@ replaceSel s = do
   hasSel <- use highlightSelectionA
   if hasSel
     then getSelectRegionB >>= flip replaceRegionB s
-    else do
-      when (R.length s == 1) (adjBlock 1)
-      insertN s
+    else insertN s
 
 deleteSel :: BufferM () -> YiM ()
 deleteSel act = do
   haveSelection <- withCurrentBuffer $ use highlightSelectionA
   if haveSelection
     then withEditor del
-    else withCurrentBuffer (adjBlock (-1) >> act)
+    else withCurrentBuffer act
 
 cut :: YiM ()
 cut = copy >> withEditor del

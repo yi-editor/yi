@@ -88,7 +88,6 @@ cleverMode = haskellAbstract
   & modeIndentA .~ cleverAutoIndentHaskellB
   & modeGetStrokesA .~ strokesOfParenTree
   & modeHLA .~ mkParenModeHL (skipScanner 50) haskellLexer
-  & modeAdjustBlockA .~ adjustBlock
   & modePrettifyA .~ cleverPrettify . allToks
 
 fastMode :: Mode (OnlineTree.Tree TT)
@@ -104,7 +103,6 @@ literateMode = haskellAbstract
   & modeHLA .~ mkParenModeHL id literateHaskellLexer
   & modeGetStrokesA .~ strokesOfParenTree
     -- FIXME I think that 'begin' should not be ignored
-  & modeAdjustBlockA .~ adjustBlock
   & modeIndentA .~ cleverAutoIndentHaskellB
   & modePrettifyA .~ cleverPrettify . allToks
 
@@ -149,28 +147,6 @@ haskellLexer = lexScanner (commonLexer Haskell.alexScanToken Haskell.initState)
 
 literateHaskellLexer :: CharScanner -> Scanner (AlexState LiterateHaskell.HlState) TT
 literateHaskellLexer = lexScanner (commonLexer LiterateHaskell.alexScanToken LiterateHaskell.initState)
-
-adjustBlock :: Paren.Tree (Tok Token) -> Int -> BufferM ()
-adjustBlock e len = do
-  p <- pointB
-  l <- curLn
-  let t = Paren.getIndentingSubtree e p l
-  case t of
-    Nothing -> return ()
-    Just it -> savingExcursionB $ do
-      let (_startOfs, height) = Paren.getSubtreeSpan it
-      col <- curCol
-      forM_ [1..height] $ const $ do
-        lineDown
-        indent <- indentOfB =<< readLnB
-        -- it might be that we have 1st column comments in the block,
-        -- which should not be changed.
-        when (indent > col) $
-         if len >= 0
-          then do
-           insertN $ R.replicateChar len ' '
-           leftN len
-          else deleteN (negate len)
 
 -- | Returns true if the token should be indented to look as "inside"
 -- the group.

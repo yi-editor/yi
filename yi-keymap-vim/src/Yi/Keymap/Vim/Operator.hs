@@ -29,7 +29,7 @@ import           Data.Foldable              (find)
 import           Data.Maybe                 (fromJust)
 import           Data.Monoid                ((<>))
 import qualified Data.Text                  as T (unpack)
-import           Yi.Buffer.Adjusted         hiding (Insert)
+import           Yi.Buffer                  hiding (Insert)
 import           Yi.Buffer.Misc             (startUpdateTransactionB)
 import           Yi.Editor                  (EditorM, getEditorDyn, withCurrentBuffer)
 import           Yi.Keymap.Vim.Common

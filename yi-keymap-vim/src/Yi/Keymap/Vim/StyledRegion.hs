@@ -18,7 +18,7 @@ module Yi.Keymap.Vim.StyledRegion
 
 import           Control.Monad      (forM_)
 import qualified Data.Text          as T (map)
-import           Yi.Buffer.Adjusted
+import           Yi.Buffer
 import qualified Yi.Rope            as R (withText)
 import           Yi.Utils           (SemiNum ((-~)))
 

@@ -23,7 +23,7 @@ import           Data.Monoid                ((<>))
 import qualified Data.Text                  as T (drop, empty, pack, replicate, unpack)
 import           System.Directory           (doesFileExist)
 import           System.FriendlyPath        (expandTilda)
-import           Yi.Buffer.Adjusted         hiding (Insert)
+import           Yi.Buffer                  hiding (Insert)
 import           Yi.Core                    (closeWindow, quitEditor)
 import           Yi.Editor
 import           Yi.Event                   (Event (Event), Key (KASCII, KEnter, KEsc, KTab), Modifier (MCtrl))

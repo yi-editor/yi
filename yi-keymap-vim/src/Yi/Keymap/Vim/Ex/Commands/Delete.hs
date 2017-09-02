@@ -17,7 +17,7 @@ import           Data.Maybe                       (fromMaybe)
 import           Data.Text                        ()
 import           Data.Semigroup                   ((<>))
 import           Lens.Micro.Platform
-import           Yi.Buffer.Adjusted               hiding (Delete)
+import           Yi.Buffer                        hiding (Delete)
 import           Yi.Keymap                        (Action (BufferA))
 import           Yi.Keymap.Vim.Common             (EventString)
 import qualified Yi.Keymap.Vim.Ex.Commands.Common as Common (parse, pureExCommand, parseRange)

@@ -14,7 +14,7 @@ module Yi.Keymap.Vim.ReplaceSingleCharMap
 import           Control.Monad            (replicateM_, when)
 import           Data.Maybe               (fromMaybe)
 import qualified Data.Text                as T (unpack)
-import           Yi.Buffer.Adjusted
+import           Yi.Buffer
 import           Yi.Editor                (getEditorDyn, withCurrentBuffer)
 import           Yi.Keymap.Keys           (Key (KEsc), spec)
 import           Yi.Keymap.Vim.Common

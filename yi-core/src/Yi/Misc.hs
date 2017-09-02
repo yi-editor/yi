@@ -14,7 +14,7 @@
 -- Various high-level functions to further classify.
 
 module Yi.Misc ( getAppropriateFiles, getFolder, cd, pwd, matchingFileNames
-               , rot13Char, placeMark, selectAll, adjBlock, adjIndent
+               , rot13Char, placeMark, selectAll, adjIndent
                , promptFile , promptFileChangingHints, matchFile, completeFile
                , printFileInfoE, debugBufferContent
                ) where
@@ -122,9 +122,6 @@ placeMark = (==) <$> pointB <*> getSelectionMarkPointB >>= \case
 -- | Select the contents of the whole buffer
 selectAll :: BufferM ()
 selectAll = botB >> placeMark >> topB >> setVisibleSelection True
-
-adjBlock :: Int -> BufferM ()
-adjBlock x = withSyntaxB' (\m s -> modeAdjustBlock m s x)
 
 -- | A simple wrapper to adjust the current indentation using
 -- the mode specific indentation function but according to the

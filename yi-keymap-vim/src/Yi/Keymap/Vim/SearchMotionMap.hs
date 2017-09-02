@@ -14,7 +14,7 @@ module Yi.Keymap.Vim.SearchMotionMap (defSearchMotionMap) where
 import           Control.Monad            (replicateM_)
 import           Data.Maybe               (fromMaybe)
 import qualified Data.Text                as T (pack, unpack)
-import           Yi.Buffer.Adjusted       (Direction (Backward, Forward), elemsB)
+import           Yi.Buffer                (Direction (Backward, Forward), elemsB)
 import           Yi.Editor                (getEditorDyn, withCurrentBuffer)
 import           Yi.History               (historyFinish, historyPrefixSet)
 import           Yi.Keymap.Vim.Common

@@ -10,7 +10,7 @@
 
 module Yi.Keymap.Vim.Ex.Commands.Undo (parse) where
 
-import           Yi.Buffer.Adjusted               (redoB, undoB)
+import           Yi.Buffer                        (redoB, undoB)
 import           Yi.Keymap                        (Action (BufferA))
 import           Yi.Keymap.Vim.Common             (EventString (Ev))
 import           Yi.Keymap.Vim.Ex.Commands.Common (pureExCommand)

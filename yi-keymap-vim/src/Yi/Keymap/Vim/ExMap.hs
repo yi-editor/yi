@@ -18,7 +18,7 @@ import           Data.Maybe               (fromJust)
 import           Data.Monoid              ((<>))
 import qualified Data.Text                as T (Text, drop, head, length, split, unwords, map, unpack)
 import           System.FilePath          (isPathSeparator)
-import           Yi.Buffer.Adjusted       hiding (Insert)
+import           Yi.Buffer                hiding (Insert)
 import           Yi.Editor
 import           Yi.History               (historyDown, historyFinish, historyPrefixSet, historyUp)
 import           Yi.Keymap                (YiM)

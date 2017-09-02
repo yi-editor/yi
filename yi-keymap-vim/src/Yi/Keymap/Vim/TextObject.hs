@@ -8,7 +8,7 @@ module Yi.Keymap.Vim.TextObject
   ) where
 
 import Control.Monad              (replicateM_, (<=<))
-import Yi.Buffer.Adjusted
+import Yi.Buffer
 import Yi.Keymap.Vim.MatchResult
 import Yi.Keymap.Vim.StyledRegion (StyledRegion (..), normalizeRegion)
 

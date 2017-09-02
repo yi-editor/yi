@@ -94,7 +94,6 @@ library:
     exposed-modules:
         - Yi
         - Yi.Buffer
-        - Yi.Buffer.Adjusted
         - Yi.Buffer.HighLevel
         - Yi.Buffer.Indent
         - Yi.Buffer.Normal

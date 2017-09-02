@@ -297,8 +297,6 @@ data Mode syntax = Mode
     -- ^ Buffer-local keymap modification
   , modeIndent :: syntax -> IndentBehaviour -> BufferM ()
     -- ^ emacs-style auto-indent line
-  , modeAdjustBlock :: syntax -> Int -> BufferM ()
-    -- ^ adjust the indentation after modification
   , modeFollow :: syntax -> Action
     -- ^ Follow a \"link\" in the file. (eg. go to location of error message)
   , modeIndentSettings :: IndentSettings

@@ -36,7 +36,7 @@ import           Data.Foldable            (asum)
 import           Data.List                (group)
 import qualified Data.Text                as T (unpack)
 import           Safe                     (headDef)
-import           Yi.Buffer.Adjusted       hiding (Insert)
+import           Yi.Buffer                hiding (Insert)
 import           Yi.Editor
 import           Yi.Event                 (Event)
 import           Yi.Keymap                (YiM)

@@ -19,7 +19,7 @@ import           Data.List.NonEmpty       (NonEmpty (..), head, toList)
 import           Data.Monoid              ((<>))
 import qualified Data.Text                as T (pack, unpack)
 import qualified Yi.Buffer                as B (bdeleteB, deleteB, deleteRegionB, insertB, insertN)
-import           Yi.Buffer.Adjusted       as BA hiding (Insert)
+import           Yi.Buffer                as BA hiding (Insert)
 import           Yi.Editor                (EditorM, getEditorDyn, withCurrentBuffer)
 import           Yi.Event                 (Event)
 import           Yi.Keymap.Vim.Common

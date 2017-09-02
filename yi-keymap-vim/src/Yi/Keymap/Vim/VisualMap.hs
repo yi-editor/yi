@@ -19,7 +19,7 @@ import           Data.Char                  (ord)
 import           Data.List                  (group)
 import           Data.Maybe                 (fromJust, fromMaybe)
 import qualified Data.Text                  as T (unpack)
-import           Yi.Buffer.Adjusted         hiding (Insert)
+import           Yi.Buffer                  hiding (Insert)
 import           Yi.Editor
 import           Yi.Keymap.Vim.Common
 import           Yi.Keymap.Vim.Operator     (VimOperator (..), opDelete, stringToOperator)

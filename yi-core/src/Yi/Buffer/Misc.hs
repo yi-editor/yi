@@ -136,7 +136,6 @@ module Yi.Buffer.Misc
   , modePrettifyA
   , modeKeymapA
   , modeIndentA
-  , modeAdjustBlockA
   , modeFollowA
   , modeIndentSettingsA
   , modeToggleCommentSelectionA
@@ -572,7 +571,6 @@ emptyMode = Mode
    modePrettify = const $ return (),
    modeKeymap = id,
    modeIndent = \_ _ -> return (),
-   modeAdjustBlock = \_ _ -> return (),
    modeFollow = const emptyAction,
    modeIndentSettings = IndentSettings
    { expandTabs = True

@@ -11,7 +11,7 @@ module Yi.Keymap.Vim.Ex.Commands.GotoLine (parse) where
 
 import           Data.Char                        (isDigit)
 import qualified Data.Text                        as T (all, null, unpack)
-import           Yi.Buffer.Adjusted               (firstNonSpaceB, gotoLn)
+import           Yi.Buffer                        (firstNonSpaceB, gotoLn)
 import           Yi.Keymap                        (Action (BufferA))
 import           Yi.Keymap.Vim.Common             (EventString (Ev))
 import           Yi.Keymap.Vim.Ex.Commands.Common (pureExCommand)
