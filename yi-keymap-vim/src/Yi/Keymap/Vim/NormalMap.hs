@@ -38,6 +38,7 @@ import           Yi.Keymap.Vim.Operator     (VimOperator (..), opChange, opDelet
 import           Yi.Keymap.Vim.Search       (doVimSearch)
 import           Yi.Keymap.Vim.StateUtils
 import           Yi.Keymap.Vim.StyledRegion (StyledRegion (StyledRegion), transformCharactersInLineN)
+import           Yi.Keymap.Vim.Substitution (repeatSubstitutionE, repeatSubstitutionFlaglessE)
 import           Yi.Keymap.Vim.Tag          (gotoTag, popTag)
 import           Yi.Keymap.Vim.Utils
 import           Yi.MiniBuffer              (spawnMinibufferE)
@@ -249,7 +250,6 @@ continuingBindings = fmap (mkStringBindingE Normal Continue)
     , (char 'R', return (), switchMode Replace)
     ]
 
-
 nonrepeatableBindings :: [VimBinding]
 nonrepeatableBindings = fmap (mkBindingE Normal Drop)
     [ (spec KEsc, return (), resetCount)
@@ -271,7 +271,7 @@ nonrepeatableBindings = fmap (mkBindingE Normal Drop)
     , (char ',', repeatGotoCharE reverseDir, id)
 
     -- Repeat
-    , (char '&', return (), id) -- TODO
+    , (char '&', loadSubstitutionE >>= maybe (pure ()) repeatSubstitutionFlaglessE, id)
 
     -- Transition to ex
     , (char ':', do
@@ -302,6 +302,7 @@ nonrepeatableBindings = fmap (mkBindingE Normal Drop)
     , ("g#", searchWordE False Backward, resetCount)
     , ("gd", withCurrentBuffer $ withModeB modeGotoDeclaration, resetCount)
     , ("gD", withCurrentBuffer $ withModeB modeGotoDeclaration, resetCount)
+    , ("g&", loadSubstitutionE >>= maybe (pure ()) repeatSubstitutionE, id)
     , ("<C-g>", printFileInfoE, resetCount)
     , ("<C-w>c", tryCloseE, resetCount)
     , ("<C-w>o", closeOtherE, resetCount)

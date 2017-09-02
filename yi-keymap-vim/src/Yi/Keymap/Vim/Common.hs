@@ -25,6 +25,7 @@ module Yi.Keymap.Vim.Common
     , EventString(..), unEv
     , OperatorName(..), unOp
     , RegisterName
+    , Substitution(..)
     , module Yi.Keymap.Vim.MatchResult
     , lookupBestMatch, matchesString
     ) where
@@ -134,6 +135,7 @@ data VimState = VimState
     , vsSecondaryCursors      :: ![Point]
     , vsPaste                 :: !Bool -- ^ like vim's :help paste
     , vsCurrentMacroRecording :: !(Maybe (MacroName, EventString))
+    , vsLastSubstitution      :: !(Maybe Substitution)
     } deriving (Typeable, Generic)
 
 instance Binary RepeatableAction
@@ -161,6 +163,7 @@ instance Default VimState where
             mempty -- secondary cursors
             False -- :set paste
             Nothing -- current macro recording
+            Nothing -- last substitution
 
 instance Binary VimState
 
@@ -184,3 +187,13 @@ data RepeatToken = Finish
 data VimBinding
     = VimBindingY (EventString -> VimState -> MatchResult (YiM RepeatToken))
     | VimBindingE (EventString -> VimState -> MatchResult (EditorM RepeatToken))
+
+data Substitution = Substitution
+    { subsFrom :: YiString
+    , subsTo :: YiString
+    , subsFlagGlobal :: !Bool
+    , subsFlagCaseInsensitive :: !Bool
+    , subsFlagConfirm :: !Bool
+    } deriving (Generic)
+
+instance Binary Substitution

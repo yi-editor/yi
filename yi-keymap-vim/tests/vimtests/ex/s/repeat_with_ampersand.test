@@ -3,8 +3,8 @@
 foo123bar
 000
 -- Output
-(1,1)
+(2,1)
 fooxxxbar
-000
+x00
 -- Events
-:s/[0-9]/x/g<CR>
+:s/[0-9]/x/g<CR>j&

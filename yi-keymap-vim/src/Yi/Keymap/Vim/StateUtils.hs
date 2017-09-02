@@ -31,6 +31,8 @@ module Yi.Keymap.Vim.StateUtils
     , updateModeIndicatorE
     , saveInsertEventStringE
     , resetActiveRegisterE
+    , saveSubstitutionE
+    , loadSubstitutionE
     ) where
 
 import           Control.Monad            (when)
@@ -174,3 +176,9 @@ saveInsertEventStringE evs = modifyStateE $ \s ->
 
 resetActiveRegisterE :: EditorM ()
 resetActiveRegisterE = modifyStateE $ \s -> s { vsActiveRegister = '\0' }
+
+saveSubstitutionE :: Substitution -> EditorM ()
+saveSubstitutionE sub = modifyStateE $ \s -> s { vsLastSubstitution = Just sub }
+
+loadSubstitutionE :: EditorM (Maybe Substitution)
+loadSubstitutionE = vsLastSubstitution <$> getEditorDyn
