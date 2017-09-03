@@ -1,7 +1,17 @@
-Unreleased
-----------
+0.15.0 (2017-09-03)
+-------------------
 
  * [yi-keymap-vim] Fixed visual selection not disappearing after doing visual replace or visual insert
+ * [yi-keymap-vim] More digraphs
+ * [yi-keymap-vim] Implemented @@ (replay last macro)
+ * [yi-keymap-vim] Implemented :cq
+ * [yi-keymap-vim] Made zb (scroll to align cursor with the bottom of the window) behave better
+ * [yi-keymap-vim] Fixed blockwise character replace on blocks with holes
+ * [yi-keymap-vim] Fixed < in replace mode
+ * [yi-keymap-vim] Fixed undo after using change operator
+ * [yi-keymap-vim] Implemented & and g& (repeating substitutions)
+ * [yi-keymap-vim] Made c in visual block mode change all the lines
+ * Building with GHC 8.2 now works
  * Building with GHC 7 is no longer supported
 
 0.14.1 (2017-07-29)
