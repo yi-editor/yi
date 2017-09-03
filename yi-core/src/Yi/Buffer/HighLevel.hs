@@ -127,6 +127,7 @@ import           Control.Monad.RWS.Strict (ask)
 import           Control.Monad.State      (gets)
 import           Data.Char                (isDigit, isHexDigit, isOctDigit, isSpace, isUpper, toLower, toUpper)
 import           Data.List                (intersperse, sort)
+import           Data.List.NonEmpty       (NonEmpty(..))
 import           Data.Maybe               (catMaybes, fromMaybe, listToMaybe)
 import           Data.Monoid              ((<>))
 import qualified Data.Set                 as Set
@@ -971,20 +972,24 @@ splitBlockRegionToContiguousSubRegionsB reg = savingPointB $ do
         let subRegion = mkRegion p0 p1
         return subRegion
 
-deleteRegionWithStyleB :: Region -> RegionStyle -> BufferM Point
+-- Return list containing a single point for all non-block styles.
+-- For Block return all the points along the left edge of the region
+deleteRegionWithStyleB :: Region -> RegionStyle -> BufferM (NonEmpty Point)
 deleteRegionWithStyleB reg Block = savingPointB $ do
     (start, lengths) <- shapeOfBlockRegionB reg
     moveTo start
-    forM_ (zip [1..] lengths) $ \(i, l) -> do
+    points <- forM (zip [1..] lengths) $ \(i, l) -> do
         deleteN l
+        p <- pointB
         moveTo start
         lineMoveRel i
-    return start
+        return (if l == 0 then Nothing else Just p)
+    return $ start :| drop 1 (catMaybes points)
 
 deleteRegionWithStyleB reg style = savingPointB $ do
     effectiveRegion <- convertRegionToStyleB reg style
     deleteRegionB effectiveRegion
-    return $! regionStart effectiveRegion
+    return $! pure (regionStart effectiveRegion)
 
 readRegionRopeWithStyleB :: Region -> RegionStyle -> BufferM YiString
 readRegionRopeWithStyleB reg Block = savingPointB $ do

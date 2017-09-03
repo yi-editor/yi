@@ -132,7 +132,7 @@ data VimState = VimState
     , vsOngoingInsertEvents   :: !EventString
     , vsLastGotoCharCommand   :: !(Maybe GotoCharCommand)
     , vsBindingAccumulator    :: !EventString
-    , vsSecondaryCursors      :: ![Point]
+    , vsSecondaryCursors      :: ![Point] -- TODO: these should live in a buffer, just as the main cursor does
     , vsPaste                 :: !Bool -- ^ like vim's :help paste
     , vsCurrentMacroRecording :: !(Maybe (MacroName, EventString))
     , vsLastSubstitution      :: !(Maybe Substitution)

@@ -26,6 +26,7 @@ module Yi.Keymap.Vim.Operator
 import           Control.Monad              (when)
 import           Data.Char                  (isSpace, toLower, toUpper)
 import           Data.Foldable              (find)
+import qualified Data.List.NonEmpty as NE
 import           Data.Maybe                 (fromJust)
 import           Data.Monoid                ((<>))
 import qualified Data.Text                  as T (unpack)
@@ -34,7 +35,7 @@ import           Yi.Buffer.Misc             (startUpdateTransactionB)
 import           Yi.Editor                  (EditorM, getEditorDyn, withCurrentBuffer)
 import           Yi.Keymap.Vim.Common
 import           Yi.Keymap.Vim.EventUtils   (eventToEventString, parseEvents)
-import           Yi.Keymap.Vim.StateUtils   (setRegisterE, switchModeE)
+import           Yi.Keymap.Vim.StateUtils   (setRegisterE, switchModeE, modifyStateE)
 import           Yi.Keymap.Vim.StyledRegion (StyledRegion (..), transformCharactersInRegionB)
 import           Yi.Keymap.Vim.TextObject   (CountedTextObject, regionOfTextObjectB)
 import           Yi.Keymap.Vim.Utils        (indentBlockRegionB)
@@ -89,7 +90,7 @@ opDelete = VimOperator {
         regName <- fmap vsActiveRegister getEditorDyn
         setRegisterE regName style s
         withCurrentBuffer $ do
-            point <- deleteRegionWithStyleB reg style
+            point <- NE.head <$> deleteRegionWithStyleB reg style
             moveTo point
             eof <- atEof
             if eof
@@ -109,13 +110,23 @@ opChange = VimOperator {
         s <- withCurrentBuffer $ readRegionRopeWithStyleB reg style
         regName <- fmap vsActiveRegister getEditorDyn
         setRegisterE regName style s
-        withCurrentBuffer $ do
-            startUpdateTransactionB
-            point <- deleteRegionWithStyleB reg style
-            moveTo point
-            when (style == LineWise) $ do
-                insertB '\n'
-                leftB
+        do
+            withCurrentBuffer $ startUpdateTransactionB
+            case style of
+                LineWise -> withCurrentBuffer $ do
+                    point <- NE.head <$> deleteRegionWithStyleB reg style
+                    moveTo point
+                    insertB '\n'
+                    leftB
+                Block -> do
+                    points <- withCurrentBuffer $ do
+                        points <- deleteRegionWithStyleB reg style
+                        moveTo $ NE.head points
+                        return points
+                    modifyStateE $ \s -> s { vsSecondaryCursors = NE.tail points }
+                _ -> withCurrentBuffer $ do
+                    point <- NE.head <$> deleteRegionWithStyleB reg style
+                    moveTo point
         switchModeE $ Insert 'c'
         return Continue
 }
