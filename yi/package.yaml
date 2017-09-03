@@ -1,5 +1,5 @@
 name: yi
-version: 0.14.1
+version: 0.15.0
 synopsis: Yi editor
 maintainer: Yi developers <yi-devel@googlegroups.com>
 license: GPL-2
@@ -31,10 +31,10 @@ dependencies:
     - microlens-platform >= 0.3.4.0
     - mtl >= 2.2.1
     - optparse-applicative >= 0.13.0.0
-    - yi-core >= 0.14.1
-    - yi-misc-modes >= 0.14.1
-    - yi-mode-haskell >= 0.14.1
-    - yi-mode-javascript >= 0.14.1
+    - yi-core >= 0.15.0
+    - yi-misc-modes >= 0.15.0
+    - yi-mode-haskell >= 0.15.0
+    - yi-mode-javascript >= 0.15.0
     - yi-rope >= 0.7.0.1
 
 when:

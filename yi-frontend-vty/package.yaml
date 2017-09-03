@@ -1,5 +1,5 @@
 name: yi-frontend-vty
-version: 0.14.1
+version: 0.15.0
 synopsis: Vty frontend for Yi editor
 maintainer: Yi developers <yi-devel@googlegroups.com>
 license: GPL-2
