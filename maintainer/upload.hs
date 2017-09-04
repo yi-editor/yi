@@ -1,5 +1,6 @@
 #!/usr/bin/env runghc
 
+import Control.Exception
 import Control.Monad (forM_, when)
 import Data.List (isPrefixOf)
 import System.Directory (getDirectoryContents)
@@ -14,5 +15,6 @@ main = do
         callProcess "stack" ["sdist", p]
 
     forM_ packages $ \p ->
-        when (p /= "yi-intero") $
-            callProcess "stack" ["upload", "--no-signature", p]
+        when (p `notElem` ["yi", "yi-intero"]) $ catch
+            (callProcess "stack" ["upload", "--no-signature", p])
+            (\e -> let _ = e :: SomeException in pure ())
