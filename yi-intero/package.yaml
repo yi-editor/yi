@@ -15,8 +15,8 @@ dependencies:
   - transformers-base
   - yi-rope
   - text
-  - yi-core     == 0.14.*
-  - yi-language == 0.14.*
+  - yi-core     == 0.15.*
+  - yi-language == 0.15.*
   - transformers
   - filepath
   - directory
