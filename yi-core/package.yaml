@@ -128,14 +128,12 @@ library:
         - Yi.Keymap.Keys
         - Yi.KillRing
         - Yi.Layout
-        - Yi.Main
         - Yi.MiniBuffer
         - Yi.Misc
         - Yi.Mode.Common
         - Yi.Mode.Compilation
         - Yi.Mode.Interactive
         - Yi.Monad
-        - Yi.Option
         - Yi.Paths
         - Yi.PersistentState
         - Yi.Process
@@ -158,6 +156,7 @@ library:
         - Yi.Window
         - System.FriendlyPath
         - Parser.Incremental
+        - Paths_yi_core
 
 tests:
   tasty:

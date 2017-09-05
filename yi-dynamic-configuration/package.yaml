@@ -8,6 +8,7 @@ category: Yi
 
 dependencies:
 - base >= 4.8 && < 5
+- data-default
 - dyre >= 0.8.11
 - yi-core >= 0.15.0
 - transformers-base
@@ -21,3 +22,5 @@ library:
   exposed-modules:
   - Yi.Boot
   - Yi.Boot.Internal
+  - Yi.Main
+  - Yi.Option
