@@ -1,0 +1,8 @@
+-- Input
+(1,1)
+Hi
+-- Output
+(1,4)
+"Hi"
+-- Events
+i"<C-f><C-f>"<Esc>

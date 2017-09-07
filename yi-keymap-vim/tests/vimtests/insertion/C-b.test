@@ -1,0 +1,8 @@
+-- Input
+(1,1)
+foo = 
+-- Output
+(1,12)
+foo = (2 + 3)
+-- Events
+A()<C-b>2 + 3<Esc>

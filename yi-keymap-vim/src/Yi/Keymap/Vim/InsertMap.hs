@@ -229,10 +229,19 @@ completionBinding = VimBindingE (f . T.unpack . _unEv)
 
 cursorBinding :: VimBinding
 cursorBinding = VimBindingE f
-    where f evs (VimState { vsMode = (Insert _) })
-            | evs `elem` ["<Up>", "<Left>", "<Down>", "<Right>"]
-            = WholeMatch $ do
-                  let WholeMatch (Move _style _isJump move) = stringToMove evs
-                  withCurrentBuffer $ move Nothing
-                  return Continue
-          f _ _ = NoMatch
+    where
+    f "<C-b>" (VimState { vsMode = (Insert _) })
+        = WholeMatch $ do
+            withCurrentBuffer $ moveXorSol 1
+            return Continue
+    f "<C-f>" (VimState { vsMode = (Insert _) })
+        = WholeMatch $ do
+            withCurrentBuffer $ moveXorEol 1
+            return Continue
+    f evs (VimState { vsMode = (Insert _) })
+        | evs `elem` ["<Up>", "<Left>", "<Down>", "<Right>"]
+        = WholeMatch $ do
+              let WholeMatch (Move _style _isJump move) = stringToMove evs
+              withCurrentBuffer $ move Nothing
+              return Continue
+    f _ _ = NoMatch
