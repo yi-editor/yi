@@ -17,41 +17,10 @@ import           Control.Monad       (forM_)
 import           Data.List           (sort, transpose)
 import           Data.Monoid         ((<>))
 import qualified Data.Text           as T (Text, concat, justifyLeft, length)
-import qualified Data.Text.ICU       as ICU (regex, find, unfold, group)
 import           Yi.Buffer
 import           Yi.Editor           (EditorM, getRegE, setRegE, withCurrentBuffer)
 import qualified Yi.Rope             as R
 import           Yi.String           (lines', mapLines, unlines')
-
-alignRegion :: T.Text -> BufferM ()
-alignRegion str = do
-  s <- getSelectRegionB >>= unitWiseRegion Line
-  modifyRegionB (R.fromText . alignText str . R.toText) s
-  where
-    regexSplit :: T.Text -> T.Text -> [T.Text]
-    regexSplit pattern l = case ICU.find (ICU.regex [] pattern) l of
-        Nothing -> error "regexSplit: text does not match"
-        Just m  -> drop 1 $ ICU.unfold ICU.group m
-
-    alignText :: T.Text -> T.Text -> T.Text
-    alignText regex text = unlines' ls'
-      where ls, ls' :: [T.Text]
-            ls = lines' text
-            columns :: [[T.Text]]
-            columns = regexSplit regex <$> ls
-
-            columnsWidth :: [Int]
-            columnsWidth = fmap (maximum . fmap T.length) $ transpose columns
-
-            columns' :: [[T.Text]]
-            columns' = fmap (zipWith (`T.justifyLeft` ' ') columnsWidth) columns
-
-            ls' = T.concat <$> columns'
-
--- | Align each line of the region on the given regex.
--- Fails if it is not found in any line.
-alignRegionOn :: T.Text -> BufferM ()
-alignRegionOn s = alignRegion $ "^(.*)(" <> s <> ")(.*)"
 
 -- | Get the selected region as a rectangle.
 -- Returns the region extended to lines, plus the start and end columns of the rectangle.

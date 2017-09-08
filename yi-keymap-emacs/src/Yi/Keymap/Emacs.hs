@@ -253,8 +253,7 @@ emacsKeys univArg =
   ctrlC = choice [ ctrlCh 'c' ?>>! commentRegion ]
 
 
-  rectangleFunctions = choice [ char 'a' ?>>! alignRegionOn
-                              , char 'o' ?>>! openRectangle
+  rectangleFunctions = choice [ char 'o' ?>>! openRectangle
                               , char 't' ?>>! stringRectangle
                               , char 'k' ?>>! killRectangle
                               , char 'y' ?>>! yankRectangle
