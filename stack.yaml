@@ -5,7 +5,7 @@ packages:
 - yi-core
 - yi-dynamic-configuration
 - yi-frontend-vty
-- yi-frontend-pango
+# - yi-frontend-pango
 - yi-fuzzy-open
 - yi-keymap-cua
 - yi-keymap-emacs
@@ -17,7 +17,7 @@ packages:
 - yi-ireader
 - yi-language
 - yi-snippet
-- yi
+# - yi
 extra-deps: []
 resolver: lts-8.18
 build:

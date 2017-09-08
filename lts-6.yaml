@@ -2,7 +2,7 @@ flags: {}
 packages:
 - yi-core
 - yi-frontend-vty
-- yi-frontend-pango
+# - yi-frontend-pango
 - yi-fuzzy-open
 - yi-keymap-cua
 - yi-keymap-emacs
@@ -13,7 +13,7 @@ packages:
 - yi-ireader
 - yi-language
 - yi-snippet
-- yi
+# - yi
 extra-deps:
 - ListLike-4.5
 - optparse-applicative-0.13.0.0
