@@ -17,7 +17,7 @@ packages:
 - yi-language
 - yi-snippet
 # - yi
-- example-configs/yi-all-static
+# - example-configs/yi-all-static
 - example-configs/yi-emacs-vty-static
 - example-configs/yi-emacs-vty-dynamic
 - example-configs/yi-vim-colemak-vty-dynamic
