@@ -1,3 +1,10 @@
+0.16.0 (2017-09-03)
+-------------------
+
+ * Dropped text-icu dependency
+ * [yi-keymap-vim] <C-b> and <C-f> in insert mode now move the cursor as in readline
+ * Moved some modules from yi-core to yi-dynamic-configuration where they belong
+
 0.15.0 (2017-09-03)
 -------------------
 

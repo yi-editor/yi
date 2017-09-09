@@ -1,5 +1,5 @@
 name:                yi-intero
-version:             0.15.0
+version:             0.16.0
 synopsis:            Intero support for Yi
 license:             GPL-2
 maintainer:          Yi developers <yi-devel@googlegroups.com>
@@ -15,8 +15,8 @@ dependencies:
   - transformers-base
   - yi-rope
   - text
-  - yi-core     == 0.15.*
-  - yi-language == 0.15.*
+  - yi-core     == 0.16.*
+  - yi-language == 0.16.*
   - transformers
   - filepath
   - directory
