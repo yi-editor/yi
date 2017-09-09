@@ -16,6 +16,7 @@ packages:
 # - yi
 extra-deps:
 - optparse-applicative-0.13.0.0
+- yi-rope-0.10
 resolver: lts-7.1
 nix:
     shell-file: shell.nix

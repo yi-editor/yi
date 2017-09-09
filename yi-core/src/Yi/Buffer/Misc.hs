@@ -191,7 +191,6 @@ module Yi.Buffer.Misc
   , increaseFontSize
   , indentSettingsB
   , fontsizeVariationA
-  , encodingConverterNameA
   , stickyEolA
   , queryBuffer
   ) where
@@ -361,9 +360,6 @@ defaultModeLine prefix = do
     ro <-use readOnlyA
     modeNm <- gets (withMode0 modeName)
     unchanged <- gets isUnchangedBuffer
-    enc <- use encodingConverterNameA >>= return . \case
-      Nothing -> mempty :: T.Text
-      Just cn -> T.pack $ R.unCn cn
     let pct
           | pos == 0 || s == 0 = " Top"
           | pos == s = " Bot"
@@ -375,7 +371,7 @@ defaultModeLine prefix = do
         toT = T.pack . show
 
     nm <- gets $ shortIdentString (length prefix)
-    return $ T.concat [ enc, " ", readOnly', changed, " ", nm
+    return $ T.concat [ readOnly', changed, " ", nm
                       , "     ", hexChar, "  "
                       , "L", T.justifyRight 5 ' ' (toT ln)
                       , "  "
@@ -610,7 +606,6 @@ newB unique nm s =
             , updateTransactionInFlight = False
             , updateTransactionAccum = mempty
             , fontsizeVariation = 0
-            , encodingConverterName = Nothing
             , updateStream = mempty
             } }
 

@@ -29,6 +29,8 @@ resolver: lts-8.18
 build:
  library-profiling: false
  executable-profiling: false
+extra-deps:
+- yi-rope-0.10
 
 # needed for macOS
 # flags:

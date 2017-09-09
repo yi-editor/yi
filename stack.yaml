@@ -18,7 +18,8 @@ packages:
 - yi-language
 - yi-snippet
 # - yi
-extra-deps: []
+extra-deps:
+- yi-rope-0.10
 resolver: lts-8.18
 build:
  library-profiling: false

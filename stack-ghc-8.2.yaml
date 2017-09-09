@@ -18,7 +18,7 @@ packages:
 # - yi
 extra-deps:
 - Hclip-3.0.0.4
-- yi-rope-0.8
+- yi-rope-0.10
 - dynamic-state-0.3
 # - gtk-0.14.6
 # - cairo-0.13.3.1

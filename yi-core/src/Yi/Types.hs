@@ -58,7 +58,7 @@ import           Yi.KillRing                    (Killring)
 import           Yi.Layout                      (AnyLayoutManager)
 import           Yi.Monad                       (getsAndModify)
 import           Yi.Process                     (SubprocessId, SubprocessInfo)
-import qualified Yi.Rope                        as R (ConverterName, YiString)
+import qualified Yi.Rope                        as R (YiString)
 import           Yi.Style                       (StyleName)
 import           Yi.Style.Library               (Theme)
 import           Yi.Syntax                      (ExtHL, Stroke)
@@ -230,7 +230,6 @@ data Attributes
     , updateTransactionInFlight :: !Bool
     , updateTransactionAccum :: !(S.Seq Update)
     , fontsizeVariation :: !Int
-    , encodingConverterName :: !(Maybe R.ConverterName)
       -- ^ How many points (frontend-specific) to change
       -- the font by in this buffer
     , updateStream :: !(S.Seq Update)
@@ -241,16 +240,16 @@ data Attributes
 
 instance Binary Yi.Types.Attributes where
     put (Yi.Types.Attributes n b u bd pc pv se pu selectionStyle_
-         _proc wm law lst ro ins _dc _pfw isTransacPresent transacAccum fv cn lg') = do
+         _proc wm law lst ro ins _dc _pfw isTransacPresent transacAccum fv lg') = do
       let putTime (UTCTime x y) = B.put (fromEnum x) >> B.put (fromEnum y)
       B.put n >> B.put b >> B.put u >> B.put bd
       B.put pc >> B.put pv >> B.put se >> B.put pu >> B.put selectionStyle_ >> B.put wm
       B.put law >> putTime lst >> B.put ro >> B.put ins >> B.put _dc
-      B.put isTransacPresent >> B.put transacAccum >> B.put fv >> B.put cn >> B.put lg'
+      B.put isTransacPresent >> B.put transacAccum >> B.put fv >> B.put lg'
     get = Yi.Types.Attributes <$> B.get <*> B.get <*> B.get <*> B.get <*>
           B.get <*> B.get <*> B.get <*> B.get <*> B.get <*> pure I.End <*> B.get <*> B.get
           <*> getTime <*> B.get <*> B.get <*> B.get
-          <*> pure ({- TODO can serialise now -}mempty) <*> B.get <*> B.get <*> B.get <*> B.get <*> B.get
+          <*> pure ({- TODO can serialise now -}mempty) <*> B.get <*> B.get <*> B.get <*> B.get
       where
         getTime = UTCTime <$> (toEnum <$> B.get) <*> (toEnum <$> B.get)
 

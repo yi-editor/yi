@@ -254,8 +254,8 @@ checkFileChanges e0 = do
                      then R.readFile fname >>= return . \case
                             Left m ->
                               (runDummy b (readOnlyA .= True), Just $ msg3 m)
-                            Right (newContents, c) ->
-                              (runDummy b (revertB newContents (Just c) now), Just msg1)
+                            Right newContents ->
+                              (runDummy b (revertB newContents now), Just msg1)
                      else return (b, Just msg2)
                    else nothing
          _ -> nothing

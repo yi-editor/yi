@@ -60,7 +60,7 @@ dependencies:
     - unordered-containers >= 0.1.3
     - xdg-basedir >= 0.2.1
     - yi-language >= 0.1.1.0
-    - yi-rope >= 0.7.0.0 && < 0.9
+    - yi-rope >= 0.10
 when:
   - condition: os(win32)
     then:

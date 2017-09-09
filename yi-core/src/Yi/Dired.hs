@@ -237,12 +237,11 @@ editFile filename = do
     fileToNewBuffer :: FilePath -> YiM (Either T.Text BufferRef)
     fileToNewBuffer f = io getCurrentTime >>= \n -> io (R.readFile f) >>= \case
       Left m -> return $ Left m
-      Right (contents, conv) -> do
+      Right contents -> do
         permissions <- io $ getPermissions f
 
         b <- stringToNewBuffer (FileBuffer f) contents
         withGivenBuffer b $ do
-          encodingConverterNameA .= Just conv
           markSavedB n
           unless (writable permissions) (readOnlyA .= True)
 

@@ -50,7 +50,7 @@ import           Yi.Dired               (editFile)
 import           Yi.Editor
 import           Yi.Keymap              ()
 import           Yi.Monad               (gets)
-import qualified Yi.Rope                as R (readFile, writeFile, writeFileUsingText)
+import qualified Yi.Rope                as R (readFile, writeFile)
 import           Yi.String              (showT)
 import           Yi.Types
 import           Yi.Utils               (io)
@@ -89,11 +89,11 @@ revertE =
       now <- io getCurrentTime
       rf <- liftBase $ R.readFile fp >>= \case
         Left m -> print ("Can't revert: " <> m) >> return Nothing
-        Right (c, cv) -> return $ Just (c, Just cv)
+        Right c -> return $ Just c
       case rf of
        Nothing -> return ()
-       Just (s, conv) -> do
-         withCurrentBuffer $ revertB s conv now
+       Just s -> do
+         withCurrentBuffer $ revertB s now
          printMsg ("Reverted from " <> showT fp)
     Nothing -> printMsg "Can't revert, no file associated with buffer."
 
@@ -142,23 +142,18 @@ fwriteBufferE bufferKey = do
   nameContents <- withGivenBuffer bufferKey $ do
     fl <- gets file
     st <- streamB Forward 0
-    conv <- use encodingConverterNameA
-    return (fl, st, conv)
+    return (fl, st)
 
   case nameContents of
-    (Just f, contents, conv) -> io (doesDirectoryExist f) >>= \case
+    (Just f, contents) -> io (doesDirectoryExist f) >>= \case
       True -> printMsg "Can't save over a directory, doing nothing." >> return False
       False -> do
         hooks <- view preSaveHooks <$> askCfg
         mapM_ runAction hooks
-        mayErr <- liftBase $ case conv of
-          Nothing -> R.writeFileUsingText f contents >> return Nothing
-          Just cn -> R.writeFile f contents cn
-        case mayErr of
-          Just err -> printMsg err >> return False
-          Nothing -> io getCurrentTime >>= withGivenBuffer bufferKey . markSavedB
-                     >> return True
-    (Nothing, _, _) -> printMsg "Buffer not associated with a file" >> return False
+        mayErr <- liftBase $ R.writeFile f contents
+        io getCurrentTime >>= withGivenBuffer bufferKey . markSavedB
+        return True
+    (Nothing, _) -> printMsg "Buffer not associated with a file" >> return False
 
 -- | Write current buffer to disk as @f@. The file is also set to @f@.
 fwriteToE :: T.Text -> YiM Bool
