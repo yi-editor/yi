@@ -63,7 +63,7 @@ data VarValue
 instance Binary Var
 instance Binary VarValue
 instance Default VarValue where
-    def = DefaultValue def
+    def = DefaultValue mempty
 
 type Vars = M.Map Var VarValue
 
