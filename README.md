@@ -88,8 +88,6 @@ Matrix: #yi:matrix.org
 
 ## How to support developers
 
-* [ethercrow on patreon](https://www.patreon.com/ethercrow)
-
 ## Reading material
 
 There are some papers which might interest you.
