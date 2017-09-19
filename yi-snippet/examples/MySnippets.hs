@@ -4,14 +4,13 @@ module MySnippets
     ( mySnippets
     ) where
 
-import Control.Applicative
 import Data.Char (isUpper)
 import Data.Monoid
 import qualified Data.Text as T
 import System.FilePath
 
 import qualified Yi.Rope as R
-import Snippet
+import Yi.Snippet
 
 mySnippets :: [Snippet]
 mySnippets =
@@ -21,7 +20,7 @@ mySnippets =
         lit "    (" >> finish >> nl
         lit "    ) where"
     , Snippet "lp" $ do
-        lit "{-# LANGUAGE "
+        lit "{-# language "
         _ <- place "OverloadedStrings"
         lit " #-}"
     , Snippet "iq" $ do
@@ -41,13 +40,13 @@ mySnippets =
         lit "Test-Suite " >> place "TestMain" >> nl
         line "  type: exitcode-stdio-1.0"
         lit "  main-is: " >> place "TestMain.hs" >> nl
-        line "  hs-source-dirs: test"
+        line "  hs-source-dirs: src, test"
         line "  ghc-options: -Wall -ferror-spans"
         line "  default-language:    Haskell2010"
         line "  build-depends:"
         line "    base >= 4.8"
     , Snippet "testmain" $ do
-        line "{-# LANGUAGE TemplateHaskell #-}"
+        line "{-# language TemplateHaskell #-}"
         line ""
         line "import Test.Tasty.TH"
         line "import Test.Tasty.HUnit"
@@ -64,6 +63,11 @@ mySnippets =
         nl
         lit "@implementation " >> mirror className >> nl
         line "@end"
+    , Snippet "n" $ do
+        line "<<>>="
+        finish
+        nl
+        line "@"
     ]
 
 guessModuleName :: R.YiString -> R.YiString
@@ -84,3 +88,4 @@ dropCommon s =
         [x] -> x
         "Control" : rest -> R.intercalate "." rest
         "Data" : rest -> R.intercalate "." rest
+        _ -> s
