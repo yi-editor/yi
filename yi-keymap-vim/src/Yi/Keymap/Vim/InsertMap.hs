@@ -23,7 +23,7 @@ import           Yi.Buffer                as BA hiding (Insert)
 import           Yi.Editor                (EditorM, getEditorDyn, withCurrentBuffer)
 import           Yi.Event                 (Event)
 import           Yi.Keymap.Vim.Common
-import           Yi.Keymap.Vim.Digraph    (charFromDigraph)
+import           Yi.Keymap.Vim.Digraph    (charFromDigraph, DigraphTbl)
 import           Yi.Keymap.Vim.EventUtils (eventToEventString, parseEvents)
 import           Yi.Keymap.Vim.Motion     (Move (Move), stringToMove)
 import           Yi.Keymap.Vim.StateUtils
@@ -32,16 +32,16 @@ import           Yi.Monad                 (whenM)
 import qualified Yi.Rope                  as R (fromString, fromText)
 import           Yi.TextCompletion        (CompletionScope (..), completeWordB)
 
-defInsertMap :: [(String, Char)] -> [VimBinding]
+defInsertMap :: DigraphTbl -> [VimBinding]
 defInsertMap digraphs =
     [rawPrintable] <> specials digraphs <> [printable]
 
-specials :: [(String, Char)] -> [VimBinding]
+specials :: DigraphTbl -> [VimBinding]
 specials digraphs =
     [exitBinding digraphs, pasteRegisterBinding, digraphBinding digraphs
     , oneshotNormalBinding, completionBinding, cursorBinding]
 
-exitBinding :: [(String, Char)] -> VimBinding
+exitBinding :: DigraphTbl -> VimBinding
 exitBinding digraphs = VimBindingE f
   where
     f :: EventString -> VimState -> MatchResult (EditorM RepeatToken)
@@ -86,7 +86,7 @@ rawPrintable = VimBindingE f
             return Continue
     f _ _ = NoMatch
 
-replay :: [(String, Char)] -> [Event] -> EditorM ()
+replay :: DigraphTbl -> [Event] -> EditorM ()
 replay _ [] = return ()
 replay digraphs (e1:es1) = do
     state <- getEditorDyn
@@ -130,7 +130,7 @@ pasteRegisterBinding = VimBindingE (f . T.unpack . _unEv)
                   return Continue
           f _ _ = NoMatch
 
-digraphBinding :: [(String, Char)] -> VimBinding
+digraphBinding :: DigraphTbl -> VimBinding
 digraphBinding digraphs = VimBindingE (f . T.unpack . _unEv)
     where f ('<':'C':'-':'k':'>':c1:c2:[]) (VimState { vsMode = Insert _ })
             = WholeMatch $ do
