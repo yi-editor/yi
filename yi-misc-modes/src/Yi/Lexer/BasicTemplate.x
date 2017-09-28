@@ -1,5 +1,6 @@
 -- -*- haskell -*-
 {
+#define NO_ALEX_CONTEXTS
 {-# OPTIONS -w  #-}
 module Yi.Lexer.BasicTemplate
   ( initState, alexScanToken )
