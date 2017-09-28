@@ -150,12 +150,16 @@ main :-
 }
 
 <doubledoc> {
-  \" \" \"                                      { m (const Base) stringStyle }
+  \"\"\"                                        { m (const Base) stringStyle }
+  $white+                                       ; -- whitespace
+  [^\"]+                                        { c stringStyle }
   .                                             { c stringStyle }
 }
 
 <singledoc> {
-  \' \' \'                                      { m (const Base) stringStyle }
+  \'\'\'                                        { m (const Base) stringStyle }
+  $white+                                       ; -- whitespace
+  [^\']+                                        { c stringStyle }
   .                                             { c stringStyle }
 }
 
