@@ -103,7 +103,6 @@ fuzzyOpenWithDepth d = do
   filterNotCommon = filter ((\n -> not (n == "console" || n == "messages")) . itemAsTxt)
 
 
--- shamelessly stolen from Chapter 9 of Real World Haskell
 -- takes about 3 seconds to traverse linux kernel, which is not too outrageous
 -- TODO: check if it works at all with cyclic links
 -- TODO: perform in background, limit file count or directory depth
