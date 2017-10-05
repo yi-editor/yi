@@ -15,7 +15,7 @@ module Yi.Completion
   , completeInListCustomShow
   , commonPrefix
   , prefixMatch, infixUptoEndMatch
-  , subsequenceMatch
+  , subsequenceMatch, subsequenceTextMatch
   , containsMatch', containsMatch, containsMatchCaseInsensitive
   , isCasePrefixOf
   )
@@ -25,7 +25,8 @@ import           Data.Function       (on)
 import           Data.List           (find, nub)
 import           Data.Maybe          (catMaybes)
 import           Data.Monoid         ((<>))
-import qualified Data.Text           as T (Text, breakOn, isPrefixOf, length, null, tails, toCaseFold)
+import           Data.Text           (Text)
+import qualified Data.Text           as T (Text, breakOn, isPrefixOf, length, null, tails, toCaseFold, splitAt)
 import           Yi.Editor           (EditorM, printMsg, printMsgs)
 import           Yi.String           (commonTPrefix', showT)
 import           Yi.Utils            (commonPrefix)
@@ -61,6 +62,20 @@ subsequenceMatch needle haystack = go needle haystack
         go [] _ = True
         go _ [] = False
         go _ _  = False
+
+-- | A simple fuzzy match algorithm. Example: "abc" matches "a1b2c"
+subsequenceTextMatch :: Text -> Text -> Bool
+subsequenceTextMatch needle haystack
+  | T.null needle   = True
+  | T.null haystack = False
+  | n == h     = subsequenceTextMatch ns     hs
+  | n /= h     = subsequenceTextMatch needle hs
+  | otherwise  = False
+  where
+    n,ns,h,hs :: Text
+    (n,ns) = T.splitAt 1 needle
+    (h,hs) = T.splitAt 1 haystack
+
 
 -- | TODO: this is a terrible function, isn't this just
 -- case-insensitive infix? – Fūzetsu
