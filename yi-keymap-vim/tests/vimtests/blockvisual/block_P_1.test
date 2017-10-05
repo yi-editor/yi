@@ -1,0 +1,14 @@
+-- Input
+(1,1)
+foo
+bar
+
+baz
+-- Output
+(1,1)
+foofoo
+foobar
+
+foobaz
+-- Events
+yw<C-v>jjjP<Esc>
