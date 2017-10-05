@@ -11,12 +11,12 @@ dependencies:
     - base >= 4.8 && < 5
     - microlens-platform
     - mtl
-    - yi-core
-    - yi-frontend-vty
-    - yi-keymap-vim
-    - yi-misc-modes
-    - yi-mode-haskell
-    - yi-rope
+    - yi-core >= 0.14
+    - yi-frontend-vty >= 0.14
+    - yi-keymap-vim >= 0.14
+    - yi-misc-modes >= 0.14
+    - yi-mode-haskell >= 0.14
+    - yi-rope >= 0.9
 
 executables:
     yi-vim-vty:

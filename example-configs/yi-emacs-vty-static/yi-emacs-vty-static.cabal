@@ -1,9 +1,9 @@
--- This file has been generated from package.yaml by hpack version 0.17.0.
+-- This file has been generated from package.yaml by hpack version 0.18.1.
 --
 -- see: https://github.com/sol/hpack
 
 name:           yi-emacs-vty-static
-version:        0.13.7
+version:        0.16.0
 category:       Yi
 homepage:       https://github.com/yi-editor/yi#readme
 bug-reports:    https://github.com/yi-editor/yi/issues
@@ -25,10 +25,10 @@ executable yi-emacs-vty
       base >= 4.8 && < 5
     , microlens-platform
     , mtl
-    , yi-core
-    , yi-frontend-vty
-    , yi-keymap-emacs
-    , yi-misc-modes
-    , yi-mode-haskell
-    , yi-rope
+    , yi-core >= 0.14
+    , yi-frontend-vty >= 0.14
+    , yi-keymap-emacs >= 0.14
+    , yi-misc-modes >= 0.14
+    , yi-mode-haskell >= 0.14
+    , yi-rope >= 0.9
   default-language: Haskell2010

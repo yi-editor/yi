@@ -1,0 +1,23 @@
+name: yi-vim-colemak-vty-dynamic
+version: '0.16.0'
+author: Jaro Reinders
+maintainer: yi-devel@googlegroups.com
+license: GPL-2
+ghc-options:
+- -O2
+- -threaded
+dependencies:
+- base >=4.8 && <4.10
+- yi-core >=0.14
+- yi-dynamic-configuration >=0.14
+- yi-keymap-vim >=0.14
+- yi-frontend-vty >=0.14
+- yi-mode-haskell >=0.14
+- yi-mode-javascript >=0.14
+- yi-misc-modes >=0.14
+- yi-rope >=0.9
+- oo-prototypes
+- microlens-platform
+executables:
+  yi:
+    main: yi.hs
