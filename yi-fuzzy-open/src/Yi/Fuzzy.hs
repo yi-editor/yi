@@ -170,12 +170,12 @@ updateNeedleB = do
  where
   filterState :: FuzzyState -> Text -> FuzzyState
   filterState old s = old { search = s, items = newItems }
-    where
-      newItems :: Maybe (PointedList FuzzyItem)
-      newItems = do
-        o <- items old
-        f <- filterItems s o
-        PL.moveTo 0 f
+   where
+    newItems :: Maybe (PointedList FuzzyItem)
+    newItems = do
+      o <- items old
+      f <- filterItems s o
+      PL.moveTo 0 f
 
 
 filterItems :: Text -> PointedList FuzzyItem -> Maybe (PointedList FuzzyItem)
@@ -207,7 +207,7 @@ renderE (FuzzyState maybeZipper s) = do
   tshow = T.pack . show
   mcontent :: Maybe (NonEmpty Text)
   mcontent = do
-    zipper <- maybeZipper
+    zipper  <- maybeZipper
     zipper' <- PL.withFocus <$> filterItems s zipper
     nonEmpty . toList $ fmap (uncurry $ flip renderItem) zipper'
 
@@ -231,7 +231,7 @@ openRoutine :: EditorM () -> YiM ()
 openRoutine preOpenAction = do
   mzipper <- items <$> withCurrentBuffer getBufferDyn
   case mzipper of
-    Nothing -> printMsg "Nothing selected"
+    Nothing                  -> printMsg "Nothing selected"
     Just (PointedList _ f _) -> do
       withEditor $ do
         cleanupE

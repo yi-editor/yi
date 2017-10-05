@@ -14,19 +14,17 @@ filterr filt pl = catMaybesr $ fmap (\a -> guard (filt a) >> Just a) pl
 
 -- | catMaybes on a pointed list, preferring the right list as the new focus if the focus is lost.
 catMaybesr :: forall a . PointedList (Maybe a) -> Maybe (PointedList a)
-catMaybesr (PointedList mls mf mrs) =
-  case mf of
-    Nothing -> shiftFocus rs ss
-    Just f  -> pure $ PointedList rs f ss
+catMaybesr (PointedList mls mf mrs) = case mf of
+  Nothing -> shiftFocus rs ss
+  Just f  -> pure $ PointedList rs f ss
+ where
+  rs, ss :: [a]
+  rs = M.catMaybes mls
+  ss = M.catMaybes mrs
 
-  where
-    rs, ss :: [a]
-    rs = M.catMaybes mls
-    ss = M.catMaybes mrs
-
-    shiftFocus :: [a] -> [a] -> Maybe (PointedList a)
-    shiftFocus [] (f:rs) = pure $ PointedList [] f rs
-    shiftFocus (f:ls) [] = pure $ PointedList ls f []
-    shiftFocus _ _       = Nothing
+  shiftFocus :: [a] -> [a] -> Maybe (PointedList a)
+  shiftFocus []     (f:rs) = pure $ PointedList [] f rs
+  shiftFocus (f:ls) []     = pure $ PointedList ls f []
+  shiftFocus _      _      = Nothing
 
 
