@@ -1,7 +1,5 @@
 {-# LANGUAGE DeriveDataTypeable #-}
-{-# LANGUAGE ViewPatterns #-}
 {-# LANGUAGE DeriveGeneric #-}
-{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE InstanceSigs #-}
@@ -24,7 +22,11 @@ import Control.Monad.Base (liftBase)
 import Control.Monad.State (gets)
 import Data.Binary (Binary(..), Word8)
 import Data.Default (Default(..))
+import Data.Foldable (Foldable(..))
 import Data.List (isSuffixOf)
+import Data.List.NonEmpty (NonEmpty(..), nonEmpty)
+import Data.List.PointedList (PointedList(..))
+import Data.Maybe (fromMaybe)
 import Data.Monoid ((<>))
 import Data.Text (Text)
 import Data.Typeable (Typeable)
@@ -33,11 +35,13 @@ import GHC.Natural (Natural)
 import System.Directory (doesDirectoryExist, getDirectoryContents)
 import System.FilePath ((</>))
 import System.IO.Error (tryIOError)
-import GHC.Exts (IsList(..))
 
 import qualified Data.Text as T
 import qualified Data.Text.Encoding as T
 import qualified Data.Map.Strict as M
+import qualified Data.List.PointedList as PL
+
+import Data.List.PointedList.Extras as PL
 
 import Yi
 import Yi.Completion
@@ -46,12 +50,10 @@ import Yi.Types
 import Yi.Utils ()
 import qualified Yi.Rope as R
 
-import Yi.Fuzzy.Zipper (Zipper(..))
-import qualified Yi.Fuzzy.Zipper as Z
 
 -- FuzzyState is stored in minibuffer's dynamic state
 data FuzzyState = FuzzyState
-  { items :: !(Zipper FuzzyItem)
+  { items :: !(Maybe (PointedList FuzzyItem))
   , search :: !Text
   } deriving (Show, Generic, Typeable)
 
@@ -61,14 +63,13 @@ data FuzzyItem
   deriving (Typeable)
 
 instance Show FuzzyItem where
-  -- TODO: make subsequenceMatch work on Text
   show :: FuzzyItem -> String
-  show = \case
-    i@(FileItem   _) -> "File  "   <> itemAsStr i
-    i@(BufferItem _) -> "Buffer  " <> itemAsStr i
+  show i = case i of
+    FileItem   _ -> "File  "   <> itemAsStr i
+    BufferItem _ -> "Buffer  " <> itemAsStr i
 
 itemAsTxt :: FuzzyItem -> Text
-itemAsTxt = \case
+itemAsTxt f = case f of
   FileItem   x              -> x
   BufferItem (MemBuffer  x) -> x
   BufferItem (FileBuffer x) -> T.pack x
@@ -89,17 +90,17 @@ fuzzyOpen = fuzzyOpenWithDepth defaultDepth
 -- | Fuzzy-opens the directory to the specified depth. The depth needs
 -- to be at least @1@ for it to do anything meaningful.
 fuzzyOpenWithDepth :: Natural -> YiM ()
-fuzzyOpenWithDepth (fromIntegral->d) = do
-  fileList <- (fmap.fmap) (FileItem . T.pack) (liftBase $ getRecursiveContents d ".")
-  bufList  <- (fmap.fmap) (BufferItem . ident . attributes) (withEditor (gets (M.elems . buffers)))
+fuzzyOpenWithDepth d = do
+  fileList  <- (fmap . fmap) (FileItem . T.pack) (liftBase $ getRecursiveContents d ".")
+  bufList   <- (fmap . fmap) (BufferItem . ident . attributes) (withEditor (gets (M.elems . buffers)))
   promptRef <- withEditor (spawnMinibufferE "" (const localKeymap))
 
-  let initialState = FuzzyState (fromList (filterNotCommon bufList<>fileList)) ""
+  let initialState = FuzzyState (PL.fromList (filterNotCommon bufList <> fileList)) ""
   withGivenBuffer promptRef $ putBufferDyn initialState
   withEditor (renderE initialState)
-  where
-    filterNotCommon :: [FuzzyItem] -> [FuzzyItem]
-    filterNotCommon = filter ((/="console") . itemAsTxt)
+ where
+  filterNotCommon :: [FuzzyItem] -> [FuzzyItem]
+  filterNotCommon = filter ((\n -> not (n == "console" || n == "messages")) . itemAsTxt)
 
 
 -- shamelessly stolen from Chapter 9 of Real World Haskell
@@ -108,79 +109,77 @@ fuzzyOpenWithDepth (fromIntegral->d) = do
 -- TODO: perform in background, limit file count or directory depth
 getRecursiveContents :: Natural -> FilePath -> IO [FilePath]
 getRecursiveContents d t
-  | d == 0    = return mempty
-  | otherwise = tryIOError (getDirectoryContents t) >>= \case
-    Left  _     -> return mempty
-    Right names -> do
-      paths <- mapM withName (filter isProperName names)
-      return $ mconcat paths
+  | d == 0 = return mempty
+  | otherwise = do
+    x <- tryIOError (getDirectoryContents t)
+    case x of
+      Left  _     -> return mempty
+      Right names -> do
+        paths <- mapM withName (filter isProperName names)
+        return $ mconcat paths
+ where
+  isProperName :: FilePath -> Bool
+  isProperName fileName = and
+    [ fileName `notElem` [".", "..", ".git", ".svn"]
+    , not (".hi" `isSuffixOf` fileName)
+    , not ("-boot" `isSuffixOf` fileName)
+    ]
 
-  where
-    isProperName :: FilePath -> Bool
-    isProperName fileName
-      = fileName `notElem` [".", "..", ".git", ".svn"]
-      && not (".hi" `isSuffixOf` fileName)
-      && not ("-boot" `isSuffixOf` fileName)
-
-    withName :: FilePath -> IO [FilePath]
-    withName name = do
-      let path = t </> name
-      isDirectory <- doesDirectoryExist path
-      if isDirectory
-      then getRecursiveContents (d - 1) path
-      else pure [path]
+  withName :: FilePath -> IO [FilePath]
+  withName name = do
+    let path = t </> name
+    isDirectory <- doesDirectoryExist path
+    if isDirectory then getRecursiveContents (d - 1) path else pure [path]
 
 localKeymap :: Keymap
 localKeymap =
   choice
       [ spec KEnter ?>>! openInThisWindow
-      , ctrlCh 't'  ?>>! openInNewTab
-      , ctrlCh 's'  ?>>! openInSplit
-      , spec KEsc   ?>>! cleanupE
-      , ctrlCh 'g'  ?>>! cleanupE
-      , ctrlCh 'h'  ?>>! updatingB (deleteB Character Backward)
-      , spec KBS    ?>>! updatingB (deleteB Character Backward)
-      , spec KDel   ?>>! updatingB (deleteB Character Backward)
-      , ctrlCh 'a'  ?>>! moveToSol
-      , ctrlCh 'e'  ?>>! moveToEol
-      , spec KLeft  ?>>! moveXorSol 1
+      , ctrlCh 't' ?>>! openInNewTab
+      , ctrlCh 's' ?>>! openInSplit
+      , spec KEsc ?>>! cleanupE
+      , ctrlCh 'g' ?>>! cleanupE
+      , ctrlCh 'h' ?>>! updatingB (deleteB Character Backward)
+      , spec KBS ?>>! updatingB (deleteB Character Backward)
+      , spec KDel ?>>! updatingB (deleteB Character Backward)
+      , ctrlCh 'a' ?>>! moveToSol
+      , ctrlCh 'e' ?>>! moveToEol
+      , spec KLeft ?>>! moveXorSol 1
       , spec KRight ?>>! moveXorEol 1
-      , ctrlCh 'p'  ?>>! modifyE goLeft
-      , ctrlCh 'n'  ?>>! modifyE goRight
-      , spec KDown  ?>>! modifyE goRight
-
-      , Event KTab [MShift] ?>>! modifyE goLeft
-      , Event KTab []       ?>>! modifyE goRight
-
-      , ctrlCh 'w'  ?>>! updatingB (deleteB unitWord Backward)
-      , ctrlCh 'u'  ?>>! updatingB (moveToSol >> deleteToEol)
-      , ctrlCh 'k'  ?>>! updatingB deleteToEol
+      , ctrlCh 'p' ?>>! modifyE goPrevious
+      , ctrlCh 'n' ?>>! modifyE goNext
+      , spec KDown ?>>! modifyE goNext
+      , Event KTab [MShift] ?>>! modifyE goPrevious
+      , Event KTab [] ?>>! modifyE goNext
+      , ctrlCh 'w' ?>>! updatingB (deleteB unitWord Backward)
+      , ctrlCh 'u' ?>>! updatingB (moveToSol >> deleteToEol)
+      , ctrlCh 'k' ?>>! updatingB deleteToEol
       ]
     <|| (insertChar >>! (withCurrentBuffer updateNeedleB >>= renderE))
  where
   updatingB :: BufferM () -> EditorM ()
-  updatingB bufAction =
-    withCurrentBuffer (bufAction >> updateNeedleB) >>= renderE
+  updatingB bufAction = withCurrentBuffer (bufAction >> updateNeedleB) >>= renderE
 
 updateNeedleB :: BufferM FuzzyState
 updateNeedleB = do
-  s <- R.toText <$> readLnB
+  s        <- R.toText <$> readLnB
   oldState <- getBufferDyn
   let newState = oldState `filterState` s
   putBufferDyn newState
   return newState
-  where
-    filterState :: FuzzyState -> Text -> FuzzyState
-    filterState old s = old
-      { search = s
-      , items = Z.toStart (filterItems (items old) s)
-      }
+ where
+  filterState :: FuzzyState -> Text -> FuzzyState
+  filterState old s = old { search = s, items = newItems }
+    where
+      newItems :: Maybe (PointedList FuzzyItem)
+      newItems = do
+        o <- items old
+        f <- filterItems s o
+        PL.moveTo 0 f
 
-filterItems :: Zipper FuzzyItem -> Text -> Zipper FuzzyItem
-filterItems zipper s = Z.filter matchesSearch zipper
-  where
-    matchesSearch :: FuzzyItem -> Bool
-    matchesSearch = subsequenceTextMatch s . itemAsTxt
+
+filterItems :: Text -> PointedList FuzzyItem -> Maybe (PointedList FuzzyItem)
+filterItems s zipper = PL.filterr (subsequenceTextMatch s . itemAsTxt) zipper
 
 modifyE :: (FuzzyState -> FuzzyState) -> EditorM ()
 modifyE f = do
@@ -189,24 +188,35 @@ modifyE f = do
   withCurrentBuffer (putBufferDyn newState)
   renderE newState
 
-goRight :: FuzzyState -> FuzzyState
-goRight = changeIndex Z.goRight
+goNext :: FuzzyState -> FuzzyState
+goNext = changeIndex PL.next
 
-goLeft :: FuzzyState -> FuzzyState
-goLeft = changeIndex Z.goLeft
+goPrevious :: FuzzyState -> FuzzyState
+goPrevious = changeIndex PL.previous
 
-changeIndex :: (Zipper FuzzyItem -> Zipper FuzzyItem) -> FuzzyState -> FuzzyState
-changeIndex dir fs = fs { items = dir (items fs) }
+changeIndex :: (PointedList FuzzyItem -> Maybe (PointedList FuzzyItem)) -> FuzzyState -> FuzzyState
+changeIndex dir fs = fs { items = items fs >>= dir }
 
 renderE :: FuzzyState -> EditorM ()
-renderE (FuzzyState z s) = setStatus (content, defaultStyle)
-  where
-    content :: [Text]
-    content = toList $ Z.mapWithCurrent ("  "<>) ("* "<>) (renderItem <$> filterItems z s)
+renderE (FuzzyState maybeZipper s) = do
+  case mcontent of
+    Nothing      -> printMsg "No match found"
+    Just content -> setStatus (toList content, defaultStyle)
+ where
+  tshow :: Show s => s -> Text
+  tshow = T.pack . show
+  mcontent :: Maybe (NonEmpty Text)
+  mcontent = do
+    zipper <- maybeZipper
+    zipper' <- PL.withFocus <$> filterItems s zipper
+    nonEmpty . toList $ fmap (uncurry $ flip renderItem) zipper'
 
-    -- TODO justify to actual screen width
-    renderItem :: FuzzyItem -> Text
-    renderItem = T.justifyLeft 79 ' ' . T.pack . show
+  -- TODO justify to actual screen width
+  renderItem :: Bool -> FuzzyItem -> Text
+  renderItem isFocus fi = renderStar isFocus (T.justifyLeft 79 ' ' . T.pack . show $ fi)
+
+  renderStar :: Bool -> (Text -> Text)
+  renderStar y = if y then ("* "<>) else ("  "<>)
 
 openInThisWindow :: YiM ()
 openInThisWindow = openRoutine (return ())
@@ -219,23 +229,23 @@ openInNewTab = openRoutine newTabE
 
 openRoutine :: EditorM () -> YiM ()
 openRoutine preOpenAction = do
-  FuzzyState zipper _ <- withCurrentBuffer getBufferDyn
-  case Z.current zipper of
+  mzipper <- items <$> withCurrentBuffer getBufferDyn
+  case mzipper of
     Nothing -> printMsg "Nothing selected"
-    Just i -> do
+    Just (PointedList _ f _) -> do
       withEditor $ do
         cleanupE
         preOpenAction
-      action i
-  where
-    action :: FuzzyItem  -> YiM ()
-    action = \case
-      FileItem   x -> void (editFile (T.unpack x))
-      BufferItem x -> withEditor $ do
-        bufs <- gets (M.assocs . buffers)
-        case filter ((==x) . ident . attributes . snd) bufs of
-          []            -> error ("Couldn't find " <> show x)
-          (bufRef, _):_ -> switchToBufferE bufRef
+      action f
+ where
+  action :: FuzzyItem -> YiM ()
+  action fi = case fi of
+    FileItem   x -> void (editFile (T.unpack x))
+    BufferItem x -> withEditor $ do
+      bufs <- gets (M.assocs . buffers)
+      case filter ((==x) . ident . attributes . snd) bufs of
+        []            -> error ("Couldn't find " <> show x)
+        (bufRef, _):_ -> switchToBufferE bufRef
 
 
 insertChar :: Keymap
@@ -255,13 +265,13 @@ instance Binary FuzzyItem where
       _ -> error "Unexpected FuzzyItem Binary."
 
 instance Binary FuzzyState where
-  put (FuzzyState zipper s) = do
-    put zipper
+  put (FuzzyState mzipper s) = do
+    put mzipper
     put (T.encodeUtf8 s)
 
   get = FuzzyState <$> get <*> fmap T.decodeUtf8 get
 
 instance Default FuzzyState where
-  def = FuzzyState mempty mempty
+  def = FuzzyState Nothing mempty
 
 instance YiVariable FuzzyState

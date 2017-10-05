@@ -17,6 +17,7 @@ dependencies:
     - directory >= 1.2.2
     - filepath >= 1.4.0
     - mtl >= 2.2
+    - pointedlist >= 0.5
     - text >= 1.2
     - transformers-base >= 0.4.4
     - vector >= 0.11

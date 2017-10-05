@@ -1,5 +1,4 @@
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE MultiWayIf #-}
 {-# OPTIONS_HADDOCK show-extensions #-}
 
 -- |
@@ -58,21 +57,20 @@ infixUptoEndMatch needle haystack = case T.breakOn needle haystack of
 -- | A simple fuzzy match algorithm. Example: "abc" matches "a1b2c"
 subsequenceMatch :: String -> String -> Bool
 subsequenceMatch needle haystack = go needle haystack
-  where
-    go (n:ns) (h:hs) | n == h = go ns hs
-    go (n:ns) (h:hs) | n /= h = go (n:ns) hs
-    go [] _ = True
-    go _ [] = False
-    go _ _  = False
+  where go (n:ns) (h:hs) | n == h = go ns hs
+        go (n:ns) (h:hs) | n /= h = go (n:ns) hs
+        go [] _ = True
+        go _ [] = False
+        go _ _  = False
 
 -- | A simple fuzzy match algorithm. Example: "abc" matches "a1b2c"
 subsequenceTextMatch :: Text -> Text -> Bool
-subsequenceTextMatch needle haystack =
-  if | T.null needle   -> True
-     | T.null haystack -> False
-     | n == h     -> subsequenceTextMatch ns     hs
-     | n /= h     -> subsequenceTextMatch needle hs
-     | otherwise  -> False
+subsequenceTextMatch needle haystack
+  | T.null needle   = True
+  | T.null haystack = False
+  | n == h     = subsequenceTextMatch ns     hs
+  | n /= h     = subsequenceTextMatch needle hs
+  | otherwise  = False
   where
     n,ns,h,hs :: Text
     (n,ns) = T.splitAt 1 needle
