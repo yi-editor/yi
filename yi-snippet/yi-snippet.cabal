@@ -1,5 +1,5 @@
 name:           yi-snippet
-version:        0.16.0
+version:        0.17.0
 synopsis:       Snippet support for yi
 category:       Yi
 homepage:       https://github.com/yi-editor/yi#readme
@@ -20,7 +20,7 @@ library
   build-depends:
       base >= 4.8 && < 5
     , containers >= 0.5.6
-    , yi-rope >= 0.7
+    , yi-rope >= 0.10
     , binary >= 0.7.5
     , data-default >= 0.5
     , free >= 4.12
@@ -28,7 +28,7 @@ library
     , mtl >= 2.2
     , text >= 1.2
     , vector >= 0.11
-    , yi-core >= 0.16.0
+    , yi-core >= 0.17.0
   exposed-modules:
       Yi.Snippet
       Yi.Snippet.Internal
@@ -45,7 +45,7 @@ test-suite spec
   build-depends:
       base >= 4.8 && < 5
     , containers >= 0.5.6
-    , yi-rope >= 0.7
+    , yi-rope >= 0.10
     , tasty-th
     , tasty-hunit
     , yi-snippet

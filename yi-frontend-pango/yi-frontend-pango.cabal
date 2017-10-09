@@ -1,5 +1,5 @@
 name:           yi-frontend-pango
-version:        0.16.0
+version:        0.17.0
 synopsis:       Pango frontend for Yi editor
 category:       Yi
 homepage:       https://github.com/yi-editor/yi#readme
@@ -10,25 +10,7 @@ build-type:     Simple
 cabal-version:  >= 1.10
 
 data-files:
-    art/c-source.png
-    art/dependencies.png
-    art/exposed-file-module.png
-    art/exposed-module.png
-    art/h-source.png
-    art/hidden-file-module.png
-    art/hidden-module.png
-    art/hs-source-folder.png
-    art/license-file.png
-    art/package.png
-    art/plain-folder.png
-    art/project.png
-    art/setup-script.png
-    art/text-file.png
-    art/yi+lambda-fat-128.png
-    art/yi+lambda-fat-16.png
-    art/yi+lambda-fat-32.png
-    art/yi+lambda-fat-64.png
-    art/yi+lambda-fat.pdf
+    art/*.png
 
 source-repository head
   type: git
@@ -51,9 +33,9 @@ library
     , pointedlist
     , text
     , transformers-base
-    , yi-core
-    , yi-language
-    , yi-rope
+    , yi-core >= 0.17
+    , yi-language >= 0.17
+    , yi-rope >= 0.10
   exposed-modules:
       Yi.Config.Default.Pango
       Yi.Frontend.Pango

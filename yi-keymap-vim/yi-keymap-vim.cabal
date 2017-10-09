@@ -1,5 +1,5 @@
 name:           yi-keymap-vim
-version:        0.16.0
+version:        0.17.0
 synopsis:       Vim keymap for Yi editor
 category:       Yi
 homepage:       https://github.com/yi-editor/yi#readme
@@ -65,9 +65,9 @@ library
     , text
     , transformers-base
     , unordered-containers
-    , yi-core
-    , yi-language
-    , yi-rope
+    , yi-core >= 0.17
+    , yi-language >= 0.17
+    , yi-rope >= 0.10
   exposed-modules:
       Yi.Config.Default.Vim
       Yi.Keymap.Vim
@@ -149,15 +149,14 @@ test-suite spec
     , text
     , transformers-base
     , unordered-containers
-    , yi-core
-    , yi-language
-    , yi-rope
+    , yi-core >= 0.17
+    , yi-language >= 0.17
+    , yi-rope >= 0.10
     , tasty
     , tasty-hunit
     , QuickCheck
     , tasty-quickcheck
-    , yi-core
-    , yi-keymap-vim
+    , yi-keymap-vim >= 0.17
   other-modules:
       Generic.TestPureBufferManipulations
       Generic.TestUtils

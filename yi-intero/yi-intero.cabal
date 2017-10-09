@@ -1,5 +1,5 @@
 name:           yi-intero
-version:        0.16.0
+version:        0.17.0
 synopsis:       Intero support for Yi
 category:       Yi
 maintainer:     Yi developers <yi-devel@googlegroups.com>
@@ -19,10 +19,10 @@ library
     , data-default
     , process
     , transformers-base
-    , yi-rope
+    , yi-rope >= 0.10
     , text
-    , yi-core     == 0.16.*
-    , yi-language == 0.16.*
+    , yi-core >= 0.17
+    , yi-language >= 0.17
     , transformers
     , filepath
     , directory

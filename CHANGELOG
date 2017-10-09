@@ -1,3 +1,13 @@
+0.17.0 (2017-10-09)
+-------------------
+
+ * Added cabal.project file
+ * Replaced package.yaml files with *.cabal files
+ * [yi-keymap-vim] Added completion for ':e ' without a path stub
+ * [yi-misc-modes] Fixed multiline string syntax highlighting for python
+ * [yi-keymap-vim] Faster digraph lookup
+ * [yi-misc-modes] Fixed issue building Yi.Lexer.BasicTemplate
+
 0.16.0 (2017-09-03)
 -------------------
 

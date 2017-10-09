@@ -1,5 +1,5 @@
 name:           yi-keymap-cua
-version:        0.16.0
+version:        0.17.0
 synopsis:       Cua keymap for Yi editor
 category:       Yi
 homepage:       https://github.com/yi-editor/yi#readme
@@ -21,9 +21,9 @@ library
       base >= 4.8 && < 5
     , microlens-platform
     , text
-    , yi-core
-    , yi-keymap-emacs
-    , yi-rope
+    , yi-core >= 0.17
+    , yi-keymap-emacs >= 0.17
+    , yi-rope >= 0.10
   exposed-modules:
       Yi.Config.Default.Cua
       Yi.Keymap.Cua

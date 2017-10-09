@@ -1,5 +1,5 @@
 name:           yi
-version:        0.16.0
+version:        0.17.0
 synopsis:       Yi editor
 category:       Yi
 homepage:       https://github.com/yi-editor/yi#readme
@@ -43,25 +43,25 @@ executable yi
     , microlens-platform >= 0.3.4.0
     , mtl >= 2.2.1
     , optparse-applicative >= 0.13.0.0
-    , yi-core >= 0.16.0
-    , yi-misc-modes >= 0.16.0
-    , yi-mode-haskell >= 0.16.0
-    , yi-mode-javascript >= 0.16.0
-    , yi-rope >= 0.7.0.1
+    , yi-core >= 0.17
+    , yi-misc-modes >= 0.17
+    , yi-mode-haskell >= 0.17
+    , yi-mode-javascript >= 0.17
+    , yi-rope >= 0.10
   if flag(vty)
     cpp-options: -DVTY
     build-depends:
-        yi-frontend-vty
+        yi-frontend-vty >= 0.17
   if flag(pango)
     cpp-options: -DPANGO
     build-depends:
-        yi-frontend-pango
+        yi-frontend-pango >= 0.17
   if flag(vim)
     cpp-options: -DVIM
     build-depends:
-        yi-keymap-vim
+        yi-keymap-vim >= 0.17
   if flag(emacs)
     cpp-options: -DEMACS
     build-depends:
-        yi-keymap-emacs
+        yi-keymap-emacs >= 0.17
   default-language: Haskell2010

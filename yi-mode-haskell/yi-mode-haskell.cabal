@@ -1,5 +1,5 @@
 name:           yi-mode-haskell
-version:        0.16.0
+version:        0.17.0
 synopsis:       Yi editor haskell mode
 category:       Yi
 homepage:       https://github.com/yi-editor/yi#readme

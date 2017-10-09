@@ -1,5 +1,5 @@
 name:           yi-ireader
-version:        0.16.0
+version:        0.17.0
 synopsis:       Yi editor incremental reader
 category:       Yi
 homepage:       https://github.com/yi-editor/yi#readme
@@ -25,9 +25,9 @@ library
     , data-default
     , microlens-platform
     , text
-    , yi-core
-    , yi-language
-    , yi-rope
+    , yi-core >= 0.17
+    , yi-language >= 0.17
+    , yi-rope >= 0.10
   exposed-modules:
       Yi.Mode.IReader
       Yi.IReader

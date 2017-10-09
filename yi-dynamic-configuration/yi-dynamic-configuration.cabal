@@ -1,5 +1,5 @@
 name:           yi-dynamic-configuration
-version:        0.16.0
+version:        0.17.0
 synopsis:       Dynamic configuration support for Yi
 category:       Yi
 homepage:       https://github.com/yi-editor/yi#readme
@@ -20,7 +20,7 @@ library
       base >= 4.8 && < 5
     , data-default
     , dyre >= 0.8.11
-    , yi-core >= 0.16.0
+    , yi-core >= 0.17.0
     , transformers-base
     , mtl >= 0.1.0.1
     , microlens-platform
