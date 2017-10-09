@@ -16,7 +16,7 @@ import           Control.Applicative              (Alternative ((<|>)))
 import           Control.Monad                    (void, when)
 import           Data.Maybe                       (isJust)
 import qualified Data.Text                        as T (Text, append, pack, unpack)
-import qualified Data.Attoparsec.Text             as P (anyChar, many1, space, string, try, option)
+import qualified Data.Attoparsec.Text             as P (anyChar, many', many1, space, string, try, option)
 import           Yi.Editor                        (MonadEditor (withEditor), newTabE)
 import           Yi.File                          (openNewFile)
 import           Yi.Keymap                        (Action (YiA))
@@ -29,7 +29,7 @@ parse = Common.parse $ do
     tab <- P.option Nothing $ Just <$> P.string "tab"
     void $ P.try (P.string "edit") <|> P.string "e"
     void $ P.many1 P.space
-    filename <- T.pack <$> P.many1 P.anyChar
+    filename <- T.pack <$> P.many' P.anyChar
     return $! edit (isJust tab) filename
 
 edit :: Bool -> T.Text -> ExCommand
