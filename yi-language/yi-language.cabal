@@ -1,0 +1,80 @@
+name:           yi-language
+version:        0.16.0
+synopsis:       Collection of language-related Yi libraries.
+category:       Yi
+homepage:       https://github.com/yi-editor/yi#readme
+bug-reports:    https://github.com/yi-editor/yi/issues
+maintainer:     Yi developers <yi-devel@googlegroups.com>
+license:        GPL-2
+build-type:     Simple
+cabal-version:  >= 1.10
+
+extra-source-files:
+    src/Yi/Lexer/common.hsinc
+
+source-repository head
+  type: git
+  location: https://github.com/yi-editor/yi
+
+library
+  hs-source-dirs:
+      src
+  ghc-options: -Wall -ferror-spans
+  include-dirs:
+      src/Yi/Lexer
+  build-depends:
+      base >= 4.8 && < 5
+    , array
+    , binary
+    , data-default
+    , template-haskell >= 2.4
+    , containers
+    , hashable >=1.1.2.5
+    , pointedlist >= 0.5
+    , regex-base ==0.93.*
+    , regex-tdfa >= 1.1 && <1.3
+    , transformers-base
+    , unordered-containers >= 0.1.3 && < 0.3
+    , microlens-platform
+    , oo-prototypes
+  build-tools:
+      alex >= 3.0.3 && < 3.2.0 || >= 3.2.1
+  exposed-modules:
+      Yi.Buffer.Basic
+      Yi.Lexer.Alex
+      Yi.Lexer.Compilation
+      Yi.Regex
+      Yi.Region
+      Yi.Style
+      Yi.Style.Library
+      Yi.Syntax
+      Yi.Utils
+  other-modules:
+      Paths_yi_language
+  default-language: Haskell2010
+
+test-suite tasty
+  type: exitcode-stdio-1.0
+  main-is: Spec.hs
+  hs-source-dirs:
+      test
+  ghc-options: -Wall -ferror-spans
+  build-depends:
+      base >= 4.8 && < 5
+    , array
+    , binary
+    , data-default
+    , template-haskell >= 2.4
+    , containers
+    , hashable >=1.1.2.5
+    , pointedlist >= 0.5
+    , regex-base ==0.93.*
+    , regex-tdfa >= 1.1 && <1.3
+    , transformers-base
+    , unordered-containers >= 0.1.3 && < 0.3
+    , microlens-platform
+    , tasty
+    , tasty-hspec
+    , tasty-quickcheck
+    , yi-language
+  default-language: Haskell2010

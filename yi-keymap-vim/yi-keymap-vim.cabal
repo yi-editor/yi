@@ -1,0 +1,168 @@
+name:           yi-keymap-vim
+version:        0.16.0
+synopsis:       Vim keymap for Yi editor
+category:       Yi
+homepage:       https://github.com/yi-editor/yi#readme
+bug-reports:    https://github.com/yi-editor/yi/issues
+maintainer:     Yi developers <yi-devel@googlegroups.com>
+license:        GPL-2
+build-type:     Simple
+cabal-version:  >= 1.10
+
+data-files:
+    tests/vimtests/blockvisual/*.test
+    tests/vimtests/change/*.test
+    tests/vimtests/delete/*.test
+    tests/vimtests/digraphs/*.test
+    tests/vimtests/digraphs/*.test
+    tests/vimtests/empty/*.test
+    tests/vimtests/ex/*.test
+    tests/vimtests/find/*.test
+    tests/vimtests/format/*.test
+    tests/vimtests/indent/*.test
+    tests/vimtests/insertion/*.test
+    tests/vimtests/joinlines/*.test
+    tests/vimtests/jumplist/*.test
+    tests/vimtests/macros/*.test
+    tests/vimtests/marks/*.test
+    tests/vimtests/movement/*.test
+    tests/vimtests/numbers/*.test
+    tests/vimtests/paste/*.test
+    tests/vimtests/repeat/*.test
+    tests/vimtests/replace/*.test
+    tests/vimtests/search/*.test
+    tests/vimtests/searchword/*.test
+    tests/vimtests/sort/*.test
+    tests/vimtests/switchcase/*.test
+    tests/vimtests/undo/*.test
+    tests/vimtests/unicode/*.test
+    tests/vimtests/unsorted/*.test
+    tests/vimtests/visual/*.test
+    tests/vimtests/yank/*.test
+
+source-repository head
+  type: git
+  location: https://github.com/yi-editor/yi
+
+library
+  hs-source-dirs:
+      src
+  ghc-options: -Wall -ferror-spans
+  build-depends:
+      attoparsec
+    , base >= 4.8 && < 5
+    , binary
+    , containers
+    , data-default
+    , directory
+    , filepath
+    , Hclip
+    , microlens-platform
+    , mtl
+    , oo-prototypes
+    , pointedlist
+    , safe
+    , text
+    , transformers-base
+    , unordered-containers
+    , yi-core
+    , yi-language
+    , yi-rope
+  exposed-modules:
+      Yi.Config.Default.Vim
+      Yi.Keymap.Vim
+      Yi.Keymap.Vim.Common
+      Yi.Keymap.Vim.Digraph
+      Yi.Keymap.Vim.Eval
+      Yi.Keymap.Vim.EventUtils
+      Yi.Keymap.Vim.Ex
+      Yi.Keymap.Vim.Ex.Commands.Buffer
+      Yi.Keymap.Vim.Ex.Commands.BufferDelete
+      Yi.Keymap.Vim.Ex.Commands.Buffers
+      Yi.Keymap.Vim.Ex.Commands.Cabal
+      Yi.Keymap.Vim.Ex.Commands.Common
+      Yi.Keymap.Vim.Ex.Commands.Copy
+      Yi.Keymap.Vim.Ex.Commands.Delete
+      Yi.Keymap.Vim.Ex.Commands.Edit
+      Yi.Keymap.Vim.Ex.Commands.Global
+      Yi.Keymap.Vim.Ex.Commands.GotoLine
+      Yi.Keymap.Vim.Ex.Commands.Help
+      Yi.Keymap.Vim.Ex.Commands.Make
+      Yi.Keymap.Vim.Ex.Commands.Nohl
+      Yi.Keymap.Vim.Ex.Commands.Paste
+      Yi.Keymap.Vim.Ex.Commands.Quit
+      Yi.Keymap.Vim.Ex.Commands.Read
+      Yi.Keymap.Vim.Ex.Commands.Shell
+      Yi.Keymap.Vim.Ex.Commands.Sort
+      Yi.Keymap.Vim.Ex.Commands.Substitute
+      Yi.Keymap.Vim.Ex.Commands.Tag
+      Yi.Keymap.Vim.Ex.Commands.Undo
+      Yi.Keymap.Vim.Ex.Commands.Write
+      Yi.Keymap.Vim.Ex.Commands.Yi
+      Yi.Keymap.Vim.Ex.Commands.Registers
+      Yi.Keymap.Vim.Ex.Eval
+      Yi.Keymap.Vim.Ex.Types
+      Yi.Keymap.Vim.ExMap
+      Yi.Keymap.Vim.InsertMap
+      Yi.Keymap.Vim.MatchResult
+      Yi.Keymap.Vim.Motion
+      Yi.Keymap.Vim.NormalMap
+      Yi.Keymap.Vim.NormalOperatorPendingMap
+      Yi.Keymap.Vim.Operator
+      Yi.Keymap.Vim.ReplaceMap
+      Yi.Keymap.Vim.ReplaceSingleCharMap
+      Yi.Keymap.Vim.Search
+      Yi.Keymap.Vim.SearchMotionMap
+      Yi.Keymap.Vim.StateUtils
+      Yi.Keymap.Vim.StyledRegion
+      Yi.Keymap.Vim.Tag
+      Yi.Keymap.Vim.TextObject
+      Yi.Keymap.Vim.Utils
+      Yi.Keymap.Vim.VisualMap
+  other-modules:
+      Yi.Keymap.Vim.Ex.Commands.BufferNew
+      Yi.Keymap.Vim.Ex.Commands.Stack
+      Yi.Keymap.Vim.Substitution
+      Paths_yi_keymap_vim
+  default-language: Haskell2010
+
+test-suite spec
+  type: exitcode-stdio-1.0
+  main-is: TestSuite.hs
+  hs-source-dirs:
+      tests
+  ghc-options: -Wall -ferror-spans
+  build-depends:
+      attoparsec
+    , base >= 4.8 && < 5
+    , binary
+    , containers
+    , data-default
+    , directory
+    , filepath
+    , Hclip
+    , microlens-platform
+    , mtl
+    , oo-prototypes
+    , pointedlist
+    , safe
+    , text
+    , transformers-base
+    , unordered-containers
+    , yi-core
+    , yi-language
+    , yi-rope
+    , tasty
+    , tasty-hunit
+    , QuickCheck
+    , tasty-quickcheck
+    , yi-core
+    , yi-keymap-vim
+  other-modules:
+      Generic.TestPureBufferManipulations
+      Generic.TestUtils
+      Vim.EditorManipulations.BufferExCommand
+      Vim.TestExCommandParsers
+      Vim.TestPureBufferManipulations
+      Vim.TestPureEditorManipulations
+  default-language: Haskell2010

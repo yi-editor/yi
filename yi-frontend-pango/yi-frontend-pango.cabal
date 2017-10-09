@@ -1,0 +1,65 @@
+name:           yi-frontend-pango
+version:        0.16.0
+synopsis:       Pango frontend for Yi editor
+category:       Yi
+homepage:       https://github.com/yi-editor/yi#readme
+bug-reports:    https://github.com/yi-editor/yi/issues
+maintainer:     Yi developers <yi-devel@googlegroups.com>
+license:        GPL-2
+build-type:     Simple
+cabal-version:  >= 1.10
+
+data-files:
+    art/c-source.png
+    art/dependencies.png
+    art/exposed-file-module.png
+    art/exposed-module.png
+    art/h-source.png
+    art/hidden-file-module.png
+    art/hidden-module.png
+    art/hs-source-folder.png
+    art/license-file.png
+    art/package.png
+    art/plain-folder.png
+    art/project.png
+    art/setup-script.png
+    art/text-file.png
+    art/yi+lambda-fat-128.png
+    art/yi+lambda-fat-16.png
+    art/yi+lambda-fat-32.png
+    art/yi+lambda-fat-64.png
+    art/yi+lambda-fat.pdf
+
+source-repository head
+  type: git
+  location: https://github.com/yi-editor/yi
+
+library
+  hs-source-dirs:
+      src
+  ghc-options: -Wall -ferror-spans
+  build-depends:
+      base >= 4.8 && < 5
+    , containers
+    , filepath
+    , glib  >= 0.13 && < 0.14
+    , gtk >= 0.13 && < 0.15
+    , microlens-platform
+    , mtl
+    , oo-prototypes
+    , pango >= 0.13 && < 0.14
+    , pointedlist
+    , text
+    , transformers-base
+    , yi-core
+    , yi-language
+    , yi-rope
+  exposed-modules:
+      Yi.Config.Default.Pango
+      Yi.Frontend.Pango
+      Yi.Frontend.Pango.Control
+  other-modules:
+      Yi.Frontend.Pango.Layouts
+      Yi.Frontend.Pango.Utils
+      Paths_yi_frontend_pango
+  default-language: Haskell2010

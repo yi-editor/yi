@@ -1,0 +1,39 @@
+name:           yi-frontend-vty
+version:        0.16.0
+synopsis:       Vty frontend for Yi editor
+category:       Yi
+homepage:       https://github.com/yi-editor/yi#readme
+bug-reports:    https://github.com/yi-editor/yi/issues
+maintainer:     Yi developers <yi-devel@googlegroups.com>
+license:        GPL-2
+build-type:     Simple
+cabal-version:  >= 1.10
+
+source-repository head
+  type: git
+  location: https://github.com/yi-editor/yi
+
+library
+  hs-source-dirs:
+      src
+  ghc-options: -Wall -ferror-spans
+  build-depends:
+      base >= 4.8 && < 5
+    , containers
+    , data-default
+    , dlist
+    , microlens-platform
+    , pointedlist
+    , stm >= 2.2
+    , text
+    , vty >= 5.4
+    , yi-core
+    , yi-language
+    , yi-rope
+  exposed-modules:
+      Yi.Config.Default.Vty
+      Yi.Frontend.Vty
+      Yi.Frontend.Vty.Conversions
+  other-modules:
+      Paths_yi_frontend_vty
+  default-language: Haskell2010
