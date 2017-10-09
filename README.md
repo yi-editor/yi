@@ -17,8 +17,6 @@ In order to have a personalized configuration, it is necessary to use Yi as libr
 A good starting point is choosing an example configuration of your liking in the
 [example-configs][userconfigs] directory, building it, running it, and tinkering with it.
 
-> Note to cabal users, it is necessary to run [hpack](https://hackage.haskell.org/package/hpack) in order to generate a *.cabal* file from the `package.yaml` provided.
-
 #### Static vs dynamic
 
 Yi used to have a dynamic configuration (*à la* Xmonad). So each time after the configuration was changed, Yi needed recompilation before starting.
@@ -32,7 +30,7 @@ See this [article](https://yi-editor.github.io/posts/2017-01-06-dyre/) for more 
 ### Static example configurations
 The static example configurations don't need to be placed in any specific directory (but you can still use `~/.config/yi`).
    1. Copy the example configuration (only the contents of the folder) to your `yi` folder.
-   2. Install the configuration (with `stack install` or `hpack; cabal install`).
+   2. Install the configuration (with `stack install` or `cabal install`).
    *Make sure the folder where stack (or cabal) installs executables is on your PATH.*
    3. Run Yi with the command found in the package.yaml file under the executables line (i.e. `yi-vty-emacs` for the emacs config). You can also change the executable name here.
 
