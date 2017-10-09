@@ -1,5 +1,5 @@
 name:                yi-vim-colemak-vty-dynamic
-version:             0.1.0.0
+version:             0.16.0
 license:             GPL-2
 author:              Jaro Reinders
 maintainer:          yi-devel@googlegroups.com
@@ -7,7 +7,7 @@ build-type:          Simple
 cabal-version:       >=1.10
 
 executable yi
-  main-is:             yi.hs
+  main-is:             Main.hs
   build-depends:       base >=4.8 && <4.10
                      , yi-core
                      , yi-dynamic-configuration

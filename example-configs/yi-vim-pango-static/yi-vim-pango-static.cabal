@@ -1,9 +1,5 @@
--- This file has been generated from package.yaml by hpack version 0.17.0.
---
--- see: https://github.com/sol/hpack
-
 name:           yi-vim-pango-static
-version:        0.13.7
+version:        0.16.0
 category:       Yi
 homepage:       https://github.com/yi-editor/yi#readme
 bug-reports:    https://github.com/yi-editor/yi/issues
@@ -16,7 +12,7 @@ source-repository head
   type: git
   location: https://github.com/yi-editor/yi
 
-executable yi-vim-pango
+executable yi
   main-is: Main.hs
   hs-source-dirs:
       ./.
