@@ -32,7 +32,7 @@ import Yi.Event                               (Event (..), Key (KASCII), Modifie
 import Yi.Keymap                              (Keymap, KeymapM, KeymapSet, YiM, modelessKeymapSet, write)
 import Yi.Keymap.Keys                         (anyEvent)
 import Yi.Keymap.Vim.Common
-import Yi.Keymap.Vim.Digraph                  (defDigraphs)
+import Yi.Keymap.Vim.Digraph                  (defDigraphs, DigraphTbl)
 import Yi.Keymap.Vim.EventUtils               (eventToEventString, parseEvents)
 import Yi.Keymap.Vim.Ex                       (ExCommand, defExCommandParsers)
 import Yi.Keymap.Vim.ExMap                    (defExMap)
@@ -52,7 +52,7 @@ data VimConfig = VimConfig {
   , vimBindings         :: [VimBinding]
   , vimOperators        :: [VimOperator]
   , vimExCommandParsers :: [EventString -> Maybe ExCommand]
-  , vimDigraphs         :: [(String, Char)]
+  , vimDigraphs         :: DigraphTbl
   , vimRelayout         :: Char -> Char
   }
 
