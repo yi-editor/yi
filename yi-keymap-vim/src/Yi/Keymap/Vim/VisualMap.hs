@@ -18,8 +18,7 @@ import           Control.Monad              (forM_, void, when)
 import           Data.Char                  (ord)
 import           Data.List                  (group)
 import           Data.Maybe                 (fromJust, fromMaybe)
-import           Data.Monoid                ((<>))
-import qualified Data.Text                  as T (unpack, pack, Text)
+import qualified Data.Text                  as T (unpack)
 import           Yi.Buffer                  hiding (Insert)
 import           Yi.Editor
 import           Yi.Keymap.Vim.Common
@@ -31,8 +30,7 @@ import           Yi.Keymap.Vim.TextObject
 import           Yi.Keymap.Vim.Utils        (matchFromBool, mkChooseRegisterBinding, mkMotionBinding, addNewLineIfNecessary, pasteInclusiveB)
 import           Yi.MiniBuffer              (spawnMinibufferE)
 import           Yi.Monad                   (whenM)
-import           Yi.Region
-import qualified Yi.Rope                    as R (toText, countNewLines, YiString)
+import qualified Yi.Rope                    as R (toText, countNewLines)
 import           Yi.Tag                     (Tag (Tag))
 import           Yi.Utils                   (SemiNum ((-~)))
 
@@ -252,10 +250,10 @@ pasteBinding = VimBindingE (f . T.unpack . _unEv)
 
     pasteMatch :: RegionStyle -> VisualPaste -> MatchResult (EditorM RepeatToken)
     pasteMatch style p = WholeMatch $ do
-      register <- getRegisterE . vsActiveRegister =<< getEditorDyn
-      maybe (pure ()) (paste style p) register
-      escAction
-      return Finish
+        register <- getRegisterE . vsActiveRegister =<< getEditorDyn
+        maybe (pure ()) (paste style p) register
+        void escAction
+        return Finish
 
     paste :: RegionStyle -> VisualPaste -> Register -> EditorM ()
     paste LineWise  = linePaste
@@ -265,20 +263,32 @@ pasteBinding = VimBindingE (f . T.unpack . _unEv)
 
     linePaste :: VisualPaste -> Register -> EditorM ()
     linePaste p (Register _style rope) = withCurrentBuffer $ do
-      region <- regionOfSelectionB
-      when (p == ReplaceSelection) . void $ deleteRegionWithStyleB region LineWise
-      insertRopeWithStyleB (addNewLineIfNecessary rope) LineWise
+        region <- regionOfSelectionB
+        when (p == ReplaceSelection) . void $ deleteRegionWithStyleB region LineWise
+        insertRopeWithStyleB (addNewLineIfNecessary rope) LineWise
 
     blockPaste :: VisualPaste -> Register -> EditorM ()
-    blockPaste p (Register _style rope) =
-      withCurrentBuffer $ do
+    blockPaste p (Register _style rope) = withCurrentBuffer $ do
         here <- pointB
         there <- getSelectionMarkPointB
         (here', there') <- flipRectangleB here there
         reg <- regionOfSelectionB
-        when (p == ReplaceSelection) . void $ deleteRegionWithStyleB reg Block
         moveTo (minimum [here, there, here', there'])
-        pasteInclusiveB rope _style
+        when (p == ReplaceSelection) . void $ deleteRegionWithStyleB reg Block
+        if R.countNewLines rope == 0
+        then actionOnLeft reg $ maybe (pure ()) (\_ -> insertRopeWithStyleB rope _style)
+        else pasteInclusiveB rope _style
+      where
+        -- Taken from deleteRegionWithStyleB
+        actionOnLeft :: Region -> (Maybe Point -> BufferM ()) -> BufferM ()
+        actionOnLeft reg action = savingPointB $ do
+            (start, lengths) <- shapeOfBlockRegionB reg
+            moveTo start
+            forM_ (zip [0..] lengths) $ \(i, l) -> do
+                p' <- pointB
+                moveTo start
+                void $ lineMoveRel i
+                action (if l == 0 then Nothing else Just p')
 
     otherPaste :: VisualPaste -> Register -> EditorM ()
     otherPaste _ (Register _style rope) = withCurrentBuffer $ do
