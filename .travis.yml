@@ -10,11 +10,13 @@ jobs:
   include:
     - stage: "Prepare"
       script: stack setup --stack-yaml=lts-7.yaml
+    - script: stack setup --stack-yaml=stack-ghc-8.2.yaml
     - script: stack install --stack-yaml=stack.yaml --install-ghc gtk2hs-buildtools
     - stage: "Build and test"
       script: stack --install-ghc --stack-yaml=lts-7.yaml test -j2
     - script: stack --stack-yaml=stack.yaml test -j2
-    - script: stack --stack-yaml=stack-ghc-8.2.yaml test --install-ghc
+    - script: stack --stack-yaml=stack-ghc-8.2.yaml test -j2
+    - script: stack --stack-yaml=stack.yaml test -j2 --flag yi-core:hint
     - stage: "Build example configs"
       script: stack --stack-yaml=all-configs.yaml build -j2
 

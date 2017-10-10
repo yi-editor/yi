@@ -42,7 +42,7 @@ module Yi.Eval (
 import Prelude hiding (mapM_)
 
 import Lens.Micro.Platform ( (^.), (.=), (%=) )
-import Control.Monad (when)
+import Control.Monad (when, forever, void)
 import Data.Array ( elems )
 import Data.Binary ( Binary )
 import Data.Default ( Default, def )
@@ -74,9 +74,9 @@ import qualified Language.Haskell.Interpreter as LHI
       InterpreterError,
       Extension(OverloadedStrings),
       setTopLevelModules,
+      InterpreterT,
       interpret )
 import System.Directory ( doesFileExist )
-import Yi.Boot.Internal ( reload )
 import Yi.Core ( errorEditor )
 import Yi.Editor
     ( getEditorDyn,
@@ -212,18 +212,23 @@ hintEvaluatorThread request contextFile = do
       LHI.setTopLevelModules ["Env"]
 
     -- Yi.Keymap: Action lives there
-    LHI.setImportsQ [("Yi", Nothing), ("Yi.Keymap",Just "Yi.Keymap")]
-
-    forever $ lift (takeMVar request) >>= \case
-      HintEvaluate s response -> do
-        res <- try $ LHI.interpret ("Yi.makeAction (" ++ s ++ ")") (LHI.as :: Action)
-        lift $ putMVar response res
-      HintGetNames response -> do
-        res <- try $ LHI.getModuleExports "Yi"
-        lift $ putMVar response res
-      HintDescribe name response -> do
-        res <- try $ LHI.typeOf name
-        lift $ putMVar response res
+    setImp <- try $ LHI.setImportsQ [("Yi", Nothing), ("Yi.Keymap",Just "Yi.Keymap")] 
+      :: LHI.InterpreterT IO (Either LHI.InterpreterError ())
+    case setImp of
+      Left e -> lift $ forever $ takeMVar request >>= \case
+        HintEvaluate _ response -> putMVar response (Left e)
+        HintGetNames   response -> putMVar response (Left e)
+        HintDescribe _ response -> putMVar response (Left e)
+      Right _ -> forever $ lift (takeMVar request) >>= \case
+        HintEvaluate s response -> do
+          res <- try $ LHI.interpret ("Yi.makeAction (" ++ s ++ ")") (LHI.as :: Action)
+          lift $ putMVar response res
+        HintGetNames response -> do
+          res <- try $ LHI.getModuleExports "Yi"
+          lift $ putMVar response res
+        HintDescribe name response -> do
+          res <- try $ LHI.typeOf name
+          lift $ putMVar response res
 
 -- Evaluator implemented by calling GHCi. This evaluator can run
 -- arbitrary expressions in the class 'YiAction'.
@@ -245,7 +250,6 @@ ghciEvaluator = Evaluator { execEditorActionImpl = execAction
                           }
   where
     execAction :: String -> YiM ()
-    execAction "reload" = reload
     execAction s = do
       request <- getHintThread
       res <- io $ do

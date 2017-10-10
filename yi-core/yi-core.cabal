@@ -53,6 +53,7 @@ library
     , xdg-basedir >= 0.2.1
     , yi-language >= 0.1.1.0
     , yi-rope >= 0.10
+    , exceptions
   if flag(hint)
     cpp-options: -DHINT
     build-depends:
