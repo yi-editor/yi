@@ -1,32 +1,32 @@
+# Use new container infrastructure to enable caching
 sudo: false
+
+# Do not choose a language; we provide our own build tools.
 language: generic
 
+# Caching so the next build will be fast too.
 cache:
   directories:
   - $HOME/.stack
-  - $HOME/.local/bin
 
-jobs:
+matrix:
   include:
-    - stage: "Prepare"
-      script: stack setup --stack-yaml=lts-7.yaml
-    - script: stack setup --stack-yaml=stack-ghc-8.2.yaml
-    - script: stack install --stack-yaml=stack.yaml --install-ghc gtk2hs-buildtools
-    - stage: "Build and test"
-      script: stack --install-ghc --stack-yaml=lts-7.yaml test -j2
-    - script: stack --stack-yaml=stack.yaml test -j2
-    - script: stack --stack-yaml=stack-ghc-8.2.yaml test -j2
-    - script: stack --stack-yaml=stack.yaml test -j2 --flag yi-core:hint
-    - stage: "Build example configs"
-      script: stack --stack-yaml=all-configs.yaml build -j2
-
-addons:
-  apt:
-    packages:
-    - libgmp-dev
-    - alex
-    sources: hvr-ghc
+  - env: RESOLVER="lts-8"
+  - env: RESOLVER="lts-9"
+  - env: RESOLVER="nightly"
+  allow_failures:
+  - env: RESOLVER="nightly"
 
 before_install:
- - mkdir -p $HOME/.local/bin
- - curl -L https://www.stackage.org/stack/linux-x86_64 | tar xz --wildcards --strip-components=1 -C ~/.local/bin '*/stack'
+# Download and unpack the stack executable
+- export PATH=$HOME/.local/bin:$PATH
+- mkdir -p ~/.local/bin
+- travis_retry curl -L https://www.stackage.org/stack/linux-x86_64 | tar xz --wildcards --strip-components=1 -C ~/.local/bin '*/stack'
+
+install:
+# install dependencies of yi-core separately to safe memory
+- stack --no-terminal --install-ghc --resolver $RESOLVER test yi-core --only-dependencies
+- stack --no-terminal --install-ghc --resolver $RESOLVER test --only-dependencies
+
+script:
+- stack --no-terminal --resolver $RESOLVER test
