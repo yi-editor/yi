@@ -230,7 +230,7 @@ replaceBinding = VimBindingE (f . T.unpack . _unEv)
                     region <- withCurrentBuffer regionOfSelectionB
                     withCurrentBuffer $ transformCharactersInRegionB (StyledRegion style region)
                                       (\x -> if x == '\n' then x else c)
-                    escAction
+                    void escAction
                     return Finish
                 _ -> NoMatch
           f _ _ = NoMatch
@@ -338,7 +338,7 @@ tagJumpBinding = VimBindingY (f . T.unpack . _unEv)
             = WholeMatch $ do
                  tag <- Tag . R.toText <$> withCurrentBuffer
                             (regionOfSelectionB >>= readRegionB)
-                 withEditor escAction
+                 void $ withEditor escAction
                  gotoTag tag 0 Nothing
                  return Finish
           f _ _ = NoMatch
