@@ -64,15 +64,13 @@ data FuzzyItem
 
 instance Show FuzzyItem where
   show :: FuzzyItem -> String
-  show i = case i of
-    FileItem   _ -> "File  "   <> itemAsStr i
-    BufferItem _ -> "Buffer  " <> itemAsStr i
+  show i@(FileItem   _) = "File  "   <> itemAsStr i
+  show i@(BufferItem _) = "Buffer  " <> itemAsStr i
 
 itemAsTxt :: FuzzyItem -> Text
-itemAsTxt f = case f of
-  FileItem   x              -> x
-  BufferItem (MemBuffer  x) -> x
-  BufferItem (FileBuffer x) -> T.pack x
+itemAsTxt (FileItem x) = x
+itemAsTxt (BufferItem (MemBuffer  x)) = x
+itemAsTxt (BufferItem (FileBuffer x)) = T.pack x
 
 itemAsStr :: FuzzyItem -> String
 itemAsStr = T.unpack . itemAsTxt
@@ -197,13 +195,14 @@ changeIndex :: (PointedList FuzzyItem -> Maybe (PointedList FuzzyItem)) -> Fuzzy
 changeIndex dir fs = fs { items = items fs >>= dir }
 
 renderE :: FuzzyState -> EditorM ()
-renderE (FuzzyState maybeZipper s) = do
+renderE (FuzzyState maybeZipper s) =
   case mcontent of
     Nothing      -> printMsg "No match found"
     Just content -> setStatus (toList content, defaultStyle)
  where
   tshow :: Show s => s -> Text
   tshow = T.pack . show
+
   mcontent :: Maybe (NonEmpty Text)
   mcontent = do
     zipper  <- maybeZipper
@@ -238,13 +237,12 @@ openRoutine preOpenAction = do
       action f
  where
   action :: FuzzyItem -> YiM ()
-  action fi = case fi of
-    FileItem   x -> void (editFile (T.unpack x))
-    BufferItem x -> withEditor $ do
-      bufs <- gets (M.assocs . buffers)
-      case filter ((==x) . ident . attributes . snd) bufs of
-        []            -> error ("Couldn't find " <> show x)
-        (bufRef, _):_ -> switchToBufferE bufRef
+  action (FileItem   x) = void (editFile (T.unpack x))
+  action (BufferItem x) = withEditor $ do
+    bufs <- gets (M.assocs . buffers)
+    case filter ((==x) . ident . attributes . snd) bufs of
+      []            -> error ("Couldn't find " <> show x)
+      (bufRef, _):_ -> switchToBufferE bufRef
 
 
 insertChar :: Keymap
