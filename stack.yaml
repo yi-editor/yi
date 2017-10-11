@@ -5,7 +5,7 @@ packages:
 - yi-core
 - yi-dynamic-configuration
 - yi-frontend-vty
-# - yi-frontend-pango
+- yi-frontend-pango
 - yi-fuzzy-open
 - yi-keymap-cua
 - yi-keymap-emacs
@@ -17,10 +17,10 @@ packages:
 - yi-ireader
 - yi-language
 - yi-snippet
-# - yi
+- yi
 extra-deps:
 - yi-rope-0.10
-resolver: lts-8.18
+resolver: lts-9.8
 build:
  library-profiling: false
  executable-profiling: false

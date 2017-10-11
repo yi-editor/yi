@@ -8,7 +8,7 @@ cabal-version:       >=1.10
 
 executable yi
   main-is:             yi.hs
-  build-depends:       base >=4.8 && <4.10
+  build-depends:       base >=4.8 && <5
                      , yi-core >= 0.17
                      , yi-dynamic-configuration >= 0.17
                      , yi-keymap-vim >= 0.17

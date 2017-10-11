@@ -11,8 +11,12 @@ cache:
 
 matrix:
   include:
-  - env: RESOLVER="lts-8"
   - env: RESOLVER="lts-9"
+    addons:
+      apt:
+        packages:
+        - libpango1.0-dev
+        - libgtk2.0-dev
   - env: RESOLVER="nightly"
   allow_failures:
   - env: RESOLVER="nightly"
@@ -25,8 +29,16 @@ before_install:
 
 install:
 # install dependencies of yi-core separately to safe memory
-- stack --no-terminal --install-ghc --resolver $RESOLVER test yi-core --only-dependencies
-- stack --no-terminal --install-ghc --resolver $RESOLVER test --only-dependencies
+- stack test yi-core --no-terminal
+                     --install-ghc
+                     --stack-yaml travis/$RESOLVER.yaml
+                     --resolver $RESOLVER
+                     --only-dependencies
+- stack test --no-terminal
+             --install-ghc
+             --stack-yaml travis/$RESOLVER.yaml
+             --resolver $RESOLVER
+             --only-dependencies
 
 script:
-- stack --no-terminal --resolver $RESOLVER test
+- stack --no-terminal --stack-yaml travis/$RESOLVER.yaml --resolver $RESOLVER test

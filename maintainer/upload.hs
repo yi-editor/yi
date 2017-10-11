@@ -15,6 +15,6 @@ main = do
         callProcess "stack" ["sdist", p]
 
     forM_ packages $ \p ->
-        when (p `notElem` ["yi", "yi-intero"]) $ catch
+        when (p `notElem` ["yi-intero"]) $ catch
             (callProcess "stack" ["upload", "--no-signature", p])
             (\e -> let _ = e :: SomeException in pure ())
