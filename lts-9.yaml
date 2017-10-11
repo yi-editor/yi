@@ -1,6 +1,3 @@
-flags: {}
-nix:
-  shell-file: shell.nix
 packages:
 - yi-core
 - yi-dynamic-configuration
@@ -21,11 +18,3 @@ packages:
 extra-deps:
 - yi-rope-0.10
 resolver: lts-9.8
-build:
- library-profiling: false
- executable-profiling: false
-
-# needed for macOS
-# flags:
-#   gtk:
-#     have-quartz-gtk: true

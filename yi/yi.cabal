@@ -52,7 +52,7 @@ executable yi
     cpp-options: -DVTY
     build-depends:
         yi-frontend-vty >= 0.17
-  if flag(pango)
+  if flag(pango) && impl(ghc < 8.2)
     cpp-options: -DPANGO
     build-depends:
         yi-frontend-pango >= 0.17
