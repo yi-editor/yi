@@ -1,0 +1,20 @@
+-- Input
+(4,1)
+123456
+123456
+123456
+foo
+bar
+
+baz
+-- Output
+(1,1)
+foo123456
+bar123456
+123456
+bazfoo
+bar
+
+baz
+-- Events
+<C-v>jjjey<C-v>kkkP<Esc>

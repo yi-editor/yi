@@ -13,8 +13,8 @@
 
 module Yi.Keymap.Vim.VisualMap ( defVisualMap ) where
 
-import           Lens.Micro.Platform                 ((.=))
-import           Control.Monad              (forM_, void)
+import           Lens.Micro.Platform        ((.=))
+import           Control.Monad              (forM_, void, when)
 import           Data.Char                  (ord)
 import           Data.List                  (group)
 import           Data.Maybe                 (fromJust, fromMaybe)
@@ -27,10 +27,10 @@ import           Yi.Keymap.Vim.StateUtils
 import           Yi.Keymap.Vim.StyledRegion (StyledRegion (StyledRegion), transformCharactersInRegionB)
 import           Yi.Keymap.Vim.Tag          (gotoTag)
 import           Yi.Keymap.Vim.TextObject
-import           Yi.Keymap.Vim.Utils        (matchFromBool, mkChooseRegisterBinding, mkMotionBinding, addNewLineIfNecessary)
+import           Yi.Keymap.Vim.Utils        (matchFromBool, mkChooseRegisterBinding, mkMotionBinding, addNewLineIfNecessary, pasteInclusiveB)
 import           Yi.MiniBuffer              (spawnMinibufferE)
 import           Yi.Monad                   (whenM)
-import qualified Yi.Rope                    as R (toText)
+import qualified Yi.Rope                    as R (toText, countNewLines)
 import           Yi.Tag                     (Tag (Tag))
 import           Yi.Utils                   (SemiNum ((-~)))
 
@@ -230,39 +230,72 @@ replaceBinding = VimBindingE (f . T.unpack . _unEv)
                     region <- withCurrentBuffer regionOfSelectionB
                     withCurrentBuffer $ transformCharactersInRegionB (StyledRegion style region)
                                       (\x -> if x == '\n' then x else c)
-                    escAction
+                    void escAction
                     return Finish
                 _ -> NoMatch
           f _ _ = NoMatch
 
+
+data VisualPaste
+  = PasteBefore
+  | ReplaceSelection
+  deriving (Eq, Ord, Show)
+
 pasteBinding :: VimBinding
 pasteBinding = VimBindingE (f . T.unpack . _unEv)
     where
-    f "p" (VimState { vsMode = (Visual style) }) = WholeMatch $ do
-        register <- getRegisterE . vsActiveRegister =<< getEditorDyn
-        case (register, style) of
-            (Just (Register _style rope), LineWise) -> withCurrentBuffer $ do
-                region <- regionOfSelectionB
-                _ <- deleteRegionWithStyleB region LineWise
-                insertRopeWithStyleB (addNewLineIfNecessary rope) LineWise
-            (Just (Register Block rope), Block) -> withCurrentBuffer $ do
-                here <- pointB
-                there <- getSelectionMarkPointB
-                (here', there') <- flipRectangleB here there
-                reg <- regionOfSelectionB
-                void $ deleteRegionWithStyleB reg Block
-                moveTo (minimum [here, there, here', there'])
-                insertRopeWithStyleB rope Block
-            (Just (Register _ _), Block) ->
-                printMsg "Pasting non-block string into a block selection is not implemented"
-            (Just (Register _style rope), _) -> withCurrentBuffer $ do
-                region <- regionOfSelectionB
-                region' <- convertRegionToStyleB region Inclusive
-                replaceRegionB region' rope
-            _ -> pure ()
-        escAction
-        return Finish
+    f "P" VimState { vsMode = (Visual style) } = pasteMatch style PasteBefore
+    f "p" VimState { vsMode = (Visual style) } = pasteMatch style ReplaceSelection
     f _ _ = NoMatch
+
+    pasteMatch :: RegionStyle -> VisualPaste -> MatchResult (EditorM RepeatToken)
+    pasteMatch style p = WholeMatch $ do
+        register <- getRegisterE . vsActiveRegister =<< getEditorDyn
+        maybe (pure ()) (paste style p) register
+        void escAction
+        return Finish
+
+    paste :: RegionStyle -> VisualPaste -> Register -> EditorM ()
+    paste LineWise  = linePaste
+    paste Block     = blockPaste
+    paste Inclusive = otherPaste
+    paste Exclusive = otherPaste
+
+    linePaste :: VisualPaste -> Register -> EditorM ()
+    linePaste p (Register _style rope) = withCurrentBuffer $ do
+        region <- regionOfSelectionB
+        when (p == ReplaceSelection) . void $ deleteRegionWithStyleB region LineWise
+        insertRopeWithStyleB (addNewLineIfNecessary rope) LineWise
+
+    blockPaste :: VisualPaste -> Register -> EditorM ()
+    blockPaste p (Register _style rope) = withCurrentBuffer $ do
+        here <- pointB
+        there <- getSelectionMarkPointB
+        (here', there') <- flipRectangleB here there
+        reg <- regionOfSelectionB
+        moveTo (minimum [here, there, here', there'])
+        when (p == ReplaceSelection) . void $ deleteRegionWithStyleB reg Block
+        if R.countNewLines rope == 0
+        then actionOnLeft reg $ maybe (pure ()) (\_ -> insertRopeWithStyleB rope _style)
+        else pasteInclusiveB rope _style
+      where
+        -- Taken from deleteRegionWithStyleB
+        actionOnLeft :: Region -> (Maybe Point -> BufferM ()) -> BufferM ()
+        actionOnLeft reg action = savingPointB $ do
+            (start, lengths) <- shapeOfBlockRegionB reg
+            moveTo start
+            forM_ (zip [0..] lengths) $ \(i, l) -> do
+                p' <- pointB
+                moveTo start
+                void $ lineMoveRel i
+                action (if l == 0 then Nothing else Just p')
+
+    otherPaste :: VisualPaste -> Register -> EditorM ()
+    otherPaste _ (Register _style rope) = withCurrentBuffer $ do
+      region <- regionOfSelectionB
+      region' <- convertRegionToStyleB region Inclusive
+      replaceRegionB region' rope
+
 
 switchEdgeBinding :: VimBinding
 switchEdgeBinding = VimBindingE (f . T.unpack . _unEv)
@@ -305,7 +338,7 @@ tagJumpBinding = VimBindingY (f . T.unpack . _unEv)
             = WholeMatch $ do
                  tag <- Tag . R.toText <$> withCurrentBuffer
                             (regionOfSelectionB >>= readRegionB)
-                 withEditor escAction
+                 void $ withEditor escAction
                  gotoTag tag 0 Nothing
                  return Finish
           f _ _ = NoMatch
