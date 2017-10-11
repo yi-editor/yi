@@ -1,10 +1,10 @@
 
-2004-- Yi is derived from Riot <http://iki.fi/tuomov/riot/>, written by
+2004-- Yi is derived from Riot <https://hackage.haskell.org/package/riot>, written by
 Tuomo Valkonen.
 
 Yi was born on October 14th, 2004
 
-2005-- Yi is developed by Don Stewart <http://www.cse.unsw.edu.au/~dons>
+2005-- Yi is developed by Don Stewart <https://donsbot.wordpress.com/about/>
 with the help of the #haskell irc community.
 
 2007-- Yi is heavily modified by Jean-Philippe Bernardy who takes over
@@ -93,6 +93,7 @@ Robert Hensing
 rustydc
 Ryan Desfosses
 Ryan Scott
+Sam Stites
 Samuel Bronson
 Sasha Rush
 Scott Williams
