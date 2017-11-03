@@ -1,5 +1,5 @@
 name:           yi-keymap-emacs
-version:        0.17.0
+version:        0.17.1
 synopsis:       Emacs keymap for Yi editor
 category:       Yi
 homepage:       https://github.com/yi-editor/yi#readme

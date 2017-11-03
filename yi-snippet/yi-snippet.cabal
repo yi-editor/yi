@@ -1,5 +1,5 @@
 name:           yi-snippet
-version:        0.17.0
+version:        0.17.1
 synopsis:       Snippet support for yi
 category:       Yi
 homepage:       https://github.com/yi-editor/yi#readme
@@ -28,7 +28,7 @@ library
     , mtl >= 2.2
     , text >= 1.2
     , vector >= 0.11
-    , yi-core >= 0.17.0
+    , yi-core >= 0.17
   exposed-modules:
       Yi.Snippet
       Yi.Snippet.Internal

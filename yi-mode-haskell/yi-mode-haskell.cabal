@@ -1,5 +1,5 @@
 name:           yi-mode-haskell
-version:        0.17.0
+version:        0.17.1
 synopsis:       Yi editor haskell mode
 category:       Yi
 homepage:       https://github.com/yi-editor/yi#readme
@@ -30,9 +30,9 @@ library
     , filepath
     , microlens-platform
     , text
-    , yi-core
-    , yi-language
-    , yi-rope
+    , yi-core >= 0.17
+    , yi-language >= 0.17
+    , yi-rope >= 0.10
   build-tools:
       alex >= 3.0.3 && < 3.2.0 || >= 3.2.1
   exposed-modules:

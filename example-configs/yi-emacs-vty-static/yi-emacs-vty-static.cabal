@@ -1,5 +1,5 @@
 name:           yi-emacs-vty-static
-version:        0.17.0
+version:        0.17.1
 category:       Yi
 homepage:       https://github.com/yi-editor/yi#readme
 bug-reports:    https://github.com/yi-editor/yi/issues
@@ -21,10 +21,10 @@ executable yi
       base >= 4.8 && < 5
     , microlens-platform
     , mtl
-    , yi-core >= 0.17
-    , yi-frontend-vty >= 0.17
-    , yi-keymap-emacs >= 0.17
-    , yi-misc-modes >= 0.17
-    , yi-mode-haskell >= 0.17
-    , yi-rope >= 0.10
+    , yi-core
+    , yi-frontend-vty
+    , yi-keymap-emacs
+    , yi-misc-modes
+    , yi-mode-haskell
+    , yi-rope
   default-language: Haskell2010

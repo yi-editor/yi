@@ -1,5 +1,5 @@
 name:           yi-frontend-vty
-version:        0.17.0
+version:        0.17.1
 synopsis:       Vty frontend for Yi editor
 category:       Yi
 homepage:       https://github.com/yi-editor/yi#readme
@@ -27,9 +27,9 @@ library
     , stm >= 2.2
     , text
     , vty >= 5.4
-    , yi-core
-    , yi-language
-    , yi-rope
+    , yi-core >= 0.17
+    , yi-language >= 0.17
+    , yi-rope >= 0.10
   exposed-modules:
       Yi.Config.Default.Vty
       Yi.Frontend.Vty

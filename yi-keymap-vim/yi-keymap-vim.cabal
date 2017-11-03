@@ -1,5 +1,5 @@
 name:           yi-keymap-vim
-version:        0.17.0
+version:        0.17.1
 synopsis:       Vim keymap for Yi editor
 category:       Yi
 homepage:       https://github.com/yi-editor/yi#readme
@@ -156,7 +156,7 @@ test-suite spec
     , tasty-hunit
     , QuickCheck
     , tasty-quickcheck
-    , yi-keymap-vim >= 0.17
+    , yi-keymap-vim
   other-modules:
       Generic.TestPureBufferManipulations
       Generic.TestUtils

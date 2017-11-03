@@ -1,5 +1,5 @@
 name:           yi-frontend-pango
-version:        0.17.0
+version:        0.17.1
 synopsis:       Pango frontend for Yi editor
 category:       Yi
 homepage:       https://github.com/yi-editor/yi#readme
