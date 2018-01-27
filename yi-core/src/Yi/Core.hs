@@ -164,14 +164,13 @@ recoverMode tbl buffer  = case fromMaybe (AnyMode emptyMode) (find (\(AnyMode m)
 postActions :: IsRefreshNeeded -> [Action] -> YiM ()
 postActions refreshNeeded actions = do yi <- ask; liftBase $ yiOutput yi refreshNeeded actions
 
--- | Display the errors buffer if it is not already visible.
+-- | Display the errors buffer in a new split window if it exists.
 showErrors :: YiM ()
 showErrors = withEditor $ do
-               bs <- gets $ findBufferWithName "*errors*"
-               case bs of
-                 [] -> return ()
-                 _  -> do splitE
-                          switchToBufferWithNameE "*errors*"
+               bs <- gets $ doesBufferNameExist "*errors*"
+               when bs $ do 
+                 splitE
+                 switchToBufferWithNameE "*errors*"
 
 -- | Process events by advancing the current keymap automaton and
 -- executing the generated actions.

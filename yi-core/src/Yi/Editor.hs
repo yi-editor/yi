@@ -33,6 +33,7 @@ module Yi.Editor ( Editor(..), EditorM, MonadEditor(..)
                  , currentWindowA
                  , deleteBuffer
                  , deleteTabE
+                 , doesBufferNameExist
                  , emptyEditor
                  , findBuffer
                  , findBufferWith
@@ -128,7 +129,7 @@ import           Data.Maybe                     (fromJust, fromMaybe, isNothing)
 import qualified Data.Monoid                    as Mon ((<>))
 import           Data.Semigroup                 ((<>))
 import qualified Data.Sequence                  as S
-import qualified Data.Text                      as T (Text, null, pack, unlines, unpack, unwords)
+import qualified Data.Text                      as T (Text, null, pack, unlines, unpack, unwords, isInfixOf)
 import           System.FilePath                (splitPath)
 import           Yi.Buffer
 import           Yi.Config
@@ -335,8 +336,12 @@ findBufferWith k e = case M.lookup k (buffers e) of
 findBufferWithName :: T.Text -> Editor -> [BufferRef]
 findBufferWithName n e =
   let bufs = M.elems $ buffers e
-      sameIdent b = shortIdentString (length $ commonNamePrefix e) b == n
-  in map bkey $ filter sameIdent bufs
+      hasInfix b = n `T.isInfixOf` identString b
+  in map bkey $ filter hasInfix bufs
+
+doesBufferNameExist :: T.Text -> Editor -> Bool
+doesBufferNameExist n e =
+  not $ null $ filter ((== n) . identString) $ M.elems $ buffers e
 
 -- | Find buffer with given name. Fail if not found.
 getBufferWithName :: MonadEditor m => T.Text -> m BufferRef
@@ -344,7 +349,8 @@ getBufferWithName bufName = withEditor $ do
   bs <- gets $ findBufferWithName bufName
   case bs of
     [] -> fail ("Buffer not found: " ++ T.unpack bufName)
-    b:_ -> return b
+    [b] -> return b
+    _ -> fail ("Ambiguous buffer name: " ++ T.unpack bufName)
 
 ------------------------------------------------------------------------
 -- | Perform action with any given buffer, using the last window that
@@ -804,9 +810,9 @@ newTempBufferE = do
   e <- gets id
   -- increment the index of the hint until no buffer is found with that name
   let find_next currentName (nextName:otherNames) =
-          case findBufferWithName currentName e of
-            (_b : _) -> find_next nextName otherNames
-            []      -> currentName
+          if doesBufferNameExist currentName e
+            then find_next nextName otherNames
+            else currentName
       find_next _ [] = error "Looks like nearly infinite list has just ended."
       next_tmp_name = find_next name names
       (name : names) = (fmap (("tmp-" Mon.<>) . T.pack . show) [0 :: Int ..])
