@@ -74,6 +74,7 @@ import           Yi.Types                       (YiConfigVariable)
 import qualified Yi.UI.Common                   as Common
 import qualified Yi.UI.SimpleLayout             as SL
 import           Yi.Layout                      (HasNeighborWest)
+import           Yi.UI.LineNumbers              (getDisplayLineNumbers)
 import           Yi.UI.TabBar                   (TabDescr (TabDescr), tabBarDescr)
 import           Yi.UI.Utils                    (arrangeItems, attributesPictureAndSelB)
 import           Yi.Frontend.Vty.Conversions          (colorToAttr, fromVtyEvent)
@@ -211,7 +212,7 @@ refresh fs e = do
         formatCmdLine text = withAttributes statusBarStyle (mkLine text)
         winImage (win, hasFocus) =
             let (rect, nb) = winRects M.! wkey win
-            in renderWindow (configUI $ fsConfig fs) e rect nb (win, hasFocus)
+            in renderWindow (fsConfig fs) e rect nb (win, hasFocus)
         windowsAndImages =
             fmap (\(w, f) -> (w, winImage (w, f))) (PL.withFocus ws)
         bigImages =
@@ -244,11 +245,12 @@ refresh fs e = do
         (Vty.picForLayers ([tabBarImage, cmdImage] ++ bigImages ++ miniImages))
         { Vty.picCursor = cursorPos }
 
-renderWindow :: UIConfig -> Editor -> SL.Rect -> HasNeighborWest -> (Window, Bool) -> Rendered
-renderWindow cfg e (SL.Rect x y _ _) nb (win, focused) =
+renderWindow :: Config -> Editor -> SL.Rect -> HasNeighborWest -> (Window, Bool) -> Rendered
+renderWindow cfg' e (SL.Rect x y _ _) nb (win, focused) =
     Rendered (Vty.translate x y $ if nb then vertSep Vty.<|> pict else pict)
              (fmap (\(i, j) -> (i + y, j + x')) cur)
     where
+        cfg = configUI cfg'
         w = Yi.Window.width win
         h = Yi.Window.height win
         x' = x + if nb then 1 else 0
@@ -257,11 +259,12 @@ renderWindow cfg e (SL.Rect x y _ _) nb (win, focused) =
         sty = configStyle cfg
 
         notMini = not (isMini win)
+        displayLineNumbers = getDisplayLineNumbers $ snd $ runEditor cfg' getEditorDyn e
 
         -- Collect some information for displaying line numbers
         (lineCount, _) = runBuffer win b lineCountB
         (topLine, _) = runBuffer win b screenTopLn
-        linesInfo = if notMini
+        linesInfo = if notMini && displayLineNumbers
                        then Just (topLine, length (show lineCount) + 1)
                        else Nothing
         wNumbers = maybe 0 snd linesInfo
