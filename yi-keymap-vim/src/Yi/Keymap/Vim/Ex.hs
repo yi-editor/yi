@@ -28,6 +28,7 @@ import qualified Yi.Keymap.Vim.Ex.Commands.GotoLine     as GotoLine (parse)
 import qualified Yi.Keymap.Vim.Ex.Commands.Help         as Help (parse)
 import qualified Yi.Keymap.Vim.Ex.Commands.Make         as Make (parse)
 import qualified Yi.Keymap.Vim.Ex.Commands.Nohl         as Nohl (parse)
+import qualified Yi.Keymap.Vim.Ex.Commands.Number       as Number (parse)
 import qualified Yi.Keymap.Vim.Ex.Commands.Paste        as Paste (parse)
 import qualified Yi.Keymap.Vim.Ex.Commands.Quit         as Quit (parse)
 import qualified Yi.Keymap.Vim.Ex.Commands.Read         as Read (parse)
@@ -58,6 +59,7 @@ defExCommandParsers =
     , Help.parse
     , Make.parse
     , Nohl.parse
+    , Number.parse
     , Paste.parse
     , Quit.parse
     , Read.parse
