@@ -13,6 +13,7 @@
 
 module Yi.UI.LineNumbers
   ( DisplayLineNumbers (..)
+  , DisplayLineNumbersLocal (..)
   ) where
 
 import           Data.Binary    (Binary (..))
@@ -32,3 +33,17 @@ instance Default DisplayLineNumbers where
 instance Binary DisplayLineNumbers
 
 instance YiVariable DisplayLineNumbers
+
+-- | Like 'DisplayLineNumbers' but buffer-local.
+-- Nothing: use global settings
+-- Just True: display line numbers only in this buffer
+-- Just False: hide line numbers only in this buffer
+newtype DisplayLineNumbersLocal = DisplayLineNumbersLocal { getDisplayLineNumbersLocal :: Maybe Bool }
+  deriving (Generic, Typeable)
+
+instance Default DisplayLineNumbersLocal where
+  def = DisplayLineNumbersLocal Nothing
+
+instance Binary DisplayLineNumbersLocal
+
+instance YiVariable DisplayLineNumbersLocal

@@ -37,7 +37,7 @@ import           Data.Foldable                  (concatMap, toList)
 import           Data.IORef                     (IORef, newIORef, readIORef, writeIORef)
 import qualified Data.List.PointedList.Circular as PL (PointedList (_focus), withFocus)
 import qualified Data.Map.Strict                as M ((!))
-import           Data.Maybe                     (maybeToList)
+import           Data.Maybe                     (fromMaybe, maybeToList)
 import           Data.Monoid                    (Endo (appEndo), (<>))
 import qualified Data.Text                      as T (Text, cons, empty,
                                                       justifyLeft, length, pack,
@@ -74,7 +74,7 @@ import           Yi.Types                       (YiConfigVariable)
 import qualified Yi.UI.Common                   as Common
 import qualified Yi.UI.SimpleLayout             as SL
 import           Yi.Layout                      (HasNeighborWest)
-import           Yi.UI.LineNumbers              (getDisplayLineNumbers)
+import           Yi.UI.LineNumbers              (getDisplayLineNumbers, getDisplayLineNumbersLocal)
 import           Yi.UI.TabBar                   (TabDescr (TabDescr), tabBarDescr)
 import           Yi.UI.Utils                    (arrangeItems, attributesPictureAndSelB)
 import           Yi.Frontend.Vty.Conversions          (colorToAttr, fromVtyEvent)
@@ -259,7 +259,10 @@ renderWindow cfg' e (SL.Rect x y _ _) nb (win, focused) =
         sty = configStyle cfg
 
         notMini = not (isMini win)
-        displayLineNumbers = getDisplayLineNumbers $ snd $ runEditor cfg' getEditorDyn e
+        displayLineNumbers =
+          let local = getDisplayLineNumbersLocal <$> withGivenBuffer (bufkey win) getBufferDyn
+              global = getDisplayLineNumbers <$> getEditorDyn
+          in snd $ runEditor cfg' (fromMaybe <$> global <*> local) e
 
         -- Collect some information for displaying line numbers
         (lineCount, _) = runBuffer win b lineCountB
