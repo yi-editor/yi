@@ -29,6 +29,7 @@ Features incompatible with Vim because why not
   insert only "bar", but yi dot inserts "fobaro"
 * Scrolling motions (<C-f>, PageUp, etc) are treated like linewise motions.
 * <C-w>, <C-u> remove whole region, not only entered characters.
+* :set number is a buffer-local instead of a window-local setting.
 
 Testing
 =======
