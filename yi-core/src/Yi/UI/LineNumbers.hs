@@ -12,19 +12,21 @@
 -- Line numbers.
 
 module Yi.UI.LineNumbers
-  ( DisplayLineNumbers (..)
-  , DisplayLineNumbersLocal (..)
+  ( getDisplayLineNumbers
+  , setDisplayLineNumbers
+  , getDisplayLineNumbersLocal
+  , setDisplayLineNumbersLocal
   ) where
 
 import           Data.Binary    (Binary (..))
 import           Data.Default   (Default (..))
 import           Data.Typeable  (Typeable)
 import           GHC.Generics   (Generic)
-import           Yi.Types       (YiVariable)
+import           Yi.Buffer      (getBufferDyn, putBufferDyn)
+import           Yi.Editor      (getEditorDyn, putEditorDyn)
+import           Yi.Types       (BufferM, EditorM, YiVariable)
 
--- | A YiVariable which globally toggles line numbers for frontends
--- that support them.
-newtype DisplayLineNumbers = DisplayLineNumbers { getDisplayLineNumbers :: Bool }
+newtype DisplayLineNumbers = DisplayLineNumbers { unDisplayLineNumbers :: Bool }
   deriving (Generic, Typeable)
 
 instance Default DisplayLineNumbers where
@@ -34,11 +36,17 @@ instance Binary DisplayLineNumbers
 
 instance YiVariable DisplayLineNumbers
 
--- | Like 'DisplayLineNumbers' but buffer-local.
--- Nothing: use global settings
--- Just True: display line numbers only in this buffer
--- Just False: hide line numbers only in this buffer
-newtype DisplayLineNumbersLocal = DisplayLineNumbersLocal { getDisplayLineNumbersLocal :: Maybe Bool }
+-- | Get the global line number setting.
+getDisplayLineNumbers :: EditorM Bool
+getDisplayLineNumbers = unDisplayLineNumbers <$> getEditorDyn
+
+-- | Set the global line number setting. Can be overridden by the buffer-local setting.
+-- True: Show line numbers
+-- False: Hide line numbers
+setDisplayLineNumbers :: Bool -> EditorM ()
+setDisplayLineNumbers = putEditorDyn . DisplayLineNumbers
+
+newtype DisplayLineNumbersLocal = DisplayLineNumbersLocal { unDisplayLineNumbersLocal :: Maybe Bool }
   deriving (Generic, Typeable)
 
 instance Default DisplayLineNumbersLocal where
@@ -47,3 +55,14 @@ instance Default DisplayLineNumbersLocal where
 instance Binary DisplayLineNumbersLocal
 
 instance YiVariable DisplayLineNumbersLocal
+
+-- | Get the buffer-local line number setting.
+getDisplayLineNumbersLocal :: BufferM (Maybe Bool)
+getDisplayLineNumbersLocal = unDisplayLineNumbersLocal <$> getBufferDyn
+
+-- | Set the buffer-local line number setting.
+-- Nothing: use global setting
+-- Just True: display line numbers only in this buffer
+-- Just False: hide line numbers only in this buffer
+setDisplayLineNumbersLocal :: Maybe Bool -> BufferM ()
+setDisplayLineNumbersLocal = putBufferDyn . DisplayLineNumbersLocal

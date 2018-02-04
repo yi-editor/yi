@@ -260,8 +260,8 @@ renderWindow cfg' e (SL.Rect x y _ _) nb (win, focused) =
 
         notMini = not (isMini win)
         displayLineNumbers =
-          let local = getDisplayLineNumbersLocal <$> withGivenBuffer (bufkey win) getBufferDyn
-              global = getDisplayLineNumbers <$> getEditorDyn
+          let local = withGivenBuffer (bufkey win) getDisplayLineNumbersLocal
+              global = getDisplayLineNumbers
           in snd $ runEditor cfg' (fromMaybe <$> global <*> local) e
 
         -- Collect some information for displaying line numbers
