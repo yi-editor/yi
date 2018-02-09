@@ -394,7 +394,8 @@ data UIConfig = UIConfig {
    configWindowFill :: Char,
    -- ^ The char with which to fill empty window space.  Usually '~' for vi-like
    -- editors, ' ' for everything else.
-   configTheme :: Theme             -- ^ UI colours
+   configTheme :: Theme,            -- ^ UI colours
+   configLineNumbers :: Bool        -- ^ Should we show line numbers by default?
   }
 
 

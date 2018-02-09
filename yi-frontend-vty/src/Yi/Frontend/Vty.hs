@@ -74,7 +74,7 @@ import           Yi.Types                       (YiConfigVariable)
 import qualified Yi.UI.Common                   as Common
 import qualified Yi.UI.SimpleLayout             as SL
 import           Yi.Layout                      (HasNeighborWest)
-import           Yi.UI.LineNumbers              (getDisplayLineNumbers, getDisplayLineNumbersLocal)
+import           Yi.UI.LineNumbers              (getDisplayLineNumbersLocal)
 import           Yi.UI.TabBar                   (TabDescr (TabDescr), tabBarDescr)
 import           Yi.UI.Utils                    (arrangeItems, attributesPictureAndSelB)
 import           Yi.Frontend.Vty.Conversions          (colorToAttr, fromVtyEvent)
@@ -260,9 +260,9 @@ renderWindow cfg' e (SL.Rect x y _ _) nb (win, focused) =
 
         notMini = not (isMini win)
         displayLineNumbers =
-          let local = withGivenBuffer (bufkey win) getDisplayLineNumbersLocal
-              global = getDisplayLineNumbers
-          in snd $ runEditor cfg' (fromMaybe <$> global <*> local) e
+          let local = snd $ runEditor cfg' (withGivenBuffer (bufkey win) getDisplayLineNumbersLocal) e
+              global = configLineNumbers cfg
+          in fromMaybe global local
 
         -- Collect some information for displaying line numbers
         (lineCount, _) = runBuffer win b lineCountB

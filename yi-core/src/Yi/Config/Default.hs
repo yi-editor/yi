@@ -94,6 +94,7 @@ defaultConfig =
            , configAutoHideTabBar = True
            , configWindowFill = ' '
            , configTheme = defaultTheme
+           , configLineNumbers = False
            }
          , defaultKm        = modelessKeymapSet nilKeymap
          , startActions     = mempty

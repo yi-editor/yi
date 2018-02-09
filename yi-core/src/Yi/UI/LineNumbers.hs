@@ -12,9 +12,7 @@
 -- Line numbers.
 
 module Yi.UI.LineNumbers
-  ( getDisplayLineNumbers
-  , setDisplayLineNumbers
-  , getDisplayLineNumbersLocal
+  ( getDisplayLineNumbersLocal
   , setDisplayLineNumbersLocal
   ) where
 
@@ -23,28 +21,7 @@ import           Data.Default   (Default (..))
 import           Data.Typeable  (Typeable)
 import           GHC.Generics   (Generic)
 import           Yi.Buffer      (getBufferDyn, putBufferDyn)
-import           Yi.Editor      (getEditorDyn, putEditorDyn)
-import           Yi.Types       (BufferM, EditorM, YiVariable)
-
-newtype DisplayLineNumbers = DisplayLineNumbers { unDisplayLineNumbers :: Bool }
-  deriving (Generic, Typeable)
-
-instance Default DisplayLineNumbers where
-  def = DisplayLineNumbers False
-
-instance Binary DisplayLineNumbers
-
-instance YiVariable DisplayLineNumbers
-
--- | Get the global line number setting.
-getDisplayLineNumbers :: EditorM Bool
-getDisplayLineNumbers = unDisplayLineNumbers <$> getEditorDyn
-
--- | Set the global line number setting. Can be overridden by the buffer-local setting.
--- True: Show line numbers
--- False: Hide line numbers
-setDisplayLineNumbers :: Bool -> EditorM ()
-setDisplayLineNumbers = putEditorDyn . DisplayLineNumbers
+import           Yi.Types       (BufferM, YiVariable)
 
 newtype DisplayLineNumbersLocal = DisplayLineNumbersLocal { unDisplayLineNumbersLocal :: Maybe Bool }
   deriving (Generic, Typeable)
