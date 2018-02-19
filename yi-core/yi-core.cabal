@@ -123,6 +123,7 @@ library
       Yi.TextCompletion
       Yi.Types
       Yi.UI.Common
+      Yi.UI.LineNumbers
       Yi.UI.SimpleLayout
       Yi.UI.TabBar
       Yi.UI.Utils

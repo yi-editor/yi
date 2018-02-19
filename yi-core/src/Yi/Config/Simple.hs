@@ -77,6 +77,7 @@ module Yi.Config.Simple (
   lineWrap,
   windowFill,
   theme,
+  lineNumbers,
   -- ** Layout
   layoutManagers,
   -- * Debugging
@@ -147,7 +148,7 @@ import           Yi.Config(Config, UIConfig, startFrontEndA, configUIA,
                            CursorStyle(..), configLeftSideScrollBarA,
                            configAutoHideScrollBarA, configAutoHideTabBarA,
                            configLineWrapA, configWindowFillA, configThemeA,
-                           layoutManagersA, configVarsA,
+                           layoutManagersA, configVarsA, configLineNumbersA
                            )
 
 
@@ -286,6 +287,10 @@ windowFill = configUIA . configWindowFillA
 -- | UI colour theme.
 theme :: Field Theme
 theme = configUIA . configThemeA
+
+-- | Line numbers.
+lineNumbers :: Field Bool
+lineNumbers = configUIA . configLineNumbersA
 
 ---------- Layout
 -- | List of registered layout managers. When cycling through layouts,

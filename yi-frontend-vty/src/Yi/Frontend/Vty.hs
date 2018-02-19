@@ -37,7 +37,7 @@ import           Data.Foldable                  (concatMap, toList)
 import           Data.IORef                     (IORef, newIORef, readIORef, writeIORef)
 import qualified Data.List.PointedList.Circular as PL (PointedList (_focus), withFocus)
 import qualified Data.Map.Strict                as M ((!))
-import           Data.Maybe                     (maybeToList)
+import           Data.Maybe                     (fromMaybe, maybeToList)
 import           Data.Monoid                    (Endo (appEndo), (<>))
 import qualified Data.Text                      as T (Text, cons, empty,
                                                       justifyLeft, length, pack,
@@ -56,6 +56,7 @@ import qualified Graphics.Vty                   as Vty (Attr, Cursor (Cursor, No
                                                         horizCat, mkVty,
                                                         picForLayers,
                                                         standardIOConfig,
+                                                        string,
                                                         reverseVideo, text',
                                                         translate, underline,
                                                         vertCat, withBackColor,
@@ -73,6 +74,7 @@ import           Yi.Types                       (YiConfigVariable)
 import qualified Yi.UI.Common                   as Common
 import qualified Yi.UI.SimpleLayout             as SL
 import           Yi.Layout                      (HasNeighborWest)
+import           Yi.UI.LineNumbers              (getDisplayLineNumbersLocal)
 import           Yi.UI.TabBar                   (TabDescr (TabDescr), tabBarDescr)
 import           Yi.UI.Utils                    (arrangeItems, attributesPictureAndSelB)
 import           Yi.Frontend.Vty.Conversions          (colorToAttr, fromVtyEvent)
@@ -210,7 +212,7 @@ refresh fs e = do
         formatCmdLine text = withAttributes statusBarStyle (mkLine text)
         winImage (win, hasFocus) =
             let (rect, nb) = winRects M.! wkey win
-            in renderWindow (configUI $ fsConfig fs) e rect nb (win, hasFocus)
+            in renderWindow (fsConfig fs) e rect nb (win, hasFocus)
         windowsAndImages =
             fmap (\(w, f) -> (w, winImage (w, f))) (PL.withFocus ws)
         bigImages =
@@ -243,11 +245,12 @@ refresh fs e = do
         (Vty.picForLayers ([tabBarImage, cmdImage] ++ bigImages ++ miniImages))
         { Vty.picCursor = cursorPos }
 
-renderWindow :: UIConfig -> Editor -> SL.Rect -> HasNeighborWest -> (Window, Bool) -> Rendered
-renderWindow cfg e (SL.Rect x y _ _) nb (win, focused) =
+renderWindow :: Config -> Editor -> SL.Rect -> HasNeighborWest -> (Window, Bool) -> Rendered
+renderWindow cfg' e (SL.Rect x y _ _) nb (win, focused) =
     Rendered (Vty.translate x y $ if nb then vertSep Vty.<|> pict else pict)
              (fmap (\(i, j) -> (i + y, j + x')) cur)
     where
+        cfg = configUI cfg'
         w = Yi.Window.width win
         h = Yi.Window.height win
         x' = x + if nb then 1 else 0
@@ -256,6 +259,19 @@ renderWindow cfg e (SL.Rect x y _ _) nb (win, focused) =
         sty = configStyle cfg
 
         notMini = not (isMini win)
+        displayLineNumbers =
+          let local = snd $ runEditor cfg' (withGivenBuffer (bufkey win) getDisplayLineNumbersLocal) e
+              global = configLineNumbers cfg
+          in fromMaybe global local
+
+        -- Collect some information for displaying line numbers
+        (lineCount, _) = runBuffer win b lineCountB
+        (topLine, _) = runBuffer win b screenTopLn
+        linesInfo = if notMini && displayLineNumbers
+                       then Just (topLine, length (show lineCount) + 1)
+                       else Nothing
+        wNumbers = maybe 0 snd linesInfo
+
         -- off reserves space for the mode line. The mini window does not have a mode line.
         off = if notMini then 1 else 0
         h' = h - off
@@ -285,16 +301,17 @@ renderWindow cfg e (SL.Rect x y _ _) nb (win, focused) =
         tabWidth = tabSize . fst $ runBuffer win b indentSettingsB
         prompt = if isMini win then miniIdentString b else ""
 
-        cur = (fmap (\(SL.Point2D curx cury) -> (cury, T.length prompt + curx)) . fst)
+        cur = (fmap (\(SL.Point2D curx cury) -> (cury, T.length prompt + wNumbers + curx)) . fst)
               (runBuffer win b
                          (SL.coordsOfCharacterB
-                             (SL.Size2D w' h)
+                             (SL.Size2D (w' - wNumbers) h)
                              fromMarkPoint
                              point))
 
         rendered =
             drawText wsty h' w'
                      tabWidth
+                     linesInfo
                      ([(c, wsty) | c <- T.unpack prompt] ++ bufData ++ [(' ', wsty)])
                      -- we always add one character which can be used to position the cursor at the end of file
         commonPref = T.pack <$> commonNamePrefix e
@@ -340,29 +357,49 @@ drawText :: Vty.Attr -- ^ "Ground" attribute.
          -> Int    -- ^ The height of the part of the window we are in
          -> Int    -- ^ The width of the part of the window we are in
          -> Int    -- ^ The number of spaces to represent a tab character with.
+         -> Maybe (Int, Int) -- ^ The number of the first line and the reserved width
+                             --   for line numbers or Nothing to show no line numbers
          -> [(Char, Vty.Attr)]  -- ^ The data to draw.
          -> [Vty.Image]
-drawText wsty h w tabWidth bufData
+drawText wsty h w tabWidth linesInfo bufData
     | h == 0 || w == 0 = []
-    | otherwise        = renderedLines
+    | otherwise        = case linesInfo of
+       Nothing -> renderedLines
+       Just (firstLine, lineNumberWidth) -> renderedLinesWithNumbers firstLine lineNumberWidth
     where
 
-    -- the number of lines that taking wrapping into account,
-    -- we use this to calculate the number of lines displayed.
-    wrapped = concatMap (wrapLine w . addSpace . concatMap expandGraphic) $ take h $ lines' bufData
-    lns0 = take h wrapped
+    wrapped w' = map (wrapLine w' . addSpace . concatMap expandGraphic) $ take h $ lines' bufData
 
-    -- fill lines with blanks, so the selection looks ok.
-    renderedLines = map fillColorLine lns0
+    renderedLinesWithNumbers firstLine lineNumberWidth =
+      let lns0 = take h $ concatWithNumbers firstLine $ wrapped (w - lineNumberWidth)
+          renderLineWithNumber (num, ln) = renderLineNumber lineNumberWidth num Vty.<|> fillColorLine (w - lineNumberWidth) ln
+      in map renderLineWithNumber lns0
+
+    renderedLines = map (fillColorLine w) $ take h $ concat $ wrapped w
+
     colorChar (c, a) = Vty.char a c
 
-    fillColorLine :: [(Char, Vty.Attr)] -> Vty.Image
-    fillColorLine [] = Vty.charFill Vty.defAttr ' ' w 1
-    fillColorLine l = Vty.horizCat (map colorChar l)
-                      Vty.<|>
-                      Vty.charFill a ' ' (w - length l) 1
-                      where (_, a) = last l
+    -- | Like concat, but adds a line number (starting with n) to every first part of a wrapped line
+    concatWithNumbers :: Int -> [[[(Char, Vty.Attr)]]] -> [(Maybe Int, [(Char, Vty.Attr)])]
+    concatWithNumbers _ [] = []
+    concatWithNumbers n ([]:ls) = concatWithNumbers n ls
+    concatWithNumbers n ((l0:ls0):ls) = (Just n, l0) : map (\l -> (Nothing, l)) ls0 ++ concatWithNumbers (n+1) ls
 
+    -- | Render (maybe) a line number padded to a given width
+    renderLineNumber :: Int -> Maybe Int -> Vty.Image
+    renderLineNumber w' (Just n) = Vty.charFill wsty ' ' (w' - length (show n) - 1) 1
+                                   Vty.<|>
+                                   Vty.string wsty (show n)
+                                   Vty.<|>
+                                   Vty.char wsty ' '
+    renderLineNumber w' Nothing  = Vty.charFill wsty ' ' w' 1
+
+    fillColorLine :: Int -> [(Char, Vty.Attr)] -> Vty.Image
+    fillColorLine w' [] = Vty.charFill Vty.defAttr ' ' w' 1
+    fillColorLine w' l = Vty.horizCat (map colorChar l)
+                         Vty.<|>
+                         Vty.charFill a ' ' (w' - length l) 1
+                         where (_, a) = last l
 
     addSpace :: [(Char, Vty.Attr)] -> [(Char, Vty.Attr)]
     addSpace [] = [(' ', wsty)]

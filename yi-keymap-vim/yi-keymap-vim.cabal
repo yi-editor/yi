@@ -89,6 +89,7 @@ library
       Yi.Keymap.Vim.Ex.Commands.Help
       Yi.Keymap.Vim.Ex.Commands.Make
       Yi.Keymap.Vim.Ex.Commands.Nohl
+      Yi.Keymap.Vim.Ex.Commands.Number
       Yi.Keymap.Vim.Ex.Commands.Paste
       Yi.Keymap.Vim.Ex.Commands.Quit
       Yi.Keymap.Vim.Ex.Commands.Read
