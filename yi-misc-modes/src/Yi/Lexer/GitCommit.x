@@ -24,9 +24,10 @@ $nl                            { m (const SecondLine) Style.defaultStyle }
 }
 
 -- There should never be anything on the second line of a git commit message
--- so it is styled in a deliberately hideous color scheme.
+-- so it is styled in a deliberately hideous color scheme, unless it's a comment.
 <secondLine> {
-.+                             { c (const $ Style.withFg Style.red `mappend` Style.withBg Style.brown) }
+^\#                            { m (const $ LineComment) Style.commentStyle }
+.                              { c (const $ Style.withFg Style.red `mappend` Style.withBg Style.brown) }
 $nl                            { m (const MessageLine) Style.defaultStyle }
 }
 
