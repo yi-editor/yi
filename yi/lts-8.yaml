@@ -1,0 +1,12 @@
+resolver: lts-8.18
+extra-deps:
+- yi-core-0.17.1
+- yi-frontend-pango-0.17.1
+- yi-frontend-vty-0.17.1
+- yi-keymap-emacs-0.17.1
+- yi-keymap-vim-0.17.1
+- yi-language-0.17.1
+- yi-misc-modes-0.17.1
+- yi-mode-haskell-0.17.1
+- yi-mode-javascript-0.17.1
+- yi-rope-0.10
