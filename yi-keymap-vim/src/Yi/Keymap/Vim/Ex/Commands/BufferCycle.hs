@@ -22,8 +22,8 @@ parse = Common.parse $ do
     cmdAction = EditorA $ currentWindowA %= \window -> let
       cl = bufkey window : bufAccessList window
       cl' = if direction
-        then tail cl ++ [head cl]
-        else last cl : init cl
+        then last cl : init cl
+        else tail cl ++ [head cl]
       in forceSpine cl' `seq` window { bufkey = head cl', bufAccessList = tail cl' }
    }
 
