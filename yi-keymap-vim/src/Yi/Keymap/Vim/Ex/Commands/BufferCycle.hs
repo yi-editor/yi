@@ -24,5 +24,11 @@ parse = Common.parse $ do
       cl' = if direction
         then tail cl ++ [head cl]
         else last cl : init cl
-      in window { bufkey = head cl', bufAccessList = tail cl' }
+      in forceSpine cl' `seq` window { bufkey = head cl', bufAccessList = tail cl' }
    }
+
+{-# INLINE forceSpine #-}
+forceSpine :: [a] -> ()
+forceSpine = go where
+  go [] = ()
+  go (_:r) = go r
