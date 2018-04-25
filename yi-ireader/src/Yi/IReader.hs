@@ -35,7 +35,7 @@ import           Yi.Buffer.HighLevel        (replaceBufferContent, topB)
 import           Yi.Buffer.Misc             (elemsB, getBufferDyn, putBufferDyn)
 import           Yi.Editor                  (withCurrentBuffer)
 import           Yi.Keymap                  (YiM)
-import           Yi.Paths                   (getArticleDbFilename)
+import           Yi.Paths                   (getConfigPath)
 import qualified Yi.Rope                    as R (fromString, toString)
 import           Yi.Types                   (YiVariable)
 import           Yi.Utils                   (io)
@@ -74,7 +74,7 @@ removeSetLast adb old = ADB (unADB (snd (split adb)) S.|> old)
 -- 2' will move it to the middle of the list, though; last index = 50,
 -- then 50 `div` 2 will shift the item to index 25, and so on down to
 -- 50 `div` 50 - the head of the list/Seq.
-shift :: Int ->ArticleDB -> ArticleDB
+shift :: Int -> ArticleDB -> ArticleDB
 shift n adb = if n < 2 || lst < 2 then adb else ADB $ (r S.|> lastentry) >< s'
   where lst = S.length (unADB adb) - 1
         (r,s) = S.splitAt (lst `div` n) (unADB adb)
@@ -97,6 +97,9 @@ readDB = io $ (getArticleDbFilename >>= r) `catch` returnDefault
         -- closed, and then we convert it to the lazy bytestring
         -- data.binary expects. This is inefficient, but alas...
         returnDefault (_ :: SomeException) = return def
+
+-- | Get articles.db database of locations to visit
+getArticleDbFilename = getConfigPath "articles.db"
 
 -- | Returns the database as it exists on the disk, and the current Yi
 -- buffer contents. Note that the Default typeclass gives us an empty
