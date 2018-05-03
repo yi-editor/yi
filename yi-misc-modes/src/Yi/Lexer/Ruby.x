@@ -182,7 +182,7 @@ main :-
    | @number \. @number? @exponent?             { c numberStyle }
 
  -- symbols and raw strings
- :[$small]+                                     { c stringStyle }
+ :[$small $large _]+                            { c stringStyle }
  \%q\{ @longstring* \}
  | \' @shortstring* \'                          { c stringStyle }
 
