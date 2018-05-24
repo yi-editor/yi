@@ -5,6 +5,8 @@ import Data.List                (intersperse)
 import Lens.Micro.Platform      ((.=))
 import Data.Maybe               (fromMaybe)
 import Data.Monoid              ((<>))
+import Data.Version (showVersion)
+import Paths_yi (version)
 
 import Options.Applicative
 
@@ -86,7 +88,7 @@ main :: IO ()
 main = do
     mayClo <- execParser opts
     case mayClo of
-      Nothing -> putStrLn "Yi 0.16.0"
+      Nothing -> putStrLn $ "Yi " <> showVersion version
       Just clo -> do
         let openFileActions = intersperse (EditorA newTabE) (map (YiA . openNewFile) (files clo))
             moveLineAction  = YiA $ withCurrentBuffer (lineMoveRel (fromMaybe 0 (startOnLine clo)))
