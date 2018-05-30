@@ -13,6 +13,7 @@ import           System.FilePath
 import           Yi.Buffer
 import           Yi.Command          (cabalBuildE, cabalConfigureE, grepFind,
                                       makeBuild, reloadProjectE, searchSources,
+                                      stackBuildE,
                                       shell)
 import           Yi.Config
 import           Yi.Core             (errorEditor, quitEditor)
@@ -69,6 +70,7 @@ defaultPublishedActions = HM.fromList
     , ("searchSources"          , box searchSources)
     , ("setAnyMode"             , box setAnyMode)
     , ("sortLines"              , box sortLines)
+    , ("stackBuildE"            , box stackBuildE)
     , ("unLineCommentSelectionB", box unLineCommentSelectionB)
     , ("writeB"                 , box writeB)
     ]
