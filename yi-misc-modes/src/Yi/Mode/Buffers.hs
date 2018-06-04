@@ -15,11 +15,12 @@ module Yi.Mode.Buffers (listBuffers) where
 import           Control.Category    ((>>>))
 import           Lens.Micro.Platform ((.=), (%~), (.~))
 import           Data.List.NonEmpty  (NonEmpty( (:|) ))
-import qualified Data.Text           as T (intercalate, pack, cons, Text)
+import qualified Data.Text           as T (intercalate, pack, append, Text)
 import           System.FilePath     (takeFileName)
 import           Yi.Buffer
 import           Yi.Editor
 import           Yi.Types            (FBuffer(attributes), Attributes(readOnly))
+import           Yi.Buffer.Misc      (isUnchangedBuffer)
 import           Yi.Keymap           (Keymap, YiM, topKeymapA)
 import           Yi.Keymap.Keys
 import qualified Yi.Rope             as R (fromText, toString)
@@ -46,14 +47,15 @@ bufferProperties (curBuf :| extraBufs) =
     characterize :: Char -> FBuffer -> T.Text
     characterize cur buf | attr <- attributes buf =
         let roChar = if readOnly attr then '%' else ' '
-        in T.cons cur . T.cons roChar . T.cons ' ' $ identString buf
+            modChar = if isUnchangedBuffer buf then ' ' else '*'
+        in T.pack [cur, roChar, modChar, ' '] `T.append` identString buf
 
 -- | Switch to the buffer with name at current name. If it it starts
 -- with a @/@ then assume it's a file and try to open it that way.
 switch :: YiM ()
 switch = do
   -- the YiString -> FilePath -> Text conversion sucks
-  s <- (drop 3 . R.toString) <$> withCurrentBuffer readLnB
+  s <- (drop 4 . R.toString) <$> withCurrentBuffer readLnB
   let short = T.pack $ if take 1 s == "/" then takeFileName s else s
   withEditor $ switchToBufferWithNameE short
 
