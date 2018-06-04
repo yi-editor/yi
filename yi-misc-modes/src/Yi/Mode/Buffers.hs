@@ -14,11 +14,12 @@ module Yi.Mode.Buffers (listBuffers) where
 
 import           Control.Category    ((>>>))
 import           Lens.Micro.Platform ((.=), (%~), (.~))
-import           Data.List.NonEmpty  (toList)
-import qualified Data.Text           as T (intercalate, pack)
+import           Data.List.NonEmpty  (NonEmpty( (:|) ))
+import qualified Data.Text           as T (intercalate, pack, cons, Text)
 import           System.FilePath     (takeFileName)
 import           Yi.Buffer
 import           Yi.Editor
+import           Yi.Types            (FBuffer(attributes), Attributes(readOnly))
 import           Yi.Keymap           (Keymap, YiM, topKeymapA)
 import           Yi.Keymap.Keys
 import qualified Yi.Rope             as R (fromText, toString)
@@ -28,8 +29,8 @@ import qualified Yi.Rope             as R (fromText, toString)
 listBuffers :: YiM ()
 listBuffers = do
   withEditor $ do
-    bs <- toList <$> getBufferStack
-    let bufferList = R.fromText . T.intercalate "\n" $ map identString bs
+    bs <- getBufferStack
+    let bufferList = R.fromText . T.intercalate "\n" $ bufferProperties bs
     bufRef <- stringToNewBuffer (MemBuffer "Buffer List") bufferList
     switchToBufferE bufRef
   withCurrentBuffer $ do
@@ -37,12 +38,22 @@ listBuffers = do
                  >>> modeNameA .~ "buffers"
     readOnlyA .= True
 
+-- | Add Emacs-like properties to the list of buffers.
+bufferProperties :: NonEmpty FBuffer -> [T.Text]
+bufferProperties (curBuf :| extraBufs) =
+  characterize '.' curBuf : map (characterize ' ') extraBufs
+  where
+    characterize :: Char -> FBuffer -> T.Text
+    characterize cur buf | attr <- attributes buf =
+        let roChar = if readOnly attr then '%' else ' '
+        in T.cons cur . T.cons roChar . T.cons ' ' $ identString buf
+
 -- | Switch to the buffer with name at current name. If it it starts
 -- with a @/@ then assume it's a file and try to open it that way.
 switch :: YiM ()
 switch = do
   -- the YiString -> FilePath -> Text conversion sucks
-  s <- R.toString <$> withCurrentBuffer readLnB
+  s <- (drop 3 . R.toString) <$> withCurrentBuffer readLnB
   let short = T.pack $ if take 1 s == "/" then takeFileName s else s
   withEditor $ switchToBufferWithNameE short
 
