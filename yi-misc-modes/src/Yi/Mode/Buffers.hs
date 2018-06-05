@@ -13,7 +13,7 @@
 module Yi.Mode.Buffers (listBuffers) where
 
 import           Control.Category    ((>>>))
-import           Lens.Micro.Platform ((.=), (%~), (.~))
+import           Lens.Micro.Platform ((.=), (%~), (.~), to, use)
 import           Data.List.NonEmpty  (NonEmpty( (:|) ))
 import qualified Data.Text           as T (intercalate, pack, append, Text)
 import           System.FilePath     (takeFileName)
@@ -30,14 +30,20 @@ import qualified Yi.Rope             as R (fromText, toString)
 listBuffers :: YiM ()
 listBuffers = do
   withEditor $ do
+    -- Delete previous lists of buffers. TODO: what happens with a
+    -- buffer named *Buffer List*?
+    use (to (findBufferWithName listBuffersName)) >>= mapM_ deleteBuffer
     bs <- getBufferStack
     let bufferList = R.fromText . T.intercalate "\n" $ bufferProperties bs
-    bufRef <- stringToNewBuffer (MemBuffer "Buffer List") bufferList
+    bufRef <- stringToNewBuffer (MemBuffer listBuffersName) bufferList
     switchToBufferE bufRef
   withCurrentBuffer $ do
     modifyMode $ modeKeymapA .~ topKeymapA %~ bufferKeymap
                  >>> modeNameA .~ "buffers"
     readOnlyA .= True
+  where
+    listBuffersName :: T.Text
+    listBuffersName = "Buffer List"
 
 -- | Add Emacs-like properties to the list of buffers.
 bufferProperties :: NonEmpty FBuffer -> [T.Text]
@@ -66,6 +72,7 @@ switch = do
 -- __n__ or __SPACE__ → line down
 -- __ENTER__ or __f__ → open buffer
 -- __v__              → open buffer as read-only
+-- __g__              → reload buffer list
 -- @
 bufferKeymap :: Keymap -> Keymap
 bufferKeymap = important $ choice
@@ -73,6 +80,7 @@ bufferKeymap = important $ choice
   , oneOf [ char 'n', char ' ' ]    >>! lineDown
   , oneOf [ spec KEnter, char 'f' ] >>! (switch >> setReadOnly False)
   , char 'v'                        ?>>! (switch >> setReadOnly True)
+  , char 'g'                        ?>>! listBuffers
   ]
   where
     setReadOnly = withCurrentBuffer . (.=) readOnlyA
