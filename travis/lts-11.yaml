@@ -1,5 +1,3 @@
-resolver: nightly-2017-10-11
-
 packages:
 - ../yi-core
 - ../yi-dynamic-configuration
@@ -12,6 +10,7 @@ packages:
 - ../yi-mode-haskell
 - ../yi-mode-javascript
 - ../yi-misc-modes
+- ../yi-intero
 - ../yi-ireader
 - ../yi-language
 - ../yi-snippet
@@ -24,6 +23,4 @@ packages:
 # - ../example-configs/yi-vim-pango-static
 - ../example-configs/yi-vim-vty-dynamic
 - ../example-configs/yi-vim-vty-static
-extra-deps:
-- yi-rope-0.10
-- dynamic-state-0.3
+resolver: lts-11.12

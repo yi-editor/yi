@@ -17,6 +17,7 @@ matrix:
         packages:
         - libpango1.0-dev
         - libgtk2.0-dev
+  - env: RESOLVER="lts-11"
   - env: RESOLVER="nightly"
   allow_failures:
   - env: RESOLVER="nightly"
