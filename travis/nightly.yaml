@@ -24,3 +24,6 @@ packages:
 # - ../example-configs/yi-vim-pango-static
 - ../example-configs/yi-vim-vty-dynamic
 - ../example-configs/yi-vim-vty-static
+extra-deps:
+- yi-rope-0.10
+- dynamic-state-0.3
