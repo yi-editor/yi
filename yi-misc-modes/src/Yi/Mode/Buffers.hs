@@ -13,19 +13,19 @@
 module Yi.Mode.Buffers (listBuffers) where
 
 import           Control.Category    ((>>>))
-import           Control.Monad       (forM_, mapM_, unless)
+import           Control.Monad       (forM_, mapM_, unless, when)
 import           Data.Functor        (void)
 import           Lens.Micro.Platform ((.=), (%~), (.~), to, use)
 import           Data.List.NonEmpty  (NonEmpty( (:|) ))
 import qualified Data.Text           as T (intercalate, pack, append, Text)
-import           System.FilePath     (takeFileName)
 import           Yi.Buffer
 import           Yi.Editor
-import           Yi.Types            (FBuffer(attributes), Attributes(readOnly))
+import           Yi.Types            ( FBuffer(attributes)
+                                     , Attributes(readOnly))
 import           Yi.Buffer.Misc      (isUnchangedBuffer, replaceCharB
                                      , gotoLnFrom )
 import           Yi.Buffer.HighLevel (moveToSol, lineStreamB, topB)
-import           Yi.Buffer.Basic (Direction(..))
+import           Yi.Buffer.Basic      (Direction(..), BufferRef(..))
 import           Yi.Keymap           (Keymap, YiM, topKeymapA)
 import           Yi.Keymap.Keys
 import qualified Yi.Rope             as R (fromText, toString)
@@ -38,8 +38,10 @@ listBuffers = do
     -- Delete previous lists of buffers. TODO: what happens with a
     -- buffer named *Buffer List*?
     use (to (findBufferWithName listBuffersName)) >>= mapM_ deleteBuffer
+    --
+    br <- use (to bufferStack)
     bs <- getBufferStack
-    let bufferList = R.fromText . T.intercalate "\n" $ bufferProperties bs
+    let bufferList = R.fromText . T.intercalate "\n" $ bufferProperties br bs
     bufRef <- stringToNewBuffer (MemBuffer listBuffersName) bufferList
     switchToBufferE bufRef
   withCurrentBuffer $ do
@@ -51,25 +53,36 @@ listBuffers = do
     listBuffersName = "Buffer List"
 
 -- | Add Emacs-like properties to the list of buffers.
-bufferProperties :: NonEmpty FBuffer -> [T.Text]
-bufferProperties (curBuf :| extraBufs) =
-  characterize '.' curBuf : map (characterize ' ') extraBufs
+bufferProperties :: NonEmpty BufferRef -> NonEmpty FBuffer -> [T.Text]
+bufferProperties (curRef :| extraRef) (curBuf :| extraBufs) =
+  characterize '.' curRef curBuf
+  : map (uncurry (characterize ' ')) (zip extraRef extraBufs)
   where
-    characterize :: Char -> FBuffer -> T.Text
-    characterize cur buf | attr <- attributes buf =
+    characterize :: Char -> BufferRef -> FBuffer -> T.Text
+    characterize cur ref buf | attr <- attributes buf =
         let roChar = if readOnly attr then '%' else ' '
             modChar = if isUnchangedBuffer buf then ' ' else '*'
-        in T.pack [cur, roChar, modChar, ' '] `T.append` identString buf
+        in T.pack [cur, roChar, modChar, ' ']
+           `T.append` threeSpaceRef ref `T.append` " "
+           `T.append` identString buf
+
+    threeSpaceRef :: BufferRef -> T.Text
+    threeSpaceRef (BufferRef i)
+      | i < 10 = ti `T.append` "   "
+      | i >= 10 && i < 100 = ti `T.append` "  "
+      | i >= 100 && i < 1000 = ti `T.append` " "
+      | i >= 1000 && i < 10000 = ti
+      | otherwise = error "Too many buffersRefs"
+      where
+        ti = T.pack (show i)
 
 -- | Switch to the buffer with name at current name. If it it starts
 -- with a @/@ then assume it's a file and try to open it that way.
 switch :: YiM ()
 switch = do
-  -- the YiString -> FilePath -> Text conversion sucks
   s <- (drop 4 . R.toString) <$> withCurrentBuffer readLnB
-  let short = T.pack $ if take 1 s == "/" then takeFileName s else s
-  withEditor $ switchToBufferWithNameE short
-
+  let ref = read $ (words s) !! 0
+  withEditor $ switchToBufferE (BufferRef ref)
 
 -- `setFlag ' '` is basically unsetting, so we make it general.
 setFlag :: Char -> BufferM ()
@@ -87,13 +100,12 @@ unsetDeleteFlag = setFlag ' '
 executeDelete :: YiM ()
 executeDelete = do
   bLines <- withCurrentBuffer (topB *> lineStreamB Forward)
-  forM_ bLines $ \l -> do
-    let (d:_:_:_:name) = R.toString l
-        short = T.pack $ if take 1 name == "/" then takeFileName name
-                           else name
-    if d == 'D'
-      then do use (to (findBufferWithName short)) >>= mapM_ deleteBuffer
-      else return ()
+  forM_ bLines $ \l ->
+      let (flags, rest) = splitAt 4 (R.toString l)
+          d:_ = flags
+          ref' = read (words rest !! 0)
+          ref = BufferRef ref'
+      in when (d == 'D') (deleteBuffer ref)
   listBuffers
 
 -- | Keymap for the buffer mode.
