@@ -70,21 +70,26 @@ switch = do
   let short = T.pack $ if take 1 s == "/" then takeFileName s else s
   withEditor $ switchToBufferWithNameE short
 
-setDeleteFlag :: BufferM ()
-setDeleteFlag = do
+
+-- `setFlag ' '` is basically unsetting, so we make it general.
+setFlag :: Char -> BufferM ()
+setFlag c = do
   readOnlyA .= False
-  moveToSol >> replaceCharB 'D'
+  moveToSol >> replaceCharB c
   readOnlyA .= True
   isLast <- atLastLine
   unless isLast (void (gotoLnFrom 1))
+
+setDeleteFlag,unsetDeleteFlag :: BufferM ()
+setDeleteFlag = setFlag 'D'
+unsetDeleteFlag = setFlag ' '
 
 executeDelete :: YiM ()
 executeDelete = do
   bLines <- withCurrentBuffer (topB *> lineStreamB Forward)
   forM_ bLines $ \l -> do
     let (d:_:_:_:name) = R.toString l
-        short = T.pack $ if take 1 name == "/"
-                           then takeFileName name
+        short = T.pack $ if take 1 name == "/" then takeFileName name
                            else name
     if d == 'D'
       then do use (to (findBufferWithName short)) >>= mapM_ deleteBuffer
@@ -111,6 +116,7 @@ bufferKeymap = important $ choice
   , char 'g'                        ?>>! listBuffers
   , char 'd'                        ?>>! setDeleteFlag
   , char 'x'                        ?>>! executeDelete
+  , char 'u'                        ?>>! unsetDeleteFlag
   ]
   where
     setReadOnly = withCurrentBuffer . (.=) readOnlyA
