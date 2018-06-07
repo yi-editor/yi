@@ -10,6 +10,7 @@
  * Support ghc 8.4
  * Moved getArticleDbFileName to yi-ireader where it belongs (thanks to mpwp)
  * [ruby mode] slightly more correct symbol syntax (thanks to quickdudley)
+ * Automatically get version from cabal (thanks to junjihashimoto)
 
 0.17.1 (2017-11-03)
 -------------------
