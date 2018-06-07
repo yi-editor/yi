@@ -9,6 +9,7 @@
  * [git commit mode] Don't uglify second line when it is a comment
  * Support ghc 8.4
  * Moved getArticleDbFileName to yi-ireader where it belongs (thanks to mpwp)
+ * [ruby mode] slightly more correct symbol syntax (thanks to quickdudley)
 
 0.17.1 (2017-11-03)
 -------------------
