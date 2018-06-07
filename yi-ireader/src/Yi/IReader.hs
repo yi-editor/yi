@@ -99,6 +99,7 @@ readDB = io $ (getArticleDbFilename >>= r) `catch` returnDefault
         returnDefault (_ :: SomeException) = return def
 
 -- | Get articles.db database of locations to visit
+getArticleDbFilename :: IO FilePath
 getArticleDbFilename = getConfigPath "articles.db"
 
 -- | Returns the database as it exists on the disk, and the current Yi
