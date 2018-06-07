@@ -26,4 +26,4 @@ packages:
 - ../example-configs/yi-vim-vty-static
 extra-deps:
 - yi-rope-0.11
-- dynamic-state-0.3
+- dynamic-state-0.3.1
