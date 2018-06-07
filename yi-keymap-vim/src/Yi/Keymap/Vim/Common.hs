@@ -1,7 +1,8 @@
-{-# LANGUAGE CPP                #-}
-{-# LANGUAGE DeriveDataTypeable #-}
-{-# LANGUAGE DeriveGeneric      #-}
-{-# LANGUAGE TemplateHaskell    #-}
+{-# LANGUAGE CPP                        #-}
+{-# LANGUAGE DeriveDataTypeable         #-}
+{-# LANGUAGE DeriveGeneric              #-}
+{-# LANGUAGE TemplateHaskell            #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# OPTIONS_HADDOCK show-extensions #-}
 
 -- |
@@ -37,7 +38,8 @@ import           Lens.Micro.Platform                (makeLenses)
 import           Data.Binary               (Binary (..))
 import           Data.Default              (Default (..))
 import qualified Data.HashMap.Strict       as HM (HashMap)
-import           Data.Semigroup            (Semigroup ((<>)))
+import           Data.Monoid               ((<>))
+import           Data.Semigroup            (Semigroup)
 import           Data.String               (IsString (..))
 import qualified Data.Text                 as T (Text, isPrefixOf, pack)
 import qualified Data.Text.Encoding        as E (decodeUtf8, encodeUtf8)
@@ -50,29 +52,15 @@ import           Yi.Rope                   (YiString)
 import           Yi.Types                  (YiVariable)
 
 
-newtype EventString = Ev { _unEv :: T.Text } deriving (Show, Eq, Ord)
+newtype EventString = Ev { _unEv :: T.Text } deriving (Show, Eq, Ord, Semigroup, Monoid)
 
 instance IsString EventString where
   fromString = Ev . T.pack
 
-newtype OperatorName = Op { _unOp :: T.Text } deriving (Show, Eq)
+newtype OperatorName = Op { _unOp :: T.Text } deriving (Show, Eq, Semigroup, Monoid)
 
 instance IsString OperatorName where
   fromString = Op . T.pack
-
-instance Semigroup EventString where
-  (<>) = mappend
-
-instance Monoid EventString where
-  mempty = Ev mempty
-  Ev t `mappend` Ev t' = Ev $ t <> t'
-
-instance Semigroup OperatorName where
-  (<>) = mappend
-
-instance Monoid OperatorName where
-  mempty = Op mempty
-  Op t `mappend` Op t' = Op $ t <> t'
 
 instance Binary EventString where
   get = Ev . E.decodeUtf8 <$> get

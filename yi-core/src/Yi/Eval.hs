@@ -49,7 +49,8 @@ import Data.Default ( Default, def )
 import Data.Foldable ( mapM_ )
 import qualified Data.HashMap.Strict as M
     ( HashMap, insert, lookup, empty, keys )
-import Data.Semigroup ( Semigroup ((<>)) )
+import Data.Monoid ((<>))
+import Data.Semigroup ( Semigroup )
 import Data.Typeable ( Typeable )
 #ifdef HINT
 import Control.Concurrent
