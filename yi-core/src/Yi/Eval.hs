@@ -49,7 +49,7 @@ import Data.Default ( Default, def )
 import Data.Foldable ( mapM_ )
 import qualified Data.HashMap.Strict as M
     ( HashMap, insert, lookup, empty, keys )
-import Data.Monoid ( (<>) )
+import Data.Semigroup ( Semigroup ((<>)) )
 import Data.Typeable ( Typeable )
 #ifdef HINT
 import Control.Concurrent
@@ -307,7 +307,7 @@ ghciEvaluator = Evaluator { execEditorActionImpl = execAction
 
 newtype PublishedActions = PublishedActions {
     _publishedActions :: M.HashMap String Action
-  } deriving(Typeable, Monoid)
+  } deriving(Typeable, Semigroup, Monoid)
 
 instance Default PublishedActions where def = mempty
 

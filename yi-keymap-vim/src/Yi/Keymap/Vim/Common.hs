@@ -37,7 +37,7 @@ import           Lens.Micro.Platform                (makeLenses)
 import           Data.Binary               (Binary (..))
 import           Data.Default              (Default (..))
 import qualified Data.HashMap.Strict       as HM (HashMap)
-import           Data.Monoid               ((<>))
+import           Data.Semigroup            (Semigroup ((<>)))
 import           Data.String               (IsString (..))
 import qualified Data.Text                 as T (Text, isPrefixOf, pack)
 import qualified Data.Text.Encoding        as E (decodeUtf8, encodeUtf8)
@@ -60,9 +60,15 @@ newtype OperatorName = Op { _unOp :: T.Text } deriving (Show, Eq)
 instance IsString OperatorName where
   fromString = Op . T.pack
 
+instance Semigroup EventString where
+  (<>) = mappend
+
 instance Monoid EventString where
   mempty = Ev mempty
   Ev t `mappend` Ev t' = Ev $ t <> t'
+
+instance Semigroup OperatorName where
+  (<>) = mappend
 
 instance Monoid OperatorName where
   mempty = Op mempty

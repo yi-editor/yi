@@ -27,3 +27,4 @@ packages:
 extra-deps:
 - yi-rope-0.11
 - dynamic-state-0.3.1
+- Hclip-3.0.0.4

@@ -73,6 +73,7 @@ import           Control.Monad.State (MonadPlus (..), MonadTrans (lift), StateT)
 import           Data.Function       (on)
 import           Data.List           (groupBy)
 import qualified Data.Text           as T (Text, append, pack)
+import           Data.Semigroup      (Semigroup)
 
 ------------------------------------------------
 -- Classes
@@ -221,6 +222,9 @@ pushEvent (Chain p q) e = Chain (pushEvent p e) q
 
 -- | Abstraction of the automaton state.
 data InteractState event w =  Ambiguous [(Int,w,P event w)] | Waiting | Dead | Running w (P event w)
+
+instance Semigroup (InteractState event w) where
+  (<>) = mappend
 
 instance Monoid (InteractState event w) where
     -- not used at the moment:
