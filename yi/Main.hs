@@ -6,7 +6,7 @@ import Lens.Micro.Platform      ((.=))
 import Data.Maybe               (fromMaybe)
 import Data.Monoid              ((<>))
 import Data.Version (showVersion)
-import Paths_yi (version)
+import Paths_yi_core (version)
 
 import Options.Applicative
 
