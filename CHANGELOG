@@ -1,11 +1,14 @@
 0.18.0 (Not released yet)
 -------------------------
+
  * Make switching to a buffer by name more lenient
- * Add line numbers mechanics to core (Note: line numbers are not yet implemented in emacs and pango)
- * [yi-keymap-vim] Add line numbers commands
+ * Add line numbers mechanics to core (thanks to talanis85)
+   (Note: line numbers are not yet implemented in emacs and pango)
+ * [yi-keymap-vim] Add line numbers commands (thanks to talanis85)
  * [yi-frontend-vty] Show line numbers when appropriate
  * [git commit mode] Don't uglify second line when it is a comment
  * Support ghc 8.4
+ * Moved getArticleDbFileName to yi-ireader where it belongs (thanks to mpwp)
 
 0.17.1 (2017-11-03)
 -------------------
