@@ -27,6 +27,8 @@ import Yi.Buffer.Misc (lineMoveRel)
 import Yi.Config.Default.HaskellMode    (configureHaskellMode)
 import Yi.Config.Default.JavaScriptMode (configureJavaScriptMode)
 import Yi.Config.Default.MiscModes      (configureMiscModes)
+import Paths_yi_core (version)
+import Data.Version
 
 #ifdef VIM
 import Yi.Config.Default.Vim (configureVim)
@@ -98,7 +100,7 @@ main :: IO ()
 main = do
     mayClo <- execParser opts
     case mayClo of
-      Nothing -> putStrLn "Yi 0.15.0"
+      Nothing -> putStrLn ("Yi " <> showVersion version)
       Just clo -> do
         let openFileActions = intersperse (EditorA newTabE) (map (YiA . openNewFile) (files clo))
             moveLineAction  = YiA $ withCurrentBuffer (lineMoveRel (fromMaybe 0 (startOnLine clo)))
