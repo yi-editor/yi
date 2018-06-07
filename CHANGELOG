@@ -5,6 +5,7 @@
  * [yi-keymap-vim] Add line numbers commands
  * [yi-frontend-vty] Show line numbers when appropriate
  * [git commit mode] Don't uglify second line when it is a comment
+ * Support ghc 8.4
 
 0.17.1 (2017-11-03)
 -------------------
