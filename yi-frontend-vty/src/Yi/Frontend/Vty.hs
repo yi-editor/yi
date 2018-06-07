@@ -63,6 +63,7 @@ import qualified Graphics.Vty                   as Vty (Attr, Cursor (Cursor, No
                                                         withForeColor,
                                                         withStyle, (<|>))
 import           System.Exit                    (ExitCode, exitWith)
+import           System.Posix.Signals           (raiseSignal, sigSTOP)
 import           Yi.Buffer
 import           Yi.Config
 import           Yi.Debug                       (logError, logPutStrLn)
@@ -167,6 +168,7 @@ start config submitEvents submitActions editor = do
 
     return $! Common.dummyUI
         { Common.main = main fs
+        , Common.suspend = suspend
         , Common.end = end fs
         , Common.refresh = requestRefresh fs
         , Common.userForceRefresh = Vty.refresh vty
@@ -179,6 +181,9 @@ main fs = do
     labelThread tid "VtyMain"
     exitCode <- takeMVar (fsEndMain fs)
     exitWith exitCode
+
+suspend :: IO ()
+suspend = raiseSignal sigSTOP
 
 layout :: FrontendState -> Editor -> IO Editor
 layout fs e = do

@@ -27,6 +27,7 @@ library
     , stm >= 2.2
     , text
     , vty >= 5.4
+    , unix
     , yi-core >= 0.17
     , yi-language >= 0.17
     , yi-rope >= 0.10
