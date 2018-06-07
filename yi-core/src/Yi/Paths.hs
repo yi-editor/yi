@@ -4,7 +4,6 @@
 module Yi.Paths ( getEvaluatorContextFilename
                 , getConfigFilename
                 , getConfigModules
-                , getArticleDbFilename
                 , getPersistentStateFilename
                 , getConfigDir
                 , getConfigPath
@@ -58,15 +57,12 @@ getCustomConfigPath cd fp = (</> fp) `fmap` cd
 
 -- Below are all points that are used in Yi code (to keep it clean.)
 getEvaluatorContextFilename, getConfigFilename, getConfigModules,
-    getArticleDbFilename, getPersistentStateFilename :: (MonadBase IO m) => m FilePath
+    getPersistentStateFilename :: (MonadBase IO m) => m FilePath
 
 -- | Get Yi master configuration script.
 getConfigFilename = getConfigPath "yi.hs"
 
 getConfigModules = getConfigPath "modules"
-
--- | Get articles.db database of locations to visit (for Yi.IReader.)
-getArticleDbFilename = getConfigPath "articles.db"
 
 -- | Get path to Yi history that stores state between runs.
 getPersistentStateFilename = getDataPath "history"
