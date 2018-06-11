@@ -193,7 +193,7 @@ emacsKeys univArg =
          , metaCh 'a'           ?>>! repeatingArg (moveE unitSentence Backward)
          , metaCh 'b'           ?>>! repeatingArg prevWordB
          , metaCh 'c'           ?>>! repeatingArg capitaliseWordB
-         , metaCh 'd'           ?>>! repeatingArg killWordB
+         , metaCh 'd'           ?>>! repeatingArg killWordB >> killringToClipboard
          , metaCh 'e'           ?>>! repeatingArg (moveE unitSentence Forward)
          , metaCh 'f'           ?>>! repeatingArg nextWordB
          , metaCh 'h'           ?>>! repeatingArg (selectNParagraphs 1)
@@ -215,7 +215,7 @@ emacsKeys univArg =
          , metaCh '@'           ?>>! repeatingArg markWord
 
          -- Other meta key-bindings
-         , meta (spec KBS)      ?>>! repeatingArg bkillWordB
+         , meta (spec KBS)      ?>>! repeatingArg bkillWordB >> killringToClipboard
          , metaCh 'g' ?>>
              optMod meta (char 'g') >>! (gotoLn . fromDoc :: Int ::: LineNumber -> BufferM Int)
          ]
