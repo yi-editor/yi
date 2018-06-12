@@ -21,3 +21,4 @@ configureMiscModes = do
   addMode gnuMakeMode
   addMode ottMode
   addMode whitespaceMode
+  addMode yamlMode

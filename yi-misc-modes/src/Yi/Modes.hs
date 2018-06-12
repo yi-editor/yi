@@ -14,7 +14,7 @@
 module Yi.Modes (cMode, objectiveCMode, cppMode, cabalMode,  clojureMode,
                  srmcMode, ocamlMode, ottMode, gnuMakeMode,
                  perlMode, pythonMode, javaMode, jsonMode, anyExtension,
-                 svnCommitMode, whitespaceMode,
+                 svnCommitMode, whitespaceMode, yamlMode,
                  gitCommitMode, rubyMode
                 ) where
 
@@ -41,6 +41,7 @@ import qualified Yi.Lexer.Ruby        as Ruby (lexer)
 import qualified Yi.Lexer.Srmc        as Srmc (lexer)
 import qualified Yi.Lexer.SVNCommit   as SVNCommit (lexer)
 import qualified Yi.Lexer.Whitespace  as Whitespace (lexer)
+import qualified Yi.Lexer.YAML        as YAML (lexer)
 import           Yi.Mode.Common
 import           Yi.Style             (StyleName)
 
@@ -148,3 +149,9 @@ whitespaceMode = styleMode Whitespace.lexer
   & modeNameA .~ "whitespace"
   & modeAppliesA .~ anyExtension [ "ws" ]
   & modeIndentA .~ (\_ _ -> insertB '\t')
+
+yamlMode :: TokenBasedMode StyleName
+yamlMode = styleMode YAML.lexer
+  & modeNameA .~ "yaml"
+  & modeAppliesA .~ anyExtension [ "yaml", "yml" ]
+  & modeIndentSettingsA %~ (\x -> x { expandTabs = True, shiftWidth = 2 })
