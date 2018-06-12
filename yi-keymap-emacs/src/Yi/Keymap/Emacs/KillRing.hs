@@ -19,10 +19,10 @@ import           Yi.Buffer
 import           Yi.Editor           (EditorM, killringA, withCurrentBuffer)
 import           Yi.Keymap           (YiM)
 import           Yi.KillRing         (Killring (_krContents), krKilled, krPut)
+import           Yi.Clip             (getClipboard, setClipboard)
 import qualified Yi.Rope             as R (YiString, fromString, toString)
 import           Yi.Types            (withEditor)
 import           Yi.Utils            (io)
-import           System.Hclip        (getClipboard, setClipboard)
 
 uses :: forall a b f s. MonadState s f => Getting a s a -> (a -> b) -> f b
 uses l f = f <$> use l
@@ -32,7 +32,7 @@ uses l f = f <$> use l
 -- | Adds system clipboard's contents on top of the killring if not already there
 clipboardToKillring :: YiM ()
 clipboardToKillring = do
-  text <- fmap R.fromString $ io getClipboard
+  text <- fmap R.fromString $ getClipboard
   withEditor $ do
     text' <- killringGet
     when (text' /= text) $ killringPut Forward text
@@ -41,7 +41,7 @@ clipboardToKillring = do
 killringToClipboard :: YiM ()
 killringToClipboard = do
   text <- withEditor killringGet
-  io . setClipboard $ R.toString text
+  setClipboard $ R.toString text
 
 -- This is like @kill-region-or-backward-word@.
 killRegionB :: BufferM ()

@@ -23,7 +23,7 @@ import           Yi.Types                         (YiM, BufferM)
 import           Yi.Rope                          (toString)
 import           Yi.Buffer.Region                 (readRegionB, Region)
 import           Control.Monad.Base               (liftBase)
-import           System.Hclip                     (setClipboard)
+import           Yi.Clip                          (setClipboard)
 import           Yi.Core                          (errorEditor)
 
 parse :: EventString -> Maybe ExCommand
@@ -38,5 +38,5 @@ parse = Common.parse $ do
 copy :: Maybe (BufferM Region) -> YiM ()
 copy maybeGetRegion = case maybeGetRegion of
     Nothing -> errorEditor "Cannot copy: No region"
-    Just getRegion -> liftBase . setClipboard . toString 
+    Just getRegion -> setClipboard . toString
       =<< withCurrentBuffer (readRegionB =<< getRegion)

@@ -108,6 +108,7 @@ defaultConfig =
          , bufferUpdateHandler = mempty
          , layoutManagers = [hPairNStack 1, vPairNStack 1, tall, wide]
          , configVars = mempty
+         , configDisableSystemClipboard = False
          }
 
 nilKeymap :: Keymap

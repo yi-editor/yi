@@ -50,7 +50,7 @@ import           Yi.Monad                 (whenM)
 import           Yi.Rope                  (YiString, countNewLines, last)
 import qualified Yi.Rope                  as R (replicateChar, snoc, toString, fromString)
 import           Yi.Utils                 (io)
-import           System.Hclip             (getClipboard, setClipboard)
+import           Yi.Clip                  (getClipboard, setClipboard)
 
 -- 'mkBindingE' and 'mkBindingY' are helper functions for bindings
 -- where VimState mutation is not dependent on action performed
@@ -208,11 +208,10 @@ addNewLineIfNecessary rope =
 
 pasteFromClipboard :: YiM ()
 pasteFromClipboard = do
-  text <- fmap R.fromString $ io getClipboard
+  text <- fmap R.fromString $ getClipboard
   withCurrentBuffer $ insertRopeWithStyleB text Inclusive
 
 exportRegisterToClipboard :: RegisterName -> YiM ()
 exportRegisterToClipboard name = do
   mbr <- withEditor $ getRegisterE name
-  io . setClipboard $ maybe "" (R.toString . regContent) mbr
-  
+  setClipboard $ maybe "" (R.toString . regContent) mbr

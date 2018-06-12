@@ -21,7 +21,6 @@ library
       base >= 4.8 && < 5
     , containers
     , filepath
-    , Hclip
     , microlens-platform
     , mtl
     , oo-prototypes
