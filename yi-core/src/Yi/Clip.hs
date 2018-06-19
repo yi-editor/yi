@@ -24,6 +24,10 @@ import           Yi.Utils            (io)
 import           Yi.Keymap           (YiM)
 import qualified Yi.Rope             as R (YiString, fromString, toString)
 
+
+-- |
+-- This is just used for emulating system clipbord.
+-- Do not release this IORef variable outside this module.
 clipboard :: IORef R.YiString
 clipboard = unsafePerformIO $ newIORef ""
 
