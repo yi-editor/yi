@@ -38,5 +38,5 @@ parse = Common.parse $ do
 copy :: Maybe (BufferM Region) -> YiM ()
 copy maybeGetRegion = case maybeGetRegion of
     Nothing -> errorEditor "Cannot copy: No region"
-    Just getRegion -> setClipboard . toString
+    Just getRegion -> setClipboard
       =<< withCurrentBuffer (readRegionB =<< getRegion)

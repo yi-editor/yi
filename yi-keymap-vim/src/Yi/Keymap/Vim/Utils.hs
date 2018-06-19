@@ -208,10 +208,10 @@ addNewLineIfNecessary rope =
 
 pasteFromClipboard :: YiM ()
 pasteFromClipboard = do
-  text <- fmap R.fromString $ getClipboard
+  text <- getClipboard
   withCurrentBuffer $ insertRopeWithStyleB text Inclusive
 
 exportRegisterToClipboard :: RegisterName -> YiM ()
 exportRegisterToClipboard name = do
   mbr <- withEditor $ getRegisterE name
-  setClipboard $ maybe "" (R.toString . regContent) mbr
+  setClipboard $ maybe "" regContent mbr

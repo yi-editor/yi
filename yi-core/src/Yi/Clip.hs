@@ -1,4 +1,5 @@
 {-# OPTIONS_HADDOCK show-extensions #-}
+{-# LANGUAGE OverloadedStrings #-}
 
 -- |
 -- Module      :  Yi.Clip
@@ -21,26 +22,27 @@ import           System.IO.Unsafe
 import           Yi.Types            (configDisableSystemClipboard, askCfg)
 import           Yi.Utils            (io)
 import           Yi.Keymap           (YiM)
+import qualified Yi.Rope             as R (YiString, fromString, toString)
 
-clipboard :: IORef String
+clipboard :: IORef R.YiString
 clipboard = unsafePerformIO $ newIORef ""
 
-getClipboard' :: IO String
+getClipboard' :: IO R.YiString
 getClipboard' = readIORef clipboard
 
-setClipboard' :: String -> IO ()
+setClipboard' :: R.YiString -> IO ()
 setClipboard' = writeIORef clipboard
 
-getClipboard :: YiM String
+getClipboard :: YiM R.YiString
 getClipboard = do
   config <- askCfg
   if configDisableSystemClipboard config
   then io getClipboard'
-  else io H.getClipboard
+  else io $ fmap R.fromString $ H.getClipboard
 
-setClipboard :: String -> YiM ()
+setClipboard :: R.YiString -> YiM ()
 setClipboard text = do
   config <- askCfg
   if configDisableSystemClipboard config
   then io $ setClipboard' text
-  else io $ H.setClipboard text
+  else io $ H.setClipboard $ R.toString text
