@@ -22,7 +22,7 @@ yaml :-
 {
     ^\%.* { c Style.importStyle }
     ^\-\-\- { c Style.importStyle }
-    ^$space*\#.* { c Style.commentStyle }
+    \#.* { c Style.commentStyle }
     ^$space*[\-] { c Style.keywordStyle }
     ^$space*[^\:]+\: { c Style.keywordStyle }
     \n
