@@ -1,5 +1,5 @@
 name:           yi-fuzzy-open
-version:        0.17.1
+version:        0.18.0
 synopsis:       Fuzzy open plugin for yi
 description:    This plugin tries to do what ctrl-p does for vim and helm does for emacs.
 category:       Yi
@@ -30,8 +30,8 @@ library
     , text >= 1.2
     , transformers-base >= 0.4.4
     , vector >= 0.11
-    , yi-core >= 0.17
-    , yi-language >= 0.17
+    , yi-core >= 0.18
+    , yi-language >= 0.18
     , yi-rope >= 0.10
   exposed-modules:
       Yi.Fuzzy

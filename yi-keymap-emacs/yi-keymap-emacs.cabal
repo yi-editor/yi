@@ -1,5 +1,5 @@
 name:           yi-keymap-emacs
-version:        0.17.1
+version:        0.18.0
 synopsis:       Emacs keymap for Yi editor
 category:       Yi
 homepage:       https://github.com/yi-editor/yi#readme
@@ -27,9 +27,9 @@ library
     , oo-prototypes
     , text
     , transformers-base
-    , yi-core >= 0.17
-    , yi-misc-modes >= 0.17
-    , yi-language >= 0.17
+    , yi-core >= 0.18
+    , yi-misc-modes >= 0.18
+    , yi-language >= 0.18
     , yi-rope >= 0.10
   exposed-modules:
       Yi.Config.Default.Emacs
