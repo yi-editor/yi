@@ -186,6 +186,7 @@ module Yi.Buffer.Misc
   , startUpdateTransactionB
   , commitUpdateTransactionB
   , applyUpdate
+  , updateTransactionInFlightA
   , betweenB
   , decreaseFontSize
   , increaseFontSize

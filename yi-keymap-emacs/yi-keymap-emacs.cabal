@@ -19,7 +19,9 @@ library
   ghc-options: -Wall -ferror-spans
   build-depends:
       base >= 4.8 && < 5
+    , binary
     , containers
+    , data-default
     , filepath
     , Hclip
     , microlens-platform
