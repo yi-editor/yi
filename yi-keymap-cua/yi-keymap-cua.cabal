@@ -20,13 +20,20 @@ library
   build-depends:
       base >= 4.8 && < 5
     , microlens-platform
+    -- 'mtl' library needed for KillRing.hs
+    , mtl
+    -- 'Hclip', 'text', and 'transformers-base' libraries needed for Utils.hs
+    , Hclip
     , text
+    , transformers-base
     , yi-core >= 0.18
-    , yi-keymap-emacs >= 0.18
+    , yi-language >= 0.18
     , yi-rope >= 0.10
   exposed-modules:
       Yi.Config.Default.Cua
       Yi.Keymap.Cua
+      Yi.Keymap.Cua.KillRing
+      Yi.Keymap.Cua.Utils
   other-modules:
       Paths_yi_keymap_cua
   default-language: Haskell2010
