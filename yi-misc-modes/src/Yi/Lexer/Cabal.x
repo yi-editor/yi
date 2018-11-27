@@ -51,8 +51,12 @@ $nl        = [\n\r]
 @reservedid =
    GPL
   |LGPL
+  |BSD2
   |BSD3
   |BSD4
+  |BSD\-2\-Clause
+  |BSD\-3\-Clause
+  |BSD\-4\-Clause
   |PublicDomain
   |AllRightsReserved
   |OtherLicense
@@ -80,6 +84,7 @@ $nl        = [\n\r]
   |[Dd]ata\-[Dd]ir
   |[Dd]ata\-[Ff]iles
   |[Dd]efault
+  |[Dd]efault\-[Ll]anguage
   |[Dd]escription
   |[Ee]xecutable
   |[Ee]xposed
