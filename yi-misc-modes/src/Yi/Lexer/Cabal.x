@@ -50,13 +50,24 @@ $nl        = [\n\r]
 
 @reservedid =
    GPL
+  |GPL\-2
+  |GPL\-3
+  |AGPL
+  |AGPL\-3
   |LGPL
+  |LGPL\-2\.1
+  |LGPL\-3
   |BSD2
   |BSD3
   |BSD4
   |BSD\-2\-Clause
   |BSD\-3\-Clause
   |BSD\-4\-Clause
+  |MIT
+  |ISC
+  |MPL\-2\.0
+  |Apache
+  |Apache\-2\.0
   |PublicDomain
   |AllRightsReserved
   |OtherLicense
