@@ -28,6 +28,7 @@ module Yi.Types where
 
 import           Control.Concurrent             (MVar, modifyMVar, modifyMVar_, readMVar)
 import           Control.Monad.Base             (MonadBase, liftBase)
+import qualified Control.Monad.Fail             as Fail
 import           Control.Monad.Reader
 import           Control.Monad.State.Strict
 import           Control.Monad (ap, liftM3, void, forever)
@@ -126,6 +127,9 @@ data YiVar = YiVar { yiEditor             :: !Editor
 newtype YiM a = YiM {runYiM :: ReaderT Yi IO a}
     deriving (Monad, Applicative, MonadReader Yi, MonadBase IO, Typeable, Functor)
 
+instance Fail.MonadFail YiM where
+    fail = error
+
 instance MonadState Editor YiM where
     get = yiEditor <$> (liftBase . readMVar =<< yiVar <$> ask)
     put v = liftBase . flip modifyMVar_ (\x -> return $ x {yiEditor = v}) =<< yiVar <$> ask
@@ -170,6 +174,9 @@ newtype BufferM a = BufferM { fromBufferM :: ReaderT Window (State FBuffer) a }
     deriving ( Monad, Functor, Typeable
              , MonadState FBuffer
              , MonadReader Window )
+
+instance Fail.MonadFail BufferM where
+    fail = error
 
 -- | Currently duplicates some of Vim's indent settings. Allowing a
 -- buffer to specify settings that are more dynamic, perhaps via
@@ -357,6 +364,9 @@ data Editor = Editor
 newtype EditorM a = EditorM {fromEditorM :: ReaderT Config (State Editor) a}
     deriving (Monad, Applicative, MonadState Editor,
               MonadReader Config, Functor, Typeable)
+
+instance Fail.MonadFail EditorM where
+    fail = error
 
 instance MonadEditor EditorM where
     askCfg = ask

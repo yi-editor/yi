@@ -68,6 +68,7 @@ module Yi.Interact
      accepted
     ) where
 
+import qualified Control.Monad.Fail   as Fail
 import           Control.Applicative (Alternative ((<|>), empty))
 import           Control.Arrow       (first)
 import           Lens.Micro.Platform          (_1, _2, view)
@@ -80,7 +81,7 @@ import qualified Data.Text           as T (Text, append, pack)
 -- Classes
 
 -- | Abstraction of monadic interactive processes
-class (Eq w, Monad m, Alternative m, Applicative m, MonadPlus m) => MonadInteract m w e | m -> w e where
+class (Eq w, Monad m, Alternative m, Applicative m, MonadPlus m,Fail.MonadFail m) => MonadInteract m w e | m -> w e where
     write :: w -> m ()
     -- ^ Outputs a result.
     eventBounds :: Ord e => Maybe e -> Maybe e -> m e
@@ -124,9 +125,12 @@ instance Alternative (I ev w) where
     empty = Fails
     (<|>) = Plus
 
+instance Fail.MonadFail (I event w) where
+  fail _  = Fails
+
 instance Monad (I event w) where
   return  = Returns
-  fail _  = Fails
+  fail    = Fail.fail
   (>>=)   = Binds
 
 instance Eq w => MonadPlus (I event w) where
