@@ -28,8 +28,10 @@ getRectangle :: BufferM (Region, Int, Int)
 getRectangle = do
     r <- getSelectRegionB
     extR <- unitWiseRegion Line r
-    [lowCol,highCol] <- sort <$> mapM colOf [regionStart r, regionEnd r]
+    (lowCol,highCol) <- curry sortTuple <$> colOf (regionStart r) <*> colOf (regionEnd r)
     return (extR, lowCol, highCol)
+  where
+      sortTuple (a,b) = if a < b then (a,b) else (b,a)
 
 -- | Split text at the boundaries given
 multiSplit :: [Int] -> R.YiString -> [R.YiString]
