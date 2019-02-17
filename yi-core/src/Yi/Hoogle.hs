@@ -80,10 +80,12 @@ hoogle = do
       wordRegion <- regionOfB unitWord
       word <- readRegionB wordRegion
       return (wordRegion, word)
-    ((modl,fun):_) <- io $ hoogleFunModule word
-
-    withCurrentBuffer $ replaceRegionB wordRegion fun
-    return modl
+    funMods <- io $ hoogleFunModule word
+    case funMods of
+      ((modl,fun):_) -> do
+        withCurrentBuffer $ replaceRegionB wordRegion fun
+        return modl
+      _ -> error "hoogle search failed"
 
 -- | Call out to 'hoogleRaw', and print inside the Minibuffer the results of
 -- searching Hoogle with the word at point.
