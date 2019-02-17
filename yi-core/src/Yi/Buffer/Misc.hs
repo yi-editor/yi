@@ -449,9 +449,10 @@ runBufferFull w b f =
                          MarkSet { insMark = MarkValue 0 Forward,
                                    selMark = MarkValue 0 Backward, -- sel
                                    fromMark = MarkValue 0 Backward } -- from
-                    else do
-                        Just mrks  <- uses winMarksA (M.lookup $ wkey (b ^. lastActiveWindowA))
-                        forM mrks getMarkValueB
+                    else uses winMarksA (M.lookup $ wkey (b ^. lastActiveWindowA))
+                         >>= \case
+                           Just mrks -> forM mrks getMarkValueB
+                           Nothing -> error "runBufferFull: no marks from previous window"
                 newMrks <- forM newMarkValues newMarkB
                 winMarksA %= M.insert (wkey w) newMrks
             lastActiveWindowA .= w
@@ -869,9 +870,10 @@ getInsMark :: BufferM Mark
 getInsMark = insMark <$> askMarks
 
 askMarks :: BufferM WinMarks
-askMarks = do
-  Just !ms <- getMarks =<< ask
-  return ms
+askMarks =
+  ask >>= getMarks >>= \case
+    Just !ms -> return ms
+    Nothing -> error "askMarks failed"
 
 getMarkB :: Maybe String -> BufferM Mark
 getMarkB m = do
