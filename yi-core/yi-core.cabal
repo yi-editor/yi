@@ -137,6 +137,7 @@ library
       System.CanonicalizePath
       Yi.Buffer.Implementation
   default-language: Haskell2010
+  default-extensions: NoMonadFailDesugaring
 
 test-suite tasty
   type: exitcode-stdio-1.0
@@ -161,6 +162,7 @@ test-suite tasty
       Yi.Mode.CommonTests
       Yi.TagTests
   default-language: Haskell2010
+  default-extensions: NoMonadFailDesugaring
 
 benchmark all
   type: exitcode-stdio-1.0
@@ -175,3 +177,4 @@ benchmark all
     , criterion
     , deepseq
   default-language: Haskell2010
+  default-extensions: NoMonadFailDesugaring
