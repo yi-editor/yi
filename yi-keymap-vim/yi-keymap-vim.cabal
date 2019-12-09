@@ -125,7 +125,6 @@ library
       Yi.Keymap.Vim.Ex.Commands.Stack
       Yi.Keymap.Vim.Substitution
       Paths_yi_keymap_vim
-  default-extensions: NoMonadFailDesugaring
   default-language: Haskell2010
 
 test-suite spec
@@ -166,5 +165,4 @@ test-suite spec
       Vim.TestExCommandParsers
       Vim.TestPureBufferManipulations
       Vim.TestPureEditorManipulations
-  default-extensions: NoMonadFailDesugaring
   default-language: Haskell2010

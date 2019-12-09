@@ -39,4 +39,3 @@ library
   other-modules:
       Paths_yi_keymap_emacs
   default-language: Haskell2010
-  default-extensions: NoMonadFailDesugaring

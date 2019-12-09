@@ -46,4 +46,3 @@ library
   other-modules:
       Paths_yi_mode_javascript
   default-language: Haskell2010
-  default-extensions: NoMonadFailDesugaring
