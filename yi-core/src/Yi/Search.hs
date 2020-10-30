@@ -298,10 +298,12 @@ isearchDelE = do
     _ -> return () -- if the searched string is empty, don't try to remove chars from it.
 
 isearchHistory :: Int -> EditorM ()
-isearchHistory delta = do
-  Isearch ((current,_p0,_dir):_) <- getEditorDyn
-  h <- historyMoveGen iSearch delta (return current)
-  isearchFunE (const h)
+isearchHistory delta =
+  getEditorDyn >>= \case
+    Isearch ((current,_p0,_dir):_) -> do
+      h <- historyMoveGen iSearch delta (return current)
+      isearchFunE (const h)
+    _ -> error "isearchHistory: invalid isearch state encountered"
 
 isearchPrevE :: EditorM ()
 isearchPrevE = isearchNext0 Backward
@@ -310,34 +312,37 @@ isearchNextE :: EditorM ()
 isearchNextE = isearchNext0 Forward
 
 isearchNext0 :: Direction -> EditorM ()
-isearchNext0 newDir = do
-  Isearch ((current,_p0,_dir):_rest) <- getEditorDyn
-  if T.null current
-    then isearchHistory 1
-    else isearchNext newDir
-
+isearchNext0 newDir =
+  getEditorDyn >>= \case
+    Isearch ((current,_p0,_dir):_rest) ->
+      if T.null current
+        then isearchHistory 1
+        else isearchNext newDir
+    _ -> error "isearchNext0: invalid isearch state encountered"
 
 isearchNext :: Direction -> EditorM ()
-isearchNext direction = do
-  Isearch ((current, p0, _dir) : rest) <- getEditorDyn
-  withCurrentBuffer $ moveTo (regionStart p0 + startOfs)
-  mp <- withCurrentBuffer $
-    regexB direction (makeISearch current)
-  case mp of
-    [] -> do
-      endPoint <- withCurrentBuffer $ do
-              moveTo (regionEnd p0) -- revert to offset we were before.
-              sizeB
-      printMsg "isearch: end of document reached"
-      let wrappedOfs = case direction of
-                         Forward -> mkRegion 0 0
-                         Backward -> mkRegion endPoint endPoint
-      putEditorDyn $ Isearch ((current,wrappedOfs,direction):rest) -- prepare to wrap around.
-    (p:_) -> do
-      withCurrentBuffer $
-        moveTo (regionEnd p)
-      printMsg $ "I-search: " <> current
-      putEditorDyn $ Isearch ((current,p,direction):rest)
+isearchNext direction =
+  getEditorDyn >>= \case
+    Isearch ((current, p0, _dir) : rest) -> do
+      withCurrentBuffer $ moveTo (regionStart p0 + startOfs)
+      mp <- withCurrentBuffer $
+        regexB direction (makeISearch current)
+      case mp of
+        [] -> do
+          endPoint <- withCurrentBuffer $ do
+                  moveTo (regionEnd p0) -- revert to offset we were before.
+                  sizeB
+          printMsg "isearch: end of document reached"
+          let wrappedOfs = case direction of
+                             Forward -> mkRegion 0 0
+                             Backward -> mkRegion endPoint endPoint
+          putEditorDyn $ Isearch ((current,wrappedOfs,direction):rest) -- prepare to wrap around.
+        (p:_) -> do
+          withCurrentBuffer $
+            moveTo (regionEnd p)
+          printMsg $ "I-search: " <> current
+          putEditorDyn $ Isearch ((current,p,direction):rest)
+    _ -> error "isearchNext: invalid isearch state encountered"
  where startOfs = case direction of
                       Forward  ->  1
                       Backward -> -1
