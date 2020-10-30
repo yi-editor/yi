@@ -5,7 +5,7 @@ packages:
 - yi-core
 - yi-dynamic-configuration
 - yi-frontend-vty
-# - yi-frontend-pango
+- yi-frontend-pango
 - yi-fuzzy-open
 - yi-keymap-cua
 - yi-keymap-emacs
@@ -18,10 +18,22 @@ packages:
 - yi-language
 - yi-snippet
 - yi
-resolver: lts-11.12
+resolver: lts-14.0
 build:
  library-profiling: false
  executable-profiling: false
+
+extra-deps:
+  - Cabal-2.2.0.1@sha256:2a80d8fb655474f0eaeb20434c47f64f84e6302e55973056f00df8ca050b9683
+  - Hclip-3.0.0.4@sha256:df341c936594465df25c3b9f93f6ebe3110a36d64a51dbbd1dbd557394bbdba4
+  - cairo-0.13.6.1@sha256:6ec483dc48865d55e903aacb8740aee2d4831b8c0f34eebbf7a323edafdabb37
+  - glib-0.13.7.1@sha256:b517bbbc46f8bd72a8c97fb1d6769705a9b0d006f7cff8b3dc85948511817b11
+  - gtk2hs-buildtools-0.13.5.4@sha256:0f18b0103fa7a3cbc28edc6a97bdaf08e1f9bd273ef26d2ad498630ec6d0ac9c
+  - pango-0.13.6.1@sha256:177c9b6d865dc8f1634742497c6807a7c37a11e86c0dc93fbc047981d546738a
+  - containers-0.5.11.0@sha256:28ad7337057442f75bc689315ab4ec7bdf5e6b2c39668f306672cecd82c02798
+  - gtk-0.15.3@sha256:f13f386b7b5f2c2c1b9ab4114d9f4577b49f376b3dbfe7100d235b04d01d294a
+  - gio-0.13.6.1@sha256:88871471178082e6aa81199c8cae3b2b3f5dbfd6ad4c83ec48c0779fbee361e8
+
 
 # needed for macOS
 # flags:

@@ -19,7 +19,7 @@ flag emacs
   default: True
 
 flag pango
-  description: Include the pango (GUI) frontend, this flag is ignored if compiling with ghc >= 8.2
+  description: Include the pango (GUI) frontend, this flag is ignored if compiling with ghc 8.2
   manual: True
   default: True
 
@@ -52,7 +52,7 @@ executable yi
     cpp-options: -DVTY
     build-depends:
         yi-frontend-vty >= 0.18
-  if flag(pango) && impl(ghc < 8.2)
+  if flag(pango) && !impl(ghc == 8.2.*)
     cpp-options: -DPANGO
     build-depends:
         yi-frontend-pango >= 0.18

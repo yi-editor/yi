@@ -25,7 +25,7 @@ library
     , containers
     , filepath
     , glib  >= 0.13 && < 0.14
-    , gtk >= 0.13 && < 0.15
+    , gtk >= 0.15 && < 0.16
     , microlens-platform
     , mtl
     , oo-prototypes

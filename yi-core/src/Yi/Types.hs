@@ -28,6 +28,7 @@ module Yi.Types where
 
 import           Control.Concurrent             (MVar, modifyMVar, modifyMVar_, readMVar)
 import           Control.Monad.Base             (MonadBase, liftBase)
+import qualified Control.Monad.Fail             as Fail
 import           Control.Monad.Reader
 import           Control.Monad.State.Strict
 import           Control.Monad (ap, liftM3, void, forever)
@@ -137,6 +138,8 @@ instance MonadEditor YiM where
       cfg <- asks yiConfig
       liftBase $ unsafeWithEditor cfg r f
 
+instance Fail.MonadFail YiM where
+    fail = withEditor . fail
 
 unsafeWithEditor :: Config -> MVar YiVar -> EditorM a -> IO a
 unsafeWithEditor cfg r f = modifyMVar r $ \var -> do
@@ -183,6 +186,10 @@ data IndentSettings = IndentSettings
 instance Applicative BufferM where
     pure = return
     (<*>) = ap
+
+-- | Needed to write functions generic over BufferM and YiM that can fail
+instance Fail.MonadFail BufferM where
+    fail = error
 
 data FBuffer = forall syntax.
         FBuffer { bmode  :: !(Mode syntax)
@@ -361,6 +368,9 @@ newtype EditorM a = EditorM {fromEditorM :: ReaderT Config (State Editor) a}
 instance MonadEditor EditorM where
     askCfg = ask
     withEditor = id
+
+instance Fail.MonadFail EditorM where
+    fail = pure . error
 
 class (Monad m, MonadState Editor m) => MonadEditor m where
   askCfg :: m Config
