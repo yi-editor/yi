@@ -126,8 +126,10 @@ instance Alternative (I ev w) where
 
 instance Monad (I event w) where
   return  = Returns
-  fail _  = Fails
   (>>=)   = Binds
+
+instance MonadFail (I event w) where
+  fail _  = Fails
 
 instance Eq w => MonadPlus (I event w) where
   mzero = Fails
@@ -294,7 +296,7 @@ instance (Show w, Show ev) => Show (P ev w) where
 
 -- ---------------------------------------------------------------------------
 -- Derived operations
-oneOf :: (Ord event, MonadInteract m w event) => [event] -> m event
+oneOf :: (Ord event, MonadInteract m w event, MonadFail m) => [event] -> m event
 oneOf s = choice $ map event s
 
 anyEvent :: (Ord event, MonadInteract m w event) => m event
@@ -311,7 +313,7 @@ events :: (Ord event, MonadInteract m w event) => [event] -> m [event]
 -- ^ Parses and returns the specified list of events (lazily).
 events = mapM event
 
-choice :: (MonadInteract m w e) => [m a] -> m a
+choice :: (MonadInteract m w e, MonadFail m) => [m a] -> m a
 -- ^ Combines all parsers in the specified list.
 choice []     = fail "No choice succeeds"
 choice [p]    = p

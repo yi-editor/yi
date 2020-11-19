@@ -124,7 +124,7 @@ data YiVar = YiVar { yiEditor             :: !Editor
 -- TODO: doc how these are actually user-bindable
 -- are they?
 newtype YiM a = YiM {runYiM :: ReaderT Yi IO a}
-    deriving (Monad, Applicative, MonadReader Yi, MonadBase IO, Typeable, Functor)
+    deriving (Monad, Applicative, MonadReader Yi, MonadBase IO, Typeable, Functor, MonadFail)
 
 instance MonadState Editor YiM where
     get = yiEditor <$> (liftBase . readMVar =<< yiVar <$> ask)
@@ -170,6 +170,9 @@ newtype BufferM a = BufferM { fromBufferM :: ReaderT Window (State FBuffer) a }
     deriving ( Monad, Functor, Typeable
              , MonadState FBuffer
              , MonadReader Window )
+
+instance MonadFail BufferM where
+   fail = error
 
 -- | Currently duplicates some of Vim's indent settings. Allowing a
 -- buffer to specify settings that are more dynamic, perhaps via
@@ -361,6 +364,9 @@ newtype EditorM a = EditorM {fromEditorM :: ReaderT Config (State Editor) a}
 instance MonadEditor EditorM where
     askCfg = ask
     withEditor = id
+
+instance MonadFail EditorM where
+   fail = error
 
 class (Monad m, MonadState Editor m) => MonadEditor m where
   askCfg :: m Config

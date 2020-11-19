@@ -85,7 +85,9 @@ fromList (x:xs)
         (hasParent, rest) -> over unCompletionTree (M.insert parent (fromList $
            map (fromJust . LL.stripPrefix parent) hasParent)) $ fromList rest
       -- A parent is the prefix and the children are the items with the parent as prefix
-      where childrenIn list parent = length $ filter (parent `LL.isPrefixOf`) list
+      where
+        childrenIn :: (ListLike a i, Eq i) => [a] -> a -> Int
+        childrenIn list parent = length $ filter (parent `LL.isPrefixOf`) list
 
 -- | The largest element of a non-empty structure with respect to the
 -- given comparison function, Nothing if there are multiple 'largest' elements.
@@ -178,6 +180,7 @@ toList ct
   | mempty == ct = []
   | otherwise = toList' ct
   where
+    toList' :: (Ord a, ListLike a i) => CompletionTree a -> [a]
     toList' (CompletionTree ct')
       | M.null ct' = [mempty]
       | otherwise = concat $ M.elems $ M.mapWithKey (\k v -> map (k `LL.append`) $ toList' v) ct'
