@@ -1,4 +1,5 @@
 {-# LANGUAGE FlexibleContexts  #-}
+{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# OPTIONS_HADDOCK show-extensions #-}
 
@@ -33,7 +34,7 @@ import Yi.Event      (Event (..), Key (..), Modifier (..), eventToChar, prettyEv
 import Yi.Interact   hiding (write)
 import Yi.Keymap     (Action, KeymapM, YiAction, write)
 
-printableChar :: (MonadInteract m w Event) => m Char
+printableChar :: (MonadFail m, MonadInteract m w Event) => m Char
 printableChar = do
   Event (KASCII c) [] <- anyEvent
   unless (isPrint c) $
@@ -50,7 +51,7 @@ textChar = do
 pString :: (MonadInteract m w Event) => String -> m [Event]
 pString = events . map char
 
-charOf :: (MonadInteract m w Event) => (Event -> Event) -> Char -> Char -> m Char
+charOf :: (MonadFail m, MonadInteract m w Event) => (Event -> Event) -> Char -> Char -> m Char
 charOf modifier l h =
     do Event (KASCII c) _ <- eventBetween (modifier $ char l) (modifier $ char h)
        return c
@@ -84,7 +85,7 @@ hyperCh :: Char -> Event
 hyperCh = hyper . char
 
 -- | @optMod f ev@ produces a 'MonadInteract' that consumes @ev@ or @f ev@
-optMod ::(MonadInteract m w Event) => (Event -> Event) -> Event -> m Event
+optMod ::(MonadFail m, MonadInteract m w Event) => (Event -> Event) -> Event -> m Event
 optMod f ev = oneOf [ev, f ev]
 
 -- | Convert a special key into an event

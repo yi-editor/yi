@@ -1,6 +1,3 @@
-**This software is no longer maintained. See [#1144](https://github.com/yi-editor/yi/issues/1114).**
-
-
 # Yi
 
 [![Travis](https://travis-ci.org/yi-editor/yi.svg?branch=master)](https://travis-ci.org/yi-editor/yi)

@@ -182,6 +182,8 @@ instance Alternative (Parser s) where
 instance Monad (Parser s) where
     (>>=) = Bind
     return = pure
+
+instance MonadFail (Parser s) where
     fail _message = Empt
 
 toQ :: Parser s a -> forall h r. ((h,a) -> Steps s r)  -> h -> Steps s r
