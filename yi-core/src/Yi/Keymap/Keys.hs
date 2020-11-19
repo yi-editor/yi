@@ -1,5 +1,4 @@
 {-# LANGUAGE FlexibleContexts  #-}
-{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# OPTIONS_HADDOCK show-extensions #-}
 
