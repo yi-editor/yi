@@ -124,8 +124,8 @@ do_args ignoreUnknown cfg args = let options = customOptions cfg ++ builtinOptio
         (os, [], [], []) -> handle options os
         (os, _, u:us, []) -> if ignoreUnknown
                                     then handle options os
-                                    else fail $ "unknown arguments: " ++ intercalate ", " (u:us)
-        (_os, _ex, _ey, errs) -> fail (concat errs)
+                                    else Prelude.error $ "unknown arguments: " ++ intercalate ", " (u:us)
+        (_os, _ex, _ey, errs) -> Prelude.error (concat errs)
     where
         shouldOpenInTabs = ("--" ++ openInTabsLong) `elem` args
                          || ('-':[openInTabsShort]) `elem` args
@@ -135,13 +135,13 @@ do_args ignoreUnknown cfg args = let options = customOptions cfg ++ builtinOptio
 getConfig :: [OptDescr Opts] -> Bool -> (Config, ConsoleConfig) -> Opts -> Either OptionError (Config, ConsoleConfig)
 getConfig options shouldOpenInTabs (cfg, cfgcon) opt =
     case opt of
-      Frontend _    -> fail "Panic: frontend not found"
+      Frontend _    -> Prelude.error "Panic: frontend not found"
       Help          -> Left $ OptionError (usage options) ExitSuccess
       Version       -> Left $ OptionError versinfo ExitSuccess
       Debug         -> return (cfg { debugMode = True }, cfgcon)
       LineNo l      -> case startActions cfg of
                          x : xs -> return (cfg { startActions = x:makeAction (gotoLn (read l)):xs }, cfgcon)
-                         []     -> fail "The `-l' option must come after a file argument"
+                         []     -> Prelude.error "The `-l' option must come after a file argument"
 
       File filename -> if shouldOpenInTabs && not (null (startActions cfg)) then
                          prependActions [YiA $ openNewFile filename, EditorA newTabE]
@@ -150,7 +150,7 @@ getConfig options shouldOpenInTabs (cfg, cfgcon) opt =
 
       EditorNm emul -> case lookup (fmap toLower emul) editors of
              Just modifyCfg -> return (modifyCfg cfg, cfgcon)
-             Nothing -> fail $ "Unknown emulation: " ++ show emul
+             Nothing -> Prelude.error $ "Unknown emulation: " ++ show emul
       GhcOption ghcOpt -> return (cfg, cfgcon { ghcOptions = ghcOptions cfgcon ++ [ghcOpt] })
       ConfigFile f -> return (cfg, cfgcon { userConfigDir = return f })
       CustomNoArg o -> do
