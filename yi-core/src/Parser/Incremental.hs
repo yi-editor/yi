@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP                 #-}
 {-# LANGUAGE GADTs               #-}
 {-# LANGUAGE RankNTypes          #-}
 {-# LANGUAGE ScopedTypeVariables #-}
@@ -20,6 +21,7 @@ module Parser.Incremental (Process,
 
 import Control.Arrow       (first, second, (***))
 import Control.Applicative (Alternative ((<|>), empty))
+import qualified Control.Monad.Fail as Fail
 import Data.Tree           (Tree (Node))
 
 data a :< b = (:<) {top :: a, _rest :: b}
@@ -182,8 +184,11 @@ instance Alternative (Parser s) where
 instance Monad (Parser s) where
     (>>=) = Bind
     return = pure
+#if (!MIN_VERSION_base(4,13,0))
+    fail _message = Empt
+#endif
 
-instance MonadFail (Parser s) where
+instance Fail.MonadFail (Parser s) where
     fail _message = Empt
 
 toQ :: Parser s a -> forall h r. ((h,a) -> Steps s r)  -> h -> Steps s r

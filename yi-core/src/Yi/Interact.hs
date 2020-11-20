@@ -71,6 +71,7 @@ module Yi.Interact
 import           Control.Applicative (Alternative ((<|>), empty))
 import           Control.Arrow       (first)
 import           Lens.Micro.Platform          (_1, _2, view)
+import qualified Control.Monad.Fail as Fail
 import           Control.Monad.State (MonadPlus (..), MonadTrans (lift), StateT)
 import           Data.Function       (on)
 import           Data.List           (groupBy)
@@ -127,8 +128,11 @@ instance Alternative (I ev w) where
 instance Monad (I event w) where
   return  = Returns
   (>>=)   = Binds
+#if (!MIN_VERSION_base(4,13,0))
+  fail _ = Fails
+#endif
 
-instance MonadFail (I event w) where
+instance Fail.MonadFail (I event w) where
   fail _  = Fails
 
 instance Eq w => MonadPlus (I event w) where
@@ -296,7 +300,7 @@ instance (Show w, Show ev) => Show (P ev w) where
 
 -- ---------------------------------------------------------------------------
 -- Derived operations
-oneOf :: (Ord event, MonadInteract m w event, MonadFail m) => [event] -> m event
+oneOf :: (Ord event, MonadInteract m w event, Fail.MonadFail m) => [event] -> m event
 oneOf s = choice $ map event s
 
 anyEvent :: (Ord event, MonadInteract m w event) => m event
@@ -313,7 +317,7 @@ events :: (Ord event, MonadInteract m w event) => [event] -> m [event]
 -- ^ Parses and returns the specified list of events (lazily).
 events = mapM event
 
-choice :: (MonadInteract m w e, MonadFail m) => [m a] -> m a
+choice :: (MonadInteract m w e, Fail.MonadFail m) => [m a] -> m a
 -- ^ Combines all parsers in the specified list.
 choice []     = fail "No choice succeeds"
 choice [p]    = p

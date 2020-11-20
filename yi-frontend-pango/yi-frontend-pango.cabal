@@ -1,5 +1,5 @@
 name:           yi-frontend-pango
-version:        0.19.0
+version:        0.19.1
 synopsis:       Pango frontend for Yi editor
 category:       Yi
 homepage:       https://github.com/yi-editor/yi#readme
@@ -25,7 +25,7 @@ library
     , containers
     , filepath
     , glib  >= 0.13 && < 0.14
-    , gtk >= 0.13 && < 0.15
+    , gtk >= 0.13 && < 0.16
     , microlens-platform
     , mtl
     , oo-prototypes

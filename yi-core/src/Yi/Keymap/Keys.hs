@@ -26,6 +26,7 @@ module Yi.Keymap.Keys
 import Prelude       hiding (error)
 
 import Control.Monad (unless)
+import qualified Control.Monad.Fail as Fail
 import Data.Char     (isAlpha, isPrint, toUpper)
 import Data.List     (nub, sort)
 import Yi.Debug      (error)
@@ -33,7 +34,7 @@ import Yi.Event      (Event (..), Key (..), Modifier (..), eventToChar, prettyEv
 import Yi.Interact   hiding (write)
 import Yi.Keymap     (Action, KeymapM, YiAction, write)
 
-printableChar :: (MonadFail m, MonadInteract m w Event) => m Char
+printableChar :: (Fail.MonadFail m, MonadInteract m w Event) => m Char
 printableChar = do
   Event (KASCII c) [] <- anyEvent
   unless (isPrint c) $
@@ -50,7 +51,7 @@ textChar = do
 pString :: (MonadInteract m w Event) => String -> m [Event]
 pString = events . map char
 
-charOf :: (MonadFail m, MonadInteract m w Event) => (Event -> Event) -> Char -> Char -> m Char
+charOf :: (Fail.MonadFail m, MonadInteract m w Event) => (Event -> Event) -> Char -> Char -> m Char
 charOf modifier l h =
     do Event (KASCII c) _ <- eventBetween (modifier $ char l) (modifier $ char h)
        return c
@@ -84,7 +85,7 @@ hyperCh :: Char -> Event
 hyperCh = hyper . char
 
 -- | @optMod f ev@ produces a 'MonadInteract' that consumes @ev@ or @f ev@
-optMod ::(MonadFail m, MonadInteract m w Event) => (Event -> Event) -> Event -> m Event
+optMod ::(Fail.MonadFail m, MonadInteract m w Event) => (Event -> Event) -> Event -> m Event
 optMod f ev = oneOf [ev, f ev]
 
 -- | Convert a special key into an event
