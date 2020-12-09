@@ -15,7 +15,7 @@ module Yi.Modes (cMode, objectiveCMode, cppMode, cabalMode,  clojureMode,
                  srmcMode, ocamlMode, ottMode, gnuMakeMode,
                  perlMode, pythonMode, javaMode, jsonMode, anyExtension,
                  svnCommitMode, whitespaceMode,
-                 gitCommitMode, rubyMode
+                 gitCommitMode, rubyMode, markdownMode
                 ) where
 
 import           Lens.Micro.Platform          ((%~), (&), (.~))
@@ -32,6 +32,7 @@ import qualified Yi.Lexer.GitCommit   as GitCommit (Token, lexer)
 import qualified Yi.Lexer.GNUMake     as GNUMake (lexer)
 import qualified Yi.Lexer.Java        as Java (lexer)
 import qualified Yi.Lexer.JSON        as JSON (lexer)
+import qualified Yi.Lexer.Markdown    as Markdown (lexer)
 import qualified Yi.Lexer.ObjectiveC  as ObjectiveC (lexer)
 import qualified Yi.Lexer.OCaml       as OCaml (Token, lexer)
 import qualified Yi.Lexer.Ott         as Ott (lexer)
@@ -137,6 +138,11 @@ gnuMakeMode = styleMode GNUMake.lexer
               matches "makefile"    = True
               matches "GNUmakefile" = True
               matches filename      = extensionMatches [ "mk" ] filename
+
+markdownMode :: TokenBasedMode StyleName
+markdownMode = styleMode Markdown.lexer
+  & modeNameA .~ "markdown"
+  & modeAppliesA .~ anyExtension [ "md", "markdown", "mdown", "mkdn", "mdwn", "mkd" ]
 
 ottMode :: TokenBasedMode StyleName
 ottMode = styleMode Ott.lexer
