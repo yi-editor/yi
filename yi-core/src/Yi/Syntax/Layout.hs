@@ -70,7 +70,7 @@ layoutHandler isSpecial parens isIgnored (openT, closeT, nextT) isGroupOpen lexS
 
           parse :: IState t -> [(AlexState lexState, Tok t)] -> [(State t lexState, Tok t)]
           parse iSt@(IState levels doOpen lastLine)
-                toks@((aSt, tok @ Tok {tokPosn = Posn _nextOfs line col}) : tokss)
+                toks@((aSt, tok@Tok {tokPosn = Posn _nextOfs line col}) : tokss)
 
             -- ignore this token
             | isIgnored tok

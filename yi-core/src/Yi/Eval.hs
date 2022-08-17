@@ -121,28 +121,6 @@ infixl 1 <&>
 a <&> f = f <$> a
 -- TODO: should we be sticking Text here?
 
--- | Runs the action, as written by the user.
---
--- The behaviour of this function can be customised by modifying the
--- 'Evaluator' variable.
-execEditorAction :: String -> YiM ()
-execEditorAction = runHook execEditorActionImpl
-
--- | Lists the action names in scope, for use by 'execEditorAction',
--- and 'help' index.
---
--- The behaviour of this function can be customised by modifying the
--- 'Evaluator' variable.
-getAllNamesInScope :: YiM [String]
-getAllNamesInScope = runHook getAllNamesInScopeImpl
-
--- | Describes the named action in scope, for use by 'help'.
---
--- The behaviour of this function can be customised by modifying the
--- 'Evaluator' variable.
-describeNamedAction :: String -> YiM String
-describeNamedAction = runHook describeNamedActionImpl
-
 -- | Config variable for customising the behaviour of
 -- 'execEditorAction' and 'getAllNamesInScope'.
 --
@@ -156,11 +134,6 @@ data Evaluator = Evaluator
   , describeNamedActionImpl :: String -> YiM String
     -- ^ describe named action (or at least its type.), simplest implementation is at least @return@.
   } deriving (Typeable)
-
--- | The evaluator to use for 'execEditorAction' and
--- 'getAllNamesInScope'.
-evaluator :: Field Evaluator
-evaluator = customVariable
 
 -- * Evaluator based on GHCi
 -- | Cached variable for getAllNamesInScopeImpl
@@ -413,3 +386,29 @@ instance Default Evaluator where
 #endif
 
 instance YiConfigVariable Evaluator
+-- | Runs the action, as written by the user.
+--
+-- The behaviour of this function can be customised by modifying the
+-- 'Evaluator' variable.
+execEditorAction :: String -> YiM ()
+execEditorAction = runHook execEditorActionImpl
+
+-- | Lists the action names in scope, for use by 'execEditorAction',
+-- and 'help' index.
+--
+-- The behaviour of this function can be customised by modifying the
+-- 'Evaluator' variable.
+getAllNamesInScope :: YiM [String]
+getAllNamesInScope = runHook getAllNamesInScopeImpl
+
+-- | Describes the named action in scope, for use by 'help'.
+--
+-- The behaviour of this function can be customised by modifying the
+-- 'Evaluator' variable.
+describeNamedAction :: String -> YiM String
+describeNamedAction = runHook describeNamedActionImpl
+
+-- | The evaluator to use for 'execEditorAction' and
+-- 'getAllNamesInScope'.
+evaluator :: Field Evaluator
+evaluator = customVariable
