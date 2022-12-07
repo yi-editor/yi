@@ -221,7 +221,7 @@ lastOpenBracketHint input =
   -- add one to the count. When we see an opening bracket
   -- decrease the count. If we see an opening bracket when the
   -- count is 0 we return the remaining (reversed) string
-  -- as the part of the line which preceds the last opening bracket.
+  -- as the part of the line which precedes the last opening bracket.
   -- This can then be turned into an indentation by calling 'spacingOfB'
   -- on it so that tabs are counted as tab length.
   -- NOTE: that this will work even if tab occur in the middle of the line

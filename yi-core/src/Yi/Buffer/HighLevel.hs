@@ -216,28 +216,28 @@ gotoCharacterB c dir style stopAtLineBreaks = do
     then moveTo start
     else when (style == Exclusive && b == c) moveBack
 
--- | Move to the next occurence of @c@
+-- | Move to the next occurrence of @c@
 nextCInc :: Char -> BufferM ()
 nextCInc c = gotoCharacterB c Forward Inclusive False
 
 nextCInLineInc :: Char -> BufferM ()
 nextCInLineInc c = gotoCharacterB c Forward Inclusive True
 
--- | Move to the character before the next occurence of @c@
+-- | Move to the character before the next occurrence of @c@
 nextCExc :: Char -> BufferM ()
 nextCExc c = gotoCharacterB c Forward Exclusive False
 
 nextCInLineExc :: Char -> BufferM ()
 nextCInLineExc c = gotoCharacterB c Forward Exclusive True
 
--- | Move to the previous occurence of @c@
+-- | Move to the previous occurrence of @c@
 prevCInc :: Char -> BufferM ()
 prevCInc c = gotoCharacterB c Backward Inclusive False
 
 prevCInLineInc :: Char -> BufferM ()
 prevCInLineInc c = gotoCharacterB c Backward Inclusive True
 
--- | Move to the character after the previous occurence of @c@
+-- | Move to the character after the previous occurrence of @c@
 prevCExc :: Char -> BufferM ()
 prevCExc c = gotoCharacterB c Backward Exclusive False
 
@@ -1135,7 +1135,7 @@ test3CharB = do
        | otherwise                                            -> return False
 
 -- | Characters ['a'..'f'] are part of a hex number only if preceded by 0x.
--- Test if the current occurence of ['a'..'f'] is part of a hex number.
+-- Test if the current occurrence of ['a'..'f'] is part of a hex number.
 testHexB :: BufferM Bool
 testHexB = savingPointB $ do
     untilB_ (not . isHexDigit <$> readB) (moveXorSol 1)

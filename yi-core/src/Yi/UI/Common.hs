@@ -42,7 +42,7 @@ is discussed here:
 The Yi core provides no guarantee about the OS thread from which the functions
 'layout' and 'refresh' are called from. In particular, subprocesses (e.g. compilation,
 ghci) will run 'layout' and 'refresh' from new OS threads (see @startSubprocessWatchers@
-in "Yi.Core"). The frontend must be preparaed for this: for instance, Gtk-based frontends
+in "Yi.Core"). The frontend must be prepared for this: for instance, Gtk-based frontends
 should wrap GUI updates in @postGUIAsync@.
 -}
 data UI e = UI

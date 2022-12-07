@@ -74,7 +74,7 @@ capitalizeFirst = R.withText go
         (h, hs) -> T.toUpper h <> hs
 
 -- | Remove any trailing strings matching /irs/ (input record separator)
--- from input string. Like perl's chomp(1).
+-- from input string. Like Perl's chomp(1).
 chomp :: String -> String -> String
 chomp irs st
     | irs `isSuffixOf` st

@@ -68,7 +68,7 @@ Simon Marlow said this:
  createProcess (proc cmd args){ std_out = CreatePipe,
                                 std_err = UseHandle stdout }
 
-Therefore it should be possible to simplifiy the following greatly with the new process package.
+Therefore it should be possible to simplify the following greatly with the new process package.
 
 -}
 createSubprocess :: FilePath -> [String] -> BufferRef -> IO SubprocessInfo

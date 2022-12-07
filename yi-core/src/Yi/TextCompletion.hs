@@ -70,7 +70,7 @@ instance YiVariable Completion
 resetComplete :: EditorM ()
 resetComplete = putEditorDyn (Completion [])
 
--- | Try to complete the current word with occurences found elsewhere in the
+-- | Try to complete the current word with occurrences found elsewhere in the
 -- editor. Further calls try other options.
 mkWordComplete :: YiM T.Text -- ^ Extract function
                -> (T.Text -> YiM [T.Text]) -- ^ Source function

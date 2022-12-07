@@ -328,7 +328,7 @@ runManyAfterStartup actions = initialActions %= (++ actions)
 These fields are here for completeness -- that is, to expose all the
 functionality of the "Yi.Config" module. However, most users probably
 need not use these fields, typically because they provide advanced
-functinality, or because a simpler interface for the common case is
+functionality, or because a simpler interface for the common case is
 available above.
 
 -}

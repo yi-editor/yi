@@ -119,7 +119,7 @@ feedCommand = do
   withEditor interactHistoryStart
   sendToProcess b cmd
 
--- | Send command, recieve reply
+-- | Send command, receive reply
 queryReply :: BufferRef -> String -> YiM R.YiString
 queryReply buf cmd = do
     start <- withGivenBuffer buf (botB >> pointB)
