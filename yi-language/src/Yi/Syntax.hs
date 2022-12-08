@@ -46,7 +46,7 @@ data Span a = Span {spanBegin :: !Point, spanContents :: !a, spanEnd :: !Point}
 -- the required functions, and is parametrized on the type of the internal
 -- state.
 
--- FIXME: this is actually completetly abstrcted from sytnax HL, so
+-- FIXME: this is actually completely abstracted from syntax HL, so
 -- the names are silly.
 
 data Highlighter cache syntax =
@@ -54,7 +54,7 @@ data Highlighter cache syntax =
         , hlRun :: Scanner Point Char -> Point -> cache -> cache
         , hlGetTree :: cache -> WindowRef -> syntax
         , hlFocus :: M.Map WindowRef Region -> cache -> cache
-        -- ^ focus at a given point, and return the coresponding node.
+        -- ^ focus at a given point, and return the corresponding node.
         -- (hint -- the root can always be returned, at the cost of
         -- performance.)
         }

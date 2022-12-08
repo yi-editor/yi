@@ -42,8 +42,8 @@ parseTextObject bs (c:[]) = fmap (TextObject Exclusive . ($ bs == OutsideBound))
     where mkUnit = lookup c
            [('w',  toOuter unitViWord unitViWordAnyBnd)
            ,('W',  toOuter unitViWORD unitViWORDAnyBnd)
-           ,('p',  toOuter unitEmacsParagraph unitEmacsParagraph) -- TODO inner could be inproved
-           ,('s',  toOuter unitSentence unitSentence) -- TODO inner could be inproved
+           ,('p',  toOuter unitEmacsParagraph unitEmacsParagraph) -- TODO inner could be improved
+           ,('s',  toOuter unitSentence unitSentence) -- TODO inner could be improved
            ,('"',  unitDelimited '"' '"')
            ,('`',  unitDelimited '`' '`')
            ,('\'', unitDelimited '\'' '\'')

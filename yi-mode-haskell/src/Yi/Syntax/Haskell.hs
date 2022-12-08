@@ -59,7 +59,7 @@ indentScanner = layoutHandler startsLayout [(Special '(', Special ')'),
 isBrace :: TT -> Bool
 isBrace (Tok br _ _) = Special '{' == br
 
--- | Theese are the tokens ignored by the layout handler.
+-- | These are the tokens ignored by the layout handler.
 ignoredToken :: TT -> Bool
 ignoredToken (Tok t _ (Posn{})) = isComment t || t == CppDirective
 
@@ -116,7 +116,7 @@ data Exp t
              }
       -- declaration
       -- declarations and parts of them follow
-    | Paren (PAtom t) [Exp t] (PAtom t) -- ^ A parenthesized, bracked or braced
+    | Paren (PAtom t) [Exp t] (PAtom t) -- ^ A parenthesized, bracketed or braced
     | Block [Exp t] -- ^ A block of things separated by layout
     | PAtom t [t] -- ^ An atom is a token followed by many comments
     | Expr [Exp t] -- ^
@@ -137,7 +137,7 @@ data Exp t
     | PGuard [PGuard t] -- ^ Righthandside of functions with |
       -- the PAtom in PGuard' does not contain any comments
     | PGuard' (PAtom t) (Exp t) (PAtom t)
-      -- type constructor is just a wrapper to indicate which highlightning to
+      -- type constructor is just a wrapper to indicate which highlighting to
       -- use.
     | TC (Exp t) -- ^ Type constructor
       -- data constructor same as with the TC constructor
@@ -324,7 +324,7 @@ pCAtom r c = PAtom <$> exact r <*> c
 
 pBareAtom a = pCAtom a pEmpty
 
--- | @pSepBy p sep@ parse /zero/ or more occurences of @p@, separated
+-- | @pSepBy p sep@ parse /zero/ or more occurrences of @p@, separated
 -- by @sep@, with optional ending @sep@,
 -- this is quite similar to the sepBy function provided in
 -- Parsec, but this one allows an optional extra separator at the end.
