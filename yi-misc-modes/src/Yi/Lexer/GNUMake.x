@@ -145,7 +145,7 @@ make :-
 
 -- After all the lines joined by a '\' character are appended together the text only undergoes
 -- variable expansion before being passed to the shell.
--- This means that a '#' character only indicates a comment *only* if the shell interpretting the
+-- This means that a '#' character only indicates a comment *only* if the shell interpreting the
 -- expanded text would consider it a comment. Wack huh?
 -- See 3.1
 <ruleCommand>

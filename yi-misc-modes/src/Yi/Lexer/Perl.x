@@ -172,7 +172,7 @@ perlHighlighterRules :-
 
     -- Matching regex quote-like operators are also kinda like interpolating strings.
     -- In order to prevent a / delimited regex quote from being confused with
-    -- division this only matches in the case the / is preeceded with the usual
+    -- division this only matches in the case the / is preceded with the usual
     -- context I use it.
     ^($white*)"/"
         { m (const $ HlInInterpString True "/" ) operatorStyle }
@@ -321,8 +321,8 @@ perlHighlighterRules :-
 }
 
 -- A heredoc identifier is collected until:
--- If there is no defined deliminating quote then the next non-identifier character
--- If there is a defined deliminating quote then the next character matching the specified
+-- If there is no defined delimiting quote then the next non-identifier character
+-- If there is a defined delimiting quote then the next character matching the specified
 -- character.
 -- TODO: Nested heredoc declarations
 <collectHeredocIdent>

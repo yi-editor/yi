@@ -93,7 +93,7 @@ assertNotCurrentBuffer bufref editor =
 
 
 -- | Asserts that the current buffer is the expected buffer. The output will
--- contain the expected BufferKey and the acutal BufferKey of the current buffer.
+-- contain the expected BufferKey and the actual BufferKey of the current buffer.
 assertCurrentBuffer :: BufferRef -> Editor -> Assertion
 assertCurrentBuffer bufref editor =
     assertEqual "Unexpected current buffer" bufref (currentBuffer editor)

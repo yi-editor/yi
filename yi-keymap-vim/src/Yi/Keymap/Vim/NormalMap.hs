@@ -328,7 +328,7 @@ nonrepeatableBindings = fmap (mkBindingE Normal Drop)
     , ("zt", withCurrentBuffer scrollCursorToTopB, resetCount)
     , ("zb", withCurrentBuffer scrollCursorToBottomB, resetCount)
     , ("zz", withCurrentBuffer scrollToCursorB, resetCount)
-    {- -- TODO Horizantal scrolling
+    {- -- TODO Horizontal scrolling
     , ("ze", withCurrentBuffer .., resetCount)
     , ("zs", withCurrentBuffer .., resetCount)
     , ("zH", withCurrentBuffer .., resetCount)

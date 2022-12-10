@@ -68,7 +68,7 @@ The body can be written using `do` notation::
     _ <- place "OverloadedStrings"
     lit " #-}"
 
-Avaliable primitives are:
+Available primitives are:
 
 lit <text>
   just a piece of text

@@ -411,7 +411,7 @@ visitTagTable act = do
 
 -- TODO: use TextUnit to count things inside region for better experience
 -- | Counts the number of lines, words and characters inside selected
--- region. Coresponds to emacs' @count-words-region@.
+-- region. Corresponds to emacs' @count-words-region@.
 countWordsRegion :: YiM ()
 countWordsRegion = do
   (l, w, c) <- withEditor $ do

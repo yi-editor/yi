@@ -98,7 +98,7 @@ data Color
     | Default
     -- ^ The system-default color of the engine used.
     -- e.g. in Gtk this should pick whatever the user has chosen as default color
-    -- (background or forground depending on usage) for the text.
+    -- (background or foreground depending on usage) for the text.
     deriving (Eq,Ord,Show)
 
 -- | Convert a color to its text specification, as to be accepted by XParseColor
