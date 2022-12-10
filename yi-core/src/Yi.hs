@@ -8,7 +8,7 @@
 -- Stability   :  experimental
 -- Portability :  portable
 --
--- Facade of the Yi library, for use by confguration file. Just
+-- Facade of the Yi library, for use by configuration file. Just
 -- re-exports a bunch of modules.
 --
 -- You should therefore:

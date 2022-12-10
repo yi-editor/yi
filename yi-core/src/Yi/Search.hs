@@ -351,7 +351,7 @@ isearchWordE = do
       word = T.takeWhile isAlpha rest
   isearchAddE $ prefix <> word
 
--- | Succesfully finish a search. Also see 'isearchFinishWithE'.
+-- | Successfully finish a search. Also see 'isearchFinishWithE'.
 isearchFinishE :: EditorM ()
 isearchFinishE = isearchEnd True
 
@@ -414,7 +414,7 @@ qrNext win b what = do
 qrReplaceAll :: Window -> BufferRef -> SearchExp -> R.YiString -> EditorM ()
 qrReplaceAll win b what replacement = do
   n <- withGivenBufferAndWindow win b $ do
-    exchangePointAndMarkB -- so we replace the current occurence too
+    exchangePointAndMarkB -- so we replace the current occurrence too
     searchAndRepRegion0 what replacement True =<< regionOfPartB Document Forward
   printMsg $ "Replaced " <> showT n <> " occurrences"
   qrFinish

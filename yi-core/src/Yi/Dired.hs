@@ -414,11 +414,11 @@ procDiredOp _ _ = return ()
 -- showNothing
 --
 -- 2. Confirmation is required for recursive deletion of non-empty
--- directry, but only the top level one
+-- directory, but only the top level one
 --
--- 3. Show the number of successful deletions at the end of the excution
+-- 3. Show the number of successful deletions at the end of the execution
 --
--- 4. TODO: ask confirmation for wether to remove the associated
+-- 4. TODO: ask confirmation for whether to remove the associated
 -- buffers when a file is removed
 askDelFiles :: FilePath -> [(FilePath, DiredEntry)] -> YiM ()
 askDelFiles dir fs =
@@ -1081,7 +1081,7 @@ diredCreateDir =
 
 -- | Elementary operations for dired file operations
 -- Map a dired mark operation (e.g. delete, rename, copy) command
--- into a list of DiredOps, and use procDiredOp to excute them.
+-- into a list of DiredOps, and use procDiredOp to execute them.
 -- Logic and implementation of each operation are packaged in procDiredOp
 -- See askDelFiles for example.
 -- If new elem op is added, just add corresponding procDiredOp to handle it.

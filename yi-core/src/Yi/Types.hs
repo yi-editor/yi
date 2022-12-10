@@ -214,9 +214,9 @@ data Attributes
     , undos  :: !URList -- ^ undo/redo list
     , bufferDynamic :: !DynamicState.DynamicState -- ^ dynamic components
     , preferCol :: !(Maybe Int)
-    -- ^ prefered column to arrive at when we do a lineDown / lineUp
+    -- ^ preferred column to arrive at when we do a lineDown / lineUp
     , preferVisCol :: !(Maybe Int)
-    -- ^ prefered column to arrive at visually (ie, respecting wrap)
+    -- ^ preferred column to arrive at visually (ie, respecting wrap)
     , stickyEol :: !Bool
     -- ^ stick to the end of line (used by vim bindings mostly)
     , pendingUpdates :: !(S.Seq UIUpdate)

@@ -22,12 +22,12 @@
 -- >    affecting the Redo list.
 --
 -- Now, the above assumes that commands can be _redone_ in a state other
--- than that in which it was orginally done. This is not the case in our
+-- than that in which it was originally done. This is not the case in our
 -- text editor: a user may delete, for example, between an undo and a
 -- redo. Berlage addresses this in S2.3. A Yi example:
 --
 -- >    Delete some characters
--- >    Undo partialy
+-- >    Undo partially
 -- >    Move prior in the file, and delete another _chunk_
 -- >    Redo some things  == corruption.
 --
@@ -115,7 +115,7 @@ setSavedFilePointU (URList undos redos) =
 undoU :: Mark -> URList -> BufferImpl syntax -> (BufferImpl syntax, (URList, S.Seq Update))
 undoU m = undoUntilInteractive m mempty . undoInteractive
 
--- | This redoes one iteraction step.
+-- | This redoes one interaction step.
 redoU :: Mark -> URList -> BufferImpl syntax -> (BufferImpl syntax, (URList, S.Seq Update))
 redoU = asRedo . undoU
 

@@ -459,7 +459,7 @@ getRegE = uses killringA krGet
 -- | Dynamically-extensible state components.
 --
 -- These hooks are used by keymaps to store values that result from
--- Actions (i.e. that restult from IO), as opposed to the pure values
+-- Actions (i.e. that result from IO), as opposed to the pure values
 -- they generate themselves, and can be stored internally.
 --
 -- The `dynamic' field is a type-indexed map.

@@ -170,7 +170,7 @@ instance Default NamesCache where
     def = NamesCache []
 instance YiVariable NamesCache
 
--- | Cached dictioary for describeNameImpl
+-- | Cached dictionary for describeNameImpl
 newtype HelpCache = HelpCache (M.HashMap String String) deriving (Typeable, Binary)
 
 instance Default HelpCache where

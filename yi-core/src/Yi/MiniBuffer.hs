@@ -93,7 +93,7 @@ commentRegion =
 
 -- | Open a minibuffer window with the given prompt and keymap
 -- The third argument is an action to perform after the minibuffer
--- is opened such as move to the first occurence of a searched for
+-- is opened such as move to the first occurrence of a searched for
 -- string. If you don't need this just supply @return ()@
 spawnMinibufferE :: T.Text -> KeymapEndo -> EditorM BufferRef
 spawnMinibufferE prompt kmMod = do
@@ -109,7 +109,7 @@ spawnMinibufferE prompt kmMod = do
   -- Second: The users of the minibuffer expect the window and buffer that was in
   -- focus when the minibuffer was spawned to be in focus when the minibuffer is closed
   -- Given that window focus works as follows:
-  --    - The new window is broguht into focus.
+  --    - The new window is brought into focus.
   --    - The previous window in focus is to the left of the new window in the window
   --    set list.
   --    - When a window is deleted and is in focus then the window to the left is brought

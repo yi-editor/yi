@@ -337,7 +337,7 @@ suspendEditor = withUI UI.suspend
 -- | Pipe a string through an external command, returning the stdout
 -- chomp any trailing newline (is this desirable?)
 --
--- Todo: varients with marks?
+-- Todo: variants with marks?
 --
 runProcessWithInput :: String -> String -> YiM String
 runProcessWithInput cmd inp = do

@@ -91,7 +91,7 @@ configureExit _ = return ()
 reloadProjectE :: String -> YiM ()
 reloadProjectE s = withUI $ \ui -> reloadProject ui s
 
--- | Run the given commands with args and pipe the ouput into the build buffer,
+-- | Run the given commands with args and pipe the output into the build buffer,
 -- which is shown in an other window.
 buildRun :: T.Text -> [T.Text] -> (Either SomeException ExitCode -> YiM x) -> YiM ()
 buildRun cmd args onExit = withOtherWindow $ do

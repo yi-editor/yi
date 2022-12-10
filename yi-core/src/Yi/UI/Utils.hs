@@ -49,7 +49,7 @@ spliceAnnots text (Span start x stop:anns) = l ++ zip (repeat start) x ++ splice
 -- | Turn a sequence of (from,style,to) strokes into a sequence
 --   of picture points (from,style), taking special care to
 --   ensure that the points are strictly increasing and introducing
---   padding segments where neccessary.
+--   padding segments where necessary.
 --   Precondition: Strokes are ordered and not overlapping.
 strokePicture :: [Span (Endo a)] -> [(Point,a -> a)]
 strokePicture [] = []
