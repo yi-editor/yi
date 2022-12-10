@@ -1127,7 +1127,7 @@ savingExcursionB f = do
     moveTo =<< use (markPointA m)
     return res
 
-markPointA :: Mark -> Lens' FBuffer Point
+markPointA :: forall f . Functor f => Mark -> (Point -> f Point) -> (FBuffer -> f FBuffer)
 markPointA mark = lens getter setter where
   getter b = markPoint $ getMarkValueRaw mark b
   setter b pos = modifyMarkRaw mark (\v -> v {markPoint = pos}) b

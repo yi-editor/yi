@@ -47,7 +47,7 @@ import           Data.Typeable                  (Typeable)
 import           GHC.Conc                       (labelThread)
 import qualified Graphics.Vty                   as Vty (Attr, Cursor (Cursor, NoCursor),
                                                         Config,
-                                                        Event (EvResize), Image,
+                                                        Image,
                                                         Input (_eventChannel),
                                                         Output (displayBounds),
                                                         Picture (picCursor), Vty (inputIface, outputIface, refresh, shutdown, update),
@@ -62,6 +62,7 @@ import qualified Graphics.Vty                   as Vty (Attr, Cursor (Cursor, No
                                                         vertCat, withBackColor,
                                                         withForeColor,
                                                         withStyle, (<|>))
+import qualified Graphics.Vty.Input.Events      as VtyIE (InternalEvent(..), Event (EvResize))
 import           System.Exit                    (ExitCode, exitWith)
 import           Yi.Buffer
 import           Yi.Config
@@ -143,10 +144,13 @@ start config submitEvents submitActions editor = do
         getEvent = do
           event <- atomically (readTChan inputChan)
           case event of
-            (Vty.EvResize _ _) -> do
+            (VtyIE.InputEvent (VtyIE.EvResize _ _)) -> do
                 submitActions []
                 getEvent
-            _ -> return (fromVtyEvent event)
+            (VtyIE.InputEvent ev) -> return (fromVtyEvent ev)
+            VtyIE.ResumeAfterSignal -> do
+                Vty.refresh vty
+                getEvent
 
         renderLoop :: IO ()
         renderLoop = do
