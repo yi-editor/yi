@@ -89,11 +89,13 @@ import           System.PosixCompat.Files (FileStatus, fileExist, fileGroup,
                                            readSymbolicLink, removeLink, rename,
                                            unionFileModes)
 import           System.PosixCompat.Types (FileMode, GroupID, UserID)
-import           System.PosixCompat.User  (GroupEntry, GroupEntry (..),
+#ifndef mingw32_HOST_OS
+import           System.Posix.User        (GroupEntry, GroupEntry (..),
                                            UserEntry (..), getAllGroupEntries,
                                            getAllUserEntries,
                                            getGroupEntryForID,
                                            getUserEntryForID, groupID, userID)
+#endif
 import           Text.Printf              (printf)
 import           Yi.Buffer
 import           Yi.Config                (modeTable)
@@ -665,6 +667,7 @@ diredScanDir dir = do
                 -> DiredEntries
                 -> FilePath
                 -> IO DiredEntries
+#ifndef mingw32_HOST_OS
     lineForFile d m f = do
       let fp = d </> f
       fileStatus <- getSymbolicLinkStatus fp
@@ -709,7 +712,6 @@ diredScanDir dir = do
                            , sizeInBytes = sz
                            , modificationTimeString = modTimeStr}
 
-
 -- | Needed on Mac OS X 10.4
 scanForUid :: UserID -> [UserEntry] -> UserEntry
 scanForUid uid entries = fromMaybe missingEntry $
@@ -724,6 +726,10 @@ scanForGid gid entries = fromMaybe missingEntry $
   where
     missingEntry = GroupEntry "?" mempty gid mempty
 
+#else
+    -- has been the default for Windows anyway, so just directly do it without unix-compat
+    lineForFile _ m f = return $ M.insert (R.fromString f) DiredNoInfo m
+#endif
 
 modeString :: FileMode -> R.YiString
 modeString fm = ""

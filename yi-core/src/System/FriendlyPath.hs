@@ -1,3 +1,5 @@
+{-# LANGUAGE CPP #-}
+
 module System.FriendlyPath
   ( userToCanonPath
   , expandTilda
@@ -7,7 +9,9 @@ module System.FriendlyPath
 import System.CanonicalizePath (canonicalizePath)
 import System.Directory        (getHomeDirectory)
 import System.FilePath         (isAbsolute, normalise, pathSeparator)
-import System.PosixCompat.User (getUserEntryForName, homeDirectory)
+#ifndef mingw32_HOST_OS
+import System.Posix.User (getUserEntryForName, homeDirectory)
+#endif
 
 
 -- canonicalizePath follows symlinks, and does not work if the directory does not exist.
@@ -20,10 +24,15 @@ userToCanonPath f = canonicalizePath =<< expandTilda f
 expandTilda :: String -> IO FilePath
 expandTilda ('~':path)
   | null path || (head path == pathSeparator) = (++ path) <$> getHomeDirectory
+#ifndef mingw32_HOST_OS
   -- Home directory of another user, e.g. ~root/
   | otherwise = let username = takeWhile (/= pathSeparator) path
                     dirname = drop (length username) path
                 in  (normalise . (++ dirname) . homeDirectory) <$> getUserEntryForName username
+#else
+  -- unix-compat no longer helps
+  | otherwise = ioError $ mkIOError illegalOperationErrorType "Tilda expansion only supported under Unix" Nothing Nothing
+#endif
 expandTilda path = return path
 
 -- | Is a user-friendly path absolute?
