@@ -49,7 +49,8 @@ import           Control.Applicative      ((<|>))
 import           Control.Category         ((>>>))
 import           Control.Exc              (orException, printingException)
 import           Lens.Micro.Platform      (makeLenses, use, (%~), (&), (.=), (.~), (^.))
-import           Control.Monad.Reader     (asks, foldM, unless, void, when)
+import           Control.Monad            (foldM, unless, void, when)
+import           Control.Monad.Reader     (asks)
 import qualified Data.Attoparsec.Text     as P
 import           Data.Binary              (Binary)
 import           Data.Char                (toLower)
@@ -90,11 +91,10 @@ import           System.PosixCompat.Files (FileStatus, fileExist, fileGroup,
                                            unionFileModes)
 import           System.PosixCompat.Types (FileMode, GroupID, UserID)
 #ifndef mingw32_HOST_OS
-import           System.Posix.User        (GroupEntry, GroupEntry (..),
-                                           UserEntry (..), getAllGroupEntries,
+import           System.Posix.User        (GroupEntry(..), UserEntry(..),getAllGroupEntries,
                                            getAllUserEntries,
                                            getGroupEntryForID,
-                                           getUserEntryForID, groupID, userID)
+                                           getUserEntryForID, groupID, userID, userName, groupName)
 #endif
 import           Text.Printf              (printf)
 import           Yi.Buffer

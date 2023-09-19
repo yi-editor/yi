@@ -18,10 +18,13 @@ packages:
 - yi-language
 - yi-snippet
 - yi
-resolver: lts-11.12
+resolver: lts-21.12
 build:
  library-profiling: false
  executable-profiling: false
+
+extra-deps:
+  - Hclip-3.0.0.4
 
 # needed for macOS
 # flags:

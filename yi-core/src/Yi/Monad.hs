@@ -9,9 +9,10 @@ module Yi.Monad (
                  with,
                 ) where
 
+import Control.Monad (when)
 import Control.Monad.Base   (MonadBase, liftBase)
 import Control.Monad.Reader (MonadReader, ask)
-import Control.Monad.State  (MonadState, get, gets, put, when)
+import Control.Monad.State  (MonadState, get, gets, put)
 import Lens.Micro.Platform (Getting, ASetter, (.=), use)
 
 -- | Combination of the Control.Monad.State 'modify' and 'gets'
