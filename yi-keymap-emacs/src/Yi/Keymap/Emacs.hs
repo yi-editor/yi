@@ -1,8 +1,10 @@
-{-# LANGUAGE FlexibleContexts  #-}
-{-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE TemplateHaskell   #-}
-{-# LANGUAGE TypeOperators     #-}
-{-# LANGUAGE LambdaCase        #-}
+{-# LANGUAGE FlexibleContexts           #-}
+{-# LANGUAGE OverloadedStrings          #-}
+{-# LANGUAGE TemplateHaskell            #-}
+{-# LANGUAGE TypeOperators              #-}
+{-# LANGUAGE LambdaCase                 #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE TypeApplications           #-}
 {-# OPTIONS_HADDOCK show-extensions #-}
 
 -- |
@@ -27,14 +29,18 @@ module Yi.Keymap.Emacs ( keymap
                        ) where
 
 import Control.Applicative      (Alternative ((<|>), empty, some))
-import Control.Monad            (replicateM_, unless, void)
+import Control.Monad            (replicateM_, unless, void, when)
 import Control.Monad.State      (gets)
+import Data.Binary              (Binary)
 import Data.Char                (digitToInt, isDigit)
+import Data.Default             (Default (def))
 import Data.Maybe               (fromMaybe)
 import Data.Prototype           (Proto (Proto), extractValue)
 import Data.Text                ()
-import Lens.Micro.Platform      ((.=), makeLenses, (%=))
+import Data.Typeable            (Typeable)
+import Lens.Micro.Platform      ((.=), makeLenses, (%=), use)
 import Yi.Buffer
+import Yi.Buffer.Misc           (updateTransactionInFlightA, getBufferDyn, putBufferDyn)
 import Yi.Command               (shellCommandE)
 import Yi.Core
 import Yi.Dired                 (dired)
@@ -50,12 +56,24 @@ import Yi.Mode.Buffers          (listBuffers)
 import Yi.Rectangle
 import Yi.Search                (isearchFinishWithE, resetRegexE, getRegexE)
 import Yi.TextCompletion        (resetComplete, wordComplete')
+import Yi.Types                 (YiVariable)
 
 data ModeMap = ModeMap { _eKeymap :: Keymap
                        , _completionCaseSensitive :: Bool
                        }
 
 $(makeLenses ''ModeMap)
+
+-- | Represents how many character have we inserted on a single
+--   sequence. Any number greater than 0 means `startUpdateTransactionB`
+--   has been run.
+newtype ECharCount = ECC Int
+  deriving (Binary, Typeable)
+
+instance Default ECharCount where
+  def = ECC 0
+
+instance YiVariable ECharCount
 
 keymap :: KeymapSet
 keymap = mkKeymapSet defKeymap
@@ -79,12 +97,28 @@ selfInsertKeymap univArg condition = do
   c <- printableChar
   unless (condition c) empty
   let n = argToInt univArg
-  write (replicateM_ n (insertB c))
+  write $ do
+    ECC prevCount <- getBufferDyn @_ @ECharCount
+    let newCount0 = prevCount + n
+    -- If already on a transacion does nothing
+    replicateM_ n (insertB c)
+    newCount1 <- if (newCount0 >= 20)
+                    then maybeCommitUpdate *> pure 0
+                    else pure newCount0
+    putBufferDyn (ECC newCount1)
+
+maybeCommitUpdate :: BufferM ()
+maybeCommitUpdate = do
+  transactionPresent <- use updateTransactionInFlightA
+  when transactionPresent $ do
+    putBufferDyn (ECC 0)
 
 completionKm :: Bool -> Keymap
-completionKm caseSensitive = do void $ some (meta (char '/') ?>>! wordComplete' caseSensitive)
-                                deprioritize
-                                write resetComplete
+completionKm caseSensitive = do
+  void $ some (meta (char '/') ?>>! (withCurrentBuffer maybeCommitUpdate
+                                     *> wordComplete' caseSensitive))
+  deprioritize
+  write resetComplete
            -- 'adjustPriority' is there to lift the ambiguity between "continuing" completion
            -- and resetting it (restarting at the 1st completion).
 
@@ -107,6 +141,7 @@ emacsKeys univArg =
            spec KTab            ?>>! adjIndent IncreaseCycle
          , shift (spec KTab)    ?>>! adjIndent DecreaseCycle
          , spec KEnter          ?>>! repeatingArg newlineB
+                                     *> withCurrentBuffer maybeCommitUpdate
          , spec KDel            ?>>! deleteRegionOr deleteForward
          , spec KBS             ?>>! deleteRegionOr deleteBack
          , spec KHome           ?>>! repeatingArg moveToSol
@@ -115,8 +150,10 @@ emacsKeys univArg =
          , spec KRight          ?>>! repeatingArg $ moveE Character Forward
          , spec KUp             ?>>! repeatingArg $ moveE VLine Backward
          , spec KDown           ?>>! repeatingArg $ moveE VLine Forward
-         , spec KPageDown       ?>>! repeatingArg downScreenB
-         , spec KPageUp         ?>>! repeatingArg upScreenB
+         , spec KPageDown       ?>>! withCurrentBuffer maybeCommitUpdate
+                                     *> repeatingArg downScreenB
+         , spec KPageUp         ?>>! withCurrentBuffer maybeCommitUpdate
+                                     *> repeatingArg upScreenB
 
          , shift (spec KUp)     ?>>! repeatingArg (scrollB (-1))
          , shift (spec KDown)   ?>>! repeatingArg (scrollB 1)
@@ -124,26 +161,33 @@ emacsKeys univArg =
          -- All the keybindings of the form 'Ctrl + special key'
          , ctrl (spec KLeft)    ?>>! repeatingArg prevWordB
          , ctrl (spec KRight)   ?>>! repeatingArg nextWordB
-         , ctrl (spec KHome)    ?>>! repeatingArg topB
-         , ctrl (spec KEnd)     ?>>! repeatingArg botB
+         , ctrl (spec KHome)    ?>>! withCurrentBuffer maybeCommitUpdate
+                                     *> repeatingArg topB
+         , ctrl (spec KEnd)     ?>>! withCurrentBuffer maybeCommitUpdate
+                                     *> repeatingArg botB
          , ctrl (spec KUp)      ?>>! repeatingArg (prevNParagraphs 1)
          , ctrl (spec KDown)    ?>>! repeatingArg (nextNParagraphs 1)
 
          -- All the keybindings of the form "C-c" where 'c' is some character
-         , ctrlCh '@'           ?>>! placeMark
-         , ctrlCh ' '           ?>>! placeMark
-         , ctrlCh '/'           ?>>! repeatingArg undoB
-         , ctrlCh '_'           ?>>! repeatingArg undoB
+         , ctrlCh '@'           ?>>! maybeCommitUpdate *> placeMark
+         , ctrlCh ' '           ?>>! maybeCommitUpdate *> placeMark
+         , ctrlCh '/'           ?>>! withCurrentBuffer maybeCommitUpdate
+                                     *> repeatingArg undoB
+         , ctrlCh '_'           ?>>! withCurrentBuffer maybeCommitUpdate
+                                     *> repeatingArg undoB
          , ctrlCh 'a'           ?>>! repeatingArg (maybeMoveB Line Backward)
          , ctrlCh 'b'           ?>>! repeatingArg $ moveE Character Backward
          , ctrlCh 'd'           ?>>! deleteForward
          , ctrlCh 'e'           ?>>! repeatingArg (maybeMoveB Line Forward)
          , ctrlCh 'f'           ?>>! repeatingArg $ moveE Character Forward
-         , ctrlCh 'g'           ?>>! setVisibleSelection False
+         , ctrlCh 'g'           ?>>! maybeCommitUpdate
+                                     *> setVisibleSelection False
          , ctrlCh 'h'           ?>> char 'b' ?>>! acceptedInputsOtherWindow
-         , ctrlCh 'i'           ?>>! adjIndent IncreaseOnly
+         , ctrlCh 'i'           ?>>! maybeCommitUpdate
+                                     *> adjIndent IncreaseOnly
          , ctrlCh 'j'           ?>>! newlineAndIndentB
-         , ctrlCh 'k'           ?>>! killLine univArg
+         , ctrlCh 'k'           ?>>! withCurrentBuffer maybeCommitUpdate
+                                     *> killLine univArg
          , ctrlCh 'l'           ?>>! (withCurrentBuffer scrollToCursorB >> userForceRefresh)
          , ctrlCh 'm'           ?>>! repeatingArg (insertB '\n')
          , ctrlCh 'n'           ?>>! repeatingArg (moveE VLine Forward)
@@ -154,19 +198,24 @@ emacsKeys univArg =
          , ctrlCh 's'           ?>>  isearchKeymap Forward
          , ctrlCh 't'           ?>>! repeatingArg swapB
          , ctrlCh 'v'           ?>>! scrollDownE univArg
-         , ctrlCh 'w'           ?>>! killRegion
-         , ctrlCh 'y'           ?>>! yank
+         , ctrlCh 'w'           ?>>! withCurrentBuffer maybeCommitUpdate
+                                     *> killRegion
+         , ctrlCh 'y'           ?>>! withCurrentBuffer maybeCommitUpdate
+                                     *> yank
          , ctrlCh 'z'           ?>>! suspendEditor
          , ctrlCh '+'           ?>>! repeatingArg (increaseFontSize 1)
          , ctrlCh '-'           ?>>! repeatingArg (decreaseFontSize 1)
 
          -- All the keybindings of the form "C-M-c" where 'c' is some character
-         , ctrl (metaCh 'w')    ?>>! appendNextKillE
+         , ctrl (metaCh 'w')    ?>>! withCurrentBuffer maybeCommitUpdate
+                                     *> appendNextKillE
          , ctrl (metaCh ' ')    ?>>! layoutManagersNextE
          , ctrl (metaCh ',')    ?>>! layoutManagerNextVariantE
          , ctrl (metaCh '.')    ?>>! layoutManagerPreviousVariantE
-         , ctrl (metaCh 'j')    ?>>! nextWinE
-         , ctrl (metaCh 'k')    ?>>! prevWinE
+         , ctrl (metaCh 'j')    ?>>! withCurrentBuffer maybeCommitUpdate
+                                     *> nextWinE
+         , ctrl (metaCh 'k')    ?>>! withCurrentBuffer maybeCommitUpdate
+                                     *> prevWinE
          , ctrl (meta $ spec KEnter) ?>>! swapWinWithFirstE
 
 
@@ -184,38 +233,55 @@ emacsKeys univArg =
          -- All The key-bindings of the form M-c where 'c' is some character.
          , metaCh ' '           ?>>! justOneSep univArg
          , metaCh 'v'           ?>>! scrollUpE univArg
-         , metaCh '!'           ?>>! shellCommandE
-         , metaCh '<'           ?>>! repeatingArg topB
-         , metaCh '>'           ?>>! repeatingArg botB
-         , metaCh '%'           ?>>! queryReplaceE
+         , metaCh '!'           ?>>! withCurrentBuffer maybeCommitUpdate
+                                     *> shellCommandE
+         , metaCh '<'           ?>>! withCurrentBuffer maybeCommitUpdate
+                                     *> repeatingArg topB
+         , metaCh '>'           ?>>! withCurrentBuffer maybeCommitUpdate
+                                     *> repeatingArg botB
+         , metaCh '%'           ?>>! withCurrentBuffer maybeCommitUpdate
+                                     *> queryReplaceE
          , metaCh '^'           ?>>! joinLinesE univArg
-         , metaCh ';'           ?>>! commentRegion
+         , metaCh ';'           ?>>! withCurrentBuffer maybeCommitUpdate
+                                     *> commentRegion
          , metaCh 'a'           ?>>! repeatingArg (moveE unitSentence Backward)
          , metaCh 'b'           ?>>! repeatingArg prevWordB
-         , metaCh 'c'           ?>>! repeatingArg capitaliseWordB
-         , metaCh 'd'           ?>>! repeatingArg killWordB
+         , metaCh 'c'           ?>>! withCurrentBuffer maybeCommitUpdate
+                                     *> repeatingArg capitaliseWordB
+         , metaCh 'd'           ?>>! withCurrentBuffer maybeCommitUpdate
+                                     *> repeatingArg killWordB
          , metaCh 'e'           ?>>! repeatingArg (moveE unitSentence Forward)
          , metaCh 'f'           ?>>! repeatingArg nextWordB
-         , metaCh 'h'           ?>>! repeatingArg (selectNParagraphs 1)
-         , metaCh 'k'           ?>>! repeatingArg (deleteB unitSentence Forward)
-         , metaCh 'l'           ?>>! repeatingArg lowercaseWordB
+         , metaCh 'h'           ?>>! withCurrentBuffer maybeCommitUpdate
+                                     *> repeatingArg (selectNParagraphs 1)
+         , metaCh 'k'           ?>>! withCurrentBuffer maybeCommitUpdate
+                                     *> repeatingArg (deleteB unitSentence Forward)
+         , metaCh 'l'           ?>>! withCurrentBuffer maybeCommitUpdate
+                                     *> repeatingArg lowercaseWordB
          , metaCh 'm'           ?>>! firstNonSpaceB
          , metaCh 'q'           ?>>! withSyntax modePrettify
          , metaCh 'r'           ?>>! repeatingArg moveToMTB
-         , metaCh 'u'           ?>>! repeatingArg uppercaseWordB
-         , metaCh 't'           ?>>! repeatingArg (transposeB unitWord Forward)
+         , metaCh 'u'           ?>>! withCurrentBuffer maybeCommitUpdate
+                                     *> repeatingArg uppercaseWordB
+         , metaCh 't'           ?>>! withCurrentBuffer maybeCommitUpdate
+                                     *> repeatingArg (transposeB unitWord Forward)
          , metaCh 'w'           ?>>! killRingSave
-         , metaCh 'x'           ?>>! executeExtendedCommandE
-         , metaCh 'y'           ?>>! yankPopE
+         , metaCh 'x'           ?>>! withCurrentBuffer maybeCommitUpdate
+                                     *> executeExtendedCommandE
+         , metaCh 'y'           ?>>! withCurrentBuffer maybeCommitUpdate
+                                     *> yankPopE
          , metaCh '.'           ?>>! promptTag
          , metaCh '{'           ?>>! repeatingArg (prevNParagraphs 1)
          , metaCh '}'           ?>>! repeatingArg (nextNParagraphs 1)
          , metaCh '='           ?>>! countWordsRegion
-         , metaCh '\\'          ?>>! deleteHorizontalSpaceB univArg
-         , metaCh '@'           ?>>! repeatingArg markWord
+         , metaCh '\\'          ?>>! maybeCommitUpdate
+                                     *> deleteHorizontalSpaceB univArg
+         , metaCh '@'           ?>>! withCurrentBuffer maybeCommitUpdate
+                                     *> repeatingArg markWord
 
          -- Other meta key-bindings
-         , meta (spec KBS)      ?>>! repeatingArg bkillWordB
+         , meta (spec KBS)      ?>>! withCurrentBuffer maybeCommitUpdate
+                                     *> repeatingArg bkillWordB
          , metaCh 'g' ?>>
              optMod meta (char 'g') >>! (gotoLn . fromDoc :: Int ::: LineNumber -> BufferM Int)
          ]
@@ -250,14 +316,19 @@ emacsKeys univArg =
       then runAction $ makeAction f
       else withGivenBuffer b $ deleteRegionB r
 
-  ctrlC = choice [ ctrlCh 'c' ?>>! commentRegion ]
+  ctrlC = choice [ ctrlCh 'c' ?>>! withCurrentBuffer maybeCommitUpdate
+                                   *> commentRegion ]
 
 
-  rectangleFunctions = choice [ char 'o' ?>>! openRectangle
-                              , char 't' ?>>! stringRectangle
-                              , char 'k' ?>>! killRectangle
-                              , char 'y' ?>>! yankRectangle
-                              ]
+  rectangleFunctions = choice
+    [ char 'o' ?>>! maybeCommitUpdate
+                    *> openRectangle
+    , char 't' ?>>! stringRectangle
+    , char 'k' ?>>! withCurrentBuffer maybeCommitUpdate
+                    *> killRectangle
+    , char 'y' ?>>! withCurrentBuffer maybeCommitUpdate
+                    *> yankRectangle
+         ]
 
   tabFunctions :: Keymap
   tabFunctions = choice [ optMod ctrl (char 'n') >>! nextTabE
@@ -269,12 +340,14 @@ emacsKeys univArg =
                         ]
   -- These keybindings are all preceded by a 'C-x' so for example to
   -- quit the editor we do a 'C-x C-c'
-  ctrlX = choice [ ctrlCh 'o'    ?>>! deleteBlankLinesB
+  ctrlX = choice [ ctrlCh 'o'    ?>>! maybeCommitUpdate
+                                      *> deleteBlankLinesB
                  , char '0'      ?>>! closeWindowEmacs
                  , char '1'      ?>>! closeOtherE
                  , char '2'      ?>>! splitE
                  , char 'h'      ?>>! selectAll
-                 , char 's'      ?>>! askSaveEditor
+                 , char 's'      ?>>! withCurrentBuffer maybeCommitUpdate
+                                      *> askSaveEditor
                  , ctrlCh 'b'    ?>>! listBuffers
                  , ctrlCh 'c'    ?>>! askQuitEditor
                  , ctrlCh 'f'    ?>>! findFile
@@ -292,6 +365,7 @@ emacsKeys univArg =
                  , char 'o'      ?>>! nextWinE
                  , char 'k'      ?>>! killBufferE
                  , char 'r'      ?>>  rectangleFunctions
-                 , char 'u'      ?>>! repeatingArg undoB
+                 , char 'u'      ?>>! withCurrentBuffer maybeCommitUpdate
+                                      *> repeatingArg undoB
                  , optMod ctrl (char 't') >> tabFunctions
                  ]
