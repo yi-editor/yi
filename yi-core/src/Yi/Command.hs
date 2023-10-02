@@ -135,6 +135,9 @@ makeRun onExit (CommandArguments args) = buildRun "make" args onExit
 cabalBuildE :: CommandArguments -> YiM ()
 cabalBuildE = cabalRun "build" (const $ return ())
 
+stackBuildE :: CommandArguments -> YiM ()
+stackBuildE = stackRun "build" (const $ return ())
+
 makeBuildE :: CommandArguments -> YiM ()
 makeBuildE = makeRun (const $ return ())
 
