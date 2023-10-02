@@ -11,7 +11,7 @@ import           Paths_yi_core
 import           System.FilePath
 
 import           Yi.Buffer
-import           Yi.Command          (cabalBuildE, cabalConfigureE, grepFind,
+import           Yi.Command          (cabalBuildE, cabalConfigureE, grepFind, gitGrep,
                                       makeBuild, reloadProjectE, searchSources,
                                       shell)
 import           Yi.Config
@@ -50,6 +50,7 @@ defaultPublishedActions = HM.fromList
     , ("deleteBlankLinesB"      , box deleteBlankLinesB)
     , ("getSelectRegionB"       , box getSelectRegionB)
     , ("grepFind"               , box grepFind)
+    , ("gitGrep"                , box gitGrep)
     , ("insertB"                , box insertB)
     , ("leftB"                  , box leftB)
     , ("linePrefixSelectionB"   , box linePrefixSelectionB)
