@@ -148,7 +148,8 @@ import           Yi.Config(Config, UIConfig, startFrontEndA, configUIA,
                            CursorStyle(..), configLeftSideScrollBarA,
                            configAutoHideScrollBarA, configAutoHideTabBarA,
                            configLineWrapA, configWindowFillA, configThemeA,
-                           layoutManagersA, configVarsA, configLineNumbersA
+                           layoutManagersA, configVarsA, configLineNumbersA,
+                           configDisableSystemClipboardA
                            )
 
 
