@@ -17,6 +17,7 @@ module Yi.Keymap.Vim.Ex
 
 import           Yi.Keymap.Vim.Common                   (EventString)
 import qualified Yi.Keymap.Vim.Ex.Commands.Buffer       as Buffer (parse)
+import qualified Yi.Keymap.Vim.Ex.Commands.BufferCycle  as BufferCycle (parse)
 import qualified Yi.Keymap.Vim.Ex.Commands.BufferDelete as BufferDelete (parse)
 import qualified Yi.Keymap.Vim.Ex.Commands.BufferNew    as BufferNew (parse)
 import qualified Yi.Keymap.Vim.Ex.Commands.Buffers      as Buffers (parse)
@@ -48,6 +49,7 @@ import           Yi.Keymap.Vim.Ex.Types                 (ExCommand (..), evStrin
 defExCommandParsers :: [EventString -> Maybe ExCommand]
 defExCommandParsers =
     [ Buffer.parse
+    , BufferCycle.parse
     , Buffers.parse
     , BufferDelete.parse
     , BufferNew.parse
