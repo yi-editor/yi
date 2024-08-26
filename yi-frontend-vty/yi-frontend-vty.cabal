@@ -26,7 +26,7 @@ library
     , pointedlist
     , stm >= 2.2
     , text
-    , vty >= 5.4
+    , vty >= 5.4 && < 6
     , yi-core >= 0.19
     , yi-language >= 0.19
     , yi-rope >= 0.10
