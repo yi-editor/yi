@@ -84,7 +84,8 @@ import qualified Graphics.UI.Gtk as Gtk
 import qualified Graphics.UI.Gtk.Gdk.Events as Gdk.Events
 import System.Glib.GError
 import Control.Monad.Reader (ask, asks, MonadReader(..))
-import Control.Monad.State (ap, get, put, modify)
+import Control.Monad (ap)
+import Control.Monad.State (get, put, modify)
 import Control.Monad.Base
 import Control.Concurrent (newMVar, modifyMVar, MVar, newEmptyMVar, putMVar,
                            readMVar, isEmptyMVar)
