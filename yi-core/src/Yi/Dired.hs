@@ -91,7 +91,12 @@ import           System.PosixCompat.Files (FileStatus, fileExist, fileGroup,
                                            unionFileModes)
 import           System.PosixCompat.Types (FileMode, GroupID, UserID)
 #ifndef mingw32_HOST_OS
+#if MIN_VERSION_unix(2,8,0)
+import           System.Posix.User.ByteString (GroupEntry(GroupEntry), UserEntry(UserEntry))
+import           System.Posix.User        (getAllGroupEntries,
+#else
 import           System.Posix.User        (GroupEntry(..), UserEntry(..),getAllGroupEntries,
+#endif
                                            getAllUserEntries,
                                            getGroupEntryForID,
                                            getUserEntryForID, groupID, userID, userName, groupName)
