@@ -24,13 +24,13 @@ tokens :-
      let Just (_before, arr, _after) = matchOnceText re $ map snd str
          re :: Regex
          re = makeRegex "^(.+):([0-9]+):([0-9]+):(.*)$"
-     in (st, Report (fst $ arr!1) (read $ fst $ arr!2) (read $ fst $ arr!3) (fst $ arr!4)) }
+     in (st, Report (fst $ arr Data.Array.! 1) (read $ fst $ arr Data.Array.! 2) (read $ fst $ arr Data.Array.! 3) (fst $ arr Data.Array.! 4)) }
  -- without a column number
  @file":" @number ":" .*\n  { \str st ->
      let Just (_before, arr, _after) = matchOnceText re $ map snd str
          re :: Regex
          re = makeRegex "^(.+):([0-9]+):(.*)$"
-     in (st, Report (fst $ arr!1) (read $ fst $ arr!2) 0 (fst $ arr!3)) }
+     in (st, Report (fst $ arr Data.Array.! 1) (read $ fst $ arr Data.Array.! 2) 0 (fst $ arr Data.Array.! 3)) }
 
  $white+                              ; -- unparseable stuff
  [^$white]+                           ;
