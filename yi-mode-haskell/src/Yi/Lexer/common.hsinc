@@ -6,8 +6,8 @@
 
 #define IBOX(n) (I# (n))
 
-#define GEQ_(x, y) (tagToEnum# (x >=# y))
-#define EQ_(x, y) (tagToEnum# (x ==# y))
+#define GEQ_(x, y) (GHC.Exts.tagToEnum# (x >=# y))
+#define EQ_(x, y) (GHC.Exts.tagToEnum# (x ==# y))
 
 -- | Scan one token. Return (maybe) a token and a new state.
 alexScanToken :: (AlexState HlState, AlexInput) -> Maybe (Tok Token, (AlexState HlState, AlexInput))
@@ -37,7 +37,7 @@ alexScanUser' user input (I# (sc))
           Just _  -> (AlexError input', lookahead)
       (AlexLastSkip input'' len, _, lookahead) -> (AlexSkip input'' len, lookahead)
 #if MIN_TOOL_VERSION_alex(3,2,0)
-      (AlexLastAcc k input'' len, _, lookahead) -> (AlexToken input'' len (alex_actions ! k), lookahead)
+      (AlexLastAcc k input'' len, _, lookahead) -> (AlexToken input'' len (alex_actions Data.Array.! k), lookahead)
 #else
       (AlexLastAcc k input'' len, _, lookahead) -> (AlexToken input'' len k, lookahead)
 #endif
