@@ -13,6 +13,11 @@ source-repository head
   type: git
   location: https://github.com/yi-editor/yi
 
+flag old-vty
+  description: Build against a pre-6.0 version of the vty package.
+  default: False
+  manual: False
+
 library
   hs-source-dirs:
       src
@@ -26,10 +31,16 @@ library
     , pointedlist
     , stm >= 2.2
     , text
-    , vty >= 5.4 && < 6
     , yi-core >= 0.19
     , yi-language >= 0.19
     , yi-rope >= 0.10
+  if flag(old-vty)
+    build-depends:
+        vty >= 5.4 && < 6
+  else
+    build-depends:
+        vty >= 6
+      , vty-crossplatform
   exposed-modules:
       Yi.Config.Default.Vty
       Yi.Frontend.Vty

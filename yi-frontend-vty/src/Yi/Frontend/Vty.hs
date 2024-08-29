@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE OverloadedStrings #-}
@@ -45,6 +46,27 @@ import qualified Data.Text                      as T (Text, cons, empty,
                                                       unpack)
 import           Data.Typeable                  (Typeable)
 import           GHC.Conc                       (labelThread)
+#if MIN_VERSION_vty(6,0,0)
+import qualified Graphics.Vty.CrossPlatform     as Vty (mkVty)
+import qualified Graphics.Vty                   as Vty (Attr, Cursor (Cursor, NoCursor),
+                                                        VtyUserConfig,
+                                                        Image,
+                                                        Input (eventChannel),
+                                                        Output (displayBounds),
+                                                        Picture (picCursor), Vty (inputIface, outputIface, refresh, shutdown, update),
+                                                        bold, char, charFill,
+                                                        defaultConfig,
+                                                        defAttr, emptyImage,
+                                                        horizCat,
+                                                        picForLayers,
+                                                        string,
+                                                        reverseVideo, text',
+                                                        translate, underline,
+                                                        userConfig,
+                                                        vertCat, withBackColor,
+                                                        withForeColor,
+                                                        withStyle, (<|>))
+#else
 import qualified Graphics.Vty                   as Vty (Attr, Cursor (Cursor, NoCursor),
                                                         Config,
                                                         Image,
@@ -62,6 +84,7 @@ import qualified Graphics.Vty                   as Vty (Attr, Cursor (Cursor, No
                                                         vertCat, withBackColor,
                                                         withForeColor,
                                                         withStyle, (<|>))
+#endif
 import qualified Graphics.Vty.Input.Events      as VtyIE (InternalEvent(..), Event (EvResize))
 import           System.Exit                    (ExitCode, exitWith)
 import           Yi.Buffer
@@ -103,23 +126,36 @@ data FrontendState = FrontendState
 -- If this is set to its default (None) it will be replaced by the default
 -- vty configuration from standardIOConfig. However, standardIOConfig
 -- runs in the IO monad so we cannot set the real default here.
+#if MIN_VERSION_vty(6,0,0)
+newtype BaseVtyConfig = BaseVtyConfig { _baseVtyConfig' :: Maybe Vty.VtyUserConfig }
+#else
 newtype BaseVtyConfig = BaseVtyConfig { _baseVtyConfig' :: Maybe Vty.Config }
+#endif
     deriving (Typeable, Default)
 
 instance YiConfigVariable BaseVtyConfig
 
 makeLenses ''BaseVtyConfig
 
+#if MIN_VERSION_vty(6,0,0)
+baseVtyConfig :: Lens' Config (Maybe Vty.VtyUserConfig)
+#else
 baseVtyConfig :: Lens' Config (Maybe Vty.Config)
+#endif
 baseVtyConfig = configVariable . baseVtyConfig'
 
 start :: UIBoot
 start config submitEvents submitActions editor = do
     let baseConfig = view baseVtyConfig config
+#if MIN_VERSION_vty(6,0,0)
+    vty <- Vty.mkVty . (<> fromMaybe Vty.defaultConfig baseConfig) =<< Vty.userConfig
+    let inputChan = Vty.eventChannel (Vty.inputIface vty)
+#else
     vty <- Vty.mkVty =<< case baseConfig of
         Nothing -> Vty.standardIOConfig
         Just conf -> return conf
     let inputChan = Vty._eventChannel (Vty.inputIface vty)
+#endif
     endInput <- newEmptyMVar
     endMain <- newEmptyMVar
     endRender <- newEmptyMVar
@@ -148,7 +184,11 @@ start config submitEvents submitActions editor = do
                 submitActions []
                 getEvent
             (VtyIE.InputEvent ev) -> return (fromVtyEvent ev)
+#if MIN_VERSION_vty(6,0,0)
+            VtyIE.ResumeAfterInterrupt -> do
+#else
             VtyIE.ResumeAfterSignal -> do
+#endif
                 Vty.refresh vty
                 getEvent
 
