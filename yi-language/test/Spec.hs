@@ -1,6 +1,7 @@
 
 import Data.Bifunctor (first)
 
+import Test.Hspec
 import Test.Tasty
 import Test.Tasty.Hspec
 import Test.Tasty.QuickCheck

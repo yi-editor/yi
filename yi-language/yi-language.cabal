@@ -73,6 +73,7 @@ test-suite tasty
     , transformers-base
     , unordered-containers >= 0.1.3 && < 0.3
     , microlens-platform
+    , hspec
     , tasty
     , tasty-hspec
     , tasty-quickcheck
