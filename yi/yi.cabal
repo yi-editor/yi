@@ -1,5 +1,5 @@
 name:           yi
-version:        0.19.1
+version:        0.19.2
 synopsis:       Yi editor
 category:       Yi
 homepage:       https://github.com/yi-editor/yi#readme
@@ -36,7 +36,7 @@ flag vty
 executable yi
   main-is: Main.hs
   hs-source-dirs:
-      ./.
+      ./
   ghc-options: -Wall -ferror-spans -threaded -eventlog -rtsopts
   build-depends:
       base >= 4.8 && < 5
