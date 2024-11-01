@@ -1,5 +1,5 @@
 name:           yi
-version:        0.19.2
+version:        0.19.3
 synopsis:       Yi editor
 category:       Yi
 homepage:       https://github.com/yi-editor/yi#readme
@@ -8,6 +8,8 @@ maintainer:     Yi developers <yi-devel@googlegroups.com>
 license:        GPL-2
 build-type:     Simple
 cabal-version:  >= 1.10
+data-files:
+  art/*.xpm
 
 source-repository head
   type: git
@@ -21,7 +23,7 @@ flag emacs
 flag pango
   description: Include the pango (GUI) frontend
   manual: True
-  default: True
+  default: False
 
 flag vim
   description: Include the vim keymap
