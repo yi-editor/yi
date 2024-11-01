@@ -10,6 +10,9 @@ build-type:     Simple
 cabal-version:  >= 1.10
 data-files:
   art/*.xpm
+  art/*.svg
+extra-source-files:
+  yi.1
 
 source-repository head
   type: git
