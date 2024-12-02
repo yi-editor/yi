@@ -54,6 +54,7 @@ library
     , yi-language >= 0.19
     , yi-rope >= 0.10
     , exceptions
+    , Hclip
   if flag(hint)
     cpp-options: -DHINT
     build-depends:
@@ -74,6 +75,7 @@ library
       Yi.Buffer.Region
       Yi.Buffer.TextUnit
       Yi.Buffer.Undo
+      Yi.Clip
       Yi.Command
       Yi.Command.Help
       Yi.Completion

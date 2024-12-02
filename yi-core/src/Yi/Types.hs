@@ -441,8 +441,11 @@ data Config = Config {startFrontEnd :: UIBoot,
                       bufferUpdateHandler :: !(S.Seq (S.Seq Update -> BufferM ())),
                       layoutManagers :: ![AnyLayoutManager],
                       -- ^ List of layout managers for 'cycleLayoutManagersNext'
-                      configVars :: !ConfigState.DynamicState
+                      configVars :: !ConfigState.DynamicState,
                       -- ^ Custom configuration, containing the 'YiConfigVariable's. Configure with 'configVariableA'.
+                      configDisableSystemClipboard :: !Bool
+                      -- ^ Set to 'True' not to use system clipboard.
+                      -- When vty-mode, system clipboard is not available in some environments.
                      }
 
 

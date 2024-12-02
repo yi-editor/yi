@@ -56,7 +56,6 @@ library
     , data-default
     , directory
     , filepath
-    , Hclip
     , microlens-platform
     , mtl
     , oo-prototypes
@@ -141,7 +140,6 @@ test-suite spec
     , data-default
     , directory
     , filepath
-    , Hclip
     , microlens-platform
     , mtl
     , oo-prototypes
