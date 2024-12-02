@@ -162,6 +162,7 @@ emacsKeys univArg =
 
          -- All the keybindings of the form "C-M-c" where 'c' is some character
          , ctrl (metaCh 'w')    ?>>! appendNextKillE
+         , ctrl (metaCh '@')    ?>>! layoutManagersNextE
          , ctrl (metaCh ' ')    ?>>! layoutManagersNextE
          , ctrl (metaCh ',')    ?>>! layoutManagerNextVariantE
          , ctrl (metaCh '.')    ?>>! layoutManagerPreviousVariantE
@@ -174,6 +175,7 @@ emacsKeys univArg =
          , shift (ctrl $ metaCh 'j') ?>>! moveWinNextE
          , shift (ctrl $ metaCh 'k') ?>>! moveWinPrevE
          , shift (ctrl $ meta $ spec KEnter) ?>>! pushWinToFirstE
+         , Event (KASCII '@') [MShift,MCtrl,MMeta] ?>>! layoutManagersPreviousE
          , Event (KASCII ' ') [MShift,MCtrl,MMeta] ?>>! layoutManagersPreviousE
 
          -- All the key-bindings which are preceded by a 'C-x'
@@ -182,6 +184,7 @@ emacsKeys univArg =
          , ctrlCh 'c' ?>>      ctrlC
 
          -- All The key-bindings of the form M-c where 'c' is some character.
+         , metaCh '@'           ?>>! justOneSep univArg
          , metaCh ' '           ?>>! justOneSep univArg
          , metaCh 'v'           ?>>! scrollUpE univArg
          , metaCh '!'           ?>>! shellCommandE
