@@ -157,6 +157,13 @@ grepFind (Doc filePattern) (Doc searchedRegex) = withOtherWindow $ do
     withCurrentBuffer $ setMode Compilation.mode
     return ()
 
+-- | Perform a git+grep operation
+gitGrep :: String ::: FilePatternTag -> String ::: RegexTag -> YiM ()
+gitGrep (Doc filePattern) (Doc searchedRegex) = withOtherWindow $ do
+    void $ startSubprocess "git" ["grep","-Hnie",searchedRegex,filePattern] (const $ return ())
+    withCurrentBuffer $ setMode Compilation.mode
+    return ()
+
 -----------------------
 -- | stack-build
 
