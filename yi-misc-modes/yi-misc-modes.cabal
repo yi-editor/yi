@@ -51,6 +51,7 @@ library
       Yi.Lexer.JSON
       Yi.Lexer.Java
       Yi.Lexer.Latex
+      Yi.Lexer.Markdown
       Yi.Lexer.OCaml
       Yi.Lexer.ObjectiveC
       Yi.Lexer.Ott
