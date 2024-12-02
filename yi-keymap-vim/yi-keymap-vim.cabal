@@ -77,6 +77,7 @@ library
       Yi.Keymap.Vim.EventUtils
       Yi.Keymap.Vim.Ex
       Yi.Keymap.Vim.Ex.Commands.Buffer
+      Yi.Keymap.Vim.Ex.Commands.BufferCycle
       Yi.Keymap.Vim.Ex.Commands.BufferDelete
       Yi.Keymap.Vim.Ex.Commands.Buffers
       Yi.Keymap.Vim.Ex.Commands.Cabal
